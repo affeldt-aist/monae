@@ -1,6 +1,8 @@
 monad.v
+monad_model.v
 state_monad.v
 proba_monad.v
+proba_model.v
 trace_monad.v
 trace_model.v
 smallstep.v

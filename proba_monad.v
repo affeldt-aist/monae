@@ -176,7 +176,7 @@ Fixpoint uniform {M : probMonad} {A} (def(*NB: Coq functions are total*) : A) (s
   match s with
     | [::] => Ret def
     | [:: x] => Ret x
-    | x :: xs => (Ret x) <| [Pr of / IZR (Z_of_nat (size (x :: xs)))] |> uniform def xs
+    | x :: xs => Ret x <| [Pr of / IZR (Z_of_nat (size (x :: xs)))] |> uniform def xs
   end.
 
 Lemma uniform_nil (M : probMonad) A (def : A) :
@@ -193,7 +193,7 @@ Lemma choice_ext (q p : Prob.t) (M : probMonad) A (m1 m2 : M A) :
 Proof. by move/prob_ext => ->. Qed.
 
 Lemma uniform_cons (M : probMonad) A (def : A) h s :
-  uniform def (h :: s) = (Ret h) <| [Pr of / IZR (Z_of_nat (size (h :: s)))] |> uniform def s :> M A.
+  uniform def (h :: s) = Ret h <| [Pr of / IZR (Z_of_nat (size (h :: s)))] |> uniform def s :> M A.
 Proof.
 case: s => //.
 rewrite (@choice_ext [Pr of 1]) // ?choice1 //.
@@ -376,6 +376,7 @@ Record class_of (m : Type -> Type) := Class {
 }.
 Structure t : Type := Pack { m : Type -> Type ; class : class_of m }.
 Definition baseType (M : t) : altCIMonad := MonadAltCI.Pack (base (class M)).
+Definition altType (M : t) : altMonad := MonadAlt.Pack (MonadAltCI.base (base (class M))).
 Module Exports.
 Notation altProbMonad := t.
 Coercion baseType : altProbMonad >-> altCIMonad.
@@ -383,6 +384,7 @@ Canonical baseType.
 Definition altprob_is_prob M :=
   MonadProb.Pack (MonadProb.Class (mixin (class M))).
 Canonical altprob_is_prob.
+Canonical altType.
 End Exports.
 End MonadAltProb.
 Export MonadAltProb.Exports.
@@ -401,7 +403,7 @@ Section convexity_property.
 Variables (M : altProbMonad) (A : Type) (p q : M A).
 
 Lemma convexity w : p [~i] q =
-  (p <| w |> p : M _(* TODO *)) [~i] (q <| w |> p) [~i] (p <| w |> q) [~i] (q <| w |> q).
+  (p <| w |> p) [~i] (q <| w |> p) [~i] (p <| w |> q) [~i] (q <| w |> q).
 Proof.
 rewrite -[LHS](choicemm (probcplt w)).
 rewrite choiceDr.
@@ -467,10 +469,10 @@ Qed.
 Lemma coinarb_spec_convexity p w : coinarb p =
   (bcoin w : M _) [~i] Ret false [~i] Ret true [~i] bcoin [Pr of w.~].
 Proof.
-rewrite coinarb_spec [in LHS]/arb [in LHS](convexity _ _ w).
-rewrite 2!choicemm -altA altC.
-rewrite -[in RHS]altA; congr (_ [~i] (_ [~i] _)).
-by rewrite /bcoin choiceC.
+rewrite coinarb_spec [in LHS]/arb [in LHS](convexity _ _ w) 2!choicemm.
+rewrite [in LHS]altC -(altA _ (Ret false)) altCA -2![in RHS]altA; congr (_ [~i] _).
+rewrite -altA altCA; congr (_ [~i] _).
+by rewrite /bcoin choiceC altC.
 Qed.
 
 End mixing_choices.
@@ -499,7 +501,7 @@ End MonadExceptProb.
 Export MonadExceptProb.Exports.
 
 Definition coins23 {M : exceptProbMonad} : M bool :=
-  Ret true <| [Pr of / 2] |> (Ret false <| [Pr of / 2] |> (Fail : M bool)).
+  Ret true <| [Pr of / 2] |> (Ret false <| [Pr of / 2] |> (Fail : M _)).
 
 Module Set3.
 Section set3.
@@ -810,10 +812,10 @@ by rewrite_ bindretf.
 Qed.
 
 Lemma uniform_doors_unfold (P : rel door) :
-  Do{ hp <- uniform (def, def) (cp doors doors); (Ret) (P hp.1 hp.2)} =
-  (Ret) (P A A) <|[Pr of / 9]|> ((Ret) (P A B) <|[Pr of / 8]|> ((Ret) (P A C) <|[Pr of / 7]|>
- ((Ret) (P B A) <|[Pr of / 6]|> ((Ret) (P B B) <|[Pr of / 5]|> ((Ret) (P B C) <|[Pr of / 4]|>
- ((Ret) (P C A) <|[Pr of / 3]|> ((Ret) (P C B) <|[Pr of / 2]|> (Ret) (P C C)))))))) :> M _.
+  Do{ hp <- uniform (def, def) (cp doors doors); Ret (P hp.1 hp.2)} =
+  Ret (P A A) <|[Pr of / 9]|> (Ret (P A B) <|[Pr of / 8]|> (Ret (P A C) <|[Pr of / 7]|>
+ (Ret (P B A) <|[Pr of / 6]|> (Ret (P B B) <|[Pr of / 5]|> (Ret (P B C) <|[Pr of / 4]|>
+ (Ret (P C A) <|[Pr of / 3]|> (Ret (P C B) <|[Pr of / 2]|> Ret (P C C)))))))) :> M _.
 Proof.
 transitivity (fmap (uncurry (fun a b => P a b))
                    (@uniform M _ (def, def) (cp doors doors))).
@@ -841,11 +843,11 @@ by rewrite choiceA_compute /= -uFFTE.
 Qed.
 
 Lemma bcoin23E :
-  Do{ hp <- uniform (def, def) (cp doors doors); (Ret) (hp.1 != hp.2)} = bcoin (@Prob.mk (2/3) H23) :> M _.
+  Do{ hp <- uniform (def, def) (cp doors doors); Ret (hp.1 != hp.2)} = bcoin (@Prob.mk (2/3) H23) :> M _.
 Proof.
 pose P := fun a b : door => a != b.
 transitivity
-  (Do{ hp <- uniform (def, def) (cp doors doors); (Ret) (P hp.1 hp.2)} : M _).
+  (Do{ hp <- uniform (def, def) (cp doors doors); Ret (P hp.1 hp.2)} : M _).
   by bind_ext.
 rewrite uniform_doors_unfold {}/P !eqxx.
 rewrite (negbTE (Set3.a_neq_c card_door)).
@@ -888,10 +890,10 @@ Lemma play_switch : play switch = bcoin (@Prob.mk (2/3) H23).
 Proof.
 rewrite {1}/play {1}/monty hide_pickE.
 transitivity (Do{ hp <- uniform (def, def) (cp doors doors);
-  Do{ t <- tease hp.1 hp.2; Do{ s <- Ret (head (doors \\ [:: hp.2; t])); (Ret) (s == hp.1)}}}).
+  Do{ t <- tease hp.1 hp.2; Do{ s <- Ret (head (doors \\ [:: hp.2; t])); Ret (s == hp.1)}}}).
   by [].
 transitivity (Do{ hp <- uniform (def, def) (cp doors doors);
-  Do{ t <- tease hp.1 hp.2; (Ret) ((head (doors \\ [:: hp.2; t])) == hp.1)}}).
+  Do{ t <- tease hp.1 hp.2; Ret ((head (doors \\ [:: hp.2; t])) == hp.1)}}).
   bind_ext => -[h p].
   rewrite [_.1]/= [_.2]/=; by rewrite_ bindretf.
 transitivity (Do{ hp <- uniform (def, def) (cp doors doors);
@@ -955,8 +957,9 @@ Proof.
 rewrite /fmap /try bindA.
 rewrite_ bindretf.
 rewrite /pick /monty.pick.
-transitivity (Do{p <- (Ret A) <| [Pr of /3] |> ((Ret B) <| [Pr of /2] |> (Ret C)); Ret (d == p)} : M _).
-  congr Monad.op_bind => //.
+transitivity (Do{p <- Ret A <| [Pr of /3] |> (Ret B <| [Pr of /2] |> Ret C); Ret (d == p)} : M _).
+  (* TODO: bind_ext? *)
+  congr Monad.bind => //.
   by rewrite /doors Set3.enumE 2!uniform_cons.
 rewrite 2!prob_bindDl 3!bindretf.
 rewrite /uFFT 2!uniform_cons.

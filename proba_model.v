@@ -64,22 +64,22 @@ End finLaws.
 
 Module finMonad.
 Record class_of (m : finType -> Type) : Type := Class {
-  ret : forall A : finType, A -> m A;
-  bind : forall A B : finType, m A -> (A -> m B) -> m B ;
-  _ : finLaws.left_neutral bind ret ;
-  _ : finLaws.right_neutral bind ret ;
-  _ : finLaws.associative bind }.
+  op_ret : forall A : finType, A -> m A;
+  op_bind : forall A B : finType, m A -> (A -> m B) -> m B ;
+  _ : finLaws.left_neutral op_bind op_ret ;
+  _ : finLaws.right_neutral op_bind op_ret ;
+  _ : finLaws.associative op_bind }.
 Record t : Type := Pack { m : finType -> Type; class : class_of m }.
-Definition op_bind (M : t) A B : m M A -> (A -> m M B) -> m M B :=
+Definition bind (M : t) A B : m M A -> (A -> m M B) -> m M B :=
   let: Pack _ (Class _ x _ _ _) := M in x A B.
-Arguments op_bind {M A B} : simpl never.
-Definition op_ret (M : t) (A : finType) : A -> m M A :=
+Arguments bind {M A B} : simpl never.
+Definition ret (M : t) (A : finType) : A -> m M A :=
   let: Pack _ (Class x _ _ _ _) := M in x A.
-Arguments op_ret {M A} : simpl never.
+Arguments ret {M A} : simpl never.
 Module Exports.
-Notation "m >>= f" := (op_bind m f).
-Notation Bind := op_bind.
-Notation Ret := op_ret.
+Notation "m >>= f" := (bind m f).
+Notation Bind := bind.
+Notation Ret := ret.
 Notation finmonad := t.
 Coercion m : finmonad >-> Funclass.
 End Exports.

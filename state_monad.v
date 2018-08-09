@@ -205,12 +205,8 @@ Definition test_nonce0 (M : stateMonad nat) : M nat :=
 Reset test_nonce0.
 Fail Check test_nonce0.
 
-(* mu (wip) *)
-
-(* TODO: move *)
-Lemma skip_fapp (M : monad) A B (m : M B) (f : A -> B) g :
-  (m >> (f ($) g)) = (f ($) (m >> g)) :> M _.
-Proof. by rewrite fapp_bind. Qed.
+Section mu.
+Local Open Scope mu_scope.
 
 Section scanl.
 
@@ -239,7 +235,7 @@ Lemma loop_of_scanl' (s : S) (ms : M S) (mu mu' : M unit) (g : M (seq S)) (f : S
   Do{ x0 <- ms; mu >> Do{ xs <- cons s ($) (mu' >> g); f x0 >> Ret xs}} =
   cons s ($) Do{ x0 <- ms; mu >> mu' >> Do{ xs <- g; f x0 >> Ret xs}}.
 Proof.
-rewrite /fapp /fmap !bindA.
+rewrite /fmap !bindA.
 rewrite_ bindA.
 bind_ext => x.
 rewrite !bindA; bind_ext; case.
@@ -284,12 +280,12 @@ transitivity (cons (op s x)
 transitivity (cons (op s x) ($) Do{ x0 <- Get; loopp op (op s x) xs >>= overwrite x0}); last first.
   congr (_ ($) _).
   by Inf rewrite -bindA.
-by rewrite -IH fapp_ret.
+by rewrite -IH fmap_ret.
 Qed.
 
 End loop.
 
-(* end of mu (wip) *)
+End mu.
 
 (* NB(rei): not used yet *)
 Module MonadStateRun.
@@ -785,11 +781,11 @@ elim: n1 => [|n1 IH].
   With (rewrite bindretf) Open (X in _ >>= X).
   reflexivity.
   by rewrite bindmret.
-rewrite addSn SymbolsS {}IH SymbolsS /fmap !bindA.
+rewrite addSn SymbolsS {}IH SymbolsS /fmap (* TODO *) !bindA.
 bind_ext => a.
 rewrite !bindA.
 (* TODO(rei): use bind_ext *)
-congr Monad.op_bind; apply functional_extensionality => s.
+congr Monad.bind; apply functional_extensionality => s.
 rewrite bindretf 3!bindA.
 by do 3 rewrite_ bindretf.
 Qed.
@@ -906,7 +902,7 @@ Lemma join_and_pairs :
   (pair \o (@join _ _)`^2) \o (fmap dlabels \o relabel)`^2.
 Proof.
 apply functional_extensionality => -[x1 x2].
-rewrite /join /= /fmap /=. (* TODO: lock join and fmap? *) (*NB: notation breaks*)
+rewrite /join /=. (* TODO *)
 rewrite 5!bindA; bind_ext => {x1}x1.
 rewrite 2!bindretf 3!bindA.
 transitivity (Do{ x0 <- relabel x2; Do{ x <- dlabels x1;
@@ -931,7 +927,7 @@ apply foldt_universal.
   rewrite (_ : dlabels \o _ = Ret \o wrap); last by [].
   rewrite compA /drTip; congr (_ \o _).
   rewrite fmap_o compA.
-  by rewrite (@join_fmap_return M).
+  by rewrite (@join_fmap_ret M).
 (* dlabels >=> relabel \o Bin = drBin \o _ *)
 rewrite /kleisli -2![in LHS]compA.
 rewrite (_ : relabel \o uncurry _ = fmap (uncurry (@Bin _)) \o (pair \o relabel`^2)); last first.

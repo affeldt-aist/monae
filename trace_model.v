@@ -6,63 +6,64 @@ Require Import ssreflect ssrfun FunctionalExtensionality Eqdep List.
 Import ListNotations.
 Require Import monad state_monad trace_monad.
 
-Module StateTraceModel.
-Section statetracemodel.
+Module ModelMonad.
 
+Section trace.
 Variables T S : Type.
-
-Let m : Type -> Type := fun A => S * list T -> A * (S * list T).
-
-Program Definition MONAD : monad := Monad.Pack (@Monad.Class
+Definition m : Type -> Type := fun A => S * list T -> A * (S * list T).
+Program Definition M := Monad.Pack (@Monad.Class
   m
   (fun A a => fun s => (a, s)) (* ret *)
   (fun A B m f => fun s => let (a, s') := m s in f a s') (* bind *)
   _ _ _).
 Next Obligation. by []. Qed.
-Next Obligation.
-compute.
-intros.
-extensionality s.
-destruct (m0 s); reflexivity.
-Qed.
-Next Obligation.
-compute.
-intros.
-extensionality s.
-destruct (m0 s); reflexivity.
-Qed.
+Next Obligation. move=> A ma; extensionality s; by case: ma. Qed.
+Next Obligation. move=> A B C ma f g; extensionality s; by case: ma. Qed.
+End trace.
 
-Program Definition TRACE := @MonadTrace.Mixin T MONAD
+End ModelMonad.
+
+Module ModelTrace.
+
+Section trace.
+Variables T S : Type.
+Definition M := @MonadTrace.Mixin _ (ModelMonad.m T S)
   (fun log s => (tt, (s.1, s.2 ++ [log]))).
+End trace.
 
-Program Definition STATE := @MonadState.Class
-  S m (Monad.class MONAD) (@MonadState.Mixin S MONAD
-  (* get *) (fun s => (s.1, s))
-  (* put *) (fun s' s => (tt, (s', s.2)))
+End ModelTrace.
+
+Module ModelState.
+
+Section trace.
+Variables T S : Type.
+Program Definition M := @MonadState.Class
+  _ _ _ (@MonadState.Mixin _ (ModelMonad.M T S)
+  (fun s => (s.1, s)) (* get *)
+  (fun s' s => (tt, (s', s.2))) (* put *)
   _ _ _ _).
 Next Obligation. by []. Qed.
 Next Obligation. by []. Qed.
-Next Obligation.
-compute.
-extensionality s.
-destruct s; reflexivity.
-Qed.
+Next Obligation. apply functional_extensionality; by case. Qed.
 Next Obligation. by []. Qed.
+End trace.
 
-Program Definition STATETRACE : stateTraceMonad T S :=
-  @MonadStateTrace.Pack T S m
-  (@MonadStateTrace.Class T S m
-  STATE
-  TRACE
-  (@MonadStateTrace.Mixin T S (MonadState.Pack STATE)
+End ModelState.
+
+Module ModelStateTrace.
+
+Section trace.
+Local Obligation Tactic := by [].
+Variables T S : Type.
+Program Definition M :=
+  @MonadStateTrace.Pack _ _ _
+  (@MonadStateTrace.Class _ _ _ _
+  (ModelTrace.M T S)
+  (@MonadStateTrace.Mixin _ _ (MonadState.Pack (ModelState.M T S))
      _ (* mark *)
-     (fun A (m : MONAD A) (s : S * list T) => m s) (* run *)
+     (fun A m (s : S * list T) => m s) (* run *)
      _ _ _ _ _)).
-Next Obligation. by []. Qed.
-Next Obligation. by []. Qed.
-Next Obligation. by []. Qed.
-Next Obligation. by []. Qed.
-Next Obligation. by []. Qed.
 
-End statetracemodel.
-End StateTraceModel.
+End trace.
+
+End ModelStateTrace.
