@@ -8,8 +8,7 @@ Set Implicit Arguments.
 Unset Strict Implicit.
 Unset Printing Implicit Defensive.
 
-(*
-Contents:
+(* Contents:
 - Module MonadState.
     n-queens example
 - Module MonadStateNondet.
@@ -101,95 +100,95 @@ Definition safe1 : (seq nat)`2 -> seq nat`2 -> bool * (seq nat)`2 :=
   foldr step1 \o start1.
 
 Definition queens {M : nondetMonad} n : M (seq nat) :=
-  Do{ rs <- perms (iota 1 n) ;
-      (guard (safe1 empty (place n rs)).1 >> Ret rs)}.
+  do rs <- perms (iota 1 n) ;
+     (guard (safe1 empty (place n rs)).1 >> Ret rs).
 
 End purely_functional.
 
 Section statefully.
 (* statefully constructing the sets of up/down diagonals threatened by the queens so far *)
 
-Context {M : stateMonad (seq nat)`2}.
+Variable M : stateMonad (seq nat)`2.
 
 Definition start2 : M bool := Ret true.
 
 Definition step2 (cr : nat`2) (k : M bool) : M bool :=
-  Do{ b' <- k ;
-    Do{ uds <- Get;
-      let (b, uds') := test cr uds in
-      Put uds' >> Ret (b && b')}}.
+  do b' <- k ;
+  do uds <- Get;
+  let (b, uds') := test cr uds in
+  Put uds' >> Ret (b && b').
 
 Definition safe2 : seq nat`2 -> M bool :=
   foldr step2 start2.
 
 Lemma safe2E crs :
-  safe2 crs = Do{ uds <- Get; let (ok, uds') := safe1 uds crs in
-                                (Put uds' >> Ret ok)} :> M _.
+  safe2 crs = do uds <- Get; let (ok, uds') := safe1 uds crs in
+                             (Put uds' >> Ret ok).
 Proof.
 (* TODO(rei): how to write this proof w.o. the "set" and "transitivity"'s? *)
 apply/esym; rewrite /safe2.
-set f := fun x => Do{ uds <- Get; let (ok, uds') := safe1 uds x in Put uds' >> Ret ok} : M _.
+set f := fun x => do uds <- Get; let (ok, uds') := safe1 uds x in Put uds' >> Ret ok : M _.
 rewrite -(@foldr_universal_ext _ _ _ _ f) //;
   [apply/esym|move=> cr {crs}crs; apply/esym].
   by rewrite /start2 /f /= -bindA getputskip bindskipf.
 (* definition of safe1 *)
 transitivity
-  (Do{ uds <- Get;
-  let (ok, uds') := step1 cr (safe1  uds crs) in Put uds'>> Ret ok} : M _); last first.
+  (do uds <- Get;
+  let (ok, uds') := step1 cr (safe1  uds crs) in Put uds'>> Ret ok : M _); last first.
   by [].
 (* introduce a let *)
 transitivity
-  (Do{ uds <- Get;
+  (do uds <- Get;
   let (b', uds'') := safe1 uds crs in
-  let (ok, uds') := step1 cr (b', uds'') in Put uds' >> Ret ok} : M _); last first.
+  let (ok, uds') := step1 cr (b', uds'') in Put uds' >> Ret ok : M _); last first.
   bind_ext => x.
   by case: safe1.
 (* definition of step1 *)
 transitivity
-  (Do{ uds <- Get;
+  (do uds <- Get;
   let (b', uds'') := safe1 uds crs in
   let (b, uds''') := test cr uds'' in
-  let (ok, uds') := (b && b', uds''') in Put uds' >> Ret ok} : M _); last first.
+  let (ok, uds') := (b && b', uds''') in Put uds' >> Ret ok : M _); last first.
   bind_ext => x.
   case: safe1 => // h t.
   rewrite /step1 /=.
   by case: test.
 transitivity
-  (Do{ uds <- Get;
+  (do uds <- Get;
   let (b', uds'') := safe1 uds crs in
   let (b, uds''') := test cr uds'' in
-  let (ok, uds') := (b && b', uds''') in (Put uds'' >> Put uds' >> Ret ok)} : M _); last first.
+  let (ok, uds') := (b && b', uds''') in (Put uds'' >> Put uds' >> Ret ok) : M _); last first.
   bind_ext => x.
   case: safe1 => // h t.
   case: test => // a b.
   by rewrite putput.
 (* move two of the lets *)
 transitivity
-  (Do{ uds <- Get;
+  (do uds <- Get;
   let (b', uds'') := safe1 uds crs in
   Put uds'' >>
   let (b, uds''') := test cr uds'' in
-  let (ok, uds') := (b && b', uds''') in Put uds' >> Ret ok} : M _); last first.
+  let (ok, uds') := (b && b', uds''') in Put uds' >> Ret ok : M _); last first.
   bind_ext => x.
   case: safe1 => // h t.
   case: test => // a b.
   by rewrite bindA.
 transitivity
-  (Do{ uds <- Get;
+  (do uds <- Get;
   let (b', uds'') := safe1 uds crs in
   Put uds'' >>
-  Do{ uds'''' <- Get ;
+  do uds'''' <- Get ;
   let (b, uds''') := test cr uds'''' in
-  let (ok, uds') := (b && b', uds''') in Put uds' >> Ret ok}} : M _); last first.
+  let (ok, uds') := (b && b', uds''') in Put uds' >> Ret ok : M _); last first.
   bind_ext => x.
   case: safe1 => // h t.
   by rewrite -bindA putgetput.
 transitivity
-  (Do{
-   b' <- Do{uds <- Get ; let (ok, uds'') := safe1 uds crs in Put uds'' >> Ret ok} ;
-   Do{ uds'''' <- Get;
+  (do
+   b' <- (do uds <- Get ; let (ok, uds'') := safe1 uds crs in Put uds'' >> Ret ok) ;
+   (do uds'''' <- Get;
    let (b, uds''') := test cr uds'''' in
-   let (ok, uds') := (b && b', uds''') in Put uds' >> Ret ok}} : M _); last first.
+   let (ok, uds') := (b && b', uds''') in Put uds' >> Ret ok) : M _); last first.
   rewrite bindA; bind_ext => x.
   case: safe1 => // h t.
   by rewrite bindA; rewrite_ bindretf.
@@ -199,6 +198,9 @@ Qed.
 End statefully.
 
 End nqueens.
+Arguments step2 {M}.
+Arguments safe2 {M}.
+Arguments start2 {M}.
 
 Definition test_nonce0 (M : stateMonad nat) : M nat :=
   Get >>= (fun s => Put s.+1 >> Ret s).
@@ -232,8 +234,8 @@ Lemma loopp_nil (op : S -> A -> S) (s : S) : loopp op s [::] = Put s >> Ret [::]
 Proof. by []. Qed.
 
 Lemma loop_of_scanl' (s : S) (ms : M S) (mu mu' : M unit) (g : M (seq S)) (f : S -> M unit) :
-  Do{ x0 <- ms; mu >> Do{ xs <- cons s ($) (mu' >> g); f x0 >> Ret xs}} =
-  cons s ($) Do{ x0 <- ms; mu >> mu' >> Do{ xs <- g; f x0 >> Ret xs}}.
+  do x0 <- ms; mu >> (do xs <- cons s ($) (mu' >> g); f x0 >> Ret xs) =
+  cons s ($) (do x0 <- ms; mu >> mu' >> (do xs <- g; f x0 >> Ret xs)).
 Proof.
 rewrite /fmap !bindA.
 rewrite_ bindA.
@@ -248,7 +250,7 @@ by [].
 Qed.
 
 Lemma loop_of_scanl (op : S -> A -> S) (s : S) (xs : seq A) :
-  Ret (scanlp op s xs) = Do{ ini <- Get; loopp op s xs >>= overwrite ini}.
+  Ret (scanlp op s xs) = do ini <- Get; loopp op s xs >>= overwrite ini.
 Proof.
 elim: xs s => [/=|x xs IH] s.
   rewrite loopp_nil.
@@ -264,20 +266,20 @@ rewrite /loopp /overwrite [in RHS]/=.
 set mul := fun (x0 : A) m => _.
 Inf rewrite !bindA.
 (* TODO(rei): tactic for nested function bodies? *)
-transitivity (Do{ x0 <- Get;
+transitivity (do x0 <- Get;
   (Put s >>
   Get) >>= fun x1 =>
-  Do{ a <- cons (op x1 x) ($) (Put (op x1 x) >> foldr mul (Ret [::]) xs); Put x0 >> Ret a}}); last first.
+  do a <- cons (op x1 x) ($) (Put (op x1 x) >> foldr mul (Ret [::]) xs); Put x0 >> Ret a); last first.
   by Inf rewrite !bindA.
 rewrite_ putget.
 rewrite_ bindA.
 rewrite_ bindretf.
 rewrite loop_of_scanl'.
 transitivity (cons (op s x)
-  ($) Do{ x0 <- Get; Put (op s x) >> Do{ a <- foldr mul (Ret [::]) xs; Put x0 >> Ret a}}); last first.
+  ($) do x0 <- Get; Put (op s x) >> (do a <- foldr mul (Ret [::]) xs; Put x0 >> Ret a)); last first.
   congr (_ ($) _).
   by rewrite_ putput.
-transitivity (cons (op s x) ($) Do{ x0 <- Get; loopp op (op s x) xs >>= overwrite x0}); last first.
+transitivity (cons (op s x) ($) (do x0 <- Get; loopp op (op s x) xs >>= overwrite x0)); last first.
   congr (_ ($) _).
   by Inf rewrite -bindA.
 by rewrite -IH fmap_ret.
@@ -293,7 +295,7 @@ Record mixin_of S (M : stateMonad S) : Type := Mixin {
   run0 : forall A, M A -> S -> A * S ;
   _ : forall A (a : A) s, run0 (Ret a) s = (a, s) ;
   _ : forall A B (m : M A) (f : A -> M B) s,
-      run0 (Do{ a <- m ; f a}) s =
+      run0 (do a <- m ; f a) s =
       let: (a', s') := run0 m s in run0 (f a') s' ;
   _ : forall s, run0 Get s = (s, s) ;
   _ : forall s s', run0 (Put s') s = (tt, s') ;
@@ -322,7 +324,7 @@ Variables (S : Type) (M : MonadStateRun.t S).
 Lemma runret : forall A (a : A) s, Run0 (Ret a : M _) s = (a, s).
 Proof. by case: M => m [? []]. Qed.
 Lemma runbind : forall A B (ma : M A) (f : A -> M B) s,
-  Run0 (Do{ a <- ma ; f a}) s = let: (a'', s'') := Run0 ma s in Run0 (f a'') s''.
+  Run0 (do a <- ma ; f a) s = let: (a'', s'') := Run0 ma s in Run0 (f a'') s''.
 Proof. by case: M => m [? []]. Qed.
 Lemma runget : forall s, Run0 (Get : M _) s = (s, s).
 Proof. by case: M => m [? []]. Qed.
@@ -363,21 +365,9 @@ Lemma alt_bindDr : Laws.bind_right_distributive (@Bind M) [~p].
 Proof. by case: M => m [? ? []]. Qed.
 End nondetstate_lemmas.
 
-(* guards commute with anything *)
-Lemma guardsC (M : failMonad) (HM : Laws.right_zero (@Bind M) (@Fail _)) b B (m : M B) :
-  (guard b >> m) = (m >>= fun x => guard b >> Ret x).
-Proof.
-rewrite /guard; case: ifPn => Hb.
-  rewrite bindskipf.
-  rewrite_ bindskipf.
-  by rewrite bindmret.
-rewrite_ bindfailm.
-by rewrite bindfailm HM.
-Qed.
-
 Lemma putselectC S (M : nondetStateMonad S) (x : S) A (s : seq A) B (f : _ -> M B) :
-  Put x >> Do{ rs <- select s; f rs} =
-  Do{ rs <- select s; Put x >> f rs}.
+  Put x >> (do rs <- select s; f rs) =
+  do rs <- select s; Put x >> f rs.
 Proof.
 elim: s f => [|h t IH] f.
   by rewrite select_nil 2!bindfailm bindmfail.
@@ -395,8 +385,8 @@ Qed.
 
 (* perms is independent of the state and so commutes with put *)
 Lemma putpermsC S (M : nondetStateMonad S) (x : S) A (s : seq A) B (f : _ -> M B) :
-  Put x >> Do{ rs <- perms s; f rs} =
-  Do{ rs <- perms s; Put x >> f rs}.
+  Put x >> (do rs <- perms s; f rs) =
+  do rs <- perms s; Put x >> f rs.
 Proof.
 move Hn : (size s) => n.
 elim: n s Hn x f => [|n IH] s Hn x f.
@@ -405,34 +395,34 @@ case: s Hn => // h t [Hn].
 rewrite perms_cons 2!bindA putselectC; bind_ext; case=> a b.
 rewrite 2!bindA.
 have bn : size b = n by rewrite size_tuple.
-rewrite (IH _ bn x (fun z => Do{ rs <- Ret ((a, b).1 :: z); f rs})).
+rewrite (IH _ bn x (fun z => do rs <- Ret ((a, b).1 :: z); f rs)).
 by do 2! rewrite_ bindretf.
 Qed.
 
 Lemma getput_prepend S (M : nondetStateMonad S) A (m : M A) :
-  m = Do{x <- Get; (Put x >> m)} :> M _.
+  m = do x <- Get; (Put x >> m).
 Proof. by rewrite -{2}(bindskipf m) -bindA getputskip 2!bindskipf. Qed.
 
 Section queens_statefully_nondeterministically.
 
-Context {M : nondetStateMonad (seq nat)`2}.
+Variable M : nondetStateMonad (seq nat)`2.
 
 Definition queens_state_nondeter n : M (seq nat) :=
-  Do{s <- Get ;
-    Do{rs <- perms (iota 1 n);
+  do s <- Get ;
+    do rs <- perms (iota 1 n);
       Put empty >>
-        (Do{ ok <- safe2 (place n rs) ;
-             (Put s >> guard ok)}) >> Ret rs }}.
+        (do ok <- safe2 (place n rs) ;
+             (Put s >> guard ok)) >> Ret rs.
 
-Lemma queensE n : queens n = queens_state_nondeter n :> M _.
+Lemma queensE n : queens n = queens_state_nondeter n.
 Proof.
 rewrite (getput_prepend (queens n)) /queens_state_nondeter; bind_ext => x.
 rewrite {1}/queens putpermsC; bind_ext => y.
 rewrite safe2E.
-set f := (Do{ ok <- Do{_ <- _; _}; _ >> guard ok} in RHS).
+set f := (do ok <- (do _ <- _; _); _ >> guard ok in RHS).
 rewrite (_ : f =
-  Do{ uds <- Get; Put (safe1 uds (place n y)).2 >> Ret (safe1 uds (place n y)).1 >>
-      Put x >> guard (safe1 uds (place n y)).1}); last first.
+  do uds <- Get; Put (safe1 uds (place n y)).2 >> Ret (safe1 uds (place n y)).1 >>
+      Put x >> guard (safe1 uds (place n y)).1); last first.
   rewrite {}/f bindA; bind_ext => u.
   case: (safe1 _ _) => a b.
   rewrite 2!bindA bindretf bindA.
@@ -447,17 +437,18 @@ by rewrite 2!putput.
 Qed.
 
 End queens_statefully_nondeterministically.
+Arguments queens_state_nondeter {M}.
 
 Section queens_exploratively.
 
-Context {M : nondetStateMonad (seq nat)`2}.
+Variable M : nondetStateMonad (seq nat)`2.
 
 Definition queens_explor n : M _ :=
-  Do{s <- Get;
-    Do{rs <- perms (iota 1 n);
+  do s <- Get;
+    do rs <- perms (iota 1 n);
       Put empty >>
-        (Do{ ok <- safe2 (place n rs) ;
-             (guard ok >> Put s)}) >> Ret rs }}.
+        (do ok <- safe2 (place n rs) ;
+             (guard ok >> Put s)) >> Ret rs.
 
 Lemma queens_explorE n : queens_explor n = queens_state_nondeter n.
 Proof.
@@ -477,9 +468,9 @@ Qed.
 Definition safe3 crs : M _ := safe2 crs >>= fun b => guard b.
 
 Definition queens_safe3 n : M _ :=
-  Do{s <- Get;
-    Do{rs <- perms (iota 1 n);
-      Put empty >> safe3 (place n rs) >> Put s >> Ret rs}}.
+  do s <- Get;
+    (do rs <- perms (iota 1 n);
+      Put empty >> safe3 (place n rs) >> Put s >> Ret rs).
 
 Lemma queens_safe3E n : queens_safe3 n = queens_explor n :> M _.
 Proof.
@@ -492,7 +483,7 @@ by rewrite_ bindA.
 Qed.
 
 Definition step3 B cr (m : M B) := m >>
-  Do{ uds <- Get ; let (b, uds') := test cr uds in Put uds' >> guard b}.
+  do uds <- Get ; let (b, uds') := test cr uds in Put uds' >> guard b.
 
 Lemma safe3E crs :
   safe3 crs = foldr (@step3 unit) skip crs :> M _.
@@ -504,32 +495,32 @@ transitivity (((fun x => x >>= (guard : _ -> M _)) \o
   by [].
 apply foldr_fusion_ext => [|cr {crs}k].
   by rewrite /= /safe3 /= /start2 /= bindretf.
-transitivity (Do{ b' <- k ;
-                  Do{ uds <- Get ;
-                      let (b, uds') := test cr uds in
-                      Put uds' >> Ret (b && b')}} >>= guard).
+transitivity ((do b' <- k ;
+               do uds <- Get ;
+               let (b, uds') := test cr uds in
+               Put uds' >> Ret (b && b')) >>= guard).
   by rewrite /step2.
-transitivity (Do{ b' <- k ;
-                  Do{ uds <- Get ;
-                      let (b, uds') := test cr uds in
-                      Put uds' >> guard (b && b')}}).
+transitivity (do b' <- k ;
+              do uds <- Get ;
+              let (b, uds') := test cr uds in
+              Put uds' >> guard (b && b')).
   (* by "do-notation" *)
   rewrite bindA; bind_ext => x.
   rewrite bindA; bind_ext => y.
   case: (test cr y) => a b.
   by rewrite bindA bindretf.
-transitivity (Do{ b' <- k ;
-                  Do{ uds <- Get ;
-                      let (b, uds') := test cr uds in
-                      Put uds' >> guard b >> guard b'}}).
+transitivity (do b' <- k ;
+              do uds <- Get ;
+              let (b, uds') := test cr uds in
+              Put uds' >> guard b >> guard b').
   bind_ext => x.
   bind_ext => y.
   case: (test cr y) => a b.
   by rewrite bindA guard_and.
-transitivity (Do{ b' <- k ;
-                  guard b' >> Do{ uds <- Get ;
-                      let (b, uds') := test cr uds in
-                      Put uds' >> guard b}}).
+transitivity (do b' <- k ;
+              guard b' >> (do uds <- Get ;
+                           let (b, uds') := test cr uds in
+                           Put uds' >> guard b)).
   bind_ext => b'.
   rewrite guardsC; last exact: bindmfail.
   rewrite bindA.
@@ -540,9 +531,9 @@ transitivity (Do{ b' <- k ;
   rewrite -guard_and andbC guard_and guardsC //.
   exact: bindmfail.
 transitivity ((k >>= guard) >>
-               Do{ uds <- Get ;
+               do uds <- Get ;
                  let (b, uds') := test cr uds in
-                  Put uds' >> guard b}).
+                 Put uds' >> guard b).
   by rewrite bindA.
 by [].
 Qed.
@@ -551,14 +542,14 @@ End queens_exploratively.
 
 (* tree-relabelling example *)
 
-Definition intersect (A : eqType) (s t : seq A) : seq A := filter (mem s) t.
+Definition intersect {A : eqType} (s t : seq A) : seq A := filter (mem s) t.
 
 Lemma nilp_intersect (A : eqType) (s t : seq A) :
   nilp (intersect s t) = ~~ has (mem s) t.
 Proof. by rewrite /intersect /nilp size_filter has_count lt0n negbK. Qed.
 
-Definition seq_disjoint (A : eqType) : pred [eqType of (seq A)`2] :=
-  (@nilp _) \o uncurry (@intersect _).
+Definition seq_disjoint {A : eqType} : pred [eqType of (seq A)`2] :=
+  (@nilp _) \o uncurry intersect.
 
 Lemma intersect0s (A : eqType) (s : seq A) : intersect [::] s = [::].
 Proof. by elim: s. Qed.
@@ -637,12 +628,13 @@ Qed.
 
 Section examples_promotable_segment_closed.
 
-Lemma promotable_uniq_seq_disjoint A : promotable (@uniq A) (@seq_disjoint A).
+Lemma promotable_uniq_seq_disjoint A : promotable (@uniq A) seq_disjoint.
 Proof.
 move=> s t ps pt.
-by rewrite cat_uniq ps pt /= andbT -nilp_intersect /seq_disjoint.
+by rewrite cat_uniq ps pt /= andbT -nilp_intersect.
 Qed.
 
+Local Obligation Tactic := idtac.
 Program Definition uniq_is_segment_closed (A : eqType) : segment_closed.t A :=
   @segment_closed.mk _ (@uniq A) _.
 Next Obligation. by move=> A a b; rewrite cat_uniq => /and3P[]. Qed.
@@ -746,8 +738,6 @@ Lemma assert_symbols : assert (distinct M) \o Symbols = Symbols :> (nat -> M _).
 Proof. by case: M => m [? ? []]. Qed.
 End failfresh_lemmas.
 
-Definition wrap {A} (a : A) := [:: a].
-
 Section properties_of_Symbols.
 Variables (A : eqType) (M : failFreshMonad A).
 
@@ -758,7 +748,7 @@ Lemma Symbols0 : Symbols 0 = Ret [::] :> M _.
 Proof. by rewrite SymbolsE. Qed.
 
 Lemma SymbolsS n : Symbols n.+1 =
-  Do{ x <- Fresh ; Do{ xs <- Symbols n : M _; Ret (x :: xs)}}.
+  do x <- Fresh ; do xs <- Symbols n : M _; Ret (x :: xs).
 Proof. by rewrite SymbolsE. Qed.
 
 Lemma Symbols_prop1 :
@@ -852,8 +842,8 @@ Definition dlabels {N : failMonad} : Tree Symbol -> N (seq Symbol) :=
   foldt (Ret \o wrap) drBin.
 
 Lemma dlabelsC t u (m : _ -> _ -> M (seq Symbol * seq Symbol)%type) :
-  Do{ x <- dlabels t; Do{ x0 <- relabel u; m x0 x}} =
-  Do{ x0 <- relabel u; Do{ x <- dlabels t; m x0 x}}.
+  do x <- dlabels t; do x0 <- relabel u; m x0 x =
+  do x0 <- relabel u; do x <- dlabels t; m x0 x.
 Proof.
 elim: t u m => [a u /= m|t1 H1 t2 H2 u m].
   rewrite /dlabels /= bindretf.
@@ -864,28 +854,27 @@ rewrite {2}/drBin.
 rewrite {1}/fmap /=.
 rewrite {1}/assert /=.
 rewrite ![in RHS]bindA.
-transitivity (
-  Do{ x0 <- relabel u;
-    Do{ x <- dlabels t1;
-    Do{ x <-
-    Do{ x1 <- Do{ y <- dlabels t2; Ret (x, y)}; Do{ x <- guard (q x1) >> Ret x1; (Ret \o ucat) x}};
-  m x0 x}}}); last first.
+transitivity (do x0 <- relabel u;
+    (do x <- dlabels t1;
+     do x <-
+     (do x1 <- (do y <- dlabels t2; Ret (x, y)); (do x <- guard (q x1) >> Ret x1; (Ret \o ucat) x));
+  m x0 x)); last first.
   bind_ext => u'.
   by rewrite !bindA.
 rewrite -H1 {1}/drBin {1}/fmap /= {1}/assert /= !bindA.
 bind_ext => s.
 rewrite !bindA.
-transitivity (Do{ x0 <- relabel u;
-  Do{ x <- dlabels t2; Do{ x <-
-    Do{ x1 <- Ret (s, x); Do{ x3 <- guard (q x1) >> Ret x1; Ret (ucat x3)}};
-    m x0 x}}}); last first.
+transitivity (do x0 <- relabel u;
+  (do x <- dlabels t2; (do x <-
+    (do x1 <- Ret (s, x); (do x3 <- guard (q x1) >> Ret x1; Ret (ucat x3)));
+    m x0 x))); last first.
   bind_ext => y2; by rewrite bindA.
 rewrite -H2.
 bind_ext => s'.
 rewrite !bindretf.
 rewrite !bindA.
 transitivity (guard (q (s, s')) >>
-  Do{ x1 <- (Ret \o ucat) (s, s'); Do{ x3 <- relabel u; m x3 x1}}).
+  (do x1 <- (Ret \o ucat) (s, s'); do x3 <- relabel u; m x3 x1)).
   bind_ext => tt_unit; by rewrite bindretf.
 rewrite guardsC; last exact: failfresh_bindmfail.
 rewrite !bindA.
@@ -897,22 +886,21 @@ rewrite guardsC; last exact: failfresh_bindmfail.
 by rewrite bindA bindretf.
 Qed.
 
+(* see gibbons2011icfp Sect. 9.3 *)
 Lemma join_and_pairs :
-  ((@join _ _ \o fmap pair) \o pair) \o (fmap dlabels \o relabel)`^2 =
-  (pair \o (@join _ _)`^2) \o (fmap dlabels \o relabel)`^2.
+  (join \o fmap pair \o pair) \o (fmap dlabels \o relabel)`^2 =
+  (pair \o join`^2) \o           (fmap dlabels \o relabel)`^2 :> (_ -> M _).
 Proof.
 apply functional_extensionality => -[x1 x2].
 rewrite /join /=. (* TODO *)
-rewrite 5!bindA; bind_ext => {x1}x1.
-rewrite 2!bindretf 3!bindA.
-transitivity (Do{ x0 <- relabel x2; Do{ x <- dlabels x1;
-  Do{ y <- Do{ x3 <- (Ret \o dlabels) x0; x3}; Ret (x, y)}}}).
-  bind_ext => {x2}x2; by rewrite !bindretf.
-transitivity (
-  Do{ x <- dlabels x1; Do{ x0 <- relabel x2;
-    Do{ y <- Do{ x3 <- (Ret \o dlabels) x0; x3}; Ret (x, y)}}}); last first.
-  bind_ext => y1; by rewrite bindA.
-by rewrite dlabelsC.
+rewrite 5!bindA.
+bind_ext => {x1}x1.
+rewrite 2!bindretf.
+rewrite 2!bindA.
+do 3  rewrite_ bindretf.
+rewrite -dlabelsC.
+rewrite_ bindA.
+by rewrite_ (@bind_fmap M).
 Qed.
 
 (* first property of Sect. 9.3 *)
@@ -935,7 +923,7 @@ rewrite (_ : relabel \o uncurry _ = fmap (uncurry (@Bin _)) \o (pair \o relabel`
 rewrite (compA (fmap dlabels)) -fmap_o.
 rewrite (_ : dlabels \o _ = fmap ucat \o assert q \o pair \o dlabels`^2); last first.
   by apply functional_extensionality; case.
-transitivity (fmap ucat \o @join _ _ \o fmap (assert q \o pair) \o pair \o
+transitivity (fmap ucat \o join \o fmap (assert q \o pair) \o pair \o
     (fmap dlabels \o relabel)`^2).
   rewrite -2![in LHS](compA (fmap ucat)).
   rewrite [in LHS]fmap_o.

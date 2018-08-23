@@ -292,7 +292,7 @@ End MonadProbDr.
 Export MonadProbDr.Exports.
 
 Lemma uniform_inde (M : probMonad) A a (x : seq A) {B} (m : M B) :
-  Do{x <- uniform a x; m} = m :> M _.
+  do x <- uniform a x; m = m.
 Proof.
 elim: x m => [/= m|x xs IH m]; first by rewrite bindretf.
 by rewrite uniform_cons prob_bindDl IH bindretf choicemm.
@@ -320,9 +320,9 @@ Lemma pair_uniform_base_case (M : probMonad) A a x (y : seq A) :
   uniform (a, a) (cp [:: x] y) = pair (uniform a [:: x], uniform a y) :> M _.
 Proof.
 move=> y0; rewrite cp1.
-transitivity (Do{y' <- @uniform M _ a y; Ret (x, y')}).
+transitivity (do y' <- @uniform M _ a y; Ret (x, y')).
   by move: (@uniform_naturality M _ _ a (a, a) (fun y' => (x, y')) _ y0).
-transitivity (Do{z <- Ret x; Do{y' <- @uniform M _ a y; Ret (z, y')}}).
+transitivity (do z <- Ret x; do y' <- @uniform M _ a y; Ret (z, y')).
   by rewrite bindretf.
 by [].
 Qed.
@@ -427,9 +427,9 @@ Section mixing_choices.
 Variable M : altProbMonad.
 
 Definition arbcoin p : M bool :=
-  Do{ a <- arb ; Do{ c <- bcoin p; Ret (a == c)} : M _}.
+  do a <- arb ; (do c <- bcoin p; Ret (a == c) : M _).
 Definition coinarb p : M bool :=
-  Do{ c <- bcoin p ; Do{ a <- arb; Ret (a == c)} : M _}.
+  do c <- bcoin p ; (do a <- arb; Ret (a == c) : M _).
 
 Lemma Ret_eqb_addL b :
   (fun c => Ret (b == c)) = (fun c => Ret (~~ b (+) c)) :> (bool -> M bool).
@@ -723,8 +723,8 @@ Lemma uniform_notin (M : probMonad) (A : eqType) (def : A) (s : seq A) B
   (ma mb : A -> M B) (p : pred A) :
   s != [::] ->
   (forall x, x \in s -> ~~ p x) ->
-  Do{ t <- uniform def s ; if p t then ma t else mb t } =
-  Do{ t <- uniform def s ; mb t }.
+  (do t <- uniform def s ; if p t then ma t else mb t) =
+  (do t <- uniform def s ; mb t).
 Proof.
 elim: s => [//|h t IH _ H].
 rewrite uniform_cons.
@@ -769,11 +769,11 @@ Qed.
 
 Definition monty {M : monad} (hide : M door) (pick : M door) (tease : door -> door -> M door)
   (strategy : door -> door -> M door) : M bool :=
-  Do{ h <- hide ;
-     Do{p <- pick ;
-        Do{t <- tease h p ;
-           Do{ s <- strategy p t ;
-               Ret (s == h)}}}}.
+  do h <- hide ;
+  do p <- pick ;
+  do t <- tease h p ;
+  do s <- strategy p t ;
+  Ret (s == h).
 
 Section monty_proba.
 
@@ -797,11 +797,11 @@ Definition play (strategy : door -> door -> M door) : M bool :=
   monty hide pick tease strategy.
 
 Lemma play_strategy strategy : play strategy =
-  Do{ hp <- unif_pair (cp doors doors) ;
-     let h := hp.1 in let p := hp.2 in
-     Do{ t <- tease h p ;
-        Do{ s <- strategy p t;
-        Ret (s == h)}}}.
+  do hp <- unif_pair (cp doors doors) ;
+  let h := hp.1 in let p := hp.2 in
+  do t <- tease h p ;
+  do s <- strategy p t;
+  Ret (s == h).
 Proof.
 rewrite /unif_pair -pair_uniform; last 2 first.
   by rewrite /doors Set3.enumE.
@@ -812,7 +812,7 @@ by rewrite_ bindretf.
 Qed.
 
 Lemma uniform_doors_unfold (P : rel door) :
-  Do{ hp <- uniform (def, def) (cp doors doors); Ret (P hp.1 hp.2)} =
+  do hp <- uniform (def, def) (cp doors doors); Ret (P hp.1 hp.2) =
   Ret (P A A) <|[Pr of / 9]|> (Ret (P A B) <|[Pr of / 8]|> (Ret (P A C) <|[Pr of / 7]|>
  (Ret (P B A) <|[Pr of / 6]|> (Ret (P B B) <|[Pr of / 5]|> (Ret (P B C) <|[Pr of / 4]|>
  (Ret (P C A) <|[Pr of / 3]|> (Ret (P C B) <|[Pr of / 2]|> Ret (P C C)))))))) :> M _.
@@ -828,10 +828,10 @@ Qed.
 
 (* matching choices: the doors h and p independently chosen at random will match one third of the time *)
 Lemma bcoin13E (f : bool -> M bool) :
-  Do{ hp <- uniform (def, def) (cp doors doors); f (hp.1 == hp.2)} =
-  Do{ b <- bcoin [Pr of /3]; f b} :> M _.
+  do hp <- uniform (def, def) (cp doors doors); f (hp.1 == hp.2) =
+  do b <- bcoin [Pr of /3]; f b.
 Proof.
-transitivity (Do{ hp <- uniform (def, def) (cp doors doors); Ret (hp.1 == hp.2) >>= f}).
+transitivity (do hp <- uniform (def, def) (cp doors doors); Ret (hp.1 == hp.2) >>= f).
   bind_ext => -[h p] /=; by rewrite bindretf.
 rewrite -bindA uniform_doors_unfold !eqxx.
 rewrite (negbTE (Set3.a_neq_c card_door)).
@@ -843,11 +843,11 @@ by rewrite choiceA_compute /= -uFFTE.
 Qed.
 
 Lemma bcoin23E :
-  Do{ hp <- uniform (def, def) (cp doors doors); Ret (hp.1 != hp.2)} = bcoin (@Prob.mk (2/3) H23) :> M _.
+  do hp <- uniform (def, def) (cp doors doors); Ret (hp.1 != hp.2) = bcoin (@Prob.mk (2/3) H23) :> M _.
 Proof.
 pose P := fun a b : door => a != b.
 transitivity
-  (Do{ hp <- uniform (def, def) (cp doors doors); Ret (P hp.1 hp.2)} : M _).
+  (do hp <- uniform (def, def) (cp doors doors); Ret (P hp.1 hp.2) : M _).
   by bind_ext.
 rewrite uniform_doors_unfold {}/P !eqxx.
 rewrite (negbTE (Set3.a_neq_c card_door)).
@@ -859,10 +859,10 @@ by rewrite choiceA_compute /= -uTTFE.
 Qed.
 
 Lemma hide_pickE {D} (f : door -> door -> M D) :
-  Do{ h <- hide ; Do{ p <- pick ; f h p}} =
-    Do{ hp <- uniform (def, def) (cp doors doors) ; f hp.1 hp.2}.
+  do h <- hide ; do p <- pick ; f h p =
+  do hp <- uniform (def, def) (cp doors doors) ; f hp.1 hp.2.
 Proof.
-transitivity (Do{ hp <- pair (hide, pick); f hp.1 hp.2}).
+transitivity (do hp <- pair (hide, pick); f hp.1 hp.2).
   rewrite bindA; bind_ext => x.
   rewrite bindA; by rewrite_ bindretf.
 by rewrite pair_uniform // /doors Set3.enumE.
@@ -871,15 +871,14 @@ Qed.
 Lemma play_stick : play stick = bcoin [Pr of /3].
 Proof.
 rewrite {1}/play {1}/monty hide_pickE.
-transitivity (Do{ hp <- uniform (def, def) (cp doors doors) ;
+transitivity (do hp <- uniform (def, def) (cp doors doors) ;
                   let h := hp.1 in let p := hp.2 in
-                  Do{ t <- tease h p ;
-                    Ret (p == h)}}).
+                  do t <- tease h p ; Ret (p == h)).
   bind_ext => x /=.
   by rewrite_ bindretf.
-transitivity (Do{ hp <- @uniform M _ (def, def) (cp doors doors) ;
-                  let h := hp.1 in let p := hp.2 in
-                  Ret (h == p)}).
+transitivity (do hp <- @uniform M _ (def, def) (cp doors doors) ;
+              let h := hp.1 in let p := hp.2 in
+              Ret (h == p)).
   (* t unused and uniform side effect-free, so tease can be eliminated *)
   bind_ext => -[x1 x2] /=.
   by rewrite /tease /unif_door uniform_inde eq_sym.
@@ -889,15 +888,15 @@ Qed.
 Lemma play_switch : play switch = bcoin (@Prob.mk (2/3) H23).
 Proof.
 rewrite {1}/play {1}/monty hide_pickE.
-transitivity (Do{ hp <- uniform (def, def) (cp doors doors);
-  Do{ t <- tease hp.1 hp.2; Do{ s <- Ret (head (doors \\ [:: hp.2; t])); Ret (s == hp.1)}}}).
+transitivity (do hp <- uniform (def, def) (cp doors doors);
+  do t <- tease hp.1 hp.2; do s <- Ret (head (doors \\ [:: hp.2; t])); Ret (s == hp.1)).
   by [].
-transitivity (Do{ hp <- uniform (def, def) (cp doors doors);
-  Do{ t <- tease hp.1 hp.2; Ret ((head (doors \\ [:: hp.2; t])) == hp.1)}}).
+transitivity (do hp <- uniform (def, def) (cp doors doors);
+  do t <- tease hp.1 hp.2; Ret ((head (doors \\ [:: hp.2; t])) == hp.1)).
   bind_ext => -[h p].
   rewrite [_.1]/= [_.2]/=; by rewrite_ bindretf.
-transitivity (Do{ hp <- uniform (def, def) (cp doors doors);
-  if hp.1 == hp.2 then Ret false else Ret true : M _}).
+transitivity (do hp <- uniform (def, def) (cp doors doors);
+  if hp.1 == hp.2 then Ret false else Ret true : M _).
   bind_ext => -[h p].
   rewrite [_.1]/= [_.2]/=.
   case: ifPn => [/eqP|] hp.
@@ -916,8 +915,8 @@ transitivity (Do{ hp <- uniform (def, def) (cp doors doors);
     move: (Set3.another_notin card_door h p).
     rewrite !inE negb_or => /andP[_]; by rewrite eq_sym.
   by rewrite Set3.another_another.
-transitivity (Do{ hp <- uniform (def, def) (cp doors doors);
-  Ret (hp.1 != hp.2) : M _}).
+transitivity (do hp <- uniform (def, def) (cp doors doors);
+  Ret (hp.1 != hp.2) : M _).
   bind_ext => -[h p]; by case: ifPn.
 exact: bcoin23E.
 Qed.
@@ -935,29 +934,29 @@ Definition play_n (strategy : door -> door -> M door) : M bool :=
   monty hide_n pick tease_n strategy.
 
 Lemma monty_choice_your_choice_combine :
-  Do{h <- hide_n ; Do{p <- pick; Ret (h, p)}} =
-  Do{p <- pick; Ret (A, p)} [~i]
-  Do{p <- pick; Ret (B, p)} [~i]
-  Do{p <- pick; Ret (C, p)}.
+  do h <- hide_n ; do p <- pick; Ret (h, p) =
+  (do p <- pick; Ret (A, p)) [~i]
+  (do p <- pick; Ret (B, p)) [~i]
+  (do p <- pick; Ret (C, p)).
 Proof.
-pose k (h : door) := Do{p <- pick; Ret (h, p)}.
-transitivity (Do{h <- hide_n; k h}).
+pose k (h : door) := do p <- pick; Ret (h, p).
+transitivity (do h <- hide_n; k h).
   by [].
-transitivity (Do{h <- (Ret A [~i] Ret B [~i] Ret C); k h}).
+transitivity (do h <- (Ret A [~i] Ret B [~i] Ret C); k h).
   rewrite /hide_n.
   rewrite /doors Set3.enumE /arbitrary /foldr1 [in LHS]/=.
   by rewrite -[in RHS]altA [in RHS]altC -[in RHS]altA.
 by rewrite 2!alt_bindDl 3!bindretf {}/k.
 Qed.
 
-Let try (d : door) := Do{p <- pick; Ret (d, p)}.
+Let try (d : door) := do p <- pick; Ret (d, p).
 
 Lemma try_uFFT d : fmap (uncurry (fun a b => a == b)) (try d) = uFFT.
 Proof.
 rewrite /fmap /try bindA.
 rewrite_ bindretf.
 rewrite /pick /monty.pick.
-transitivity (Do{p <- Ret A <| [Pr of /3] |> (Ret B <| [Pr of /2] |> Ret C); Ret (d == p)} : M _).
+transitivity (do p <- Ret A <| [Pr of /3] |> (Ret B <| [Pr of /2] |> Ret C); Ret (d == p) : M _).
   (* TODO: bind_ext? *)
   congr Monad.bind => //.
   by rewrite /doors Set3.enumE 2!uniform_cons.
@@ -978,9 +977,9 @@ rewrite /doors Set3.enumE !inE => /or3P[] /eqP ->.
 by rewrite eq_sym (negbTE (Set3.a_neq_c _)) eq_sym (negbTE (Set3.b_neq_c _)) eqxx.
 Qed.
 
-Lemma hide_pick_nondeter : Do{h <- hide_n; Do{p <- pick; Ret (h == p)}} = uFFT.
+Lemma hide_pick_nondeter : do h <- hide_n; do p <- pick; Ret (h == p) = uFFT.
 Proof.
-transitivity (fmap (uncurry (fun a b => a == b)) (Do{h <- hide_n; Do{p <- pick; Ret (h, p)}})).
+transitivity (fmap (uncurry (fun a b => a == b)) (do h <- hide_n; do p <- pick; Ret (h, p))).
   rewrite /fmap !bindA; bind_ext => y1.
   rewrite !bindA; by rewrite_ bindretf.
 rewrite monty_choice_your_choice_combine -!/(try _).
@@ -998,7 +997,7 @@ Let def := A.
 Let unif_door : _ -> M _ := @uniform _ _ def.
 
 Definition tease_f (h p : door) : M door :=
-  Do{t <- unif_door (doors \\ [:: p]); if t == h then Fail else Ret t}.
+  do t <- unif_door (doors \\ [:: p]); if t == h then Fail else Ret t.
 
 Definition play_f (strategy : door -> door -> M door) : M bool :=
   monty hide pick tease_f strategy.
@@ -1010,14 +1009,14 @@ Proof.
 move=> d.
 case: ifPn => [/eqP <-|hp].
   rewrite /tease_f.
-  transitivity (Do{ t <- unif_door (doors \\ [:: h]); Ret t}).
+  transitivity (do t <- unif_door (doors \\ [:: h]); Ret t).
     rewrite /unif_door uniform_notin //.
     exact: filter_pred1.
     move=> ?; by rewrite mem_filter inE => /andP[].
   by rewrite bindmret.
 have Hd : d = Set3.another card_door h p by rewrite {}/d Set3.filter_another.
 rewrite /tease_f.
-transitivity (Do{t <- unif_door [:: h; d]; if t == h then Fail else Ret t}).
+transitivity (do t <- unif_door [:: h; d]; if t == h then Fail else Ret t).
   have hd : h != d.
     rewrite Hd.
     apply: contra (Set3.another_notin card_door h p) => /eqP <-.
@@ -1046,7 +1045,7 @@ rewrite_ uniform_inde.
 Open (X in _ >>= X).
   transitivity (if x.1 == x.2
     then Ret true
-    else Do{ _ <- (Fail : M _) <| [Pr of /2] |> Ret (head def (doors \\ [:: x.1; x.2])); Ret false}).
+    else do _ <- (Fail : M _) <| [Pr of /2] |> Ret (head def (doors \\ [:: x.1; x.2])); Ret false).
     case: ifPn => [/eqP <-|hp]; first by rewrite eqxx.
     by rewrite eq_sym (negbTE hp).
   reflexivity.
@@ -1072,32 +1071,32 @@ rewrite_ lift_if.
 rewrite_ if_ext.
 Open (X in _ >>= X).
 transitivity (if x.1 == x.2
-  then Do{ x0 <- unif_door (doors \\ [:: x.1]); Ret false}
+  then do x0 <- unif_door (doors \\ [:: x.1]); Ret false
   else
-   Do{ x0 <- (Fail : M _) <| [Pr of / 2] |> Ret (head def (doors \\ [:: x.1; x.2]));
-   Ret (head A (doors \\ [:: x.2; x0]) == x.1)}).
+   do x0 <- (Fail : M _) <| [Pr of / 2] |> Ret (head def (doors \\ [:: x.1; x.2]));
+   Ret (head A (doors \\ [:: x.2; x0]) == x.1)).
   case: x => h p; rewrite [_.1]/= [_.2]/=; case: ifPn => // /eqP <-.
-  transitivity (Do{ x0 <- unif_door (doors \\ [:: h]); if (head A (doors \\ [:: h; x0]) == h) then Ret true else Ret false}).
+  transitivity (do x0 <- unif_door (doors \\ [:: h]); if (head A (doors \\ [:: h; x0]) == h) then Ret true else Ret false).
     bind_ext => x; by case: ifPn.
   rewrite {1}/unif_door uniform_notin //.
   exact: filter_pred1.
   move=> x; rewrite mem_filter inE=> _; by rewrite head_filter // inE eqxx.
   reflexivity.
-transitivity (  Do{ x <- uniform (A, A) (cp doors doors);
+transitivity (do x <- uniform (A, A) (cp doors doors);
   if x.1 == x.2
   then Ret false
   else
    (Fail : M _)
    <| [Pr of / 2] |>
-   Ret (head A (doors \\ [:: x.2; head def (doors \\ [:: x.1; x.2])]) == x.1)} ).
+   Ret (head A (doors \\ [:: x.2; head def (doors \\ [:: x.1; x.2])]) == x.1)).
   bind_ext => -[h p]; rewrite [_.1]/= [_.2]/=.
   case: ifPn => [?| hp]; first by rewrite uniform_inde.
   by rewrite prob_bindDl (@bindfailm M) bindretf.
 transitivity (
-  Do{ x <- uniform (A, A) (cp doors doors);
+  do x <- uniform (A, A) (cp doors doors);
   if x.1 == x.2
   then Ret false
-  else (Fail : M _) <| [Pr of / 2] |> Ret true}).
+  else (Fail : M _) <| [Pr of / 2] |> Ret true).
   bind_ext => -[h p]; rewrite [_.1]/= [_.2]/=.
   case: ifPn => // hp; congr (_ <| _ |> Ret _).
   apply/eqP.

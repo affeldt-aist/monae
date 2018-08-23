@@ -42,10 +42,7 @@ Program Definition M := @MonadState.Class
   (fun s => (s.1, s)) (* get *)
   (fun s' s => (tt, (s', s.2))) (* put *)
   _ _ _ _).
-Next Obligation. by []. Qed.
-Next Obligation. by []. Qed.
 Next Obligation. apply functional_extensionality; by case. Qed.
-Next Obligation. by []. Qed.
 End trace.
 
 End ModelState.

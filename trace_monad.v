@@ -46,7 +46,7 @@ Record mixin_of T S (M : stateMonad S) (op : T -> M unit) : Type := Mixin {
   run : forall A, M A -> S * seq T -> A * (S * seq T) ;
   _ : forall A (a : A) s, run (Ret a) s = (a, s) ;
   _ : forall A B (m : M A) (f : A -> M B) s,
-    run (Do{ a <- m ; f a}) s =
+    run (do a <- m ; f a) s =
     let: (a', s') := run m s in run (f a') s' ;
   _ : forall s l, run Get (s, l) = (s, (s, l)) ;
   _ : forall s l s', run (Put s') (s, l) = (tt, (s', l)) ;
@@ -84,7 +84,7 @@ Variables (T S : Type) (M : stateTraceMonad T S).
 Lemma runret : forall A (a : A) s, Run (Ret a : M _) s = (a, s).
 Proof. by case: M => m [? ? []]. Qed.
 Lemma runbind : forall A B (ma : M A) (f : A -> M B) s,
-  Run (Do{ a <- ma ; f a}) s =
+  Run (do a <- ma ; f a) s =
   let: (a'', s'') := Run ma s in Run (f a'') s''.
 Proof. by case: M => m [? ? []]. Qed.
 Lemma runget : forall s l, Run (Get : M _) (s, l) = (s, (s, l)).
@@ -100,13 +100,13 @@ Variables (T : Type) (m : stateTraceMonad T BinInt.Z).
 Variables (log0 log1 : T).
 
 Definition monadtrace_example (m0 m1 m2 : m nat) : m nat :=
-  Do{ x <- m0;
+  do x <- m0;
     Put (BinInt.Z_of_nat x) >>
-      Do{ y <- Get;
+      do y <- Get;
         Mark log0 >>
-          Do{ z <- m2;
+          do z <- m2;
             Mark log1 >>
-            Ret (x + BinInt.Z.abs_nat y + z)%nat}}}.
+            Ret (x + BinInt.Z.abs_nat y + z)%nat.
 
 End statetrace_example.
 
@@ -147,10 +147,10 @@ Let v : traceMonad unit := Tracer.v M.
 Let m : monad := Tracer.m M.
 
 Definition tracer_example (m0 m1 m2 : m nat) :=
-  Do{ x <- Lift M m0;
-    Do{ y <- Lift M m1;
-      Mark tt >>
-        Do{ z <- Lift M m2;
-          Ret (x + y + z)%nat}}} : v nat.
+  do x <- Lift M m0;
+  do y <- Lift M m1;
+  Mark tt >>
+  do z <- Lift M m2;
+  Ret (x + y + z).
 
 End tracer_example.

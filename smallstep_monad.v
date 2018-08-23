@@ -7,18 +7,10 @@ Require Import ssreflect ssrfun ssrbool FunctionalExtensionality Eqdep List.
 Import ListNotations.
 Require Import monad state_monad trace_monad smallstep.
 
-Reserved Notation "'do' x <- m ; e"
-  (at level 60, x ident, m at level 200, e at level 60).
-Reserved Notation "'do' x : T <- m ; e"
-  (at level 60, x ident, m at level 200, e at level 60).
-
 Section Semantics.
 
 Variables T S : Type.
 Variable M : stateTraceMonad T S.
-
-Local Notation "'do' x <- m ; e" := (m >>= (fun x => e)).
-Local Notation "'do' x : T <- m ; e" := (m >>= (fun x : T => e)).
 
 Fixpoint denotation {A : Type} (p : program A) : M A :=
   match p with
@@ -272,6 +264,3 @@ Qed.
 End Semantics.
 
 Arguments denotation [T] [S] _ _.
-
-Notation "'do' x <- m ; e" := (m >>= (fun x => e)).
-Notation "'do' x : T <- m ; e" := (m >>= (fun x : T => e)).
