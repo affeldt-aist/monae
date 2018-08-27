@@ -16,7 +16,7 @@ Unset Printing Implicit Defensive.
     eight queens puzzle
 - Module MonadFresh.
 - Module MonadFreshFail.
-    example of tree relabelling
+    example of tree relabeling
 *)
 
 Module MonadState.
@@ -54,13 +54,10 @@ Section state_lemmas.
 Variables (S : Type) (M : stateMonad S).
 Lemma putget s : Put s >> Get = Put s >> Ret s :> M _.
 Proof. by case: M => m [[? ? ? ? ? []] ]. Qed.
-
 Lemma getputskip : Get >>= Put = skip :> M _.
 Proof. by case: M => m [[? ? ? ? ? []] ]. Qed.
-
 Lemma putput s s' : Put s >> Put s' = Put s' :> M _.
 Proof. by case: M => m [[? ? ? ? ? []] ]. Qed.
-
 Lemma getget (k : S -> S -> M S ) :
  (Get >>= (fun s => Get >>= k s)) = (Get >>= fun s => k s s).
 Proof. by case: M k => m [[? ? ? ? ? []] ]. Qed.
@@ -69,6 +66,9 @@ End state_lemmas.
 Lemma putgetput S {M : stateMonad S} x {B} (k : _ -> M B) :
   Put x >> Get >>= (fun x' => k x') = Put x >> k x :> M _.
 Proof. by rewrite putget bindA bindretf. Qed.
+
+Definition overwrite {A S} {M : stateMonad S} s a : M A :=
+  Put s >> Ret a.
 
 Definition place n {B} (rs : seq B) := zip (iota 1 n) rs.
 
@@ -219,9 +219,6 @@ Fixpoint scanlp (op : B -> A -> B) (b : B) (s : seq A) : seq B :=
 
 End scanl.
 
-Definition overwrite {A S} {M : stateMonad S} s a : M A :=
-  Put s >> Ret a .
-
 Section loop.
 
 Variables (A S : Type) (M : stateMonad S).
@@ -341,8 +338,8 @@ Record mixin_of (M : nondetMonad) : Type := Mixin {
 }.
 Record class_of S (m : Type -> Type) : Type := Class {
   base : MonadNondet.class_of m ;
-  mixin : MonadState.mixin_of S (MonadFail.baseType (MonadNondet.baseType (MonadNondet.Pack base))) ;
-  ext : mixin_of (MonadNondet.Pack base)
+  base2 : MonadState.mixin_of S (MonadFail.baseType (MonadNondet.baseType (MonadNondet.Pack base))) ;
+  mixin : mixin_of (MonadNondet.Pack base)
 }.
 Structure t S : Type := Pack { m : Type -> Type ; class : class_of S m }.
 Definition baseType S (M : t S) := MonadNondet.Pack (base (class M)).
@@ -351,7 +348,7 @@ Notation nondetStateMonad := t.
 Coercion baseType : nondetStateMonad >-> nondetMonad.
 Canonical baseType.
 Definition nondetstate_is_state S (M : nondetStateMonad S) :=
-  MonadState.Pack (MonadState.Class (mixin (class M))).
+  MonadState.Pack (MonadState.Class (base2 (class M))).
 Canonical nondetstate_is_state.
 End Exports.
 End MonadNondetState.
@@ -370,7 +367,7 @@ Lemma putselectC S (M : nondetStateMonad S) (x : S) A (s : seq A) B (f : _ -> M 
   do rs <- select s; Put x >> f rs.
 Proof.
 elim: s f => [|h t IH] f.
-  by rewrite select_nil 2!bindfailm bindmfail.
+  by rewrite select_nil 2!bindfailf bindmfail.
 case: t IH f => [|h' t] IH f.
   by rewrite select_singl_statement !bindretf.
 rewrite select_cons // => H.
@@ -612,17 +609,17 @@ bind_ext => s.
 rewrite 2!bindA bindretf 2!bindA.
 rewrite {1}[in RHS]/guard.
 case: ifPn => ps; last first.
-  rewrite bindfailm.
+  rewrite bindfailf.
   Inf (rewrite 2!bindretf).
   With (idtac) Open (X in _ >>= X).
-    rewrite /guard /= (negbTE (segment_closed_suffix ps x)) bindfailm.
+    rewrite /guard /= (negbTE (segment_closed_suffix ps x)) bindfailf.
     reflexivity.
   by rewrite right_z.
 rewrite bindskipf; bind_ext => t.
 rewrite 2![in LHS]bindretf.
 rewrite bindA {1}[in RHS]/guard.
 case: ifPn => pt; last first.
-  by rewrite bindfailm /guard /= (negbTE (segment_closed_prefix pt s)) bindfailm.
+  by rewrite bindfailf /guard /= (negbTE (segment_closed_prefix pt s)) bindfailf.
 by rewrite bindskipf 2!bindretf bindA bindretf promotable_pq.
 Qed.
 
@@ -764,20 +761,22 @@ Lemma Symbols_prop2 :
   Symbols \o uaddn = fmap ucat \o pair \o (Symbols : _ -> M _)`^2.
 Proof.
 apply functional_extensionality => -[n1 n2].
-rewrite [fmap]lock /= -lock.
-elim: n1 => [|n1 IH].
-  rewrite add0n Symbols0 bindretf.
-  rewrite /fmap bindA.
-  With (rewrite bindretf) Open (X in _ >>= X).
-  reflexivity.
+elim: n1 => /= [|n1 IH].
+  rewrite add0n Symbols0 bindretf fmap_bind.
+  Open (X in _ >>= X).
+    rewrite fcomp_ext fmap_ret /=; reflexivity.
   by rewrite bindmret.
-rewrite addSn SymbolsS {}IH SymbolsS /fmap (* TODO *) !bindA.
-bind_ext => a.
-rewrite !bindA.
+rewrite addSn SymbolsS {}IH SymbolsS.
+rewrite [in RHS]fmap_bind bindA; bind_ext => a.
+rewrite fmap_bind 2!bindA.
 (* TODO(rei): use bind_ext *)
 congr Monad.bind; apply functional_extensionality => s.
-rewrite bindretf 3!bindA.
-by do 3 rewrite_ bindretf.
+rewrite bindretf.
+rewrite 2!fcomp_ext.
+rewrite bind_fmap fmap_bind bindA.
+rewrite_ bindretf.
+rewrite_ fcomp_ext.
+by rewrite_ fmap_ret.
 Qed.
 
 End properties_of_Symbols.
@@ -808,7 +807,7 @@ by rewrite H2.
 Qed.
 End foldt_universal.
 
-Definition size_Tree (t : Tree) := foldt (const 1%nat) uaddn t.
+Definition size_Tree (t : Tree) := foldt (const 1) uaddn t.
 
 Lemma size_Tree_Bin :
   size_Tree \o uncurry Bin = uncurry addn \o size_Tree`^2.
@@ -821,6 +820,8 @@ Fixpoint labels (t : Tree) : seq A :=
   end.
 
 End Tree.
+Arguments Tip {A}.
+Arguments Bin {A}.
 
 Section tree_relabelling.
 
@@ -830,7 +831,7 @@ Variable q : pred (seq Symbol * seq Symbol).
 Hypothesis promotable_q : promotable (distinct M) q.
 
 Definition relabel : Tree Symbol -> M (Tree Symbol) :=
-  foldt (fmap (@Tip _) \o const Fresh) (fmap (uncurry (@Bin _)) \o pair).
+  foldt (fmap Tip \o const Fresh) (fmap (uncurry Bin) \o pair).
 
 Let drTip {A} : A -> M _ :=
   fmap wrap \o const Fresh.
@@ -905,52 +906,42 @@ Qed.
 
 (* first property of Sect. 9.3 *)
 Lemma dlabels_relabel_is_fold :
-  dlabels >=> relabel = foldt drTip drBin :> (Tree _ -> M (seq _)).
+  dlabels >=> relabel = foldt drTip drBin.
 Proof.
 apply foldt_universal.
   (* dlabels >=> relabel \o Tip = drTip *)
-  rewrite /kleisli /= -3!compA.
-  rewrite (_ : relabel \o _ = fmap (@Tip _) \o const Fresh); last by [].
-  rewrite (compA (fmap dlabels) (fmap (@Tip _)) (const Fresh)) -fmap_o.
-  rewrite (_ : dlabels \o _ = Ret \o wrap); last by [].
-  rewrite compA /drTip; congr (_ \o _).
-  rewrite fmap_o compA.
-  by rewrite (@join_fmap_ret M).
+  rewrite /kleisli -2!compA (_ : _ \o Tip = fmap Tip \o const Fresh) //.
+  rewrite (compA (fmap dlabels)) -fmap_o (_ : dlabels \o _ = Ret \o wrap) //.
+  by rewrite fmap_o 2!compA join_fmap_ret.
 (* dlabels >=> relabel \o Bin = drBin \o _ *)
 rewrite /kleisli -2![in LHS]compA.
-rewrite (_ : relabel \o uncurry _ = fmap (uncurry (@Bin _)) \o (pair \o relabel`^2)); last first.
+rewrite (_ : _ \o _ Bin = fmap (uncurry Bin) \o (pair \o relabel`^2)); last first.
   by apply functional_extensionality; case.
 rewrite (compA (fmap dlabels)) -fmap_o.
-rewrite (_ : dlabels \o _ = fmap ucat \o assert q \o pair \o dlabels`^2); last first.
+rewrite (_ : _ \o _ Bin = fmap ucat \o assert q \o pair \o dlabels`^2); last first.
   by apply functional_extensionality; case.
 transitivity (fmap ucat \o join \o fmap (assert q \o pair) \o pair \o
     (fmap dlabels \o relabel)`^2).
-  rewrite -2![in LHS](compA (fmap ucat)).
-  rewrite [in LHS]fmap_o.
+  rewrite -2![in LHS](compA (fmap ucat)) [in LHS]fmap_o.
   rewrite -[in LHS](compA (fmap _)) [in LHS](compA _ (fmap _)).
-  rewrite -join_naturality.
-  rewrite -2![in RHS]compA; congr (_ \o _).
-  rewrite fmap_o -[in LHS]compA; congr (_ \o _).
-  by rewrite naturality_pair.
+  rewrite -join_naturality -2![in RHS]compA; congr (_ \o _).
+  by rewrite fmap_o -[in LHS]compA naturality_pair.
 rewrite fmap_o (compA _ (fmap (assert q))) -(compA _ _ (fmap (assert q))).
-rewrite commutativity_of_assertions. (* first non-trivial step (sic) *)
+rewrite commutativity_of_assertions. (* first non-trivial step *)
 rewrite (compA _ (assert q)) -(compA _ _ (fmap pair)) -(compA _ _ pair) -(compA _ _ (_`^2)).
-rewrite join_and_pairs. (* second non-trivial step *)
-by [].
+by rewrite join_and_pairs. (* second non-trivial step *)
 Qed.
 
 (* second property of Sect. 9.3 *)
-Lemma symbols_size_is_fold : Symbols \o (@size_Tree Symbol) =
-  foldt (@drTip Symbol) drBin :> (Tree _ -> M (seq _)).
+Lemma symbols_size_is_fold :
+  Symbols \o (@size_Tree Symbol) = foldt drTip drBin.
 Proof.
 apply foldt_universal.
-  transitivity (Symbols \o (@size_Tree Symbol \o (@Tip _)) : (_ -> M _)).
-    by [].
-  transitivity (Symbols \o (const 1%nat : Symbol -> _) : (_ -> M _)).
-    by [].
+  rewrite -compA.
+  rewrite (_ : @size_Tree Symbol \o _ = const 1) //.
   by rewrite Symbols_prop1.
 pose p := distinct M.
-transitivity (assert p \o Symbols \o @size_Tree Symbol \o uncurry (@Bin Symbol)
+transitivity (assert p \o Symbols \o @size_Tree Symbol \o uncurry Bin
   : (_ -> M _)).
   by rewrite assert_symbols.
 transitivity ((assert p) \o Symbols \o uaddn \o (@size_Tree Symbol)`^2
@@ -973,7 +964,7 @@ Qed.
 
 (* main claim *)
 Lemma dlabels_relabel_never_fails :
-  dlabels >=> relabel = Symbols \o @size_Tree Symbol :> (_ -> M _).
+  dlabels >=> relabel = Symbols \o @size_Tree Symbol.
 Proof. by rewrite dlabels_relabel_is_fold symbols_size_is_fold. Qed.
 
 End tree_relabelling.

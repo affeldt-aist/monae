@@ -55,16 +55,16 @@ Qed.
 
 Module Prob.
 Record t := mk {
-  p :> R ;
+  p : R ;
   H : (0 <= p <= 1)%R }.
 Definition H' (p : t) := H p.
 Arguments H' : simpl never.
 Module Exports.
 Notation "[Pr 'of' q ]" := (@mk q (@H' _)).
+Coercion p : t >-> R.
 End Exports.
 End Prob.
 Export Prob.Exports.
-Coercion Prob.p : Prob.t >-> R.
 
 Lemma probpK p H : Prob.p (@Prob.mk p H) = p. Proof. by []. Qed.
 
@@ -276,7 +276,7 @@ Module MonadProbDr.
 Record mixin_of (M : probMonad) : Type := Mixin {
   (* composition distributes rightwards over [probabilistic] choice *)
   (* WARNING: this should not be asserted as an axiom in conjunction with distributivity of <||> over [] *)
-  prob_bindDr : forall p, Laws.bind_right_distributive (@Bind _) (@Choice M p) (* NB: not used *)
+  prob_bindDr : forall p, Laws.bind_right_distributive (@Bind M) (Choice p) (* NB: not used *)
 } .
 Record class_of (m : Type -> Type) := Class {
   base : MonadProb.class_of m ;
@@ -1050,7 +1050,7 @@ Open (X in _ >>= X).
     by rewrite eq_sym (negbTE hp).
   reflexivity.
 rewrite_ prob_bindDl.
-rewrite_ (@bindfailm M). (* TODO *)
+rewrite_ (@bindfailf M). (* TODO *)
 rewrite_ bindretf.
 rewrite (bcoin13E (fun b => if b then Ret true else (Fail : M _) <| [Pr of / 2] |> Ret false)).
 rewrite /bcoin.
@@ -1091,7 +1091,7 @@ transitivity (do x <- uniform (A, A) (cp doors doors);
    Ret (head A (doors \\ [:: x.2; head def (doors \\ [:: x.1; x.2])]) == x.1)).
   bind_ext => -[h p]; rewrite [_.1]/= [_.2]/=.
   case: ifPn => [?| hp]; first by rewrite uniform_inde.
-  by rewrite prob_bindDl (@bindfailm M) bindretf.
+  by rewrite prob_bindDl (@bindfailf M) bindretf.
 transitivity (
   do x <- uniform (A, A) (cp doors doors);
   if x.1 == x.2

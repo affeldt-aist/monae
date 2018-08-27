@@ -3,7 +3,7 @@
   execution trace.
 *)
 
-Require Import Eqdep JMeq List.
+Require Import Eqdep JMeq List ssreflect.
 Import ListNotations.
 
 Set Universe Polymorphism.
@@ -13,6 +13,11 @@ Set Polymorphic Inductive Cumulativity.
 Set Bullet Behavior "Strict Subproofs".
 
 Obligation Tactic := idtac.
+
+Reserved Notation "'p_do' x <- m ; e"
+  (at level 60, x ident, m at level 200, e at level 60).
+Reserved Notation "'p_do' x : T <- m ; e"
+  (at level 60, x ident, m at level 200, e at level 60).
 
 Section Syntax.
 
@@ -26,33 +31,48 @@ Inductive program : Type -> Type :=
 | p_put  : S -> program unit
 | p_mark : T -> program unit.
 
+Local Notation "'p_do' x <- m ; e" := (p_bind m (fun x => e)).
+Local Notation "'p_do' x : T <- m ; e" :=(p_bind m (fun x : T => e)).
+
 Inductive continuation : Type :=
 | stop : forall (A : Type), A -> continuation
 | seq : forall (A : Type), program A -> (A -> continuation) -> continuation.
 
-Local Notation "p ; k" := (@seq _ p k) (at level 50).
+End Syntax.
 
-Notation "'p_do' x <- m ; e" :=
-  (p_bind m (fun x => e))
-  (at level 60, x ident, m at level 200, e at level 60).
+Arguments program {_ _} _.
+Arguments p_ret {_ _ _} _.
+Arguments p_bind {_ _ _ _} _ _.
+Arguments p_cond {_ _ _} _ _ _.
+Arguments p_get {_ _}.
+Arguments p_put {_ _} _.
+Arguments p_mark {_ _} _.
+Arguments continuation {_ _}.
+Arguments stop {_ _} _ _.
+Arguments seq {_ _} _ _ _.
 
-Notation "'p_do' x : T <- m ; e" :=
-  (p_bind m (fun x : T => e))
-  (at level 60, x ident, m at level 200, e at level 60).
+Notation "'p_do' x <- m ; e" := (@p_bind _ _ _ _ m (fun x => e)).
+Notation "'p_do' x : T <- m ; e" := (@p_bind _ _ _ _ m (fun x : T => e)).
 
-Definition state : Type := S * continuation.
+Notation "p `; k" := (@seq _ _ _ p k) (at level 50).
+
+Section OperationalSemantics.
+
+Variables T S : Type.
+
+Definition state : Type := S * @continuation T S.
 
 Inductive step : state -> option T -> state -> Prop :=
-| s_ret  : forall s A a (k : A -> _), step (s, p_ret a ; k) None (s, k a)
+| s_ret  : forall s A a (k : A -> _), step (s, p_ret a `; k) None (s, k a)
 | s_bind : forall s A B p f (k : B -> _),
-  step (s, p_bind p f ; k) None (s, p ; fun a : A => f a ; k)
+  step (s, p_bind p f `; k) None (s, p `; fun a : A => f a `; k)
 | s_cond_true : forall s A p1 p2 (k : A -> _),
-  step (s, p_cond true p1 p2 ; k) None (s, p1 ; k)
+  step (s, p_cond true p1 p2 `; k) None (s, p1 `; k)
 | s_cond_false : forall s A p1 p2 (k : A -> _),
-  step (s, p_cond false p1 p2 ; k) None (s, p2 ; k)
-| s_get  : forall s k, step (s, p_get ; k) None (s, k s)
-| s_put  : forall s s' k, step (s, p_put s' ; k) None (s', k tt)
-| s_mark : forall s t k, step (s, p_mark t ; k) (Some t) (s, k tt).
+  step (s, p_cond false p1 p2 `; k) None (s, p2 `; k)
+| s_get  : forall s k, step (s, p_get `; k) None (s, k s)
+| s_put  : forall s s' k, step (s, p_put s' `; k) None (s', k tt)
+| s_mark : forall s t k, step (s, p_mark t `; k) (Some t) (s, k tt).
 
 Inductive step_star : state -> list T -> state -> Prop :=
 | ss_refl : forall sk, step_star sk [] sk
@@ -194,14 +214,14 @@ Qed.
 
 Definition run_gen
   {A : Type} (p : program A) (f : A -> continuation) (s : S) :
-  {l & {a : A & {s' | step_star (s, seq A p f) l (s', f a) } } }.
+  {l & {a : A & {s' | step_star (s, p `; f) l (s', f a) } } }.
 Proof.
 revert f s.
 induction p as [ A a | A B p IHp g IHg | A b p1 IHp1 p2 IHp2 | | s' | t ];
  intros f s.
 - exists []. exists a. exists s.
   abstract (eapply ss_step_None; [ apply s_ret | apply ss_refl ]).
-- specialize (IHp (fun a => seq B (g a) f) s).
+- specialize (IHp (fun a => g a `; f) s).
   destruct IHp as (l1 & a & s' & Hss1).
   specialize (IHg a f s').
   destruct IHg as (l2 & b & s'' & Hss2).
@@ -233,29 +253,11 @@ Defined.
 
 Definition run_ss {A : Type} (p : program A) (s : S) :
   {l & {a : A & {s' |
-  step_star (s, seq A p (stop A)) l (s', stop A a) } } } :=
+  step_star (s, p `; stop A) l (s', stop A a) } } } :=
   run_gen p (stop A) s.
 
-End Syntax.
+End OperationalSemantics.
 
-Arguments program {_ _} _.
-Arguments continuation {_ _}.
-Arguments stop {_ _} _ _.
-Arguments seq {_ _} _ _ _.
-Arguments p_ret {_ _ _} _.
-Arguments p_bind {_ _ _ _} _ _.
-Arguments p_cond {_ _ _} _ _ _.
-Arguments p_get {_ _}.
-Arguments p_put {_ _} _.
-Arguments p_mark {_ _} _.
 Arguments step {_ _} _ _ _.
 Arguments step_star {_ _} _ _ _.
 Arguments run_ss {_ _ _} _ _.
-
-Notation "'p_do' x <- m ; e" :=
-  (@p_bind _ _ _ _ m (fun x => e))
-  (at level 60, x ident, m at level 200, e at level 60).
-
-Notation "'p_do' x : T <- m ; e" :=
-  (@p_bind _ _ _ _ m (fun x : T => e))
-  (at level 60, x ident, m at level 200, e at level 60).

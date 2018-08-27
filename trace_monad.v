@@ -54,9 +54,9 @@ Record mixin_of T S (M : stateMonad S) (op : T -> M unit) : Type := Mixin {
 }.
 Record class_of T S (m : Type -> Type) : Type := Class {
   base : MonadState.class_of S m ;
-  mixin : MonadTrace.mixin_of T m ;
-  ext : @mixin_of _ _ (MonadState.Pack base)
-    (@Mark T (MonadTrace.Pack (MonadTrace.Class (MonadState.base base) mixin)))
+  base2 : MonadTrace.mixin_of T m ;
+  mixin : @mixin_of _ _ (MonadState.Pack base)
+    (@Mark T (MonadTrace.Pack (MonadTrace.Class (MonadState.base base) base2)))
 }.
 Structure t (T S : Type) : Type := Pack {
   m : Type -> Type ;
@@ -73,7 +73,7 @@ Coercion baseType : stateTraceMonad >-> stateMonad.
 Canonical baseType.
 Definition trace_of_statetrace T S (M : stateTraceMonad T S) : traceMonad T :=
   @MonadTrace.Pack T _ (MonadTrace.Class
-    (MonadState.base (base (class M))) (mixin (class M))).
+    (MonadState.base (base (class M))) (base2 (class M))).
 Canonical Structure trace_of_statetrace.
 End Exports.
 End MonadStateTrace.
@@ -120,8 +120,8 @@ Structure t (m : monad) (u : monad) : Type := Pack {
 End MonadTrans.
 Arguments MonadTrans.lift {m} {u} _ {_}.
 Arguments MonadTrans.drop {m} {u} _ {_}.
-Notation "'Lift'" := (MonadTrans.lift).
-Notation "'Drop'" := (MonadTrans.drop).
+Notation "'Lift'" := MonadTrans.lift.
+Notation "'Drop'" := MonadTrans.drop.
 
 Module Tracer.
 Record class m (v : traceMonad unit) (mv : MonadTrans.t m v) : Type := Class {

@@ -7,7 +7,7 @@ Require Import ssreflect ssrfun ssrbool FunctionalExtensionality Eqdep List.
 Import ListNotations.
 Require Import monad state_monad trace_monad smallstep.
 
-Section Semantics.
+Section DenotationalSemantics.
 
 Variables T S : Type.
 Variable M : stateTraceMonad T S.
@@ -25,7 +25,7 @@ Fixpoint denotation {A : Type} (p : program A) : M A :=
 Fixpoint denotation_continuation (k : continuation) : M (@continuation T S) :=
   match k with
   | stop A a => Ret (stop A a)
-  | seq _ p f =>
+  | p `; f =>
       do a <- denotation p ;
       denotation_continuation (f a)
   end.
@@ -176,7 +176,7 @@ Qed.
 
 Proposition step_star_correct
   (s s' : S) (A : Type) (a : A) (p : program A) (l : list T) :
-  step_star (s, seq A p (stop A)) l (s', stop A a) ->
+  step_star (s, p `; stop A) l (s', stop A a) ->
   Run (denotation p) (s, []) = (a, (s', l)).
 Proof.
 intro Hss.
@@ -193,7 +193,7 @@ Qed.
 Lemma step_star_complete_gen
   (s s' : S) (A : Type) (a : A) (p : program A) (l1 l2 : list T) f :
   Run (denotation p) (s, l1) = (a, (s', l1 ++ l2)) ->
-  step_star (s, seq A p f) l2 (s', f a).
+  step_star (s, p `; f) l2 (s', f a).
 Proof.
 revert s s' a l1 l2 f.
 induction p as [ A a | A B p IHp g IHg | A b p1 IHp1 p2 IHp2 | |  aa | t ]; cbn;
@@ -213,7 +213,7 @@ induction p as [ A a | A B p IHp g IHg | A b p1 IHp1 p2 IHp2 | |  aa | t ]; cbn;
     specialize (denotation_prefix_preserved _ _ _ _ _ _ _ Hp).
     intros [l3 Hl3].
     rewrite Hl3 in Hp.
-    apply IHp with (f := (fun a => seq B (g a) f)) in Hp.
+    apply IHp with (f := (fun a => g a `; f)) in Hp.
     clear IHp.
     specialize (denotation_prefix_preserved _ _ _ _ _ _ _ Heq).
     intros [l4 Hl4].
@@ -254,13 +254,13 @@ Qed.
 Proposition step_star_complete
   (s s' : S) (A : Type) (a : A) (p : program A) (l : list T) :
   Run (denotation p) (s, []) = (a, (s', l)) ->
-  step_star (s, seq A p (stop A)) l (s', stop A a).
+  step_star (s, p `; stop A) l (s', stop A a).
 Proof.
 intro Hp.
 apply step_star_complete_gen with (l1 := []).
 exact Hp.
 Qed.
 
-End Semantics.
+End DenotationalSemantics.
 
 Arguments denotation [T] [S] _ _.

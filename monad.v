@@ -272,16 +272,16 @@ Variable M : monad.
 
 (* monadic counterpart of function application: applies a pure function to a monad *)
 (* aka liftM in gibbons2011icfp, notation ($) in mu2017 *)
-Definition fmap A B (f : A -> B) (mx : M _) := mx >>= (Ret \o f).
+Definition fmap A B (f : A -> B) (m : M _) := m >>= (Ret \o f).
 Local Notation "f ($) m" := (fmap f m).
 Arguments fmap : simpl never.
 
-Lemma fmap_id : Map_laws.id (@fmap).
+Lemma fmap_id : Map_laws.id fmap.
 Proof.
-move=> ?; apply functional_extensionality => m; by rewrite /fmap bindmret.
+move=> A; apply functional_extensionality => m; by rewrite /fmap bindmret.
 Qed.
 
-Lemma fmap_o : Map_laws.comp (@fmap).
+Lemma fmap_o : Map_laws.comp fmap.
 Proof.
 move=> A B C g h; apply functional_extensionality => m.
 by rewrite /fmap /= bindA; rewrite_ bindretf.
@@ -300,35 +300,34 @@ Proof. case: ifPn => Hb //; by rewrite /fmap /= bindretf. Qed.
 
 (* monadic counterpart of function composition:
    composes a pure function after a monadic function *)
-Definition fcomp A B C (f : A -> C) (g : B -> M A) := fmap f \o g.
+Definition fcomp A B C (f : A -> B) (g : C -> M A) := fmap f \o g.
 Arguments fcomp : simpl never.
 Local Notation "f (o) g" := (fcomp f g).
 
-(* (5) *)
-Lemma fcomp_ext A B C (f : B -> A) (g : C -> M B) (c : C) :
+Lemma fcomp_ext A B C (f : A -> B) (g : C -> M A) c :
   (f (o) g) c = f ($) g c.
 Proof. by []. Qed.
-(* (6) *)
-Lemma fmap_comp A B C (f : B -> A) (g : C -> B) (m : M C) :
+
+Lemma fmap_comp A B C (f : A -> B) (g : C -> A) (m : M C) :
   (f \o g) ($) m = f ($) (g ($) m).
 Proof. by rewrite /fmap /fmap bindA; rewrite_ bindretf. Qed.
-(* (7) *)
-Lemma fcomp_comp A B C D (f : B -> A) (g : C -> B) (m : D -> M C) :
+
+Lemma fcomp_comp A B C D (f : A -> B) (g : C -> A) (m : D -> M C) :
   (f \o g) (o) m = f (o) (g (o) m).
 Proof. by rewrite /fcomp /= compA fmap_o. Qed.
 
-Lemma fmap_bind A B C (f : B -> C) (m : M A) (g : A -> M B) :
+Lemma fmap_bind A B C (f : A -> B) m (g : C -> M A) :
   f ($) (m >>= g) = m >>= (f (o) g).
 Proof. by rewrite /fmap /= bindA. Qed.
 
-Lemma skip_fmap A B (m : M B) (f : A -> B) g :
-  (m >> (f ($) g)) = (f ($) (m >> g)).
+Lemma skip_fmap A B (f : A -> B) (mb : M B) ma :
+  mb >> (f ($) ma) = f ($) (mb >> ma).
 Proof. by rewrite fmap_bind. Qed.
 
 Definition join A (pp : M (M A)) := pp >>= id.
 Arguments join {A} : simpl never.
 
-Lemma join_fmap A B m (f : A -> M B) : join (fmap f m) = m >>= f :> M B.
+Lemma join_fmap A B (f : A -> M B) m : join (fmap f m) = m >>= f.
 Proof. by rewrite /join /fmap bindA; rewrite_ bindretf. Qed.
 
 Lemma join_ret A : join \o Ret = @id (M A). (* left unit *)
@@ -356,6 +355,14 @@ Definition kleisli A B C (m : B -> M C) (n : A -> M B) : A -> M C :=
   join \o fmap m \o n.
 Local Notation "m >=> n" := (kleisli m n).
 
+Lemma fcomp_kleisli A B C D (f : A -> B) (g : C -> M A) (h : D -> M C) :
+  f (o) (g >=> h) = (f (o) g) >=> h.
+Proof. by rewrite /kleisli /fcomp /= 2!compA join_naturality fmap_o compA. Qed.
+
+Lemma kleisli_fcomp A B C (f : A -> M B) (g : B -> A) (h : C -> M B) :
+  ((f \o g) >=> h) = f >=> (g (o) h).
+Proof. by rewrite /kleisli /fcomp fmap_o 2!compA. Qed.
+
 End fmap_and_join.
 Notation "f ($) m" := (fmap f m) : mu_scope.
 Arguments fmap : simpl never.
@@ -371,10 +378,10 @@ Definition pair {M : monad} {A} (xy : (M A * M A)%type) : M (A * A)%type :=
 Lemma naturality_pair (M : monad) A B (f : A -> B) (g : A -> M A):
   fmap (f`^2) \o (pair \o g`^2) = pair \o (fmap f \o g)`^2.
 Proof.
-apply functional_extensionality => -[a a'] /=.
-rewrite /fmap 2!bindA; bind_ext => ?.
-rewrite bindA /= bindretf bindA /=; bind_ext => ?.
-by rewrite !bindretf.
+apply functional_extensionality => -[a0 a1] /=.
+rewrite fmap_bind bind_fmap; bind_ext => a2 /=.
+rewrite fcomp_ext fmap_bind bind_fmap; bind_ext => a3 /=.
+by rewrite fcomp_ext fmap_ret.
 Qed.
 
 Section rep.
@@ -441,12 +448,12 @@ Export MonadFail.Exports.
 
 Section fail_lemmas.
 Variable (M : failMonad).
-Lemma bindfailm : Laws.left_zero (@Bind M) (@Fail _).
+Lemma bindfailf : Laws.left_zero (@Bind M) (@Fail _).
 Proof. by case : M => m [? []]. Qed.
 End fail_lemmas.
 
 Lemma fmap_fail {A B} (M : failMonad) (f : A -> B) : fmap f Fail = Fail :> M _.
-Proof. by rewrite /fmap bindfailm. Qed.
+Proof. by rewrite /fmap bindfailf. Qed.
 
 Section guard_assert.
 
@@ -456,7 +463,7 @@ Definition guard (b : bool) : M unit := if b then skip else Fail.
 
 (* guard distributes over conjunction *)
 Lemma guard_and a b : guard (a && b) = guard a >> guard b.
-Proof. move: a b => -[b|b] /=; by [rewrite bindskipf| rewrite bindfailm]. Qed.
+Proof. move: a b => -[b|b] /=; by [rewrite bindskipf| rewrite bindfailf]. Qed.
 
 Definition assert {A} (p : ssrbool.pred A) (mx : M A) : M A :=
    do x <- mx ; guard (p x) >> Ret x.
@@ -477,8 +484,8 @@ rewrite /guard; case: ifPn => Hb.
   rewrite bindskipf.
   rewrite_ bindskipf.
   by rewrite bindmret.
-rewrite_ bindfailm.
-by rewrite bindfailm HM.
+rewrite_ bindfailf.
+by rewrite bindfailf HM.
 Qed.
 
 End guard_assert.
@@ -538,29 +545,26 @@ Arguments arbitrary {M} {A}.
 (* gibbonsUTP2012 *)
 Section subsequences_of_a_list.
 
-Variable M : altMonad.
+Variables (M : altMonad) (A : Type).
 
-Fixpoint subs {A : Type} (s : seq A) : M (seq A) :=
+Fixpoint subs (s : seq A) : M (seq A) :=
   if s isn't h :: t then Ret [::] else
   let t' := subs t in
   fmap (cons h) t' [~i] t'.
 
-Lemma subs_cons A x (xs : seq A) :
+Lemma subs_cons x (xs : seq A) :
   subs (x :: xs) = let t' := subs xs in fmap (cons x) t' [~i] t'.
 Proof. by []. Qed.
 
-Lemma subs_cat A (xs ys : seq A) :
+Lemma subs_cat (xs ys : seq A) :
   subs (xs ++ ys) = do us <- subs xs; do vs <- subs ys; Ret (us ++ vs).
 Proof.
-elim: xs ys => [ys /=|x xs IH ys].
-  by rewrite bindretf bindmret.
-rewrite subs_cons.
+elim: xs ys => [ys |x xs IH ys]; first by rewrite /= bindretf bindmret.
+rewrite [in RHS]subs_cons.
 cbv zeta.
 rewrite alt_bindDl.
-rewrite /fmap. (* TODO *)
 rewrite bindA.
 rewrite [in RHS]/=.
-(* fmap and do notation *)
 Open (X in subs xs >>= X).
   rewrite bindretf.
   rewrite_ cat_cons.
@@ -770,8 +774,8 @@ Record mixin_of (M : failMonad) (a : forall A, M A -> M A -> M A) : Type :=
 }.
 Record class_of (m : Type -> Type) : Type := Class {
   base : MonadFail.class_of m ;
-  mixin : MonadAlt.mixin_of (Monad.Pack (MonadFail.base base)) ;
-  ext : @mixin_of (MonadFail.Pack base) (MonadAlt.op_alt mixin)
+  base2 : MonadAlt.mixin_of (Monad.Pack (MonadFail.base base)) ;
+  mixin : @mixin_of (MonadFail.Pack base) (MonadAlt.op_alt base2)
 }.
 Structure t : Type := Pack { m : Type -> Type ; class : class_of m }.
 Definition baseType (M : t) := MonadFail.Pack (base (class M)).
@@ -780,7 +784,7 @@ Notation nondetMonad := t.
 Coercion baseType : nondetMonad >-> failMonad.
 Canonical baseType.
 Definition alt_of_nondet (M : nondetMonad) : altMonad :=
-  MonadAlt.Pack (MonadAlt.Class (mixin (class M))).
+  MonadAlt.Pack (MonadAlt.Class (base2 (class M))).
 Canonical alt_of_nondet.
 End Exports.
 End MonadNondet.
@@ -799,7 +803,7 @@ Lemma test_canonical (M : nondetMonad) A (a : M A) (b : A -> M A) :
 Proof.
 Set Printing All.
 Unset Printing All.
-by rewrite bindfailm.
+by rewrite bindfailf.
 Abort.
 
 (* gibbons2011icfp Sect. 4.4 *)
@@ -825,7 +829,7 @@ Lemma select_nil : select [::] = Fail. Proof. by []. Qed.
 
 Lemma select_singl_statement a : select (a :: nil) = Ret (a, [tuple]).
 Proof.
-rewrite /= bindfailm altmfail /select_obligation_1 /= tupleE /nil_tuple.
+rewrite /= bindfailf altmfail /select_obligation_1 /= tupleE /nil_tuple.
 do 3 f_equal. exact: proof_irrelevance.
 Qed.
 
@@ -935,7 +939,7 @@ Section work.
 
 Variable M : failMonad.
 
-Definition work (s : seq nat) : M nat :=
+Definition work s : M nat :=
   if O \in s then Fail else Ret (product s).
 
 (* work refined to eliminate multiple traversals *)
@@ -952,12 +956,12 @@ Arguments work {M}.
 
 Variable M : exceptMonad.
 
-Definition fastproduct s : M _ := Catch (work s) (Ret O).
+Definition fastprod s : M _ := Catch (work s) (Ret O).
 
-(* fastproduct is pure, never throwing an unhandled exception *)
-Lemma fastproductE s : fastproduct s = Ret (product s).
+(* fastprod is pure, never throwing an unhandled exception *)
+Lemma fastprodE s : fastprod s = Ret (product s).
 Proof.
-rewrite /fastproduct /work lift_if if_ext catchfailm.
+rewrite /fastprod /work lift_if if_ext catchfailm.
 by rewrite catchret; case: ifPn => // /product0 <-.
 Qed.
 
