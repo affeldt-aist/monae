@@ -12,6 +12,7 @@ semantics:
 ** Files
 
 - [[monad.v][monad.v]]: basics of monadic equational reasoning
+- [[monad_model.v][monad_model.v]] models of basic monads
 - [[state_monad.v][state_monad.v]]: state monad-related part
 - [[proba_monad.v][proba_monad.v]]: probability monad-related part
 - [[proba_model.v][proba_model.v]]: model of the probability monad
