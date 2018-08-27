@@ -25,7 +25,7 @@ semantics:
 
 ** Requirements
 
-- [[https://coq.inria.fr][Coq 8.8.0]], [[https://math-comp.github.io/math-comp/][MathComp 1.7]]
+- [[https://coq.inria.fr][Coq 8.8.0]] or higher, [[https://math-comp.github.io/math-comp/][MathComp 1.7]]
 - the compilation of [[proba_model.v][proba_model.v]] requires the installation of
   another library called [[https://github.com/affeldt-aist/infotheo][infotheo]]
   + once infotheo is installed, just add ~proba_monad.v~ to the

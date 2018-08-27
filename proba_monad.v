@@ -371,8 +371,8 @@ Record mixin_of (M : altCIMonad) (a : Prob.t -> forall A, M A -> M A -> M A) := 
 }.
 Record class_of (m : Type -> Type) := Class {
   base : MonadAltCI.class_of m ;
-  mixin : MonadProb.mixin_of (Monad.Pack (MonadAlt.base (MonadAltCI.base base))) ;
-  ext : @mixin_of (MonadAltCI.Pack base) (@MonadProb.choice _ mixin)
+  base2 : MonadProb.mixin_of (Monad.Pack (MonadAlt.base (MonadAltCI.base base))) ;
+  mixin : @mixin_of (MonadAltCI.Pack base) (@MonadProb.choice _ base2)
 }.
 Structure t : Type := Pack { m : Type -> Type ; class : class_of m }.
 Definition baseType (M : t) : altCIMonad := MonadAltCI.Pack (base (class M)).
@@ -382,7 +382,7 @@ Notation altProbMonad := t.
 Coercion baseType : altProbMonad >-> altCIMonad.
 Canonical baseType.
 Definition altprob_is_prob M :=
-  MonadProb.Pack (MonadProb.Class (mixin (class M))).
+  MonadProb.Pack (MonadProb.Class (base2 (class M))).
 Canonical altprob_is_prob.
 Canonical altType.
 End Exports.
@@ -484,8 +484,8 @@ Record mixin_of (M : exceptMonad) (a : Prob.t -> forall A : Type, M A -> M A -> 
 }.
 Record class_of (m : Type -> Type) := Class {
   base : MonadExcept.class_of m ;
-  mixin : MonadProb.mixin_of (Monad.Pack (MonadFail.base (MonadExcept.base base))) ;
-  ext : @mixin_of (MonadExcept.Pack base) (@Choice (MonadProb.Pack (MonadProb.Class mixin)))
+  base2 : MonadProb.mixin_of (Monad.Pack (MonadFail.base (MonadExcept.base base))) ;
+  mixin : @mixin_of (MonadExcept.Pack base) (@Choice (MonadProb.Pack (MonadProb.Class base2)))
 }.
 Structure t : Type := Pack { m : Type -> Type ; class : class_of m }.
 Definition baseType (M : t) : exceptMonad := MonadExcept.Pack (base (class M)).
@@ -494,7 +494,7 @@ Notation exceptProbMonad := t.
 Coercion baseType : exceptProbMonad >-> exceptMonad.
 Canonical baseType.
 Definition prob_of_exceptprob M :=
-  MonadProb.Pack (MonadProb.Class (mixin (class M))).
+  MonadProb.Pack (MonadProb.Class (base2 (class M))).
 Canonical prob_of_exceptprob.
 End Exports.
 End MonadExceptProb.
