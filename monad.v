@@ -38,11 +38,13 @@ Reserved Notation "A `2" (format "A `2", at level 3).
 Reserved Notation "f `^2" (format "f `^2", at level 3).
 Reserved Notation "l \\ p" (at level 50).
 Reserved Notation "m >>= f" (at level 50).
+Reserved Notation "f =<< m" (at level 50).
 Reserved Notation "'do' x <- m ; e"
   (at level 60, x ident, m at level 200, e at level 60).
 Reserved Notation "'do' x : T <- m ; e"
   (at level 60, x ident, m at level 200, e at level 60).
 Reserved Notation "m >=> n" (at level 50).
+Reserved Notation "n <=< m" (at level 50).
 Reserved Notation "x '[~i]' y" (at level 50).
 Reserved Notation "'[~p]'".
 Reserved Notation "f ($) m" (at level 11).
@@ -362,6 +364,17 @@ Proof. by rewrite /kleisli /fcomp /= 2!compA join_naturality fmap_o compA. Qed.
 Lemma kleisli_fcomp A B C (f : A -> M B) (g : B -> A) (h : C -> M B) :
   ((f \o g) >=> h) = f >=> (g (o) h).
 Proof. by rewrite /kleisli /fcomp fmap_o 2!compA. Qed.
+Local Notation "m >=> n" := (kleisli m n).
+
+Lemma bind_kleisli A B C m (f : B -> M C) (g : A -> M B) :
+  m >>= (f >=> g) = (m >>= g) >>= f.
+Proof. by rewrite bindA; bind_ext => a; rewrite /kleisli /= join_fmap. Qed.
+
+Definition rbind A B (f : A -> M B) (m : M A) : M B := m >>= f.
+Local Notation "f =<< m" := (rbind f m).
+
+Definition rkleisli A B C (f : A -> M B) (g : B -> M C) : A -> M C := g >=> f.
+Local Notation "n <=< m" := (rkleisli n m).
 
 End fmap_and_join.
 Notation "f ($) m" := (fmap f m) : mu_scope.
@@ -370,6 +383,8 @@ Notation "f (o) g" := (fcomp f g) : mu_scope.
 Arguments fcomp : simpl never.
 Arguments join {M} {A} : simpl never.
 Notation "m >=> n" := (kleisli m n).
+Notation "f =<< m" := (rbind f m) : mu_scope.
+Notation "n <=< m" := (rkleisli n m) : mu_scope.
 
 Definition pair {M : monad} {A} (xy : (M A * M A)%type) : M (A * A)%type :=
   let (mx, my) := xy in
@@ -816,37 +831,39 @@ Implicit Types s : seq A.
 Local Obligation Tactic := idtac.
 Program Fixpoint select s : M (A * (size s).-1.-tuple A)%type :=
   if s isn't h :: t then Fail else
-  (Ret (h, _ (* t *)) [~i]
-  do y_ys <- select t; Ret (y_ys.1, _ (* h :: y_ys.2 *))).
-Next Obligation. move=> s h t hts; by exists t. Defined.
+  (Ret (h, @Tuple (size t) A t _) [~i]
+  do y_ys <- select t; Ret (y_ys.1, @Tuple (size t) A _ _ (* h :: y_ys.2 *))).
+Next Obligation. by []. Defined.
 Next Obligation.
-move=> s h [|h' t] hts [a b]; first by [].
-exists (h' :: b); by rewrite size_tuple.
+move=> s h [|h' t] hts [x1 x2]; [exact: [::] | exact: (h :: x2)].
 Defined.
-Next Obligation. by []. Qed.
+Next Obligation.
+move=> s h [|h' t] hts [x1 x2] //=; by rewrite size_tuple.
+Defined.
+Next Obligation. by []. Defined.
 
 Lemma select_nil : select [::] = Fail. Proof. by []. Qed.
 
-Lemma select_singl_statement a : select (a :: nil) = Ret (a, [tuple]).
+Lemma select1 a : select [:: a] = Ret (a, [tuple]).
 Proof.
 rewrite /= bindfailf altmfail /select_obligation_1 /= tupleE /nil_tuple.
-do 3 f_equal. exact: proof_irrelevance.
+do 3 f_equal; exact: proof_irrelevance.
 Qed.
 
 Program Definition select_cons_statement a t (_ : t <> nil) :=
-  select (a :: t) = Ret (a, _(*t*)) [~i] do x <- select t; Ret (x.1, _(*h :: x.2*)).
+  select (a :: t) = Ret (a, @Tuple _ _ t _) [~i]
+                    do x <- select t; Ret (x.1, @Tuple _ _ (a :: x.2) _).
+Next Obligation. by []. Defined.
 Next Obligation.
-move=> a t t0; by exists t.
-Defined.
-Next Obligation.
-move=> a [//|t t0] _ [h1 h2]; exists (t :: h2); by rewrite size_tuple.
+move=> a t t0 [x1 x2].
+rewrite /= size_tuple prednK //; by destruct t.
 Defined.
 
 Program Lemma select_cons a t (Ht : t <> nil) : select_cons_statement a Ht.
 Proof.
 rewrite /select_cons_statement [in LHS]/=; congr (_ [~i] _).
 bind_ext; case=> x1 x2 /=.
-rewrite /select_obligation_2; by destruct t.
+do 2 f_equal; apply val_inj => /=; by destruct t.
 Qed.
 
 Program Definition perms' s
@@ -863,19 +880,11 @@ Proof. by apply: (@Wf_nat.well_founded_lt_compat _ size) => x y /ltP. Qed.
 
 Definition perms : seq A -> M (seq A) := Fix well_founded_size (fun _ => M _) perms'.
 
-Lemma perms_nil : perms [::] = Ret [::].
+Lemma permsE s : perms s = if s isn't h :: t then Ret [::] else
+  do y_ys <- select (h :: t); do zs <- perms y_ys.2; Ret (y_ys.1 :: zs).
 Proof.
-rewrite /perms Fix_eq //= => x f g fg; rewrite (_ : f = g) //.
-apply functional_extensionality_dep => s.
-apply functional_extensionality => H; exact: fg.
-Qed.
-
-Lemma perms_cons h t : perms (h :: t) =
-  do a <- select (h :: t) ; do b <- perms a.2; Ret (a.1 :: b).
-Proof.
-rewrite /perms Fix_eq // => x f g fg; rewrite (_ : f = g) //.
-apply functional_extensionality_dep => s.
-apply functional_extensionality => H; exact: fg.
+rewrite {1}/perms Fix_eq //; [by case: s|move=> s' f g H].
+by rewrite /perms'; destruct s' => //=; bind_ext=> x; rewrite H.
 Qed.
 
 End permutations.

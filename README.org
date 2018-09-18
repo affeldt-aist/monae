@@ -23,6 +23,10 @@ semantics:
 - [[smallstep_monad.v][smallstep_monad.v]]: equivalence operational semantics/denotation
 - [[smallstep_examples.v][smallstep_examples.v]]: sample programs
 
+- ssrZ.v: SSReflect-like interface for the type Z of the standard library of Coq
+  + comes from https://github.com/affeldt-aist/seplog
+  + copied verbatim here for convenience
+
 ** Requirements
 
 - [[https://coq.inria.fr][Coq 8.8.0]] or higher, [[https://math-comp.github.io/math-comp/][MathComp 1.7]]
