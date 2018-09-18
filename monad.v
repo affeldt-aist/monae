@@ -123,6 +123,9 @@ Definition wrap {A} (a : A) := [:: a].
 Lemma compA {A B C D} (f : C -> D) (g : B -> C) (h : A -> B) : f \o (g \o h) = (f \o g) \o h.
 Proof. by []. Qed.
 
+Fixpoint scanl A B (op : B -> A -> B) (b : B) (s : seq A) : seq B :=
+  if s isn't x :: xs then [::] else (op b x) :: scanl op (op b x) xs.
+
 Module Laws.
 Section laws.
 Variables (M : Type -> Type).
@@ -480,15 +483,17 @@ Definition guard (b : bool) : M unit := if b then skip else Fail.
 Lemma guard_and a b : guard (a && b) = guard a >> guard b.
 Proof. move: a b => -[b|b] /=; by [rewrite bindskipf| rewrite bindfailf]. Qed.
 
-Definition assert {A} (p : ssrbool.pred A) (mx : M A) : M A :=
-   do x <- mx ; guard (p x) >> Ret x.
+Definition assert {A} (p : pred A) (a : A) : M A :=
+  guard (p a) >> Ret a.
+
+Definition bassert {A} (p : pred A) (mx : M A) : M A := mx >>= assert p.
 
 (* follows from guards commuting with anything *)
 Lemma commutativity_of_assertions A q :
-  join \o fmap (assert q) = assert q \o join :> (_ -> M A).
+  join \o fmap (bassert q) = bassert q \o join :> (_ -> M A).
 Proof.
 apply functional_extensionality => x.
-by rewrite [fmap]lock [join]lock /= -!lock join_fmap /join /assert bindA.
+by rewrite [fmap]lock [join]lock /= -!lock join_fmap /join /bassert bindA.
 Qed.
 
 (* guards commute with anything *)
@@ -504,6 +509,7 @@ by rewrite bindfailf HM.
 Qed.
 
 End guard_assert.
+Arguments assert {M} {A}.
 Arguments guard {M}.
 
 Module MonadAlt.
@@ -823,16 +829,21 @@ Abort.
 
 (* gibbons2011icfp Sect. 4.4 *)
 
-Section permutations.
-
+Section select.
 Variables (M : nondetMonad) (A : Type).
 Implicit Types s : seq A.
 
+Fixpoint select s : M (A * seq A)%type :=
+  if s isn't h :: t then Fail else
+  (Ret (h, t) [~i]
+  do y_ys <- select t; Ret (y_ys.1, h :: y_ys.2)).
+
 Local Obligation Tactic := idtac.
-Program Fixpoint select s : M (A * (size s).-1.-tuple A)%type :=
+(* variant of select that keeps track of the length, useful to write perms *)
+Program Fixpoint tselect s : M (A * (size s).-1.-tuple A)%type :=
   if s isn't h :: t then Fail else
   (Ret (h, @Tuple (size t) A t _) [~i]
-  do y_ys <- select t; Ret (y_ys.1, @Tuple (size t) A _ _ (* h :: y_ys.2 *))).
+  do y_ys <- tselect t; Ret (y_ys.1, @Tuple (size t) A _ _ (* h :: y_ys.2 *))).
 Next Obligation. by []. Defined.
 Next Obligation.
 move=> s h [|h' t] hts [x1 x2]; [exact: [::] | exact: (h :: x2)].
@@ -842,34 +853,56 @@ move=> s h [|h' t] hts [x1 x2] //=; by rewrite size_tuple.
 Defined.
 Next Obligation. by []. Defined.
 
-Lemma select_nil : select [::] = Fail. Proof. by []. Qed.
+Lemma tselect_nil : tselect [::] = Fail. Proof. by []. Qed.
 
-Lemma select1 a : select [:: a] = Ret (a, [tuple]).
+Lemma tselect1 a : tselect [:: a] = Ret (a, [tuple]).
 Proof.
-rewrite /= bindfailf altmfail /select_obligation_1 /= tupleE /nil_tuple.
+rewrite /= bindfailf altmfail /tselect_obligation_1 /= tupleE /nil_tuple.
 do 3 f_equal; exact: proof_irrelevance.
 Qed.
 
-Program Definition select_cons_statement a t (_ : t <> nil) :=
-  select (a :: t) = Ret (a, @Tuple _ _ t _) [~i]
-                    do x <- select t; Ret (x.1, @Tuple _ _ (a :: x.2) _).
+Program Definition tselect_cons_statement a t (_ : t <> nil) :=
+  tselect (a :: t) = Ret (a, @Tuple _ _ t _) [~i]
+                    do x <- tselect t; Ret (x.1, @Tuple _ _ (a :: x.2) _).
 Next Obligation. by []. Defined.
 Next Obligation.
 move=> a t t0 [x1 x2].
 rewrite /= size_tuple prednK //; by destruct t.
 Defined.
 
-Program Lemma select_cons a t (Ht : t <> nil) : select_cons_statement a Ht.
+Program Lemma tselect_cons a t (Ht : t <> nil) : tselect_cons_statement a Ht.
 Proof.
-rewrite /select_cons_statement [in LHS]/=; congr (_ [~i] _).
+rewrite /tselect_cons_statement [in LHS]/=; congr (_ [~i] _).
 bind_ext; case=> x1 x2 /=.
 do 2 f_equal; apply val_inj => /=; by destruct t.
 Qed.
 
+Local Open Scope mu_scope.
+
+Lemma selectE s : select s =
+  (fun xy => (xy.1, tval xy.2)) ($) tselect s :> M (A * seq A)%type.
+Proof.
+elim: s => [|h [|h' t] IH].
+  by rewrite /fmap bindfailf.
+by rewrite tselect1 fmap_ret /= bindfailf altmfail.
+rewrite [h' :: t]lock /= -lock IH [in RHS]/fmap alt_bindDl bindretf.
+congr (_ [~i] _).
+rewrite bind_fmap bindA; bind_ext => -[x1 x2]; by rewrite bindretf.
+Qed.
+
+End select.
+Arguments select {M} {A}.
+Arguments tselect {M} {A}.
+
+Section permutations.
+Variables (M : nondetMonad) (A : Type).
+Implicit Types s : seq A.
+
+Local Obligation Tactic := idtac.
 Program Definition perms' s
   (f : forall s', size s' < size s -> M (seq A)) : M (seq A) :=
   if s isn't h :: t then Ret [::] else
-    do y_ys <- select (h :: t); do zs <- f y_ys.2 _; Ret (y_ys.1 :: zs).
+    do y_ys <- tselect (h :: t); do zs <- f y_ys.2 _; Ret (y_ys.1 :: zs).
 Next Obligation.
 move=> s H h t hts [y ys]; by rewrite size_tuple -hts /= ltnS leqnn.
 Qed.
@@ -880,15 +913,21 @@ Proof. by apply: (@Wf_nat.well_founded_lt_compat _ size) => x y /ltP. Qed.
 
 Definition perms : seq A -> M (seq A) := Fix well_founded_size (fun _ => M _) perms'.
 
-Lemma permsE s : perms s = if s isn't h :: t then Ret [::] else
-  do y_ys <- select (h :: t); do zs <- perms y_ys.2; Ret (y_ys.1 :: zs).
+Lemma tpermsE s : perms s = if s isn't h :: t then Ret [::] else
+  do y_ys <- tselect (h :: t); do zs <- perms y_ys.2; Ret (y_ys.1 :: zs).
 Proof.
 rewrite {1}/perms Fix_eq //; [by case: s|move=> s' f g H].
 by rewrite /perms'; destruct s' => //=; bind_ext=> x; rewrite H.
 Qed.
 
+Lemma permsE s : perms s = if s isn't h :: t then Ret [::] else
+  do y_ys <- select (h :: t); do zs <- perms y_ys.2; Ret (y_ys.1 :: zs).
+Proof.
+rewrite tpermsE; case: s => // h t.
+by rewrite selectE bind_fmap.
+Qed.
+
 End permutations.
-Arguments select {M} {A}.
 Arguments perms {M} {A}.
 
 Module MonadExcept.
