@@ -2,7 +2,8 @@ Ltac typeof X := type of X.
 Require Import FunctionalExtensionality Coq.Program.Tactics ProofIrrelevance.
 Require Classical.
 Require Import ssreflect ssrmatching ssrfun ssrbool.
-From mathcomp Require Import eqtype ssrnat seq choice fintype tuple.
+From mathcomp Require Import eqtype ssrnat seq path div choice fintype tuple.
+From mathcomp Require Import finfun bigop.
 
 Set Implicit Arguments.
 Unset Strict Implicit.
@@ -728,7 +729,7 @@ Variables (A B : Type) (op : B -> A -> B).
 Local Notation "x (.) y" := (op x y) (at level 11).
 Hypothesis opP : forall (x y : A) (w : B), (w (.) x) (.) y = (w (.) y) (.) x.
 
-Lemma lem35 x (b : B) : foldl op b (o) insert x = Ret \o foldl op b \o (rcons^~ x) :> (_ -> M _).
+Lemma lemma_35 x (b : B) : foldl op b (o) insert x = Ret \o foldl op b \o (rcons^~ x) :> (_ -> M _).
 Proof.
 apply functional_extensionality => xs; move: xs b; elim/last_ind => [/=|xs y IH] b.
   by rewrite fcomp_ext insert_nil fmap_ret.
@@ -756,12 +757,12 @@ by rewrite altmm.
 Qed.
 
 (* TODO(rei): clean *)
-Lemma lem34 b : foldl op b (o) perm = Ret \o foldl op b :> (_ -> M _).
+Lemma lemma_34 b : foldl op b (o) perm = Ret \o foldl op b :> (_ -> M _).
 Proof.
 apply functional_extensionality => xs; move: xs b; elim=> [/=|x xs IH] b.
   by rewrite /= fcomp_ext /= fmap_ret.
 rewrite fcomp_ext [in LHS]/= fmap_bind.
-rewrite_ lem35.
+rewrite_ lemma_35.
 transitivity ((Ret \o foldl op (b (.) x)) xs : M _); last by [].
 rewrite -IH.
 rewrite [in RHS]fcomp_ext.
@@ -782,7 +783,7 @@ Proof.
 move=> addA addC add0b addb0.
 rewrite /aggregate.
 (* NB(rei): the original paper is using perm_map (lemma 3.1) and (7) but that does not seem useful*)
-rewrite -[in RHS]lem34; last by move=> x y w; rewrite -addA (addC x) addA.
+rewrite -[in RHS]lemma_34; last by move=> x y w; rewrite -addA (addC x) addA.
 by [].
 Qed.
 
@@ -827,6 +828,19 @@ Unset Printing All.
 by rewrite bindfailf.
 Abort.
 
+Section nondet_big.
+Variables (M : nondetMonad) (A : Type).
+Canonical alt_monoid :=
+  Monoid.Law (@altA (alt_of_nondet M) A) (@altfailm _ _) (@altmfail _ _).
+
+Lemma test_bigop n : \big[Alt/Fail]_(i < n) (Fail : M A) = Fail.
+Proof.
+elim: n => [|n IH]; first by rewrite big_ord0.
+by rewrite big_ord_recr /= IH altmfail.
+Qed.
+
+End nondet_big.
+
 (* gibbons2011icfp Sect. 4.4 *)
 
 Section select.
@@ -835,8 +849,7 @@ Implicit Types s : seq A.
 
 Fixpoint select s : M (A * seq A)%type :=
   if s isn't h :: t then Fail else
-  (Ret (h, t) [~i]
-  do y_ys <- select t; Ret (y_ys.1, h :: y_ys.2)).
+  (Ret (h, t) [~i] do y_ys <- select t; Ret (y_ys.1, h :: y_ys.2)).
 
 Local Obligation Tactic := idtac.
 (* variant of select that keeps track of the length, useful to write perms *)

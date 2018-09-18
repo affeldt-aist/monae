@@ -232,15 +232,16 @@ Definition op_run0 S (M : t S) : forall A, m M A -> S -> A * S :=
 Arguments op_run0 {S M A} : simpl never.
 Definition baseType S (M : t S) := MonadState.Pack (base (class M)).
 Module Exports.
+Notation stateRunMonad := t.
 Notation Run0 := op_run0.
-Coercion baseType : MonadStateRun.t >-> stateMonad.
+Coercion baseType : stateRunMonad >-> stateMonad.
 Canonical baseType.
 End Exports.
 End MonadStateRun.
 Export MonadStateRun.Exports.
 
 Section staterun_lemmas.
-Variables (S : Type) (M : MonadStateRun.t S).
+Variables (S : Type) (M : stateRunMonad S).
 Lemma runret : forall A (a : A) s, Run0 (Ret a : M _) s = (a, s).
 Proof. by case: M => m [? []]. Qed.
 Lemma runbind : forall A B (ma : M A) (f : A -> M B) s,
@@ -270,9 +271,9 @@ Module Exports.
 Notation nondetStateMonad := t.
 Coercion baseType : nondetStateMonad >-> nondetMonad.
 Canonical baseType.
-Definition nondetstate_is_state S (M : nondetStateMonad S) :=
+Definition state_of_nondetstate S (M : nondetStateMonad S) :=
   MonadState.Pack (MonadState.Class (base2 (class M))).
-Canonical nondetstate_is_state.
+Canonical state_of_nondetstate.
 End Exports.
 End MonadNondetState.
 Export MonadNondetState.Exports.

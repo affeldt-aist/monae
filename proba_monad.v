@@ -1,6 +1,6 @@
 Require Import FunctionalExtensionality Coq.Program.Tactics ProofIrrelevance.
 Require Classical.
-Require Import Reals.
+Require Import Reals Lra.
 Require Import ssreflect ssrmatching ssrfun ssrbool.
 From mathcomp Require Import eqtype ssrnat seq choice fintype tuple.
 
@@ -526,7 +526,7 @@ Lemma a_neq_b : a != b. Proof. by apply/eqP => /enum_val_inj. Qed.
 
 Lemma a_neq_c : a != c. Proof. by apply/eqP => /enum_val_inj. Qed.
 
-Lemma b_neq_c : b != c. Proof. by apply/eqP =>/enum_val_inj. Qed.
+Lemma b_neq_c : b != c. Proof. by apply/eqP => /enum_val_inj. Qed.
 
 Lemma neq_a x : x != a -> (x == b) || (x == c).
 Proof. have : x \in X by []. by rewrite -mem_enum enumE !inE => /orP[->|]. Qed.
@@ -648,9 +648,7 @@ Qed.
 End set3.
 End Set3.
 
-Require Import Fourier.
-
-Lemma H23 : (0 <= 2/3 <= 1)%R. Proof. by split; fourier. Qed.
+Lemma H23 : (0 <= 2/3 <= 1)%R. Proof. split; lra. Qed.
 
 (* NB: notation for ltac:(split; fourier?)*)
 Lemma choiceA_compute {N : probMonad} (T F : bool) (f : bool -> N bool) :
@@ -658,11 +656,11 @@ Lemma choiceA_compute {N : probMonad} (T F : bool) (f : bool -> N bool) :
  (f T <|[Pr of / 5]|> (f F <|[Pr of / 4]|> (f F <|[Pr of / 3]|> (f F <|[Pr of / 2]|>
   f T))))))) = f F <|[Pr of / 3]|> (f F <|[Pr of / 2]|> f T) :> N _.
 Proof.
-have H34 : (0 <= 3/4 <= 1)%R by split; fourier.
-have H27 : (0 <= 2/7 <= 1)%R by split; fourier.
-have H721 : (0 <= 7/21 <= 1)%R by split; fourier.
-have H2156 : (0 <= 21/56 <= 1)%R by split; fourier.
-have H25 : (0 <= 2/5 <= 1)%R by split; fourier.
+have H34 : (0 <= 3/4 <= 1)%R by split; lra.
+have H27 : (0 <= 2/7 <= 1)%R by split; lra.
+have H721 : (0 <= 7/21 <= 1)%R by split; lra.
+have H2156 : (0 <= 21/56 <= 1)%R by split; lra.
+have H25 : (0 <= 2/5 <= 1)%R by split; lra.
 rewrite [in RHS](choiceA _ _ [Pr of /2] (@Prob.mk (2/3) H23)); last by rewrite 3!probpK; split; field.
 rewrite choicemm.
 rewrite [in LHS](choiceA [Pr of /3] [Pr of /2] [Pr of /2] (@Prob.mk (2/3) H23)); last by rewrite 3!probpK; split; field.
