@@ -1215,19 +1215,19 @@ Section section_52.
 
 Variable M : nondetStateMonad (Z * seq Z * seq Z).
 
-Definition op : Z -> M (seq Z) -> M (seq Z) := opdot queens_next queens_ok.
+Definition opdot_queens : Z -> M (seq Z) -> M (seq Z) := opdot queens_next queens_ok.
 
 Local Open Scope mu_scope.
 
 Definition queensBody (xs : seq Z) : M (seq Z) :=
-  perms xs >>= foldr op (Ret [::]).
+  perms xs >>= foldr opdot_queens (Ret [::]).
 
 Lemma mu_queens_state_nondeter n : mu_queens n = Get >>=
   (fun ini => Put (0, [::], [::])%Z >> queensBody (map Z_of_nat (iota 0 n)) >>= overwrite ini).
 Proof.
 rewrite mu_queensE.
 transitivity (perms (map Z.of_nat (iota 0 n)) >>= (fun xs => Get >>=
-  (fun ini => Put (0, [::], [::])%Z >> foldr op (Ret [::]) xs >>= overwrite ini))).
+  (fun ini => Put (0, [::], [::])%Z >> foldr opdot_queens (Ret [::]) xs >>= overwrite ini))).
   bind_ext => s /=.
   rewrite assertE. (* NB: uses theorem 4.1 *)
   bind_ext => st.
@@ -1235,7 +1235,7 @@ transitivity (perms (map Z.of_nat (iota 0 n)) >>= (fun xs => Get >>=
   bind_ext; case.
   by rewrite -theorem_53 bindA.
 transitivity (Get >>= (fun ini => Put (0, [::], [::])%Z >>
-  perms (map Z.of_nat (iota 0 n)) >>= (fun xs => (foldr op (Ret [::]) xs >>= overwrite ini)))).
+  perms (map Z.of_nat (iota 0 n)) >>= (fun xs => (foldr opdot_queens (Ret [::]) xs >>= overwrite ini)))).
   rewrite -getpermsC.
   bind_ext => s.
   rewrite !bindA putpermsC.
