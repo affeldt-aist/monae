@@ -513,6 +513,42 @@ End guard_assert.
 Arguments assert {M} {A}.
 Arguments guard {M}.
 
+Lemma well_founded_size A : well_founded (fun x y : seq A => (size x < size y)).
+Proof. by apply: (@Wf_nat.well_founded_lt_compat _ size) => x y /ltP. Qed.
+
+(* from section 4.3 of mu2017 *)
+Section unfoldM.
+Variables (M : monad) (A : Type) (B' : Type).
+Let B := seq B'.
+Variables (p : ssrbool.pred B) (f : B -> M (A * B)%type).
+
+Local Open Scope mu_scope.
+
+Local Obligation Tactic := idtac.
+Definition unfoldM' (y : B) (g : forall y' : B, size y' < size y -> M (seq A)) : M (seq A) :=
+  if p y then Ret [::] else f y >>=
+    (fun xz => match Bool.bool_dec (size xz.2 < size y) true with
+            | left H => cons xz.1 ($) g xz.2 H
+            | right H => Ret [::]
+            end).
+
+Definition unfoldM := Fix (@well_founded_size B') (fun _ => M _) unfoldM'.
+
+Lemma unfoldME y : unfoldM y = if p y then Ret [::] else
+  f y >>= (fun xz => if size xz.2 < size y then cons xz.1 ($) unfoldM xz.2 else Ret [::]).
+Proof.
+rewrite /unfoldM Fix_eq; last first.
+  move => b g g' H; rewrite /unfoldM'; case: ifPn => // pb.
+  bind_ext => -[a' b'] /=.
+  destruct Bool.bool_dec => //; by rewrite H.
+rewrite /unfoldM'; case: ifPn => // py; bind_ext => -[a' b'] /=.
+destruct Bool.bool_dec; first by rewrite e.
+by move/negP/negbTE : n => ->.
+Qed.
+
+End unfoldM.
+Arguments unfoldM : simpl never.
+
 Module MonadAlt.
 Record mixin_of (M : monad) : Type := Mixin {
   op_alt : forall A, M A -> M A -> M A ;
@@ -843,6 +879,10 @@ End nondet_big.
 
 (* gibbons2011icfp Sect. 4.4 *)
 
+(* NB(rei): to be used to specify select *)
+Definition decr_size (M : failMonad) A B (f : seq B -> M (A * seq B)%type) :=
+  forall b, bassert (fun x => size x.2 < size b) (f b) = f b.
+
 Section select.
 Variables (M : nondetMonad) (A : Type).
 Implicit Types s : seq A.
@@ -903,6 +943,13 @@ congr (_ [~i] _).
 rewrite bind_fmap bindA; bind_ext => -[x1 x2]; by rewrite bindretf.
 Qed.
 
+Lemma decr_size_select : decr_size select.
+Proof.
+case => [|h t]; first by rewrite !selectE /= fmap_fail /bassert bindfailf.
+rewrite /bassert selectE bind_fmap /fmap; bind_ext => -[x y] /=.
+by rewrite /assert /guard /= size_tuple ltnS leqnn bindskipf.
+Qed.
+
 End select.
 Arguments select {M} {A}.
 Arguments tselect {M} {A}.
@@ -921,10 +968,7 @@ move=> s H h t hts [y ys]; by rewrite size_tuple -hts /= ltnS leqnn.
 Qed.
 Next Obligation. by []. Qed.
 
-Lemma well_founded_size : well_founded (fun x y : seq A => (size x < size y)).
-Proof. by apply: (@Wf_nat.well_founded_lt_compat _ size) => x y /ltP. Qed.
-
-Definition perms : seq A -> M (seq A) := Fix well_founded_size (fun _ => M _) perms'.
+Definition perms : seq A -> M (seq A) := Fix (@well_founded_size _) (fun _ => M _) perms'.
 
 Lemma tpermsE s : perms s = if s isn't h :: t then Ret [::] else
   do y_ys <- tselect (h :: t); do zs <- perms y_ys.2; Ret (y_ys.1 :: zs).
@@ -942,6 +986,37 @@ Qed.
 
 End permutations.
 Arguments perms {M} {A}.
+
+(* from section 4.3 of mu2017, definition of perms using unfoldM *)
+Section mu_perm.
+Variables (A : Type) (M : nondetMonad).
+
+Definition mu_perm : seq A -> M (seq A) := unfoldM (@nilp _) (@select M A).
+
+Lemma mu_perm_nil : mu_perm [::] = Ret [::].
+Proof. by rewrite /mu_perm unfoldME. Qed.
+
+Lemma mu_perm_cons h t : mu_perm (h :: t) =
+  do a <- select (h :: t) ; do b <- mu_perm a.2; Ret (a.1 :: b).
+Proof.
+rewrite /mu_perm unfoldME /= 2!alt_bindDl; congr (_ [~i] _).
+  by rewrite !bindretf /= ltnS leqnn.
+rewrite !bindA -(@decr_size_select M _ t) /bassert !bindA; bind_ext => -[a b] /=.
+rewrite /assert /guard /=; case: ifPn => bt; last by rewrite !bindfailf.
+by rewrite !bindretf /= ltnS bt.
+Qed.
+
+Lemma perms_mu_perm s : perms s = mu_perm s.
+Proof.
+move Hn : (size s) => n.
+elim: n s Hn => [|n IH [//|h t] /= [tn]].
+  case => //; by rewrite permsE mu_perm_nil.
+rewrite tpermsE mu_perm_cons selectE bind_fmap; bind_ext => -[a b].
+by rewrite /= IH // size_tuple.
+Qed.
+
+End mu_perm.
+Arguments mu_perm {A} {M}.
 
 Module MonadExcept.
 Record mixin_of (M : failMonad) : Type := Mixin {
