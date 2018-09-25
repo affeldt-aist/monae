@@ -487,7 +487,7 @@ Proof. move: a b => -[b|b] /=; by [rewrite bindskipf| rewrite bindfailf]. Qed.
 Definition assert {A} (p : pred A) (a : A) : M A :=
   guard (p a) >> Ret a.
 
-Definition bassert {A} (p : pred A) (mx : M A) : M A := mx >>= assert p.
+Definition bassert {A} (p : pred A) (m : M A) : M A := m >>= assert p.
 
 (* follows from guards commuting with anything *)
 Lemma commutativity_of_assertions A q :
@@ -513,38 +513,65 @@ End guard_assert.
 Arguments assert {M} {A}.
 Arguments guard {M}.
 
-Lemma well_founded_size A : well_founded (fun x y : seq A => (size x < size y)).
-Proof. by apply: (@Wf_nat.well_founded_lt_compat _ size) => x y /ltP. Qed.
+Lemma well_founded_size A : well_founded (fun x y : seq A => size x < size y).
+Proof. by apply: (@Wf_nat.well_founded_lt_compat _ size) => ? ? /ltP. Qed.
 
-(* from section 4.3 of mu2017 *)
+Definition bassert_hylo {M : failMonad} A B
+  (f : B -> M (A * B)%type) (p : pred B) (r : forall p f, B -> B -> bool) :=
+  forall b, f b = bassert (fun z => r p f z.2 b) (f b).
+
+Definition bassert_size {M : failMonad} A B
+  (f : seq B -> M (A * seq B)%type) :=
+  @bassert_hylo M _ _ f predT (fun _ _ x y => size x < size y).
+
+(* specialization of section 4.3 of mu2017 *)
 Section unfoldM.
-Variables (M : monad) (A : Type) (B' : Type).
-Let B := seq B'.
-Variables (p : ssrbool.pred B) (f : B -> M (A * B)%type).
 
 Local Open Scope mu_scope.
 
-Local Obligation Tactic := idtac.
-Definition unfoldM' (y : B) (g : forall y' : B, size y' < size y -> M (seq A)) : M (seq A) :=
+Section unfoldM_monad.
+Variables (M : monad) (A B : Type).
+Variable (r : B -> B -> bool).
+Hypothesis wfr : well_founded r.
+Variables (p : pred B) (f : B -> M (A * B)%type).
+
+Definition unfoldM' (y : B) (g : forall y' : B, r y' y -> M (seq A)) : M (seq A) :=
   if p y then Ret [::] else f y >>=
-    (fun xz => match Bool.bool_dec (size xz.2 < size y) true with
+    (fun xz => match Bool.bool_dec (r xz.2 y) true with
             | left H => cons xz.1 ($) g xz.2 H
             | right H => Ret [::]
             end).
+(* superfluous match to define the "recursive" call,
+   to be removed by unfoldME under hypo. *)
 
-Definition unfoldM := Fix (@well_founded_size B') (fun _ => M _) unfoldM'.
+Definition unfoldM := Fix wfr (fun _ => _ _) unfoldM'.
 
-Lemma unfoldME y : unfoldM y = if p y then Ret [::] else
-  f y >>= (fun xz => if size xz.2 < size y then cons xz.1 ($) unfoldM xz.2 else Ret [::]).
+End unfoldM_monad.
+
+Section unfoldM_failMonad.
+Variables (M : failMonad) (A B' : Type).
+Let B := seq B'.
+Variables (p : pred B) (f : B -> M (A * B)%type).
+
+Hypothesis decr_size : bassert_size f.
+
+Notation unfoldM := (@unfoldM M A _ _ (@well_founded_size B')).
+
+Lemma unfoldME y : unfoldM p f y =
+  if p y then Ret [::]
+  else f y >>= (fun xz => cons xz.1 ($) unfoldM p f xz.2).
 Proof.
 rewrite /unfoldM Fix_eq; last first.
   move => b g g' H; rewrite /unfoldM'; case: ifPn => // pb.
   bind_ext => -[a' b'] /=.
   destruct Bool.bool_dec => //; by rewrite H.
-rewrite /unfoldM'; case: ifPn => // py; bind_ext => -[a' b'] /=.
-destruct Bool.bool_dec; first by rewrite e.
-by move/negP/negbTE : n => ->.
+rewrite /unfoldM'; case: ifPn => // py.
+rewrite decr_size /bassert 2!bindA; bind_ext => -[a' b'].
+rewrite /assert /guard /=; case: ifPn => b'y; last by rewrite !bindfailf.
+by rewrite bindskipf 2!bindretf /= b'y.
 Qed.
+
+End unfoldM_failMonad.
 
 End unfoldM.
 Arguments unfoldM : simpl never.
@@ -742,12 +769,6 @@ Let RDD A := seq (Partition A).
 
 Variable M : altCIMonad.
 
-Definition aggregate A B (b : B) (mul : B -> A -> B) (add : B -> B -> B) : RDD A -> M B :=
-  foldl add b (o) (perm \o map (foldl mul b)).
-
-Definition deterministic A B (f : A -> M B) :=
-  exists g : A -> B, f = Ret \o g.
-
 Lemma insert_rcons A (x : A) y xs :
   insert x (rcons xs y) = Ret (xs ++ [:: y; x]) [~i] (rcons^~ y ($) insert x xs) :> M _.
 Proof.
@@ -812,14 +833,20 @@ Qed.
 
 End foldl_perm_deterministic.
 
+Definition aggregate A B (b : B) (mul : B -> A -> B) (add : B -> B -> B) : RDD A -> M B :=
+  foldl add b (o) (perm \o map (foldl mul b)).
+
+Definition deterministic A B (f : A -> M B) :=
+  exists g : A -> B, f = Ret \o g.
+
 Lemma aggregateP A B (b : B) (mul : B -> A -> B) (add : B -> B -> B) :
   associative add -> commutative add -> left_id b add -> right_id b add ->
-  aggregate b mul add = Ret \o foldl add b \o map (foldl mul b) :> (_ -> M _).
+  deterministic (aggregate b mul add).
 Proof.
 move=> addA addC add0b addb0.
-rewrite /aggregate.
-(* NB(rei): the original paper is using perm_map (lemma 3.1) and (7) but that does not seem useful*)
-rewrite -[in RHS]lemma_34; last by move=> x y w; rewrite -addA (addC x) addA.
+rewrite /deterministic; exists (foldl add b \o map (foldl mul b)).
+(* NB(rei): mu2017 is using perm_map (lemma 3.1) and (7) but that does not seem useful*)
+rewrite compA -[in RHS]lemma_34; last by move=> x ??; rewrite -addA (addC x) addA.
 by [].
 Qed.
 
@@ -878,10 +905,6 @@ Qed.
 End nondet_big.
 
 (* gibbons2011icfp Sect. 4.4 *)
-
-(* NB(rei): to be used to specify select *)
-Definition decr_size (M : failMonad) A B (f : seq B -> M (A * seq B)%type) :=
-  forall b, bassert (fun x => size x.2 < size b) (f b) = f b.
 
 Section select.
 Variables (M : nondetMonad) (A : Type).
@@ -943,7 +966,7 @@ congr (_ [~i] _).
 rewrite bind_fmap bindA; bind_ext => -[x1 x2]; by rewrite bindretf.
 Qed.
 
-Lemma decr_size_select : decr_size select.
+Lemma decr_size_select : bassert_size select.
 Proof.
 case => [|h t]; first by rewrite !selectE /= fmap_fail /bassert bindfailf.
 rewrite /bassert selectE bind_fmap /fmap; bind_ext => -[x y] /=.
@@ -991,27 +1014,19 @@ Arguments perms {M} {A}.
 Section mu_perm.
 Variables (A : Type) (M : nondetMonad).
 
-Definition mu_perm : seq A -> M (seq A) := unfoldM (@nilp _) (@select M A).
+Definition mu_perm : seq A -> M (seq A) :=
+  unfoldM (@well_founded_size _) (@nilp _) select.
 
-Lemma mu_perm_nil : mu_perm [::] = Ret [::].
-Proof. by rewrite /mu_perm unfoldME. Qed.
-
-Lemma mu_perm_cons h t : mu_perm (h :: t) =
-  do a <- select (h :: t) ; do b <- mu_perm a.2; Ret (a.1 :: b).
-Proof.
-rewrite /mu_perm unfoldME /= 2!alt_bindDl; congr (_ [~i] _).
-  by rewrite !bindretf /= ltnS leqnn.
-rewrite !bindA -(@decr_size_select M _ t) /bassert !bindA; bind_ext => -[a b] /=.
-rewrite /assert /guard /=; case: ifPn => bt; last by rewrite !bindfailf.
-by rewrite !bindretf /= ltnS bt.
-Qed.
+Lemma mu_permE s : mu_perm s = if s isn't h :: t then Ret [::]
+  else do a <- select (h :: t) ; do b <- mu_perm a.2; Ret (a.1 :: b).
+Proof. rewrite /mu_perm unfoldME; [by case: s | exact: decr_size_select]. Qed.
 
 Lemma perms_mu_perm s : perms s = mu_perm s.
 Proof.
 move Hn : (size s) => n.
 elim: n s Hn => [|n IH [//|h t] /= [tn]].
-  case => //; by rewrite permsE mu_perm_nil.
-rewrite tpermsE mu_perm_cons selectE bind_fmap; bind_ext => -[a b].
+  case => //; by rewrite permsE mu_permE.
+rewrite tpermsE mu_permE selectE bind_fmap; bind_ext => -[a b].
 by rewrite /= IH // size_tuple.
 Qed.
 

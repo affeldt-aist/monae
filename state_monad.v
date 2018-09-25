@@ -19,6 +19,7 @@ Unset Printing Implicit Defensive.
 - Module MonadFreshFail.
     example of tree relabeling
 - n-queens puzzle by Mu
+  section 4-5 except monadic hylo-fusion
 *)
 
 Module MonadState.
@@ -949,7 +950,6 @@ Proof. by rewrite dlabels_relabel_is_fold symbols_size_is_fold. Qed.
 
 End tree_relabelling.
 
-(* mu2017, section 4-5 except monadic hylo-fusion *)
 Section mu2017.
 
 (* TODO: move *)
@@ -980,7 +980,7 @@ move=> s; rewrite /safe /safeAcc.
 by rewrite (sub_all _ (@all_predT _ _)) // (sub_all _ (@all_predT _ _)) // !andbT.
 Qed.
 
-Definition queens_ok (i_xus_yds : (Z * seq Z * seq Z)%type) :=
+Definition queens_ok (i_xus_yds : Z * seq Z * seq Z) :=
   let: (_, xus, yds) := i_xus_yds in
   match xus, yds with
   | x :: us, y :: ds => (x \notin us) && (y \notin ds)
@@ -1096,11 +1096,12 @@ End loop.
 Section section_51.
 
 Variables (S : Type) (M : nondetStateMonad S).
-Variables (A : Type) (op : S -> A -> S) (ok : ssrbool.pred S).
+Variables (A : Type) (op : S -> A -> S) (ok : pred S).
 
-Lemma assertE (st : S) (xs : seq A) : assert (all ok \o scanl op st) xs =
+Lemma assert_all_scanl (st : S) (xs : seq A) :
+  assert (all ok \o scanl op st) xs =
   Get >>= (fun ini => loopp _ op st xs >>=
-    (fun ys => guard (all ok ys) >> Ret xs >>= overwrite ini) : M _).
+    (fun ys => guard (all ok ys) >> Ret xs >>= overwrite ini)) :> M _.
 Proof.
 rewrite /assert.
 rewrite guardsC; last exact: bindmfail.
@@ -1229,7 +1230,7 @@ rewrite mu_queensE.
 transitivity (perms (map Z.of_nat (iota 0 n)) >>= (fun xs => Get >>=
   (fun ini => Put (0, [::], [::])%Z >> foldr opdot_queens (Ret [::]) xs >>= overwrite ini))).
   bind_ext => s /=.
-  rewrite assertE. (* NB: uses theorem 4.1 *)
+  rewrite assert_all_scanl. (* NB: uses theorem 4.1 *)
   bind_ext => st.
   rewrite 2!bindA.
   bind_ext; case.
