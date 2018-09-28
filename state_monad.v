@@ -1206,8 +1206,7 @@ transitivity (do st <- Get; guard (ok (op st x)) >>
   rewrite fcomp_ext fmap_bind /=.
   bind_ext; case.
   by rewrite fcomp_ext fmap_ret.
-rewrite /= -(IH).
-by rewrite /opdot !bindA.
+by rewrite /= -IH /opdot !bindA.
 Qed.
 
 End section_51.

@@ -524,7 +524,7 @@ Definition bassert_size {M : failMonad} A B
   (f : seq B -> M (A * seq B)%type) :=
   @bassert_hylo M _ _ f predT (fun _ _ x y => size x < size y).
 
-(* specialization of section 4.3 of mu2017 *)
+(* from section 4.3 of mu2017: terminating unfold *)
 Section unfoldM.
 
 Local Open Scope mu_scope.
@@ -551,11 +551,10 @@ End unfoldM_monad.
 Section unfoldM_failMonad.
 Variables (M : failMonad) (A B' : Type).
 Let B := seq B'.
+Notation unfoldM := (@unfoldM M A _ _ (@well_founded_size B')).
 Variables (p : pred B) (f : B -> M (A * B)%type).
 
 Hypothesis decr_size : bassert_size f.
-
-Notation unfoldM := (@unfoldM M A _ _ (@well_founded_size B')).
 
 Lemma unfoldME y : unfoldM p f y =
   if p y then Ret [::]
@@ -991,7 +990,8 @@ move=> s H h t hts [y ys]; by rewrite size_tuple -hts /= ltnS leqnn.
 Qed.
 Next Obligation. by []. Qed.
 
-Definition perms : seq A -> M (seq A) := Fix (@well_founded_size _) (fun _ => M _) perms'.
+Definition perms : seq A -> M (seq A) :=
+  Fix (@well_founded_size _) (fun _ => M _) perms'.
 
 Lemma tpermsE s : perms s = if s isn't h :: t then Ret [::] else
   do y_ys <- tselect (h :: t); do zs <- perms y_ys.2; Ret (y_ys.1 :: zs).
