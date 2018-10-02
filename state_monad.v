@@ -13,14 +13,14 @@ Unset Printing Implicit Defensive.
 (* Contents:
 - Module MonadState.
     n-queens example
-- Module MonadStateNondet.
+- Module MonadNondetState.
     state + nondeterminism
     eight queens puzzle
 - Module MonadFresh.
-- Module MonadFreshFail.
+- Module MonadFailFresh.
     example of tree relabeling
 - n-queens puzzle by Mu
-  sections 4-5
+    sections 4-5
 *)
 
 Module MonadState.
