@@ -1,4 +1,5 @@
 Require Import FunctionalExtensionality Coq.Program.Tactics ProofIrrelevance.
+Require Import Coq.Logic.IndefiniteDescription.
 Require Classical.
 Require Import ssreflect ssrmatching ssrfun ssrbool.
 From mathcomp Require Import eqtype ssrnat seq choice fintype tuple.
@@ -19,7 +20,7 @@ Unset Printing Implicit Defensive.
 - Module MonadFreshFail.
     example of tree relabeling
 - n-queens puzzle by Mu
-  section 4-5 except monadic hylo-fusion
+  sections 4-5
 *)
 
 Module MonadState.
@@ -287,6 +288,10 @@ Lemma alt_bindDr : Laws.bind_right_distributive (@Bind M) [~p].
 Proof. by case: M => m [? ? []]. Qed.
 End nondetstate_lemmas.
 
+Lemma getput_prepend S (M : nondetStateMonad S) A (m : M A) :
+  m = do x <- Get; (Put x >> m).
+Proof. by rewrite -{2}(bindskipf m) -bindA getputskip 2!bindskipf. Qed.
+
 Section state_commute.
 
 Variables (S : Type) (M : nondetStateMonad S).
@@ -377,9 +382,74 @@ Qed.
 
 End state_commute.
 
-Lemma getput_prepend S (M : nondetStateMonad S) A (m : M A) :
-  m = do x <- Get; (Put x >> m).
-Proof. by rewrite -{2}(bindskipf m) -bindA getputskip 2!bindskipf. Qed.
+Definition nondetState_sub {S} {M : nondetStateMonad S} {A} (n : M A) : Type :=
+  {m | ndDenote m = n}.
+
+Lemma select_is_nondetState S (M : nondetStateMonad S) A (s : seq A) :
+  nondetState_sub (select s : M _).
+Proof.
+elim: s => [/= | u v [x /= <-]]; first by exists (@ndFail _).
+by exists (ndAlt (ndRet (u, v)) (ndBind x (fun x => ndRet (x.1, u :: x.2)))).
+Qed.
+
+Lemma unfoldM_is_nondetState S (M : nondetStateMonad S) A B
+  (f : seq B -> M (A * seq B)%type) :
+  (forall s, nondetState_sub (f s)) -> bassert_size f ->
+  forall s, nondetState_sub (unfoldM (@well_founded_size B) (@nilp _) f s).
+Proof.
+move=> Hf size_f s.
+apply/constructive_indefinite_description.
+move: s; apply: (well_founded_induction (@well_founded_size _)) => s IH.
+have {IH}IH : forall x, size x < size s ->
+  { m | ndDenote m = unfoldM (@well_founded_size B) (@nilp _) f x}.
+  move=> x xs; exact/constructive_indefinite_description/IH.
+case: s IH => [|h t] IH.
+  rewrite unfoldME //=; by exists (ndRet [::]).
+rewrite unfoldME //=.
+case: (Hf (h :: t)) => x Hx.
+rewrite -Hx /fmap.
+set g := fun y => match Bool.bool_dec (size y < size (h :: t)) true with
+               | left H => let: exist x _ := IH _ H in x
+               | _ => ndRet [::]
+               end.
+refine (ex_intro _ (ndBind x (fun x => ndBind (g x.2) (@ndRet _ \o cons x.1 ))) _) => /=.
+rewrite Hx size_f /bassert !bindA.
+bind_ext => -[x1 x2].
+rewrite /assert /guard /= ltnS.
+case: ifPn => b1b2; last by rewrite !bindfailf.
+rewrite !bindskipf !bindretf /= /g.
+case: Bool.bool_dec => //= x2t.
+by case: (IH x2) => // x0 <-.
+Qed.
+
+(* theorem 5.2, mu2017 *)
+Lemma commute_nondetState {S} {M : nondetStateMonad S}
+  A (m : M A) B (n : M B) C (f : A -> B -> M C) :
+  nondetState_sub m -> commute m n f.
+Proof.
+case => x.
+elim: x m n f => [{A}A a m n f <-| B0 {A}A n0 H0 n1 H1 m n2 f <- |
+  A0 m n f <- | A0 n0 H0 n1 H1 m n2 f <-].
+- rewrite /commute bindretf.
+  by rewrite_ bindretf.
+- rewrite /commute /= !bindA.
+  transitivity (do x <- ndDenote n0; do y <- n2 : M _; do x0 <- ndDenote (n1 x);
+    f x0 y).
+    bind_ext => s.
+    by rewrite (H1 s).
+  rewrite H0 //.
+  bind_ext => b.
+  by rewrite bindA.
+- rewrite /commute /= bindfailf.
+  transitivity (do y <- n; Fail : M C); first by rewrite bindmfail.
+  bind_ext => b.
+  by rewrite bindfailf.
+- rewrite /commute /= alt_bindDl.
+  transitivity (do y <- n2; (do x <- ndDenote n0 ; f x y) [~i] do x <- ndDenote n1; f x y); last first.
+    bind_ext => a.
+    by rewrite alt_bindDl.
+  by rewrite alt_bindDr H0 // H1.
+Qed.
 
 Section queens_statefully_nondeterministically.
 
@@ -1245,5 +1315,145 @@ by rewrite !bindA.
 Qed.
 
 End section_52.
+
+Definition seed_select {M : nondetStateMonad (Z * seq Z * seq Z)%type} :=
+  fun (p : pred (seq Z)) (f : seq Z -> M (Z * seq Z)%type)
+  (a b : seq Z) => size a < size b.
+
+(* direct proof of theorem 4.2 *)
+Section theorem_42.
+Variables (M : nondetStateMonad (Z * seq Z * seq Z)%type).
+
+Local Open Scope mu_scope.
+
+Notation unfoldM := (unfoldM (@well_founded_size _)).
+
+Let op := @opdot_queens M.
+Let p := @nilp Z.
+
+Lemma base_case y : p y -> (foldr op (Ret [::]) >=> unfoldM p select) y = Ret [::].
+Proof.
+move=> py.
+transitivity (foldr op (Ret [::]) =<< Ret [::]).
+  rewrite /kleisli /rbind bindretf /= join_fmap unfoldME; last exact: decr_size_select.
+  by rewrite py bindretf.
+by rewrite /rbind bindretf.
+Qed.
+
+Lemma theorem_42 :
+  (foldr op (Ret [::]) >=> unfoldM p select) =1
+  @hyloM _ _ _ _ op [::] p select seed_select (@well_founded_size _).
+Proof.
+apply: (well_founded_induction (@well_founded_size _)) => y IH.
+rewrite hyloME; last exact: decr_size_select.
+case/boolP : (p y) => py.
+  by rewrite base_case.
+rewrite /rkleisli /kleisli /= join_fmap.
+rewrite unfoldME; last exact: decr_size_select.
+rewrite (negbTE py) bindA.
+rewrite(@decr_size_select _ _) /bassert !bindA; bind_ext => -[b a] /=.
+rewrite /assert /guard /=.
+case: ifPn => ay; last by rewrite !bindfailf.
+rewrite bindskipf !bindretf /= -IH // bind_fmap /kleisli /= join_fmap.
+suff : do x <- unfoldM p select a; op b (foldr op (Ret [::]) x) =
+  op b (do x <- unfoldM p select a; foldr op (Ret [::]) x) by done.
+rewrite {ay}.
+move: a b.
+apply: (well_founded_induction (@well_founded_size _)) => a IH' b.
+destruct a as [|u v] => //.
+  rewrite unfoldME /=; last exact: decr_size_select.
+  by rewrite !bindretf /=.
+rewrite unfoldME /=; last exact: decr_size_select.
+rewrite !bindA.
+transitivity (do x <- Ret (u, v) [~i] (do y_ys <- select v; Ret (y_ys.1, u :: y_ys.2));
+  op b (do x0 <- cons x.1 ($) unfoldM p select x.2; foldr op (Ret [::]) x0)); last first.
+  apply/esym.
+  rewrite {1}/op /opdot_queens /opdot fmap_bind.
+  transitivity (do st <- Get;
+  (guard (queens_ok (queens_next st b)) >> do x <- Ret (u, v) [~i] (do y_ys <- select v; Ret (y_ys.1, u :: y_ys.2));
+   (Put (queens_next st b)) >>
+  ((cons b
+    (o) (fun x : Z * seq Z => do x0 <- cons x.1 ($) unfoldM p select x.2; foldr op (Ret [::]) x0)) x))).
+    bind_ext => st.
+    rewrite !bindA.
+    bind_ext; case.
+    rewrite -commute_nondetState //.
+    case: (@select_is_nondetState _ M _ v) => x <-.
+    by exists (ndAlt (ndRet (u, v)) (ndBind x (fun y => ndRet (y.1, u :: y.2)))).
+  transitivity (do st <- Get;
+  (do x <- Ret (u, v) [~i] (do y_ys <- select v; Ret (y_ys.1, u :: y_ys.2)) : M _;
+  guard (queens_ok (queens_next st b)) >>
+   Put (queens_next st b) >>
+   (cons b
+    (o) (fun x0 : Z * seq Z => do x1 <- cons x0.1 ($) unfoldM p select x0.2; foldr op (Ret [::]) x1))
+     x)).
+    bind_ext => st.
+    rewrite -bindA guardsC; last exact: bindmfail.
+    rewrite !bindA.
+    bind_ext => x.
+    rewrite !bindA.
+    bind_ext; case.
+    by rewrite bindretf.
+  rewrite -commute_nondetState //.
+  case: (@select_is_nondetState _ M _ v) => x <-.
+  by exists (ndAlt (ndRet (u, v)) (ndBind x (fun y => ndRet (y.1, u :: y.2)))).
+bind_ext => x.
+rewrite {1}/op /opdot_queens /opdot.
+rewrite commute_nondetState; last first.
+  rewrite /fmap.
+  case: (unfoldM_is_nondetState (@select_is_nondetState _ M Z) (@decr_size_select M _) x.2).
+  move=> m <-.
+  by exists (ndBind m (fun y => ndRet (x.1 :: y))).
+rewrite {2}/op /opdot_queens /opdot.
+bind_ext => st.
+rewrite commute_nondetState //; last first.
+   case: (unfoldM_is_nondetState (@select_is_nondetState _ M Z) (@decr_size_select _ _) x.2).
+   move=> m <-.
+   by exists (ndBind m (fun y => ndRet (x.1 :: y))).
+bind_ext; case.
+rewrite !bind_fmap !fmap_bind.
+by bind_ext.
+Qed.
+
+End theorem_42.
+
+Section section_52_contd.
+
+Variables (M : nondetStateMonad (Z * seq Z * seq Z)%type).
+
+Local Open Scope mu_scope.
+
+Lemma queensBodyE : queensBody M =
+  hyloM (@opdot_queens M) [::] (@nilp _) select seed_select (@well_founded_size _).
+Proof.
+rewrite /queensBody; apply functional_extensionality.
+case => [|h t].
+  rewrite /= permsE /= hyloME; last 2 first.
+    by rewrite bindretf.
+    exact: decr_size_select.
+rewrite [h :: t]lock -theorem_42.
+by rewrite /kleisli /= join_fmap perms_mu_perm.
+Qed.
+
+Lemma queensBodyE' xs : queensBody M xs = if xs is [::] then Ret [::] else
+  select xs >>= (fun xys =>
+  Get >>= (fun st => guard (queens_ok (queens_next st xys.1)) >>
+  Put (queens_next st xys.1) >> (cons xys.1 ($) queensBody M xys.2))).
+Proof.
+case: xs => [|h t].
+  rewrite queensBodyE // hyloME //; exact: decr_size_select.
+rewrite {1}queensBodyE hyloME; last exact: decr_size_select.
+rewrite {-1}[h :: t]lock /= decr_size_select /bassert 2!bindA.
+bind_ext => -[x ys] /=.
+rewrite /assert /guard /=.
+case: ifPn => ysht; last by rewrite !bindfailf.
+rewrite bindskipf !bindretf /opdot_queens /opdot.
+bind_ext => st.
+rewrite !bindA; bind_ext; case.
+bind_ext; case => /=.
+by rewrite queensBodyE.
+Qed.
+
+End section_52_contd.
 
 End mu2017.

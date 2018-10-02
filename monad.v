@@ -575,6 +575,44 @@ End unfoldM_failMonad.
 End unfoldM.
 Arguments unfoldM : simpl never.
 
+(* from section 4.4 of mu2017 *)
+Section hyloM.
+Variables (M : failMonad) (A B C : Type).
+Variables (op : A -> M C -> M C) (e : C) (p : pred B) (f : B -> M (A * B)%type).
+Variable seed : forall (p : pred B) (f : B -> M (A * B)%type), B -> B -> bool.
+
+Definition hyloM' (y : B) (g : forall y', seed p f y' y -> M C) : M C :=
+  if p y then Ret e else f y >>=
+    (fun xz => match Bool.bool_dec (seed p f xz.2 y) true with
+            | left H => op xz.1 (g xz.2 H)
+            | right H => Ret e
+            end).
+
+Hypothesis well_founded_seed : well_founded (seed p f).
+
+Definition hyloM := Fix well_founded_seed (fun _ => M _) hyloM'.
+
+Hypothesis Hdecr_seed : bassert_hylo f p seed.
+
+Lemma hyloME y : hyloM y = if p y then
+                             Ret e
+                           else
+                             f y >>= (fun xz => op xz.1 (hyloM xz.2)).
+Proof.
+rewrite /hyloM Fix_eq; last first.
+  move => b g g' K; rewrite /hyloM'; case: ifPn => // pb.
+  bind_ext => -[a' b'] /=.
+  destruct Bool.bool_dec => //.
+  by rewrite K.
+rewrite {1}/hyloM'; case: ifPn => // py.
+rewrite Hdecr_seed /bassert !bindA /assert /guard; bind_ext => -[b' a'].
+case: ifPn => Hseed; last by rewrite !bindfailf.
+by rewrite !bindskipf !bindretf Hseed.
+Qed.
+
+End hyloM.
+Arguments hyloM {M} {A} {B} {C} _ _ _ _ _.
+
 Module MonadAlt.
 Record mixin_of (M : monad) : Type := Mixin {
   op_alt : forall A, M A -> M A -> M A ;
@@ -636,6 +674,13 @@ Fixpoint subs (s : seq A) : M (seq A) :=
   let t' := subs t in
   fmap (cons h) t' [~i] t'.
 
+Fixpoint SUBS (s : seq A) : Monad.m (MonadAlt.baseType M) _ :=
+  if s isn't h :: t then @Monad.ret (MonadAlt.baseType M) _ [::] else
+  let t' : Monad.m (MonadAlt.baseType M) _ := SUBS t in
+  MonadAlt.alt (@fmap (MonadAlt.baseType M) _ _ (cons h) t') t'.
+
+Goal subs = SUBS. by []. Abort.
+
 Lemma subs_cons x (xs : seq A) :
   subs (x :: xs) = let t' := subs xs in fmap (cons x) t' [~i] t'.
 Proof. by []. Qed.
@@ -643,7 +688,8 @@ Proof. by []. Qed.
 Lemma subs_cat (xs ys : seq A) :
   subs (xs ++ ys) = do us <- subs xs; do vs <- subs ys; Ret (us ++ vs).
 Proof.
-elim: xs ys => [ys |x xs IH ys]; first by rewrite /= bindretf bindmret.
+elim: xs ys => [ys |x xs IH ys].
+  by rewrite /= bindretf bindmret.
 rewrite [in RHS]subs_cons.
 cbv zeta.
 rewrite alt_bindDl.
@@ -678,12 +724,10 @@ Fixpoint insert {A} (a : A) (s : seq A) : M (seq A) :=
   Ret (a :: h :: t) [~i] (cons h ($) insert a t).
 Arguments insert : simpl never.
 
-Lemma insert_nil A (a : A) : insert a [::] = Ret [:: a] :> M _.
-Proof. by []. Qed.
-
-Lemma insert_cons A (a : A) x xs :
-  insert a (x :: xs) = Ret (a :: x :: xs) [~i] (cons x ($) insert a xs) :> M _.
-Proof. by []. Qed.
+Lemma insertE A (a : A) s :
+  insert a s = if s isn't h :: t then Ret [:: a] else
+  Ret (a :: h :: t) [~i] (cons h ($) insert a t).
+Proof. by case: s. Qed.
 
 Fixpoint perm {A} (s : seq A) : M (seq A) :=
   if s isn't h :: t then Ret [::] else perm t >>= insert h.
@@ -692,9 +736,9 @@ Lemma insert_map A B (f : A -> B) (a : A) :
   insert (f a) \o map f = map f (o) insert a :> (_ -> M _).
 Proof.
 apply functional_extensionality; elim => [|y xs IH].
-  by rewrite [in LHS]/= fcomp_ext 2!insert_nil fmap_ret.
+  by rewrite [in LHS]/= fcomp_ext 2!insertE fmap_ret.
 apply/esym.
-rewrite fcomp_ext insert_cons. (* definition of insert *)
+rewrite fcomp_ext insertE. (* definition of insert *)
 rewrite {1}/fmap alt_bindDl -!/(fmap _ _). (* TODO: lemma? *)
 (* first branch *)
 rewrite fmap_ret [ in X in X [~i] _ ]/=.
@@ -705,7 +749,7 @@ rewrite fmap_comp.
 rewrite -(fcomp_ext (map f)).
 rewrite -IH.
 rewrite [RHS]/=.
-by rewrite insert_cons.
+by rewrite insertE.
 Qed.
 
 Lemma perm_map A B (f : A -> B) :
@@ -772,8 +816,8 @@ Lemma insert_rcons A (x : A) y xs :
   insert x (rcons xs y) = Ret (xs ++ [:: y; x]) [~i] (rcons^~ y ($) insert x xs) :> M _.
 Proof.
 elim: xs x y => [/= x y|xs1 xs2 IH x y].
-  by rewrite insert_cons !insert_nil !fmap_ret /= altC.
-rewrite /= !insert_cons /= IH /=.
+  by rewrite !insertE !fmap_ret /= altC.
+rewrite /= insertE /= IH /=.
 rewrite naturality_nondeter fmap_ret.
 rewrite naturality_nondeter fmap_ret.
 rewrite -!fmap_comp /=.
@@ -788,7 +832,7 @@ Hypothesis opP : forall (x y : A) (w : B), (w (.) x) (.) y = (w (.) y) (.) x.
 Lemma lemma_35 x (b : B) : foldl op b (o) insert x = Ret \o foldl op b \o (rcons^~ x) :> (_ -> M _).
 Proof.
 apply functional_extensionality => xs; move: xs b; elim/last_ind => [/=|xs y IH] b.
-  by rewrite fcomp_ext insert_nil fmap_ret.
+  by rewrite fcomp_ext insertE fmap_ret.
 rewrite fcomp_ext.
 rewrite insert_rcons.
 rewrite naturality_nondeter fmap_ret.
@@ -911,14 +955,14 @@ Implicit Types s : seq A.
 
 Fixpoint select s : M (A * seq A)%type :=
   if s isn't h :: t then Fail else
-  (Ret (h, t) [~i] do y_ys <- select t; Ret (y_ys.1, h :: y_ys.2)).
+  (Ret (h, t) [~i] do x <- select t; Ret (x.1, h :: x.2)).
 
 Local Obligation Tactic := idtac.
 (* variant of select that keeps track of the length, useful to write perms *)
 Program Fixpoint tselect s : M (A * (size s).-1.-tuple A)%type :=
   if s isn't h :: t then Fail else
   (Ret (h, @Tuple (size t) A t _) [~i]
-  do y_ys <- tselect t; Ret (y_ys.1, @Tuple (size t) A _ _ (* h :: y_ys.2 *))).
+  do x <- tselect t; Ret (x.1, @Tuple (size t) A _ _ (* h :: x.2 *))).
 Next Obligation. by []. Defined.
 Next Obligation.
 move=> s h [|h' t] hts [x1 x2]; [exact: [::] | exact: (h :: x2)].
@@ -984,7 +1028,7 @@ Local Obligation Tactic := idtac.
 Program Definition perms' s
   (f : forall s', size s' < size s -> M (seq A)) : M (seq A) :=
   if s isn't h :: t then Ret [::] else
-    do y_ys <- tselect (h :: t); do zs <- f y_ys.2 _; Ret (y_ys.1 :: zs).
+    do x <- tselect (h :: t); do y <- f x.2 _; Ret (x.1 :: y).
 Next Obligation.
 move=> s H h t hts [y ys]; by rewrite size_tuple -hts /= ltnS leqnn.
 Qed.
@@ -994,14 +1038,14 @@ Definition perms : seq A -> M (seq A) :=
   Fix (@well_founded_size _) (fun _ => M _) perms'.
 
 Lemma tpermsE s : perms s = if s isn't h :: t then Ret [::] else
-  do y_ys <- tselect (h :: t); do zs <- perms y_ys.2; Ret (y_ys.1 :: zs).
+  do x <- tselect (h :: t); do y <- perms x.2; Ret (x.1 :: y).
 Proof.
 rewrite {1}/perms Fix_eq //; [by case: s|move=> s' f g H].
 by rewrite /perms'; destruct s' => //=; bind_ext=> x; rewrite H.
 Qed.
 
 Lemma permsE s : perms s = if s isn't h :: t then Ret [::] else
-  do y_ys <- select (h :: t); do zs <- perms y_ys.2; Ret (y_ys.1 :: zs).
+  do x <- select (h :: t); do y <- perms x.2; Ret (x.1 :: y).
 Proof.
 rewrite tpermsE; case: s => // h t.
 by rewrite selectE bind_fmap.
@@ -1032,6 +1076,37 @@ Qed.
 
 End mu_perm.
 Arguments mu_perm {A} {M}.
+
+(* definition 5.1, mu2017 *)
+Definition commute {M : monad} A B (m : M A) (n : M B) C (f : A -> B -> M C) : Prop :=
+  m >>= (fun x => n >>= (fun y => f x y)) = n >>= (fun y => m >>= (fun x => f x y)) :> M _.
+
+Module SyntaxNondet.
+
+Inductive t : Type -> Type :=
+| ret : forall A, A -> t A
+| bind : forall B A, t B -> (B -> t A) -> t A
+| fail : forall A, t A
+| alt : forall A, t A -> t A -> t A.
+
+Fixpoint denote {M : nondetMonad} {A} (m : t A) : M A :=
+  match m with
+  | ret A a => Ret a
+  | bind A B m f => denote m >>= (fun x => denote (f x))
+  | fail A => Fail
+  | alt A m1 m2 => denote m1 [~i] denote m2
+  end.
+
+Module Exports.
+Notation nondetSyntax := t.
+Notation ndAlt := alt.
+Notation ndRet := ret.
+Notation ndBind := bind.
+Notation ndFail := fail.
+Notation ndDenote := denote.
+End Exports.
+End SyntaxNondet.
+Export SyntaxNondet.Exports.
 
 Module MonadExcept.
 Record mixin_of (M : failMonad) : Type := Mixin {
