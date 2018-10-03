@@ -13,11 +13,12 @@ Unset Printing Implicit Defensive.
 (* Contents:
 - Module MonadState.
     n-queens example
-- Module MonadStateNondet.
+- Module MonadStateRun.
+- Module MonadNondetState.
     state + nondeterminism
     eight queens puzzle
 - Module MonadFresh.
-- Module MonadFreshFail.
+- Module MonadFailFresh.
     example of tree relabeling
 - n-queens puzzle by Mu
   sections 4-5
@@ -211,7 +212,6 @@ Definition test_nonce0 (M : stateMonad nat) : M nat :=
 Reset test_nonce0.
 Fail Check test_nonce0.
 
-(* NB(rei): not used yet *)
 Module MonadStateRun.
 Record mixin_of S (M : stateMonad S) : Type := Mixin {
   run0 : forall A, M A -> S -> A * S ;
