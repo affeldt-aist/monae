@@ -39,8 +39,8 @@ induction p as [ A a | A B p IHp g IHg | A b p1 IHp1 p2 IHp2 | | s0 | t ]; cbn;
  intros s s' l1 l a' Heq.
 - exists [].
   rewrite app_nil_r.
-  by move: Heq; rewrite runret => -[].
-- rewrite runbind in Heq.
+  by move: Heq; rewrite runstret => -[].
+- rewrite runstbind in Heq.
   case_eq (Run (denotation p) (s, l1)).
   intros a (s0, l0) Hp.
   rewrite Hp in Heq.
@@ -54,12 +54,12 @@ induction p as [ A a | A B p IHp g IHg | A b p1 IHp1 p2 IHp2 | | s0 | t ]; cbn;
 - destruct b; [ eapply IHp1 | eapply IHp2 ]; exact Heq.
 - exists [].
   rewrite app_nil_r.
-  by move: Heq; rewrite runget => -[].
+  by move: Heq; rewrite runstget => -[].
 - exists [].
   rewrite app_nil_r.
-  by move: Heq; rewrite runput => -[].
+  by move: Heq; rewrite runstput => -[].
 - exists [t].
-  by move: Heq; rewrite runmark => -[].
+  by move: Heq; rewrite runstmark => -[].
 Qed.
 
 (* TODO: Ca serait une équation dans la spec de MonadStateTrace
@@ -70,15 +70,15 @@ Lemma denotation_prefix_independent A (p : program A) s l1 l2 :
   (res.1, (res.2.1, l1 ++ res.2.2)).
 Proof.
 elim: p s l1 l2 => /= {A} [A a|A B p1 IH1 p2 IH2|A b p1 IH1 p2 IH2||s'|t] s l1 l2.
-by rewrite !runret.
-rewrite [in LHS]runbind [in LHS]IH1.
-rewrite [in RHS]runbind.
+by rewrite !runstret.
+rewrite [in LHS]runstbind [in LHS]IH1.
+rewrite [in RHS]runstbind.
 case: (Run (denotation p1) (s, l2)) => a' [s' l'] /=.
 by rewrite IH2.
 by case: ifPn => _; [rewrite IH1|rewrite IH2].
-by rewrite !runget.
-by rewrite !runput.
-by rewrite !runmark !seq.cats1 seq.rcons_cat.
+by rewrite !runstget.
+by rewrite !runstput.
+by rewrite !runstmark !seq.cats1 seq.rcons_cat.
 Qed.
 
 (* TODO: Ca serait une équation dans la spec de MonadStateTrace
@@ -89,8 +89,8 @@ Lemma denotation_continuation_prefix_independent k : forall s l1 l2,
   (res.1, (res.2.1, l1 ++ res.2.2)).
 Proof.
 elim: k => // [A a s l1 l2|A p k IH s l1 l2].
-by rewrite !runret.
-rewrite /= !runbind.
+by rewrite !runstret.
+rewrite /= !runstbind.
 rewrite denotation_prefix_independent /=.
 destruct (Run (denotation p) (s, l2)) as [ a (s', l) ].
 by rewrite IH.
@@ -109,7 +109,7 @@ induction Hstep as
  [ s A a f | s A B p f g | s A p1 p2 k | s A p1 p2 k | s f | s s' f | s t f ];
  intros s1 s2 k1 k2 l [= Hs1 Hk1] [= Hs2 Hk2] Heqo.
 - subst s1 k1 s2 k2.
-  by rewrite /= runbind runret.
+  by rewrite /= runstbind runstret.
 - subst s1 k1 s2 k2.
   cbn.
   by rewrite bindA.
@@ -118,9 +118,9 @@ induction Hstep as
 - subst s1 s2 k1 k2.
   reflexivity.
 - subst s1 k1 s2 k2.
-  by rewrite /= runbind runget.
+  by rewrite /= runstbind runstget.
 - subst s1 k1 s2 k2.
-  by rewrite /= runbind runput.
+  by rewrite /= runstbind runstput.
 - discriminate Heqo.
 Qed.
 
@@ -139,7 +139,7 @@ induction Hstep as
  intros s1 s2 k1 k2 l [= Hs1 Hk1] [= Hs2 Hk2] Heqo; try discriminate Heqo.
 subst s1 k1 s2 k2.
 injection Heqo; intro; subst t.
-by rewrite /= runbind runmark.
+by rewrite /= runstbind runstmark.
 Qed.
 
 Lemma step_star_correct_gen s s' k k' l l' :
@@ -182,9 +182,9 @@ Proof.
 intro Hss.
 apply step_star_correct_gen with (l := []) in Hss.
 move: Hss.
-rewrite /= runret runbind.
+rewrite /= runstret runstbind.
 destruct (Run (denotation p) (s, [])) as [a'' [s'' l'']].
-rewrite runret => Hss.
+rewrite runstret => Hss.
 injection Hss; clear Hss; intros Heq1 Heq2 Heq3.
 apply inj_pair2 in Heq3.
 congruence.
@@ -198,7 +198,7 @@ Proof.
 revert s s' a l1 l2 f.
 induction p as [ A a | A B p IHp g IHg | A b p1 IHp1 p2 IHp2 | |  aa | t ]; cbn;
  intros s s' a' l1 l2 f Heq.
-- rewrite runret in Heq.
+- rewrite runstret in Heq.
   injection Heq; clear Heq; intros; subst a' s'.
   replace l2 with (@nil T) by
    (revert l2 H; induction l1; [ tauto | intros ? [=]; firstorder ]).
@@ -206,7 +206,7 @@ induction p as [ A a | A B p IHp g IHg | A b p1 IHp1 p2 IHp2 | |  aa | t ]; cbn;
 - eapply ss_step_None.
   + apply s_bind.
   + move: Heq.
-    rewrite runbind.
+    rewrite runstbind.
     case_eq (Run (denotation p) (s, l1)).
     intros a (s0, l0) Hp Heq.
 (*    rewrite Hp in Heq.*)
@@ -234,17 +234,17 @@ induction p as [ A a | A B p IHp g IHg | A b p1 IHp1 p2 IHp2 | |  aa | t ]; cbn;
       apply s_cond_false
     | apply IHp2 with (l1 := l1); exact Heq ]
   ].
-- rewrite runget in Heq.
+- rewrite runstget in Heq.
   injection Heq; clear Heq; intros; subst a' s'.
   replace l2 with (@nil T) by
    (revert l2 H; induction l1; [ tauto | intros ? [=]; firstorder ]).
   eapply ss_step_None; [ apply s_get | apply ss_refl ].
-- rewrite runput in Heq.
+- rewrite runstput in Heq.
   injection Heq; clear Heq; intros; subst a' s'.
   replace l2 with (@nil T) by
    (revert l2 H; induction l1; [ tauto | intros ? [=]; firstorder ]).
   eapply ss_step_None; [ apply s_put | apply ss_refl ].
-- rewrite runmark in Heq.
+- rewrite runstmark in Heq.
   injection Heq; clear Heq; intros; subst a' s'.
   replace l2 with [t] by
    (revert l2 H; induction l1; [ tauto | intros ? [=]; firstorder ]).

@@ -4,6 +4,7 @@
 
 Require Import ssreflect ssrfun FunctionalExtensionality Eqdep List.
 Import ListNotations.
+From mathcomp Require Import seq.
 Require Import monad state_monad trace_monad.
 
 Module ModelMonad.
