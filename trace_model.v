@@ -9,7 +9,7 @@ Require Import monad state_monad trace_monad.
 Module ModelMonad.
 
 Section trace.
-Variables T S : Type.
+Variables S T : Type.
 Definition m : Type -> Type := fun A => S * list T -> A * (S * list T).
 Program Definition M := Monad.Pack (@Monad.Class
   m
@@ -23,44 +23,41 @@ End trace.
 
 End ModelMonad.
 
-Module ModelTrace.
+(*Module ModelTrace.
 
 Section trace.
-Variables T S : Type.
-Definition M := @MonadTrace.Mixin _ (ModelMonad.m T S)
+Variables S T : Type.
+Definition M := @MonadTrace.Mixin _ (ModelMonad.m S T)
   (fun log s => (tt, (s.1, s.2 ++ [log]))).
 End trace.
 
-End ModelTrace.
-
-Module ModelState.
-
-Section trace.
-Variables T S : Type.
-Program Definition M := @MonadState.Class
-  _ _ _ (@MonadState.Mixin _ (ModelMonad.M T S)
-  (fun s => (s.1, s)) (* get *)
-  (fun s' s => (tt, (s', s.2))) (* put *)
-  _ _ _ _).
-Next Obligation. apply functional_extensionality; by case. Qed.
-End trace.
-
-End ModelState.
+End ModelTrace.*)
 
 Module ModelStateTrace.
 
 Section trace.
-Local Obligation Tactic := by [].
-Variables T S : Type.
+Local Obligation Tactic := idtac.
+Variables S T : Type.
 Program Definition M :=
-  @MonadStateTrace.Pack _ _ _
-  (@MonadStateTrace.Class _ _ _ _
-  (ModelTrace.M T S)
-  (@MonadStateTrace.Mixin _ _ (MonadState.Pack (ModelState.M T S))
-     _ (* mark *)
-     (fun A m (s : S * list T) => m s) (* run *)
-     _ _ _ _ _)).
-
+  @MonadStateTrace.Pack _ _ _ (@MonadStateTrace.Class _ _ _ (Monad.class (ModelMonad.M S T))
+  (@MonadStateTrace.Mixin _ _ _
+  (fun s => (s.1, s)) (* get *)
+  (fun s' s => (tt, (s', s.2))) (* put *)
+  (fun (log : T) s => (tt, (s.1, s.2 ++ [log]))) (* mark *))).
 End trace.
 
 End ModelStateTrace.
+
+Module ModelStateTraceRun.
+
+Section trace.
+Local Obligation Tactic := by [].
+Variables S T : Type.
+Program Definition M := @MonadStateTraceRun.Pack _ _ _ (@MonadStateTraceRun.Class _ _
+  _ (MonadStateTrace.class (ModelStateTrace.M S T)) (@MonadStateTraceRun.Mixin _ _ _
+(fun A m (s : S * list T) => m s) (* run *)
+_ _ _ _ _
+)).
+End trace.
+
+End ModelStateTraceRun.

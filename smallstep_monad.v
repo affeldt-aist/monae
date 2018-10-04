@@ -9,17 +9,17 @@ Require Import monad state_monad trace_monad smallstep.
 
 Section DenotationalSemantics.
 
-Variables T S : Type.
-Variable M : stateTraceMonad T S.
+Variables S T : Type.
+Variable M : stateTraceRunMonad S T.
 
 Fixpoint denotation {A : Type} (p : program A) : M A :=
   match p with
   | p_ret _ v => Ret v
   | p_bind _ _ m f => do a <- denotation m; denotation (f a)
   | p_cond _ b p1 p2 => if b then denotation p1 else denotation p2
-  | p_get => Get
-  | p_put s' => Put s'
-  | p_mark t => Mark t
+  | p_get => stGet
+  | p_put s' => stPut s'
+  | p_mark t => stMark t
   end.
 
 Fixpoint denotation_continuation (k : continuation) : M (@continuation T S) :=
@@ -263,4 +263,4 @@ Qed.
 
 End DenotationalSemantics.
 
-Arguments denotation [T] [S] _ _.
+Arguments denotation [S] [T] _ _.
