@@ -7,6 +7,8 @@ Require Import ssreflect ssrfun ssrbool FunctionalExtensionality Eqdep List.
 Import ListNotations.
 Require Import monad state_monad trace_monad smallstep.
 
+Set Bullet Behavior "Strict Subproofs".
+
 Section DenotationalSemantics.
 
 Variables T S : Type.
