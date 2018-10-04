@@ -32,11 +32,18 @@ Fixpoint denotation_continuation (k : continuation) : M (@continuation T S) :=
       denotation_continuation (f a)
   end.
 
-(* TODO: Ca serait une équation dans la spec de MonadStateTrace
-   où (denotation p) est remplacé par un M de type m a quelconque *)
-Lemma denotation_prefix_preserved A (p : program A) : forall s s' l1 l a,
-  Run (denotation p) (s, l1) = (a, (s', l)) -> exists l2, l = l1 ++ l2.
+Definition stateTrace_sub {A : Type} (m : M A) : Type :=
+  { p | denotation p = m }.
+
+Definition continuation_sub (m : M continuation) : Type :=
+  {k | denotation_continuation k = m }.
+
+Lemma denotation_prefix_preserved A (m : M A) :
+  stateTrace_sub m -> forall s s' l1 l a,
+  Run m (s, l1) = (a, (s', l)) -> exists l2, l = l1 ++ l2.
 Proof.
+intros [ p Hp ].
+subst m.
 induction p as [ A a | A B p IHp g IHg | A b p1 IHp1 p2 IHp2 | | s0 | t ]; cbn;
  intros s s' l1 l a' Heq.
 - exists [].
@@ -64,13 +71,14 @@ induction p as [ A a | A B p IHp g IHg | A b p1 IHp1 p2 IHp2 | | s0 | t ]; cbn;
   by move: Heq; rewrite runmark => -[].
 Qed.
 
-(* TODO: Ca serait une équation dans la spec de MonadStateTrace
-   où (denotation p) est remplacé par un M de type m a quelconque *)
-Lemma denotation_prefix_independent A (p : program A) s l1 l2 :
-  Run (denotation p) (s, l1 ++ l2) =
-  let res := Run (denotation p) (s, l2) in
+Lemma denotation_prefix_independent A (m : M A) :
+  stateTrace_sub m -> forall s l1 l2,
+  Run m (s, l1 ++ l2) =
+  let res := Run m (s, l2) in
   (res.1, (res.2.1, l1 ++ res.2.2)).
 Proof.
+intros [ p Hp ] s l1 l2.
+subst m.
 elim: p s l1 l2 => /= {A} [A a|A B p1 IH1 p2 IH2|A b p1 IH1 p2 IH2||s'|t] s l1 l2.
 by rewrite !runret.
 rewrite [in LHS]runbind [in LHS]IH1.
@@ -83,17 +91,18 @@ by rewrite !runput.
 by rewrite !runmark !seq.cats1 seq.rcons_cat.
 Qed.
 
-(* TODO: Ca serait une équation dans la spec de MonadStateTrace
-   où (denotation_continuation k) est remplacé par un M de type m a quelconque *)
-Lemma denotation_continuation_prefix_independent k : forall s l1 l2,
-  Run (denotation_continuation k) (s, l1 ++ l2) =
-  let res := Run (denotation_continuation k) (s, l2) in
+Lemma denotation_continuation_prefix_independent m :
+  continuation_sub m -> forall s l1 l2,
+  Run m (s, l1 ++ l2) =
+  let res := Run m (s, l2) in
   (res.1, (res.2.1, l1 ++ res.2.2)).
 Proof.
+intros [ k Hk ].
+subst m.
 elim: k => // [A a s l1 l2|A p k IH s l1 l2].
 by rewrite !runret.
 rewrite /= !runbind.
-rewrite denotation_prefix_independent /=.
+rewrite denotation_prefix_independent /=; [ | now exists p ].
 destruct (Run (denotation p) (s, l2)) as [ a (s', l) ].
 by rewrite IH.
 Qed.
@@ -169,11 +178,12 @@ induction Hstep_star as
   injection Heq2; clear Heq2; intros; subst s2 k2.
   apply step_Some_correct with (l := []) in Hstep.
   rewrite <- app_nil_r at 1.
-  rewrite denotation_continuation_prefix_independent.
+  rewrite denotation_continuation_prefix_independent; [ | now exists k ].
   rewrite -> Hstep, (IH _ s'' _ k'');
    [ | reflexivity | reflexivity ].
   cbn.
-  by rewrite denotation_continuation_prefix_independent.
+  rewrite denotation_continuation_prefix_independent; [ reflexivity | ].
+  now eexists.
 Qed.
 
 Proposition step_star_correct
@@ -212,12 +222,12 @@ induction p as [ A a | A B p IHp g IHg | A b p1 IHp1 p2 IHp2 | |  aa | t ]; cbn;
     case_eq (Run (denotation p) (s, l1)).
     intros a (s0, l0) Hp Heq.
 (*    rewrite Hp in Heq.*)
-    specialize (denotation_prefix_preserved _ _ _ _ _ _ _ Hp).
+    specialize (denotation_prefix_preserved _ _ ltac:(now eexists) _ _ _ _ _ Hp).
     intros [l3 Hl3].
     rewrite Hl3 in Hp.
     apply IHp with (f := (fun a => g a `; f)) in Hp.
     clear IHp.
-    specialize (denotation_prefix_preserved _ _ _ _ _ _ _ Heq).
+    specialize (denotation_prefix_preserved _ _ ltac:(now eexists) _ _ _ _ _ Heq).
     intros [l4 Hl4].
     rewrite Hl4 in Heq.
     apply IHg with (f := f) in Heq.
