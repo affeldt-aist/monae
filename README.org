@@ -1,18 +1,19 @@
-* Experimenting with monadic equational reasoning in Coq
+* Monadic equational reasoning in Coq
 
 This repository contains a formalization of monadic equational
-reasoning and its application to the formalization of program
-semantics:
-- formalization of
-  + [Gibbons and Hinze, Just do It: Simple Monadic Equational Reasoning, ICFP 2011]
-  + with parts of [Gibbons, Unifying Theories of Programming with Monads, UTP 2012]
-- formalization of some examples from [Mu, Functional Pearls: Reasoning and Derivation of Monadic Programs, A case study of non-determinism and state, 2017]
-- application to program semantics
+reasoning with several applications:
+- formalization of [Gibbons and Hinze, Just do It: Simple Monadic Equational Reasoning, ICFP 2011]
+  + except Sect. 10.2
+- formalization of [Gibbons, Unifying Theories of Programming with Monads, UTP 2012]
+  + up to Sect. 7.3
+- formalization of [Mu, Functional Pearls: Reasoning and Derivation of Monadic Programs, A case study of non-determinism and state, 2017]
+  + up to Sect. 6
+- an application to program semantics
 
 ** Files
 
 - [[monad.v][monad.v]]: basics of monadic equational reasoning
-- [[monad_model.v][monad_model.v]] models of basic monads
+- [[monad_model.v][monad_model.v]]: models of basic monads
 - [[state_monad.v][state_monad.v]]: state monad-related part
 - [[proba_monad.v][proba_monad.v]]: probability monad-related part
 - [[proba_model.v][proba_model.v]]: model of the probability monad
@@ -29,7 +30,7 @@ semantics:
 
 ** Requirements
 
-- [[https://coq.inria.fr][Coq 8.8.0]] or higher, [[https://math-comp.github.io/math-comp/][MathComp 1.7]]
+- [[https://coq.inria.fr][Coq 8.8.2]] (should be fine with slightly older versions), [[https://math-comp.github.io/math-comp/][MathComp 1.7]]
 - the compilation of [[proba_model.v][proba_model.v]] requires the installation of
   another library called [[https://github.com/affeldt-aist/infotheo][infotheo]]
   + once infotheo is installed, just add ~proba_model.v~ to the

@@ -255,6 +255,18 @@ Lemma runput : forall s s', Run0 (Put s' : M _) s = (tt, s').
 Proof. by case: M => m [? []]. Qed.
 End staterun_lemmas.
 
+Section safe_reification.
+
+Variable M : stateRunMonad (seq Z)`2.
+
+Lemma run_safe2 crs updowns : Run0 (safe2 crs : M _) updowns = safe1 updowns crs.
+Proof.
+rewrite safe2E runbind runget; case: safe1 => a b.
+by rewrite runbind runput runret.
+Qed.
+
+End safe_reification.
+
 Module MonadNondetState.
 Record mixin_of (M : nondetMonad) : Type := Mixin {
   (* backtrackable state *)

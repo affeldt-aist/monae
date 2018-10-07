@@ -647,12 +647,19 @@ Lemma alt_bindDl : Laws.bind_left_distributive (@Bind M) [~p].
 Proof. by case: M => m [? []]. Qed.
 Lemma altA : forall A, associative (@Alt M A).
 Proof. by case: M => m [? []]. Qed.
-End monadalt_lemmas.
 
 (* TODO: name ok? *)
-Lemma naturality_nondeter (M : altMonad) A B (f : A -> B) p q :
+Lemma naturality_nondeter A B (f : A -> B) p q :
   fmap f (p [~i] q) = fmap f p [~i] fmap f q :> M _.
 Proof. by rewrite /fmap alt_bindDl. Qed.
+
+Local Open Scope mu_scope.
+
+Lemma alt_fmapDl A B (f : A -> B) (m1 m2 : M A) :
+  f ($) (m1 [~i] m2) = f ($) m1 [~i] f ($) m2.
+Proof. by rewrite /fmap alt_bindDl. Qed.
+
+End monadalt_lemmas.
 
 Section arbitrary.
 
@@ -732,14 +739,14 @@ Proof. by case: s. Qed.
 Fixpoint perm {A} (s : seq A) : M (seq A) :=
   if s isn't h :: t then Ret [::] else perm t >>= insert h.
 
+
 Lemma insert_map A B (f : A -> B) (a : A) :
   insert (f a) \o map f = map f (o) insert a :> (_ -> M _).
 Proof.
 apply functional_extensionality; elim => [|y xs IH].
   by rewrite [in LHS]/= fcomp_ext 2!insertE fmap_ret.
 apply/esym.
-rewrite fcomp_ext insertE. (* definition of insert *)
-rewrite {1}/fmap alt_bindDl -!/(fmap _ _). (* TODO: lemma? *)
+rewrite fcomp_ext insertE alt_fmapDl.
 (* first branch *)
 rewrite fmap_ret [ in X in X [~i] _ ]/=.
 (* second branch *)
@@ -1002,11 +1009,11 @@ Lemma selectE s : select s =
   (fun xy => (xy.1, tval xy.2)) ($) tselect s :> M (A * seq A)%type.
 Proof.
 elim: s => [|h [|h' t] IH].
-  by rewrite /fmap bindfailf.
-by rewrite tselect1 fmap_ret /= bindfailf altmfail.
-rewrite [h' :: t]lock /= -lock IH [in RHS]/fmap alt_bindDl bindretf.
-congr (_ [~i] _).
-rewrite bind_fmap bindA; bind_ext => -[x1 x2]; by rewrite bindretf.
+- by rewrite /fmap bindfailf.
+- by rewrite tselect1 fmap_ret /= bindfailf altmfail.
+- rewrite [h' :: t]lock /= -lock IH [in RHS]alt_fmapDl fmap_ret; congr (_ [~i] _).
+  rewrite bind_fmap fmap_bind; bind_ext => -[x1 x2].
+  by rewrite fcomp_ext fmap_ret.
 Qed.
 
 Lemma decr_size_select : bassert_size select.
