@@ -48,8 +48,8 @@ induction p as [ A a | A B p IHp g IHg | A b p1 IHp1 p2 IHp2 | | s0 | t ]; cbn;
  intros s s' l1 l a' Heq.
 - exists [].
   rewrite app_nil_r.
-  by move: Heq; rewrite runstret => -[].
-- rewrite runstbind in Heq.
+  by move: Heq; rewrite runret => -[].
+- rewrite runbind in Heq.
   case_eq (Run (denotation p) (s, l1)).
   intros a (s0, l0) Hp.
   rewrite Hp in Heq.
@@ -80,9 +80,9 @@ Proof.
 intros [ p Hp ] s l1 l2.
 subst m.
 elim: p s l1 l2 => /= {A} [A a|A B p1 IH1 p2 IH2|A b p1 IH1 p2 IH2||s'|t] s l1 l2.
-by rewrite !runstret.
-rewrite [in LHS]runstbind [in LHS]IH1.
-rewrite [in RHS]runstbind.
+by rewrite !runret.
+rewrite [in LHS]runbind [in LHS]IH1.
+rewrite [in RHS]runbind.
 case: (Run (denotation p1) (s, l2)) => a' [s' l'] /=.
 by rewrite IH2.
 by case: ifPn => _; [rewrite IH1|rewrite IH2].
@@ -100,8 +100,8 @@ Proof.
 intros [ k Hk ].
 subst m.
 elim: k => // [A a s l1 l2|A p k IH s l1 l2].
-by rewrite !runstret.
-rewrite /= !runstbind.
+by rewrite !runret.
+rewrite /= !runbind.
 rewrite denotation_prefix_independent /=; [ | now exists p ].
 destruct (Run (denotation p) (s, l2)) as [ a (s', l) ].
 by rewrite IH.
@@ -120,7 +120,7 @@ induction Hstep as
  [ s A a f | s A B p f g | s A p1 p2 k | s A p1 p2 k | s f | s s' f | s t f ];
  intros s1 s2 k1 k2 l [= Hs1 Hk1] [= Hs2 Hk2] Heqo.
 - subst s1 k1 s2 k2.
-  by rewrite /= runstbind runstret.
+  by rewrite /= runbind runret.
 - subst s1 k1 s2 k2.
   cbn.
   by rewrite bindA.
@@ -129,9 +129,9 @@ induction Hstep as
 - subst s1 s2 k1 k2.
   reflexivity.
 - subst s1 k1 s2 k2.
-  by rewrite /= runstbind runstget.
+  by rewrite /= runbind runstget.
 - subst s1 k1 s2 k2.
-  by rewrite /= runstbind runstput.
+  by rewrite /= runbind runstput.
 - discriminate Heqo.
 Qed.
 
@@ -150,7 +150,7 @@ induction Hstep as
  intros s1 s2 k1 k2 l [= Hs1 Hk1] [= Hs2 Hk2] Heqo; try discriminate Heqo.
 subst s1 k1 s2 k2.
 injection Heqo; intro; subst t.
-by rewrite /= runstbind runstmark.
+by rewrite /= runbind runstmark.
 Qed.
 
 Lemma step_star_correct_gen s s' k k' l l' :
@@ -194,9 +194,9 @@ Proof.
 intro Hss.
 apply step_star_correct_gen with (l := []) in Hss.
 move: Hss.
-rewrite /= runstret runstbind.
+rewrite /= runret runbind.
 destruct (Run (denotation p) (s, [])) as [a'' [s'' l'']].
-rewrite runstret => Hss.
+rewrite runret => Hss.
 injection Hss; clear Hss; intros Heq1 Heq2 Heq3.
 apply inj_pair2 in Heq3.
 congruence.
@@ -210,7 +210,7 @@ Proof.
 revert s s' a l1 l2 f.
 induction p as [ A a | A B p IHp g IHg | A b p1 IHp1 p2 IHp2 | |  aa | t ]; cbn;
  intros s s' a' l1 l2 f Heq.
-- rewrite runstret in Heq.
+- rewrite runret in Heq.
   injection Heq; clear Heq; intros; subst a' s'.
   replace l2 with (@nil T) by
    (revert l2 H; induction l1; [ tauto | intros ? [=]; firstorder ]).
@@ -218,7 +218,7 @@ induction p as [ A a | A B p IHp g IHg | A b p1 IHp1 p2 IHp2 | |  aa | t ]; cbn;
 - eapply ss_step_None.
   + apply s_bind.
   + move: Heq.
-    rewrite runstbind.
+    rewrite runbind.
     case_eq (Run (denotation p) (s, l1)).
     intros a (s0, l0) Hp Heq.
 (*    rewrite Hp in Heq.*)

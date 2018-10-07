@@ -16,7 +16,7 @@ Definition p_nonce : program nat :=
   p_do _ <- p_mark n;
   p_ret n.
 
-Let M := ModelStateTraceRun.M.
+Let M := @ModelStateTraceRunMonad.mk.
 
 Eval unfold denotation, p_nonce in denotation (M nat nat) nat p_nonce.
 
