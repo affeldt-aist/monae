@@ -16,15 +16,14 @@ Definition p_nonce : program nat :=
   p_do _ <- p_mark n;
   p_ret n.
 
-Let M := ModelStateTrace.M.
+Let M := @ModelStateTraceRunMonad.mk.
 
 Eval unfold denotation, p_nonce in denotation (M nat nat) nat p_nonce.
 
-(* TODO(rei): type annotation *)
 Definition nonce : M nat nat nat :=
-  do n : nat <- Get;
-  do _ : unit <- Put (S n);
-  do _ : unit <- (Mark n : M _ _ _);
+  do n : nat <- stGet;
+  do _ : unit <- stPut (S n);
+  do _ : unit <- stMark n;
   Ret n.
 
 Compute nonce (0, []).
@@ -46,11 +45,11 @@ Program Example p_nonce_twice : program bool :=
   p_do y <- nonce ;
   p_ret (x =? y).
 
-Example nonce_twice :=
+Example nonce_twice : M _ _ _ :=
   do nonce <- Ret (
-    do n : nat <- Get;
-    do _ : unit <- Put (S n);
-    do _ : unit <- (Mark n : M _ _ _);
+    do n : nat <- stGet;
+    do _ : unit <- stPut (S n);
+    do _ : unit <- stMark n;
     Ret n ) ;
   do x <- nonce ;
   do y <- nonce ;
@@ -66,15 +65,15 @@ Proof.
 reflexivity.
 Qed.
 
-Fixpoint countdown (fuel : nat) : M bool nat unit :=
+Fixpoint countdown (fuel : nat) : M nat bool unit :=
   match fuel with
   | O => Ret tt
   | S fuel' =>
-    do n <- Get ;
+    do n <- stGet ;
     if (n =? 0) then
-      (Mark true : M _ _ _)
+      stMark true
     else
-      do _ <- Mark false ; do _ <- Put (n-1) ; countdown fuel'
+      do _ <- stMark false ; do _ <- stPut (n-1) ; countdown fuel'
   end.
 
 Fixpoint p_countdown (fuel : nat) : program unit :=
@@ -90,11 +89,11 @@ Fixpoint p_countdown (fuel : nat) : program unit :=
   end.
 
 Compute (countdown 100) (5, []).
-Compute (denotation (M bool nat) unit (p_countdown 100)) (5, []).
+Compute (denotation (M nat bool) unit (p_countdown 100)) (5, []).
 Compute run_ss (p_countdown 100) 5.
 
 Remark denotation_countdown fuel :
-  denotation (M bool nat) unit (p_countdown fuel) = countdown fuel.
+  denotation (M nat bool) unit (p_countdown fuel) = countdown fuel.
 Proof.
 induction fuel as [ | fuel' IH ].
 - reflexivity.

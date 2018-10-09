@@ -11,17 +11,17 @@ Set Bullet Behavior "Strict Subproofs".
 
 Section DenotationalSemantics.
 
-Variables T S : Type.
-Variable M : stateTraceMonad T S.
+Variables S T : Type.
+Variable M : stateTraceRunMonad S T.
 
 Fixpoint denotation {A : Type} (p : program A) : M A :=
   match p with
   | p_ret _ v => Ret v
   | p_bind _ _ m f => do a <- denotation m; denotation (f a)
   | p_cond _ b p1 p2 => if b then denotation p1 else denotation p2
-  | p_get => Get
-  | p_put s' => Put s'
-  | p_mark t => Mark t
+  | p_get => stGet
+  | p_put s' => stPut s'
+  | p_mark t => stMark t
   end.
 
 Fixpoint denotation_continuation (k : continuation) : M (@continuation T S) :=
@@ -63,12 +63,12 @@ induction p as [ A a | A B p IHp g IHg | A b p1 IHp1 p2 IHp2 | | s0 | t ]; cbn;
 - destruct b; [ eapply IHp1 | eapply IHp2 ]; exact Heq.
 - exists [].
   rewrite app_nil_r.
-  by move: Heq; rewrite runget => -[].
+  by move: Heq; rewrite runstget => -[].
 - exists [].
   rewrite app_nil_r.
-  by move: Heq; rewrite runput => -[].
+  by move: Heq; rewrite runstput => -[].
 - exists [t].
-  by move: Heq; rewrite runmark => -[].
+  by move: Heq; rewrite runstmark => -[].
 Qed.
 
 Lemma denotation_prefix_independent A (m : M A) :
@@ -86,9 +86,9 @@ rewrite [in RHS]runbind.
 case: (Run (denotation p1) (s, l2)) => a' [s' l'] /=.
 by rewrite IH2.
 by case: ifPn => _; [rewrite IH1|rewrite IH2].
-by rewrite !runget.
-by rewrite !runput.
-by rewrite !runmark !seq.cats1 seq.rcons_cat.
+by rewrite !runstget.
+by rewrite !runstput.
+by rewrite !runstmark !seq.cats1 seq.rcons_cat.
 Qed.
 
 Lemma denotation_continuation_prefix_independent m :
@@ -129,9 +129,9 @@ induction Hstep as
 - subst s1 s2 k1 k2.
   reflexivity.
 - subst s1 k1 s2 k2.
-  by rewrite /= runbind runget.
+  by rewrite /= runbind runstget.
 - subst s1 k1 s2 k2.
-  by rewrite /= runbind runput.
+  by rewrite /= runbind runstput.
 - discriminate Heqo.
 Qed.
 
@@ -150,7 +150,7 @@ induction Hstep as
  intros s1 s2 k1 k2 l [= Hs1 Hk1] [= Hs2 Hk2] Heqo; try discriminate Heqo.
 subst s1 k1 s2 k2.
 injection Heqo; intro; subst t.
-by rewrite /= runbind runmark.
+by rewrite /= runbind runstmark.
 Qed.
 
 Lemma step_star_correct_gen s s' k k' l l' :
@@ -246,17 +246,17 @@ induction p as [ A a | A B p IHp g IHg | A b p1 IHp1 p2 IHp2 | |  aa | t ]; cbn;
       apply s_cond_false
     | apply IHp2 with (l1 := l1); exact Heq ]
   ].
-- rewrite runget in Heq.
+- rewrite runstget in Heq.
   injection Heq; clear Heq; intros; subst a' s'.
   replace l2 with (@nil T) by
    (revert l2 H; induction l1; [ tauto | intros ? [=]; firstorder ]).
   eapply ss_step_None; [ apply s_get | apply ss_refl ].
-- rewrite runput in Heq.
+- rewrite runstput in Heq.
   injection Heq; clear Heq; intros; subst a' s'.
   replace l2 with (@nil T) by
    (revert l2 H; induction l1; [ tauto | intros ? [=]; firstorder ]).
   eapply ss_step_None; [ apply s_put | apply ss_refl ].
-- rewrite runmark in Heq.
+- rewrite runstmark in Heq.
   injection Heq; clear Heq; intros; subst a' s'.
   replace l2 with [t] by
    (revert l2 H; induction l1; [ tauto | intros ? [=]; firstorder ]).
@@ -275,4 +275,4 @@ Qed.
 
 End DenotationalSemantics.
 
-Arguments denotation [T] [S] _ _.
+Arguments denotation [S] [T] _ _.

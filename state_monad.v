@@ -13,6 +13,7 @@ Unset Printing Implicit Defensive.
 (* Contents:
 - Module MonadState.
     n-queens example
+- Module MonadStateRun.
 - Module MonadNondetState.
     state + nondeterminism
     eight queens puzzle
@@ -211,55 +212,80 @@ Definition test_nonce0 (M : stateMonad nat) : M nat :=
 Reset test_nonce0.
 Fail Check test_nonce0.
 
-(* NB(rei): not used yet *)
-Module MonadStateRun.
-Record mixin_of S (M : stateMonad S) : Type := Mixin {
-  run0 : forall A, M A -> S -> A * S ;
-  _ : forall A (a : A) s, run0 (Ret a) s = (a, s) ;
+Module MonadRun.
+Record mixin_of S (M : monad) : Type := Mixin {
+  run : forall A, M A -> S -> A * S ;
+  _ : forall A (a : A) s, run (Ret a) s = (a, s) ;
   _ : forall A B (m : M A) (f : A -> M B) s,
-      run0 (do a <- m ; f a) s =
-      let: (a', s') := run0 m s in run0 (f a') s' ;
-  _ : forall s, run0 Get s = (s, s) ;
-  _ : forall s s', run0 (Put s') s = (tt, s') ;
+      run (do a <- m ; f a) s =
+      let: (a', s') := run m s in run (f a') s'
 }.
 Record class_of S (m : Type -> Type) := Class {
-  base : MonadState.class_of S m ;
-  mixin : mixin_of (MonadState.Pack base)
+  base : Monad.class_of m ;
+  mixin : mixin_of S (Monad.Pack base)
 }.
 Structure t S : Type := Pack { m : Type -> Type ;
   class : class_of S m }.
-Definition op_run0 S (M : t S) : forall A, m M A -> S -> A * S :=
-  let: Pack _ (Class _ (Mixin x _ _ _ _)) := M
+Definition op_run S (M : t S) : forall A, m M A -> S -> A * S :=
+  let: Pack _ (Class _ (Mixin x _ _)) := M
   return forall A, m M A -> S -> A * S in x.
-Arguments op_run0 {S M A} : simpl never.
+Arguments op_run {S M A} : simpl never.
+Definition baseType S (M : t S) := Monad.Pack (base (class M)).
+Module Exports.
+Notation runMonad := t.
+Notation Run := op_run.
+Coercion baseType : runMonad >-> monad.
+Canonical baseType.
+End Exports.
+End MonadRun.
+Export MonadRun.Exports.
+
+Section run_lemmas.
+Variables (S : Type) (M : runMonad S).
+Lemma runret : forall A (a : A) s, Run (Ret a : M _) s = (a, s).
+Proof. by case: M => m [? []]. Qed.
+Lemma runbind : forall A B (ma : M A) (f : A -> M B) s,
+  Run (do a <- ma ; f a) s = let: (a', s') := Run ma s in Run (f a') s'.
+Proof. by case: M => m [? []]. Qed.
+End run_lemmas.
+
+Module MonadStateRun.
+Record mixin_of S (M : runMonad S) (get : M S) (put : S -> M unit) : Type := Mixin {
+  _ : forall s, Run get s = (s, s) ;
+  _ : forall s s', Run (put s') s = (tt, s') ;
+}.
+Record class_of S (m : Type -> Type) := Class {
+  base : MonadState.class_of S m ;
+  base2 : MonadRun.mixin_of S (Monad.Pack (MonadState.base base)) ;
+  mixin : @mixin_of S (MonadRun.Pack (MonadRun.Class base2)) (@MonadState.op_get _ (MonadState.Pack base)) (@MonadState.op_put _ (MonadState.Pack base)) ;
+}.
+Structure t S : Type := Pack { m : Type -> Type ;
+  class : class_of S m }.
 Definition baseType S (M : t S) := MonadState.Pack (base (class M)).
 Module Exports.
 Notation stateRunMonad := t.
-Notation Run0 := op_run0.
 Coercion baseType : stateRunMonad >-> stateMonad.
 Canonical baseType.
+Definition state_of_run S (M : stateRunMonad S) : runMonad S :=
+  MonadRun.Pack (MonadRun.Class (base2 (class M))).
+Canonical state_of_run.
 End Exports.
 End MonadStateRun.
 Export MonadStateRun.Exports.
 
 Section staterun_lemmas.
 Variables (S : Type) (M : stateRunMonad S).
-Lemma runret : forall A (a : A) s, Run0 (Ret a : M _) s = (a, s).
-Proof. by case: M => m [? []]. Qed.
-Lemma runbind : forall A B (ma : M A) (f : A -> M B) s,
-  Run0 (do a <- ma ; f a) s = let: (a'', s'') := Run0 ma s in Run0 (f a'') s''.
-Proof. by case: M => m [? []]. Qed.
-Lemma runget : forall s, Run0 (Get : M _) s = (s, s).
-Proof. by case: M => m [? []]. Qed.
-Lemma runput : forall s s', Run0 (Put s' : M _) s = (tt, s').
-Proof. by case: M => m [? []]. Qed.
+Lemma runget : forall s, Run (Get : M _) s = (s, s).
+Proof. by case: M => m [? ? []]. Qed.
+Lemma runput : forall s s', Run (Put s' : M _) s = (tt, s').
+Proof. by case: M => m [? ? []]. Qed.
 End staterun_lemmas.
 
 Section safe_reification.
 
 Variable M : stateRunMonad (seq Z)`2.
 
-Lemma run_safe2 crs updowns : Run0 (safe2 crs : M _) updowns = safe1 updowns crs.
+Lemma run_safe2 crs updowns : Run (safe2 crs : M _) updowns = safe1 updowns crs.
 Proof.
 rewrite safe2E runbind runget; case: safe1 => a b.
 by rewrite runbind runput runret.

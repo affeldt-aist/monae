@@ -10,12 +10,13 @@ Set Implicit Arguments.
 Unset Strict Implicit.
 Unset Printing Implicit Defensive.
 
-(* WIP *)
-
 (*
 Contents:
 - Module MonadTrace.
+- Module MonadTraceRun.
 - Module MonadStateTrace.
+- Module MonadStateTraceRun.
+- wip
 *)
 
 Module MonadTrace.
@@ -41,74 +42,152 @@ Export MonadTrace.Exports.
 Definition marks T {M : traceMonad T} (l : seq T) : M (seq unit) :=
   sequence (map Mark l).
 
-Module MonadStateTrace.
-Record mixin_of T S (M : stateMonad S) (op : T -> M unit) : Type := Mixin {
-  run : forall A, M A -> S * seq T -> A * (S * seq T) ;
-  _ : forall A (a : A) s, run (Ret a) s = (a, s) ;
-  _ : forall A B (m : M A) (f : A -> M B) s,
-    run (do a <- m ; f a) s =
-    let: (a', s') := run m s in run (f a') s' ;
-  _ : forall s l, run Get (s, l) = (s, (s, l)) ;
-  _ : forall s l s', run (Put s') (s, l) = (tt, (s', l)) ;
-  _ : forall t s l, run (op t) (s, l) = (tt, (s, l ++ [:: t]))
+Module MonadTraceRun.
+Record mixin_of T (M : runMonad (seq T)) (mark : T -> M unit) : Type := Mixin {
+  _ : forall t l, Run (mark t) l = (tt, l ++ t :: nil) (* TODO: rcons *)
 }.
-Record class_of T S (m : Type -> Type) : Type := Class {
-  base : MonadState.class_of S m ;
-  base2 : MonadTrace.mixin_of T m ;
-  mixin : @mixin_of _ _ (MonadState.Pack base)
-    (@Mark T (MonadTrace.Pack (MonadTrace.Class (MonadState.base base) base2)))
+Record class_of T (m : Type -> Type) : Type := Class {
+  base : MonadTrace.class_of T m ;
+  base2 : MonadRun.mixin_of _ (Monad.Pack (MonadTrace.base base)) ;
+  mixin : @mixin_of _ (MonadRun.Pack (MonadRun.Class base2))
+    (@MonadTrace.op_mark _ (MonadTrace.Pack base));
 }.
-Structure t (T S : Type) : Type := Pack {
-  m : Type -> Type ;
-  class : class_of T S m }.
-Definition op_run T S (M : t T S) : forall A, m M A -> S * seq T -> A * (S * seq T) :=
-  let: Pack _ (Class _ _ (Mixin x _ _ _ _ _)) := M
-  return forall A, m M A -> S * seq T -> A * (S * seq T) in x.
-Arguments op_run {T S M A} : simpl never.
-Definition baseType T S (M : t T S) := MonadState.Pack (base (class M)).
+Structure t T : Type := Pack { m : Type -> Type ;
+  class : class_of T m }.
+Definition baseType T (M : t T) := MonadTrace.Pack (base (class M)).
 Module Exports.
-Notation Run := op_run.
-Notation stateTraceMonad := t.
-Coercion baseType : stateTraceMonad >-> stateMonad.
+Notation traceRunMonad := t.
+Coercion baseType T (M : traceRunMonad T) : traceMonad T := baseType M.
 Canonical baseType.
-Definition trace_of_statetrace T S (M : stateTraceMonad T S) : traceMonad T :=
-  @MonadTrace.Pack T _ (MonadTrace.Class
-    (MonadState.base (base (class M))) (base2 (class M))).
-Canonical Structure trace_of_statetrace.
+Definition trace_of_run T (M : traceRunMonad T) : runMonad (seq T) :=
+  MonadRun.Pack (MonadRun.Class (base2 (class M))).
+Canonical trace_of_run.
+End Exports.
+End MonadTraceRun.
+Export MonadTraceRun.Exports.
+
+Section tracerun_lemmas.
+Variables (T : Type) (M : traceRunMonad T).
+Lemma runtmark : forall s t, Run (Mark t : M _) s = (tt, s ++ t :: nil). (* TODO: rcons *)
+Proof. by case: M => m [? ? []]. Qed.
+End tracerun_lemmas.
+
+Module MonadStateTrace.
+Record mixin_of S T (M : monad) : Type := Mixin {
+  st_get : M S ;
+  st_put : S -> M unit ;
+  st_mark : T -> M unit ;
+}.
+Record class_of S T (m : Type -> Type) : Type := Class {
+  base : Monad.class_of m ;
+  mixin : mixin_of S T (Monad.Pack base)
+}.
+Structure t S T : Type := Pack { m : Type -> Type ; class : class_of S T m }.
+Definition op_st_get S T (M : t S T) : m M S :=
+  let: Pack _ (Class _ (Mixin x _ _)) := M return m M S in x.
+Arguments op_st_get {S T M} : simpl never.
+Definition op_st_put S T (M : t S T) : S -> m M unit :=
+  let: Pack _ (Class _ (Mixin _ x _)) := M return S -> m M unit in x.
+Arguments op_st_put {S T M} : simpl never.
+Definition op_st_mark S T (M : t S T) : T -> m M unit :=
+  let: Pack _ (Class _ (Mixin _ _ x)) := M return T -> m M unit in x.
+Arguments op_st_mark {S T M} : simpl never.
+Definition baseType S T (M : t S T) := Monad.Pack (base (class M)).
+Module Exports.
+Notation stGet := op_st_get.
+Notation stPut := op_st_put.
+Notation stMark := op_st_mark.
+Notation stateTraceMonad := t.
+Coercion baseType : stateTraceMonad >-> monad.
+Canonical baseType.
 End Exports.
 End MonadStateTrace.
 Export MonadStateTrace.Exports.
 
-Section statetrace_lemmas.
-Variables (T S : Type) (M : stateTraceMonad T S).
-Lemma runret : forall A (a : A) s, Run (Ret a : M _) s = (a, s).
-Proof. by case: M => m [? ? []]. Qed.
-Lemma runbind : forall A B (ma : M A) (f : A -> M B) s,
-  Run (do a <- ma ; f a) s =
-  let: (a'', s'') := Run ma s in Run (f a'') s''.
-Proof. by case: M => m [? ? []]. Qed.
-Lemma runget : forall s l, Run (Get : M _) (s, l) = (s, (s, l)).
-Proof. by case: M => m [? ? []]. Qed.
-Lemma runput : forall s l s', Run (Put s' : M _) (s, l) = (tt, (s', l)).
-Proof. by case: M => m [? ? []]. Qed.
-Lemma runmark : forall t s l, Run (Mark t : M _) (s, l) = (tt, (s, l ++ [:: t])).
-Proof. by case: M => m [? ? []]. Qed.
-End statetrace_lemmas.
+Require Import ZArith ssrZ.
+
+Example st_nonce {M : stateTraceMonad Z nat} : M Z :=
+  do n <- stGet;
+  do _ <- stPut (n + 1)%Z;
+  do _ <- stMark (Z.abs_nat n);
+  Ret n.
 
 Section statetrace_example.
-Variables (T : Type) (m : stateTraceMonad T BinInt.Z).
+Variables (T : Type) (M : stateTraceMonad Z T).
 Variables (log0 log1 : T).
 
-Definition monadtrace_example (m0 m1 m2 : m nat) : m nat :=
+Definition monadtrace_example (m0 m1 m2 : M nat) : M nat :=
   do x <- m0;
-    Put (BinInt.Z_of_nat x) >>
-      do y <- Get;
-        Mark log0 >>
+    stPut (Z_of_nat x) >>
+      do y <- stGet;
+        stMark log0 >>
           do z <- m2;
-            Mark log1 >>
-            Ret (x + BinInt.Z.abs_nat y + z)%nat.
+            stMark log1 >>
+            Ret (x + Z.abs_nat y + z).
 
 End statetrace_example.
+
+Module MonadStateTraceRun.
+Record mixin_of S T (M : runMonad (S * seq T)) (st_get : M S)
+  (st_put : S -> M unit) (st_mark : T -> M unit) : Type := Mixin {
+  _ : forall s l, Run st_get (s, l) = (s, (s, l)) ;
+  _ : forall s l s', Run (st_put s') (s, l) = (tt, (s', l)) ;
+  _ : forall t s l, Run (st_mark t) (s, l) = (tt, (s, l ++ t :: nil)) (* TODO: rcons *)
+}.
+Record class_of S T (m : Type -> Type) : Type := Class {
+  base : MonadStateTrace.class_of S T m ;
+  base2 : MonadRun.mixin_of (S * seq T) (Monad.Pack (MonadStateTrace.base base)) ;
+  mixin : @mixin_of _ _ (MonadRun.Pack (MonadRun.Class base2))
+    (@MonadStateTrace.op_st_get _ _ (MonadStateTrace.Pack base))
+    (@MonadStateTrace.op_st_put _ _ (MonadStateTrace.Pack base))
+    (@MonadStateTrace.op_st_mark _ _ (MonadStateTrace.Pack base)) ;
+}.
+Structure t S T : Type := Pack { m : Type -> Type ;
+  class : class_of S T m }.
+Definition baseType S T (M : t T S) := MonadStateTrace.Pack (base (class M)).
+Module Exports.
+Notation stateTraceRunMonad := t.
+Coercion baseType (S T : Type) (M : stateTraceRunMonad S T) : stateTraceMonad S T := baseType M.
+Canonical baseType.
+Definition statetrace_of_run S T (M : stateTraceRunMonad S T) : runMonad (S * seq T) :=
+  MonadRun.Pack (MonadRun.Class (base2 (class M))).
+Canonical statetrace_of_run.
+End Exports.
+End MonadStateTraceRun.
+Export MonadStateTraceRun.Exports.
+
+Section statetracerun_lemmas.
+Variables (S T : Type) (M : stateTraceRunMonad S T).
+Lemma runstget : forall s, Run (stGet : M _) s = (s.1, s).
+Proof. by case: M => m [? ? [? ? ?]] []. Qed.
+Lemma runstput : forall s s', Run (stPut s' : M _) s = (tt, (s', s.2)).
+Proof. by case: M => m [? ? [? ? ?]] []. Qed.
+Lemma runstmark : forall t s, Run (stMark t : M _) s = (tt, (s.1, s.2 ++ t :: nil)). (* TODO: rcons *)
+Proof. by case: M => m [? ? [? ? ?]] t []. Qed.
+End statetracerun_lemmas.
+
+Definition assoc {A B C : Type} : (A * B) * C -> A * (B * C) :=
+  fun x => (x.1.1, (x.1.2, x.2)).
+
+Definition assoc_inv {A B C : Type} : A * (B * C) -> (A * B) * C :=
+  fun x => ((x.1, x.2.1), x.2.2).
+
+Section relation_statetrace_state_trace.
+Variables (S T : Type) (MN : stateTraceRunMonad S T).
+
+Lemma stGet_Get (M : stateRunMonad S) s :
+  Run (stGet : MN _) s = assoc (Run (Get : M _) s.1, s.2).
+Proof. by rewrite runget runstget; case: s. Qed.
+
+Lemma stPut_Put (M : stateRunMonad S) s s' :
+  Run (stPut s' : MN _) s = assoc (Run (Put s' : M _) s.1, s.2).
+Proof. by rewrite runput runstput. Qed.
+
+Lemma stMark_Mark (M : traceRunMonad T) s t :
+  Run (stMark t : MN _) s = let x := Run (Mark t : M _) s.2 in (x.1, (s.1, x.2)).
+Proof. by rewrite runtmark runstmark. Qed.
+
+End relation_statetrace_state_trace.
 
 (* WIP *)
 
