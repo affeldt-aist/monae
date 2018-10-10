@@ -21,7 +21,7 @@ Unset Printing Implicit Defensive.
 - Module MonadFailFresh.
     example of tree relabeling
 - n-queens puzzle by Mu
-  sections 4-5
+    sections 4-5
 *)
 
 Module MonadState.
@@ -459,6 +459,10 @@ rewrite !bindskipf !bindretf /= /g.
 case: Bool.bool_dec => //= x2t.
 by case: (IH x2) => // x0 <-.
 Qed.
+
+(* definition 5.1, mu2017 *)
+Definition commute {M : monad} A B (m : M A) (n : M B) C (f : A -> B -> M C) : Prop :=
+  m >>= (fun x => n >>= (fun y => f x y)) = n >>= (fun y => m >>= (fun x => f x y)) :> M _.
 
 (* theorem 5.2, mu2017 *)
 Lemma commute_nondetState {S} {M : nondetStateMonad S}

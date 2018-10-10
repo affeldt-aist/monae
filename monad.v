@@ -124,6 +124,13 @@ Definition wrap {A} (a : A) := [:: a].
 Lemma compA {A B C D} (f : C -> D) (g : B -> C) (h : A -> B) : f \o (g \o h) = (f \o g) \o h.
 Proof. by []. Qed.
 
+Lemma compfid A B (f : A -> B) : f \o id = f. Proof. by []. Qed.
+
+Lemma compidf A B (f : A -> B) : id \o f = f. Proof. by []. Qed.
+
+Lemma compE A B C (f : A -> B) (g : B -> C) a : g (f a) = (g \o f) a.
+Proof. by []. Qed.
+
 Fixpoint scanl A B (op : B -> A -> B) (b : B) (s : seq A) : seq B :=
   if s isn't x :: xs then [::] else (op b x) :: scanl op (op b x) xs.
 
@@ -322,6 +329,10 @@ Lemma fcomp_comp A B C D (f : A -> B) (g : C -> A) (m : D -> M C) :
   (f \o g) (o) m = f (o) (g (o) m).
 Proof. by rewrite /fcomp /= compA fmap_o. Qed.
 
+Lemma fcomp_compL A B C D (f : A -> B) (g : _ -> M _) (h : C -> D) :
+  f (o) (g \o h) = fmap f \o (g \o h).
+Proof. by apply functional_extensionality. Qed.
+
 Lemma fmap_bind A B C (f : A -> B) m (g : C -> M A) :
   f ($) (m >>= g) = m >>= (f (o) g).
 Proof. by rewrite /fmap /= bindA. Qed.
@@ -329,6 +340,23 @@ Proof. by rewrite /fmap /= bindA. Qed.
 Lemma skip_fmap A B (f : A -> B) (mb : M B) ma :
   mb >> (f ($) ma) = f ($) (mb >> ma).
 Proof. by rewrite fmap_bind. Qed.
+
+Lemma rev_map A B (f : A -> B) : rev \o map f = map f \o rev.
+Proof.
+apply functional_extensionality.
+by elim=> // h t /= IH; rewrite !rev_cons IH map_rcons.
+Qed.
+
+Lemma mfoldl_rev (T R : Type) (f : R -> T -> R) (z : R) (s : seq T -> M (seq T)) :
+  foldl f z (o) (rev (o) s) = foldr (fun x => f^~ x) z (o) s.
+Proof.
+apply functional_extensionality => x; rewrite !fcomp_ext /fmap !bindA.
+bind_ext => ?; by rewrite bindretf /= -foldl_rev.
+Qed.
+
+Lemma foldl_revE (T R : Type) (f : R -> T -> R) (z : R) :
+  foldl f z \o rev = foldr (fun x : T => f^~ x) z.
+Proof. by apply functional_extensionality => s; rewrite -foldl_rev. Qed.
 
 Definition join A (pp : M (M A)) := pp >>= id.
 Arguments join {A} : simpl never.
@@ -739,7 +767,7 @@ Proof. by case: s. Qed.
 Fixpoint perm {A} (s : seq A) : M (seq A) :=
   if s isn't h :: t then Ret [::] else perm t >>= insert h.
 
-
+(* see also lem 3 in netys2017 *)
 Lemma insert_map A B (f : A -> B) (a : A) :
   insert (f a) \o map f = map f (o) insert a :> (_ -> M _).
 Proof.
@@ -759,24 +787,81 @@ rewrite [RHS]/=.
 by rewrite insertE.
 Qed.
 
+(* see also lem 4 in netys2017 *)
 Lemma perm_map A B (f : A -> B) :
   perm \o map f = map f (o) perm :> (seq A -> M (seq B)).
 Proof.
 apply functional_extensionality; elim => [/=|x xs IH].
-  by rewrite fcomp_ext /= fmap_ret.
-rewrite fcomp_ext.
-rewrite [in RHS]/=.
-rewrite fmap_bind.
-rewrite -insert_map.
-rewrite -bind_fmap.
-rewrite /=.
-rewrite -fcomp_ext.
-by rewrite -IH.
+  by rewrite fcomp_ext fmap_ret.
+by rewrite fcomp_ext [in RHS]/= fmap_bind -insert_map -bind_fmap -fcomp_ext -IH.
 Qed.
 
 End permutation_and_insertion.
 Arguments insert {M} {A} : simpl never.
 Arguments perm {M} {A}.
+
+Section perm_filter.
+Variable M : altMonad.
+Hypothesis altmm : forall A, idempotent (@Alt _ A : M A -> M A -> M A).
+
+Local Open Scope mu_scope.
+
+Variables (A : Type) (p : pred A).
+
+Lemma filter_insertN a : ~~ p a ->
+  forall s, (filter p (o) insert a) s = Ret (filter p s) :> M _.
+Proof.
+move=> pa; elim => [|h t IH].
+  by rewrite /= fcomp_ext insertE /= fmap_ret /= (negbTE pa).
+rewrite /= fcomp_ext /= insertE /= alt_fmapDl fmap_ret /= (negbTE pa).
+case: ifPn => ph.
+- rewrite -fmap_comp (_ : filter p \o cons h = cons h \o filter p); last first.
+    apply functional_extensionality => x /=; by rewrite ph.
+  rewrite fmap_comp.
+  move: (IH); rewrite fcomp_ext => ->.
+  by rewrite fmap_ret /= altmm.
+- rewrite -fmap_comp (_ : filter p \o cons h = filter p); last first.
+    apply functional_extensionality => x /=; by rewrite (negbTE ph).
+  move: (IH); rewrite fcomp_ext => ->; by rewrite altmm.
+Qed.
+
+Lemma filter_insertT a : p a ->
+  filter p (o) insert a = insert a \o filter p :> (_ -> M _).
+Proof.
+move=> pa; apply functional_extensionality => s; elim: s => [|h t IH].
+  by rewrite fcomp_ext /= !insertE fmap_ret /= pa.
+rewrite fcomp_ext /=; case: ifPn => ph.
+- rewrite [in RHS]insertE /=.
+  move: (IH) => /= <-.
+  rewrite [in LHS]insertE alt_fmapDl; congr (_ [~i] _).
+    by rewrite fmap_ret /= pa ph.
+  rewrite /fmap (*NB(rei)*) /= fcomp_ext bind_fmap bindA.
+  rewrite_ bindretf.
+  by rewrite /= ph.
+- rewrite [in LHS]insertE alt_fmapDl.
+  rewrite -[in X in _ [~i] X = _]fmap_comp.
+    rewrite (_ : (filter p \o cons h) = filter p); last first.
+    apply functional_extensionality => x /=; by rewrite (negbTE ph).
+  move: (IH) => /=; rewrite fcomp_ext => ->.
+  rewrite fmap_ret /= pa (negbTE ph) [in RHS]insertE; case: (filter _ _) => [|h' t'].
+    by rewrite insertE altmm.
+  by rewrite !insertE /= altA altmm.
+Qed.
+
+(* lemma 5, netys2017 *)
+Lemma perm_filter : perm \o filter p = filter p (o) perm :> (_ -> M _).
+Proof.
+apply functional_extensionality; elim=> [|h t /= IH].
+  by rewrite fcomp_ext fmap_ret.
+case: ifPn => ph.
+  rewrite fcomp_ext /= IH fmap_bind bindA.
+  rewrite_ bindretf.
+  bind_ext => s; by rewrite filter_insertT.
+rewrite fcomp_ext /= fmap_bind IH fcomp_ext /fmap; bind_ext => s.
+by rewrite filter_insertN.
+Qed.
+
+End perm_filter.
 
 Module MonadAltCI.
 Record mixin_of (M : Type -> Type) (op : forall A, M A -> M A -> M A) : Type := Mixin {
@@ -810,33 +895,76 @@ Lemma altACA A : @interchange (M A) (fun x y => x [~i] y) (fun x y => x [~i] y).
 Proof. move=> x y z t; rewrite !altA; congr (_ [~i] _); by rewrite altAC. Qed.
 End altci_lemmas.
 
-(* mu2017, Sect. 3.2 *)
-Section spark_aggregation.
+(* mu2017 (Sect. 3.2), netsys 2017 *)
+Section altci_insert.
+Variables (M : altCIMonad) (A : Type) (a : A).
+
 Local Open Scope mu_scope.
 
-Let Partition A := seq A.
-Let RDD A := seq (Partition A).
-
-Variable M : altCIMonad.
-
-Lemma insert_rcons A (x : A) y xs :
-  insert x (rcons xs y) = Ret (xs ++ [:: y; x]) [~i] (rcons^~ y ($) insert x xs) :> M _.
+Lemma insert_rcons a' s :
+  insert a (rcons s a') =
+    Ret (s ++ [:: a'; a]) [~i] (rcons^~ a' ($) insert a s) :> M _.
 Proof.
-elim: xs x y => [/= x y|xs1 xs2 IH x y].
+elim: s a' => [/= a'|s1 s2 IH a'].
   by rewrite !insertE !fmap_ret /= altC.
 rewrite /= insertE /= IH /=.
 rewrite naturality_nondeter fmap_ret.
 rewrite naturality_nondeter fmap_ret.
-rewrite -!fmap_comp /=.
-by rewrite altCA.
+by rewrite -!fmap_comp /= altCA.
 Qed.
 
+Lemma rev_insert : rev (o) insert a = insert a \o rev :> (_ -> M _).
+Proof.
+apply functional_extensionality; elim => [|h t IH].
+  by rewrite fcomp_ext insertE fmap_ret.
+rewrite fcomp_ext insertE /= alt_fmapDl fmap_ret /= [in RHS]rev_cons insert_rcons.
+rewrite rev_cons -cats1 rev_cons -cats1 -catA; congr (_ [~i] _).
+move: IH; rewrite fcomp_ext => /= <-.
+rewrite -!fmap_comp; congr (_ ($) insert a t).
+apply functional_extensionality => s; by rewrite /= -rev_cons.
+Qed.
+
+End altci_insert.
+
+Section spark_aggregation.
+Local Open Scope mu_scope.
+
+Section definitions.
+Variable M : altMonad.
+
+Variables (A B : Type).
+
+Definition deterministic A B (f : A -> M B) := exists g : A -> B, f = Ret \o g.
+
+Variables (b : B) (mul : B -> A -> B) (add : B -> B -> B).
+
+Let Partition A := seq A.
+Let RDD A := seq (Partition A).
+
+Definition aggregate : RDD A -> M B :=
+  foldl add b (o) (perm \o map (foldl mul b)).
+
+End definitions.
+Arguments aggregate {M A B}.
+
+Section list_homomorphism.
+Variables (A : Type) (a : A) (add : A -> A -> A).
+
+Definition list_homo B (h : seq B -> A) : Prop :=
+  (h [::] = a) /\ (forall s1 s2, h (s1 ++ s2) = add (h s1) (h s2)).
+End list_homomorphism.
+
+Section aggregate_deterministic.
+
 Section foldl_perm_deterministic.
+Variable M : altCIMonad.
 Variables (A B : Type) (op : B -> A -> B).
 Local Notation "x (.) y" := (op x y) (at level 11).
 Hypothesis opP : forall (x y : A) (w : B), (w (.) x) (.) y = (w (.) y) (.) x.
 
-Lemma lemma_35 x (b : B) : foldl op b (o) insert x = Ret \o foldl op b \o (rcons^~ x) :> (_ -> M _).
+(* from mu2017 *)
+Lemma lemma_35 a b :
+  foldl op b (o) insert a = Ret \o foldl op b \o (rcons^~ a) :> (_ -> M _).
 Proof.
 apply functional_extensionality => xs; move: xs b; elim/last_ind => [/=|xs y IH] b.
   by rewrite fcomp_ext insertE fmap_ret.
@@ -855,7 +983,7 @@ rewrite -[in X in _ [~i] X]bindretf.
 rewrite bindretf.
 rewrite -{1}compA.
 rewrite fmap_ret.
-rewrite (H x).
+rewrite (H a).
 rewrite [in X in _ [~i] X]/=.
 rewrite opP.
 rewrite /= -!cats1 -catA /=.
@@ -863,11 +991,21 @@ rewrite foldl_cat /=.
 by rewrite altmm.
 Qed.
 
-(* TODO(rei): clean *)
+(* netys2017 *)
+Lemma lemma_1 a b : let op' a b := op b a in
+  foldr op' b (o) insert a = Ret \o foldr op' b \o cons a :> (_ -> M _).
+Proof.
+cbv zeta.
+rewrite -mfoldl_rev rev_insert fcomp_compL compA.
+move: (lemma_35 a b); rewrite {1}/fcomp (* TODO(rei): lemma *) => ->.
+apply functional_extensionality => s /=.
+by rewrite -cats1 foldl_cat /= /= -foldl_rev.
+Qed.
+
 Lemma lemma_34 b : foldl op b (o) perm = Ret \o foldl op b :> (_ -> M _).
 Proof.
 apply functional_extensionality => xs; move: xs b; elim=> [/=|x xs IH] b.
-  by rewrite /= fcomp_ext /= fmap_ret.
+  by rewrite fcomp_ext fmap_ret.
 rewrite fcomp_ext [in LHS]/= fmap_bind.
 rewrite_ lemma_35.
 transitivity ((Ret \o foldl op (b (.) x)) xs : M _); last by [].
@@ -881,24 +1019,81 @@ elim: ys b => // y ys ih /= b.
 by rewrite ih /= opP.
 Qed.
 
+(* netys2017 *)
+Lemma lemma_2 b : let op' a b := op b a in
+  foldr op' b (o) perm(*shuffle!*) = Ret \o foldr op' b :> (_ -> M _).
+Proof.
+move=> op'.
+apply functional_extensionality; elim => [|h t IH].
+  by rewrite fcomp_ext /= fmap_ret.
+rewrite fcomp_ext /= fmap_bind lemma_1.
+transitivity (do x <- perm t; (Ret \o (fun x => op' h x) \o foldr op' b) x : M _).
+  by [].
+by rewrite -(@bind_fmap _ _ _ _ (foldr op' b)) -fcomp_ext IH bindretf.
+Qed.
+
 End foldl_perm_deterministic.
 
-Definition aggregate A B (b : B) (mul : B -> A -> B) (add : B -> B -> B) : RDD A -> M B :=
-  foldl add b (o) (perm \o map (foldl mul b)).
+Section theorem36.
+Variable M : altCIMonad.
+Variables (A B : Type) (b : B) (mul : B -> A -> B) (add : B -> B -> B).
+Hypotheses (addA : associative add) (addC : commutative add).
 
-Definition deterministic A B (f : A -> M B) :=
-  exists g : A -> B, f = Ret \o g.
-
-Lemma aggregateP A B (b : B) (mul : B -> A -> B) (add : B -> B -> B) :
-  associative add -> commutative add -> left_id b add -> right_id b add ->
-  deterministic (aggregate b mul add).
+(* theorem 3.6 in mu2017, with foldr it is theorem 9 in netys2017 *)
+Lemma aggregateE :
+  aggregate b mul add = Ret \o foldl add b \o map (foldl mul b) :> (_ -> M _).
 Proof.
-move=> addA addC add0b addb0.
-rewrite /deterministic; exists (foldl add b \o map (foldl mul b)).
-(* NB(rei): mu2017 is using perm_map (lemma 3.1) and (7) but that does not seem useful*)
-rewrite compA -[in RHS]lemma_34; last by move=> x ??; rewrite -addA (addC x) addA.
-by [].
+(* NB: mu2017 is using perm_map (lemma 3.1) and (7) but that does not seem useful*)
+rewrite compA -[in RHS]lemma_34 // => x ??; by rewrite -addA (addC x) addA.
 Qed.
+
+Lemma deter_aggregate : deterministic (aggregate b mul add : _ -> M _).
+Proof. rewrite /deterministic aggregateE //; eexists; reflexivity. Qed.
+
+Section corollary10.
+
+Lemma lemma_6 (h : seq A -> B) (addb0 : right_id b add) : list_homo b add h <->
+  foldr add b \o map h = h \o flatten.
+Proof.
+split => H.
+  apply functional_extensionality => xss /=.
+  elim: xss => [|s ss IH /=]; first by rewrite /= (proj1 H).
+  by rewrite (proj2 H) IH.
+split; [by move/(congr1 (fun x => x [::])) : H | move=> s1 s2].
+rewrite (_ : _ ++ _ = flatten [:: s1; s2]); last by rewrite /= cats0.
+by rewrite compE -H /= addb0.
+Qed.
+
+Lemma lemma_6_foldl (h : seq A -> B) (add0b : left_id b add) :
+  list_homo b add h <->
+  foldl add b \o map h = h \o flatten.
+Proof.
+split => H.
+  apply functional_extensionality => xss /=.
+  elim: xss => [|s ss IH]; first by rewrite /= (proj1 H).
+  rewrite (proj2 H) -IH /=.
+  (* TODO: lemma? bigop? *)
+  generalize (h s) => b0.
+  elim: ss b0 {IH} => [b0|u v IH b0] /=; first by rewrite addC.
+  by rewrite -addA IH -addA IH.
+split; [by move/(congr1 (fun x => x [::])) : H | move=> s1 s2].
+rewrite (_ : _ ++ _ = flatten [:: s1; s2]); last by rewrite /= cats0.
+by rewrite compE -H /= add0b.
+Qed.
+
+Corollary corollary_10 (add0b : left_id b add) :
+  list_homo b add (foldl mul b) ->
+  aggregate b mul add = Ret \o foldl mul b \o flatten :> (_ -> M _).
+Proof.
+move/(proj1 (lemma_6_foldl _ add0b)) => H.
+by rewrite aggregateE // -compA  -[in RHS]compA H.
+Qed.
+
+End corollary10.
+
+End theorem36.
+
+End aggregate_deterministic.
 
 End spark_aggregation.
 
@@ -1083,10 +1278,6 @@ Qed.
 
 End mu_perm.
 Arguments mu_perm {A} {M}.
-
-(* definition 5.1, mu2017 *)
-Definition commute {M : monad} A B (m : M A) (n : M B) C (f : A -> B -> M C) : Prop :=
-  m >>= (fun x => n >>= (fun y => f x y)) = n >>= (fun y => m >>= (fun x => f x y)) :> M _.
 
 Module SyntaxNondet.
 
