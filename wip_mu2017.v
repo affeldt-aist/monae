@@ -10,59 +10,12 @@ Set Implicit Arguments.
 Unset Strict Implicit.
 Unset Printing Implicit Defensive.
 
-(*Lemma opze z e : nondetState_sub e -> op z e = do x <- e; op z (Ret x).
-Proof.
-move=> H.
-rewrite SyntaxNondet.commute_nondetState // /op /opdot_queens /opdot.
-bind_ext => st.
-rewrite !bindA [in RHS]SyntaxNondet.commute_nondetState // bindA.
-bind_ext; case.
-bind_ext; case.
-by rewrite_ fmap_ret.
-Qed.
+(* wip (mu2017) *)
 
-Lemma opze_foldr u {A} (v : A -> M (seq Z)) e : nondetState_sub e ->
-  (foldr op (do x0 <- e; v x0) u) = do x0 <- e; (foldr op (v x0) u).
-Proof.
-elim: u v e => // h t IH v e He /=.
-rewrite IH // {1}/op /opdot_queens /opdot.
-transitivity (do st <- Get;
-  (guard (queens_ok (queens_next st h)) >> Put (queens_next st h)) >>
-  do x0 <- e; cons h ($) (foldr op (v x0) t)).
-  bind_ext => st.
-  bind_ext; case.
-  by rewrite fmap_bind.
-transitivity (do st <- Get;
-  (guard (queens_ok (queens_next st h)) >> (do x0 <- e; Put (queens_next st h) >>
-  cons h ($) foldr op (v x0) t))).
-  bind_ext => st.
-  rewrite bindA.
-  bind_ext; case.
-  by rewrite [in RHS]SyntaxNondet.commute_nondetState.
-transitivity (do st <- Get;
-  (do x0 <- e; guard (queens_ok (queens_next st h)) >>
-  Put (queens_next st h) >> cons h ($) foldr op (v x0) t)).
-  bind_ext => st.
-  rewrite_ bindA.
-  by rewrite [in RHS]SyntaxNondet.commute_nondetState.
-by rewrite -SyntaxNondet.commute_nondetState.
-Qed.
+(* aborted tentative to complete section 5.2 with more generic
+   versions of lemma 5.4 and theorem 4.2, not sure they are right,
+   not used anyway, we could do without them, see state_monad.v *)
 
-Lemma opze_op e u  (v : seq Z -> M _) b : nondetState_sub e ->
-  op b (do x0 <- e; foldr op (v x0) u) =
-  do x0 <- e; op b (foldr op (v x0) u).
-Proof.
-move=> He.
-rewrite {1}/op /opdot_queens /opdot [in RHS]SyntaxNondet.commute_nondetState //.
-bind_ext => st.
-rewrite [in RHS]SyntaxNondet.commute_nondetState //.
-bind_ext; case.
-by rewrite fmap_bind.
-Qed.*)
-
-Module Stash.
-
-(* tentative proof of lemma 5.4, not sure we got it right, anyway not used *)
 Module Lemma54.
 Section syntax_nondetmonad_specialized.
 Variable A : Type.
@@ -162,9 +115,6 @@ Qed.
 
 End Lemma54.
 
-(* tentative proof of theorem 4.2, not sure we got it right,
-   it mimics the pencil-and-paper proof but seems too general
-   to be used on the n-queens puzzle, we did without it anyway *)
 (* actually a specialization of section 4.4 of mu2017,
    to a seeding function returning lists *)
 Module Theorem42.
@@ -244,7 +194,6 @@ End theorem42.
 
 End Theorem42.
 
-(* tentative to complete section 5.2, abort *)
 Module Section42.
 
 Variable M : nondetStateMonad (Z * seq Z * seq Z).
@@ -264,5 +213,3 @@ by rewrite /kleisli /= join_fmap perms_mu_perm.
 Abort.
 
 End Section42.
-
-End Stash.

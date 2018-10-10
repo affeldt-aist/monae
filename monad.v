@@ -895,20 +895,7 @@ Lemma altACA A : @interchange (M A) (fun x y => x [~i] y) (fun x y => x [~i] y).
 Proof. move=> x y z t; rewrite !altA; congr (_ [~i] _); by rewrite altAC. Qed.
 End altci_lemmas.
 
-(* definition 5.1, mu2017 *)
-Definition commute {M : monad} A B (m : M A) (n : M B) C (f : A -> B -> M C) : Prop :=
-  m >>= (fun x => n >>= (fun y => f x y)) = n >>= (fun y => m >>= (fun x => f x y)) :> M _.
-
-(* mu2017, Sect. 3.2, netsys 2017 *)
-
-Section list_homomorphism.
-Variables (A : Type) (a : A) (add : A -> A -> A).
-
-Definition list_homo B (h : seq B -> A) : Prop :=
-  (h [::] = a) /\ (forall s1 s2, h (s1 ++ s2) = add (h s1) (h s2)).
-
-End list_homomorphism.
-
+(* mu2017 (Sect. 3.2), netsys 2017 *)
 Section altci_insert.
 Variables (M : altCIMonad) (A : Type) (a : A).
 
@@ -941,9 +928,36 @@ End altci_insert.
 
 Section spark_aggregation.
 Local Open Scope mu_scope.
-Variable M : altCIMonad.
+
+Section definitions.
+Variable M : altMonad.
+
+Variables (A B : Type).
+
+Definition deterministic A B (f : A -> M B) := exists g : A -> B, f = Ret \o g.
+
+Variables (b : B) (mul : B -> A -> B) (add : B -> B -> B).
+
+Let Partition A := seq A.
+Let RDD A := seq (Partition A).
+
+Definition aggregate : RDD A -> M B :=
+  foldl add b (o) (perm \o map (foldl mul b)).
+
+End definitions.
+Arguments aggregate {M A B}.
+
+Section list_homomorphism.
+Variables (A : Type) (a : A) (add : A -> A -> A).
+
+Definition list_homo B (h : seq B -> A) : Prop :=
+  (h [::] = a) /\ (forall s1 s2, h (s1 ++ s2) = add (h s1) (h s2)).
+End list_homomorphism.
+
+Section aggregate_deterministic.
 
 Section foldl_perm_deterministic.
+Variable M : altCIMonad.
 Variables (A B : Type) (op : B -> A -> B).
 Local Notation "x (.) y" := (op x y) (at level 11).
 Hypothesis opP : forall (x y : A) (w : B), (w (.) x) (.) y = (w (.) y) (.) x.
@@ -977,7 +991,7 @@ rewrite foldl_cat /=.
 by rewrite altmm.
 Qed.
 
-(* lemma 1, netys2017 *)
+(* netys2017 *)
 Lemma lemma_1 a b : let op' a b := op b a in
   foldr op' b (o) insert a = Ret \o foldr op' b \o cons a :> (_ -> M _).
 Proof.
@@ -988,11 +1002,10 @@ apply functional_extensionality => s /=.
 by rewrite -cats1 foldl_cat /= /= -foldl_rev.
 Qed.
 
-(* TODO(rei): clean *)
 Lemma lemma_34 b : foldl op b (o) perm = Ret \o foldl op b :> (_ -> M _).
 Proof.
 apply functional_extensionality => xs; move: xs b; elim=> [/=|x xs IH] b.
-  by rewrite /= fcomp_ext /= fmap_ret.
+  by rewrite fcomp_ext fmap_ret.
 rewrite fcomp_ext [in LHS]/= fmap_bind.
 rewrite_ lemma_35.
 transitivity ((Ret \o foldl op (b (.) x)) xs : M _); last by [].
@@ -1006,7 +1019,7 @@ elim: ys b => // y ys ih /= b.
 by rewrite ih /= opP.
 Qed.
 
-(* lemma 2, netys2017 *)
+(* netys2017 *)
 Lemma lemma_2 b : let op' a b := op b a in
   foldr op' b (o) perm(*shuffle!*) = Ret \o foldr op' b :> (_ -> M _).
 Proof.
@@ -1021,14 +1034,28 @@ Qed.
 
 End foldl_perm_deterministic.
 
-Section lemma6.
+Section theorem36.
+Variable M : altCIMonad.
+Variables (A B : Type) (b : B) (mul : B -> A -> B) (add : B -> B -> B).
+Hypotheses (addA : associative add) (addC : commutative add).
 
-Variables (B : Type) (b : B) (add : B -> B -> B) (A : Type) (h : seq A -> B).
+(* theorem 3.6 in mu2017, with foldr it is theorem 9 in netys2017 *)
+Lemma aggregateE :
+  aggregate b mul add = Ret \o foldl add b \o map (foldl mul b) :> (_ -> M _).
+Proof.
+(* NB: mu2017 is using perm_map (lemma 3.1) and (7) but that does not seem useful*)
+rewrite compA -[in RHS]lemma_34 // => x ??; by rewrite -addA (addC x) addA.
+Qed.
 
-Lemma lemma_6 : right_id b add -> list_homo b add h <->
+Lemma deter_aggregate : deterministic (aggregate b mul add : _ -> M _).
+Proof. rewrite /deterministic aggregateE //; eexists; reflexivity. Qed.
+
+Section corollary10.
+
+Lemma lemma_6 (h : seq A -> B) (addb0 : right_id b add) : list_homo b add h <->
   foldr add b \o map h = h \o flatten.
 Proof.
-move=> addb0; split => H.
+split => H.
   apply functional_extensionality => xss /=.
   elim: xss => [|s ss IH /=]; first by rewrite /= (proj1 H).
   by rewrite (proj2 H) IH.
@@ -1037,12 +1064,11 @@ rewrite (_ : _ ++ _ = flatten [:: s1; s2]); last by rewrite /= cats0.
 by rewrite compE -H /= addb0.
 Qed.
 
-Lemma lemma_6_foldl :
-  associative add -> commutative add -> left_id b add ->
+Lemma lemma_6_foldl (h : seq A -> B) (add0b : left_id b add) :
   list_homo b add h <->
   foldl add b \o map h = h \o flatten.
 Proof.
-move=> addA addC add0b; split => H.
+split => H.
   apply functional_extensionality => xss /=.
   elim: xss => [|s ss IH]; first by rewrite /= (proj1 H).
   rewrite (proj2 H) -IH /=.
@@ -1055,37 +1081,19 @@ rewrite (_ : _ ++ _ = flatten [:: s1; s2]); last by rewrite /= cats0.
 by rewrite compE -H /= add0b.
 Qed.
 
-End lemma6.
-
-Let Partition A := seq A.
-Let RDD A := seq (Partition A).
-
-Definition deterministic A B (f : A -> M B) :=
-  exists g : A -> B, f = Ret \o g.
-
-Variables (A B : Type) (b : B) (mul : B -> A -> B) (add : B -> B -> B).
-
-Definition aggregate : RDD A -> M B :=
-  foldl add b (o) (perm \o map (foldl mul b)).
-
-Hypotheses (addA : associative add) (addC : commutative add) (add0b : left_id b add) (addb0 : right_id b add).
-
-(* with foldr it is theorem 9 in netys2017 *)
-Lemma aggregateE : aggregate = Ret \o foldl add b \o map (foldl mul b).
+Corollary corollary_10 (add0b : left_id b add) :
+  list_homo b add (foldl mul b) ->
+  aggregate b mul add = Ret \o foldl mul b \o flatten :> (_ -> M _).
 Proof.
-(* NB: mu2017 is using perm_map (lemma 3.1) and (7) but that does not seem useful*)
-rewrite compA -[in RHS]lemma_34 // => x ??; by rewrite -addA (addC x) addA.
-Qed.
-
-Lemma deter_aggregate : deterministic aggregate.
-Proof. rewrite /deterministic aggregateE //; eexists; reflexivity. Qed.
-
-Corollary corollary_10 : list_homo b add (foldl mul b) ->
-  aggregate = Ret \o foldl (fun x y => mul x y) b \o flatten.
-Proof.
-move/(lemma_6_foldl (foldl mul b) addA addC add0b) => H.
+move/(proj1 (lemma_6_foldl _ add0b)) => H.
 by rewrite aggregateE // -compA  -[in RHS]compA H.
 Qed.
+
+End corollary10.
+
+End theorem36.
+
+End aggregate_deterministic.
 
 End spark_aggregation.
 

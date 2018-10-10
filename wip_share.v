@@ -6,7 +6,9 @@ Set Implicit Arguments.
 Unset Strict Implicit.
 Unset Printing Implicit Defensive.
 
-(* Fischer et al., *)
+(* wip (fischer2011jfp) *)
+
+(* just a scratch file *)
 
 (* mzero <-> Fail, `mplus` <-> [~i] *)
 
