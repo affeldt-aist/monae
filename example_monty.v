@@ -364,14 +364,14 @@ Definition play_n (strategy : door -> door -> M door) : M bool :=
 
 Lemma monty_choice_your_choice_combine :
   do h <- hide_n ; do p <- pick; Ret (h, p) =
-  (do p <- pick; Ret (A, p)) [~i]
-  (do p <- pick; Ret (B, p)) [~i]
+  (do p <- pick; Ret (A, p)) [~]
+  (do p <- pick; Ret (B, p)) [~]
   (do p <- pick; Ret (C, p)).
 Proof.
 pose k (h : door) := do p <- pick; Ret (h, p).
 transitivity (do h <- hide_n; k h).
   by [].
-transitivity (do h <- (Ret A [~i] Ret B [~i] Ret C); k h).
+transitivity (do h <- (Ret A [~] Ret B [~] Ret C); k h).
   rewrite /hide_n.
   rewrite /doors Set3.enumE /arbitrary /foldr1 [in LHS]/=.
   by rewrite -[in RHS]altA [in RHS]altC -[in RHS]altA.

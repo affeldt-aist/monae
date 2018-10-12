@@ -194,7 +194,7 @@ elim: s f => [|h t IH] f.
   by rewrite tselect1 !bindretf.
 rewrite tselect_cons // => H.
 rewrite [in LHS]alt_bindDl [in RHS]alt_bindDl alt_bindDr.
-congr (_ [~i] _); first by rewrite 2!bindretf.
+congr (_ [~] _); first by rewrite 2!bindretf.
 rewrite 2!bindA IH; bind_ext => y; by rewrite !bindretf.
 Qed.
 
@@ -219,7 +219,7 @@ rewrite tselect_cons // => H.
 rewrite [tselect _]lock.
 rewrite_ alt_bindDl.
 rewrite [in RHS]alt_bindDl alt_bindDr.
-congr (_ [~i] _).
+congr (_ [~] _).
   rewrite bindretf; bind_ext => ?; by rewrite bindretf.
 rewrite -lock.
 transitivity (
@@ -315,7 +315,7 @@ Definition commute {M : monad} A B (m : M A) (n : M B) C (f : A -> B -> M C) : P
   m >>= (fun x => n >>= (fun y => f x y)) = n >>= (fun y => m >>= (fun x => f x y)) :> M _.
 
 (* theorem 5.2, mu2017 *)
-Lemma commute_nondetState {S} {M : nondetStateMonad S}
+Lemma commute_nondetState S (M : nondetStateMonad S)
   A (m : M A) B (n : M B) C (f : A -> B -> M C) :
   nondetState_sub m -> commute m n f.
 Proof.
@@ -337,18 +337,14 @@ elim: x m n f => [{A}A a m n f <-| B0 {A}A n0 H0 n1 H1 m n2 f <- |
   bind_ext => b.
   by rewrite bindfailf.
 - rewrite /commute /= alt_bindDl.
-  transitivity (do y <- n2; (do x <- ndDenote n0 ; f x y) [~i] do x <- ndDenote n1; f x y); last first.
+  transitivity (do y <- n2; (do x <- ndDenote n0 ; f x y) [~]
+                           (do x <- ndDenote n1; f x y)); last first.
     bind_ext => a.
     by rewrite alt_bindDl.
   by rewrite alt_bindDr H0 // H1.
 Qed.
 
-
-(* TODO: move *)
-Definition zipWith {A B C} (op : A -> B -> C) a b : seq C :=
-  map (fun xy => op xy.1 xy.2) (zip a b).
-
-(* from section 4.2 ("safety check as a stateful foldr") of mu2017 *)
+(* section 4.2, mu2017 *)
 Section loop.
 
 Variables (A S : Type) (M : stateMonad S) (op : S -> A -> S).
@@ -358,13 +354,14 @@ Local Open Scope mu_scope.
 Definition opmul x m : M _ :=
   Get >>= fun st => let st' := op st x in cons st' ($) (Put st' >> m).
 
-Definition loopp (s : S) (xs : seq A) : M (seq S) :=
+Definition loopp s xs : M (seq S) :=
   let mul x m := opmul x m in Put s >> foldr mul (Ret [::]) xs.
 
-Lemma loopp_nil (s : S) : loopp s [::] = Put s >> Ret [::].
+Lemma loopp_nil s : loopp s [::] = Put s >> Ret [::].
 Proof. by []. Qed.
 
-Lemma loopp_of_scanl_helper (s : S) (ms : M S) (mu mu' : M unit) (m : M (seq S)) (f : S -> M unit) :
+Lemma loopp_of_scanl_helper s
+  (ms : M S) (mu mu' : M unit) (m : M (seq S)) (f : S -> M unit) :
   do x <- ms; mu >> (do xs <- cons s ($) (mu' >> m); f x >> Ret xs) =
   cons s ($) (do x <- ms; mu >> mu' >> (do xs <- m; f x >> Ret xs)).
 Proof.
@@ -380,8 +377,8 @@ With (rewrite_ bindretf) Open (X in _ = _ >>= X).
 by [].
 Qed.
 
-(* theorem 4.1 *)
-Lemma loopp_of_scanl (s : S) (xs : seq A) :
+(* theorem 4.1, mu2017 *)
+Lemma loopp_of_scanl s xs :
   Ret (scanl op s xs) = do ini <- Get; loopp s xs >>= overwrite ini.
 Proof.
 elim: xs s => [/=|x xs IH] s.
@@ -414,19 +411,19 @@ Qed.
 
 End loop.
 
-Section section_51.
+Section section_51. (* mu2017 *)
 
 Variables (S : Type) (M : nondetStateMonad S).
 Variables (A : Type) (op : S -> A -> S) (ok : pred S).
 
-Lemma assert_all_scanl (st : S) (xs : seq A) :
-  assert (all ok \o scanl op st) xs =
-  Get >>= (fun ini => loopp _ op st xs >>=
+Lemma assert_all_scanl s (xs : seq A) :
+  assert (all ok \o scanl op s) xs =
+  Get >>= (fun ini => loopp _ op s xs >>=
     (fun ys => guard (all ok ys) >> Ret xs >>= overwrite ini)) :> M _.
 Proof.
 rewrite /assert.
 rewrite guardsC; last exact: bindmfail.
-transitivity (Get >>= (fun ini => loopp _ op st xs >>= overwrite ini >>=
+transitivity (Get >>= (fun ini => loopp _ op s xs >>= overwrite ini >>=
     (fun ys => guard (all ok ys) >> Ret xs) : M _)).
   by rewrite -!bindA -loopp_of_scanl bindA !bindretf.
 bind_ext => st'.
@@ -440,27 +437,21 @@ Qed.
 Local Open Scope mu_scope.
 
 Lemma put_foldr st x xs :
-  Put (op st x) >>
-  (do x1 <- foldr (opmul op) (Ret [::]) xs; guard (all ok x1) >> guard (ok (op st x))) =
-  guard (ok (op st x)) >>
-  (Put (op st x) >> (do ys <- foldr (opmul op) (Ret [::]) xs; guard (all ok ys))) :> M _.
+  Put (op st x) >> (do x1 <- foldr (opmul op) (Ret [::]) xs;
+    guard (all ok x1) >> guard (ok (op st x))) =
+  guard (ok (op st x)) >> (Put (op st x) >>
+    (do ys <- foldr (opmul op) (Ret [::]) xs; guard (all ok ys))) :> M _.
 Proof.
 elim: xs x => [x|h t _ x].
-  rewrite /=.
-  rewrite bindretf /=.
-  rewrite bindskipf /= .
-  rewrite (_ : do ys <- Ret [::]; guard (all ok ys) = skip); last first.
-    by rewrite bindretf.
-  rewrite bindmskip.
-  rewrite /guard.
-  case: ifPn => H.
-    by rewrite bindskipf bindmskip.
-  by rewrite bindmfail bindfailf.
+  rewrite /= bindretf /= bindskipf /= bindretf (_ : guard (_ _ [::]) = skip) //.
+  rewrite bindmskip /guard; case: ifPn => H.
+  - by rewrite bindskipf bindmskip.
+  - by rewrite bindmfail bindfailf.
 rewrite /= !bindA.
 transitivity (Put (op st x) >>
-  (do x0 <- Get;
-   do x1 <- let st' := op x0 h in cons st' ($) (Put st' >> foldr (opmul op) (Ret [::]) t);
-   guard (ok (op st x)) >> guard (all ok x1)) : M _).
+  (do x0 <- Get; do x1 <- let st' := op x0 h in
+    cons st' ($) (Put st' >> foldr (opmul op) (Ret [::]) t);
+    guard (ok (op st x)) >> guard (all ok x1)) : M _).
   bind_ext; case.
   bind_ext => st'.
   bind_ext => s.
@@ -480,9 +471,10 @@ Qed.
 Let B := A.
 Let res := @cons A.
 
-Definition opdot (x : A) (m : M (seq B)) : M (seq B) :=
-  Get >>= (fun st => guard (ok (op st x)) >> Put (op st x) >> (res x ($) m)).
+Definition opdot (a : A) (m : M (seq B)) : M (seq B) :=
+  Get >>= (fun st => guard (ok (op st a)) >> Put (op st a) >> (res a ($) m)).
 
+(* mu2017 *)
 Lemma theorem_53 (xs : seq A) :
   foldr (opmul op) (Ret [::]) xs >>=
     (fun ys => guard (all ok ys) >> Ret xs) = foldr opdot (Ret [::]) xs.
@@ -532,7 +524,7 @@ Qed.
 
 End section_51.
 
-(* TODO: utility functions, move? *)
+(* TODO: move? *)
 Definition intersect {A : eqType} (s t : seq A) : seq A := filter (mem s) t.
 
 Lemma nilp_intersect (A : eqType) (s t : seq A) :
@@ -765,54 +757,10 @@ rewrite [in RHS]fmap_bind bindA; bind_ext => a.
 rewrite fmap_bind 2!bindA.
 (* TODO(rei): use bind_ext *)
 congr Monad.bind; apply functional_extensionality => s.
-rewrite bindretf.
-rewrite 2!fcomp_ext.
-rewrite bind_fmap fmap_bind bindA.
+rewrite bindretf 2!fcomp_ext bind_fmap fmap_bind bindA.
 rewrite_ bindretf.
 rewrite_ fcomp_ext.
 by rewrite_ fmap_ret.
 Qed.
 
 End properties_of_Symbols.
-
-Section Tree.
-Variable A : Type.
-
-Inductive Tree := Tip (a : A) | Bin of Tree & Tree.
-
-Fixpoint foldt B (f : A -> B) (g : B * B -> B) (t : Tree) : B :=
-  match t with
-  | Tip a => f a
-  | Bin t u => g (foldt f g t, foldt f g u)
-  end.
-
-Section foldt_universal.
-Variables B : Type.
-Variables (h : Tree -> B) (f : A -> B) (g : B * B -> B).
-Hypothesis H1 : h \o Tip = f.
-Hypothesis H2 : h \o uncurry Bin = g \o (fun x => (h x.1, h x.2)).
-Lemma foldt_universal : h = foldt f g.
-Proof.
-apply functional_extensionality; elim => [a|]; first by rewrite -H1.
-move=> t1 IH1 t2 IH2 /=;
-rewrite -IH1 -IH2.
-transitivity ((h \o uncurry Bin) (t1, t2)); first by [].
-by rewrite H2.
-Qed.
-End foldt_universal.
-
-Definition size_Tree (t : Tree) := foldt (const 1) uaddn t.
-
-Lemma size_Tree_Bin :
-  size_Tree \o uncurry Bin = uncurry addn \o size_Tree`^2.
-Proof. by apply functional_extensionality => -[x1 x2]. Qed.
-
-Fixpoint labels (t : Tree) : seq A :=
-  match t with
-  | Tip a => [:: a]
-  | Bin t u => labels t ++ labels u
-  end.
-
-End Tree.
-Arguments Tip {A}.
-Arguments Bin {A}.

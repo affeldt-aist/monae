@@ -385,7 +385,7 @@ Export MonadAltProb.Exports.
 Section altprob_lemmas.
 Variable (M : altProbMonad).
 Lemma choiceDr : forall A p,
-  right_distributive (fun x y : M A => x <| p |> y) (fun x y => x [~i] y).
+  right_distributive (fun x y : M A => x <| p |> y) (fun x y => x [~] y).
 Proof. by case: M => m [? ? []]. Qed.
 End altprob_lemmas.
 
@@ -395,8 +395,8 @@ Section convexity_property.
 
 Variables (M : altProbMonad) (A : Type) (p q : M A).
 
-Lemma convexity w : p [~i] q =
-  (p <| w |> p) [~i] (q <| w |> p) [~i] (p <| w |> q) [~i] (q <| w |> q).
+Lemma convexity w : p [~] q =
+  (p <| w |> p) [~] (q <| w |> p) [~] (p <| w |> q) [~] (q <| w |> q).
 Proof.
 rewrite -[LHS](choicemm (probcplt w)).
 rewrite choiceDr.
@@ -413,7 +413,7 @@ Definition bcoin {M : probMonad} (p : Prob.t) : M bool :=
 Arguments bcoin : simpl never.
 
 (* arbitrary nondeterministic choice between booleans *)
-Definition arb {M : altMonad} : M bool := Ret true [~i] Ret false.
+Definition arb {M : altMonad} : M bool := Ret true [~] Ret false.
 
 Section mixing_choices.
 
@@ -435,13 +435,13 @@ Proof. case: b; apply functional_extensionality; by case. Qed.
 Definition Ret_eqb_add := (Ret_eqb_addL, Ret_eqb_addR).
 
 Lemma arbcoin_spec p :
-  arbcoin p = (bcoin p : M _ (* TODO *) ) [~i] bcoin [Pr of p.~].
+  arbcoin p = (bcoin p : M _ (* TODO *) ) [~] bcoin [Pr of p.~].
 Proof.
 rewrite /arbcoin /arb.
 rewrite alt_bindDl.
 rewrite 2!bindretf.
 rewrite 2!Ret_eqb_add ![fun _ => Ret _]/=.
-rewrite bindmret; congr (_ [~i] _).
+rewrite bindmret; congr (_ [~] _).
 rewrite [in RHS]/bcoin choiceC.
 rewrite [in RHS](@choice_ext p); last by rewrite /= onemK.
 by rewrite {1}/bcoin prob_bindDl 2!bindretf.
@@ -460,11 +460,11 @@ by rewrite altC choicemm altC.
 Qed.
 
 Lemma coinarb_spec_convexity p w : coinarb p =
-  (bcoin w : M _) [~i] Ret false [~i] Ret true [~i] bcoin [Pr of w.~].
+  (bcoin w : M _) [~] Ret false [~] Ret true [~] bcoin [Pr of w.~].
 Proof.
 rewrite coinarb_spec [in LHS]/arb [in LHS](convexity _ _ w) 2!choicemm.
-rewrite [in LHS]altC -(altA _ (Ret false)) altCA -2![in RHS]altA; congr (_ [~i] _).
-rewrite -altA altCA; congr (_ [~i] _).
+rewrite [in LHS]altC -(altA _ (Ret false)) altCA -2![in RHS]altA; congr (_ [~] _).
+rewrite -altA altCA; congr (_ [~] _).
 by rewrite /bcoin choiceC altC.
 Qed.
 

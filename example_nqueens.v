@@ -446,12 +446,12 @@ destruct a as [|u v] => //.
   by rewrite !bindretf /=.
 rewrite unfoldME /=; last exact: decr_size_select.
 rewrite !bindA.
-transitivity (do x <- Ret (u, v) [~i] (do y_ys <- select v; Ret (y_ys.1, u :: y_ys.2));
+transitivity (do x <- Ret (u, v) [~] (do y_ys <- select v; Ret (y_ys.1, u :: y_ys.2));
   op b (do x0 <- cons x.1 ($) unfoldM p select x.2; foldr op (Ret [::]) x0)); last first.
   apply/esym.
   rewrite {1}/op /opdot_queens /opdot fmap_bind.
   transitivity (do st <- Get;
-  (guard (queens_ok (queens_next st b)) >> do x <- Ret (u, v) [~i] (do y_ys <- select v; Ret (y_ys.1, u :: y_ys.2));
+  (guard (queens_ok (queens_next st b)) >> do x <- Ret (u, v) [~] (do y_ys <- select v; Ret (y_ys.1, u :: y_ys.2));
    (Put (queens_next st b)) >>
   ((cons b
     (o) (fun x : Z * seq Z => do x0 <- cons x.1 ($) unfoldM p select x.2; foldr op (Ret [::]) x0)) x))).
@@ -462,7 +462,7 @@ transitivity (do x <- Ret (u, v) [~i] (do y_ys <- select v; Ret (y_ys.1, u :: y_
     case: (@select_is_nondetState _ M _ v) => x <-.
     by exists (ndAlt (ndRet (u, v)) (ndBind x (fun y => ndRet (y.1, u :: y.2)))).
   transitivity (do st <- Get;
-  (do x <- Ret (u, v) [~i] (do y_ys <- select v; Ret (y_ys.1, u :: y_ys.2)) : M _;
+  (do x <- Ret (u, v) [~] (do y_ys <- select v; Ret (y_ys.1, u :: y_ys.2)) : M _;
   guard (queens_ok (queens_next st b)) >>
    Put (queens_next st b) >>
    (cons b

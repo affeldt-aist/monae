@@ -34,13 +34,12 @@ Arguments aggregate {M A B}.
 
 Section aggregate_deterministic.
 
-Section foldl_perm_deterministic1.
+Section foldl_perm_deterministic.
 Variable M : altCIMonad.
 Variables (A B : Type) (op : B -> A -> B) (b : B).
 Local Notation "x (.) y" := (op x y) (at level 11).
 Hypothesis opP : forall (x y : A) (w : seq A), (foldl op b w (.) x) (.) y = (foldl op b w (.) y) (.) x.
 
-(* from mu2017 *)
 Lemma lemma_35 a :
   foldl op b (o) insert a = Ret \o foldl op b \o (rcons^~ a) :> (_ -> M _).
 Proof.
@@ -56,21 +55,21 @@ rewrite (H y).
 rewrite fmap_comp.
 rewrite fcomp_ext in IH.
 rewrite IH.
-rewrite -[in X in _ [~i] X]bindretf.
+rewrite -[in X in _ [~] X]bindretf.
 rewrite bindretf.
 rewrite -{1}compA.
 rewrite fmap_ret.
 rewrite (H a).
-rewrite [in X in _ [~i] X]/=.
+rewrite [in X in _ [~] X]/=.
 rewrite opP.
 rewrite /= -!cats1 -catA /=.
 rewrite foldl_cat /=.
 by rewrite altmm.
 Qed.
 
-End foldl_perm_deterministic1.
+End foldl_perm_deterministic.
 
-Section foldl_perm_deterministic.
+Section foldl_perm_deterministic_contd.
 Variable M : altCIMonad.
 Variables (A B : Type) (op : B -> A -> B).
 Local Notation "x (.) y" := (op x y) (at level 11).
@@ -98,14 +97,14 @@ rewrite -/(foldl op b [::]).
 by rewrite opP'.
 Qed.
 
-End foldl_perm_deterministic.
+End foldl_perm_deterministic_contd.
 
 Section theorem36.
 Variable M : altCIMonad.
 Variables (A B : Type) (b : B) (mul : B -> A -> B) (add : B -> B -> B).
 Hypotheses (addA : associative add) (addC : commutative add).
 
-(* theorem 3.6 in mu2017, with foldr it is theorem 9 in netys2017 *)
+(* theorem 3.6 in mu2017, see also netys2017 *)
 Lemma aggregateE :
   aggregate b mul add = Ret \o foldl add b \o map (foldl mul b) :> (_ -> M _).
 Proof.
@@ -115,7 +114,6 @@ Qed.
 
 Lemma deter_aggregate : deterministic (aggregate b mul add : _ -> M _).
 Proof. rewrite /deterministic aggregateE //; eexists; reflexivity. Qed.
-
 
 End theorem36.
 

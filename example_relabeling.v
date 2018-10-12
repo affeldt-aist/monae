@@ -10,7 +10,49 @@ Set Implicit Arguments.
 Unset Strict Implicit.
 Unset Printing Implicit Defensive.
 
-(* from gibbons2011icfp *)
+(* see Sect. 9 of gibbons2011icfp *)
+
+Section Tree.
+Variable A : Type.
+
+Inductive Tree := Tip (a : A) | Bin of Tree & Tree.
+
+Fixpoint foldt B (f : A -> B) (g : B * B -> B) (t : Tree) : B :=
+  match t with
+  | Tip a => f a
+  | Bin t u => g (foldt f g t, foldt f g u)
+  end.
+
+Section foldt_universal.
+Variables B : Type.
+Variables (h : Tree -> B) (f : A -> B) (g : B * B -> B).
+Hypothesis H1 : h \o Tip = f.
+Hypothesis H2 : h \o uncurry Bin = g \o (fun x => (h x.1, h x.2)).
+Lemma foldt_universal : h = foldt f g.
+Proof.
+apply functional_extensionality; elim => [a|]; first by rewrite -H1.
+move=> t1 IH1 t2 IH2 /=;
+rewrite -IH1 -IH2.
+transitivity ((h \o uncurry Bin) (t1, t2)); first by [].
+by rewrite H2.
+Qed.
+End foldt_universal.
+
+Definition size_Tree (t : Tree) := foldt (const 1) uaddn t.
+
+Lemma size_Tree_Bin :
+  size_Tree \o uncurry Bin = uncurry addn \o size_Tree`^2.
+Proof. by apply functional_extensionality => -[x1 x2]. Qed.
+
+Fixpoint labels (t : Tree) : seq A :=
+  match t with
+  | Tip a => [:: a]
+  | Bin t u => labels t ++ labels u
+  end.
+
+End Tree.
+Arguments Tip {A}.
+Arguments Bin {A}.
 
 Section tree_relabelling.
 
@@ -45,10 +87,10 @@ rewrite {1}/fmap /=.
 rewrite {1}/bassert /=.
 rewrite ![in RHS]bindA.
 transitivity (do x0 <- relabel u;
-    (do x <- dlabels t1;
-     do x <-
-     (do x1 <- (do y <- dlabels t2; Ret (x, y)); (do x <- guard (q x1) >> Ret x1; (Ret \o ucat) x));
-  m x0 x)); last first.
+  (do x <- dlabels t1;
+   do x <- (do x1 <- (do y <- dlabels t2; Ret (x, y));
+            (do x <- guard (q x1) >> Ret x1; (Ret \o ucat) x));
+   m x0 x)); last first.
   bind_ext => u'.
   by rewrite !bindA.
 rewrite -H1 {1}/drBin {1}/fmap /= {1}/bassert /= !bindA.
@@ -61,18 +103,14 @@ transitivity (do x0 <- relabel u;
   bind_ext => y2; by rewrite bindA.
 rewrite -H2.
 bind_ext => s'.
-rewrite !bindretf.
-rewrite !bindA.
+rewrite !bindretf !bindA.
 transitivity (guard (q (s, s')) >>
   (do x1 <- (Ret \o ucat) (s, s'); do x3 <- relabel u; m x3 x1)).
   bind_ext => tt_unit; by rewrite bindretf.
 rewrite guardsC; last exact: failfresh_bindmfail.
-rewrite !bindA.
-rewrite !bindretf.
-rewrite !bindA.
+rewrite !bindA !bindretf !bindA.
 bind_ext => u'.
-rewrite bindA.
-rewrite guardsC; last exact: failfresh_bindmfail.
+rewrite bindA guardsC; last exact: failfresh_bindmfail.
 by rewrite bindA bindretf.
 Qed.
 
