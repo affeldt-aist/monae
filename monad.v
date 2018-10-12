@@ -128,7 +128,7 @@ Lemma compfid A B (f : A -> B) : f \o id = f. Proof. by []. Qed.
 
 Lemma compidf A B (f : A -> B) : id \o f = f. Proof. by []. Qed.
 
-Lemma compE A B C (f : A -> B) (g : B -> C) a : g (f a) = (g \o f) a.
+Lemma compE A B C (g : B -> C) (f : A -> B) a : g (f a) = (g \o f) a.
 Proof. by []. Qed.
 
 Fixpoint scanl A B (op : B -> A -> B) (b : B) (s : seq A) : seq B :=
@@ -191,22 +191,20 @@ End Map_laws.
 
 Module Monad.
 Record class_of (m : Type -> Type) : Type := Class {
-  op_ret : forall A, A -> m A ;
-  op_bind : forall A B, m A -> (A -> m B) -> m B ;
-  _ : Laws.left_neutral op_bind op_ret ;
-  _ : Laws.right_neutral op_bind op_ret ;
-  _ : Laws.associative op_bind }.
+  ret : forall A, A -> m A ;
+  bind : forall A B, m A -> (A -> m B) -> m B ;
+  _ : Laws.left_neutral bind ret ;
+  _ : Laws.right_neutral bind ret ;
+  _ : Laws.associative bind }.
 Record t : Type := Pack { m : Type -> Type ; class : class_of m }.
-Definition ret (M : t) A : A -> m M A :=
-  let: Pack _ (Class x _ _ _ _) := M in x A.
-Arguments ret {M A} : simpl never.
-Definition bind (M : t) A B : m M A -> (A -> m M B) -> m M B :=
-  let: Pack _ (Class _ x _ _ _) := M in x A B.
-Arguments bind {M A B} : simpl never.
 Module Exports.
-Notation "m >>= f" := (bind m f).
-Notation Bind := bind.
-Notation Ret := ret.
+Definition Ret (M : t) A : A -> m M A :=
+  let: Pack _ (Class x _ _ _ _) := M in x A.
+Arguments Ret {M A} : simpl never.
+Definition Bind (M : t) A B : m M A -> (A -> m M B) -> m M B :=
+  let: Pack _ (Class _ x _ _ _) := M in x A B.
+Arguments Bind {M A B} : simpl never.
+Notation "m >>= f" := (Bind m f).
 Notation monad := t.
 Coercion m : monad >-> Funclass.
 End Exports.
@@ -230,11 +228,11 @@ Definition skip M := @Ret M _ tt.
 Arguments skip {M} : simpl never.
 
 Ltac bind_ext :=
-  let congr_ext m := ltac:(congr (Monad.bind m); apply functional_extensionality) in
+  let congr_ext m := ltac:(congr (Bind m); apply functional_extensionality) in
   match goal with
-    | |- @Monad.bind _ _ _ ?m ?f1 = @Monad.bind _ _ _ ?m ?f2 =>
+    | |- @Bind _ _ _ ?m ?f1 = @Bind _ _ _ ?m ?f2 =>
       congr_ext m
-    | |- @Monad.bind _ _ _ ?m1 ?f1 = @Monad.bind _ _ _ ?m2 ?f2 =>
+    | |- @Bind _ _ _ ?m1 ?f1 = @Bind _ _ _ ?m2 ?f2 =>
       first[ simpl m1; congr_ext m1 | simpl m2; congr_ext m2 ]
   end.
 
@@ -255,15 +253,15 @@ Tactic Notation "Open" ssrpatternarg(pat) :=
   With (idtac) Open pat.
 
 Tactic Notation "Inf" tactic(tac) :=
-  (With (tac; reflexivity) Open (X in @Monad.bind _ _ _ _ X = _ )) ||
-  (With (tac; reflexivity) Open (X in _ = @Monad.bind _ _ _ _ X)).
+  (With (tac; reflexivity) Open (X in @Bind _ _ _ _ X = _ )) ||
+  (With (tac; reflexivity) Open (X in _ = @Bind _ _ _ _ X)).
 
 Tactic Notation "rewrite_" constr(lem) :=
-  (With (rewrite lem; reflexivity) Open (X in @Monad.bind _ _ _ _ X = _ )) ||
-  (With (rewrite lem; reflexivity) Open (X in _ = @Monad.bind _ _ _ _ X)).
+  (With (rewrite lem; reflexivity) Open (X in @Bind _ _ _ _ X = _ )) ||
+  (With (rewrite lem; reflexivity) Open (X in _ = @Bind _ _ _ _ X)).
 
 Lemma bindmskip (M : monad) (m : M unit) : m >> skip = m.
-Proof. by rewrite -[RHS]bindmret; bind_ext; by case. Qed.
+Proof. rewrite -[RHS]bindmret; bind_ext; by case. Qed.
 
 Lemma bindskipf (M : monad) A (m : M A) : skip >> m = m.
 Proof. exact: bindretf. Qed.
@@ -473,19 +471,18 @@ End MonadCount.
 
 Module MonadFail.
 Record mixin_of (M : monad) : Type := Mixin {
-  op_fail : forall A, M A ;
+  fail : forall A, M A ;
   (* exceptions are left-zeros of sequential composition *)
-  _ : Laws.left_zero (@Bind M) op_fail (* fail A >>= f = fail B *)
+  _ : Laws.left_zero (@Bind M) fail (* fail A >>= f = fail B *)
 }.
 Record class_of (m : Type -> Type) := Class {
   base : Monad.class_of m ; mixin : mixin_of (Monad.Pack base) }.
 Structure t := Pack { m : Type -> Type ; class : class_of m }.
-Definition fail (M : t) : forall A, m M A :=
-  let: Pack _ (Class _ (Mixin x _)) := M return forall A, m M A in x.
-Arguments fail {M} {A} : simpl never.
 Definition baseType (M : t) := Monad.Pack (base (class M)).
 Module Exports.
-Notation Fail := fail.
+Definition Fail (M : t) : forall A, m M A :=
+  let: Pack _ (Class _ (Mixin x _)) := M return forall A, m M A in x.
+Arguments Fail {M A} : simpl never.
 Notation failMonad := t.
 Coercion baseType : failMonad >-> monad.
 Canonical baseType.
@@ -643,23 +640,22 @@ Arguments hyloM {M} {A} {B} {C} _ _ _ _ _.
 
 Module MonadAlt.
 Record mixin_of (M : monad) : Type := Mixin {
-  op_alt : forall A, M A -> M A -> M A ;
-  _ : forall A, associative (@op_alt A) ;
+  alt : forall A, M A -> M A -> M A ;
+  _ : forall A, associative (@alt A) ;
   (* composition distributes leftwards over choice *)
-  _ : Laws.bind_left_distributive (@Bind M) op_alt
+  _ : Laws.bind_left_distributive (@Bind M) alt
   (* in general, composition does not distribute rightwards over choice *)
   (* NB: no bindDr to accommodate both angelic and demonic interpretations of nondeterminism *)
 }.
 Record class_of (m : Type -> Type) : Type := Class {
   base : Monad.class_of m ; mixin : mixin_of (Monad.Pack base) }.
 Structure t := Pack { m : Type -> Type ; class : class_of m }.
-Definition alt M : forall A, m M A -> m M A -> m M A :=
-  let: Pack _ (Class _ (Mixin x _ _)) := M
-  return forall A, m M A -> m M A -> m M A in x.
-Arguments alt {M A} : simpl never.
 Definition baseType (M : t) := Monad.Pack (base (class M)).
 Module Exports.
-Notation Alt := alt.
+Definition Alt M : forall A, m M A -> m M A -> m M A :=
+  let: Pack _ (Class _ (Mixin x _ _)) := M
+  return forall A, m M A -> m M A -> m M A in x.
+Arguments Alt {M A} : simpl never.
 Notation "'[~p]'" := (@Alt _). (* postfix notation *)
 Notation "x '[~]' y" := (Alt x y). (* infix notation *)
 Notation altMonad := t.
@@ -710,9 +706,9 @@ Fixpoint subs (s : seq A) : M (seq A) :=
   fmap (cons h) t' [~] t'.
 
 Fixpoint SUBS (s : seq A) : Monad.m (MonadAlt.baseType M) _ :=
-  if s isn't h :: t then @Monad.ret (MonadAlt.baseType M) _ [::] else
+  if s isn't h :: t then @Ret (MonadAlt.baseType M) _ [::] else
   let t' : Monad.m (MonadAlt.baseType M) _ := SUBS t in
-  MonadAlt.alt (@fmap (MonadAlt.baseType M) _ _ (cons h) t') t'.
+  Alt (@fmap (MonadAlt.baseType M) _ _ (cons h) t') t'.
 
 Goal subs = SUBS. by []. Abort.
 
@@ -860,7 +856,7 @@ Record mixin_of (M : Type -> Type) (op : forall A, M A -> M A -> M A) : Type := 
 }.
 Record class_of (m : Type -> Type) : Type := Class {
   base : MonadAlt.class_of m ;
-  mixin : mixin_of (@MonadAlt.alt (MonadAlt.Pack base)) }.
+  mixin : mixin_of (@Alt (MonadAlt.Pack base)) }.
 Structure t := Pack { m : Type -> Type ; class : class_of m }.
 Definition baseType (M : t) := MonadAlt.Pack (base (class M)).
 Module Exports.
@@ -924,7 +920,7 @@ Record mixin_of (M : failMonad) (a : forall A, M A -> M A -> M A) : Type :=
 Record class_of (m : Type -> Type) : Type := Class {
   base : MonadFail.class_of m ;
   base2 : MonadAlt.mixin_of (Monad.Pack (MonadFail.base base)) ;
-  mixin : @mixin_of (MonadFail.Pack base) (MonadAlt.op_alt base2)
+  mixin : @mixin_of (MonadFail.Pack base) (MonadAlt.alt base2)
 }.
 Structure t : Type := Pack { m : Type -> Type ; class : class_of m }.
 Definition baseType (M : t) := MonadFail.Pack (base (class M)).
@@ -1127,27 +1123,26 @@ Export SyntaxNondet.Exports.
 
 Module MonadExcept.
 Record mixin_of (M : failMonad) : Type := Mixin {
-  op_catch : forall A, M A -> M A -> M A ;
+  catch : forall A, M A -> M A -> M A ;
   (* monoid *)
-  _ : forall A, right_id Fail (@op_catch A) ;
-  _ : forall A, left_id Fail (@op_catch A) ;
-  _ : forall A, associative (@op_catch A) ;
+  _ : forall A, right_id Fail (@catch A) ;
+  _ : forall A, left_id Fail (@catch A) ;
+  _ : forall A, associative (@catch A) ;
   (* unexceptional bodies need no handler *)
-  _ : forall A x, left_zero (Ret x) (@op_catch A)
+  _ : forall A x, left_zero (Ret x) (@catch A)
   (* NB: left-zero of sequential composition inherited from failMonad *)
 }.
 Record class_of (m : Type -> Type) := Class {
   base : MonadFail.class_of m ;
   mixin : mixin_of (MonadFail.Pack base) }.
 Record t : Type := Pack { m : Type -> Type ; class : class_of m }.
-Definition catch (M : t) : forall A, m M A -> m M A -> m M A :=
-  let: Pack _ (Class _ (Mixin x _ _ _ _)) := M
-  return forall A, m M A -> m M A -> m M A in x.
-Arguments catch {M A} : simpl never.
 Definition baseType M := MonadFail.Pack (base (class M)).
 Definition monadType M := Monad.Pack (MonadFail.base (base (class M))).
 Module Exports.
-Notation Catch := catch.
+Definition Catch (M : t) : forall A, m M A -> m M A -> m M A :=
+  let: Pack _ (Class _ (Mixin x _ _ _ _)) := M
+  return forall A, m M A -> m M A -> m M A in x.
+Arguments Catch {M A} : simpl never.
 Notation exceptMonad := t.
 Coercion baseType : exceptMonad >-> failMonad.
 Canonical baseType.

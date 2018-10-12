@@ -162,7 +162,7 @@ Local Obligation Tactic := idtac.
 Program Definition list_class := @MonadAlt.Class _ _
   (@MonadAlt.Mixin ModelMonad.list (@cat) catA _).
 Next Obligation.
-move=> A B /= s1 s2 k; rewrite /Monad.bind /=; by rewrite map_cat flatten_cat.
+move=> A B /= s1 s2 k; by rewrite /Bind /= map_cat flatten_cat.
 Qed.
 Definition list := MonadAlt.Pack list_class.
 End list.

@@ -130,13 +130,12 @@ Record mixin_of (M : monad) : Type := Mixin {
 Record class_of (m : Type -> Type) := Class {
   base : Monad.class_of m ; mixin : mixin_of (Monad.Pack base) }.
 Structure t := Pack { m : Type -> Type ; class : class_of m }.
-Definition op_choice (M : t) : forall p A, m M A -> m M A -> m M A :=
-  let: Pack _ (Class _ (Mixin x _ _ _ _ _ _ )) := M return
-    forall p A, m M A -> m M A -> m M A in x.
-Arguments op_choice {M} : simpl never.
 Definition baseType (M : t) := Monad.Pack (MonadProb.base (class M)).
 Module Exports.
-Notation Choice := op_choice.
+Definition Choice (M : t) : forall p A, m M A -> m M A -> m M A :=
+  let: Pack _ (Class _ (Mixin x _ _ _ _ _ _ )) := M return
+    forall p A, m M A -> m M A -> m M A in x.
+Arguments Choice {M} : simpl never.
 Notation "mx <| p |> my" := (Choice p _ mx my).
 Notation probMonad := t.
 Coercion baseType : probMonad >-> monad.
@@ -307,6 +306,7 @@ rewrite (_ : @Prob.mk (/ _)%R _ = p); last first.
 rewrite /fmap prob_bindDl bindretf.
 by congr Choice.
 Qed.
+Arguments uniform_naturality {M A B}.
 
 Lemma pair_uniform_base_case (M : probMonad) A a x (y : seq A) :
   (0 < size y)%nat ->
@@ -314,8 +314,8 @@ Lemma pair_uniform_base_case (M : probMonad) A a x (y : seq A) :
 Proof.
 move=> y0; rewrite cp1.
 transitivity (do y' <- @uniform M _ a y; Ret (x, y')).
-  by move: (@uniform_naturality M _ _ a (a, a) (fun y' => (x, y')) _ y0).
-transitivity (do z <- Ret x; do y' <- @uniform M _ a y; Ret (z, y')).
+  by rewrite (compE (uniform _)) (uniform_naturality a).
+transitivity (do z <- Ret x; do y' <- uniform a y; Ret (z, y') : M _).
   by rewrite bindretf.
 by [].
 Qed.

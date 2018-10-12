@@ -31,17 +31,15 @@ Record mixin_of S (M : monad) : Type := Mixin {
 Record class_of S (m : Type -> Type) := Class {
   base : Monad.class_of m ; mixin : mixin_of S (Monad.Pack base) }.
 Structure t S : Type := Pack { m : Type -> Type ; class : class_of S m }.
-Definition op_get S (M : t S) : m M S :=
-  let: Pack _ (Class _ (Mixin x _ _ _ _ _)) := M return m M S in x.
-Arguments op_get {S M} : simpl never.
-Definition op_put S (M : t S) : S -> m M unit :=
-  let: Pack _ (Class _ (Mixin _ x _ _ _ _)) := M return S -> m M unit in x.
-Arguments op_put {S M} : simpl never.
 (* inheritance *)
 Definition baseType S (M : t S) := Monad.Pack (base (class M)).
 Module Exports.
-Notation Get := op_get.
-Notation Put := op_put.
+Definition Get S (M : t S) : m M S :=
+  let: Pack _ (Class _ (Mixin x _ _ _ _ _)) := M return m M S in x.
+Arguments Get {S M} : simpl never.
+Definition Put S (M : t S) : S -> m M unit :=
+  let: Pack _ (Class _ (Mixin _ x _ _ _ _)) := M return S -> m M unit in x.
+Arguments Put {S M} : simpl never.
 Notation stateMonad := t.
 Coercion baseType : stateMonad >-> monad.
 Canonical baseType.
@@ -88,14 +86,13 @@ Record class_of S (m : Type -> Type) := Class {
 }.
 Structure t S : Type := Pack { m : Type -> Type ;
   class : class_of S m }.
-Definition op_run S (M : t S) : forall A, m M A -> S -> A * S :=
-  let: Pack _ (Class _ (Mixin x _ _)) := M
-  return forall A, m M A -> S -> A * S in x.
-Arguments op_run {S M A} : simpl never.
 Definition baseType S (M : t S) := Monad.Pack (base (class M)).
 Module Exports.
+Definition Run S (M : t S) : forall A, m M A -> S -> A * S :=
+  let: Pack _ (Class _ (Mixin x _ _)) := M
+  return forall A, m M A -> S -> A * S in x.
+Arguments Run {S M A} : simpl never.
 Notation runMonad := t.
-Notation Run := op_run.
 Coercion baseType : runMonad >-> monad.
 Canonical baseType.
 End Exports.
@@ -119,7 +116,7 @@ Record mixin_of S (M : runMonad S) (get : M S) (put : S -> M unit) : Type := Mix
 Record class_of S (m : Type -> Type) := Class {
   base : MonadState.class_of S m ;
   base2 : MonadRun.mixin_of S (Monad.Pack (MonadState.base base)) ;
-  mixin : @mixin_of S (MonadRun.Pack (MonadRun.Class base2)) (@MonadState.op_get _ (MonadState.Pack base)) (@MonadState.op_put _ (MonadState.Pack base)) ;
+  mixin : @mixin_of S (MonadRun.Pack (MonadRun.Class base2)) (@Get _ (MonadState.Pack base)) (@Put _ (MonadState.Pack base)) ;
 }.
 Structure t S : Type := Pack { m : Type -> Type ;
   class : class_of S m }.
@@ -325,7 +322,7 @@ elim: x m n f => [{A}A a m n f <-| B0 {A}A n0 H0 n1 H1 m n2 f <- |
 - rewrite /commute bindretf.
   by rewrite_ bindretf.
 - rewrite /commute /= !bindA.
-  transitivity (do x <- ndDenote n0; do y <- n2 : M _; do x0 <- ndDenote (n1 x);
+  transitivity (do x <- ndDenote n0; do y <- n2; do x0 <- ndDenote (n1 x);
     f x0 y).
     bind_ext => s.
     by rewrite (H1 s).
@@ -544,12 +541,11 @@ Record class_of S (m : Type -> Type) : Type := Class {
   base : Monad.class_of m ;
   mixin : mixin_of S m }.
 Structure t S := Pack { m : Type -> Type ; class : class_of S m }.
-Definition op_fresh S (M : t S) : m M S :=
-  let: Pack _ (Class _ (Mixin x)) := M return m M S in x.
-Arguments op_fresh {S M} : simpl never.
 Definition baseType S (M : t S) := Monad.Pack (base (class M)).
 Module Exports.
-Notation Fresh := op_fresh.
+Definition Fresh S (M : t S) : m M S :=
+  let: Pack _ (Class _ (Mixin x)) := M return m M S in x.
+Arguments Fresh {S M} : simpl never.
 Notation freshMonad := t.
 Coercion baseType : freshMonad >-> monad.
 Canonical baseType.
@@ -691,16 +687,14 @@ Record class_of S (m : Type -> Type) := Class {
   ext : @mixin_of S (MonadFail.Pack base) (MonadFresh.fresh mixin)
 }.
 Structure t S : Type := Pack { m : Type -> Type ; class : class_of S m }.
-Definition op_symbols S (M : t S) :=
-  let: Pack _ (Class _ _ (Mixin x _ _ _)) := M return nat -> m M (seq S) in x.
-Arguments op_symbols {S M} : simpl never.
-Definition op_distinct S (M : t S) :=
-  let: Pack _ (Class _ _ (Mixin _ x _ _)) := M return segment_closed.t S in x.
-Arguments op_distinct {S} M : simpl never.
 Definition baseType S (M : t S) := MonadFail.Pack (base (class M)).
 Module Exports.
-Notation Symbols := op_symbols.
-Notation distinct := op_distinct.
+Definition Symbols S (M : t S) :=
+  let: Pack _ (Class _ _ (Mixin x _ _ _)) := M return nat -> m M (seq S) in x.
+Arguments Symbols {S M} : simpl never.
+Definition Distinct S (M : t S) :=
+  let: Pack _ (Class _ _ (Mixin _ x _ _)) := M return segment_closed.t S in x.
+Arguments Distinct {S} M : simpl never.
 Notation failFreshMonad := t.
 Coercion baseType : failFreshMonad >-> failMonad.
 Canonical baseType.
@@ -717,7 +711,7 @@ Section failfresh_lemmas.
 Variables (S : eqType) (M : failFreshMonad S).
 Lemma failfresh_bindmfail : Laws.right_zero (@Bind M) (@Fail _).
 Proof. by case: M => m [? ? []]. Qed.
-Lemma bassert_symbols : bassert (distinct M) \o Symbols = Symbols :> (nat -> M _).
+Lemma bassert_symbols : bassert (Distinct M) \o Symbols = Symbols :> (nat -> M _).
 Proof. by case: M => m [? ? []]. Qed.
 End failfresh_lemmas.
 
@@ -756,7 +750,7 @@ rewrite addSn SymbolsS {}IH SymbolsS.
 rewrite [in RHS]fmap_bind bindA; bind_ext => a.
 rewrite fmap_bind 2!bindA.
 (* TODO(rei): use bind_ext *)
-congr Monad.bind; apply functional_extensionality => s.
+congr Bind; apply functional_extensionality => s.
 rewrite bindretf 2!fcomp_ext bind_fmap fmap_bind bindA.
 rewrite_ bindretf.
 rewrite_ fcomp_ext.

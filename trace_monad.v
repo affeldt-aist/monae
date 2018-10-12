@@ -26,12 +26,11 @@ Record mixin_of T (m : Type -> Type) : Type := Mixin {
 Record class_of T (m : Type -> Type) : Type := Class {
   base : Monad.class_of m ; mixin : mixin_of T m }.
 Structure t T := Pack { m : Type -> Type; class : class_of T m }.
-Definition op_mark T (M : t T) : T -> m M unit :=
-  let: Pack _ (Class _ (Mixin x)) := M return T -> m M unit in x.
-Arguments op_mark {T M} : simpl never.
 Definition baseType T (M : t T) := Monad.Pack (base (class M)).
 Module Exports.
-Notation Mark := op_mark.
+Definition Mark T (M : t T) : T -> m M unit :=
+  let: Pack _ (Class _ (Mixin x)) := M return T -> m M unit in x.
+Arguments Mark {T M} : simpl never.
 Notation traceMonad := t.
 Coercion baseType : traceMonad >-> monad.
 Canonical baseType.
@@ -50,7 +49,7 @@ Record class_of T (m : Type -> Type) : Type := Class {
   base : MonadTrace.class_of T m ;
   base2 : MonadRun.mixin_of _ (Monad.Pack (MonadTrace.base base)) ;
   mixin : @mixin_of _ (MonadRun.Pack (MonadRun.Class base2))
-    (@MonadTrace.op_mark _ (MonadTrace.Pack base));
+    (@Mark _ (MonadTrace.Pack base));
 }.
 Structure t T : Type := Pack { m : Type -> Type ;
   class : class_of T m }.
@@ -83,20 +82,17 @@ Record class_of S T (m : Type -> Type) : Type := Class {
   mixin : mixin_of S T (Monad.Pack base)
 }.
 Structure t S T : Type := Pack { m : Type -> Type ; class : class_of S T m }.
-Definition op_st_get S T (M : t S T) : m M S :=
-  let: Pack _ (Class _ (Mixin x _ _)) := M return m M S in x.
-Arguments op_st_get {S T M} : simpl never.
-Definition op_st_put S T (M : t S T) : S -> m M unit :=
-  let: Pack _ (Class _ (Mixin _ x _)) := M return S -> m M unit in x.
-Arguments op_st_put {S T M} : simpl never.
-Definition op_st_mark S T (M : t S T) : T -> m M unit :=
-  let: Pack _ (Class _ (Mixin _ _ x)) := M return T -> m M unit in x.
-Arguments op_st_mark {S T M} : simpl never.
 Definition baseType S T (M : t S T) := Monad.Pack (base (class M)).
 Module Exports.
-Notation stGet := op_st_get.
-Notation stPut := op_st_put.
-Notation stMark := op_st_mark.
+Definition stGet S T (M : t S T) : m M S :=
+  let: Pack _ (Class _ (Mixin x _ _)) := M return m M S in x.
+Arguments stGet {S T M} : simpl never.
+Definition stPut S T (M : t S T) : S -> m M unit :=
+  let: Pack _ (Class _ (Mixin _ x _)) := M return S -> m M unit in x.
+Arguments stPut {S T M} : simpl never.
+Definition stMark S T (M : t S T) : T -> m M unit :=
+  let: Pack _ (Class _ (Mixin _ _ x)) := M return T -> m M unit in x.
+Arguments stMark {S T M} : simpl never.
 Notation stateTraceMonad := t.
 Coercion baseType : stateTraceMonad >-> monad.
 Canonical baseType.
@@ -138,9 +134,9 @@ Record class_of S T (m : Type -> Type) : Type := Class {
   base : MonadStateTrace.class_of S T m ;
   base2 : MonadRun.mixin_of (S * seq T) (Monad.Pack (MonadStateTrace.base base)) ;
   mixin : @mixin_of _ _ (MonadRun.Pack (MonadRun.Class base2))
-    (@MonadStateTrace.op_st_get _ _ (MonadStateTrace.Pack base))
-    (@MonadStateTrace.op_st_put _ _ (MonadStateTrace.Pack base))
-    (@MonadStateTrace.op_st_mark _ _ (MonadStateTrace.Pack base)) ;
+    (@stGet _ _ (MonadStateTrace.Pack base))
+    (@stPut _ _ (MonadStateTrace.Pack base))
+    (@stMark _ _ (MonadStateTrace.Pack base)) ;
 }.
 Structure t S T : Type := Pack { m : Type -> Type ;
   class : class_of S T m }.

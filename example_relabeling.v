@@ -59,7 +59,7 @@ Section tree_relabelling.
 Variable Symbol : eqType. (* TODO: ideally, we would like a generic type here with a succ function *)
 Variable M : failFreshMonad Symbol.
 Variable q : pred (seq Symbol * seq Symbol).
-Hypothesis promotable_q : promotable (distinct M) q.
+Hypothesis promotable_q : promotable (Distinct M) q.
 
 Definition relabel : Tree Symbol -> M (Tree Symbol) :=
   foldt (fmap Tip \o const Fresh) (fmap (uncurry Bin) \o pair).
@@ -167,7 +167,7 @@ apply foldt_universal.
   rewrite -compA.
   rewrite (_ : @size_Tree Symbol \o _ = const 1) //.
   by rewrite Symbols_prop1.
-pose p := distinct M.
+pose p := Distinct M.
 transitivity (bassert p \o Symbols \o @size_Tree Symbol \o uncurry Bin
   : (_ -> M _)).
   by rewrite bassert_symbols.

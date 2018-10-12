@@ -182,8 +182,8 @@ Lemma head_filter def h p : forall x, x \in [:: h; p] -> head def (doors \\ [:: 
 Proof.
 move=> x xhp.
 have : x \notin doors \\ [:: h; p] by rewrite mem_filter xhp.
-apply: contra => /eqP {1}<-; rewrite -nth0.
-rewrite mem_nth // lt0n size_eq0 -has_filter; apply/hasP.
+apply: contra => /eqP {1}<-.
+rewrite -nth0 mem_nth // lt0n size_eq0 -has_filter; apply/hasP.
 exists (Set3.another card_door h p); first by rewrite /doors mem_enum.
 by rewrite Set3.another_notin.
 Qed.
@@ -196,8 +196,8 @@ exists (Set3.another card_door h h); first by rewrite mem_enum.
 move: (Set3.another_notin card_door h h); apply: contra; by rewrite !inE => ->.
 Qed.
 
-Definition monty {M : monad} (hide : M door) (pick : M door) (tease : door -> door -> M door)
-  (strategy : door -> door -> M door) : M bool :=
+Definition monty {M : monad} (hide pick : M door)
+  (tease strategy : door -> door -> M door) : M bool :=
   do h <- hide ;
   do p <- pick ;
   do t <- tease h p ;
@@ -212,11 +212,11 @@ Let unif_door M := @uniform M _ def.
 Let head := head def.
 Let unif_pair := @uniform M _ (def, def).
 
-Definition hide {N : probMonad} : N door := unif_door N doors.
+Definition hide {N : probMonad} : N door := unif_door _ doors.
 
-Definition pick {N : probMonad} : N door := @uniform N _ def doors.
+Definition pick {N : probMonad} : N door := uniform def doors.
 
-Definition tease (h p : door) : M door := unif_door M (doors \\ [:: h ; p]).
+Definition tease (h p : door) : M door := unif_door _ (doors \\ [:: h ; p]).
 
 Definition switch {N : monad} (p t : door) : N door := Ret (head (doors \\ [:: p ; t])).
 
@@ -246,13 +246,12 @@ Lemma uniform_doors_unfold (P : rel door) :
  (Ret (P B A) <|[Pr of / 6]|> (Ret (P B B) <|[Pr of / 5]|> (Ret (P B C) <|[Pr of / 4]|>
  (Ret (P C A) <|[Pr of / 3]|> (Ret (P C B) <|[Pr of / 2]|> Ret (P C C)))))))) :> M _.
 Proof.
-transitivity (fmap (uncurry (fun a b => P a b))
-                   (@uniform M _ (def, def) (cp doors doors))).
+transitivity (fmap (uncurry P)
+                   (uniform (def, def) (cp doors doors) : M _)).
   rewrite /fmap; bind_ext; by case.
-transitivity ((fmap (uncurry (fun a b => P a b)) \o (@uniform M _ (def, def)))
-              (cp doors doors)); first by [].
-rewrite -(@uniform_naturality _ _ _ _ true); last by rewrite /doors Set3.enumE.
-by rewrite /doors Set3.enumE /=.
+rewrite (compE (fmap _)) -(uniform_naturality _ true); last first.
+  by rewrite /doors Set3.enumE.
+by rewrite /doors Set3.enumE.
 Qed.
 
 (* matching choices: the doors h and p independently chosen at random will match one third of the time *)
@@ -369,13 +368,11 @@ Lemma monty_choice_your_choice_combine :
   (do p <- pick; Ret (C, p)).
 Proof.
 pose k (h : door) := do p <- pick; Ret (h, p).
-transitivity (do h <- hide_n; k h).
-  by [].
+transitivity (do h <- hide_n; k h); first by [].
 transitivity (do h <- (Ret A [~] Ret B [~] Ret C); k h).
-  rewrite /hide_n.
-  rewrite /doors Set3.enumE /arbitrary /foldr1 [in LHS]/=.
+  rewrite /hide_n /doors Set3.enumE /arbitrary /foldr1 [in LHS]/=.
   by rewrite -[in RHS]altA [in RHS]altC -[in RHS]altA.
-by rewrite 2!alt_bindDl 3!bindretf {}/k.
+by rewrite 2!alt_bindDl 3!bindretf.
 Qed.
 
 Let try (d : door) := do p <- pick; Ret (d, p).
@@ -386,9 +383,7 @@ rewrite /fmap /try bindA.
 rewrite_ bindretf.
 rewrite /pick /monty.pick.
 transitivity (do p <- Ret A <| [Pr of /3] |> (Ret B <| [Pr of /2] |> Ret C); Ret (d == p) : M _).
-  (* TODO: bind_ext? *)
-  congr Monad.bind => //.
-  by rewrite /doors Set3.enumE 2!uniform_cons.
+  congr Bind => //; by rewrite /doors Set3.enumE 2!uniform_cons.
 rewrite 2!prob_bindDl 3!bindretf.
 rewrite /uFFT 2!uniform_cons.
 rewrite uniform_singl // [head _ _]/=.
@@ -398,11 +393,10 @@ rewrite /doors Set3.enumE !inE => /or3P[] /eqP ->.
   rewrite choiceC.
   erewrite choiceA.
     reflexivity.
-  by rewrite /=; split; field.
+  rewrite /=; lra.
 - rewrite eq_sym (negbTE (Set3.a_neq_b _)) eqxx (negbTE (Set3.b_neq_c _)).
   congr (_ <| _ |> _).
-  rewrite choiceC.
-  rewrite (@choice_ext [Pr of /2]) //=; by field.
+  rewrite choiceC (@choice_ext [Pr of /2]) //=; lra.
 by rewrite eq_sym (negbTE (Set3.a_neq_c _)) eq_sym (negbTE (Set3.b_neq_c _)) eqxx.
 Qed.
 
@@ -412,9 +406,7 @@ transitivity (fmap (uncurry (fun a b => a == b)) (do h <- hide_n; do p <- pick; 
   rewrite /fmap !bindA; bind_ext => y1.
   rewrite !bindA; by rewrite_ bindretf.
 rewrite monty_choice_your_choice_combine -!/(try _).
-rewrite 2!naturality_nondeter.
-rewrite !try_uFFT.
-by rewrite 2!altmm.
+by rewrite 2!naturality_nondeter !try_uFFT 2!altmm.
 Qed.
 
 End monty_nondeter.
@@ -452,11 +444,9 @@ transitivity (do t <- unif_door [:: h; d]; if t == h then Fail else Ret t).
     by rewrite inE eqxx.
   move: (Set3.filter1_another card_door hp); rewrite -/doors -Hd => -[] -> //.
   by rewrite /unif_door uniform2.
-rewrite /unif_door uniform_cons.
-rewrite (_ : [Pr of _] = [Pr of /2])%R; last first.
-  apply prob_ext; by rewrite /=; field.
-rewrite uniform_singl // [head _ _]/=.
-rewrite prob_bindDl 2!bindretf eqxx ifF //.
+rewrite /unif_door uniform_cons (_ : [Pr of _] = [Pr of /2])%R; last first.
+  by apply prob_ext => /=; lra.
+rewrite uniform_singl // [head _ _]/= prob_bindDl 2!bindretf eqxx ifF //.
 apply/negbTE/head_filter; by rewrite inE eqxx.
 Qed.
 
