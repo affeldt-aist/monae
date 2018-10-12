@@ -44,7 +44,7 @@ Definition marks T {M : traceMonad T} (l : seq T) : M (seq unit) :=
 
 Module MonadTraceRun.
 Record mixin_of T (M : runMonad (seq T)) (mark : T -> M unit) : Type := Mixin {
-  _ : forall t l, Run (mark t) l = (tt, l ++ t :: nil) (* TODO: rcons *)
+  _ : forall t l, Run (mark t) l = (tt, rcons l t)
 }.
 Record class_of T (m : Type -> Type) : Type := Class {
   base : MonadTrace.class_of T m ;
@@ -68,7 +68,7 @@ Export MonadTraceRun.Exports.
 
 Section tracerun_lemmas.
 Variables (T : Type) (M : traceRunMonad T).
-Lemma runtmark : forall s t, Run (Mark t : M _) s = (tt, s ++ t :: nil). (* TODO: rcons *)
+Lemma runtmark : forall s t, Run (Mark t : M _) s = (tt, rcons s t).
 Proof. by case: M => m [? ? []]. Qed.
 End tracerun_lemmas.
 
@@ -132,7 +132,7 @@ Record mixin_of S T (M : runMonad (S * seq T)) (st_get : M S)
   (st_put : S -> M unit) (st_mark : T -> M unit) : Type := Mixin {
   _ : forall s l, Run st_get (s, l) = (s, (s, l)) ;
   _ : forall s l s', Run (st_put s') (s, l) = (tt, (s', l)) ;
-  _ : forall t s l, Run (st_mark t) (s, l) = (tt, (s, l ++ t :: nil)) (* TODO: rcons *)
+  _ : forall t s l, Run (st_mark t) (s, l) = (tt, (s, rcons l t))
 }.
 Record class_of S T (m : Type -> Type) : Type := Class {
   base : MonadStateTrace.class_of S T m ;
@@ -162,7 +162,7 @@ Lemma runstget : forall s, Run (stGet : M _) s = (s.1, s).
 Proof. by case: M => m [? ? [? ? ?]] []. Qed.
 Lemma runstput : forall s s', Run (stPut s' : M _) s = (tt, (s', s.2)).
 Proof. by case: M => m [? ? [? ? ?]] []. Qed.
-Lemma runstmark : forall t s, Run (stMark t : M _) s = (tt, (s.1, s.2 ++ t :: nil)). (* TODO: rcons *)
+Lemma runstmark : forall t s, Run (stMark t : M _) s = (tt, (s.1, rcons s.2 t)).
 Proof. by case: M => m [? ? [? ? ?]] t []. Qed.
 End statetracerun_lemmas.
 

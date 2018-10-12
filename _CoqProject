@@ -2,12 +2,11 @@
 
 ssrZ.v
 monad.v
-monad_model.v
 state_monad.v
 proba_monad.v
+monad_model.v
 proba_model.v
 trace_monad.v
-trace_model.v
 example_spark.v
 example_nqueens.v
 example_relabeling.v

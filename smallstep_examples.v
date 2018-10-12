@@ -5,7 +5,7 @@
 Require Import ZArith List.
 Import ListNotations.
 Require Import monad state_monad trace_monad.
-Require Import smallstep smallstep_monad trace_model.
+Require Import smallstep smallstep_monad monad_model.
 
 Notation "'eT' x y" := (@existT _ _ x y) (at level 200).
 Notation "'e' x" := (@exist _ _ x _) (at level 200).
@@ -16,7 +16,7 @@ Definition p_nonce : program nat :=
   p_do _ <- p_mark n;
   p_ret n.
 
-Let M := @ModelStateTraceRunMonad.mk.
+Let M := @ModelStateTraceRun.mk.
 
 Eval unfold denotation, p_nonce in denotation (M nat nat) nat p_nonce.
 

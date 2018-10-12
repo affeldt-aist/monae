@@ -13,21 +13,19 @@ reasoning with several examples:
 ** Files
 
 - [[monad.v][monad.v]]: basics of monadic equational reasoning
-- [[monad_model.v][monad_model.v]]: models of basic monads
-- [[state_monad.v][state_monad.v]]: state monad-related part
-- [[proba_monad.v][proba_monad.v]]: probability monad-related part
+- [[state_monad.v][state_monad.v]]: about the state monad
+- [[trace_monad.v][trace_monad.v]]: about the state-trace monad
+- [[proba_monad.v][proba_monad.v]]: about the probability monad
+- [[monad_model.v][monad_model.v]]: concrete models of monads
 - [[proba_model.v][proba_model.v]]: model of the probability monad
   + see Requirements for compilation information
-- [[trace_monad.v][trace_monad.v]]: state-trace monad
-- [[trace_model.v][trace_model.v]]: model of the state-trace monad
 - [[smallstep.v][smallstep.v]]: semantics for an imperative language
 - [[smallstep_monad.v][smallstep_monad.v]]: equivalence operational semantics/denotation
-- [[smallstep_examples.v][smallstep_examples.v]]: sample programs
+- [[smallstep_examples.v][smallstep_examples.v]]: sample imperative programs
 - [[example_spark.v][example_spark.v]]: example of Spark aggregation
 - [[example_nqueens.v][example_nqueens.v]]: example of the n-queens puzzle
 - [[example_relabeling.v][example_relabeling.v]]: example of tree relabeling
 - [[example_monty.v][example_monty.v]]: examples of Monty Hall problem
-
 - ssrZ.v: SSReflect-like interface for the type Z of the standard library of Coq
   + comes from https://github.com/affeldt-aist/seplog
   + copied verbatim here for convenience

@@ -6,6 +6,7 @@
 Require Import ssreflect ssrfun ssrbool FunctionalExtensionality Eqdep List.
 Import ListNotations.
 Require Import monad state_monad trace_monad smallstep.
+From mathcomp Require Import seq.
 
 Set Bullet Behavior "Strict Subproofs".
 
@@ -47,7 +48,7 @@ subst m.
 induction p as [ A a | A B p IHp g IHg | A b p1 IHp1 p2 IHp2 | | s0 | t ]; cbn;
  intros s s' l1 l a' Heq.
 - exists [].
-  rewrite app_nil_r.
+  rewrite cats0.
   by move: Heq; rewrite runret => -[].
 - rewrite runbind in Heq.
   case_eq (Run (denotation p) (s, l1)).
@@ -58,17 +59,17 @@ induction p as [ A a | A B p IHp g IHg | A b p1 IHp1 p2 IHp2 | | s0 | t ]; cbn;
   destruct Hp as [l2 Hp].
   destruct Heq as [l2' Heq].
   exists (l2 ++ l2').
-  rewrite app_assoc.
+  rewrite catA.
   congruence.
 - destruct b; [ eapply IHp1 | eapply IHp2 ]; exact Heq.
 - exists [].
-  rewrite app_nil_r.
+  rewrite cats0.
   by move: Heq; rewrite runstget => -[].
 - exists [].
-  rewrite app_nil_r.
+  rewrite cats0.
   by move: Heq; rewrite runstput => -[].
 - exists [t].
-  by move: Heq; rewrite runstmark => -[].
+  by move: Heq; rewrite runstmark -cats1 => -[].
 Qed.
 
 Lemma denotation_prefix_independent A (m : M A) :
@@ -88,7 +89,7 @@ by rewrite IH2.
 by case: ifPn => _; [rewrite IH1|rewrite IH2].
 by rewrite !runstget.
 by rewrite !runstput.
-by rewrite !runstmark !seq.cats1 seq.rcons_cat.
+by rewrite !runstmark rcons_cat.
 Qed.
 
 Lemma denotation_continuation_prefix_independent m :
@@ -138,7 +139,7 @@ Qed.
 Lemma step_Some_correct s s' k k' t l :
   step (s, k) (Some t) (s', k') ->
   Run (denotation_continuation k) (s, l) =
-  Run (denotation_continuation k') (s', l ++ [t]).
+  Run (denotation_continuation k') (s', rcons l t).
 Proof.
 intro Hstep.
 remember (s, k) as sk eqn: Heq.
@@ -166,7 +167,7 @@ induction Hstep_star as
   (s, k) (s', k') (s'', k'') l' Hstep Hstep_star IH |
   (s, k) (s', k') (s'', k'') t l' Hstep Hstep_star IH ];
  intros s1 s2 k1 k2 l1 Heq1 Heq2.
-- rewrite app_nil_r.
+- rewrite cats0.
   rewrite Heq1 in Heq2.
   injection Heq2; intros; subst; reflexivity.
 - injection Heq1; clear Heq1; intros; subst s1 k1.
@@ -177,7 +178,7 @@ induction Hstep_star as
 - injection Heq1; clear Heq1; intros; subst s1 k1.
   injection Heq2; clear Heq2; intros; subst s2 k2.
   apply step_Some_correct with (l := []) in Hstep.
-  rewrite <- app_nil_r at 1.
+  rewrite <- cats0 at 1.
   rewrite denotation_continuation_prefix_independent; [ | now exists k ].
   rewrite -> Hstep, (IH _ s'' _ k'');
    [ | reflexivity | reflexivity ].

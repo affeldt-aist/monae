@@ -3,9 +3,10 @@ Require Classical.
 Require Import ssreflect ssrmatching ssrfun ssrbool.
 From mathcomp Require Import eqtype ssrnat seq choice fintype tuple.
 
-Require Import monad.
+Require Import monad state_monad trace_monad.
 
-(* Contents: sample models for the monads in monad.v *)
+(* OUTLINE:
+   sample models for the monads in monad.v, state_monad.v, trace_monad.v *)
 
 Set Implicit Arguments.
 Unset Strict Implicit.
@@ -109,6 +110,19 @@ Next Obligation. move=> ? ? ? ? ? ?; exact: set_bindA. Qed.
 Definition set := Monad.Pack set_class.
 End set.
 
+Section state.
+Variables S T : Type.
+Let m : Type -> Type := fun A => S * list T -> A * (S * list T).
+Definition state : monad.
+refine (@Monad.Pack _ (@Monad.Class m
+  (fun A a => fun s => (a, s)) (* ret *)
+  (fun A B m f => fun s => let (a, s') := m s in f a s') (* bind *) _ _ _)).
+by [].
+move=> A f; apply functional_extensionality => ?; by case: f.
+move=> A B C a b c; apply functional_extensionality => ?; by case: a.
+Defined.
+End state.
+
 End ModelMonad.
 
 Module ModelFail.
@@ -203,3 +217,49 @@ Definition set := MonadNondet.Pack list_class.
 End set.
 
 End ModelNondet.
+
+Module ModelStateTrace.
+
+Definition mk {S T} : stateTraceMonad S T.
+refine (
+let m := Monad.class (@ModelMonad.state S T) in
+let stm := (@MonadStateTrace.Class S T _ m
+  (@MonadStateTrace.Mixin _ _ (Monad.Pack m)
+  (fun s => (s.1, s))  (* get *)
+  (fun s' s => (tt, (s', s.2)))
+  (fun (t : T) s => (tt, (s.1, rcons s.2 t))))) in
+@MonadStateTrace.Pack S T (fun A => S * list T -> A * (S * list T)) stm).
+Defined.
+
+End ModelStateTrace.
+
+Module ModelRun.
+
+Definition mk {S T} : runMonad (S * seq T).
+set m := @ModelMonad.state S T.
+refine (@MonadRun.Pack _ _ (@MonadRun.Class _ _ (Monad.class m)
+  (@MonadRun.Mixin _ m
+  (fun A m (s : S * list T) => m s) (* run *) _ _))).
+by [].
+by [].
+Defined.
+
+End ModelRun.
+
+Module ModelStateTraceRun.
+
+Definition mk {S T} :
+  stateTraceRunMonad S T.
+refine (let stm := @ModelStateTrace.mk S T in
+        let run := @ModelRun.mk S T in
+@MonadStateTraceRun.Pack S T (fun A => S * list T -> A * (S * list T))
+  (@MonadStateTraceRun.Class S T (fun A => S * list T -> A * (S * list T))
+    (MonadStateTrace.class stm)
+    (MonadRun.mixin (MonadRun.class run))
+    (@MonadStateTraceRun.Mixin _ _ run _ _ _ _ _ _))).
+by [].
+by [].
+by [].
+Defined.
+
+End ModelStateTraceRun.
