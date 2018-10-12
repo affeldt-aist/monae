@@ -1,3 +1,5 @@
+-arg "-w -notation-overridden"
+
 ssrZ.v
 monad.v
 monad_model.v
@@ -13,7 +15,4 @@ example_monty.v
 smallstep.v
 smallstep_monad.v
 smallstep_examples.v
-wip_netys2017.v
-wip_mu2017.v
-wip_share.v
 -R . monad
