@@ -2,7 +2,7 @@
   Concrete examples of programs and their small-step and denotational semantics.
 *)
 
-Require Import ZArith List.
+Require Import ZArith List ssreflect.
 Import ListNotations.
 Require Import monad state_monad trace_monad.
 Require Import smallstep smallstep_monad monad_model.
@@ -18,7 +18,7 @@ Definition p_nonce : program nat :=
 
 Let M := @ModelStateTraceRun.mk.
 
-Eval unfold denotation, p_nonce in denotation (M nat nat) nat p_nonce.
+Eval unfold denote, p_nonce in denote (M nat nat) nat p_nonce.
 
 Definition nonce : M nat nat nat :=
   do n : nat <- stGet;
@@ -27,13 +27,11 @@ Definition nonce : M nat nat nat :=
   Ret n.
 
 Compute nonce (0, []).
-Compute (denotation (M nat nat) nat p_nonce) (0, []).
+Compute (denote (M nat nat) nat p_nonce) (0, []).
 Compute run_ss p_nonce 0.
 
-Remark denotation_nonce : denotation (M nat nat) nat p_nonce = nonce.
-Proof.
-reflexivity.
-Qed.
+Remark denote_p_nonce : denote (M nat nat) nat p_nonce = nonce.
+Proof. by []. Qed.
 
 Program Example p_nonce_twice : program bool :=
   p_do nonce <- p_ret (
@@ -56,14 +54,12 @@ Example nonce_twice : M _ _ _ :=
   Ret (Nat.eqb x y).
 
 Compute nonce_twice (0, []).
-Compute (denotation (M nat nat) bool p_nonce_twice) (0, []).
+Compute (denote (M nat nat) bool p_nonce_twice) (0, []).
 Compute run_ss p_nonce_twice 0.
 
-Remark denotation_nonce_twice :
-  denotation (M nat nat) bool p_nonce_twice = nonce_twice.
-Proof.
-reflexivity.
-Qed.
+Remark denote_p_nonce_twice :
+  denote (M nat nat) bool p_nonce_twice = nonce_twice.
+Proof. by []. Qed.
 
 Fixpoint countdown (fuel : nat) : M nat bool unit :=
   match fuel with
@@ -89,15 +85,9 @@ Fixpoint p_countdown (fuel : nat) : program unit :=
   end.
 
 Compute (countdown 100) (5, []).
-Compute (denotation (M nat bool) unit (p_countdown 100)) (5, []).
+Compute (denote (M nat bool) unit (p_countdown 100)) (5, []).
 Compute run_ss (p_countdown 100) 5.
 
-Remark denotation_countdown fuel :
-  denotation (M nat bool) unit (p_countdown fuel) = countdown fuel.
-Proof.
-induction fuel as [ | fuel' IH ].
-- reflexivity.
-- cbn.
-  rewrite IH.
-  reflexivity.
-Qed.
+Remark denote_countdown fuel :
+  denote (M nat bool) unit (p_countdown fuel) = countdown fuel.
+Proof. by elim: fuel => //= n ->. Qed.

@@ -5,9 +5,9 @@ reasoning with several examples:
 - formalization of [Gibbons and Hinze, Just do It: Simple Monadic Equational Reasoning, ICFP 2011]
   + except Sect. 10.2
 - formalization of [Gibbons, Unifying Theories of Programming with Monads, UTP 2012]
-  + up to Sect. 7.3
+  + up to Sect. 7.2
 - formalization of [Mu, Functional Pearls: Reasoning and Derivation of Monadic Programs, A case study of non-determinism and state, 2017]
-  + up to Sect. 6
+  + up to Sect. 5
 - an application to program semantics
 
 ** Files

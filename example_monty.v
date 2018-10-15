@@ -246,15 +246,14 @@ Lemma uniform_doors_unfold (P : rel door) :
  (Ret (P B A) <|[Pr of / 6]|> (Ret (P B B) <|[Pr of / 5]|> (Ret (P B C) <|[Pr of / 4]|>
  (Ret (P C A) <|[Pr of / 3]|> (Ret (P C B) <|[Pr of / 2]|> Ret (P C C)))))))) :> M _.
 Proof.
-transitivity (fmap (uncurry P)
-                   (uniform (def, def) (cp doors doors) : M _)).
-  rewrite /fmap; bind_ext; by case.
+rewrite [LHS](_ : _ = fmap (uncurry P) (uniform (def, def) (cp doors doors))) //.
 rewrite (compE (fmap _)) -(uniform_naturality _ true); last first.
   by rewrite /doors Set3.enumE.
 by rewrite /doors Set3.enumE.
 Qed.
 
-(* matching choices: the doors h and p independently chosen at random will match one third of the time *)
+(* matching choices: the doors h and p independently chosen at random
+   will match one third of the time *)
 Lemma bcoin13E (f : bool -> M bool) :
   do hp <- uniform (def, def) (cp doors doors); f (hp.1 == hp.2) =
   do b <- bcoin [Pr of /3]; f b.
@@ -271,7 +270,8 @@ by rewrite choiceA_compute /= -uFFTE.
 Qed.
 
 Lemma bcoin23E :
-  do hp <- uniform (def, def) (cp doors doors); Ret (hp.1 != hp.2) = bcoin (@Prob.mk (2/3) H23) :> M _.
+  do hp <- uniform (def, def) (cp doors doors); Ret (hp.1 != hp.2) =
+  bcoin (@Prob.mk (2/3) H23) :> M _.
 Proof.
 pose P := fun a b : door => a != b.
 transitivity
@@ -286,7 +286,7 @@ rewrite (negbTE (Set3.b_neq_c card_door)).
 by rewrite choiceA_compute /= -uTTFE.
 Qed.
 
-Lemma hide_pickE {D} (f : door -> door -> M D) :
+Lemma hide_pickE D (f : door -> door -> M D) :
   do h <- hide ; do p <- pick ; f h p =
   do hp <- uniform (def, def) (cp doors doors) ; f hp.1 hp.2.
 Proof.
@@ -304,9 +304,9 @@ transitivity (do hp <- uniform (def, def) (cp doors doors) ;
                   do t <- tease h p ; Ret (p == h)).
   bind_ext => x /=.
   by rewrite_ bindretf.
-transitivity (do hp <- @uniform M _ (def, def) (cp doors doors) ;
+transitivity (do hp <- uniform (def, def) (cp doors doors) ;
               let h := hp.1 in let p := hp.2 in
-              Ret (h == p)).
+              Ret (h == p) : M _).
   (* t unused and uniform side effect-free, so tease can be eliminated *)
   bind_ext => -[x1 x2] /=.
   by rewrite /tease /unif_door uniform_inde eq_sym.
@@ -336,15 +336,13 @@ transitivity (do hp <- uniform (def, def) (cp doors doors);
   rewrite /tease /unif_door.
   (* TODO: could be cleaner *)
   rewrite Set3.filter_another //.
-  rewrite uniform_singl // -/(head _).
-  rewrite bindretf.
+  rewrite uniform_singl // -/(head _) bindretf.
   rewrite (_ : head _ = h) ?eqxx //.
   rewrite Set3.filter_another /=; last first.
     move: (Set3.another_notin card_door h p).
     rewrite !inE negb_or => /andP[_]; by rewrite eq_sym.
   by rewrite Set3.another_another.
-transitivity (do hp <- uniform (def, def) (cp doors doors);
-  Ret (hp.1 != hp.2) : M _).
+transitivity (do hp <- uniform (def, def) (cp doors doors); Ret (hp.1 != hp.2) : M _).
   bind_ext => -[h p]; by case: ifPn.
 exact: bcoin23E.
 Qed.
@@ -383,7 +381,7 @@ rewrite /fmap /try bindA.
 rewrite_ bindretf.
 rewrite /pick /monty.pick.
 transitivity (do p <- Ret A <| [Pr of /3] |> (Ret B <| [Pr of /2] |> Ret C); Ret (d == p) : M _).
-  congr Bind => //; by rewrite /doors Set3.enumE 2!uniform_cons.
+  congr Bind; by rewrite /doors Set3.enumE 2!uniform_cons.
 rewrite 2!prob_bindDl 3!bindretf.
 rewrite /uFFT 2!uniform_cons.
 rewrite uniform_singl // [head _ _]/=.
@@ -441,7 +439,7 @@ transitivity (do t <- unif_door [:: h; d]; if t == h then Fail else Ret t).
   have hd : h != d.
     rewrite Hd.
     apply: contra (Set3.another_notin card_door h p) => /eqP <-.
-    by rewrite inE eqxx.
+    by rewrite mem_head.
   move: (Set3.filter1_another card_door hp); rewrite -/doors -Hd => -[] -> //.
   by rewrite /unif_door uniform2.
 rewrite /unif_door uniform_cons (_ : [Pr of _] = [Pr of /2])%R; last first.
@@ -478,7 +476,7 @@ by rewrite prob_bindDl 2!bindretf.
 Qed.
 
 Lemma monty_f_switch :
-  play_f (@switch M) =
+  play_f (@switch _) =
     Ret false <| [Pr of /3] |> ((Fail : M _) <| [Pr of /2] |> Ret true).
 Proof.
 rewrite /play_f /monty hide_pickE /switch.
@@ -495,7 +493,8 @@ transitivity (if x.1 == x.2
    do x0 <- (Fail : M _) <| [Pr of / 2] |> Ret (head def (doors \\ [:: x.1; x.2]));
    Ret (head A (doors \\ [:: x.2; x0]) == x.1)).
   case: x => h p; rewrite [_.1]/= [_.2]/=; case: ifPn => // /eqP <-.
-  transitivity (do x0 <- unif_door (doors \\ [:: h]); if (head A (doors \\ [:: h; x0]) == h) then Ret true else Ret false).
+  transitivity (do x0 <- unif_door (doors \\ [:: h]);
+    if (head A (doors \\ [:: h; x0]) == h) then Ret true else Ret false).
     bind_ext => x; by case: ifPn.
   rewrite {1}/unif_door uniform_notin //.
   exact: filter_pred1.

@@ -119,7 +119,7 @@ Next Obligation. move=> ? ? ? ? ?; exact: DistBindA. Qed.
 
 Program Definition prob_mixin : finMonadProb.mixin_of monad :=
   @finMonadProb.Mixin monad (fun p (A : finType) (m1 m2 : proba.dist A) =>
-    (@ConvexDist.d A m1 m2 _ (Prob.H p))) _ _ _ _ _ _.
+    (@ConvexDist.d A m1 m2 _ (Prob.O1 p))) _ _ _ _ _ _.
 Next Obligation. move=> ? ? ?; exact: ConvexDist.d0. Qed.
 Next Obligation. move=> ? ? ?; exact: ConvexDist.d1. Qed.
 Next Obligation. move=> ? ? ? ?; exact: ConvexDist.quasi_commute. Qed.

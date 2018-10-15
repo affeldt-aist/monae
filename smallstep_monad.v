@@ -15,33 +15,34 @@ Section DenotationalSemantics.
 Variables S T : Type.
 Variable M : stateTraceRunMonad S T.
 
-Fixpoint denotation {A : Type} (p : program A) : M A :=
+Fixpoint denote {A : Type} (p : program A) : M A :=
   match p with
   | p_ret _ v => Ret v
-  | p_bind _ _ m f => do a <- denotation m; denotation (f a)
-  | p_cond _ b p1 p2 => if b then denotation p1 else denotation p2
+  | p_bind _ _ m f => do a <- denote m; denote (f a)
+  | p_cond _ b p1 p2 => if b then denote p1 else denote p2
   | p_get => stGet
   | p_put s' => stPut s'
   | p_mark t => stMark t
   end.
 
-Fixpoint denotation_continuation (k : continuation) : M (@continuation T S) :=
+Fixpoint denote_continuation (k : continuation) : M (@continuation T S) :=
   match k with
   | stop A a => Ret (stop A a)
   | p `; f =>
-      do a <- denotation p ;
-      denotation_continuation (f a)
+      do a <- denote p ;
+      denote_continuation (f a)
   end.
 
 Definition stateTrace_sub {A : Type} (m : M A) : Type :=
-  { p | denotation p = m }.
+  { p | denote p = m }.
 
 Definition continuation_sub (m : M continuation) : Type :=
-  {k | denotation_continuation k = m }.
+  {k | denote_continuation k = m }.
 
-Lemma denotation_prefix_preserved A (m : M A) :
+Lemma denote_prefix_preserved A (m : M A) :
   stateTrace_sub m -> forall s s' l1 l a,
-  Run m (s, l1) = (a, (s', l)) -> exists l2, l = l1 ++ l2.
+  Run m (s, l1) = (a, (s', l)) ->
+  exists l2, l = l1 ++ l2.
 Proof.
 intros [ p Hp ].
 subst m.
@@ -51,7 +52,7 @@ induction p as [ A a | A B p IHp g IHg | A b p1 IHp1 p2 IHp2 | | s0 | t ]; cbn;
   rewrite cats0.
   by move: Heq; rewrite runret => -[].
 - rewrite runbind in Heq.
-  case_eq (Run (denotation p) (s, l1)).
+  case_eq (Run (denote p) (s, l1)).
   intros a (s0, l0) Hp.
   rewrite Hp in Heq.
   apply IHp in Hp.
@@ -72,7 +73,7 @@ induction p as [ A a | A B p IHp g IHg | A b p1 IHp1 p2 IHp2 | | s0 | t ]; cbn;
   by move: Heq; rewrite runstmark -cats1 => -[].
 Qed.
 
-Lemma denotation_prefix_independent A (m : M A) :
+Lemma denote_prefix_independent A (m : M A) :
   stateTrace_sub m -> forall s l1 l2,
   Run m (s, l1 ++ l2) =
   let res := Run m (s, l2) in
@@ -84,7 +85,7 @@ elim: p s l1 l2 => /= {A} [A a|A B p1 IH1 p2 IH2|A b p1 IH1 p2 IH2||s'|t] s l1 l
 by rewrite !runret.
 rewrite [in LHS]runbind [in LHS]IH1.
 rewrite [in RHS]runbind.
-case: (Run (denotation p1) (s, l2)) => a' [s' l'] /=.
+case: (Run (denote p1) (s, l2)) => a' [s' l'] /=.
 by rewrite IH2.
 by case: ifPn => _; [rewrite IH1|rewrite IH2].
 by rewrite !runstget.
@@ -92,7 +93,7 @@ by rewrite !runstput.
 by rewrite !runstmark rcons_cat.
 Qed.
 
-Lemma denotation_continuation_prefix_independent m :
+Lemma denote_continuation_prefix_independent m :
   continuation_sub m -> forall s l1 l2,
   Run m (s, l1 ++ l2) =
   let res := Run m (s, l2) in
@@ -103,14 +104,14 @@ subst m.
 elim: k => // [A a s l1 l2|A p k IH s l1 l2].
 by rewrite !runret.
 rewrite /= !runbind.
-rewrite denotation_prefix_independent /=; [ | now exists p ].
-destruct (Run (denotation p) (s, l2)) as [ a (s', l) ].
+rewrite denote_prefix_independent /=; [ | now exists p ].
+destruct (Run (denote p) (s, l2)) as [ a (s', l) ].
 by rewrite IH.
 Qed.
 
 Lemma step_None_correct s s' k k' l :
   step (s, k) None (s', k') ->
-  Run (denotation_continuation k) (s, l) = Run (denotation_continuation k') (s', l).
+  Run (denote_continuation k) (s, l) = Run (denote_continuation k') (s', l).
 Proof.
 intro Hstep.
 remember (s, k) as sk eqn: Heq.
@@ -138,8 +139,8 @@ Qed.
 
 Lemma step_Some_correct s s' k k' t l :
   step (s, k) (Some t) (s', k') ->
-  Run (denotation_continuation k) (s, l) =
-  Run (denotation_continuation k') (s', rcons l t).
+  Run (denote_continuation k) (s, l) =
+  Run (denote_continuation k') (s', rcons l t).
 Proof.
 intro Hstep.
 remember (s, k) as sk eqn: Heq.
@@ -156,7 +157,7 @@ Qed.
 
 Lemma step_star_correct_gen s s' k k' l l' :
   step_star (s, k) l' (s', k') ->
-  Run (denotation_continuation k) (s, l) = Run (denotation_continuation k') (s', l++l').
+  Run (denote_continuation k) (s, l) = Run (denote_continuation k') (s', l++l').
 Proof.
 intro Hstep_star.
 remember (s, k) as sk eqn: Heq.
@@ -179,24 +180,24 @@ induction Hstep_star as
   injection Heq2; clear Heq2; intros; subst s2 k2.
   apply step_Some_correct with (l := []) in Hstep.
   rewrite <- cats0 at 1.
-  rewrite denotation_continuation_prefix_independent; [ | now exists k ].
+  rewrite denote_continuation_prefix_independent; [ | now exists k ].
   rewrite -> Hstep, (IH _ s'' _ k'');
    [ | reflexivity | reflexivity ].
   cbn.
-  rewrite denotation_continuation_prefix_independent; [ reflexivity | ].
+  rewrite denote_continuation_prefix_independent; [ reflexivity | ].
   now eexists.
 Qed.
 
 Proposition step_star_correct
   (s s' : S) (A : Type) (a : A) (p : program A) (l : list T) :
   step_star (s, p `; stop A) l (s', stop A a) ->
-  Run (denotation p) (s, []) = (a, (s', l)).
+  Run (denote p) (s, []) = (a, (s', l)).
 Proof.
 intro Hss.
 apply step_star_correct_gen with (l := []) in Hss.
 move: Hss.
 rewrite /= runret runbind.
-destruct (Run (denotation p) (s, [])) as [a'' [s'' l'']].
+destruct (Run (denote p) (s, [])) as [a'' [s'' l'']].
 rewrite runret => Hss.
 injection Hss; clear Hss; intros Heq1 Heq2 Heq3.
 apply inj_pair2 in Heq3.
@@ -205,7 +206,7 @@ Qed.
 
 Lemma step_star_complete_gen
   (s s' : S) (A : Type) (a : A) (p : program A) (l1 l2 : list T) f :
-  Run (denotation p) (s, l1) = (a, (s', l1 ++ l2)) ->
+  Run (denote p) (s, l1) = (a, (s', l1 ++ l2)) ->
   step_star (s, p `; f) l2 (s', f a).
 Proof.
 revert s s' a l1 l2 f.
@@ -220,15 +221,14 @@ induction p as [ A a | A B p IHp g IHg | A b p1 IHp1 p2 IHp2 | |  aa | t ]; cbn;
   + apply s_bind.
   + move: Heq.
     rewrite runbind.
-    case_eq (Run (denotation p) (s, l1)).
+    case_eq (Run (denote p) (s, l1)).
     intros a (s0, l0) Hp Heq.
-(*    rewrite Hp in Heq.*)
-    specialize (denotation_prefix_preserved _ _ ltac:(now eexists) _ _ _ _ _ Hp).
+    specialize (denote_prefix_preserved _ _ ltac:(now eexists) _ _ _ _ _ Hp).
     intros [l3 Hl3].
     rewrite Hl3 in Hp.
     apply IHp with (f := (fun a => g a `; f)) in Hp.
     clear IHp.
-    specialize (denotation_prefix_preserved _ _ ltac:(now eexists) _ _ _ _ _ Heq).
+    specialize (denote_prefix_preserved _ _ ltac:(now eexists) _ _ _ _ _ Heq).
     intros [l4 Hl4].
     rewrite Hl4 in Heq.
     apply IHg with (f := f) in Heq.
@@ -266,7 +266,7 @@ Qed.
 
 Proposition step_star_complete
   (s s' : S) (A : Type) (a : A) (p : program A) (l : list T) :
-  Run (denotation p) (s, []) = (a, (s', l)) ->
+  Run (denote p) (s, []) = (a, (s', l)) ->
   step_star (s, p `; stop A) l (s', stop A a).
 Proof.
 intro Hp.
@@ -276,4 +276,4 @@ Qed.
 
 End DenotationalSemantics.
 
-Arguments denotation [S] [T] _ _.
+Arguments denote [S] [T] _ _.

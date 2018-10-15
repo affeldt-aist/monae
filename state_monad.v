@@ -742,14 +742,14 @@ Lemma Symbols_prop2 :
 Proof.
 apply functional_extensionality => -[n1 n2].
 elim: n1 => /= [|n1 IH].
-  rewrite add0n Symbols0 bindretf fmap_bind.
+  rewrite /uaddn /uncurry /= add0n Symbols0 bindretf fmap_bind.
   Open (X in _ >>= X).
     rewrite fcomp_ext fmap_ret /=; reflexivity.
   by rewrite bindmret.
-rewrite addSn SymbolsS {}IH SymbolsS.
+rewrite /uaddn /uncurry /= addSn SymbolsS {}IH SymbolsS.
 rewrite [in RHS]fmap_bind bindA; bind_ext => a.
 rewrite fmap_bind 2!bindA.
-(* TODO(rei): use bind_ext *)
+(* TODO(rei): bind_ext? *)
 congr Bind; apply functional_extensionality => s.
 rewrite bindretf 2!fcomp_ext bind_fmap fmap_bind bindA.
 rewrite_ bindretf.

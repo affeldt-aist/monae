@@ -129,7 +129,12 @@ by rewrite leZZ'.
 by move/ltZP/ltZW'.
 Qed.
 
-Lemma ltZ_neqAle m n : (m <? n) = (m != n) && (m <=? n).
+Lemma ltZ_neqAle m n : (m < n) <-> (m <> n) /\ (m <= n).
+Proof.
+split => [mn|[H]]; last by rewrite leZ_eqVlt => -[|].
+split; [exact/nesym/gtZ_eqF | exact/ltZW].
+Qed.
+Lemma ltZ_neqAle' m n : (m <? n) = (m != n) && (m <=? n).
 Proof.
 apply/idP/idP => [/ltZP mn|].
   apply/andP; split; [apply/eqP; omega | exact/ltZW'/ltZP].
@@ -213,6 +218,15 @@ Definition ltZ_add := Z.add_lt_mono.
 Lemma leZ_add2l {p m n} : p + m <= p + n <-> m <= n.
 Proof. split; [exact: Zplus_le_reg_l | exact: Zplus_le_compat_l]. Qed.
 
+Lemma leZ_addl a b c : 0 <= b -> a <= c -> a <= b + c.
+Proof. move=> b0 ac; rewrite -(add0Z a); exact: leZ_add. Qed.
+
+Lemma leZ_addr a b c : 0 <= c -> a <= b -> a <= b + c.
+Proof. move=> b0 ac; rewrite -(addZ0 a); exact: leZ_add. Qed.
+
+Lemma addr_leZ a b c : b <= 0 -> a <= c -> a + b <= c.
+Proof. move=> b0 ab; rewrite -(addZ0 c); exact: leZ_add. Qed.
+
 Lemma ltZ_add2r p {m n : Z} : (m + p < n + p) <-> (m < n).
 Proof. split; [exact/Zplus_lt_reg_r | exact/Zplus_lt_compat_r]. Qed.
 Lemma ltZ_add2r' (p m n : Z) : (m + p <? n + p) = (m <? n).
@@ -222,10 +236,6 @@ Lemma ltZ_add2l p {m n : Z} : (p + m  < p + n) <-> (m < n).
 Proof. split; [exact/Zplus_lt_reg_l | exact/Zplus_lt_compat_l]. Qed.
 Lemma ltZ_add2l' p {m n} : (p + m  <? p + n) = (m <? n).
 Proof. by rewrite 2!(addZC p) ltZ_add2r'. Qed.
-
-Lemma pmulZ_rge0 x y : 0 < x -> (0 <= x * y) <-> (0 <= y).
-Proof. exact: Z.mul_nonneg_cancel_l. Qed.
-(* NB: Zmult_gt_0_le_0_compat *)
 
 (* TODO: Zmult_gt_0_lt_0_reg_r *)
 
@@ -278,6 +288,19 @@ Proof. by move=> H; apply/idP/idP => /ltZP/(ltZ_pmul2r _ _ _ H)/ltZP. Qed.
 Lemma ltZ_pmul2l m n1 n2 : 0 < m -> (m * n1 < m * n2) <-> (n1 < n2).
 Proof. rewrite 2!(mulZC m); exact: ltZ_pmul2r. Qed.
 
+Lemma pmulZ_rge0 x y : 0 < x -> (0 <= x * y) <-> (0 <= y).
+Proof. exact: Z.mul_nonneg_cancel_l. Qed.
+(* NB: Zmult_gt_0_le_0_compat *)
+
+Lemma pmulZ_lgt0 x y : 0 < x -> (0 < y * x) <-> (0 < y).
+Proof. by move=> x0; rewrite -{1}(mul0Z x) ltZ_pmul2r. Qed.
+
+Lemma pmulZ_llt0 x y : 0 < x -> (y * x < 0) <-> (y < 0).
+Proof. move=> x0; by rewrite -{1}(mul0Z x) ltZ_pmul2r. Qed.
+
+Lemma mulZ_ge0_le0 a b : 0 <= a -> b <= 0 -> a * b <= 0.
+Proof. move: a b => [|a|a] // b Ha Hb; by case: b Hb. Qed.
+
 Lemma leZ_subLR m n p : (m - n <= p) <-> (m <= n + p).
 Proof. by rewrite Zle_plus_swap Z.sub_opp_r addZC. Qed.
 
@@ -291,6 +314,11 @@ split => H.
 - by apply (@leZ_add2l m); rewrite subZKC.
 Qed.
 
+Lemma ltZadd1 {m n} : m < n + 1 <-> m <= n. Proof. omega. Qed.
+
+Lemma leZsub1 a b : a <= b - 1 <-> a < b.
+Proof. by rewrite leZ_subRL addZC -ltZadd1 ltZ_add2r. Qed.
+
 Lemma ltZ_subRL m n p : (n < p - m) <-> (m + n < p).
 Proof.
 split => H.
@@ -302,6 +330,9 @@ Lemma ltZ_subRL' m n p : (n <? p - m) = (m + n <? p).
 Proof. by apply/idP/idP => /ltZP/ltZ_subRL/ltZP. Qed.
 
 Definition ltZ_addr_subl := ltZ_subRL.
+
+Lemma Z_S n : Z_of_nat n.+1 = Z_of_nat n + 1.
+Proof. by rewrite inj_S. Qed.
 
 Lemma Z_of_nat_inj : forall x y, Z_of_nat x = Z_of_nat y -> x = y.
 Proof. exact: Nat2Z.inj. Qed.
@@ -329,3 +360,23 @@ Lemma normZM : {morph Z.abs : x y / x * y : Z}. Proof. exact: Z.abs_mul. Qed.
 Lemma geZ0_norm x : 0 <= x -> `|x| = x. Proof. exact: Z.abs_eq. Qed.
 
 Lemma normZ_ge0 : forall z, 0 <= `| z |. Proof. by case. Qed.
+
+Lemma ltZ_norml x y : `|x| < y <-> (- y < x < y).
+Proof.
+split => [H | [H1 H2] ].
+- case: (Z_le_gt_dec x 0) => x0; first by rewrite Zabs_non_eq // in H; omega.
+  rewrite Z.abs_eq // in H; last omega.
+  split; [omega | by []].
+- case: (Z_le_gt_dec 0 x) => x0; first by rewrite Z.abs_eq.
+  rewrite Zabs_non_eq; [omega | exact/ltZW/Z.gt_lt].
+Qed.
+
+Lemma leZ_norml x y : `|x| <= y <-> (- y <= x <= y).
+Proof.
+split => [H | [H1 H2] ].
+- case: (Z_le_gt_dec x 0) => x0; first by rewrite Zabs_non_eq // in H; omega.
+  rewrite Z.abs_eq // in H; last omega.
+  split; [omega | by []].
+- case: (Z_le_gt_dec 0 x) => x0; first by rewrite Z.abs_eq.
+  rewrite Zabs_non_eq; [omega | exact/ltZW/Z.gt_lt].
+Qed.

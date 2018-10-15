@@ -49,11 +49,11 @@ Qed.
 Module Prob.
 Record t := mk {
   p : R ;
-  H : (0 <= p <= 1)%R }.
-Definition H' (p : t) := H p.
-Arguments H' : simpl never.
+  Op1 : (0 <= p <= 1)%R }.
+Definition O1 (p : t) := Op1 p.
+Arguments O1 : simpl never.
 Module Exports.
-Notation "[Pr 'of' q ]" := (@mk q (@H' _)).
+Notation "[Pr 'of' q ]" := (@mk q (@O1 _)).
 Coercion p : t >-> R.
 End Exports.
 End Prob.
@@ -73,7 +73,7 @@ Qed.
 
 Canonical prob0 := Prob.mk OO1.
 Canonical prob1 := Prob.mk O11.
-Canonical probcplt (p : Prob.t) := @Prob.mk p.~ (onem_prob (Prob.H p)).
+Canonical probcplt (p : Prob.t) := @Prob.mk p.~ (onem_prob (Prob.O1 p)).
 
 Lemma prob_IZR (p : positive) : (R0 <= / IZR (Zpos p) <= R1)%R.
 Proof.

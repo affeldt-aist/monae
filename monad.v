@@ -100,14 +100,22 @@ End fusion_law.
 End fold.
 
 Definition uncurry {A B C} (f : A -> B -> C) : ((A * B)%type -> C) :=
-  fun x => let: (x1, x2) := x in f x1 x2.
+  fun x => f x.1 x.2.
+
+Lemma uncurryE A B C (f : A -> B -> C) a b : f a b = (uncurry f) (a, b).
+Proof. by []. Qed.
+
+Definition curry {A B C} (f : A * B -> C) : A -> B -> C := fun a b => f (a, b).
+
+Lemma curryK A B C (f : A * B -> C) : uncurry (curry f) = f.
+Proof. by apply functional_extensionality; case. Qed.
+
+Lemma uncurryK A B C (f : A -> B -> C) : curry (uncurry f) = f.
+Proof. by []. Qed.
 
 Definition ucat {A} := uncurry (@cat A).
 
 Definition uaddn := uncurry addn.
-
-Definition curry {A B C} (f : (A * B)%type -> C) : (A -> B -> C) :=
-  fun a b => f (a, b).
 
 Lemma lift_if A B C (f : A -> B -> C) b m1 m2 :
   f (if b then m1 else m2) = if b then f m1 else f m2.

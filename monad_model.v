@@ -112,9 +112,9 @@ End set.
 
 Section state.
 Variables S T : Type.
-Let m : Type -> Type := fun A => S * list T -> A * (S * list T).
+Let m0 := fun A => S * list T -> A * (S * list T).
 Definition state : monad.
-refine (@Monad.Pack _ (@Monad.Class m
+refine (@Monad.Pack _ (@Monad.Class m0
   (fun A a => fun s => (a, s)) (* ret *)
   (fun A B m f => fun s => let (a, s') := m s in f a s') (* bind *) _ _ _)).
 by [].
@@ -220,16 +220,17 @@ End ModelNondet.
 
 Module ModelStateTrace.
 
-Definition mk {S T} : stateTraceMonad S T.
-refine (
+Section st.
+Variables (S T : Type).
+Definition mk : stateTraceMonad S T :=
 let m := Monad.class (@ModelMonad.state S T) in
-let stm := (@MonadStateTrace.Class S T _ m
-  (@MonadStateTrace.Mixin _ _ (Monad.Pack m)
-  (fun s => (s.1, s))  (* get *)
-  (fun s' s => (tt, (s', s.2)))
-  (fun (t : T) s => (tt, (s.1, rcons s.2 t))))) in
-@MonadStateTrace.Pack S T (fun A => S * list T -> A * (S * list T)) stm).
-Defined.
+let stm := @MonadStateTrace.Class S T _ m
+(@MonadStateTrace.Mixin _ _ (Monad.Pack m)
+ (fun s => (s.1, s)) (* st_get *)
+ (fun s' s => (tt, (s', s.2))) (* st_put *)
+ (fun t s => (tt, (s.1, rcons s.2 t)))) (* st_mark *) in
+@MonadStateTrace.Pack S T _ stm.
+End st.
 
 End ModelStateTrace.
 
