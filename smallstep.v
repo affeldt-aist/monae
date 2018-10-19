@@ -36,7 +36,7 @@ Local Notation "'p_do' x : T <- m ; e" :=(p_bind m (fun x : T => e)).
 
 Inductive continuation : Type :=
 | stop : forall (A : Type), A -> continuation
-| seq : forall (A : Type), program A -> (A -> continuation) -> continuation.
+| cont : forall (A : Type), program A -> (A -> continuation) -> continuation.
 
 End Syntax.
 
@@ -49,12 +49,12 @@ Arguments p_put {_ _} _.
 Arguments p_mark {_ _} _.
 Arguments continuation {_ _}.
 Arguments stop {_ _} _ _.
-Arguments seq {_ _} _ _ _.
+Arguments cont {_ _} _ _ _.
 
 Notation "'p_do' x <- m ; e" := (@p_bind _ _ _ _ m (fun x => e)).
 Notation "'p_do' x : T <- m ; e" := (@p_bind _ _ _ _ m (fun x : T => e)).
 
-Notation "p `; k" := (@seq _ _ _ p k) (at level 50).
+Notation "p `; k" := (@cont _ _ _ p k) (at level 50).
 
 Section OperationalSemantics.
 

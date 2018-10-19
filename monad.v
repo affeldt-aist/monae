@@ -204,7 +204,7 @@ Record class_of (m : Type -> Type) : Type := Class {
   _ : Laws.left_neutral bind ret ;
   _ : Laws.right_neutral bind ret ;
   _ : Laws.associative bind }.
-Record t : Type := Pack { m : Type -> Type ; class : class_of m }.
+Structure t : Type := Pack { m : Type -> Type ; class : class_of m }.
 Module Exports.
 Definition Ret (M : t) A : A -> m M A :=
   let: Pack _ (Class x _ _ _ _) := M in x A.
@@ -729,9 +729,7 @@ Lemma subs_cat (xs ys : seq A) :
 Proof.
 elim: xs ys => [ys |x xs IH ys].
   by rewrite /= bindretf bindmret.
-rewrite [in RHS]subs_cons.
-cbv zeta.
-rewrite alt_bindDl bindA [in RHS]/=.
+rewrite [in RHS]/= alt_bindDl bindA [in RHS]/=.
 Open (X in subs xs >>= X).
   rewrite bindretf.
   rewrite_ cat_cons.

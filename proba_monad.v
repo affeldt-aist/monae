@@ -26,7 +26,7 @@ Contents:
     probabilistic choice + exception
 *)
 
-Reserved Notation "[Pr 'of' p ]" (format "[Pr  'of'  p ]").
+Reserved Notation "'`Pr' p " (format "`Pr  p", at level 6).
 Reserved Notation "mx <| p |> my" (format "mx  <| p |>  my", at level 50).
 
 (* NB(rei): proofs would be more comfortable with ssrR.v from infotheo *)
@@ -53,7 +53,8 @@ Record t := mk {
 Definition O1 (p : t) := Op1 p.
 Arguments O1 : simpl never.
 Module Exports.
-Notation "[Pr 'of' q ]" := (@mk q (@O1 _)).
+Notation prob := t.
+Notation "'`Pr' q" := (@mk q (@O1 _)).
 Coercion p : t >-> R.
 End Exports.
 End Prob.
@@ -73,7 +74,7 @@ Qed.
 
 Canonical prob0 := Prob.mk OO1.
 Canonical prob1 := Prob.mk O11.
-Canonical probcplt (p : Prob.t) := @Prob.mk p.~ (onem_prob (Prob.O1 p)).
+Canonical probcplt (p : prob) := @Prob.mk p.~ (onem_prob (Prob.O1 p)).
 
 Lemma prob_IZR (p : positive) : (R0 <= / IZR (Zpos p) <= R1)%R.
 Proof.
@@ -112,16 +113,16 @@ Canonical probinvn (n : nat) := @Prob.mk (/ INR (1 + n)) (prob_invn n).
 
 Module MonadProb.
 Record mixin_of (M : monad) : Type := Mixin {
-  choice : forall (p : Prob.t) A, M A -> M A -> M A
+  choice : forall (p : prob) A, M A -> M A -> M A
            where "mx <| p |> my" := (choice p mx my) ;
   (* identity laws *)
-  _ : forall A (mx my : M A), mx <| [Pr of 0] |> my = my ;
-  _ : forall A (mx my : M A), mx <| [Pr of 1] |> my = mx ;
+  _ : forall A (mx my : M A), mx <| `Pr 0 |> my = my ;
+  _ : forall A (mx my : M A), mx <| `Pr 1 |> my = mx ;
   (* skewed commutativity law *)
-  _ : forall A p (mx my : M A), mx <| p |> my = my <| [Pr of p.~] |> mx ;
+  _ : forall A p (mx my : M A), mx <| p |> my = my <| `Pr p.~ |> mx ;
   _ : forall A p, idempotent (@choice p A) ;
   (* quasi associativity *)
-  _ : forall A (p q r s : Prob.t) (mx my mz : M A),
+  _ : forall A (p q r s : prob) (mx my mz : M A),
     (p = r * s :> R /\ s.~ = p.~ * q.~)%R ->
     mx <| p |> (my <| q |> mz) = (mx <| r |> my) <| s |> mz ;
   (* composition distributes leftwards over [probabilistic] choice *)
@@ -148,15 +149,15 @@ Section prob_lemmas.
 Variable (M : probMonad).
 Lemma choicemm : forall A p, idempotent (@Choice M p A).
 Proof. by case: M => m [? []]. Qed.
-Lemma choice0 : forall A (mx my : M A), mx <| [Pr of 0] |> my = my.
+Lemma choice0 : forall A (mx my : M A), mx <| `Pr 0 |> my = my.
 Proof. by case: M => m [? []]. Qed.
-Lemma choice1 : forall A (mx my : M A), mx <| [Pr of 1] |> my = mx.
+Lemma choice1 : forall A (mx my : M A), mx <| `Pr 1 |> my = mx.
 Proof. by case: M => m [? []]. Qed.
-Lemma choiceA A : forall (p q r s : Prob.t) (mx my mz : M A),
+Lemma choiceA A : forall (p q r s : prob) (mx my mz : M A),
     (p = r * s :> R /\ s.~ = p.~ * q.~)%R ->
     mx <| p |> (my <| q |> mz) = (mx <| r |> my) <| s |> mz.
 Proof. by case: M A => m [? []]. Qed.
-Lemma choiceC : forall A (p : Prob.t) (mx my : M A), mx <| p |> my = my <| [Pr of p.~] |> mx.
+Lemma choiceC : forall A (p : prob) (mx my : M A), mx <| p |> my = my <| `Pr p.~ |> mx.
 Proof. by case: M => m [? []]. Qed.
 Lemma prob_bindDl p : Laws.bind_left_distributive (@Bind M) (Choice p).
 Proof. by case: M => m [? []]. Qed.
@@ -168,27 +169,27 @@ Fixpoint uniform {M : probMonad} {A} (def(*NB: Coq functions are total*) : A) (s
   match s with
     | [::] => Ret def
     | [:: x] => Ret x
-    | x :: xs => Ret x <| [Pr of / IZR (Z_of_nat (size (x :: xs)))] |> uniform def xs
+    | x :: xs => Ret x <| `Pr / IZR (Z_of_nat (size (x :: xs))) |> uniform def xs
   end.
 
 Lemma uniform_nil (M : probMonad) A (def : A) :
   uniform def [::] = Ret def :> M A.
 Proof. by []. Qed.
 
-Lemma prob_ext (p q : Prob.t) : Prob.p p = Prob.p q -> p = q.
+Lemma prob_ext (p q : prob) : Prob.p p = Prob.p q -> p = q.
 Proof.
 move: p q => [p Hp] [q Hq] /= ?; subst q; f_equal; exact: proof_irrelevance.
 Qed.
 
-Lemma choice_ext (q p : Prob.t) (M : probMonad) A (m1 m2 : M A) :
+Lemma choice_ext (q p : prob) (M : probMonad) A (m1 m2 : M A) :
   p = q :> R -> m1 <| p |> m2 = m1 <| q |> m2.
 Proof. by move/prob_ext => ->. Qed.
 
 Lemma uniform_cons (M : probMonad) A (def : A) h s :
-  uniform def (h :: s) = Ret h <| [Pr of / IZR (Z_of_nat (size (h :: s)))] |> uniform def s :> M A.
+  uniform def (h :: s) = Ret h <| `Pr / IZR (Z_of_nat (size (h :: s))) |> uniform def s :> M A.
 Proof.
 case: s => //.
-rewrite (@choice_ext [Pr of 1]) // ?choice1 //.
+rewrite (@choice_ext (`Pr 1)) // ?choice1 //.
 by rewrite /= Rinv_1.
 Qed.
 
@@ -196,7 +197,7 @@ Lemma uniform_singl (M : probMonad) A (def : A) h : size h = 1%nat ->
   uniform def h = Ret (head def h) :> M A.
 Proof.
 case: h => // h [|//] _.
-rewrite uniform_cons uniform_nil (@choice_ext [Pr of 1]) ?choice1 //.
+rewrite uniform_cons uniform_nil (@choice_ext (`Pr 1)) ?choice1 //.
 by rewrite /= Rinv_1.
 Qed.
 
@@ -209,20 +210,20 @@ Qed.
 
 Lemma uniform_cat (M : probMonad) A (a : A) s t :
   let m := size s in let n := size t in
-  uniform a (s ++ t) = uniform a s <| [Pr of INR m / INR (m + n)] |> uniform a t :> M _.
+  uniform a (s ++ t) = uniform a s <| `Pr (INR m / INR (m + n)) |> uniform a t :> M _.
 Proof.
 elim: s t => [t m n|s1 s2 IH t m n].
-  rewrite cat0s uniform_nil /= [X in _ <| X |> _](_ : _ = [Pr of 0]) ?choice0 //.
+  rewrite cat0s uniform_nil /= [X in _ <| X |> _](_ : _ = `Pr 0) ?choice0 //.
   by apply prob_ext => /=; rewrite /Rdiv Rmult_0_l.
 case/boolP : (m.-1 + n == 0)%nat => [{IH}|] m1n0.
   have s20 : s2 = [::] by move: m1n0; rewrite {}/m /=; case: s2.
   have t0 : t = [::] by move: m1n0; rewrite {}/n /= addnC; case: t.
   subst s2 t.
-  rewrite cats0 (_ : Prob.mk _ = [Pr of 1]) ?choice1 //.
+  rewrite cats0 (_ : Prob.mk _ = `Pr 1) ?choice1 //.
   by apply prob_ext => /=; rewrite /Rdiv Rmult_1_l Rinv_1.
 rewrite cat_cons uniform_cons uniform_cons.
 set pv := ((/ _)%R).
-set v : Prob.t := @Prob.mk pv _.
+set v : prob := @Prob.mk pv _.
 set u := @Prob.mk (INR (size s2) / INR (size s2 + size t))%R (prob_addn _ _).
 rewrite -[RHS](choiceA v u).
   by rewrite -IH.
@@ -358,8 +359,8 @@ by apply prob_ext => /=; rewrite /Rdiv Rmult_1_l.
 Qed.
 
 Module MonadAltProb.
-Record mixin_of (M : altCIMonad) (a : Prob.t -> forall A, M A -> M A -> M A) := Mixin {
-  _ : forall A (p : Prob.t),
+Record mixin_of (M : altCIMonad) (a : prob -> forall A, M A -> M A -> M A) := Mixin {
+  _ : forall A (p : prob),
     right_distributive (fun x y : M A => a p _ x y) (fun x y => Alt x y)
 }.
 Record class_of (m : Type -> Type) := Class {
@@ -408,7 +409,7 @@ Qed.
 End convexity_property.
 
 (* biased coin *)
-Definition bcoin {M : probMonad} (p : Prob.t) : M bool :=
+Definition bcoin {M : probMonad} (p : prob) : M bool :=
   Ret true <| p |> Ret false.
 Arguments bcoin : simpl never.
 
@@ -435,7 +436,7 @@ Proof. case: b; apply functional_extensionality; by case. Qed.
 Definition Ret_eqb_add := (Ret_eqb_addL, Ret_eqb_addR).
 
 Lemma arbcoin_spec p :
-  arbcoin p = (bcoin p : M _ (* TODO *) ) [~] bcoin [Pr of p.~].
+  arbcoin p = (bcoin p : M _ (* TODO *) ) [~] bcoin (`Pr p.~).
 Proof.
 rewrite /arbcoin /arb.
 rewrite alt_bindDl.
@@ -460,7 +461,7 @@ by rewrite altC choicemm altC.
 Qed.
 
 Lemma coinarb_spec_convexity p w : coinarb p =
-  (bcoin w : M _) [~] Ret false [~] Ret true [~] bcoin [Pr of w.~].
+  (bcoin w : M _) [~] Ret false [~] Ret true [~] bcoin (`Pr w.~).
 Proof.
 rewrite coinarb_spec [in LHS]/arb [in LHS](convexity _ _ w) 2!choicemm.
 rewrite [in LHS]altC -(altA _ (Ret false)) altCA -2![in RHS]altA; congr (_ [~] _).
@@ -471,7 +472,7 @@ Qed.
 End mixing_choices.
 
 Module MonadExceptProb.
-Record mixin_of (M : exceptMonad) (a : Prob.t -> forall A : Type, M A -> M A -> M A) := Mixin {
+Record mixin_of (M : exceptMonad) (a : prob -> forall A : Type, M A -> M A -> M A) := Mixin {
   catchDl : forall A w, left_distributive (@Catch M A) (fun x y => a w A x y)
     (* NB: not used? *)
 }.
@@ -494,39 +495,39 @@ End MonadExceptProb.
 Export MonadExceptProb.Exports.
 
 Definition coins23 {M : exceptProbMonad} : M bool :=
-  Ret true <| [Pr of / 2] |> (Ret false <| [Pr of / 2] |> (Fail : M _)).
+  Ret true <| `Pr / 2 |> (Ret false <| `Pr / 2 |> (Fail : M _)).
 
 Lemma H23 : (0 <= 2/3 <= 1)%R. Proof. split; lra. Qed.
 
 (* NB: notation for ltac:(split; fourier?)*)
 Lemma choiceA_compute {N : probMonad} (T F : bool) (f : bool -> N bool) :
-  f T <|[Pr of / 9]|> (f F <|[Pr of / 8]|> (f F <|[Pr of / 7]|> (f F <|[Pr of / 6]|>
- (f T <|[Pr of / 5]|> (f F <|[Pr of / 4]|> (f F <|[Pr of / 3]|> (f F <|[Pr of / 2]|>
-  f T))))))) = f F <|[Pr of / 3]|> (f F <|[Pr of / 2]|> f T) :> N _.
+  f T <|`Pr / 9|> (f F <|`Pr / 8|> (f F <|`Pr / 7|> (f F <|`Pr / 6|>
+ (f T <|`Pr / 5|> (f F <|`Pr / 4|> (f F <|`Pr / 3|> (f F <|`Pr / 2|>
+  f T))))))) = f F <|`Pr / 3|> (f F <|`Pr / 2|> f T) :> N _.
 Proof.
 have H34 : (0 <= 3/4 <= 1)%R by split; lra.
 have H27 : (0 <= 2/7 <= 1)%R by split; lra.
 have H721 : (0 <= 7/21 <= 1)%R by split; lra.
 have H2156 : (0 <= 21/56 <= 1)%R by split; lra.
 have H25 : (0 <= 2/5 <= 1)%R by split; lra.
-rewrite [in RHS](choiceA _ _ [Pr of /2] (@Prob.mk (2/3) H23)); last by rewrite 3!probpK; split; field.
+rewrite [in RHS](choiceA _ _ (`Pr /2) (@Prob.mk (2/3) H23)); last by rewrite 3!probpK; split; field.
 rewrite choicemm.
-rewrite [in LHS](choiceA [Pr of /3] [Pr of /2] [Pr of /2] (@Prob.mk (2/3) H23)); last by rewrite 3!probpK; split; field.
+rewrite [in LHS](choiceA (`Pr /3) (`Pr /2) (`Pr /2) (@Prob.mk (2/3) H23)); last by rewrite 3!probpK; split; field.
 rewrite choicemm.
-rewrite [in LHS](choiceA [Pr of /4] (@Prob.mk (2/3) H23) [Pr of /3] (@Prob.mk (3/4) H34)); last by rewrite 4!probpK; split; field.
+rewrite [in LHS](choiceA (`Pr /4) (@Prob.mk (2/3) H23) (`Pr /3) (@Prob.mk (3/4) H34)); last by rewrite 4!probpK; split; field.
 rewrite choicemm.
-rewrite [in LHS](choiceA [Pr of /7] [Pr of /6] [Pr of /2] (@Prob.mk (2/7) H27)); last by rewrite 4!probpK; split; field.
+rewrite [in LHS](choiceA (`Pr /7) (`Pr /6) (`Pr /2) (@Prob.mk (2/7) H27)); last by rewrite 4!probpK; split; field.
 rewrite choicemm.
-rewrite [in LHS](choiceA [Pr of /8] (@Prob.mk (2/7) H27) (@Prob.mk (7/21) H721) (@Prob.mk (21/56) H2156)); last by rewrite 4!probpK; split; field.
+rewrite [in LHS](choiceA (`Pr /8) (@Prob.mk (2/7) H27) (@Prob.mk (7/21) H721) (@Prob.mk (21/56) H2156)); last by rewrite 4!probpK; split; field.
 rewrite (choiceC (@Prob.mk (3/4) H34)).
-rewrite [in LHS](choiceA [Pr of /5] (probcplt (@Prob.mk (3/4) H34)) [Pr of /2] (@Prob.mk (2/5) H25)); last by rewrite 3!probpK /=; split; field.
+rewrite [in LHS](choiceA (`Pr /5) (probcplt (@Prob.mk (3/4) H34)) (`Pr /2) (@Prob.mk (2/5) H25)); last by rewrite 3!probpK /=; split; field.
 rewrite choicemm.
 rewrite choicemm.
 rewrite (choiceC (@Prob.mk (2/5) H25)).
-rewrite [in LHS](choiceA (@Prob.mk (21/56) H2156) (probcplt (Prob.mk H25)) [Pr of /2] (Prob.mk H34)); last by rewrite 3!probpK /=; split; field.
+rewrite [in LHS](choiceA (@Prob.mk (21/56) H2156) (probcplt (Prob.mk H25)) (`Pr /2) (Prob.mk H34)); last by rewrite 3!probpK /=; split; field.
 rewrite choicemm.
 rewrite (choiceC (Prob.mk H34)).
-rewrite [in LHS](choiceA [Pr of /9] (probcplt (Prob.mk H34)) [Pr of /3] [Pr of /3]); last by rewrite 3!probpK /=; split; field.
+rewrite [in LHS](choiceA (`Pr /9) (probcplt (Prob.mk H34)) (`Pr /3) (`Pr /3)); last by rewrite 3!probpK /=; split; field.
 rewrite choicemm choiceC.
 rewrite (@choice_ext (Prob.mk H23)) //=; by field.
 Qed.
@@ -534,18 +535,18 @@ Qed.
 Definition uFFT {M : probMonad} : M bool :=
   uniform true [:: false; false; true].
 
-Lemma uFFTE (M : probMonad) : uFFT = bcoin [Pr of /3] :> M _.
+Lemma uFFTE (M : probMonad) : uFFT = bcoin (`Pr /3) :> M _.
 Proof.
 rewrite /uFFT /bcoin uniform_cons.
-rewrite (_ : [Pr of _] = [Pr of /3])%R; last exact/prob_ext.
+rewrite (_ : `Pr _ = `Pr /3)%R; last exact/prob_ext.
 rewrite uniform_cons.
-rewrite [in X in _ <| _ |> X](_ : [Pr of _] = [Pr of /2])%R; last first.
+rewrite [in X in _ <| _ |> X](_ : `Pr _ = `Pr /2)%R; last first.
   exact/prob_ext.
 rewrite uniform_singl //=.
-rewrite (choiceA _ _ [Pr of /2] (Prob.mk H23)); last first.
+rewrite (choiceA _ _ (`Pr /2) (Prob.mk H23)); last first.
   rewrite /=; split; field.
 rewrite choicemm choiceC.
-rewrite (_ : [Pr of /3] = probcplt (Prob.mk H23)) //.
+rewrite (_ : (`Pr / 3)%R = probcplt (Prob.mk H23)) //.
 apply prob_ext => /=; field.
 Qed.
 
@@ -555,12 +556,11 @@ Definition uTTF {M : probMonad} : M bool :=
 Lemma uTTFE (M : probMonad) : uTTF = bcoin (@Prob.mk (2/3) H23) :> M _.
 Proof.
 rewrite /uTTF /bcoin uniform_cons.
-rewrite (_ : [Pr of _] = [Pr of /3])%R; last exact: prob_ext.
+rewrite (_ : `Pr _ = `Pr /3)%R; last exact: prob_ext.
 rewrite uniform_cons.
-rewrite [in X in _ <| _ |> X](_ : [Pr of _] = [Pr of /2])%R; last first.
-  exact/prob_ext.
+rewrite [in X in _ <| _ |> X](_ : `Pr _ = `Pr /2)%R; last exact/prob_ext.
 rewrite uniform_singl //=.
-rewrite (choiceA _ _ [Pr of /2] (Prob.mk H23)); last first.
+rewrite (choiceA _ _ (`Pr /2) (Prob.mk H23)); last first.
   rewrite /=; split; field.
 by rewrite choicemm choiceC.
 Qed.
@@ -576,7 +576,7 @@ elim: s => [//|h t IH _ H].
 rewrite uniform_cons.
 case/boolP : (t == [::]) => [/eqP -> {IH}|t0].
   rewrite uniform_nil.
-  rewrite (_ : [Pr of _] = [Pr of 1]); last by apply prob_ext => /=; rewrite Rinv_1.
+  rewrite (_ : `Pr _ = `Pr 1); last by apply prob_ext => /=; rewrite Rinv_1.
   rewrite choice1.
   rewrite 2!bindretf ifF //; apply/negbTE/H; by rewrite mem_head.
 rewrite 2!prob_bindDl; congr (_ <| _ |> _).

@@ -169,7 +169,7 @@ Section nondetstate_lemmas.
 Variables (S : Type) (M : nondetStateMonad S).
 Lemma bindmfail : Laws.right_zero (@Bind M) (@Fail _).
 Proof. by case: M => m [? ? [? ?]]. Qed.
-Lemma alt_bindDr : Laws.bind_right_distributive (@Bind M) [~p].
+Lemma alt_bindDr : Laws.bind_right_distributive (@Bind M) (@Alt _).
 Proof. by case: M => m [? ? []]. Qed.
 End nondetstate_lemmas.
 

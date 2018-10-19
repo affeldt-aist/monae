@@ -5,7 +5,7 @@ From mathcomp Require Import eqtype ssrnat seq choice fintype tuple.
 
 Require Import monad state_monad trace_monad.
 
-(* OUTLINE:
+(* Contents:
    sample models for the monads in monad.v, state_monad.v, trace_monad.v *)
 
 Set Implicit Arguments.

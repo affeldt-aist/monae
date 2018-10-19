@@ -14,18 +14,19 @@ reasoning with several examples:
 
 - [[monad.v][monad.v]]: basics of monadic equational reasoning
 - [[state_monad.v][state_monad.v]]: about the state monad
-- [[trace_monad.v][trace_monad.v]]: about the state-trace monad
 - [[proba_monad.v][proba_monad.v]]: about the probability monad
+- [[trace_monad.v][trace_monad.v]]: about the state-trace monad
 - [[monad_model.v][monad_model.v]]: concrete models of monads
-- [[proba_model.v][proba_model.v]]: model of the probability monad
+- [[finmonad.v][finmonad.v]]: a monad hierarchy with finType
+- [[finmonad_model.v][finmonad_model.v]]: models of the backtrackable-state and the probability monads
   + see Requirements for compilation information
-- [[smallstep.v][smallstep.v]]: semantics for an imperative language
-- [[smallstep_monad.v][smallstep_monad.v]]: equivalence operational semantics/denotation
-- [[smallstep_examples.v][smallstep_examples.v]]: sample imperative programs
 - [[example_spark.v][example_spark.v]]: example of Spark aggregation
 - [[example_nqueens.v][example_nqueens.v]]: example of the n-queens puzzle
 - [[example_relabeling.v][example_relabeling.v]]: example of tree relabeling
 - [[example_monty.v][example_monty.v]]: examples of Monty Hall problem
+- [[smallstep.v][smallstep.v]]: semantics for an imperative language
+- [[smallstep_monad.v][smallstep_monad.v]]: equivalence operational semantics/denotation
+- [[smallstep_examples.v][smallstep_examples.v]]: sample imperative programs
 - ssrZ.v: SSReflect-like interface for the type Z of the standard library of Coq
   + comes from https://github.com/affeldt-aist/seplog
   + copied verbatim here for convenience
@@ -33,10 +34,9 @@ reasoning with several examples:
 ** Requirements
 
 - [[https://coq.inria.fr][Coq 8.8.2]] (should be fine with slightly older versions), [[https://math-comp.github.io/math-comp/][MathComp 1.7]]
-- the compilation of [[proba_model.v][proba_model.v]] requires the installation of
+- the compilation of [[finmonad_model.v][finmonad_model.v]] requires the installation of
   another library called [[https://github.com/affeldt-aist/infotheo][infotheo]]
-  + once infotheo is installed, just add ~proba_model.v~ to the
-    ~_CoqProject~ file and compilation should succeed
+  + if infotheo is not installed, just remove ~finmonad_model.v~ from ~_CoqProject~
 
 ** Installation
 

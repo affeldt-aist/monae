@@ -8,7 +8,7 @@ Require Import monad proba_monad.
 
 (* from gibbons2011icfp and gibbonsUTP2012
 
-OUTLINE
+Contents:
 - Module Set3.
     a small theory about sets of three elements for the Monty Hall example
 - Section monty
@@ -242,9 +242,9 @@ Qed.
 
 Lemma uniform_doors_unfold (P : rel door) :
   do hp <- uniform (def, def) (cp doors doors); Ret (P hp.1 hp.2) =
-  Ret (P A A) <|[Pr of / 9]|> (Ret (P A B) <|[Pr of / 8]|> (Ret (P A C) <|[Pr of / 7]|>
- (Ret (P B A) <|[Pr of / 6]|> (Ret (P B B) <|[Pr of / 5]|> (Ret (P B C) <|[Pr of / 4]|>
- (Ret (P C A) <|[Pr of / 3]|> (Ret (P C B) <|[Pr of / 2]|> Ret (P C C)))))))) :> M _.
+  Ret (P A A) <|`Pr / 9|> (Ret (P A B) <|`Pr / 8|> (Ret (P A C) <|`Pr / 7|>
+ (Ret (P B A) <|`Pr / 6|> (Ret (P B B) <|`Pr / 5|> (Ret (P B C) <|`Pr / 4|>
+ (Ret (P C A) <|`Pr / 3|> (Ret (P C B) <|`Pr / 2|> Ret (P C C)))))))) :> M _.
 Proof.
 rewrite [LHS](_ : _ = fmap (uncurry P) (uniform (def, def) (cp doors doors))) //.
 rewrite (compE (fmap _)) -(uniform_naturality _ true); last first.
@@ -256,7 +256,7 @@ Qed.
    will match one third of the time *)
 Lemma bcoin13E (f : bool -> M bool) :
   do hp <- uniform (def, def) (cp doors doors); f (hp.1 == hp.2) =
-  do b <- bcoin [Pr of /3]; f b.
+  do b <- bcoin (`Pr /3); f b.
 Proof.
 transitivity (do hp <- uniform (def, def) (cp doors doors); Ret (hp.1 == hp.2) >>= f).
   bind_ext => -[h p] /=; by rewrite bindretf.
@@ -296,7 +296,7 @@ transitivity (do hp <- pair (hide, pick); f hp.1 hp.2).
 by rewrite pair_uniform // /doors Set3.enumE.
 Qed.
 
-Lemma play_stick : play stick = bcoin [Pr of /3].
+Lemma play_stick : play stick = bcoin (`Pr /3).
 Proof.
 rewrite {1}/play {1}/monty hide_pickE.
 transitivity (do hp <- uniform (def, def) (cp doors doors) ;
@@ -380,7 +380,7 @@ Proof.
 rewrite /fmap /try bindA.
 rewrite_ bindretf.
 rewrite /pick /monty.pick.
-transitivity (do p <- Ret A <| [Pr of /3] |> (Ret B <| [Pr of /2] |> Ret C); Ret (d == p) : M _).
+transitivity (do p <- Ret A <| `Pr /3 |> (Ret B <| `Pr /2 |> Ret C); Ret (d == p) : M _).
   congr Bind; by rewrite /doors Set3.enumE 2!uniform_cons.
 rewrite 2!prob_bindDl 3!bindretf.
 rewrite /uFFT 2!uniform_cons.
@@ -394,7 +394,7 @@ rewrite /doors Set3.enumE !inE => /or3P[] /eqP ->.
   rewrite /=; lra.
 - rewrite eq_sym (negbTE (Set3.a_neq_b _)) eqxx (negbTE (Set3.b_neq_c _)).
   congr (_ <| _ |> _).
-  rewrite choiceC (@choice_ext [Pr of /2]) //=; lra.
+  rewrite choiceC (@choice_ext (`Pr /2)) //=; lra.
 by rewrite eq_sym (negbTE (Set3.a_neq_c _)) eq_sym (negbTE (Set3.b_neq_c _)) eqxx.
 Qed.
 
@@ -423,7 +423,7 @@ Definition play_f (strategy : door -> door -> M door) : M bool :=
 
 Lemma tease_fE (h p : door) : let d := head def (doors \\ [:: h; p]) in
   tease_f h p = if h == p then unif_door (doors \\ [:: h])
-                          else (Fail : M _) <| [Pr of /2] |> Ret d.
+                          else (Fail : M _) <| `Pr /2 |> Ret d.
 Proof.
 move=> d.
 case: ifPn => [/eqP <-|hp].
@@ -442,7 +442,7 @@ transitivity (do t <- unif_door [:: h; d]; if t == h then Fail else Ret t).
     by rewrite mem_head.
   move: (Set3.filter1_another card_door hp); rewrite -/doors -Hd => -[] -> //.
   by rewrite /unif_door uniform2.
-rewrite /unif_door uniform_cons (_ : [Pr of _] = [Pr of /2])%R; last first.
+rewrite /unif_door uniform_cons (_ : `Pr _ = `Pr /2)%R; last first.
   by apply prob_ext => /=; lra.
 rewrite uniform_singl // [head _ _]/= prob_bindDl 2!bindretf eqxx ifF //.
 apply/negbTE/head_filter; by rewrite inE eqxx.
@@ -450,7 +450,7 @@ Qed.
 
 Lemma monty_f_stick :
   play_f (@stick _) =
-    Ret true <| [Pr of /3] |> ((Fail : M _) <| [Pr of /2] |> Ret false).
+    Ret true <| `Pr /3 |> ((Fail : M _) <| `Pr /2 |> Ret false).
 Proof.
 rewrite /play_f /monty hide_pickE.
 rewrite /stick.
@@ -462,14 +462,14 @@ rewrite_ uniform_inde.
 Open (X in _ >>= X).
   transitivity (if x.1 == x.2
     then Ret true
-    else do _ <- (Fail : M _) <| [Pr of /2] |> Ret (head def (doors \\ [:: x.1; x.2])); Ret false).
+    else do _ <- (Fail : M _) <| `Pr /2 |> Ret (head def (doors \\ [:: x.1; x.2])); Ret false).
     case: ifPn => [/eqP <-|hp]; first by rewrite eqxx.
     by rewrite eq_sym (negbTE hp).
   reflexivity.
 rewrite_ prob_bindDl.
 rewrite_ (@bindfailf M). (* TODO *)
 rewrite_ bindretf.
-rewrite (bcoin13E (fun b => if b then Ret true else (Fail : M _) <| [Pr of / 2] |> Ret false)).
+rewrite (bcoin13E (fun b => if b then Ret true else (Fail : M _) <| `Pr / 2 |> Ret false)).
 rewrite /bcoin.
 by rewrite prob_bindDl 2!bindretf.
 (* TODO: flattening choices *)
@@ -477,7 +477,7 @@ Qed.
 
 Lemma monty_f_switch :
   play_f (@switch _) =
-    Ret false <| [Pr of /3] |> ((Fail : M _) <| [Pr of /2] |> Ret true).
+    Ret false <| `Pr /3 |> ((Fail : M _) <| `Pr /2 |> Ret true).
 Proof.
 rewrite /play_f /monty hide_pickE /switch.
 Open (X in _ >>= X).
@@ -490,7 +490,7 @@ Open (X in _ >>= X).
 transitivity (if x.1 == x.2
   then do x0 <- unif_door (doors \\ [:: x.1]); Ret false
   else
-   do x0 <- (Fail : M _) <| [Pr of / 2] |> Ret (head def (doors \\ [:: x.1; x.2]));
+   do x0 <- (Fail : M _) <| `Pr /2 |> Ret (head def (doors \\ [:: x.1; x.2]));
    Ret (head A (doors \\ [:: x.2; x0]) == x.1)).
   case: x => h p; rewrite [_.1]/= [_.2]/=; case: ifPn => // /eqP <-.
   transitivity (do x0 <- unif_door (doors \\ [:: h]);
@@ -505,7 +505,7 @@ transitivity (do x <- uniform (A, A) (cp doors doors);
   then Ret false
   else
    (Fail : M _)
-   <| [Pr of / 2] |>
+   <| `Pr /2 |>
    Ret (head A (doors \\ [:: x.2; head def (doors \\ [:: x.1; x.2])]) == x.1)).
   bind_ext => -[h p]; rewrite [_.1]/= [_.2]/=.
   case: ifPn => [?| hp]; first by rewrite uniform_inde.
@@ -514,14 +514,14 @@ transitivity (
   do x <- uniform (A, A) (cp doors doors);
   if x.1 == x.2
   then Ret false
-  else (Fail : M _) <| [Pr of / 2] |> Ret true).
+  else (Fail : M _) <| `Pr /2 |> Ret true).
   bind_ext => -[h p]; rewrite [_.1]/= [_.2]/=.
   case: ifPn => // hp; congr (_ <| _ |> Ret _).
   apply/eqP.
   rewrite (_ : _ \\ _ = [:: h]) //.
   rewrite Set3.filter_another; last by rewrite eq_sym head_filter // !inE eqxx orbT.
   by rewrite Set3.filter_another //= Set3.another_another.
-rewrite (bcoin13E (fun b => if b then Ret false else (Fail : M _) <| [Pr of / 2] |> Ret true)).
+rewrite (bcoin13E (fun b => if b then Ret false else (Fail : M _) <| `Pr /2 |> Ret true)).
 by rewrite prob_bindDl 2!bindretf.
 (* TODO: flattening choices *)
 Qed.
