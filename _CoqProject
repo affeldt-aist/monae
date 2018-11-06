@@ -1,4 +1,4 @@
--arg "-w -notation-overridden"
+-arg -w -arg -notation-overridden
 
 ssrZ.v
 monad.v
