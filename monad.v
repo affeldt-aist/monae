@@ -99,23 +99,28 @@ End fusion_law.
 
 End fold.
 
-Definition uncurry {A B C} (f : A -> B -> C) : ((A * B)%type -> C) :=
-  fun x => f x.1 x.2.
+Section curry.
+Variables A B C : Type.
+Implicit Types f : A -> B -> C.
 
-Lemma uncurryE A B C (f : A -> B -> C) a b : f a b = (uncurry f) (a, b).
+Definition uncurry f : A * B -> C := fun x => f x.1 x.2.
+
+Lemma uncurryE f a b : (uncurry f) (a, b) = f a b. Proof. by []. Qed.
+
+Definition curry (g : A * B -> C) : A -> B -> C := fun a b => g (a, b).
+
+Lemma curryK : cancel curry uncurry.
+Proof. by move=> f; apply functional_extensionality; case. Qed.
+
+Lemma uncurryK f : cancel uncurry curry.
 Proof. by []. Qed.
-
-Definition curry {A B C} (f : A * B -> C) : A -> B -> C := fun a b => f (a, b).
-
-Lemma curryK A B C (f : A * B -> C) : uncurry (curry f) = f.
-Proof. by apply functional_extensionality; case. Qed.
-
-Lemma uncurryK A B C (f : A -> B -> C) : curry (uncurry f) = f.
-Proof. by []. Qed.
+End curry.
 
 Definition ucat {A} := uncurry (@cat A).
 
 Definition uaddn := uncurry addn.
+
+Lemma uaddnE n m : uaddn (n, m) = n + m. Proof. by rewrite /uaddn uncurryE. Qed.
 
 Lemma lift_if A B C (f : A -> B -> C) b m1 m2 :
   f (if b then m1 else m2) = if b then f m1 else f m2.
@@ -136,7 +141,7 @@ Lemma compfid A B (f : A -> B) : f \o id = f. Proof. by []. Qed.
 
 Lemma compidf A B (f : A -> B) : id \o f = f. Proof. by []. Qed.
 
-Lemma compE A B C (g : B -> C) (f : A -> B) a : g (f a) = (g \o f) a.
+Lemma compE A B C (g : B -> C) (f : A -> B) a : (g \o f) a = g (f a).
 Proof. by []. Qed.
 
 Fixpoint scanl A B (op : B -> A -> B) (b : B) (s : seq A) : seq B :=
@@ -424,12 +429,12 @@ Notation "m >=> n" := (kleisli m n).
 Notation "f =<< m" := (rbind f m) : mu_scope.
 Notation "n <=< m" := (rkleisli n m) : mu_scope.
 
-Definition pair {M : monad} {A} (xy : (M A * M A)%type) : M (A * A)%type :=
+Definition mpair {M : monad} {A} (xy : (M A * M A)%type) : M (A * A)%type :=
   let (mx, my) := xy in
   mx >>= (fun x => my >>= fun y => Ret (x, y)).
 
-Lemma naturality_pair (M : monad) A B (f : A -> B) (g : A -> M A):
-  fmap (f`^2) \o (pair \o g`^2) = pair \o (fmap f \o g)`^2.
+Lemma naturality_mpair (M : monad) A B (f : A -> B) (g : A -> M A):
+  fmap (f`^2) \o (mpair \o g`^2) = mpair \o (fmap f \o g)`^2.
 Proof.
 apply functional_extensionality => -[a0 a1] /=.
 rewrite fmap_bind bind_fmap; bind_ext => a2 /=.

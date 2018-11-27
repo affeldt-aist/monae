@@ -309,13 +309,13 @@ by congr Choice.
 Qed.
 Arguments uniform_naturality {M A B}.
 
-Lemma pair_uniform_base_case (M : probMonad) A a x (y : seq A) :
+Lemma mpair_uniform_base_case (M : probMonad) A a x (y : seq A) :
   (0 < size y)%nat ->
-  uniform (a, a) (cp [:: x] y) = pair (uniform a [:: x], uniform a y) :> M _.
+  uniform (a, a) (cp [:: x] y) = mpair (uniform a [:: x], uniform a y) :> M _.
 Proof.
 move=> y0; rewrite cp1.
 transitivity (do y' <- @uniform M _ a y; Ret (x, y')).
-  by rewrite (compE (uniform _)) (uniform_naturality a).
+  by rewrite -(compE (uniform _)) (uniform_naturality a).
 transitivity (do z <- Ret x; do y' <- uniform a y; Ret (z, y') : M _).
   by rewrite bindretf.
 by [].
@@ -324,12 +324,12 @@ Qed.
 (* uniform choices are independent, in the sense that choosing consecutively
 from two uniform distributions is equivalent to choosing simultaneously from
 their cartesian product *)
-Lemma pair_uniform (M : probMonad) A a (x y : seq A) :
+Lemma mpair_uniform (M : probMonad) A a (x y : seq A) :
   (0 < size x)%nat -> (0 < size y)%nat ->
-  pair (uniform a x, uniform a y) = uniform (a, a) (cp x y) :> M (A * A)%type.
+  mpair (uniform a x, uniform a y) = uniform (a, a) (cp x y) :> M (A * A)%type.
 Proof.
 elim: x y => // x; case=> [_ y _ size_y|x' xs IH y _ size_y]; apply/esym.
-  exact/pair_uniform_base_case.
+  exact/mpair_uniform_base_case.
 set xxs := x' :: xs.
 rewrite /cp -cat1s allpairs_cat -/(cp _ _) cp1 uniform_cat.
 pose n := size y.
@@ -350,10 +350,10 @@ rewrite (_ : probaddn _ _ = @Prob.mk (/ (INR (1 + m))) (prob_invn _))%R; last fi
   by rewrite Rmult_1_r -addn1 addnC.
 rewrite -IH //.
 rewrite -/xxs.
-move: (@pair_uniform_base_case M _ a x _ size_y).
+move: (@mpair_uniform_base_case M _ a x _ size_y).
 rewrite {1}[cp _ _]/= cats0 => ->.
 rewrite -prob_bindDl.
-rewrite [in RHS]/pair uniform_cat.
+rewrite [in RHS]/mpair uniform_cat.
 rewrite [in RHS](_ : Prob.mk _ = probinvn m) //.
 by apply prob_ext => /=; rewrite /Rdiv Rmult_1_l.
 Qed.
@@ -436,7 +436,7 @@ Proof. case: b; apply functional_extensionality; by case. Qed.
 Definition Ret_eqb_add := (Ret_eqb_addL, Ret_eqb_addR).
 
 Lemma arbcoin_spec p :
-  arbcoin p = (bcoin p : M _ (* TODO *) ) [~] bcoin (`Pr p.~).
+  arbcoin p = (bcoin p : M _) [~] bcoin (`Pr p.~).
 Proof.
 rewrite /arbcoin /arb.
 rewrite alt_bindDl.

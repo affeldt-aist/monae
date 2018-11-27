@@ -423,12 +423,12 @@ rewrite guardsC; last exact: bindmfail.
 transitivity (Get >>= (fun ini => loopp _ op s xs >>= overwrite ini >>=
     (fun ys => guard (all ok ys) >> Ret xs) : M _)).
   by rewrite -!bindA -loopp_of_scanl bindA !bindretf.
-bind_ext => st'.
+bind_ext => st.
 rewrite bindA; bind_ext => xs'.
-rewrite /overwrite !bindA guardsC; last exact: bindmfail.
-rewrite !bindA !bindretf.
-(* TODO: lemma? relation with guardsC? *)
-rewrite bindA; bind_ext; case; by rewrite bindretf.
+rewrite [in RHS]bindA [in RHS]guardsC; last exact: bindmfail.
+rewrite bindA bindretf.
+rewrite /overwrite 2!bindA; bind_ext; case.
+by rewrite 2!bindretf.
 Qed.
 
 Local Open Scope mu_scope.
@@ -575,8 +575,8 @@ Proof. move=> ps t; apply: contra ps; by case/segment_closed.H. Qed.
 (* assert p distributes over concatenation *)
 Definition promote_assert (M : failMonad) A
   (p : pred (seq A)) (q : pred (seq A * seq A)) :=
-  (bassert p) \o (fmap ucat) \o pair =
-  (fmap ucat) \o (bassert q) \o pair \o (bassert p)`^2 :> (_ -> M _).
+  (bassert p) \o (fmap ucat) \o mpair =
+  (fmap ucat) \o (bassert q) \o mpair \o (bassert p)`^2 :> (_ -> M _).
 
 Lemma promote_assert_sufficient_condition (M : failMonad) A :
   Laws.right_zero (@Bind M) (@Fail _) ->
@@ -738,15 +738,15 @@ by rewrite_ bindretf.
 Qed.
 
 Lemma Symbols_prop2 :
-  Symbols \o uaddn = fmap ucat \o pair \o (Symbols : _ -> M _)`^2.
+  Symbols \o uaddn = fmap ucat \o mpair \o (Symbols : _ -> M _)`^2.
 Proof.
 apply functional_extensionality => -[n1 n2].
 elim: n1 => /= [|n1 IH].
-  rewrite /uaddn /uncurry /= add0n Symbols0 bindretf fmap_bind.
+  rewrite uaddnE add0n Symbols0 bindretf fmap_bind.
   Open (X in _ >>= X).
     rewrite fcomp_ext fmap_ret /=; reflexivity.
   by rewrite bindmret.
-rewrite /uaddn /uncurry /= addSn SymbolsS {}IH SymbolsS.
+rewrite uaddnE addSn SymbolsS {}IH SymbolsS.
 rewrite [in RHS]fmap_bind bindA; bind_ext => a.
 rewrite fmap_bind 2!bindA.
 (* TODO(rei): bind_ext? *)

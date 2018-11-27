@@ -232,10 +232,10 @@ Lemma play_strategy strategy : play strategy =
   do s <- strategy p t;
   Ret (s == h).
 Proof.
-rewrite /unif_pair -pair_uniform; last 2 first.
+rewrite /unif_pair -mpair_uniform; last 2 first.
   by rewrite /doors Set3.enumE.
   by rewrite /doors Set3.enumE.
-rewrite /play /monty /pair bindA; bind_ext => x.
+rewrite /play /monty /mpair bindA; bind_ext => x.
 rewrite bindA.
 by rewrite_ bindretf.
 Qed.
@@ -247,7 +247,7 @@ Lemma uniform_doors_unfold (P : rel door) :
  (Ret (P C A) <|`Pr / 3|> (Ret (P C B) <|`Pr / 2|> Ret (P C C)))))))) :> M _.
 Proof.
 rewrite [LHS](_ : _ = fmap (uncurry P) (uniform (def, def) (cp doors doors))) //.
-rewrite (compE (fmap _)) -(uniform_naturality _ true); last first.
+rewrite -(compE (fmap _)) -(uniform_naturality _ true); last first.
   by rewrite /doors Set3.enumE.
 by rewrite /doors Set3.enumE.
 Qed.
@@ -290,10 +290,10 @@ Lemma hide_pickE D (f : door -> door -> M D) :
   do h <- hide ; do p <- pick ; f h p =
   do hp <- uniform (def, def) (cp doors doors) ; f hp.1 hp.2.
 Proof.
-transitivity (do hp <- pair (hide, pick); f hp.1 hp.2).
+transitivity (do hp <- mpair (hide, pick); f hp.1 hp.2).
   rewrite bindA; bind_ext => x.
   rewrite bindA; by rewrite_ bindretf.
-by rewrite pair_uniform // /doors Set3.enumE.
+by rewrite mpair_uniform // /doors Set3.enumE.
 Qed.
 
 Lemma play_stick : play stick = bcoin (`Pr /3).
