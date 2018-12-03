@@ -76,6 +76,14 @@ Record mixin_of S T (M : monad) : Type := Mixin {
   st_get : M S ;
   st_put : S -> M unit ;
   st_mark : T -> M unit ;
+  _ : forall s s', st_put s >> st_put s' = st_put s' ;
+  _ : forall s, st_put s >> st_get = st_put s >> Ret s ;
+  _ : st_get >>= st_put = skip ;
+  _ : forall k : S -> S -> M S,
+      st_get >>= (fun s => st_get >>= k s) = st_get >>= fun s => k s s ;
+  _ : forall s e, st_put s >> st_mark e = st_mark e >> st_put s ;
+  _ : forall e (k : _ -> _ S), st_get >>= (fun v => st_mark e >> k v) =
+                         st_mark e >> st_get >>= k
 }.
 Record class_of S T (m : Type -> Type) : Type := Class {
   base : Monad.class_of m ;
@@ -85,13 +93,13 @@ Structure t S T : Type := Pack { m : Type -> Type ; class : class_of S T m }.
 Definition baseType S T (M : t S T) := Monad.Pack (base (class M)).
 Module Exports.
 Definition stGet S T (M : t S T) : m M S :=
-  let: Pack _ (Class _ (Mixin x _ _)) := M return m M S in x.
+  let: Pack _ (Class _ (Mixin x _ _ _ _ _ _ _ _)) := M return m M S in x.
 Arguments stGet {S T M} : simpl never.
 Definition stPut S T (M : t S T) : S -> m M unit :=
-  let: Pack _ (Class _ (Mixin _ x _)) := M return S -> m M unit in x.
+  let: Pack _ (Class _ (Mixin _ x _ _ _ _ _ _ _)) := M return S -> m M unit in x.
 Arguments stPut {S T M} : simpl never.
 Definition stMark S T (M : t S T) : T -> m M unit :=
-  let: Pack _ (Class _ (Mixin _ _ x)) := M return T -> m M unit in x.
+  let: Pack _ (Class _ (Mixin _ _ x _ _ _ _ _ _)) := M return T -> m M unit in x.
 Arguments stMark {S T M} : simpl never.
 Notation stateTraceMonad := t.
 Coercion baseType : stateTraceMonad >-> monad.
@@ -100,13 +108,54 @@ End Exports.
 End MonadStateTrace.
 Export MonadStateTrace.Exports.
 
-Require Import ZArith ssrZ.
+Section statetrace_lemmas.
+Variables (S T : Type) (M : stateTraceMonad S T).
+Lemma st_putput s s' : stPut s >> stPut s' = stPut s' :> M _.
+Proof. by case: M => m [? []]. Qed.
+Lemma st_putget s : stPut s >> stGet = stPut s >> Ret s :> M _.
+Proof. by case: M => m [? []]. Qed.
+Lemma st_getputskipt : stGet >>= stPut = skip :> M _.
+Proof. by case: M => m [? []]. Qed.
+Lemma st_getget (k : S -> S -> M S) :
+  stGet >>= (fun s => stGet >>= k s) = stGet >>= fun s => k s s.
+Proof. by case: M k => m [? []]. Qed.
+Lemma st_putmark s e : stPut s >> stMark e = stMark e >> stPut s :> M _.
+Proof. by case: M => m [? []]. Qed.
+Lemma st_getmark e (k : S -> M S) :
+  stGet >>= (fun v => stMark e >> k v) = stMark e >> stGet >>= k.
+Proof. by case: M k => m [? []]. Qed.
+End statetrace_lemmas.
 
-Example st_nonce {M : stateTraceMonad Z nat} : M Z :=
+Require Import ZArith ssrZ.
+Local Open Scope zarith_ext_scope.
+
+Section statetrace_program_equivalence_example.
+
+Variable M : stateTraceMonad Z nat.
+
+Let st_none1 : M Z :=
+  do _ <- stMark '|0|;
   do n <- stGet;
   do _ <- stPut (n + 1)%Z;
-  do _ <- stMark (Z.abs_nat n);
+  do _ <- stMark '|n|;
   Ret n.
+
+Let st_none2 : M Z :=
+  do n <- stGet;
+  do _ <- stMark '|0|;
+  do _ <- stMark '|n|;
+  do _ <- stPut (n + 1)%Z;
+  Ret n.
+
+Goal st_none1 = st_none2.
+Proof.
+rewrite /st_none1 /st_none2 st_getmark bindA.
+bind_ext; case.
+bind_ext => n.
+by rewrite -bindA st_putmark bindA.
+Qed.
+
+End statetrace_program_equivalence_example.
 
 Section statetrace_example.
 Variables (T : Type) (M : stateTraceMonad Z T).
@@ -221,7 +270,7 @@ Variable (M : Tracer.t).
 Let v : traceMonad unit := Tracer.v M.
 Let m : monad := Tracer.m M.
 
-Definition tracer_example (m0 m1 m2 : m nat) :=
+Definition tracer_example (m0 m1 m2 : m nat) : v _ :=
   do x <- Lift M m0;
   do y <- Lift M m1;
   Mark tt >>

@@ -36,6 +36,12 @@ with several examples of monadic equational reasoning:
 
 - [[https://coq.inria.fr][Coq 8.8.2]] (should be fine with slightly older versions), [[https://math-comp.github.io/math-comp/][MathComp 1.7]]
 - [[https://github.com/affeldt-aist/infotheo][infotheo]] (used for probabilities)
+- models require other libraries but they are not essential to monadic equational reasoning:
+  + the compilation of [[monad_model.v][monad_model.v]] relies on [[https://github.com/math-comp/analysis][mathcomp-analysis]]
+    * because it uses ~classical_sets.v~
+    * if mathcomp-analysis is not installed, just remove ~monad_model.v~ from ~_CoqProject~
+  + the compilation of [[finmonad_model.v][finmonad_model.v]] requires the installation of [[https://github.com/affeldt-aist/infotheo][infotheo]]
+    * if infotheo is not installed, just remove ~finmonad_model.v~ from ~_CoqProject~
 
 ** Installation
 

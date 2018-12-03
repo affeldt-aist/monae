@@ -58,7 +58,7 @@ Notation "l \\ p" := ([seq x <- l | x \notin p]).
 Definition foldr1 (A : Type) (def : A) (f : A -> A -> A) (s : seq A) :=
   match s with
     | [::] => def
-    | [:: h] => def
+    | [:: h] => h
     | h :: h' :: t => foldr f h [:: h' & t]
   end.
 

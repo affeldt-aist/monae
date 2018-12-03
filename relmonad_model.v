@@ -1,8 +1,9 @@
 Require Import FunctionalExtensionality Reals.
 Require Import ssreflect ssrmatching ssrfun ssrbool.
-From mathcomp Require Import eqtype ssrnat seq choice fintype tuple finset.
+From mathcomp Require Import eqtype ssrnat seq choice fintype tuple finfun.
+From mathcomp Require Import finset.
 
-From infotheo Require Import proba ssr_ext.
+From infotheo Require Import Reals_ext proba ssr_ext.
 
 Require Import proba_monad (* TODO(rei): essentially to use Prob.t *)
   relmonad.

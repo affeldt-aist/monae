@@ -25,7 +25,7 @@ Record mixin_of S (M : monad) : Type := Mixin {
   _ : forall s s', put s >> put s' = put s' ;
   _ : forall s, put s >> get = put s >> Ret s ;
   _ : get >>= put = skip ;
-  _ : forall k : S -> S -> M S,
+  _ : forall (A : Type) (k : S -> S -> M A),
     get >>= (fun s => get >>= k s) = get >>= fun s => k s s
 }.
 Record class_of S (m : Type -> Type) := Class {
@@ -49,11 +49,11 @@ Export MonadState.Exports.
 
 Section state_lemmas.
 Variables (S : Type) (M : stateMonad S).
+Lemma putput s s' : Put s >> Put s' = Put s' :> M _.
+Proof. by case: M => m [[? ? ? ? ? []] ]. Qed.
 Lemma putget s : Put s >> Get = Put s >> Ret s :> M _.
 Proof. by case: M => m [[? ? ? ? ? []] ]. Qed.
 Lemma getputskip : Get >>= Put = skip :> M _.
-Proof. by case: M => m [[? ? ? ? ? []] ]. Qed.
-Lemma putput s s' : Put s >> Put s' = Put s' :> M _.
 Proof. by case: M => m [[? ? ? ? ? []] ]. Qed.
 Lemma getget (k : S -> S -> M S ) :
  (Get >>= (fun s => Get >>= k s)) = (Get >>= fun s => k s s).
@@ -754,3 +754,154 @@ by rewrite_ fmap_retE.
 Qed.
 
 End properties_of_Symbols.
+
+Module MonadArray.
+Record mixin_of S (I : eqType) (M : monad) : Type := Mixin {
+  get : I -> M S ;
+  put : I -> S -> M unit ;
+  _ : forall i s s', put i s >> put i s' = put i s' ;
+  _ : forall i s (A : Type) (k : S -> M A), put i s >> get i >>= k =
+      put i s >> k s ;
+  _ : forall i, get i >>= put i = skip ;
+  _ : forall i (A : Type) (k : S -> S -> M A),
+    get i >>= (fun s => get i >>= k s) = get i >>= fun s => k s s ;
+  _ : forall i j (A : Type) (k : S -> S -> M A),
+    get i >>= (fun u => get j >>= (fun v => k u v)) =
+    get j >>= (fun v => get i >>= (fun u => k u v)) ;
+  _ : forall i j u v, (i != j) \/ (u = v) ->
+    put i u >> put j v = put j v >> put i u ;
+  _ : forall i j u (A : Type) (k : S -> M A), i != j ->
+    put i u >> get j >>= k =
+    get j >>= (fun v => put i u >> k v)
+}.
+Record class_of S (I : eqType) (m : Type -> Type) := Class {
+  base : Monad.class_of m ; mixin : mixin_of S I (Monad.Pack base) }.
+Structure t S (I : eqType) : Type :=
+  Pack { m : Type -> Type ; class : class_of S I m }.
+(* inheritance *)
+Definition baseType S I (M : t S I) := Monad.Pack (base (class M)).
+Module Exports.
+Definition aGet S I (M : t S I) : I -> m M S :=
+  let: Pack _ (Class _ (Mixin x _ _ _ _ _ _ _ _)) := M return I -> m M S in x.
+Arguments aGet {S I M} : simpl never.
+Definition aPut S I (M : t S I) : I -> S -> m M unit :=
+  let: Pack _ (Class _ (Mixin _ x _ _ _ _ _ _ _ )) := M
+    return I -> S -> m M unit in x.
+Arguments aPut {S I M} : simpl never.
+Notation arrayMonad := t.
+Coercion baseType : arrayMonad >-> monad.
+Canonical baseType.
+End Exports.
+End MonadArray.
+Export MonadArray.Exports.
+
+Section monadarray_lemmas.
+Variables (S : Type) (I : eqType) (M : arrayMonad S I).
+Lemma aputput i s s' : aPut i s >> aPut i s' = aPut i s' :> M _.
+Proof. by case: M => ? [? []]. Qed.
+Lemma aputget i s A (k : S -> M A) : aPut i s >> aGet i >>= k =
+    aPut i s >> k s :> M _.
+Proof. by case: M k => ? [? []]. Qed.
+Lemma agetputskip i : aGet i >>= aPut i = skip :> M _.
+Proof. by case: M => ? [? []]. Qed.
+Lemma agetget i A (k : S -> S -> M A) :
+  aGet i >>= (fun s => aGet i >>= k s) = aGet i >>= fun s => k s s.
+Proof. by case: M k => ? [? []]. Qed.
+Lemma agetC i j A (k : S -> S -> M A) :
+  aGet i >>= (fun u => aGet j >>= (fun v => k u v)) =
+  aGet j >>= (fun v => aGet i >>= (fun u => k u v)).
+Proof. by case: M k => ? [? []]. Qed.
+Lemma aputC i j u v : i != j \/ u = v ->
+  aPut i u >> aPut j v = aPut j v >> aPut i u :> M _.
+Proof. by case: M i j u v => ? [? []]. Qed.
+Lemma aputgetC i j u A (k : S -> M A) : i != j ->
+  aPut i u >> aGet j >>= (fun v => k v) =
+  aGet j >>= (fun v => aPut i u >> k v).
+Proof. by case: M i j u A k => ? [? []]. Qed.
+End monadarray_lemmas.
+
+Section monadarray_example.
+
+Variables (M : arrayMonad nat bool_eqType).
+
+Definition swap : M unit :=
+  do x <- aGet false ;
+  do y <- aGet true ;
+  aPut false y >>
+  aPut true x.
+
+Definition does_swap (m : M unit) :=
+  (do x <- aGet false ;
+   do y <- aGet true ;
+   m >>
+   do x' <- aGet false ;
+   do y' <- aGet true ;
+   Ret ((x == y') && (y == x'))).
+
+Lemma swapP (m : M unit) :
+  does_swap swap = swap >> Ret true.
+Proof.
+rewrite /swap /does_swap.
+transitivity (
+  do x <- aGet false;
+  do y <- aGet true;
+  do x0 <- aGet false;
+  (do y0 <- aGet true; aPut false y0 >> aPut true x0) >>
+  (do x' <- aGet false; do y' <- aGet true; Ret ((x == y') && (y == x'))) : M _).
+  bind_ext => x; by rewrite_ bindA. (* TODO: should be shorter *)
+rewrite agetC.
+rewrite_ agetget.
+transitivity (
+  do x <- aGet true;
+  do s <- aGet false;
+  do y0 <- aGet true; (aPut false y0 >> aPut true s) >>
+  (do x' <- aGet false; do y' <- aGet true; Ret ((s == y') && (x == x'))) : M _).
+  bind_ext => x; by rewrite_ bindA. (* TODO: should be shorter *)
+rewrite agetC.
+rewrite_ agetget.
+transitivity (
+  do x <- aGet false;
+  do s <- aGet true;
+  (aPut false s >> (aPut true x >>
+  do y' <- aGet true; do x' <- aGet false; Ret ((x == y') && (s == x')))) : M _).
+  bind_ext => x. bind_ext => y. rewrite bindA. bind_ext; case. by rewrite_ agetC.
+transitivity (
+  do x <- aGet false;
+  do s <- aGet true;
+  (aPut false s >> (aPut true x >>
+  do x' <- aGet false; Ret ((x == x) && (s == x')))) : M _).
+  bind_ext => x.
+  bind_ext => y.
+  bind_ext; case.
+  by rewrite -bindA aputget.
+transitivity (
+  do x <- aGet false;
+  do s <- aGet true;
+  (aPut true x >> aPut false s >> (do x' <- aGet false; Ret ((x == x) && (s == x')))) : M _).
+  bind_ext => x.
+  bind_ext => y.
+  rewrite -bindA aputC //=; by left.
+transitivity (
+  do x <- aGet false;
+  do s <- aGet true;
+  (aPut true x >> aPut false s) >> Ret ((x == x) && (s == s)) : M _).
+  bind_ext => x.
+  bind_ext => y.
+  rewrite 2!bindA.
+  bind_ext; case.
+  by rewrite -bindA aputget.
+transitivity (
+  do x <- aGet false;
+  do s <- aGet true;
+  (aPut true x >> aPut false s) >> Ret true : M _).
+  bind_ext => x.
+  bind_ext => y.
+  by rewrite 2!eqxx.
+rewrite bindA.
+bind_ext => x.
+rewrite bindA.
+bind_ext => y.
+rewrite aputC //; by left.
+Qed.
+
+End monadarray_example.
