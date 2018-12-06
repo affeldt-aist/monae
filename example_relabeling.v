@@ -77,14 +77,17 @@ elim: t u m => [a u /= m|t1 H1 t2 H2 u m].
   rewrite /dlabels /= bindretf; bind_ext => u'.
   by rewrite bindretf.
 rewrite (_ : dlabels _ = drBin (dlabels t1, dlabels t2)) //.
-rewrite [in RHS]/drBin [in RHS]/fmap /= [in RHS]/bassert /= ![in RHS]bindA.
+rewrite [in RHS]/drBin [in RHS]/bassert /= ![in RHS]bindA.
 transitivity (do x0 <- relabel u;
   (do x <- dlabels t1;
    do x <- (do x1 <- (do y <- dlabels t2; Ret (x, y));
             (do x <- guard (q x1) >> Ret x1; (Ret \o ucat) x));
-   m x0 x)); last by bind_ext => u'; rewrite !bindA.
+   m x0 x)); last first.
+  bind_ext => u'; rewrite bind_fmap bindA; bind_ext => sS.
+  rewrite 4!bindA; bind_ext => x; rewrite 2!bindretf !bindA.
+  by do 3 rewrite_ bindretf.
 rewrite -H1.
-rewrite [in LHS]/drBin [in LHS]/fmap /= [in LHS]/bassert /= ![in LHS]bindA.
+rewrite [in LHS]/drBin bind_fmap [in LHS]/bassert /= ![in LHS]bindA.
 bind_ext => s.
 rewrite !bindA.
 transitivity (do x0 <- relabel u;
@@ -96,7 +99,7 @@ bind_ext => s'.
 rewrite !bindretf !bindA.
 transitivity (guard (q (s, s')) >>
   (do x1 <- (Ret \o ucat) (s, s'); do x3 <- relabel u; m x3 x1)).
-  bind_ext; case; by rewrite bindretf.
+  bind_ext; case; by rewrite 2!bindretf.
 rewrite guardsC; last exact: failfresh_bindmfail.
 rewrite !bindA !bindretf !bindA.
 bind_ext => u'.
@@ -110,14 +113,19 @@ Lemma join_and_pairs :
   (mpair \o join`^2) \o            (fmap dlabels \o relabel)`^2 :> (_ -> M _).
 Proof.
 apply functional_extensionality => -[x1 x2].
-rewrite /join /=. (* TODO *)
+rewrite {1}/join; unlock => /=.
+rewrite !fmap_def /=.
+rewrite 2![in RHS]join_def.
 rewrite 5!bindA.
 bind_ext => {x1}x1.
 rewrite 2!bindretf 2!bindA.
 do 3 rewrite_ bindretf.
 rewrite -dlabelsC.
-rewrite_ bindA.
-by rewrite_ bind_fmap.
+do 2 rewrite_ bindA.
+bind_ext => ?.
+rewrite /=.
+bind_ext => ?.
+by rewrite bindretf.
 Qed.
 
 (* first property of Sect. 9.3 *)

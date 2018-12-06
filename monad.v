@@ -202,6 +202,64 @@ Definition comp := forall A B C (g : B -> C) (h : A -> B),
 End map_laws.
 End Map_laws.
 
+Section join_laws.
+Context {M : Type -> Type}.
+Variable (j : forall A, M (M A) -> M A).
+Variable (m : forall A B, (A -> B) -> M A -> M B).
+Variable (r : forall {A}, A -> M A).
+Arguments j {A}.
+Arguments m {A B}.
+Arguments r {A}.
+
+Definition join_left_unit := forall A, j \o r = id :> (M A -> M A).
+
+Definition join_right_unit := forall A, j \o m r = id :> (M A -> M A).
+
+Definition join_associativity :=
+  forall A, j \o m j = j \o j :> (M (M (M A)) -> M A).
+
+(* join commutes with fmap *)
+Definition join_fmap_commutativity :=
+  forall A B (f : A -> B), m f \o j = j \o m (m f) :> (M (M A) -> M B).
+
+End join_laws.
+
+Section from_join_laws_to_bind_laws.
+
+Variable (M : Type -> Type).
+Variable (ret : forall {A}, A -> M A).
+Variable (join : forall {A}, M (M A) -> M A).
+Variable (map : forall {A B}, (A -> B) -> M A -> M B).
+
+Hypothesis map_ret : forall (A B : Type) (f : A -> B), map f \o (@ret _) = (@ret _) \o f.
+Hypothesis map_o : Map_laws.comp map.
+Hypothesis join_ret : join_left_unit join ret.
+Hypothesis join_fmap_ret : join_right_unit join map ret.
+Hypothesis join_naturality : join_fmap_commutativity join map.
+Hypothesis join_fmap_join : join_associativity join map.
+
+Let bind (A B : Type) (m : M A) (f : A -> M B) : M B := join (map f m).
+
+Lemma bindretf_derived : Laws.left_neutral bind ret.
+Proof.
+move=> A B a f; rewrite /bind -(compE (@join _)) -(compE _ (@ret _)) -compA.
+by rewrite map_ret compA join_ret compidf.
+Qed.
+
+Lemma bindmret_derived : Laws.right_neutral bind ret.
+Proof. by move=> A m; rewrite /bind -(compE (@join _)) join_fmap_ret. Qed.
+
+Lemma bindA_derived : Laws.associative bind.
+Proof.
+move=> A B C m f g; rewrite /bind /=.
+rewrite [LHS](_ : _ = ((@join _ \o (map g \o @join _) \o map f) m)) //.
+rewrite join_naturality compA -join_fmap_join -(compE (@join _)).
+transitivity ((@join _ \o map (@join _ \o (map g \o f))) m) => //.
+by rewrite -2!compA 2!map_o.
+Qed.
+
+End from_join_laws_to_bind_laws.
+
 Module Monad.
 Record class_of (m : Type -> Type) : Type := Class {
   ret : forall A, A -> m A ;
@@ -296,61 +354,68 @@ Variable M : monad.
 
 (* monadic counterpart of function application: applies a pure function to a monad *)
 (* aka liftM in gibbons2011icfp, notation ($) in mu2017 *)
-Definition fmap A B (f : A -> B) (m : M _) := m >>= (Ret \o f).
+Definition fmap A B (f : A -> B) (m : M _) := locked (m >>= (Ret \o f)).
 Local Notation "f ($) m" := (fmap f m).
-Arguments fmap : simpl never.
+
+Lemma fmap_def A B (f : A -> B) (m : M _) : fmap f m = m >>= (Ret \o f).
+Proof. by rewrite /fmap; unlock. Qed.
 
 Lemma fmap_id : Map_laws.id fmap.
 Proof.
-move=> A; apply functional_extensionality => m; by rewrite /fmap bindmret.
+move=> A; apply functional_extensionality => m; by rewrite fmap_def bindmret.
 Qed.
 
 Lemma fmap_o : Map_laws.comp fmap.
 Proof.
 move=> A B C g h; apply functional_extensionality => m.
-by rewrite /fmap /= bindA; rewrite_ bindretf.
+by rewrite !fmap_def /= !fmap_def bindA; rewrite_ bindretf.
 Qed.
 
-Lemma fmap_ret A B (f : A -> B) a : f ($) Ret a = (Ret \o f) a.
-Proof. by rewrite /fmap bindretf. Qed.
+Lemma fmap_ret A B (f : A -> B) : fmap f \o Ret = Ret \o f.
+Proof.
+by apply functional_extensionality => a /=; rewrite fmap_def bindretf.
+Qed.
+
+Lemma fmap_retE A B (f : A -> B) a : f ($) Ret a = (Ret \o f) a.
+Proof. by rewrite -fmap_ret. Qed.
 
 Lemma bind_fmap A B C (f : A -> B) (m : M A) (g : B -> M C) :
   f ($) m >>= g = m >>= (g \o f).
-Proof. by rewrite bindA; rewrite_ bindretf. Qed.
+Proof. by rewrite fmap_def bindA; rewrite_ bindretf. Qed.
 
 Lemma fmap_if A B (f : A -> B) b (m : M A) a :
   fmap f (if b then m else Ret a) = if b then fmap f m else Ret (f a).
-Proof. case: ifPn => Hb //; by rewrite /fmap /= bindretf. Qed.
+Proof. case: ifPn => Hb //; by rewrite fmap_def /= bindretf. Qed.
 
 (* monadic counterpart of function composition:
    composes a pure function after a monadic function *)
-Definition fcomp A B C (f : A -> B) (g : C -> M A) := fmap f \o g.
+Definition fcomp A B C (f : A -> B) (g : C -> M A) := locked (fmap f \o g).
 Arguments fcomp : simpl never.
 Local Notation "f (o) g" := (fcomp f g).
 
-Lemma fcomp_ext A B C (f : A -> B) (g : C -> M A) c :
-  (f (o) g) c = f ($) g c.
-Proof. by []. Qed.
+Lemma fcomp_def A B C (f : A -> B) (g : C -> M A) : f (o) g = fmap f \o g.
+Proof. by rewrite /fcomp; unlock. Qed.
+
+Lemma fcompE A B C (f : A -> B) (g : C -> M A) c : (f (o) g) c = f ($) g c.
+Proof. by rewrite /fcomp; unlock. Qed.
 
 Lemma fmap_comp A B C (f : A -> B) (g : C -> A) (m : M C) :
   (f \o g) ($) m = f ($) (g ($) m).
-Proof. by rewrite /fmap /fmap bindA; rewrite_ bindretf. Qed.
+Proof. by rewrite 3!fmap_def bindA; rewrite_ bindretf. Qed.
 
 Lemma fcomp_comp A B C D (f : A -> B) (g : C -> A) (m : D -> M C) :
   (f \o g) (o) m = f (o) (g (o) m).
-Proof. by rewrite /fcomp /= compA fmap_o. Qed.
-
-Lemma fcomp_compL A B C D (f : A -> B) (g : _ -> M _) (h : C -> D) :
-  f (o) (g \o h) = fmap f \o (g \o h).
-Proof. by apply functional_extensionality. Qed.
+Proof. by rewrite 3!fcomp_def fmap_o compA. Qed.
 
 Lemma fmap_bind A B C (f : A -> B) m (g : C -> M A) :
   f ($) (m >>= g) = m >>= (f (o) g).
-Proof. by rewrite /fmap /= bindA. Qed.
+Proof.
+rewrite fcomp_def fmap_def bindA; bind_ext => c; by rewrite /= fmap_def.
+Qed.
 
 Lemma skip_fmap A B (f : A -> B) (mb : M B) ma :
   mb >> (f ($) ma) = f ($) (mb >> ma).
-Proof. by rewrite fmap_bind. Qed.
+Proof. by rewrite fmap_bind fcomp_def. Qed.
 
 Lemma rev_map A B (f : A -> B) : rev \o map f = map f \o rev.
 Proof.
@@ -361,7 +426,7 @@ Qed.
 Lemma mfoldl_rev (T R : Type) (f : R -> T -> R) (z : R) (s : seq T -> M (seq T)) :
   foldl f z (o) (rev (o) s) = foldr (fun x => f^~ x) z (o) s.
 Proof.
-apply functional_extensionality => x; rewrite !fcomp_ext /fmap !bindA.
+apply functional_extensionality => x; rewrite !fcompE 3!fmap_def !bindA.
 bind_ext => ?; by rewrite bindretf /= -foldl_rev.
 Qed.
 
@@ -369,44 +434,56 @@ Lemma foldl_revE (T R : Type) (f : R -> T -> R) (z : R) :
   foldl f z \o rev = foldr (fun x : T => f^~ x) z.
 Proof. by apply functional_extensionality => s; rewrite -foldl_rev. Qed.
 
-Definition join A (pp : M (M A)) := pp >>= id.
-Arguments join {A} : simpl never.
+Definition join A (pp : M (M A)) := locked (pp >>= id).
+
+Lemma join_def A (pp : M (M A)) : join pp = pp >>= id.
+Proof. by rewrite /join; unlock. Qed.
 
 Lemma join_fmap A B (f : A -> M B) m : join (fmap f m) = m >>= f.
-Proof. by rewrite /join /fmap bindA; rewrite_ bindretf. Qed.
+Proof. by rewrite join_def bind_fmap. Qed.
 
-Lemma join_ret A : join \o Ret = @id (M A). (* left unit *)
-Proof. apply functional_extensionality => ? /=; by rewrite /join bindretf. Qed.
-
-Lemma join_fmap_ret A : join \o fmap Ret = @id (M A). (* right unit *)
+(* join \o Ret = id *)
+Lemma join_ret : join_left_unit join (@Ret _).
 Proof.
-apply functional_extensionality => mx /=; by rewrite join_fmap bindmret.
+move=> A; apply functional_extensionality => ? /=.
+by rewrite join_def bindretf.
 Qed.
 
-(* associativity *)
-Lemma join_fmap_join A : join \o fmap join = join \o join :> (M (M (M A)) -> M A).
+(* join \o fmap Ret = id *)
+Lemma join_fmap_ret : join_right_unit join fmap (@Ret _).
 Proof.
-apply functional_extensionality => mx /=; by rewrite join_fmap /join bindA.
+move=> A; apply functional_extensionality => ? /=.
+by rewrite join_fmap bindmret.
 Qed.
 
-(* joint commutes with fmap *)
-Lemma join_naturality A B (f : A -> B) :
-  fmap f \o join = join \o fmap (fmap f) :> (M (M A) -> M B).
+(* join \o fmap join = join \o join *)
+Lemma join_fmap_join : join_associativity join fmap.
 Proof.
-apply functional_extensionality => mma /=; by rewrite join_fmap /fmap -bindA.
+move=> A; apply functional_extensionality => mx /=.
+by rewrite join_fmap ![in RHS]join_def bindA; rewrite_ join_def.
+Qed.
+
+(* fmap f \o join = join \o fmap (fmap f) *)
+Lemma join_naturality : join_fmap_commutativity (@join) (@fmap).
+Proof.
+move=> A B f; apply functional_extensionality => mma /=.
+rewrite fmap_def [in RHS]join_def bind_fmap [in LHS]join_def bindA.
+by rewrite_ compidf; rewrite_ fmap_def.
 Qed.
 
 Definition kleisli A B C (m : B -> M C) (n : A -> M B) : A -> M C :=
-  join \o fmap m \o n.
+  (@join _) \o fmap m \o n.
 Local Notation "m >=> n" := (kleisli m n).
 
 Lemma fcomp_kleisli A B C D (f : A -> B) (g : C -> M A) (h : D -> M C) :
   f (o) (g >=> h) = (f (o) g) >=> h.
-Proof. by rewrite /kleisli /fcomp /= 2!compA join_naturality fmap_o compA. Qed.
+Proof.
+by rewrite /kleisli 2!fcomp_def /= 2!compA join_naturality fmap_o compA.
+Qed.
 
 Lemma kleisli_fcomp A B C (f : A -> M B) (g : B -> A) (h : C -> M B) :
   ((f \o g) >=> h) = f >=> (g (o) h).
-Proof. by rewrite /kleisli /fcomp fmap_o 2!compA. Qed.
+Proof. by rewrite /kleisli fcomp_def fmap_o 2!compA. Qed.
 Local Notation "m >=> n" := (kleisli m n).
 
 Lemma bind_kleisli A B C m (f : B -> M C) (g : A -> M B) :
@@ -438,8 +515,8 @@ Lemma naturality_mpair (M : monad) A B (f : A -> B) (g : A -> M A):
 Proof.
 apply functional_extensionality => -[a0 a1] /=.
 rewrite fmap_bind bind_fmap; bind_ext => a2 /=.
-rewrite fcomp_ext fmap_bind bind_fmap; bind_ext => a3 /=.
-by rewrite fcomp_ext fmap_ret.
+rewrite fcompE fmap_bind bind_fmap; bind_ext => a3 /=.
+by rewrite fcompE -(compE (fmap f`^2)) fmap_ret.
 Qed.
 
 Section rep.
@@ -510,7 +587,7 @@ Proof. by case : M => m [? []]. Qed.
 End fail_lemmas.
 
 Lemma fmap_fail {A B} (M : failMonad) (f : A -> B) : fmap f Fail = Fail :> M _.
-Proof. by rewrite /fmap bindfailf. Qed.
+Proof. by rewrite fmap_def bindfailf. Qed.
 
 Section guard_assert.
 
@@ -532,7 +609,7 @@ Lemma commutativity_of_assertions A q :
   join \o fmap (bassert q) = bassert q \o join :> (_ -> M A).
 Proof.
 apply functional_extensionality => x.
-by rewrite [fmap]lock [join]lock /= -!lock join_fmap /join /bassert bindA.
+by rewrite /= join_fmap /bassert join_def bindA.
 Qed.
 
 (* guards commute with anything *)
@@ -688,13 +765,13 @@ Proof. by case: M => m [? []]. Qed.
 (* TODO: name ok? *)
 Lemma naturality_nondeter A B (f : A -> B) p q :
   fmap f (p [~] q) = fmap f p [~] fmap f q :> M _.
-Proof. by rewrite /fmap alt_bindDl. Qed.
+Proof. by rewrite 3!fmap_def alt_bindDl. Qed.
 
 Local Open Scope mu_scope.
 
 Lemma alt_fmapDl A B (f : A -> B) (m1 m2 : M A) :
   f ($) (m1 [~] m2) = f ($) m1 [~] f ($) m2.
-Proof. by rewrite /fmap alt_bindDl. Qed.
+Proof. by rewrite 3!fmap_def alt_bindDl. Qed.
 
 End monadalt_lemmas.
 
@@ -734,13 +811,13 @@ Lemma subs_cat (xs ys : seq A) :
 Proof.
 elim: xs ys => [ys |x xs IH ys].
   by rewrite /= bindretf bindmret.
-rewrite [in RHS]/= alt_bindDl bindA [in RHS]/=.
+rewrite [in RHS]/= fmap_def alt_bindDl bindA [in RHS]/=.
 Open (X in subs xs >>= X).
   rewrite bindretf.
   rewrite_ cat_cons.
   reflexivity.
 rewrite [X in _ = X [~] _](_ : _ = fmap (cons x) (do x0 <- subs xs; do x1 <- subs ys; Ret (x0 ++ x1))); last first.
-  rewrite /fmap bindA.
+  rewrite fmap_def bindA.
   bind_ext => x0.
   rewrite bindA.
   by rewrite_ bindretf.
@@ -774,14 +851,14 @@ Lemma insert_map A B (f : A -> B) (a : A) :
   insert (f a) \o map f = map f (o) insert a :> (_ -> M _).
 Proof.
 apply functional_extensionality; elim => [|y xs IH].
-  by rewrite [in LHS]/= fcomp_ext 2!insertE fmap_ret.
+  by rewrite fcompE insertE -(compE (fmap (map f))) fmap_ret compE insertE.
 apply/esym.
-rewrite fcomp_ext insertE alt_fmapDl.
+rewrite fcompE insertE alt_fmapDl.
 (* first branch *)
-rewrite fmap_ret [ in X in X [~] _ ]/=.
+rewrite -(compE (fmap (map f))) fmap_ret [ in X in X [~] _ ]/=.
 (* second branch *)
 rewrite -fmap_comp (_ : map f \o cons y = cons (f y) \o map f) //.
-by rewrite fmap_comp -(fcomp_ext (map f)) -IH [RHS]/= insertE.
+by rewrite fmap_comp -(fcompE (map f)) -IH [RHS]/= insertE.
 Qed.
 
 (* see also netys2017 *)
@@ -789,8 +866,8 @@ Lemma perm_map A B (f : A -> B) :
   perm \o map f = map f (o) perm :> (seq A -> M (seq B)).
 Proof.
 apply functional_extensionality; elim => [/=|x xs IH].
-  by rewrite fcomp_ext fmap_ret.
-by rewrite fcomp_ext [in RHS]/= fmap_bind -insert_map -bind_fmap -fcomp_ext -IH.
+  by rewrite fcompE /= -(compE (fmap (map f))) fmap_ret.
+by rewrite fcompE [in RHS]/= fmap_bind -insert_map -bind_fmap -fcompE -IH.
 Qed.
 
 End permutation_and_insertion.
@@ -809,38 +886,39 @@ Lemma filter_insertN a : ~~ p a ->
   forall s, (filter p (o) insert a) s = Ret (filter p s) :> M _.
 Proof.
 move=> pa; elim => [|h t IH].
-  by rewrite /= fcomp_ext insertE /= fmap_ret /= (negbTE pa).
-rewrite /= fcomp_ext /= insertE /= alt_fmapDl fmap_ret /= (negbTE pa).
+  by rewrite /= fcompE insertE -(compE (fmap _)) fmap_ret /= (negbTE pa).
+rewrite /= fcompE /= insertE /= alt_fmapDl.
+rewrite -(compE (fmap _)) fmap_ret /= (negbTE pa).
 case: ifPn => ph.
 - rewrite -fmap_comp (_ : filter p \o cons h = cons h \o filter p); last first.
     apply functional_extensionality => x /=; by rewrite ph.
   rewrite fmap_comp.
-  move: (IH); rewrite fcomp_ext => ->.
-  by rewrite fmap_ret /= altmm.
+  move: (IH); rewrite fcompE => ->.
+  by rewrite fmap_retE /= altmm.
 - rewrite -fmap_comp (_ : filter p \o cons h = filter p); last first.
     apply functional_extensionality => x /=; by rewrite (negbTE ph).
-  move: (IH); rewrite fcomp_ext => ->; by rewrite altmm.
+  move: (IH); rewrite fcompE => ->; by rewrite altmm.
 Qed.
 
 Lemma filter_insertT a : p a ->
   filter p (o) insert a = insert a \o filter p :> (_ -> M _).
 Proof.
 move=> pa; apply functional_extensionality => s; elim: s => [|h t IH].
-  by rewrite fcomp_ext /= !insertE fmap_ret /= pa.
-rewrite fcomp_ext /=; case: ifPn => ph.
+  by rewrite fcompE /= !insertE fmap_retE /= pa.
+rewrite fcompE /=; case: ifPn => ph.
 - rewrite [in RHS]insertE /=.
   move: (IH) => /= <-.
   rewrite [in LHS]insertE alt_fmapDl; congr (_ [~] _).
-    by rewrite fmap_ret /= pa ph.
-  rewrite /fmap (*NB(rei)*) /= fcomp_ext bind_fmap bindA.
+    by rewrite fmap_retE /= pa ph.
+  rewrite !fmap_def /= fcompE bind_fmap bindA.
   rewrite_ bindretf.
   by rewrite /= ph.
 - rewrite [in LHS]insertE alt_fmapDl.
   rewrite -[in X in _ [~] X = _]fmap_comp.
     rewrite (_ : (filter p \o cons h) = filter p); last first.
     apply functional_extensionality => x /=; by rewrite (negbTE ph).
-  move: (IH) => /=; rewrite fcomp_ext => ->.
-  rewrite fmap_ret /= pa (negbTE ph) [in RHS]insertE; case: (filter _ _) => [|h' t'].
+  move: (IH) => /=; rewrite fcompE => ->.
+  rewrite fmap_retE /= pa (negbTE ph) [in RHS]insertE; case: (filter _ _) => [|h' t'].
     by rewrite insertE altmm.
   by rewrite !insertE /= altA altmm.
 Qed.
@@ -849,12 +927,12 @@ Qed.
 Lemma perm_filter : perm \o filter p = filter p (o) perm :> (_ -> M _).
 Proof.
 apply functional_extensionality; elim=> [|h t /= IH].
-  by rewrite fcomp_ext fmap_ret.
+  by rewrite fcompE fmap_retE.
 case: ifPn => ph.
-  rewrite fcomp_ext /= IH fmap_bind bindA.
-  rewrite_ bindretf.
-  bind_ext => s; by rewrite filter_insertT.
-rewrite fcomp_ext /= fmap_bind IH fcomp_ext /fmap; bind_ext => s.
+  rewrite [in LHS]/= IH [in LHS]fcomp_def /= [in LHS]bind_fmap.
+  rewrite [in RHS]fcomp_def /= [in RHS]fmap_bind; bind_ext => s.
+  by rewrite filter_insertT.
+rewrite fcompE /= fmap_bind IH fcompE fmap_def; bind_ext => s.
 by rewrite filter_insertN.
 Qed.
 
@@ -903,20 +981,20 @@ Lemma insert_rcons a' s :
     Ret (s ++ [:: a'; a]) [~] (rcons^~ a' ($) insert a s) :> M _.
 Proof.
 elim: s a' => [/= a'|s1 s2 IH a'].
-  by rewrite !insertE !fmap_ret /= altC.
+  by rewrite !insertE !fmap_retE /= altC.
 rewrite /= insertE /= IH /=.
-rewrite naturality_nondeter fmap_ret.
-rewrite naturality_nondeter fmap_ret.
+rewrite naturality_nondeter fmap_retE.
+rewrite naturality_nondeter fmap_retE.
 by rewrite -!fmap_comp /= altCA.
 Qed.
 
 Lemma rev_insert : rev (o) insert a = insert a \o rev :> (_ -> M _).
 Proof.
 apply functional_extensionality; elim => [|h t IH].
-  by rewrite fcomp_ext insertE fmap_ret.
-rewrite fcomp_ext insertE /= alt_fmapDl fmap_ret /= [in RHS]rev_cons insert_rcons.
+  by rewrite fcompE insertE fmap_retE.
+rewrite fcompE insertE /= alt_fmapDl fmap_retE /= [in RHS]rev_cons insert_rcons.
 rewrite rev_cons -cats1 rev_cons -cats1 -catA; congr (_ [~] _).
-move: IH; rewrite fcomp_ext => /= <-.
+move: IH; rewrite fcompE => /= <-.
 rewrite -!fmap_comp; congr (_ ($) insert a t).
 apply functional_extensionality => s; by rewrite /= -rev_cons.
 Qed.
@@ -1030,17 +1108,17 @@ Lemma selectE s : select s =
   (fun xy => (xy.1, tval xy.2)) ($) tselect s :> M (A * seq A)%type.
 Proof.
 elim: s => [|h [|h' t] IH].
-- by rewrite /fmap bindfailf.
-- by rewrite tselect1 fmap_ret /= bindfailf altmfail.
-- rewrite [h' :: t]lock /= -lock IH [in RHS]alt_fmapDl fmap_ret; congr (_ [~] _).
+- by rewrite fmap_def bindfailf.
+- by rewrite tselect1 fmap_retE /= bindfailf altmfail.
+- rewrite [h' :: t]lock /= -lock IH [in RHS]alt_fmapDl fmap_retE; congr (_ [~] _).
   rewrite bind_fmap fmap_bind; bind_ext => -[x1 x2].
-  by rewrite fcomp_ext fmap_ret.
+  by rewrite fcompE fmap_retE.
 Qed.
 
 Lemma decr_size_select : bassert_size select.
 Proof.
 case => [|h t]; first by rewrite !selectE /= fmap_fail /bassert bindfailf.
-rewrite /bassert selectE bind_fmap /fmap; bind_ext => -[x y] /=.
+rewrite /bassert selectE bind_fmap fmap_def; bind_ext => -[x y] /=.
 by rewrite /assert /guard /= size_tuple ltnS leqnn bindskipf.
 Qed.
 
@@ -1091,7 +1169,10 @@ Definition mu_perm : seq A -> M (seq A) :=
 
 Lemma mu_permE s : mu_perm s = if s isn't h :: t then Ret [::]
   else do a <- select (h :: t) ; do b <- mu_perm a.2; Ret (a.1 :: b).
-Proof. rewrite /mu_perm unfoldME; [by case: s | exact: decr_size_select]. Qed.
+Proof.
+rewrite /mu_perm unfoldME; last exact: decr_size_select.
+by case: s => //= h t; bind_ext => -[x1 x2] /=; rewrite fmap_def.
+Qed.
 
 Lemma perms_mu_perm s : perms s = mu_perm s.
 Proof.

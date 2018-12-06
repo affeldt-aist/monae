@@ -44,21 +44,21 @@ Lemma lemma_35 a :
   foldl op b (o) insert a = Ret \o foldl op b \o (rcons^~ a) :> (_ -> M _).
 Proof.
 apply functional_extensionality => xs; move: xs; elim/last_ind => [/=|xs y IH].
-  by rewrite fcomp_ext insertE fmap_ret.
-rewrite fcomp_ext.
+  by rewrite fcompE insertE fmap_retE.
+rewrite fcompE.
 rewrite insert_rcons.
-rewrite naturality_nondeter fmap_ret.
+rewrite naturality_nondeter fmap_retE.
 rewrite -fmap_comp.
 have H : forall w, foldl op b \o rcons^~ w = op^~ w \o foldl op b.
   by move=> w; apply functional_extensionality => ws /=; rewrite -cats1 foldl_cat.
 rewrite (H y).
 rewrite fmap_comp.
-rewrite fcomp_ext in IH.
+rewrite fcompE in IH.
 rewrite IH.
 rewrite -[in X in _ [~] X]bindretf.
 rewrite bindretf.
 rewrite -{1}compA.
-rewrite fmap_ret.
+rewrite fmap_retE.
 rewrite (H a).
 rewrite [in X in _ [~] X]/=.
 rewrite opP.
@@ -78,16 +78,16 @@ Hypothesis opP : forall (x y : A) (w : B), (w (.) x) (.) y = (w (.) y) (.) x.
 Lemma lemma_34 b : foldl op b (o) perm = Ret \o foldl op b :> (_ -> M _).
 Proof.
 apply functional_extensionality => xs; move: xs b; elim => [/=|x xs IH] b.
-  by rewrite fcomp_ext fmap_ret.
-rewrite fcomp_ext [in LHS]/= fmap_bind.
+  by rewrite fcompE fmap_retE.
+rewrite fcompE [in LHS]/= fmap_bind.
 have opP' : forall (x y : A) (w : seq A), (foldl op b w (.) x) (.) y = (foldl op b w (.) y) (.) x.
   move=> ? ? ?.
   by rewrite opP.
 rewrite_ (lemma_35 M opP').
 transitivity ((Ret \o foldl op (b (.) x)) xs : M _); last by [].
 rewrite -IH.
-rewrite [in RHS]fcomp_ext.
-rewrite /fmap.
+rewrite [in RHS]fcompE.
+rewrite fmap_def.
 bind_ext => ys.
 rewrite /= -cats1 foldl_cat /=.
 congr (Ret _ : M _).
@@ -109,7 +109,8 @@ Lemma aggregateE :
   aggregate b mul add = Ret \o foldl add b \o map (foldl mul b) :> (_ -> M _).
 Proof.
 (* NB: mu2017 is using perm_map (lemma 3.1) and (7) but that does not seem useful*)
-rewrite compA -[in RHS]lemma_34 // => x ??; by rewrite -addA (addC x) addA.
+rewrite -lemma_34; last by move=> x ??; rewrite -addA (addC x) addA.
+by rewrite /aggregate 2!fcomp_def -compA.
 Qed.
 
 Lemma deter_aggregate : deterministic (aggregate b mul add : _ -> M _).

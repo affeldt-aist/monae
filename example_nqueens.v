@@ -475,25 +475,27 @@ transitivity (do x <- Ret (u, v) [~] (do y_ys <- select v; Ret (y_ys.1, u :: y_y
     rewrite !bindA.
     bind_ext; case.
     by rewrite bindretf.
-  rewrite -commute_nondetState //.
-  case: (@select_is_nondetState _ M _ v) => x <-.
-  by exists (ndAlt (ndRet (u, v)) (ndBind x (fun y => ndRet (y.1, u :: y.2)))).
+  rewrite -commute_nondetState; last first.
+    case: (@select_is_nondetState _ M _ v) => x <-.
+    by exists (ndAlt (ndRet (u, v)) (ndBind x (fun y => ndRet (y.1, u :: y.2)))).
+  by rewrite fcomp_def.
 bind_ext => x.
 rewrite {1}/op /opdot_queens /opdot.
 rewrite commute_nondetState; last first.
-  rewrite /fmap.
+  rewrite fmap_def.
   case: (unfoldM_is_nondetState (@select_is_nondetState _ M Z) (@decr_size_select M _) x.2).
   move=> m <-.
   by exists (ndBind m (fun y => ndRet (x.1 :: y))).
 rewrite {2}/op /opdot_queens /opdot.
 bind_ext => st.
 rewrite commute_nondetState //; last first.
-   case: (unfoldM_is_nondetState (@select_is_nondetState _ M Z) (@decr_size_select _ _) x.2).
-   move=> m <-.
-   by exists (ndBind m (fun y => ndRet (x.1 :: y))).
+  rewrite fmap_def.
+  case: (unfoldM_is_nondetState (@select_is_nondetState _ M Z) (@decr_size_select _ _) x.2).
+  move=> m <-.
+  by exists (ndBind m (fun y => ndRet (x.1 :: y))).
 bind_ext; case.
 rewrite !bind_fmap !fmap_bind.
-by bind_ext.
+by rewrite_ fcomp_def.
 Qed.
 
 End theorem_42.
