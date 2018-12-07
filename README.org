@@ -1,7 +1,7 @@
 * Monadic equational reasoning in Coq
 
-This repository contains a formalization of monadic equational
-reasoning with several examples:
+This repository contains a formalization of monads
+with several examples of monadic equational reasoning:
 - formalization of [Gibbons and Hinze, Just do It: Simple Monadic Equational Reasoning, ICFP 2011]
   + except Sect. 10.2
 - formalization of [Gibbons, Unifying Theories of Programming with Monads, UTP 2012]
@@ -16,9 +16,10 @@ reasoning with several examples:
 - [[state_monad.v][state_monad.v]]: about the state monad
 - [[proba_monad.v][proba_monad.v]]: about the probability monad
 - [[trace_monad.v][trace_monad.v]]: about the state-trace monad
+- [[monad_composition.v][monad_composition.v]]: composing monads
 - [[monad_model.v][monad_model.v]]: concrete models of monads
-- [[finmonad.v][finmonad.v]]: a monad hierarchy with finType
-- [[finmonad_model.v][finmonad_model.v]]: models of the backtrackable-state and the probability monads
+- [[relmonad.v][relmonad.v]]: a relative monad hierarchy with finType
+- [[relmonad_model.v][relmonad_model.v]] models of the backtrackable-state and the probability monads
   + see Requirements for compilation information
 - [[example_spark.v][example_spark.v]]: example of Spark aggregation
 - [[example_nqueens.v][example_nqueens.v]]: example of the n-queens puzzle

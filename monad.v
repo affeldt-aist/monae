@@ -464,7 +464,7 @@ by rewrite join_fmap ![in RHS]join_def bindA; rewrite_ join_def.
 Qed.
 
 (* fmap f \o join = join \o fmap (fmap f) *)
-Lemma join_naturality : join_fmap_commutativity (@join) (@fmap).
+Lemma join_naturality : join_fmap_commutativity join fmap.
 Proof.
 move=> A B f; apply functional_extensionality => mma /=.
 rewrite fmap_def [in RHS]join_def bind_fmap [in LHS]join_def bindA.

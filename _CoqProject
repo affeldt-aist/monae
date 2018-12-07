@@ -5,9 +5,10 @@ monad.v
 state_monad.v
 proba_monad.v
 trace_monad.v
+monad_composition.v
 monad_model.v
-finmonad.v
-finmonad_model.v
+relmonad.v
+relmonad_model.v
 example_spark.v
 example_nqueens.v
 example_relabeling.v
