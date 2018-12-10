@@ -27,6 +27,7 @@ Inductive program : Type -> Type :=
 | p_ret  : forall {A}, A -> program A
 | p_bind : forall {A B}, program A -> (A -> program B) -> program B
 | p_cond : forall {A}, bool -> program A -> program A -> program A
+| p_repeat : nat -> program unit -> program unit
 | p_get  : program S
 | p_put  : S -> program unit
 | p_mark : T -> program unit.
@@ -44,6 +45,7 @@ Arguments program {_ _} _.
 Arguments p_ret {_ _ _} _.
 Arguments p_bind {_ _ _ _} _ _.
 Arguments p_cond {_ _ _} _ _ _.
+Arguments p_repeat {_ _} _ _.
 Arguments p_get {_ _}.
 Arguments p_put {_ _} _.
 Arguments p_mark {_ _} _.
@@ -64,12 +66,15 @@ Definition state : Type := S * @continuation T S.
 
 Inductive step : state -> option T -> state -> Prop :=
 | s_ret  : forall s A a (k : A -> _), step (s, p_ret a `; k) None (s, k a)
-| s_bind : forall s A B p f (k : B -> _),
-  step (s, p_bind p f `; k) None (s, p `; fun a : A => f a `; k)
+| s_bind : forall s A B p (f : A -> program B) k,
+  step (s, p_bind p f `; k) None (s, p `; fun a => f a `; k)
 | s_cond_true : forall s A p1 p2 (k : A -> _),
   step (s, p_cond true p1 p2 `; k) None (s, p1 `; k)
 | s_cond_false : forall s A p1 p2 (k : A -> _),
   step (s, p_cond false p1 p2 `; k) None (s, p2 `; k)
+| s_repeat_O : forall s p k, step (s, p_repeat O p `; k) None (s, k tt)
+| s_repeat_S : forall s n p k,
+  step (s, p_repeat (Datatypes.S n) p `; k) None (s, p `; fun _ => p_repeat n p `; k)
 | s_get  : forall s k, step (s, p_get `; k) None (s, k s)
 | s_put  : forall s s' k, step (s, p_put s' `; k) None (s', k tt)
 | s_mark : forall s t k, step (s, p_mark t `; k) (Some t) (s, k tt).
@@ -217,7 +222,7 @@ Definition run_gen
   {l & {a : A & {s' | step_star (s, p `; f) l (s', f a) } } }.
 Proof.
 revert f s.
-induction p as [ A a | A B p IHp g IHg | A b p1 IHp1 p2 IHp2 | | s' | t ];
+induction p as [ A a | A B p IHp g IHg | A b p1 IHp1 p2 IHp2 | n p IHp | | s' | t ];
  intros f s.
 - exists []. exists a. exists s.
   abstract (eapply ss_step_None; [ apply s_ret | apply ss_refl ]).
@@ -243,6 +248,15 @@ induction p as [ A a | A B p IHp g IHg | A b p1 IHp1 p2 IHp2 | | s' | t ];
     exists a.
     exists s'.
     abstract (eapply ss_step_None; [ apply s_cond_false | apply Hss ]).
+- revert s.
+  induction n as [ | n' IHn ]; intro s.
+  + exists []; exists tt; exists s.
+    abstract (eapply ss_step_None; [ apply s_repeat_O | apply ss_refl ]).
+  + destruct (IHp (fun _ => p_repeat n' p `; f) s) as (l1 & a1 & s1 & Hss1).
+    destruct (IHn s1) as (l2 & a2 & s2 & Hss2).
+    exists (l1 ++ l2); exists a2; exists s2.
+    eapply ss_step_None; [ apply s_repeat_S | ].
+    eapply step_star_transitive; [ eexact Hss1 | exact Hss2 ].
 - exists []. exists s. exists s.
   abstract (eapply ss_step_None; [ apply s_get | apply ss_refl ]).
 - exists []. exists tt. exists s'.
