@@ -93,10 +93,19 @@ Remark denote_countdown fuel :
 Proof. by elim: fuel => //= n ->. Qed.
 
 Example p_multiply (a b : nat) : program (T := unit) unit :=
-  p_do _ : unit <- p_put 0 ;
+  p_do _ <- p_put 0 ;
   p_repeat b (
-    p_do x : nat <- p_get ;
+    p_do x <- p_get ;
     p_put (a + x)
   ).
 
-Compute run_ss (p_multiply 5 4) 100.
+Compute run_ss (p_multiply 3 7) 0.
+
+Example p_division (a b : nat) : program (T := unit) unit :=
+  p_do _ <- p_put (a, 0);
+  p_while a (fun s => b <=? fst s) (
+    p_do s <- p_get ;
+    p_put (fst s - b, S (snd s))
+  ).
+
+Compute run_ss (p_division 22 7) (0, 0).
