@@ -28,6 +28,7 @@ Inductive program : Type -> Type :=
 | p_bind : forall {A B}, program A -> (A -> program B) -> program B
 | p_cond : forall {A}, bool -> program A -> program A -> program A
 | p_repeat : nat -> program unit -> program unit
+| p_while : nat -> (S -> bool) -> program unit -> program unit
 | p_get  : program S
 | p_put  : S -> program unit
 | p_mark : T -> program unit.
@@ -46,6 +47,7 @@ Arguments p_ret {_ _ _} _.
 Arguments p_bind {_ _ _ _} _ _.
 Arguments p_cond {_ _ _} _ _ _.
 Arguments p_repeat {_ _} _ _.
+Arguments p_while {_ _} _ _ _.
 Arguments p_get {_ _}.
 Arguments p_put {_ _} _.
 Arguments p_mark {_ _} _.
@@ -74,7 +76,14 @@ Inductive step : state -> option T -> state -> Prop :=
   step (s, p_cond false p1 p2 `; k) None (s, p2 `; k)
 | s_repeat_O : forall s p k, step (s, p_repeat O p `; k) None (s, k tt)
 | s_repeat_S : forall s n p k,
-  step (s, p_repeat (Datatypes.S n) p `; k) None (s, p `; fun _ => p_repeat n p `; k)
+  step (s, p_repeat (Datatypes.S n) p `; k) None
+    (s, p `; fun _ => p_repeat n p `; k)
+| s_while_true : forall fuel s c p k, c s = true ->
+  step (s, p_while (Datatypes.S fuel) c p `; k) None
+    (s, p `; fun _ => p_while fuel c p `; k)
+| s_while_false : forall fuel s c p k, c s = false ->
+  step (s, p_while (Datatypes.S fuel) c p `; k) None (s, k tt)
+| s_while_broke : forall s c p k, step (s, p_while O c p `; k) None (s, k tt)
 | s_get  : forall s k, step (s, p_get `; k) None (s, k s)
 | s_put  : forall s s' k, step (s, p_put s' `; k) None (s', k tt)
 | s_mark : forall s t k, step (s, p_mark t `; k) (Some t) (s, k tt).
@@ -128,7 +137,7 @@ match goal with
 end; subst;
 repeat match goal with
 | H : existT _ _ _ = existT _ _ _ |- _ => apply inj_pair2 in H
-end; subst; repeat split.
+end; subst; repeat split; congruence.
 Qed.
 
 Lemma step_star_confluent ski sk1 sk2 l1 l2 :
@@ -222,7 +231,8 @@ Definition run_gen
   {l & {a : A & {s' | step_star (s, p `; f) l (s', f a) } } }.
 Proof.
 revert f s.
-induction p as [ A a | A B p IHp g IHg | A b p1 IHp1 p2 IHp2 | n p IHp | | s' | t ];
+induction p as [ A a | A B p IHp g IHg | A b p1 IHp1 p2 IHp2 |
+  n p IHp | fuel c p IHp | | s' | t ];
  intros f s.
 - exists []. exists a. exists s.
   abstract (eapply ss_step_None; [ apply s_ret | apply ss_refl ]).
@@ -257,6 +267,18 @@ induction p as [ A a | A B p IHp g IHg | A b p1 IHp1 p2 IHp2 | n p IHp | | s' | 
     exists (l1 ++ l2); exists a2; exists s2.
     eapply ss_step_None; [ apply s_repeat_S | ].
     eapply step_star_transitive; [ eexact Hss1 | exact Hss2 ].
+- revert s.
+  induction fuel as [ | fuel' IHfuel ]; intro s.
+  + exists []; exists tt; exists s.
+    abstract (eapply ss_step_None; [ apply s_while_broke | apply ss_refl ]).
+  + case_eq (c s); [ intro Htrue | intro Hfalse ].
+    * destruct (IHp (fun _ => p_while fuel' c p `; f) s) as (l1 & a1 & s1 & Hss1).
+      destruct (IHfuel s1) as (l2 & a2 & s2 & Hss2).
+      exists (l1 ++ l2); exists a2; exists s2.
+      eapply ss_step_None; [ apply s_while_true; exact Htrue | ].
+      eapply step_star_transitive; [ eexact Hss1 | exact Hss2 ].
+    * exists []; exists tt; exists s.
+      abstract (eapply ss_step_None; [ apply s_while_false; exact Hfalse | apply ss_refl ]).
 - exists []. exists s. exists s.
   abstract (eapply ss_step_None; [ apply s_get | apply ss_refl ]).
 - exists []. exists tt. exists s'.
