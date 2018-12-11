@@ -9,6 +9,7 @@ monad_composition.v
 monad_model.v
 relmonad.v
 relmonad_model.v
+altprob_model.v
 example_spark.v
 example_nqueens.v
 example_relabeling.v

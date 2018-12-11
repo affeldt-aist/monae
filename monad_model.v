@@ -39,23 +39,6 @@ split => [[b [a' aa' ?] ?]|[a' aa' [b ? ?]]].
 by exists a' => //; exists b.
 by exists b => //; exists a'.
 Qed.
-(* WAITING: PR to classical_set.v *)
-Lemma setUA A : associative (@setU A).
-Proof.
-move=> /= p q r; apply functional_extensionality => a.
-rewrite /setU; apply prop_ext; tauto.
-Qed.
-Lemma setUid A : idempotent (@setU A).
-Proof.
-move=> sa; apply functional_extensionality => a; apply prop_ext; split;
-  rewrite /setU; tauto.
-Qed.
-Lemma setUC A : commutative (@setU A).
-Proof.
-move=> sa sa'; apply functional_extensionality => a; apply prop_ext; split;
-  rewrite /setU; tauto.
-Qed.
-(* end of WAITING *)
 Lemma setUDl : Laws.bind_left_distributive (fun I A => @bigsetU A I) (@setU).
 Proof.
 move=> A B /= p q r; apply functional_extensionality => b; apply prop_ext; split.
