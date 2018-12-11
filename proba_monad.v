@@ -5,6 +5,7 @@ Require Import ssreflect ssrmatching ssrfun ssrbool.
 From mathcomp Require Import eqtype ssrnat seq choice fintype tuple.
 
 Require Import monad.
+From infotheo Require Import ssrR Reals_ext.
 
 Set Implicit Arguments.
 Unset Strict Implicit.
@@ -29,22 +30,7 @@ Contents:
 Reserved Notation "'`Pr' p " (format "`Pr  p", at level 6).
 Reserved Notation "mx <| p |> my" (format "mx  <| p |>  my", at level 50).
 
-(* NB(rei): proofs would be more comfortable with ssrR.v from infotheo *)
-
-(* NB(rei): notation already available in infotheo/Reals_ext. *)
-Reserved Notation "p '.~'" (format "p .~", at level 5).
-Notation "p '.~'" := (1 - p)%R.
-
-Lemma onemK (p : R) : (p.~).~ = p. Proof. by field. Qed.
-
-Lemma onem_prob (p : R) : (R0 <= p <= R1)%R -> (R0 <= p.~ <= R1)%R.
-Proof.
-case=> pO p1; split.
-apply Rplus_le_reg_r with p.
-by rewrite Rplus_0_l Rplus_assoc Rplus_opp_l Rplus_0_r.
-apply Rplus_le_reg_r with p.
-rewrite Rplus_assoc  Rplus_opp_l; exact: Rplus_le_compat_l.
-Qed.
+Local Open Scope reals_ext_scope.
 
 Module Prob.
 Record t := mk {
@@ -63,14 +49,10 @@ Export Prob.Exports.
 Lemma probpK p H : Prob.p (@Prob.mk p H) = p. Proof. by []. Qed.
 
 Lemma OO1 : (R0 <= R0 <= R1)%R.
-Proof.
-rewrite (_ : R0 = INR 0) // (_ : R1 = INR 1) //; by split; apply/le_INR/leP.
-Qed.
+Proof. lra. Qed.
 
 Lemma O11 : (R0 <= R1 <= R1)%R.
-Proof.
-rewrite (_ : R0 = INR 0) // (_ : R1 = INR 1) //; by split; apply/le_INR/leP.
-Qed.
+Proof. lra. Qed.
 
 Canonical prob0 := Prob.mk OO1.
 Canonical prob1 := Prob.mk O11.
@@ -89,24 +71,16 @@ Canonical probIZR (p : positive) := @Prob.mk _ (prob_IZR p).
 
 Lemma prob_addn (n m : nat) : (R0 <= INR n / INR (n + m) <= R1)%R.
 Proof.
-have [/eqP ->|n0] := boolP (n == O).
-  rewrite /Rdiv Rmult_0_l; exact OO1.
-split.
-  apply Fourier_util.Rle_mult_inv_pos; first exact: pos_INR.
-  by apply/lt_0_INR/ltP; rewrite addn_gt0 lt0n n0.
-apply (Rmult_le_reg_l (INR (n + m))).
-  by apply/lt_0_INR/ltP; rewrite addn_gt0 lt0n n0.
-rewrite -Rmult_assoc Rinv_r_simpl_m ?Rmult_1_r.
-  by apply/le_INR/leP; rewrite leq_addr.
-by apply/not_O_INR/eqP; rewrite addn_eq0 negb_and n0.
+have [/eqP ->|n0] := boolP (n == O); first by rewrite div0R; exact OO1.
+split; first by apply divR_ge0; [exact: leR0n | rewrite ltR0n addn_gt0 lt0n n0].
+by rewrite leR_pdivr_mulr ?mul1R ?leR_nat ?leq_addr // ltR0n addn_gt0 lt0n n0.
 Qed.
 
 Canonical probaddn (n m : nat) := @Prob.mk (INR n / INR (n + m)) (prob_addn n m).
 
 Lemma prob_invn (m : nat) : (R0 <= / INR (1 + m) <= R1)%R.
 Proof.
-rewrite -(Rmult_1_l (/ _)) (_ : 1%R = INR 1) // -/(Rdiv _ _).
-exact: prob_addn.
+rewrite -(mul1R (/ _)%R) (_ : 1%R = INR 1) // -/(Rdiv _ _); exact: prob_addn.
 Qed.
 
 Canonical probinvn (n : nat) := @Prob.mk (/ INR (1 + n)) (prob_invn n).
@@ -197,8 +171,7 @@ Lemma uniform_singl (M : probMonad) A (def : A) h : size h = 1%nat ->
   uniform def h = Ret (head def h) :> M A.
 Proof.
 case: h => // h [|//] _.
-rewrite uniform_cons uniform_nil (@choice_ext (`Pr 1)) ?choice1 //.
-by rewrite /= Rinv_1.
+by rewrite uniform_cons uniform_nil (@choice_ext (`Pr 1)) ?choice1 //= invR1.
 Qed.
 
 Lemma uniform_nseq (M : probMonad) A (def : A) h n :
@@ -214,13 +187,13 @@ Lemma uniform_cat (M : probMonad) A (a : A) s t :
 Proof.
 elim: s t => [t m n|s1 s2 IH t m n].
   rewrite cat0s uniform_nil /= [X in _ <| X |> _](_ : _ = `Pr 0) ?choice0 //.
-  by apply prob_ext => /=; rewrite /Rdiv Rmult_0_l.
+  by apply prob_ext => /=; rewrite div0R.
 case/boolP : (m.-1 + n == 0)%nat => [{IH}|] m1n0.
   have s20 : s2 = [::] by move: m1n0; rewrite {}/m /=; case: s2.
   have t0 : t = [::] by move: m1n0; rewrite {}/n /= addnC; case: t.
   subst s2 t.
   rewrite cats0 (_ : Prob.mk _ = `Pr 1) ?choice1 //.
-  by apply prob_ext => /=; rewrite /Rdiv Rmult_1_l Rinv_1.
+  by apply prob_ext => /=; rewrite div1R invR1.
 rewrite cat_cons uniform_cons uniform_cons.
 set pv := ((/ _)%R).
 set v : prob := @Prob.mk pv _.
@@ -228,30 +201,27 @@ set u := @Prob.mk (INR (size s2) / INR (size s2 + size t))%R (prob_addn _ _).
 rewrite -[RHS](choiceA v u).
   by rewrite -IH.
 split.
-  rewrite 3!probpK.
-  rewrite -INR_IZR_INZ.
-  rewrite (_ : INR _ = INR m) // -Rmult_assoc Rinv_l; last exact: not_0_INR.
-  rewrite /pv.
-  rewrite -INR_IZR_INZ.
-  by rewrite Rmult_1_l /v [size _]/= size_cat -addSn.
+  rewrite 3!probpK -INR_IZR_INZ.
+  rewrite (_ : INR _ = INR m) // mulRA mulVR; last by rewrite INR_eq0'.
+  by rewrite mul1R /pv -INR_IZR_INZ [size _]/= size_cat -addSn.
 rewrite 3!probpK.
 transitivity ( (1 - 1 / INR (m + n)) * (1 - INR (m.-1) / INR (m.-1 + n)))%R; last first.
   congr (_ .~ * _)%R.
-  by rewrite /v /pv probpK INR_IZR_INZ [size _]/= size_cat -addSn {1}/Rdiv Rmult_1_l.
+  by rewrite /v /pv probpK INR_IZR_INZ [size _]/= size_cat -addSn div1R.
 transitivity (INR n / INR (m + n))%R.
-  rewrite -{1}(Rinv_r (INR (m + n))); last exact/not_0_INR.
-  rewrite -Rdiv_minus_distr -minus_INR; last by apply/leP; rewrite leq_addr.
+  rewrite {1}/onem -{1}(Rinv_r (INR (m + n))); last exact/not_0_INR.
+  rewrite -mulRBl -minus_INR; last by apply/leP; rewrite leq_addr.
   by rewrite minusE addnC addnK.
-rewrite {1}/Rdiv Rmult_comm.
-rewrite {1}/Rdiv -[in LHS](Rmult_1_l (INR n)).
-rewrite -{1}(Rinv_r (INR (m.-1 + n))); last exact/not_0_INR/eqP.
-rewrite -2!Rmult_assoc (Rmult_assoc (_ * _)); congr Rmult.
-  rewrite Rmult_comm -subn1.
+rewrite {1}/Rdiv mulRC.
+rewrite {1}/Rdiv -[in LHS](mul1R (INR n)).
+rewrite -{1}(mulRV (INR (m.-1 + n))); last by rewrite INR_eq0'.
+rewrite 2!mulRA -(mulRA (_ * _)%R); congr Rmult.
+  rewrite mulRC -subn1.
   rewrite addnC addnBA // minus_INR; last by apply/leP; rewrite addn_gt0 orbT.
   rewrite -/(_ / INR (m + n))%R.
   rewrite Rdiv_minus_distr {1}/Rdiv addnC Rinv_r //; exact/not_0_INR.
 rewrite -{1}(Rinv_r (INR (m.-1 + n))); last exact/not_0_INR/eqP.
-rewrite -Rdiv_minus_distr Rmult_comm; congr (_ * _)%R.
+rewrite -Rdiv_minus_distr mulRC; congr (_ * _)%R.
 rewrite -minus_INR; last by apply/leP; rewrite leq_addr.
 by rewrite addnC minusE -subnBA // subnn subn0.
 Qed.
@@ -262,7 +232,7 @@ Proof.
 rewrite uniform_cons uniform_singl // uniform_cons uniform_singl //.
 set pa := Prob.mk _.
 rewrite choiceC /= (@choice_ext pa) //=.
-field.
+rewrite /onem; field.
 Qed.
 
 Module MonadProbDr.
@@ -344,9 +314,8 @@ rewrite (_ : probaddn _ _ = @Prob.mk (/ (INR (1 + m))) (prob_invn _))%R; last fi
   rewrite lmn -mulSn mult_INR {1}/Rdiv Rinv_mult_distr; last 2 first.
     exact/not_0_INR.
     by apply/not_0_INR/eqP; rewrite -lt0n.
-  rewrite Rmult_comm Rmult_assoc Rinv_l; last first.
-    by apply/not_0_INR/eqP; rewrite -lt0n.
-  by rewrite Rmult_1_r -addn1 addnC.
+  rewrite mulRC -mulRA mulVR; last by rewrite INR_eq0' -lt0n.
+  by rewrite mulR1 -addn1 addnC.
 rewrite -IH //.
 rewrite -/xxs.
 move: (@mpair_uniform_base_case M _ a x _ size_y).
@@ -354,7 +323,7 @@ rewrite {1}[cp _ _]/= cats0 => ->.
 rewrite -prob_bindDl.
 rewrite [in RHS]/mpair uniform_cat.
 rewrite [in RHS](_ : Prob.mk _ = probinvn m) //.
-by apply prob_ext => /=; rewrite /Rdiv Rmult_1_l.
+by apply prob_ext => /=; rewrite div1R.
 Qed.
 
 Module MonadAltProb.
@@ -509,26 +478,34 @@ have H27 : (0 <= 2/7 <= 1)%R by split; lra.
 have H721 : (0 <= 7/21 <= 1)%R by split; lra.
 have H2156 : (0 <= 21/56 <= 1)%R by split; lra.
 have H25 : (0 <= 2/5 <= 1)%R by split; lra.
-rewrite [in RHS](choiceA _ _ (`Pr /2) (@Prob.mk (2/3) H23)); last by rewrite 3!probpK; split; field.
+rewrite [in RHS](choiceA _ _ (`Pr /2) (@Prob.mk (2/3) H23)); last first.
+  by rewrite 3!probpK /= /onem; split; field.
 rewrite choicemm.
-rewrite [in LHS](choiceA (`Pr /3) (`Pr /2) (`Pr /2) (@Prob.mk (2/3) H23)); last by rewrite 3!probpK; split; field.
+rewrite [in LHS](choiceA (`Pr /3) (`Pr /2) (`Pr /2) (@Prob.mk (2/3) H23)); last first.
+  by rewrite 3!probpK /= /onem; split; field.
 rewrite choicemm.
-rewrite [in LHS](choiceA (`Pr /4) (@Prob.mk (2/3) H23) (`Pr /3) (@Prob.mk (3/4) H34)); last by rewrite 4!probpK; split; field.
+rewrite [in LHS](choiceA (`Pr /4) (@Prob.mk (2/3) H23) (`Pr /3) (@Prob.mk (3/4) H34)); last first.
+  by rewrite 4!probpK /= /onem; split; field.
 rewrite choicemm.
-rewrite [in LHS](choiceA (`Pr /7) (`Pr /6) (`Pr /2) (@Prob.mk (2/7) H27)); last by rewrite 4!probpK; split; field.
+rewrite [in LHS](choiceA (`Pr /7) (`Pr /6) (`Pr /2) (@Prob.mk (2/7) H27)); last first.
+  by rewrite 4!probpK /= /onem; split; field.
 rewrite choicemm.
-rewrite [in LHS](choiceA (`Pr /8) (@Prob.mk (2/7) H27) (@Prob.mk (7/21) H721) (@Prob.mk (21/56) H2156)); last by rewrite 4!probpK; split; field.
+rewrite [in LHS](choiceA (`Pr /8) (@Prob.mk (2/7) H27) (@Prob.mk (7/21) H721) (@Prob.mk (21/56) H2156)); last first.
+  by rewrite 4!probpK /= /onem; split; field.
 rewrite (choiceC (@Prob.mk (3/4) H34)).
-rewrite [in LHS](choiceA (`Pr /5) (probcplt (@Prob.mk (3/4) H34)) (`Pr /2) (@Prob.mk (2/5) H25)); last by rewrite 3!probpK /=; split; field.
+rewrite [in LHS](choiceA (`Pr /5) (probcplt (@Prob.mk (3/4) H34)) (`Pr /2) (@Prob.mk (2/5) H25)); last first.
+  by rewrite 3!probpK /= /onem; split; field.
 rewrite choicemm.
 rewrite choicemm.
 rewrite (choiceC (@Prob.mk (2/5) H25)).
-rewrite [in LHS](choiceA (@Prob.mk (21/56) H2156) (probcplt (Prob.mk H25)) (`Pr /2) (Prob.mk H34)); last by rewrite 3!probpK /=; split; field.
+rewrite [in LHS](choiceA (@Prob.mk (21/56) H2156) (probcplt (Prob.mk H25)) (`Pr /2) (Prob.mk H34)); last first.
+  by rewrite 3!probpK /= /onem; split; field.
 rewrite choicemm.
 rewrite (choiceC (Prob.mk H34)).
-rewrite [in LHS](choiceA (`Pr /9) (probcplt (Prob.mk H34)) (`Pr /3) (`Pr /3)); last by rewrite 3!probpK /=; split; field.
+rewrite [in LHS](choiceA (`Pr /9) (probcplt (Prob.mk H34)) (`Pr /3) (`Pr /3)); last first.
+  by rewrite 3!probpK /= /onem; split; field.
 rewrite choicemm choiceC.
-rewrite (@choice_ext (Prob.mk H23)) //=; by field.
+rewrite (@choice_ext (Prob.mk H23)) //= /onem; by field.
 Qed.
 
 Definition uFFT {M : probMonad} : M bool :=
@@ -543,10 +520,10 @@ rewrite [in X in _ <| _ |> X](_ : `Pr _ = `Pr /2)%R; last first.
   exact/prob_ext.
 rewrite uniform_singl //=.
 rewrite (choiceA _ _ (`Pr /2) (Prob.mk H23)); last first.
-  rewrite /=; split; field.
+  rewrite /= /onem; split; field.
 rewrite choicemm choiceC.
 rewrite (_ : (`Pr / 3)%R = probcplt (Prob.mk H23)) //.
-apply prob_ext => /=; field.
+apply prob_ext => /=; rewrite /onem; field.
 Qed.
 
 Definition uTTF {M : probMonad} : M bool :=
@@ -560,7 +537,7 @@ rewrite uniform_cons.
 rewrite [in X in _ <| _ |> X](_ : `Pr _ = `Pr /2)%R; last exact/prob_ext.
 rewrite uniform_singl //=.
 rewrite (choiceA _ _ (`Pr /2) (Prob.mk H23)); last first.
-  rewrite /=; split; field.
+  rewrite /= /onem; split; field.
 by rewrite choicemm choiceC.
 Qed.
 

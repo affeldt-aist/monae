@@ -226,10 +226,10 @@ End join_laws.
 
 Section from_join_laws_to_bind_laws.
 
-Variable (M : Type -> Type).
-Variable (ret : forall {A}, A -> M A).
-Variable (join : forall {A}, M (M A) -> M A).
-Variable (map : forall {A B}, (A -> B) -> M A -> M B).
+Variable M : Type -> Type.
+Variable ret : forall {A}, A -> M A.
+Variable join : forall {A}, M (M A) -> M A.
+Variable map : forall {A B}, (A -> B) -> M A -> M B.
 
 Hypothesis map_ret : forall (A B : Type) (f : A -> B), map f \o (@ret _) = (@ret _) \o f.
 Hypothesis map_o : Map_laws.comp map.

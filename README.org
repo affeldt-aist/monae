@@ -19,7 +19,7 @@ with several examples of monadic equational reasoning:
 - [[monad_composition.v][monad_composition.v]]: composing monads
 - [[monad_model.v][monad_model.v]]: concrete models of monads
 - [[relmonad.v][relmonad.v]]: a relative monad hierarchy with finType
-- [[relmonad_model.v][relmonad_model.v]] models of the backtrackable-state and the probability monads
+- [[relmonad_model.v][relmonad_model.v]]: models of the backtrackable-state and the probability monads
   + see Requirements for compilation information
 - [[example_spark.v][example_spark.v]]: example of Spark aggregation
 - [[example_nqueens.v][example_nqueens.v]]: example of the n-queens puzzle
@@ -35,9 +35,7 @@ with several examples of monadic equational reasoning:
 ** Requirements
 
 - [[https://coq.inria.fr][Coq 8.8.2]] (should be fine with slightly older versions), [[https://math-comp.github.io/math-comp/][MathComp 1.7]]
-- the compilation of [[finmonad_model.v][finmonad_model.v]] requires the installation of
-  another library called [[https://github.com/affeldt-aist/infotheo][infotheo]]
-  + if infotheo is not installed, just remove ~finmonad_model.v~ from ~_CoqProject~
+- [[https://github.com/affeldt-aist/infotheo][infotheo]] (used for probabilities)
 
 ** Installation
 

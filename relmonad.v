@@ -2,7 +2,7 @@ Require Import FunctionalExtensionality Reals.
 Require Import ssreflect ssrmatching ssrfun ssrbool.
 From mathcomp Require Import eqtype ssrnat seq choice fintype tuple finset.
 
-From infotheo Require Import proba ssr_ext.
+From infotheo Require Import proba ssr_ext ssrR Reals_ext.
 
 Require Import proba_monad. (* TODO(rei): essentially to use Prob.t *)
 
@@ -100,6 +100,8 @@ Notation "'do' x <- m ; e" := (m >>= (fun x => e)).
 Notation "m >> f" := (m >>= fun _ => f) (at level 50).
 Definition skip M := @Ret M _ tt.
 Arguments skip {M} : simpl never.
+
+Local Open Scope reals_ext_scope.
 
 Module relMonadProb.
 Record mixin_of (m : relMonad.t) : Type := Mixin {

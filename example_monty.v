@@ -4,6 +4,7 @@ Require Import Reals Lra.
 Require Import ssreflect ssrmatching ssrfun ssrbool.
 From mathcomp Require Import eqtype ssrnat seq choice fintype tuple.
 
+From infotheo Require Import ssrR Reals_ext.
 Require Import monad proba_monad.
 
 (* from gibbons2011icfp and gibbonsUTP2012
@@ -392,10 +393,10 @@ rewrite /doors Set3.enumE !inE => /or3P[] /eqP ->.
   rewrite choiceC.
   erewrite choiceA.
     reflexivity.
-  rewrite /=; lra.
+  rewrite /= /onem; lra.
 - rewrite eq_sym (negbTE (Set3.a_neq_b _)) eqxx (negbTE (Set3.b_neq_c _)).
   congr (_ <| _ |> _).
-  rewrite choiceC (@choice_ext (`Pr /2)) //=; lra.
+  rewrite choiceC (@choice_ext (`Pr /2)) //= /onem; lra.
 by rewrite eq_sym (negbTE (Set3.a_neq_c _)) eq_sym (negbTE (Set3.b_neq_c _)) eqxx.
 Qed.
 
