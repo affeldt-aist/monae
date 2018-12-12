@@ -88,6 +88,15 @@ Inductive step : state -> option T -> state -> Prop :=
 | s_put  : forall s s' k, step (s, p_put s' `; k) None (s', k tt)
 | s_mark : forall s t k, step (s, p_mark t `; k) (Some t) (s, k tt).
 
+Inductive step_n : nat -> state -> list T -> state -> Prop :=
+| sn_0 : forall sk, step_n O sk [] sk
+| sn_S_None : forall n sk1 sk2 sk3 l,
+  step sk1 None sk2 -> step_n n sk2 l sk3 ->
+  step_n (Datatypes.S n) sk1 l sk3
+| sn_S_Some : forall n sk1 sk2 sk3 t l,
+  step sk1 (Some t) sk2 -> step_n n sk2 l sk3 ->
+  step_n (Datatypes.S n) sk1 (t :: l) sk3.
+
 Inductive step_star : state -> list T -> state -> Prop :=
 | ss_refl : forall sk, step_star sk [] sk
 | ss_step_None : forall sk1 sk2 sk3 l,
@@ -242,6 +251,39 @@ destruct p as [ A a | A B p g | A b p1 p2 | n p | fuel c p | | s' | t ];
       exact Hcs.
 Defined.
 
+Definition run_s_n (n : nat)
+  {A : Type} (p : program A) (f : A -> continuation) (s : S) :
+  option {l & {f' & {s' | step_n n (s, p `; f) l (s', f') } } }.
+Proof.
+revert n A p f s.
+fix run_s_n 1.
+intros [ | n' ] A p f s.
+- apply Some.
+  exists []. exists (cont A p f). exists s.
+  apply sn_0.
+- destruct (run_s p f s) as (o & [ B b | B p' f' ] & s' & Hstep).
+  + destruct n' as [ | n'' ].
+    * apply Some.
+      destruct o as [ t | ]; repeat eexists.
+      -- eapply sn_S_Some.
+         ++ exact Hstep.
+         ++ apply sn_0.
+      -- eapply sn_S_None.
+         ++ exact Hstep.
+         ++ apply sn_0.
+    * apply None.
+  + destruct (run_s_n n' B p' f' s') as [ (l & f'' & s'' & Hstep_n') | ].
+    * apply Some.
+      destruct o as [ t | ]; repeat eexists.
+      -- eapply sn_S_Some.
+         ++ exact Hstep.
+         ++ exact Hstep_n'.
+      -- eapply sn_S_None.
+         ++ exact Hstep.
+         ++ exact Hstep_n'.
+    * exact None.
+Defined.
+
 Definition run_gen
   {A : Type} (p : program A) (f : A -> continuation) (s : S) :
   {l & {a : A & {s' | step_star (s, p `; f) l (s', f a) } } }.
@@ -313,4 +355,5 @@ End OperationalSemantics.
 Arguments step {_ _} _ _ _.
 Arguments step_star {_ _} _ _ _.
 Arguments run_s {_ _ _} _ _ _.
+Arguments run_s_n {_ _} _ {_} _ _ _.
 Arguments run_ss {_ _ _} _ _.
