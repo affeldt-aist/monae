@@ -103,7 +103,8 @@ Section curry.
 Variables A B C : Type.
 Implicit Types f : A -> B -> C.
 
-Definition uncurry f : A * B -> C := fun x => f x.1 x.2.
+(*Definition uncurry f : A * B -> C := fun x => f x.1 x.2.*)
+Definition uncurry f := prod_curry f.
 
 Lemma uncurryE f a b : (uncurry f) (a, b) = f a b. Proof. by []. Qed.
 

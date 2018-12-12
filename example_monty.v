@@ -248,7 +248,7 @@ Lemma uniform_doors_unfold (P : rel door) :
  (Ret (P C A) <|`Pr / 3|> (Ret (P C B) <|`Pr / 2|> Ret (P C C)))))))) :> M _.
 Proof.
 rewrite [LHS](_ : _ = fmap (uncurry P) (uniform (def, def) (cp doors doors))); last first.
-  by rewrite fmap_def.
+  rewrite fmap_def; bind_ext; by case.
 rewrite -(compE (fmap _)) -(uniform_naturality _ true); last first.
   by rewrite /doors Set3.enumE.
 by rewrite /doors Set3.enumE.

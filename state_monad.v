@@ -737,17 +737,19 @@ Lemma Symbols_prop2 :
   Symbols \o uaddn = fmap ucat \o mpair \o (Symbols : _ -> M _)`^2.
 Proof.
 apply functional_extensionality => -[n1 n2].
-elim: n1 => /= [|n1 IH].
-  rewrite uaddnE add0n Symbols0 bindretf fmap_bind.
+elim: n1 => [|n1 IH].
+  rewrite [in LHS]compE uaddnE add0n.
+  rewrite [in RHS]/= Symbols0 bindretf fmap_bind.
   Open (X in _ >>= X).
     rewrite fcompE fmap_retE /=; reflexivity.
   by rewrite bindmret.
-rewrite uaddnE addSn SymbolsS {}IH SymbolsS.
-rewrite [in RHS]fmap_bind bindA; bind_ext => a.
-rewrite fmap_bind 2!bindA.
+rewrite compE uaddnE addSn SymbolsS -uaddnE -(compE Symbols) {}IH.
+rewrite [in RHS]/= SymbolsS fmap_bind bindA; bind_ext => a.
+rewrite [in LHS]/= [in LHS]fmap_bind [in LHS]bindA [in RHS]bindA.
 (* TODO(rei): bind_ext? *)
 congr Bind; apply functional_extensionality => s.
-rewrite bindretf 2!fcompE bind_fmap fmap_bind bindA.
+rewrite [in RHS]bindretf [in RHS]fcompE [in RHS]fmap_bind.
+rewrite [in LHS]fcompE [in LHS]bind_fmap [in LHS]bindA.
 rewrite_ bindretf.
 rewrite_ fcompE.
 by rewrite_ fmap_retE.
