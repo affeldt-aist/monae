@@ -109,3 +109,5 @@ Example p_division (a b : nat) : program (T := unit) unit :=
   ).
 
 Compute run_ss (p_division 22 7) (0, 0).
+
+Compute run_s_n 15 (p_division 22 7) (stop unit) (0, 0).
