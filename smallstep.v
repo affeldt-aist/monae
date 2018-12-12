@@ -226,6 +226,22 @@ subst.
 repeat split.
 Qed.
 
+Definition run_s {A : Type} (p : program A) (f : A -> continuation) (s : S) :
+  {o & {f' & {s' | step (s, p `; f) o (s', f') } } }.
+Proof.
+destruct p as [ A a | A B p g | A b p1 p2 | n p | fuel c p | | s' | t ];
+ try (repeat eexists; constructor).
+- destruct b; repeat eexists; constructor.
+- destruct n; repeat eexists; constructor.
+- destruct fuel.
+  + repeat eexists; constructor.
+  + case_eq (c s); intro Hcs; repeat eexists.
+    * apply s_while_true.
+      exact Hcs.
+    * apply s_while_false.
+      exact Hcs.
+Defined.
+
 Definition run_gen
   {A : Type} (p : program A) (f : A -> continuation) (s : S) :
   {l & {a : A & {s' | step_star (s, p `; f) l (s', f a) } } }.
@@ -296,4 +312,5 @@ End OperationalSemantics.
 
 Arguments step {_ _} _ _ _.
 Arguments step_star {_ _} _ _ _.
+Arguments run_s {_ _ _} _ _ _.
 Arguments run_ss {_ _ _} _ _.
