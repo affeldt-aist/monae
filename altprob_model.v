@@ -211,6 +211,9 @@ Definition convex (X : set (dist A)) : bool :=
 Lemma convex0 : convex set0.
 Proof. apply/asboolP => x y p; by rewrite in_setE. Qed.
 
+Lemma convexT : convex setT.
+Proof. apply/asboolP => ? ? ? _ _; by rewrite in_setE. Qed.
+
 Definition convex_n (X : set (dist A)) : bool :=
   `[< forall n (g : 'I_n -> dist A) (d : {dist 'I_n}),
       g @` setT `<=` X -> FamilyDist.d g d \in X >].
@@ -586,9 +589,21 @@ exists (ConvexDist.d d e (Prob.Op1 q)); split; first exact: (asboolW (Hcset X)).
 exists (ConvexDist.d d' e' (Prob.Op1 q)); split => //; exact: (asboolW (Hcset Y)).
 Qed.
 
-Definition pchoice (p : prob) (X Y : convset A) : convset A :=  mkCset (@Hpchoice p X Y).
+Definition pchoice (p : prob) (X Y : convset A) : convset A := mkCset (@Hpchoice p X Y).
 
 Local Notation "mx <.| p |.> my" := (@pchoice p mx my).
+
+Lemma pchoice_convset0 x p : x <.|p|.> convset0 A = convset0 A.
+Proof.
+apply val_inj => /=; rewrite /pchoice'.
+rewrite predeqE => d; split => // -[d1 [d1x [d2 []]]]; by rewrite in_setE.
+Qed.
+
+Lemma convset0_pchoice x p : convset0 A <.|p|.> x = convset0 A.
+Proof.
+apply val_inj => /=; rewrite /pchoice'.
+rewrite predeqE => d; split => // -[d1 []]; by rewrite in_setE.
+Qed.
 
 Lemma pchoice0 (a b : convset A) : a !=set0 -> a <.| `Pr 0 |.> b = b.
 Proof.
@@ -669,7 +684,13 @@ have := convex_hull (X `|` Y).
 by move/asboolP => /(_ x y p Hx Hy).
 Qed.
 
-Definition ndchoice (X Y : convset A) : convset A :=  mkCset (@Hndchoice X Y).
+Definition ndchoice (X Y : convset A) : convset A := mkCset (@Hndchoice X Y).
+
+Lemma ndchoice0X (X : convset A) : ndchoice (convset0 A) X = X.
+Proof. by apply val_inj => /=; rewrite /ndchoice' set0U hull_convset. Qed.
+
+Lemma ndchoiceX0 (X : convset A) : ndchoice X (convset0 A) = X.
+Proof. by apply val_inj => /=; rewrite /ndchoice' setU0 hull_convset. Qed.
 
 Lemma ndchoiceC : commutative ndchoice.
 Proof. move=> x y; apply/val_inj => /=; by rewrite /ndchoice' setUC. Qed.
@@ -734,6 +755,56 @@ move=> x y z; apply/val_inj => /=; rewrite /ndchoice'; apply eqEsubset.
     apply: onem_prob; by case: s.
   move=> r01 s01.
   apply mem_hull_setU => //; exact/mem_hull_setU.
+Qed.
+
+Lemma ndchoiceDr p :
+  right_distributive (fun x y : convset A => x <.| p |.> y) (fun x y => ndchoice x y).
+Proof.
+move=> x y z.
+case/boolP : (y == @convset0 A) => [/eqP|/convset0PN] y0.
+  by rewrite {}y0 ndchoice0X pchoice_convset0 ndchoice0X.
+case/boolP : (z == @convset0 A) => [/eqP|/convset0PN] z0.
+  by rewrite {}z0 ndchoiceX0 pchoice_convset0 ndchoiceX0.
+case/boolP : (x == @convset0 A) => [/eqP|/convset0PN] x0.
+  by rewrite {}x0 !convset0_pchoice ndchoice0X.
+have /convset0PN xy0 : (pchoice p x y != @convset0 A).
+  case: y0 => b; rewrite -in_setE => yb.
+  case: x0 => a; rewrite -in_setE => xa.
+  apply/convset0PN.
+  exists (ConvexDist.d a b (Prob.O1 p)).
+  rewrite /= /pchoice'.
+  exists a; split => //; by exists b; split.
+have /convset0PN xz0 : (pchoice p x z != @convset0 A).
+  case: z0 => c; rewrite -in_setE => zc.
+  case: x0 => a; rewrite -in_setE => xa.
+  apply/convset0PN.
+  exists (ConvexDist.d a c (Prob.O1 p)).
+  rewrite /= /pchoice'.
+  exists a; split => //.
+  by exists c; split.
+apply/val_inj => /=; apply eqEsubset.
+- move=> a [b [bx [c [xyz ->{a}]]]].
+  case: (hull_setU y0 z0 xyz) => c1 [c1y [c2 [c2z [q cq]]]].
+  rewrite cq ConvexDist.distribute -in_setE; apply mem_hull_setU.
+  rewrite in_setE; exists b; split => //.
+  exists c1; split => //.
+  rewrite in_setE; exists b; split => //.
+  by exists c2; split => //.
+- move=> a.
+  rewrite /ndchoice' -in_setE.
+  case/(hull_setU xy0 xz0) => b [bxy [c [cxz [q ->{a}]]]].
+  rewrite /ndchoice /pchoice' /ndchoice' /=.
+  move: bxy; rewrite in_setE /pchoice /= /pchoice' => -[a' [xa' [b' [b'y] Hb']]].
+  move: cxz; rewrite in_setE /pchoice /= /pchoice' => -[a'' [xa'' [b'' [b''y] Hb'']]].
+  exists (ConvexDist.d a' a'' (Prob.Op1 q)); split.
+    rewrite in_setE.
+    rewrite -(hull_convset x).
+    rewrite -in_setE.
+    rewrite -(setUid x).
+    by apply mem_hull_setU.
+  exists (ConvexDist.d b' b'' (Prob.Op1 q)); split.
+    by apply mem_hull_setU.
+  by rewrite Hb' Hb'' ConvexDist.commute.
 Qed.
 
 End model.

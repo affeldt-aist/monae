@@ -18,11 +18,10 @@ Local Open Scope classical_set_scope.
 Section PR_to_classical_sets.
 
 Variable T : Type.
-Implicit Types T : Type.
 Implicit Types A B C : set T.
 
-Lemma imsetP T1 T2 (C : set T1) (f : T1 -> T2) b :
-  reflect (exists2 a, a \in C & b = f a) (b \in f @` C).
+Lemma imsetP T1 T2 (D : set T1) (f : T1 -> T2) b :
+  reflect (exists2 a, a \in D & b = f a) (b \in f @` D).
 Proof.
 apply: (iffP idP) => [|[a aC ->]].
 by rewrite in_setE => -[a Ca <-{b}]; exists a => //; rewrite in_setE.

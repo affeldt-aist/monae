@@ -148,8 +148,8 @@ rewrite /onem; field.
 have p0 : (0 <= p)%R by case: (Prob.Op1 p).
 have pq0 : (0 <= (1 - p) * q)%R.
   apply/mulR_ge0; by [apply/onem_ge0; case: (Prob.Op1 p) | case: (Prob.Op1 q)].
-rewrite (paddR_eq0 p0 pq0) => -{p0}[p0 /eqP].
-rewrite mulR_eq0 => /orP[|/eqP q0].
+rewrite paddR_eq0 // => -[]{p0}p0.
+rewrite mulR_eq0 => -[/eqP|q0].
 - rewrite subR_eq0 p0 => /eqP; lra.
 - move: H; by rewrite p0 q0 eqxx.
 Qed.
