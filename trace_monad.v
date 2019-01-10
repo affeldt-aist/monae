@@ -1,8 +1,10 @@
 Ltac typeof X := type of X.
 Require Import FunctionalExtensionality Coq.Program.Tactics ProofIrrelevance.
 Require Classical.
+Require Import ZArith.
 Require Import ssreflect ssrmatching ssrfun ssrbool.
 From mathcomp Require Import eqtype ssrnat seq choice fintype tuple.
+From infotheo Require Import ssrZ.
 
 Require Import monad state_monad.
 
@@ -126,7 +128,6 @@ Lemma st_getmark e (k : S -> M S) :
 Proof. by case: M k => m [? []]. Qed.
 End statetrace_lemmas.
 
-Require Import ZArith ssrZ.
 Local Open Scope zarith_ext_scope.
 
 Section statetrace_program_equivalence_example.

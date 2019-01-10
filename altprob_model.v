@@ -16,10 +16,8 @@ Unset Strict Implicit.
 Unset Printing Implicit Defensive.
 
 (* wip *)
-(* ref: cheung phd *)
 
 Local Open Scope reals_ext_scope.
-
 Local Open Scope proba_scope.
 
 Lemma dist_supp1 (d : {dist 'I_1}) : dist_supp d = ([set ord0])%SET.
@@ -694,7 +692,7 @@ Proof. by apply val_inj => /=; rewrite /ndchoice' setU0 hull_convset. Qed.
 
 Lemma ndchoiceC : commutative ndchoice.
 Proof. move=> x y; apply/val_inj => /=; by rewrite /ndchoice' setUC. Qed.
-
+v
 Lemma ndchoicemm : idempotent ndchoice.
 Proof.
 move=> d; apply/val_inj => /=.

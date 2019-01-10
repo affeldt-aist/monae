@@ -1,14 +1,15 @@
 * Monadic equational reasoning in Coq
 
-This repository contains a formalization of monads
-with several examples of monadic equational reasoning:
-- formalization of [Gibbons and Hinze, Just do It: Simple Monadic Equational Reasoning, ICFP 2011]
-  + except Sect. 10.2
-- formalization of [Gibbons, Unifying Theories of Programming with Monads, UTP 2012]
-  + up to Sect. 7.2
-- formalization of [Mu, Functional Pearls: Reasoning and Derivation of Monadic Programs, A case study of non-determinism and state, 2017]
-  + up to Sect. 5
-- an application to program semantics
+This repository contains a formalization of monads including several
+models, examples of monadic equational reasoning, and an application
+to program semantics.
+
+References:
+- [Gibbons and Hinze, Just do It: Simple Monadic Equational Reasoning, ICFP 2011] (except Sect. 10.2)
+- [Gibbons, Unifying Theories of Programming with Monads, UTP 2012] (up to Sect. 7.2)
+- [Mu, Functional Pearls: Reasoning and Derivation of Monadic Programs, A case study of non-determinism and state, 2017] (up to Sect. 5)
+- [Jones and Duponcheel, Composing Monads, Yale RR 1993] (Sections 2 and 3)
+- [Cheung, Distributive Interaction of Algebraic Effects, PhD Thesis, U. Oxford, 2017]
 
 ** Files
 
@@ -20,6 +21,7 @@ with several examples of monadic equational reasoning:
 - [[monad_model.v][monad_model.v]]: concrete models of monads
 - [[relmonad.v][relmonad.v]]: a relative monad hierarchy with finType
 - [[relmonad_model.v][relmonad_model.v]]: models of the backtrackable-state and the probability monads
+- [[altprob_model.v][altprob_model.v]]: model of combined choice
 - [[example_spark.v][example_spark.v]]: example of Spark aggregation
 - [[example_nqueens.v][example_nqueens.v]]: example of the n-queens puzzle
 - [[example_relabeling.v][example_relabeling.v]]: example of tree relabeling
@@ -27,21 +29,12 @@ with several examples of monadic equational reasoning:
 - [[smallstep.v][smallstep.v]]: semantics for an imperative language
 - [[smallstep_monad.v][smallstep_monad.v]]: equivalence operational semantics/denotation
 - [[smallstep_examples.v][smallstep_examples.v]]: sample imperative programs
-- ssrZ.v: SSReflect-like interface for the type Z of the standard library of Coq
-  + comes from https://github.com/affeldt-aist/seplog
-  + copied verbatim here for convenience
 
 ** Requirements
 
 - [[https://coq.inria.fr][Coq 8.8.2]] (should be fine with slightly older versions), [[https://math-comp.github.io/math-comp/][MathComp 1.7]]
-- [[https://github.com/math-comp/analysis][mathcomp-analysis]] (used for ~classical_sets.v~ in [[monad_model.v][monad_model.v]] for example)
-- [[https://github.com/affeldt-aist/infotheo][infotheo]] (used for probabilities)
-- models require other libraries but they are not essential to monadic equational reasoning:
-  + the compilation of [[monad_model.v][monad_model.v]] relies on [[https://github.com/math-comp/analysis][mathcomp-analysis]]
-    * because it uses ~classical_sets.v~
-    * if mathcomp-analysis is not installed, just remove ~monad_model.v~ from ~_CoqProject~
-  + the compilation of [[finmonad_model.v][finmonad_model.v]] requires the installation of [[https://github.com/affeldt-aist/infotheo][infotheo]]
-    * if infotheo is not installed, just remove ~finmonad_model.v~ from ~_CoqProject~
+- [[https://github.com/math-comp/analysis][mathcomp-analysis]] (used for ~classical_sets.v~ in [[monad_model.v][monad_model.v]] and [[altprob_model.v][altprob_model.v]] for example)
+- [[https://github.com/affeldt-aist/infotheo][infotheo]] (used for probabilities in [[relmonad_model.v][remonad_model.v]] for example)
 
 ** Installation
 

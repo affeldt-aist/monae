@@ -1,10 +1,11 @@
 Require Import FunctionalExtensionality Coq.Program.Tactics ProofIrrelevance.
 Require Import Coq.Logic.IndefiniteDescription.
 Require Classical.
+Require Import ZArith.
 Require Import ssreflect ssrmatching ssrfun ssrbool.
 From mathcomp Require Import eqtype ssrnat seq choice fintype tuple.
-Require Import ZArith.
-Require Import ssrZ monad state_monad.
+From infotheo Require Import ssrZ.
+Require Import monad state_monad.
 
 (* from gibbons2011icfp and mu2017 *)
 
