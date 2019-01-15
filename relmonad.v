@@ -7,7 +7,7 @@ From infotheo Require Import proba ssr_ext ssrR Reals_ext.
 Require Import proba_monad. (* TODO(rei): essentially to use Prob.t *)
 
 (*
-  This file duplicated the hierarchy of monads using
+  This file duplicates the hierarchy of monads using
   functor of type finType -> Type instead of Type -> Type.
   The intent is to be able to use MathComp-compatible libraries
   (MathComp's finset, infotheo's proba) to build concrete models
@@ -20,7 +20,9 @@ Require Import proba_monad. (* TODO(rei): essentially to use Prob.t *)
   - Module relMonadProb.
   - Module relMonadFail.
   - Module relMonadAlt.
+  - Module relMonadAltCI.
   - Module relMonadNondet.
+  - Module relMonadAltProb.
   - Module relMonadState.
   - Module relMonadNondetState.
 
@@ -173,6 +175,24 @@ End Exports.
 End relMonadAlt.
 Export relMonadAlt.Exports.
 
+Module relMonadAltCI.
+Record mixin_of (M : finType -> Type) (op : forall A, M A -> M A -> M A) : Type := Mixin {
+  _ : forall A, idempotent (op A) ;
+  _ : forall A, commutative (op A)
+}.
+Record class_of (m : finType -> Type) : Type := Class {
+  base : relMonadAlt.class_of m ;
+  mixin : mixin_of (@Alt (relMonadAlt.Pack base)) }.
+Structure t := Pack { m : finType -> Type ; class : class_of m }.
+Definition baseType (M : t) := relMonadAlt.Pack (base (class M)).
+Module Exports.
+Notation relaltCIMonad := t.
+Coercion baseType : relaltCIMonad >-> relaltMonad.
+Canonical baseType.
+End Exports.
+End relMonadAltCI.
+Export relMonadAltCI.Exports.
+
 Module relMonadNondet.
 Record mixin_of (M : relfailMonad) (a : forall A, M A -> M A -> M A) : Type :=
   Mixin { _ : relLaws.left_id (@Fail M) a ;
@@ -195,6 +215,31 @@ Canonical alt_of_nondet.
 End Exports.
 End relMonadNondet.
 Export relMonadNondet.Exports.
+
+Module relMonadAltProb.
+Record mixin_of (M : relaltCIMonad) (a : prob -> forall A, M A -> M A -> M A) := Mixin {
+  _ : forall A (p : prob),
+    right_distributive (fun x y : M A => a p _ x y) (fun x y => Alt x y)
+}.
+Record class_of (m : finType -> Type) := Class {
+  base : relMonadAltCI.class_of m ;
+  base2 : relMonadProb.mixin_of (relMonad.Pack (relMonadAlt.base (relMonadAltCI.base base))) ;
+  mixin : @mixin_of (relMonadAltCI.Pack base) (@relMonadProb.choice _ base2)
+}.
+Structure t : Type := Pack { m : finType -> Type ; class : class_of m }.
+Definition baseType (M : t) : relaltCIMonad := relMonadAltCI.Pack (base (class M)).
+Definition altType (M : t) : relaltMonad := relMonadAlt.Pack (relMonadAltCI.base (base (class M))).
+Module Exports.
+Notation relaltProbMonad := t.
+Coercion baseType : relaltProbMonad >-> relaltCIMonad.
+Canonical baseType.
+Definition altprob_is_prob M :=
+  relMonadProb.Pack (relMonadProb.Class (base2 (class M))).
+Canonical altprob_is_prob.
+Canonical altType.
+End Exports.
+End relMonadAltProb.
+Export relMonadAltProb.Exports.
 
 Module relMonadState.
 Record mixin_of (S : finType) (M : relmonad) : Type := Mixin {

@@ -193,13 +193,13 @@ Next Obligation. move=> ? ? ? ? ?; exact: DistBindA. Qed.
 
 Program Definition prob_mixin : relMonadProb.mixin_of monad :=
   @relMonadProb.Mixin monad (fun p (A : finType) (m1 m2 : proba.dist A) =>
-    (@ConvexDist.d A m1 m2 _ (Prob.O1 p))) _ _ _ _ _ _.
-Next Obligation. move=> ? ? ?; exact: ConvexDist.d0. Qed.
-Next Obligation. move=> ? ? ?; exact: ConvexDist.d1. Qed.
-Next Obligation. move=> ? ? ? ?; exact: ConvexDist.quasi_commute. Qed.
-Next Obligation. move=> ? ? ?; exact: ConvexDist.idempotent. Qed.
-Next Obligation. move=> ? ? ? ? ? ? ? ? [? ?] /=; exact: ConvexDist.quasi_assoc. Qed.
-Next Obligation. move=> ? ? ? ? ? ?; exact: ConvexDist.bind_left_distr. Qed.
+    (@Conv2Dist.d A m1 m2 _ (Prob.O1 p))) _ _ _ _ _ _.
+Next Obligation. move=> ? ? ?; exact: Conv2Dist.d0. Qed.
+Next Obligation. move=> ? ? ?; exact: Conv2Dist.d1. Qed.
+Next Obligation. move=> ? ? ? ?; exact: Conv2Dist.quasi_commute. Qed.
+Next Obligation. move=> ? ? ?; exact: Conv2Dist.idempotent. Qed.
+Next Obligation. move=> ? ? ? ? ? ? ? ? [? ?] /=; exact: Conv2Dist.quasi_assoc. Qed.
+Next Obligation. move=> ? ? ? ? ? ?; exact: Conv2Dist.bind_left_distr. Qed.
 
 Definition prob_class : relMonadProb.class_of proba.dist :=
   @relMonadProb.Class _ _ prob_mixin.

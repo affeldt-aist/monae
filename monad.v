@@ -33,7 +33,7 @@ Unset Printing Implicit Defensive.
 *)
 
 Reserved Notation "A `2" (format "A `2", at level 3).
-Reserved Notation "f `^2" (format "f `^2", at level 3).
+Reserved Notation "f ^`2" (format "f ^`2", at level 3).
 Reserved Notation "l \\ p" (at level 50).
 Reserved Notation "m >>= f" (at level 50).
 Reserved Notation "f =<< m" (at level 50).
@@ -51,7 +51,7 @@ Reserved Notation "f (o) g" (at level 11).
 Definition Square (A : Type) := (A * A)%type.
 Notation "A `2" := (Square A).
 Definition square (A B : Type) (f : A -> B) := fun x => (f x.1, f x.2).
-Notation "f `^2" := (square f).
+Notation "f ^`2" := (square f).
 Notation "l \\ p" := ([seq x <- l | x \notin p]).
 
 (* some Haskell-like functions *)
@@ -512,12 +512,12 @@ Definition mpair {M : monad} {A} (xy : (M A * M A)%type) : M (A * A)%type :=
   mx >>= (fun x => my >>= fun y => Ret (x, y)).
 
 Lemma naturality_mpair (M : monad) A B (f : A -> B) (g : A -> M A):
-  fmap (f`^2) \o (mpair \o g`^2) = mpair \o (fmap f \o g)`^2.
+  fmap (f^`2) \o (mpair \o g^`2) = mpair \o (fmap f \o g)^`2.
 Proof.
 apply functional_extensionality => -[a0 a1] /=.
 rewrite fmap_bind bind_fmap; bind_ext => a2 /=.
 rewrite fcompE fmap_bind bind_fmap; bind_ext => a3 /=.
-by rewrite fcompE -(compE (fmap f`^2)) fmap_ret.
+by rewrite fcompE -(compE (fmap f^`2)) fmap_ret.
 Qed.
 
 Section rep.

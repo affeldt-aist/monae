@@ -571,7 +571,7 @@ Proof. move=> ps t; apply: contra ps; by case/segment_closed.H. Qed.
 Definition promote_assert (M : failMonad) A
   (p : pred (seq A)) (q : pred (seq A * seq A)) :=
   (bassert p) \o (fmap ucat) \o mpair =
-  (fmap ucat) \o (bassert q) \o mpair \o (bassert p)`^2 :> (_ -> M _).
+  (fmap ucat) \o (bassert q) \o mpair \o (bassert p)^`2 :> (_ -> M _).
 
 Lemma promote_assert_sufficient_condition (M : failMonad) A :
   Laws.right_zero (@Bind M) (@Fail _) ->
@@ -735,7 +735,7 @@ by rewrite /= fmap_def.
 Qed.
 
 Lemma Symbols_prop2 :
-  Symbols \o uaddn = fmap ucat \o mpair \o (Symbols : _ -> M _)`^2.
+  Symbols \o uaddn = fmap ucat \o mpair \o (Symbols : _ -> M _)^`2.
 Proof.
 apply functional_extensionality => -[n1 n2].
 elim: n1 => [|n1 IH].
