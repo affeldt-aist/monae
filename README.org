@@ -10,7 +10,7 @@ Formalized papers:
 - [Mu, Functional Pearls: Reasoning and Derivation of Monadic Programs, A case study of non-determinism and state, 2017] (up to Sect. 5)
 - [Jones and Duponcheel, Composing Monads, Yale RR 1993] (Sections 2 and 3)
 
-Other Reference:
+Other reference:
 - [Cheung, Distributive Interaction of Algebraic Effects, PhD Thesis, U. Oxford, 2017]
 
 ** Files

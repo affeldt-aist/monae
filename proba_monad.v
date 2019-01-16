@@ -5,7 +5,7 @@ Require Import ssreflect ssrmatching ssrfun ssrbool.
 From mathcomp Require Import eqtype ssrnat seq choice fintype tuple.
 
 Require Import monad.
-From infotheo Require Import ssrR Reals_ext.
+From infotheo Require Import ssrR Reals_ext proba.
 
 Set Implicit Arguments.
 Unset Strict Implicit.
@@ -27,48 +27,11 @@ Contents:
     probabilistic choice + exception
 *)
 
-Reserved Notation "'`Pr' p " (format "`Pr  p", at level 6).
 Reserved Notation "mx <| p |> my" (format "mx  <| p |>  my", at level 50).
 
 Local Open Scope reals_ext_scope.
 
-Module Prob.
-Record t := mk {
-  p : R ;
-  Op1 : (0 <= p <= 1)%R }.
-Definition O1 (p : t) := Op1 p.
-Arguments O1 : simpl never.
-Module Exports.
-Notation prob := t.
-Notation "'`Pr' q" := (@mk q (@O1 _)).
-Coercion p : t >-> R.
-End Exports.
-End Prob.
-Export Prob.Exports.
-
-Definition eqprob (x y : prob) := (x == y :> R).
-
-Lemma eqprobP : Equality.axiom eqprob.
-Proof.
-move=> -[a Ha] -[b Hb]; rewrite /eqprob /=; apply: (iffP idP) => [/eqP ab| [->] //].
-subst a; congr Prob.mk; exact: ProofIrrelevance.proof_irrelevance.
-Qed.
-
-Canonical prob_eqMixin := EqMixin eqprobP.
-Canonical prob_eqType := Eval hnf in EqType _ prob_eqMixin.
-
-Lemma probpK p H : Prob.p (@Prob.mk p H) = p. Proof. by []. Qed.
-
-Lemma OO1 : (R0 <= R0 <= R1)%R.
-Proof. lra. Qed.
-
-Lemma O11 : (R0 <= R1 <= R1)%R.
-Proof. lra. Qed.
-
-Canonical prob0 := Prob.mk OO1.
-Canonical prob1 := Prob.mk O11.
-Canonical probcplt (p : prob) := @Prob.mk p.~ (onem_prob (Prob.O1 p)).
-
+(* move? *)
 Lemma prob_IZR (p : positive) : (R0 <= / IZR (Zpos p) <= R1)%R.
 Proof.
 split; first exact/Rlt_le/Rinv_0_lt_compat/IZR_lt/Pos2Z.is_pos.
@@ -220,13 +183,15 @@ Definition Choice (M : t) : forall p A, m M A -> m M A -> m M A :=
   let: Pack _ (Class _ (Mixin x _ _ _ _ _ _ )) := M return
     forall p A, m M A -> m M A -> m M A in x.
 Arguments Choice {M} : simpl never.
-Notation "mx <| p |> my" := (Choice p _ mx my).
+Notation "mx <| p |> my" := (Choice p _ mx my) : proba_monad_scope.
 Notation probMonad := t.
 Coercion baseType : probMonad >-> monad.
 Canonical baseType.
 End Exports.
 End MonadProb.
 Export MonadProb.Exports.
+
+Local Open Scope proba_monad_scope.
 
 Section prob_lemmas.
 Variable (M : probMonad).

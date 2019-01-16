@@ -4,7 +4,7 @@ Require Import Reals Lra.
 Require Import ssreflect ssrmatching ssrfun ssrbool.
 From mathcomp Require Import eqtype ssrnat seq choice fintype tuple.
 
-From infotheo Require Import ssrR Reals_ext.
+From infotheo Require Import ssrR Reals_ext proba.
 Require Import monad proba_monad.
 
 (* from gibbons2011icfp and gibbonsUTP2012
@@ -204,6 +204,8 @@ Definition monty {M : monad} (hide pick : M door)
   do t <- tease h p ;
   do s <- strategy p t ;
   Ret (s == h).
+
+Local Open Scope proba_monad_scope.
 
 Section monty_proba.
 
