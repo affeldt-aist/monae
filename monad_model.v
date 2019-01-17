@@ -15,58 +15,6 @@ Unset Printing Implicit Defensive.
 
 Local Open Scope classical_set_scope.
 
-Section PR_to_classical_sets.
-
-Variable T : Type.
-Implicit Types A B C : set T.
-
-Lemma imsetP T1 T2 (D : set T1) (f : T1 -> T2) b :
-  reflect (exists2 a, a \in D & b = f a) (b \in f @` D).
-Proof.
-apply: (iffP idP) => [|[a aC ->]].
-by rewrite in_setE => -[a Ca <-{b}]; exists a => //; rewrite in_setE.
-by rewrite in_setE; apply/classical_sets.imageP; rewrite -in_setE.
-Qed.
-
-Lemma in_setU A B x : (x \in A `|` B) = (x \in A) || (x \in B) :> Prop.
-Proof.
-rewrite propeqE; split => [ | ]; last first.
-  move/orP => -[]; rewrite 2!in_setE => ?; by [left|right].
-rewrite in_setE => -[?|?]; apply/orP; rewrite 2!in_setE; tauto.
-Qed.
-
-Lemma set0U A : set0 `|` A = A.
-Proof. rewrite funeqE => t; rewrite propeqE; split; by [case|right]. Qed.
-
-Lemma setU0 A : A `|` set0 = A.
-Proof. rewrite funeqE => t; rewrite propeqE; split; by [case|left]. Qed.
-
-Lemma sub0set A : set0 `<=` A.
-Proof. by []. Qed.
-
-Lemma subset0 A : (A `<=` set0) = (A = set0).
-Proof. rewrite propeqE; split => [?|-> //]; exact/eqEsubset. Qed.
-
-Lemma subUset A B C : (B `|` C `<=` A) = ((B `<=` A) /\ (C `<=` A)).
-Proof.
-rewrite propeqE; split => [H|H]; first by split => x Hx; apply H; [left|right].
-move=> x [] Hx; [exact: (proj1 H)|exact: (proj2 H)].
-Qed.
-
-Lemma setU_eq0 A B : (A `|` B = set0) = ((A = set0) /\ (B = set0)).
-Proof. by rewrite -!subset0 subUset. Qed.
-
-Lemma set0P A : (A != set0) <-> (A !=set0).
-Proof.
-split; [move=> A_neq0|by case=> t tA; apply/negP => /eqP A0; rewrite A0 in tA].
-apply/existsp_asboolP; rewrite -(negbK `[exists _, _]); apply/negP.
-rewrite existsbE => /forallp_asboolPn H.
-move/negP : A_neq0; apply; apply/eqP; rewrite funeqE => t; rewrite propeqE.
-move: (H t); by rewrite asboolE.
-Qed.
-
-End PR_to_classical_sets.
-
 Section classical_sets_extra.
 
 Hypothesis prop_ext : ClassicalFacts.prop_extensionality.
@@ -91,6 +39,7 @@ split => [[b [a' aa' ?] ?]|[a' aa' [b ? ?]]].
 by exists a' => //; exists b.
 by exists b => //; exists a'.
 Qed.
+
 Lemma setUDl : Laws.bind_left_distributive (fun I A => @bigsetU A I) (@setU).
 Proof.
 move=> A B /= p q r; apply functional_extensionality => b; apply prop_ext; split.

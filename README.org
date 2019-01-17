@@ -35,8 +35,10 @@ Other reference:
 ** Requirements
 
 - [[https://coq.inria.fr][Coq 8.8.2]] (should be fine with slightly older versions), [[https://math-comp.github.io/math-comp/][MathComp 1.7]]
-- [[https://github.com/math-comp/analysis][mathcomp-analysis]] (used for ~classical_sets.v~ in [[monad_model.v][monad_model.v]] and [[altprob_model.v][altprob_model.v]] for example)
-- [[https://github.com/affeldt-aist/infotheo][infotheo]] (used for probabilities in [[relmonad_model.v][relmonad_model.v]] for example)
+- [[https://github.com/affeldt-aist/infotheo][infotheo]] (used for probabilities)
+- [[https://github.com/math-comp/analysis][mathcomp-analysis]]
+  + used for ~classical_sets.v~ in [[monad_model.v][monad_model.v]] and [[altprob_model.v][altprob_model.v]] for example
+  + used by infotheo also
 
 ** Installation
 

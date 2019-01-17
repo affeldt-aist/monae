@@ -3,7 +3,7 @@ Require Import ssreflect ssrmatching ssrfun ssrbool.
 From mathcomp Require Import eqtype ssrnat seq choice fintype tuple finfun.
 From mathcomp Require Import finset.
 
-From infotheo Require Import Reals_ext proba ssr_ext convex.
+From infotheo Require Import Reals_ext proba ssr_ext.
 
 Require Import relmonad.
 
@@ -181,6 +181,8 @@ End nondetstate.
 
 End ModelBacktrackableState.
 
+From infotheo Require Import convex.
+
 Module relMonadProbModel.
 Local Obligation Tactic := idtac.
 
@@ -194,11 +196,11 @@ Program Definition prob_mixin : relMonadProb.mixin_of monad :=
   @relMonadProb.Mixin monad (fun p (A : finType) (m1 m2 : proba.dist A) =>
     (@Conv2Dist.d A m1 m2 p)) _ _ _ _ _ _.
 Next Obligation. move=> ? ? ?; exact: conv0. Qed.
-Next Obligation. move=> ? ? ?; exact: Conv2Dist.d1. Qed.
-Next Obligation. move=> ? ? ? ?; exact: Conv2Dist.skewed_commute. Qed.
-Next Obligation. move=> ? ? ?; exact: Conv2Dist.idempotent. Qed.
-Next Obligation. move=> ? ? ? ? ? ? ? ? [? ?] /=; exact: Conv2Dist.quasi_assoc. Qed.
-Next Obligation. move=> ? ? ? ? ? ?; exact: Conv2DistProp.bind_left_distr. Qed.
+Next Obligation. move=> ? ? ?; exact: conv1. Qed.
+Next Obligation. move=> ? ? ? ?; exact: convC. Qed.
+Next Obligation. move=> ? ? ?; exact: convmm. Qed.
+Next Obligation. move=> ? ? ? ? ? ? ? ? [? ?] /=; exact: convA. Qed.
+Next Obligation. move=> ? ? ? ? ? ?; exact: Conv2Dist.bind_left_distr. Qed.
 
 Definition prob_class : relMonadProb.class_of proba.dist :=
   @relMonadProb.Class _ _ prob_mixin.

@@ -70,8 +70,8 @@ Definition overwrite {A S} {M : stateMonad S} s a : M A :=
 
 Example test_nonce0 (M : stateMonad nat) : M nat :=
   Get >>= (fun s => Put s.+1 >> Ret s).
-Reset test_nonce0.
-Fail Check test_nonce0.
+(*Reset test_nonce0.
+Fail Check test_nonce0.*)
 
 Module MonadRun.
 Record mixin_of S (M : monad) : Type := Mixin {
