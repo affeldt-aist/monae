@@ -97,55 +97,6 @@ Proof. by rewrite -{1}(convmm x q) commute. Qed.
 End prop.
 End Conv2DistProp.
 
-(* technical device *)
-Module CodomDDist.
-Section def.
-Variables (A : finType) (n : nat) (g : 'I_n -> dist A) (e : {dist 'I_n}) (y : set (dist A)).
-Definition f : 'I_n -> R := fun i => if g i \in y then e i else 0%R.
-Lemma f0 i : (0 <= f i)%R.
-Proof. rewrite /f; case: ifPn => _; [exact/dist_ge0|exact/leRR]. Qed.
-Lemma f1 (x : set (dist A)) (gX : g @` setT `<=` x `|` y)
-  (ge : forall i : 'I_n, g i \in x -> e i = 0%R) :
-  (\rsum_(i < n) f i = 1)%R.
-Proof.
-rewrite /f -(pmf1 e) /=.
-apply eq_bigr => i _.
-case: ifPn => // giy.
-rewrite ge //.
-have : g i \in x `|` y by rewrite in_setE; apply/gX; by exists i.
-rewrite in_setU => /orP[|] //.
-by rewrite (negbTE giy).
-Qed.
-Definition d (x : set (dist A)) (gX : g @` setT `<=` x `|` y)
-  (ge : forall i : 'I_n, g i \in x -> e i = 0%R) : {dist 'I_n} :=
-  locked (makeDist f0 (f1 gX ge)).
-Lemma dE (x : set (dist A)) (gX : g @` setT `<=` x `|` y)
-  (ge : forall i : 'I_n, g i \in x -> e i = 0%R) i :
-  d gX ge i = if g i \in y then e i else 0%R.
-Proof. by rewrite /d; unlock. Qed.
-Lemma f1' (x : set (dist A)) (gX : g @` setT `<=` x `|` y)
-  (ge : forall i : 'I_n, (g i \in x) && (g i \notin y) -> e i = 0%R) :
-  (\rsum_(i < n) f i = 1)%R.
-Proof.
-rewrite /f -(pmf1 e) /=.
-apply eq_bigr => i _.
-case: ifPn => // giy.
-rewrite ge //.
-have : g i \in x `|` y by rewrite in_setE; apply/gX; by exists i.
-rewrite in_setU => /orP[|].
-  by rewrite (negbTE giy) andbT.
-by rewrite (negbTE giy).
-Qed.
-Definition d' (x : set (dist A)) (gX : g @` setT `<=` x `|` y)
-  (ge : forall i : 'I_n, (g i \in x) && (g i \notin y) -> e i = 0%R) :=
-  locked (makeDist f0 (f1' gX ge)).
-Lemma dE' (x : set (dist A)) (gX : g @` setT `<=` x `|` y)
-  (ge : forall i : 'I_n, (g i \in x) && (g i \notin y) -> e i = 0%R) i :
-  d' gX ge i = if g i \in y then e i else 0%R.
-Proof. by rewrite /d'; unlock. Qed.
-End def.
-End CodomDDist.
-
 (* TODO: generalization in progress *)
 Section convex_set_of_distributions_prop.
 Variable A : finType.
@@ -159,31 +110,12 @@ rewrite in_setE.
 exists (n + m).
 exists [ffun i => match fintype.split i with inl a => g a | inr a => h a end].
 exists (AddDist.d d e p).
-rewrite /Convn /=.
+rewrite !convn_convdist.
 rewrite ConvDist_Add; split => //.
 move=> a -[i _].
 rewrite ffunE.
 case: splitP => j _ <-; by [apply gX; exists j | apply hX; exists j].
 Qed.
-
-Lemma mem_hull_setU (x y : set (dist A)) (a0 a1 : dist A) p :
-  a0 \in x -> a1 \in y -> a0 <| p |> a1 \in hull (x `|` y).
-Proof.
-move=> a0x a1y.
-rewrite in_setE.
-exists 2, (fun i => if i == ord0 then a0 else a1), (I2Dist.d p); split => /=.
-  move=> a2.
-  rewrite -in_setE.
-  case/imsetP => i _ ->{a2} /=.
-  case: ifPn => _.
-  by rewrite -in_setE in_setU a0x.
-  by rewrite -in_setE in_setU orbC a1y.
-apply/dist_ext => a2.
-by rewrite Conv2Dist.dE ConvDist.dE 2!big_ord_recl big_ord0 addR0 /= 2!I2Dist.dE.
-Qed.
-
-Lemma mem_hull_setU_left (x y : set (dist A)) (a : dist A) : a \in x -> a \in hull (x `|` y).
-Proof. by move=> ax; apply: hull_mem; rewrite in_setU ax. Qed.
 
 Lemma hullI (X : set (dist A)) : hull (hull X) = hull X.
 Proof.
@@ -193,7 +125,6 @@ rewrite predeqE => d; split.
   by rewrite in_setE.
 - by rewrite -in_setE => /hull_mem; rewrite in_setE.
 Qed.
-
 End convex_set_of_distributions_prop.
 
 Section CSet_prop.
@@ -219,13 +150,14 @@ case/boolP : (norm_pmf_e1 == 0%R) => [norm_pmf_e1_eq0|norm_pmf_e1_neq0].
     move/eqP/prsumr_eq0P : norm_pmf_e1_eq0; apply => //= j _.
     exact/dist_ge0.
   exists dx; split; first by rewrite in_setE.
-  exists (ConvDist.d gy (CodomDDist.d gX ge)); split.
-    move: (CSet.H y); rewrite is_convex_setP /is_convex_set_n => /asboolP; apply => d.
+  exists (Convn gy (CodomDDist.d gX ge)); split.
+    move: (CSet.H y); rewrite is_convex_setP /is_convex_set_n => /asboolP.
+    apply => d.
     rewrite -in_setE => /imsetP[i _ ->{d}].
     rewrite /gy -in_setE; case: ifPn => //; by rewrite in_setE.
   exists (`Pr 0).
   rewrite Ha conv0; apply/dist_ext => a0.
-  rewrite 2!ConvDist.dE; apply eq_bigr => i _.
+  rewrite 2!convn_convdist 2!ConvDist.dE; apply eq_bigr => i _.
   rewrite /gy CodomDDist.dE; case: ifPn => // giy.
   have : g i \in x `|` y by rewrite in_setE; apply/gX; by exists i.
   rewrite in_setU (negbTE giy) orbF => /ge ->; by rewrite !mul0R.
@@ -251,13 +183,14 @@ case/boolP : (norm_pmf_e2 == 0%R) => [norm_pmf_e2_eq0|norm_pmf_e2_neq0].
     done.
   rewrite setUC in gX.
   exists (ConvDist.d gx (CodomDDist.d' gX ge)); split.
-    move: (CSet.H x); rewrite is_convex_setP /is_convex_set_n => /asboolP; apply => d.
+    move: (CSet.H x); rewrite is_convex_setP /is_convex_set_n => /asboolP.
+    rewrite -convn_convdist; apply => d.
     rewrite -in_setE => /imsetP[i _ ->{d}].
     rewrite /gx -in_setE; case: ifPn => //; by rewrite in_setE.
   exists dy; split; first by rewrite in_setE.
   exists (`Pr 1).
   rewrite Ha conv1; apply/dist_ext => a0.
-  rewrite 2!ConvDist.dE; apply eq_bigr => i _.
+  rewrite convn_convdist 2!ConvDist.dE; apply eq_bigr => i _.
   rewrite /gx CodomDDist.dE'; case: ifPn => // gix.
   have : g i \in y `|` x by rewrite in_setE; apply/gX; by exists i.
   rewrite in_setU (negbTE gix) orbF => giy.
@@ -275,7 +208,7 @@ have pmf_e21 : \rsum_(i < n) pmf_e2 i = 1%R.
     exact/eqP/gtR_eqF.
   by rewrite /norm_pmf_e2 [in RHS]big_mkcond /=.
 set e2 := makeDist pmf_e20 pmf_e21.
-exists (ConvDist.d gx e1); split.
+exists (Convn gx e1); split.
   move: (CSet.H x).
   rewrite is_convex_setP /is_convex_set_n => /asboolP; apply.
   move=> d.
@@ -283,7 +216,7 @@ exists (ConvDist.d gx e1); split.
   case/imsetP => i _ ->{d}.
   rewrite /gx -in_setE.
   case: ifPn => //; by rewrite in_setE.
-exists (ConvDist.d gy e2); split.
+exists (Convn gy e2); split.
   move: (CSet.H y).
   rewrite is_convex_setP /is_convex_set_n => /asboolP; apply.
   move=> d.
@@ -299,10 +232,10 @@ have p01 : (0 <= norm_pmf_e1 <= 1)%R.
 exists (Prob.mk p01) => /=.
 rewrite Ha.
 apply/dist_ext => a0.
-rewrite ConvDist.dE Conv2Dist.dE.
+rewrite convn_convdist ConvDist.dE Conv2Dist.dE.
 rewrite (bigID [pred i | (g i \in y) && (g i \notin x)]) /= addRC.
 congr (_ + _)%R.
-- rewrite ConvDist.dE big_distrr /= big_mkcond /=; apply eq_bigr => i _.
+- rewrite convn_convdist ConvDist.dE big_distrr /= big_mkcond /=; apply eq_bigr => i _.
   rewrite negb_and negbK /pmf_e1.
   rewrite mulRCA -mulRA (mulRA (/ _)%R) mulVR ?mul1R; last exact/eqP/gtR_eqF.
   rewrite /gx.
@@ -314,7 +247,7 @@ congr (_ + _)%R.
     by move=> -> //.
   rewrite negb_or negbK => /andP[H1 H2].
   by rewrite (negbTE H2) mul0R.
-- rewrite ConvDist.dE big_distrr /= big_mkcond /=; apply eq_bigr => i _.
+- rewrite convn_convdist ConvDist.dE big_distrr /= big_mkcond /=; apply eq_bigr => i _.
   have -> : norm_pmf_e1.~ = norm_pmf_e2.
     apply/eqP.
     rewrite /onem.
