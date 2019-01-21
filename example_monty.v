@@ -460,8 +460,8 @@ rewrite /play_f /monty hide_pickE.
 rewrite /stick.
 rewrite_ bindretf.
 rewrite_ tease_fE.
-rewrite_ lift_if.
-rewrite_ if_ext.
+rewrite_ fun_if.
+rewrite_ if_arg.
 rewrite_ uniform_inde.
 Open (X in _ >>= X).
   transitivity (if x.1 == x.2
@@ -488,8 +488,8 @@ Open (X in _ >>= X).
   rewrite_ bindretf.
   reflexivity.
 rewrite_ tease_fE.
-rewrite_ lift_if.
-rewrite_ if_ext.
+rewrite_ fun_if.
+rewrite_ if_arg.
 Open (X in _ >>= X).
 transitivity (if x.1 == x.2
   then do x0 <- unif_door (doors \\ [:: x.1]); Ret false

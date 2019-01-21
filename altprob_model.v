@@ -110,11 +110,10 @@ rewrite in_setE.
 exists (n + m).
 exists [ffun i => match fintype.split i with inl a => g a | inr a => h a end].
 exists (AddDist.d d e p).
-rewrite !convn_convdist.
-rewrite ConvDist_Add; split => //.
-move=> a -[i _].
-rewrite ffunE.
-case: splitP => j _ <-; by [apply gX; exists j | apply hX; exists j].
+split.
+  move=> a -[i _]; rewrite ffunE.
+  case: splitP => j _ <-; by [apply gX; exists j | apply hX; exists j].
+by rewrite !convn_convdist ConvDist_Add.
 Qed.
 
 Lemma hullI (X : set (dist A)) : hull (hull X) = hull X.
@@ -150,7 +149,7 @@ case/boolP : (norm_pmf_e1 == 0%R) => [norm_pmf_e1_eq0|norm_pmf_e1_neq0].
     move/eqP/prsumr_eq0P : norm_pmf_e1_eq0; apply => //= j _.
     exact/dist_ge0.
   exists dx; split; first by rewrite in_setE.
-  exists (Convn gy (CodomDDist.d gX ge)); split.
+  exists (Convn (CodomDDist.d gX ge) gy); split.
     move: (CSet.H y); rewrite is_convex_setP /is_convex_set_n => /asboolP.
     apply => d.
     rewrite -in_setE => /imsetP[i _ ->{d}].
@@ -182,7 +181,7 @@ case/boolP : (norm_pmf_e2 == 0%R) => [norm_pmf_e2_eq0|norm_pmf_e2_neq0].
       move=> ? _; exact/dist_ge0.
     done.
   rewrite setUC in gX.
-  exists (ConvDist.d gx (CodomDDist.d' gX ge)); split.
+  exists (ConvDist.d (CodomDDist.d' gX ge) gx); split.
     move: (CSet.H x); rewrite is_convex_setP /is_convex_set_n => /asboolP.
     rewrite -convn_convdist; apply => d.
     rewrite -in_setE => /imsetP[i _ ->{d}].
@@ -208,7 +207,7 @@ have pmf_e21 : \rsum_(i < n) pmf_e2 i = 1%R.
     exact/eqP/gtR_eqF.
   by rewrite /norm_pmf_e2 [in RHS]big_mkcond /=.
 set e2 := makeDist pmf_e20 pmf_e21.
-exists (Convn gx e1); split.
+exists (Convn e1 gx); split.
   move: (CSet.H x).
   rewrite is_convex_setP /is_convex_set_n => /asboolP; apply.
   move=> d.
@@ -216,7 +215,7 @@ exists (Convn gx e1); split.
   case/imsetP => i _ ->{d}.
   rewrite /gx -in_setE.
   case: ifPn => //; by rewrite in_setE.
-exists (Convn gy e2); split.
+exists (Convn e2 gy); split.
   move: (CSet.H y).
   rewrite is_convex_setP /is_convex_set_n => /asboolP; apply.
   move=> d.

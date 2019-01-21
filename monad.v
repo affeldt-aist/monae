@@ -123,14 +123,6 @@ Definition uaddn := uncurry addn.
 
 Lemma uaddnE n m : uaddn (n, m) = n + m. Proof. by rewrite /uaddn uncurryE. Qed.
 
-Lemma lift_if A B C (f : A -> B -> C) b m1 m2 :
-  f (if b then m1 else m2) = if b then f m1 else f m2.
-Proof. by case: ifP. Qed.
-
-Lemma if_ext A B (f g : A -> B) (x : A) b :
-  (if b then f else g) x = if b then f x else g x.
-Proof. by case: ifP. Qed.
-
 Definition const A B (b : B) := fun _ : A => b.
 
 Definition wrap {A} (a : A) := [:: a].
@@ -1292,7 +1284,7 @@ Definition fastprod s : M _ := Catch (work s) (Ret O).
 (* fastprod is pure, never throwing an unhandled exception *)
 Lemma fastprodE s : fastprod s = Ret (product s).
 Proof.
-rewrite /fastprod /work lift_if if_ext catchfailm.
+rewrite /fastprod /work fun_if if_arg catchfailm.
 by rewrite catchret; case: ifPn => // /product0 <-.
 Qed.
 
