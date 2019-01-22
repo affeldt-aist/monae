@@ -21,83 +21,7 @@ Local Open Scope proba_scope.
 Local Open Scope classical_set_scope.
 Local Open Scope reals_ext_scope.
 
-(* more lemmas about Conv2Dist.d that use the convex space interface *)
-Module Conv2DistProp.
-Section prop.
-Variables (A : finType).
-(* TODO: the R version is here because of lra, etc. *)
-Lemma commute' (x1 y1 x2 y2 : dist A) p q (Hp : (0 <= p <= 1)%R) (Hq : (0 <= q <= 1)%R) :
-  (x1 <|Prob.mk Hq|> y1) <|Prob.mk Hp|> (x2 <|Prob.mk Hq|> y2) =
-  (x1 <|Prob.mk Hp|> x2) <|Prob.mk Hq|> (y1 <|Prob.mk Hp|> y2).
-Proof.
-case/boolP : (p == R0 :> R) => [|]/eqP p0.
-  by subst p; rewrite !(ProofIrrelevance.proof_irrelevance _ Hp OO1) !conv0.
-case/boolP : (q == R0 :> R) => [|]/eqP q0.
-  by subst q; rewrite !(ProofIrrelevance.proof_irrelevance _ Hq OO1) !conv0.
-case/boolP : (p == R1 :> R) => [|]/eqP p1.
-  by subst p; rewrite !(ProofIrrelevance.proof_irrelevance _ Hp O11) !conv1.
-case/boolP : (q == R1 :> R) => [|]/eqP q1.
-  by subst q; rewrite !(ProofIrrelevance.proof_irrelevance _ Hq O11) !conv1.
-set r := (p * q)%R.
-have pq1 : (p * q != 1)%R.
-  apply/eqP => pq1; have {p1} : (p < 1)%R by lra.
-  rewrite -pq1 mulRC -ltR_pdivr_mulr; last lra.
-  rewrite divRR; [lra | exact/eqP].
-have r1 : (r < 1)%R.
-  rewrite ltR_neqAle; split; [exact/eqP|rewrite -(mulR1 1%R); apply/leR_pmul; tauto].
-set s := ((p - r) / (1 - r))%R.
-rewrite /Conv /= (* TODO *).
-rewrite -(@Conv2Dist.quasi_assoc' _ r s _ _ x1); last 2 first.
-  by rewrite mulRC.
-  rewrite /onem {}/s; field; by apply/eqP; rewrite subR_eq0 eq_sym.
-  split.
-  - apply divR_ge0; last by rewrite subR_gt0.
-    rewrite subR_ge0 /r -{2}(mulR1 p); apply/leR_wpmul2l; tauto.
-  - rewrite /s leR_pdivr_mulr ?subR_gt0 // mul1R leR_add2r; tauto.
-  split; by [apply/mulR_ge0; tauto | rewrite leR_eqVlt; right].
-move=> Hs Hr.
-rewrite (Conv2Dist.skewed_commute y1).
-set t := (s.~ * q)%R.
-have t01 : (0 <= t <= 1)%R.
-  split; first by apply/mulR_ge0; [apply onem_ge0; tauto|tauto].
-  rewrite /t -(mulR1 1%R); apply leR_pmul;
-    [apply onem_ge0; tauto | tauto | apply onem_le1; tauto | tauto].
-have t1 : (t < 1)%R.
-  rewrite ltR_neqAle; split; last tauto.
-  move=> t1; subst t.
-  have {q1} : (q < 1)%R by lra.
-    rewrite -t1 -ltR_pdivr_mulr; last by lra.
-    rewrite divRR; [rewrite /onem; lra | exact/eqP].
-rewrite -(@Conv2Dist.quasi_assoc' _ t p.~ _ _ x2) => //; last 2 first.
-  by rewrite mulRC.
-  rewrite /= !onemK /t /s /r /onem; field.
-  by apply/eqP; rewrite subR_eq0 eq_sym.
-  split; [apply onem_ge0; tauto | apply onem_le1; tauto].
-move=> Hp'.
-rewrite (@Conv2Dist.quasi_assoc' _ _ _ p.~.~ q x1); last 2 first.
-  by rewrite onemK.
-  rewrite /t /onem /s /r; field; by apply/eqP; rewrite subR_eq0 eq_sym.
-  by rewrite onemK.
-rewrite !onemK => Hp''.
-rewrite (Conv2Dist.skewed_commute y2 y1) /=.
-congr (Conv2Dist.d x1 x2 _ <| Prob.mk Hq |> _).
-  exact/prob_ext.
-apply/dist_ext => a /=.
-by rewrite !Conv2Dist.dE /= !onemK.
-Qed.
-
-Lemma commute (x1 y1 x2 y2 : dist A) p q :
-  (x1 <|q|> y1) <|p|> (x2 <|q|> y2) = (x1 <|p|> x2) <|q|> (y1 <|p|> y2).
-Proof. by move: p q => -[p Hp] [q Hq]; rewrite commute'. Qed.
-
-Lemma distribute (x y z : dist A) (p q : prob) :
-  x <| p |> (y <| q |> z) = (x <| p |> y) <| q |> (x <| p |> z).
-Proof. by rewrite -{1}(convmm x q) commute. Qed.
-
-End prop.
-End Conv2DistProp.
-
-(* TODO: generalization in progress *)
+(* NB: generalization in progress *)
 Section convex_set_of_distributions_prop.
 Variable A : finType.
 
@@ -295,7 +219,7 @@ Qed.
 Lemma Hpchoice (p : prob) (X Y : {convex_set (dist A)}) : is_convex_set (pchoice' p X Y).
 Proof.
 apply/asboolP => x y q /=; rewrite in_setE => -[d [dX [d' [d'Y ->]]]].
-rewrite in_setE => -[e [eX [e' [e'Y ->]]]]; rewrite in_setE Conv2DistProp.commute.
+rewrite in_setE => -[e [eX [e' [e'Y ->]]]]; rewrite in_setE commute.
 exists (Conv2Dist.d d e q); split; first exact: (asboolW (CSet.H X)).
 exists (Conv2Dist.d d' e' q); split => //; exact: (asboolW (CSet.H Y)).
 Qed.
@@ -377,13 +301,13 @@ move=> [H1 H2]; apply/val_inj/classical_sets.eqEsubset => /=.
   rewrite in_setE /= {1}/pchoice' => -[b1 [b1y [b2 [b2z ->{b} ->{d}]]]].
   exists (a <| r |> b1); split.
     rewrite in_setE /= /pchoice'; exists a; split => //; by exists b1.
-  by exists b2; split => //; rewrite (@convA _ _ _ r s).
+  by exists b2; split => //; rewrite (@convA0 _ _ _ r s).
 - move=> d; rewrite /pchoice' => -[a []].
   rewrite in_setE /= {1}/pchoice' => -[a1 [a1x [a2 [a2y ->{a}]]]] => -[b] [bz ->{d}].
   exists a1; split => //.
   exists (a2 <| q |> b); split.
     rewrite in_setE /= /pchoice'; exists a2; split => //; by exists b.
-  by rewrite (@convA _ _ _ r s).
+  by rewrite (@convA0 _ _ _ r s).
 Qed.
 
 Definition nchoice' (X Y : set (dist A)) : set (dist A) := hull (X `|` Y).
@@ -443,11 +367,11 @@ move=> x y z; apply/val_inj => /=; rewrite /nchoice'; apply eqEsubset.
     rewrite cset0P => /eqP z0.
     by move: Ha; rewrite z0 2!setU0 hullI hull_cset -Hp.
   case: (hull_setU H3 H4 dyz) => d2 [d2y [d3 [d3z [q Hq]]]]; rewrite Hq.
-  set s := Conv2Dist.s_of_pq p q.
-  set r := Conv2Dist.r_of_pq p q.
-  rewrite (@convA _ _ _ r s); last 2 first.
-    exact: Conv2Dist.p_is_rs.
-    exact: Conv2Dist.s_is_pq.
+  set s := [s_of p, q].
+  set r := [r_of p, q].
+  rewrite (@convA0 _ _ _ r s); last 2 first.
+    exact: p_is_rs.
+    by rewrite s_of_pqE onemK.
   apply mem_hull_setU => //; exact/mem_hull_setU.
 - move=> a; rewrite -in_setE => Ha; rewrite -in_setE.
   set xy := CSet.mk (convex_hull (x `|` y)).
@@ -465,12 +389,12 @@ move=> x y z; apply/val_inj => /=; rewrite /nchoice'; apply eqEsubset.
     rewrite cset0P => /eqP y0.
     by move: Ha; rewrite y0 set0U setU0 2!hull_cset -Hp.
   case: (hull_setU H3 H4 d1xy) => d2 [d2y [d3 [d3z [q Hq]]]]; rewrite Hq.
-  set s := Conv2Dist.s_of_pq (`Pr p.~) (`Pr q.~).
-  set r := Conv2Dist.r_of_pq (`Pr p.~) (`Pr q.~).
-  rewrite -(@convA _ (`Pr s.~) (`Pr r.~)); last 2 first.
-    by rewrite /= Conv2Dist.s_is_pq /= 2!onemK mulRC.
-    rewrite 2!onemK (Conv2Dist.p_is_rs (`Pr p.~) (`Pr q.~)).
-    by rewrite -/s -/r mulRC.
+  set s := [s_of (`Pr p.~), (`Pr q.~)].
+  set r := [r_of (`Pr p.~), (`Pr q.~)].
+  rewrite -(@convA0 _ (`Pr s.~) (`Pr r.~)); last 2 first.
+    transitivity (s.~) => //.
+    by rewrite (s_of_pqE (`Pr p.~) (`Pr q.~)) !onemK mulRC.
+    by rewrite 2!onemK (p_is_rs (`Pr p.~) (`Pr q.~)) mulRC.
   apply mem_hull_setU => //; exact/mem_hull_setU.
 Qed.
 
@@ -491,7 +415,7 @@ have /cset0PN xz0 : (pchoice p x z != cset0 _).
 apply/val_inj => /=; apply eqEsubset.
 - move=> a [b [bx [c [xyz ->{a}]]]].
   case: (hull_setU y0 z0 xyz) => c1 [c1y [c2 [c2z [q cq]]]].
-  rewrite cq Conv2DistProp.distribute -in_setE; apply mem_hull_setU.
+  rewrite cq distribute -in_setE; apply mem_hull_setU.
   rewrite in_setE; exists b; split => //.
   exists c1; split => //.
   rewrite in_setE; exists b; split => //.
@@ -510,7 +434,7 @@ apply/val_inj => /=; apply eqEsubset.
     by apply mem_hull_setU.
   exists (b' <| q |> b''); split.
     by apply mem_hull_setU.
-  by rewrite Hb' Hb'' Conv2DistProp.commute.
+  by rewrite Hb' Hb'' commute.
 Qed.
 
 End probabilistic_choice_nondeterministic_choice.

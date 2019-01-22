@@ -199,7 +199,7 @@ Next Obligation. move=> ? ? ?; exact: conv0. Qed.
 Next Obligation. move=> ? ? ?; exact: conv1. Qed.
 Next Obligation. move=> ? ? ? ?; exact: convC. Qed.
 Next Obligation. move=> ? ? ?; exact: convmm. Qed.
-Next Obligation. move=> ? ? ? ? ? ? ? ? [? ?] /=; exact: convA. Qed.
+Next Obligation. move=> ? ? ? ? ? ? ? ? [? ?] /=; exact: convA0. Qed.
 Next Obligation. move=> ? ? ? ? ? ?; exact: Conv2Dist.bind_left_distr. Qed.
 
 Definition prob_class : relMonadProb.class_of proba.dist :=
