@@ -172,15 +172,14 @@ congr (_ + _)%R.
   by rewrite (negbTE H2) mul0R.
 - rewrite convn_convdist ConvDist.dE big_distrr /= big_mkcond /=; apply eq_bigr => i _.
   have -> : norm_pmf_e1.~ = norm_pmf_e2.
-    apply/eqP.
     rewrite /onem.
     rewrite subR_eq.
     rewrite /norm_pmf_e2 /norm_pmf_e1.
-    rewrite [in X in (_ == X + _)%R]big_mkcond /=.
-    rewrite [in X in (_ == _ + X)%R]big_mkcond /=.
+    rewrite [in X in (_ = X + _)%R]big_mkcond /=.
+    rewrite [in X in (_ = _ + X)%R]big_mkcond /=.
     rewrite -big_split.
     rewrite -(pmf1 e) /=.
-    apply/eqP/eq_bigr => j _.
+    apply/eq_bigr => j _.
     case: ifPn.
       case/andP => gjy gjx.
       by rewrite (negbTE gjx) addR0.
