@@ -73,7 +73,7 @@ case/boolP : (norm_pmf_e1 == 0%R) => [norm_pmf_e1_eq0|norm_pmf_e1_neq0].
     move/eqP/prsumr_eq0P : norm_pmf_e1_eq0; apply => //= j _.
     exact/dist_ge0.
   exists dx; split; first by rewrite in_setE.
-  exists (Convn (CodomDDist.d gX ge) gy); split.
+  exists (\Sum_(CodomDDist.d gX ge) gy); split.
     move: (CSet.H y); rewrite is_convex_setP /is_convex_set_n => /asboolP.
     apply => d.
     rewrite -in_setE => /imsetP[i _ ->{d}].
@@ -131,7 +131,7 @@ have pmf_e21 : \rsum_(i < n) pmf_e2 i = 1%R.
     exact/eqP/gtR_eqF.
   by rewrite /norm_pmf_e2 [in RHS]big_mkcond /=.
 set e2 := makeDist pmf_e20 pmf_e21.
-exists (Convn e1 gx); split.
+exists (\Sum_e1 gx); split.
   move: (CSet.H x).
   rewrite is_convex_setP /is_convex_set_n => /asboolP; apply.
   move=> d.
@@ -139,7 +139,7 @@ exists (Convn e1 gx); split.
   case/imsetP => i _ ->{d}.
   rewrite /gx -in_setE.
   case: ifPn => //; by rewrite in_setE.
-exists (Convn e2 gy); split.
+exists (\Sum_e2 gy); split.
   move: (CSet.H y).
   rewrite is_convex_setP /is_convex_set_n => /asboolP; apply.
   move=> d.
@@ -438,7 +438,7 @@ Qed.
 
 End probabilistic_choice_nondeterministic_choice.
 
-(* non-empty convex sets *)
+(* non-empty convex sets of distributions *)
 Module NECSet.
 Section def.
 Local Open Scope classical_set_scope.
@@ -450,6 +450,8 @@ Record t : Type := mk {
 End def.
 End NECSet.
 Notation necset := NECSet.t.
+Notation "{ 'csdist+' T }" := (necset T) (format "{ 'csdist+'  T }") : convex_scope.
+Coercion NECSet.car : necset >-> convex_set_of.
 
 Section necset_canonical.
 Variable (A : finType).
@@ -464,15 +466,13 @@ End necset_canonical.
 
 Section necset_prop.
 
-Lemma pchoice_ne (A : finType) (p : prob) (m1 m2 : necset A) :
-  (@pchoice _ p (NECSet.car m1) (NECSet.car m2)) != cset0 _.
+Lemma pchoice_ne A p (m1 m2 : {csdist+ A}) : pchoice p m1 m2 != cset0 _.
 Proof.
 move: m1 m2 => -[m1 H1] -[m2 H2] /=.
 by apply/negP => /pchoice_eq0; rewrite (negbTE H1) (negbTE H2).
 Qed.
 
-Lemma nchoice_ne (A : finType) (m1 m2 : necset A) :
-  (@nchoice _ (NECSet.car m1) (NECSet.car m2)) != cset0 _.
+Lemma nchoice_ne A (m1 m2 : {csdist+ A}) : nchoice m1 m2 != cset0 _.
 Proof.
 move: m1 m2 => -[m1 H1] -[m2 H2] /=.
 by apply/negP => /nchoice_eq0; rewrite (negbTE H1) (negbTE H2).
@@ -481,6 +481,83 @@ Qed.
 End necset_prop.
 
 Require Import relmonad.
+
+Module ActionOnMorphisms.
+
+Definition F (A B : finType) (f : {affine {dist A} -> {dist B}}) : {csdist+ A} -> {csdist+ B}.
+case=> car car0.
+apply: (@NECSet.mk _ (@CSet.mk _ (f @` car) _)).
+  rewrite /is_convex_set.
+  apply/asboolP => x y p /imsetP[a0 Ha0 ->{x}] /imsetP[a1 Ha1 ->{y}].
+  apply/imsetP; exists (a0 <|p|> a1).
+  exact/mem_convex_set.
+  by rewrite (affine_functionP' f).
+move=> H.
+case/cset0PN : car0 => a carx.
+apply/cset0PN; exists (f a) => /=; by exists a.
+Defined.
+(* NB: see also Map_laws.id *)
+Lemma map_laws_id A (Z : {csdist+ A}) :
+  (F (affine_function_id (dist_convType A))) Z = ssrfun.id Z.
+Proof.
+apply/val_inj => /=.
+case: Z => Z HZ.
+apply/val_inj => /=.
+rewrite predeqE => x; split.
+  by case => y Zy <-.
+move=> Zx; by exists x.
+Qed.
+(* NB: see Map_laws.comp *)
+Lemma map_laws_comp (A B C : finType) (f : {affine {dist B} -> {dist C}})
+  (g : {affine {dist A} -> {dist B}}) (Z : {csdist+ A})
+  : (F (affine_function_comp g f)) Z = (F f \o F g) Z.
+Proof.
+apply/val_inj => /=.
+case: Z => Z HZ.
+apply/val_inj => /=.
+rewrite predeqE => c; split.
+  case => a Za <-.
+  exists (g a) => //; by exists a.
+case => b -[a Za <-{b} <-{c}].
+by exists a.
+Qed.
+
+Let nepchoice : prob -> forall A, {csdist+ A} -> {csdist+ A} -> {csdist+ A} :=
+  fun p A m1 m2 => NECSet.mk (pchoice_ne p m1 m2).
+
+Local Notation "mx <.| p |.> my" := (@nepchoice p _ mx my).
+
+Lemma F_preserves_pchoice (A B : finType) (f : {affine {dist A} -> {dist B}}) (Z Z' : {csdist+ A}) (p : prob) :
+  (F f) (Z <.| p |.> Z') = (F f) Z <.| p |.> (F f) Z'.
+Proof.
+do 2 apply val_inj => /=.
+rewrite predeqE => b; split.
+- case=> a.
+  case=> /= a0 [Za0 [a1 [Z'a1 ->{a}]]] <-{b}.
+  rewrite /pchoice'.
+  exists (f a0); split.
+    rewrite in_setE /= /F /=.
+    case: Z Za0 => /= Z HZ a0Z.
+    apply/imageP; by rewrite -in_setE.
+  exists (f a1); split; last by rewrite (affine_functionP' f).
+  rewrite in_setE /= /F /=.
+  case: Z' Z'a1 => /= Z' HZ' a1Z'.
+  apply/imageP; by rewrite -in_setE.
+- case => b0 [].
+  rewrite in_setE {1}/F /=.
+  case: Z => Z HZ /=.
+  case=> a0 Za0 <-{b0}.
+  case=> b1 [].
+  rewrite in_setE {1}/F /=.
+  case: Z' => Z' HZ' /=.
+  case=> a1 Z'a1 <-{b1} ->{b}.
+  exists (a0 <|p|> a1); last by rewrite (affine_functionP' f).
+  rewrite /pchoice'.
+  exists a0; split; first by rewrite in_setE.
+  exists a1; split => //; by rewrite in_setE.
+Qed.
+
+End ActionOnMorphisms.
 
 Module ModelAltProb.
 Section modelaltprob.
