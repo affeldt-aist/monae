@@ -609,6 +609,7 @@ exists a => //; by left.
 exists a => //; by right.
 Qed.
 
+
 (* the functor goes through as follows: *)
 (* NB: see also Map_laws.id *)
 Lemma map_laws_id A (Z : {csdist+ A}) :
@@ -634,6 +635,21 @@ rewrite predeqE => c; split.
   exists (g a) => //; by exists a.
 case => b -[a Za <-{b} <-{c}].
 by exists a.
+Qed.
+
+Definition eta (A : finType) (d : dist A) : {csdist+ A} := NECSet.mk (cset1_neq0 d).
+
+Lemma eta_preserves_pchoice (A : finType) (P Q : dist A) (p : prob) :
+  eta (P <| p |> Q) = eta P <.| p |.> eta Q.
+Proof.
+do 2 apply val_inj => /=.
+rewrite predeqE => x; rewrite /set1; split.
+  move=> ->{x}.
+  rewrite /pchoice'.
+  exists P; split; first by rewrite in_setE.
+  exists Q; split => //; by rewrite in_setE.
+case => P' []; rewrite in_setE /= {1}/set1 => ->{P'}.
+by case => Q' []; rewrite in_setE /= {1}/set1 => ->{Q'}.
 Qed.
 
 End Functor.
