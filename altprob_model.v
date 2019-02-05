@@ -482,7 +482,7 @@ End necset_prop.
 
 Require Import relmonad.
 
-Module ActionOnMorphisms.
+Module Functor.
 
 Definition F (A B : finType) (f : {affine {dist A} -> {dist B}}) : {csdist+ A} -> {csdist+ B}.
 case=> car car0.
@@ -496,31 +496,6 @@ move=> H.
 case/cset0PN : car0 => a carx.
 apply/cset0PN; exists (f a) => /=; by exists a.
 Defined.
-(* NB: see also Map_laws.id *)
-Lemma map_laws_id A (Z : {csdist+ A}) :
-  (F (affine_function_id (dist_convType A))) Z = ssrfun.id Z.
-Proof.
-apply/val_inj => /=.
-case: Z => Z HZ.
-apply/val_inj => /=.
-rewrite predeqE => x; split.
-  by case => y Zy <-.
-move=> Zx; by exists x.
-Qed.
-(* NB: see Map_laws.comp *)
-Lemma map_laws_comp (A B C : finType) (f : {affine {dist B} -> {dist C}})
-  (g : {affine {dist A} -> {dist B}}) (Z : {csdist+ A})
-  : (F (affine_function_comp g f)) Z = (F f \o F g) Z.
-Proof.
-apply/val_inj => /=.
-case: Z => Z HZ.
-apply/val_inj => /=.
-rewrite predeqE => c; split.
-  case => a Za <-.
-  exists (g a) => //; by exists a.
-case => b -[a Za <-{b} <-{c}].
-by exists a.
-Qed.
 
 Let nepchoice : prob -> forall A, {csdist+ A} -> {csdist+ A} -> {csdist+ A} :=
   fun p A m1 m2 => NECSet.mk (pchoice_ne p m1 m2).
@@ -584,6 +559,7 @@ case/boolP : (Z == set0) => [Z0|/set0P[a Za]].
   have /Hg[a]: (g @` setT) (g ord0) by exists ord0.
   by rewrite (eqP Z0).
 clear Za a.
+(* TODO: lemma? *)
 elim: n g Z Hg => [g Z Hg|n IH g Z Hg].
   have /Hg : (g @` setT) (g ord0) by exists ord0.
   case => a Za fag0.
@@ -614,7 +590,53 @@ apply val_inj => /=.
 by rewrite inordK.
 Qed.
 
-End ActionOnMorphisms.
+Let nenchoice : forall A, {csdist+ A} -> {csdist+ A} -> {csdist+ A} :=
+  fun A m1 m2 => NECSet.mk (nchoice_ne m1 m2).
+
+Lemma F_preserves_nchoice (A B : finType) (f : {affine {dist A} -> {dist B}}) (Z Z' : {csdist+ A}) :
+  (F f) (nenchoice Z Z') = nenchoice (F f Z) (F f Z').
+Proof.
+do 2 apply val_inj => /=.
+rewrite /nchoice' image_preserves_convex_hull; congr hull.
+rewrite predeqE => /= b; split.
+  case=> a [] Za <-{b}.
+    move: Z Z' Za => [Z Z0] [Z' Z'0] /= Za.
+    left; by exists a.
+  move: Z Z' Za => [Z Z0] [Z' Z'0] /= Za.
+  right; by exists a.
+move: Z Z' => [Z Z0] [Z' Z'0] /= [[a Za]|[a Z'a]] <-{b}.
+exists a => //; by left.
+exists a => //; by right.
+Qed.
+
+(* the functor goes through as follows: *)
+(* NB: see also Map_laws.id *)
+Lemma map_laws_id A (Z : {csdist+ A}) :
+  (F (affine_function_id (dist_convType A))) Z = ssrfun.id Z.
+Proof.
+apply/val_inj => /=.
+case: Z => Z HZ.
+apply/val_inj => /=.
+rewrite predeqE => x; split.
+  by case => y Zy <-.
+move=> Zx; by exists x.
+Qed.
+(* NB: see Map_laws.comp *)
+Lemma map_laws_comp (A B C : finType) (f : {affine {dist B} -> {dist C}})
+  (g : {affine {dist A} -> {dist B}}) (Z : {csdist+ A})
+  : (F (affine_function_comp g f)) Z = (F f \o F g) Z.
+Proof.
+apply/val_inj => /=.
+case: Z => Z HZ.
+apply/val_inj => /=.
+rewrite predeqE => c; split.
+  case => a Za <-.
+  exists (g a) => //; by exists a.
+case => b -[a Za <-{b} <-{c}].
+by exists a.
+Qed.
+
+End Functor.
 
 Module ModelAltProb.
 Section modelaltprob.
