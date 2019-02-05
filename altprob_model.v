@@ -557,6 +557,63 @@ rewrite predeqE => b; split.
   exists a1; split => //; by rewrite in_setE.
 Qed.
 
+Lemma image_preserves_convex_hull (A B : finType) (f : {affine {dist A} -> {dist B}})
+  (Z : set {dist A}) : f @` hull Z = hull (f @` Z).
+Proof.
+rewrite predeqE => b; split.
+  case=> a [n [g [e [Hg]]]] ->{a} <-{b}.
+  exists n, (f \o g), e; split.
+    move=> b /= [i _] <-{b} /=.
+    by exists (g i) => //; apply Hg; exists i.
+  by rewrite affine_function_Sum.
+case=> n [g [e [Hg]]] ->{b}.
+destruct n as [|n].
+  by move: (distI0_False e).
+suff [h Hh] : exists h : 'I_n.+1 -> dist_convType A, forall i, h i \in Z /\ f (h i) = g i.
+  exists (\Sum_e h).
+    exists n.+1; exists h; exists e; split => //.
+    move=> a [i _] <-.
+    move: (Hh i) => [].
+    by rewrite in_setE.
+  rewrite affine_function_Sum; congr Convn.
+  apply FunctionalExtensionality.functional_extensionality => i /=.
+  by case: (Hh i).
+clear e.
+case/boolP : (Z == set0) => [Z0|/set0P[a Za]].
+  exfalso.
+  have /Hg[a]: (g @` setT) (g ord0) by exists ord0.
+  by rewrite (eqP Z0).
+clear Za a.
+elim: n g Z Hg => [g Z Hg|n IH g Z Hg].
+  have /Hg : (g @` setT) (g ord0) by exists ord0.
+  case => a Za fag0.
+  exists [ffun i => a] => i.
+  by rewrite ffunE in_setE; split => //; rewrite fag0 (ssr_ext.ord1 i).
+have /Hg : (g @` setT) (g ord0) by exists ord0.
+case => a Za fag0.
+set g' : 'I_n.+1 -> dist_convType B := fun i : 'I_n.+1 => g (inord i.+1).
+have Hg' : g' @` setT `<=` f @` Z.
+  move=> /= b -[i _] <-{b}.
+  rewrite /g'.
+  apply Hg.
+  by exists (inord i.+1) => //.
+case: (IH g' Z Hg') => h' Hh'.
+exists [ffun i => if i == ord0 then a else h' (inord i.-1)].
+move=> i.
+rewrite ffunE.
+case: ifPn => i0.
+  by rewrite in_setE; split => //; rewrite (eqP i0).
+case: (Hh' (inord i.-1)) => {Hh'} H1 H2; split => //.
+rewrite H2 /g' inordK; last first.
+  rewrite prednK.
+  by rewrite -ltnS.
+  by rewrite lt0n.
+rewrite prednK // ?lt0n //.
+congr g.
+apply val_inj => /=.
+by rewrite inordK.
+Qed.
+
 End ActionOnMorphisms.
 
 Module ModelAltProb.
