@@ -56,7 +56,7 @@ Lemma putget s : Put s >> Get = Put s >> Ret s :> M _.
 Proof. by case: M => m [[? ? ? ? ? []] ]. Qed.
 Lemma getputskip : Get >>= Put = skip :> M _.
 Proof. by case: M => m [[? ? ? ? ? []] ]. Qed.
-Lemma getget (k : S -> S -> M S ) :
+Lemma getget (k : S -> S -> M S) :
  (Get >>= (fun s => Get >>= k s)) = (Get >>= fun s => k s s).
 Proof. by case: M k => m [[? ? ? ? ? []] ]. Qed.
 End state_lemmas.
@@ -291,20 +291,22 @@ have {IH}IH : forall x, size x < size s ->
   move=> x xs; exact/constructive_indefinite_description/IH.
 case: s IH => [|h t] IH.
   rewrite unfoldME //=; by exists (ndRet [::]).
-rewrite unfoldME //=.
+rewrite unfoldME //.
+rewrite (_ : nilp _ = false) //.
 case: (Hf (h :: t)) => x Hx.
 rewrite -Hx.
 set g := fun y => match Bool.bool_dec (size y < size (h :: t)) true with
                | left H => let: exist x _ := IH _ H in x
                | _ => ndRet [::]
                end.
-refine (ex_intro _ (ndBind x (fun x => ndBind (g x.2) (@ndRet _ \o cons x.1 ))) _) => /=.
+refine (ex_intro _ (ndBind x (fun x => ndBind (g x.2) (@ndRet _ \o cons x.1 ))) _).
+rewrite [in LHS]/=.
 rewrite Hx size_f /bassert !bindA.
 bind_ext => -[x1 x2].
-rewrite /assert /guard /= ltnS.
+rewrite /assert /guard ltnS.
 case: ifPn => b1b2; last by rewrite !bindfailf.
-rewrite !bindskipf !bindretf /= /g.
-case: Bool.bool_dec => //= x2t.
+rewrite !bindskipf !bindretf /g.
+case: Bool.bool_dec => // x2t.
 case: (IH x2) => // x0 <-; by rewrite fmap_def.
 Qed.
 
@@ -511,7 +513,7 @@ transitivity (do st <- Get; guard (ok (op st x)) >>
   rewrite fcompE fmap_bind /=.
   bind_ext; case.
   by rewrite fcompE fmap_retE.
-by rewrite /= -IH /opdot !bindA.
+by rewrite [in RHS]/= -IH /opdot !bindA.
 Qed.
 
 End section_51.
@@ -570,8 +572,8 @@ Proof. move=> ps t; apply: contra ps; by case/segment_closed.H. Qed.
 (* assert p distributes over concatenation *)
 Definition promote_assert (M : failMonad) A
   (p : pred (seq A)) (q : pred (seq A * seq A)) :=
-  (bassert p) \o (fmap ucat) \o mpair =
-  (fmap ucat) \o (bassert q) \o mpair \o (bassert p)^`2 :> (_ -> M _).
+  (bassert p) \o (fmap \# ucat) \o mpair =
+  (fmap \# ucat) \o (bassert q) \o mpair \o (bassert p)^`2 :> (_ -> M _).
 
 Lemma promote_assert_sufficient_condition (M : failMonad) A :
   Laws.right_zero (@Bind M) (@Fail _) ->
@@ -580,8 +582,9 @@ Lemma promote_assert_sufficient_condition (M : failMonad) A :
 Proof.
 move=> right_z p q promotable_pq.
 rewrite /promote_assert.
-apply functional_extensionality => -[x1 x2] /=.
-rewrite {1}/bassert [in RHS]fmap_def [in LHS]bind_fmap !bindA.
+apply functional_extensionality => -[x1 x2].
+rewrite 3![in RHS]compE [in RHS]fmap_def.
+rewrite 2![in LHS]compE {1}/bassert [in LHS]bind_fmap !bindA.
 bind_ext => s.
 rewrite 2!bindA bindretf 2!bindA.
 rewrite {1}[in RHS]/guard.
@@ -725,28 +728,32 @@ Lemma SymbolsS n : Symbols n.+1 =
 Proof. by rewrite SymbolsE. Qed.
 
 Lemma Symbols_prop1 :
-  Symbols \o const 1 = fmap wrap \o const Fresh :> (A -> M _).
+  Symbols \o const 1 = fmap \# wrap \o const Fresh :> (A -> M _).
 Proof.
 apply functional_extensionality => n.
 transitivity (@Symbols _ M 1) => //.
 rewrite SymbolsE sequence_cons sequence_nil.
 rewrite_ bindretf.
-by rewrite /= fmap_def.
+rewrite compE.
+by rewrite [in RHS]fmap_def.
 Qed.
 
 Lemma Symbols_prop2 :
-  Symbols \o uaddn = fmap ucat \o mpair \o (Symbols : _ -> M _)^`2.
+  Symbols \o uaddn = fmap \# ucat \o mpair \o (Symbols : _ -> M _)^`2.
 Proof.
 apply functional_extensionality => -[n1 n2].
 elim: n1 => [|n1 IH].
   rewrite [in LHS]compE uaddnE add0n.
-  rewrite [in RHS]/= Symbols0 bindretf fmap_bind.
+  rewrite compE [in X in _ = _ X]/= Symbols0.
+  rewrite compE [in RHS]fmap_def bindA bindretf.
+  rewrite -fmap_def fmap_bind.
   Open (X in _ >>= X).
     rewrite fcompE fmap_retE /=; reflexivity.
   by rewrite bindmret.
 rewrite compE uaddnE addSn SymbolsS -uaddnE -(compE Symbols) {}IH.
-rewrite [in RHS]/= SymbolsS fmap_bind bindA; bind_ext => a.
-rewrite [in LHS]/= [in LHS]fmap_bind [in LHS]bindA [in RHS]bindA.
+rewrite [in RHS]compE [in X in _ = _ X]/= SymbolsS.
+rewrite [in RHS]compE fmap_bind bindA; bind_ext => a.
+rewrite 2![in LHS]compE [in LHS]fmap_bind [in LHS]bindA [in RHS]bindA.
 (* TODO(rei): bind_ext? *)
 congr Bind; apply functional_extensionality => s.
 rewrite [in RHS]bindretf [in RHS]fcompE [in RHS]fmap_bind.

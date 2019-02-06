@@ -59,12 +59,12 @@ Variable q : pred (seq Symbol * seq Symbol).
 Hypothesis promotable_q : promotable (Distinct M) q.
 
 Definition relabel : Tree Symbol -> M (Tree Symbol) :=
-  foldt (fmap Tip \o const Fresh) (fmap (uncurry Bin) \o mpair).
+  foldt (fmap \# Tip \o const Fresh) (fmap \# (uncurry Bin) \o mpair).
 
 Let drTip {A} : A -> M _ :=
-  fmap wrap \o const Fresh.
+  fmap \# wrap \o const Fresh.
 Let drBin {N : failMonad} : (N _ * N _ -> N _) :=
-  fmap ucat \o bassert q \o mpair.
+  fmap \# ucat \o bassert q \o mpair.
 
 (* extracting the distinct symbol list *)
 Definition dlabels {N : failMonad} : Tree Symbol -> N (seq Symbol) :=
@@ -78,7 +78,7 @@ elim: t u m => [a u /= m|t1 H1 t2 H2 u m].
   rewrite /dlabels /= bindretf; bind_ext => u'.
   by rewrite bindretf.
 rewrite (_ : dlabels _ = drBin (dlabels t1, dlabels t2)) //.
-rewrite [in RHS]/drBin [in RHS]/bassert /= ![in RHS]bindA.
+rewrite [in RHS]/drBin [in RHS]/bassert 2!compE ![in RHS]bindA.
 transitivity (do x0 <- relabel u;
   (do x <- dlabels t1;
    do x <- (do x1 <- (do y <- dlabels t2; Ret (x, y));
@@ -110,13 +110,19 @@ Qed.
 
 (* see gibbons2011icfp Sect. 9.3 *)
 Lemma join_and_pairs :
-  (join \o fmap mpair \o mpair) \o (fmap dlabels \o relabel)^`2 =
-  (mpair \o join^`2) \o            (fmap dlabels \o relabel)^`2 :> (_ -> M _).
+  (join \o fmap \# mpair \o mpair) \o (fmap \# dlabels \o relabel)^`2 =
+  (mpair \o join^`2) \o            (fmap \# dlabels \o relabel)^`2 :> (_ -> M _).
 Proof.
 apply functional_extensionality => -[x1 x2].
-rewrite {1}/join; unlock => /=.
-rewrite !fmap_def /=.
+rewrite {1}/join; unlock.
+rewrite 3!compE.
+rewrite !fmap_def.
+rewrite 2![in RHS]compE.
+rewrite [in RHS]/mpair.
+rewrite [in LHS]/mpair.
+rewrite /=.
 rewrite 2![in RHS]join_def.
+unlock.
 rewrite 5!bindA.
 bind_ext => {x1}x1.
 rewrite 2!bindretf 2!bindA.
@@ -135,25 +141,25 @@ Lemma dlabels_relabel_is_fold :
 Proof.
 apply foldt_universal.
   (* dlabels >=> relabel \o Tip = drTip *)
-  rewrite /kleisli -2!compA (_ : _ \o Tip = fmap Tip \o const Fresh) //.
-  rewrite (compA (fmap dlabels)) -fmap_o (_ : dlabels \o _ = Ret \o wrap) //.
+  rewrite /kleisli -2!compA (_ : _ \o Tip = fmap \# Tip \o const Fresh) //.
+  rewrite (compA (fmap \# dlabels)) -fmap_o (_ : dlabels \o _ = Ret \o wrap) //.
   by rewrite fmap_o 2!compA join_fmap_ret.
 (* dlabels >=> relabel \o Bin = drBin \o _ *)
 rewrite /kleisli -2![in LHS]compA.
-rewrite (_ : _ \o _ Bin = fmap (uncurry Bin) \o (mpair \o relabel^`2)); last first.
+rewrite (_ : _ \o _ Bin = fmap \# (uncurry Bin) \o (mpair \o relabel^`2)); last first.
   by apply functional_extensionality; case.
-rewrite (compA (fmap dlabels)) -fmap_o.
-rewrite (_ : _ \o _ Bin = fmap ucat \o bassert q \o mpair \o dlabels^`2); last first.
+rewrite (compA (fmap \# dlabels)) -fmap_o.
+rewrite (_ : _ \o _ Bin = fmap \# ucat \o bassert q \o mpair \o dlabels^`2); last first.
   by apply functional_extensionality; case.
-transitivity (fmap ucat \o join \o fmap (bassert q \o mpair) \o mpair \o
-    (fmap dlabels \o relabel)^`2).
-  rewrite -2![in LHS](compA (fmap ucat)) [in LHS]fmap_o.
-  rewrite -[in LHS](compA (fmap _)) [in LHS](compA _ (fmap _)).
+transitivity (fmap \# ucat \o join \o fmap \# (bassert q \o mpair) \o mpair \o
+    (fmap \# dlabels \o relabel)^`2).
+  rewrite -2![in LHS](compA (fmap \# ucat)) [in LHS]fmap_o.
+  rewrite -[in LHS](compA (fmap \# _)) [in LHS](compA _ (fmap \# _)).
   rewrite -join_naturality -2![in RHS]compA; congr (_ \o _).
-  by rewrite fmap_o -[in LHS]compA naturality_mpair.
-rewrite fmap_o (compA _ (fmap (bassert q))) -(compA _ _ (fmap (bassert q))).
+  by rewrite [in LHS]fmap_o -[in LHS]compA naturality_mpair.
+rewrite fmap_o (compA _ (fmap \# (bassert q))) -(compA _ _ (fmap \# (bassert q))).
 rewrite commutativity_of_assertions. (* first non-trivial step *)
-rewrite (compA _ (bassert q)) -(compA _ _ (fmap mpair)) -(compA _ _ mpair) -(compA _ _ (_^`2)).
+rewrite (compA _ (bassert q)) -(compA _ _ (fmap \# mpair)) -(compA _ _ mpair) -(compA _ _ (_^`2)).
 by rewrite join_and_pairs. (* second non-trivial step *)
 Qed.
 
@@ -170,15 +176,15 @@ transitivity (bassert p \o Symbols \o @size_Tree Symbol \o uncurry Bin
 transitivity ((bassert p) \o Symbols \o uaddn \o (@size_Tree Symbol)^`2
   : (_ -> M _)).
   by rewrite -[in LHS]compA -[in RHS]compA size_Tree_Bin.
-transitivity (bassert p \o fmap ucat \o mpair \o (Symbols \o (@size_Tree Symbol))^`2
+transitivity (bassert p \o fmap \# ucat \o mpair \o (Symbols \o (@size_Tree Symbol))^`2
   : (_ -> M _)).
   rewrite -2!compA (compA Symbols) Symbols_prop2.
   by rewrite -(compA (_ \o mpair)) (compA (bassert p)).
-transitivity (fmap ucat \o bassert q \o mpair \o (bassert p \o Symbols \o (@size_Tree Symbol))^`2
+transitivity (fmap \# ucat \o bassert q \o mpair \o (bassert p \o Symbols \o (@size_Tree Symbol))^`2
   : (_ -> M _)).
   (* assert p distributes over concatenation *)
   by rewrite (promote_assert_sufficient_condition (@failfresh_bindmfail _ M) promotable_q).
-transitivity (fmap ucat \o bassert q \o mpair \o (Symbols \o (@size_Tree Symbol))^`2
+transitivity (fmap \# ucat \o bassert q \o mpair \o (Symbols \o (@size_Tree Symbol))^`2
   : (_ -> M _)).
   by rewrite bassert_symbols.
 by [].

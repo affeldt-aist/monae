@@ -444,8 +444,8 @@ move: a b.
 apply: (well_founded_induction (@well_founded_size _)) => a IH' b.
 destruct a as [|u v] => //.
   rewrite unfoldME /=; last exact: decr_size_select.
-  by rewrite !bindretf /=.
-rewrite unfoldME /=; last exact: decr_size_select.
+  by rewrite !bindretf.
+rewrite unfoldME; last exact: decr_size_select.
 rewrite !bindA.
 transitivity (do x <- Ret (u, v) [~] (do y_ys <- select v; Ret (y_ys.1, u :: y_ys.2));
   op b (do x0 <- cons x.1 ($) unfoldM p select x.2; foldr op (Ret [::]) x0)); last first.
@@ -460,7 +460,7 @@ transitivity (do x <- Ret (u, v) [~] (do y_ys <- select v; Ret (y_ys.1, u :: y_y
     rewrite !bindA.
     bind_ext; case.
     rewrite -commute_nondetState //.
-    case: (@select_is_nondetState _ M _ v) => x <-.
+    case: (@select_is_nondetState _ M _ v) => x /= <-.
     by exists (ndAlt (ndRet (u, v)) (ndBind x (fun y => ndRet (y.1, u :: y.2)))).
   transitivity (do st <- Get;
   (do x <- Ret (u, v) [~] (do y_ys <- select v; Ret (y_ys.1, u :: y_ys.2)) : M _;
@@ -527,14 +527,15 @@ Proof.
 case: xs => [|h t].
   rewrite queensBodyE // hyloME //; exact: decr_size_select.
 rewrite {1}queensBodyE hyloME; last exact: decr_size_select.
-rewrite {-1}[h :: t]lock /= decr_size_select /bassert 2!bindA.
-bind_ext => -[x ys] /=.
-rewrite /assert /guard /=.
+rewrite {-1}[h :: t]lock decr_size_select /bassert 2!bindA.
+rewrite (_ : nilp _ = false) //.
+bind_ext => -[x ys].
+rewrite /assert /guard.
 case: ifPn => ysht; last by rewrite !bindfailf.
 rewrite bindskipf !bindretf /opdot_queens /opdot.
 bind_ext => st.
 rewrite !bindA; bind_ext; case.
-bind_ext; case => /=.
+bind_ext; case.
 by rewrite queensBodyE.
 Qed.
 

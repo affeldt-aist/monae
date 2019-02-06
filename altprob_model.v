@@ -6,7 +6,7 @@ From mathcomp Require Import finfun finset bigop.
 From mathcomp Require Import boolp classical_sets.
 Require Import Reals Lra.
 From infotheo Require Import ssrR Reals_ext Rbigop proba convex.
-Require Import monad monad_composition monad_model.
+Require Import monad monad_model.
 
 Reserved Notation "mx <.| p |.> my" (format "mx  <.| p |.>  my", at level 50).
 
@@ -482,6 +482,7 @@ End necset_prop.
 
 Require Import relmonad.
 
+(* wip *)
 Module Functor.
 
 Definition F (A B : finType) (f : {affine {dist A} -> {dist B}}) : {csdist+ A} -> {csdist+ B}.
@@ -609,7 +610,6 @@ exists a => //; by left.
 exists a => //; by right.
 Qed.
 
-
 (* the functor goes through as follows: *)
 (* NB: see also Map_laws.id *)
 Lemma map_laws_id A (Z : {csdist+ A}) :
@@ -622,6 +622,7 @@ rewrite predeqE => x; split.
   by case => y Zy <-.
 move=> Zx; by exists x.
 Qed.
+
 (* NB: see Map_laws.comp *)
 Lemma map_laws_comp (A B C : finType) (f : {affine {dist B} -> {dist C}})
   (g : {affine {dist A} -> {dist B}}) (Z : {csdist+ A})
@@ -650,6 +651,16 @@ rewrite predeqE => x; rewrite /set1; split.
   exists Q; split => //; by rewrite in_setE.
 case => P' []; rewrite in_setE /= {1}/set1 => ->{P'}.
 by case => Q' []; rewrite in_setE /= {1}/set1 => ->{Q'}.
+Qed.
+
+(* wip *)
+Lemma naturality (A B : finType) (f : {affine {dist A} -> {dist B}}) (x : dist A) :
+  F f (eta x) = eta (f x).
+Proof.
+do 2 apply/val_inj => /=.
+rewrite predeqE => b; split.
+by case=> a; rewrite /set1 => ->{a}.
+by rewrite /set1 => ->{b}; exists x.
 Qed.
 
 End Functor.

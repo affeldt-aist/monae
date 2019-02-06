@@ -79,7 +79,7 @@ Lemma lemma_34 b : foldl op b (o) perm = Ret \o foldl op b :> (_ -> M _).
 Proof.
 apply functional_extensionality => xs; move: xs b; elim => [/=|x xs IH] b.
   by rewrite fcompE fmap_retE.
-rewrite fcompE [in LHS]/= fmap_bind.
+rewrite fcompE fmap_bind.
 have opP' : forall (x y : A) (w : seq A), (foldl op b w (.) x) (.) y = (foldl op b w (.) y) (.) x.
   move=> ? ? ?.
   by rewrite opP.
