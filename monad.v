@@ -262,14 +262,14 @@ End uncurry_functor.
 Section natural_transformation.
 Variables (M N : Type -> Type) (f : functor M) (g : functor N).
 Definition transformation_type := forall A, M A -> N A.
-Definition naturalP (phiA : transformation_type) (phiB : transformation_type) :=
-  forall A B (h : A -> B), (g # h) \o (phiA A) = (phiB B) \o (f # h).
+Definition naturalP (phi : transformation_type) :=
+  forall A B (h : A -> B), (g # h) \o (phi A) = (phi B) \o (f # h).
 End natural_transformation.
 
 Section natural_transformation_example.
 Definition fork A (a : A) := (a, a).
 (* fork is a natural transformation Fid -> squaring *)
-Lemma fork_natural : naturalP FId squaring (@fork) (@fork).
+Lemma fork_natural : naturalP FId squaring fork.
 Proof. by []. Qed.
 End natural_transformation_example.
 
@@ -278,7 +278,11 @@ Variables (M N : Type -> Type) (f : functor M) (g : functor N).
 Definition eta_type := forall A, A -> (N \o M) A.
 Definition eps_type := forall A, (M \o N) A -> A.
 Definition adjointP (eps : eps_type) (eta : eta_type) :=
-  naturalP (FComp f g) FId eps eps /\ naturalP FId (FComp g f) eta eta.
+  naturalP (FComp f g) FId eps /\ naturalP FId (FComp g f) eta.
+Definition triangular_law1 (eps : eps_type) (eta : eta_type) A :=
+  (eps (M A)) \o (f # eta A) = id.
+Definition triangular_law2 (eps : eps_type) (eta : eta_type) A :=
+  (g # eps A) \o (eta (N A)) = id.
 End adjoint.
 
 Section adjoint_example.
@@ -296,6 +300,20 @@ split; rewrite /naturalP => A B h /=.
 - rewrite /uncurry_f /curry_f /curry_eta /id_f /=.
   apply functional_extensionality => a /=.
   by apply functional_extensionality.
+Qed.
+Lemma curry_triangular_law1 A : triangular_law1 (curry_F X) curry_eps curry_eta A.
+Proof.
+rewrite /triangular_law1.
+apply functional_extensionality => -[a b].
+by rewrite /= /curry_eta.
+Qed.
+Lemma curry_triangular_law2 A : triangular_law2 (uncurry_F X) curry_eps curry_eta A.
+Proof.
+rewrite /triangular_law2.
+rewrite /uncurry_F /curry_eps /curry_eta /uncurry_M /=.
+rewrite /uncurry_f /= /comp /=.
+apply functional_extensionality => f.
+by apply functional_extensionality => x.
 Qed.
 End adjoint_example.
 
