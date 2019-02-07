@@ -179,7 +179,7 @@ End functor_lemmas.
 
 Definition Squaring (A : Type) := (A * A)%type.
 Notation "A `2" := (Squaring A).
-Definition squaring_f A B (f : A -> B) x : B`2 := (f x.1, f x.2).
+Definition squaring_f A B (f : A -> B) : A`2 -> B`2 := fun x => (f x.1, f x.2).
 Lemma squaring_f_id : FunctorLaws.id squaring_f.
 Proof. by move=> A /=; apply functional_extensionality => -[x1 x2]. Qed.
 Lemma squaring_f_comp : FunctorLaws.comp squaring_f.
@@ -222,6 +222,82 @@ Proof.
 apply functor_ext => /=; by rewrite /functorcomposition /FId /= /id_f.
 Qed.
 End functorcomposition_lemmas.
+
+Section curry_functor.
+Definition curry_M X : Type -> Type := fun B => (X * B)%type.
+Definition curry_f X A B (f : A -> B) : curry_M X A -> curry_M X B :=
+  fun x : X * A => (x.1, f x.2).
+Lemma curry_f_id X : FunctorLaws.id (@curry_f X).
+Proof.
+rewrite /FunctorLaws.id => A.
+by rewrite /curry_f; apply functional_extensionality => -[].
+Qed.
+Lemma curry_f_comp X : FunctorLaws.comp (@curry_f X).
+Proof.
+rewrite /FunctorLaws.comp => A B C g h.
+by rewrite /curry_f; apply functional_extensionality => -[].
+Qed.
+Definition curry_F X : functor (curry_M X) :=
+  Functor.Pack (Functor.Class (curry_f_id X) (curry_f_comp X)).
+End curry_functor.
+
+Section uncurry_functor.
+Definition uncurry_M X : Type -> Type := fun B => X -> B.
+Definition uncurry_f X A B (f : A -> B) : uncurry_M X A -> uncurry_M X B :=
+  fun g : X -> A => f \o g.
+Lemma uncurry_f_id X : FunctorLaws.id (@uncurry_f X).
+Proof.
+rewrite /FunctorLaws.id => A; rewrite /uncurry_f.
+apply functional_extensionality => x; by rewrite compidf.
+Qed.
+Lemma uncurry_f_comp X : FunctorLaws.comp (@uncurry_f X).
+Proof.
+rewrite /FunctorLaws.comp => A B C g h; rewrite /uncurry_f.
+apply functional_extensionality => x; by rewrite compE compA.
+Qed.
+Definition uncurry_F X : functor (uncurry_M X) :=
+  Functor.Pack (Functor.Class (uncurry_f_id X) (uncurry_f_comp X)).
+End uncurry_functor.
+
+Section natural_transformation.
+Variables (M N : Type -> Type) (f : functor M) (g : functor N).
+Definition transformation_type A := M A -> N A.
+Definition naturalP A B (phiA : transformation_type A) (phiB : transformation_type B) :=
+  forall h : A -> B, (g # h) \o phiA = phiB \o (f # h).
+End natural_transformation.
+
+Section natural_transformation_example.
+Definition fork A (a : A) := (a, a).
+(* fork is a natural transformation Fid -> squaring *)
+Lemma fork_natural A B : naturalP FId squaring (@fork A) (@fork B).
+Proof. by []. Qed.
+End natural_transformation_example.
+
+Section adjoint.
+Variables (M N : Type -> Type) (f : functor M) (g : functor N).
+Definition eta_type A := A -> (N \o M) A.
+Definition eps_type A := (M \o N) A -> A.
+Definition adjointP A B (eps : eps_type A) (eta : eta_type B) :=
+  naturalP (FComp f g) FId eps eps /\ naturalP FId (FComp g f) eta eta.
+End adjoint.
+
+Section adjoint_example.
+Variable (X : Type).
+Definition curry_eps A : eps_type (curry_M X) (uncurry_M X) A :=
+  fun af : X * (X -> A) => af.2 af.1.
+Definition curry_eta A : eta_type (curry_M X) (uncurry_M X) A :=
+  fun a : A => fun x : X => (x, a).
+Lemma adjoint_currry A :
+  adjointP (curry_F X) (uncurry_F X) (@curry_eps X) (@curry_eta A).
+Proof.
+split; rewrite /naturalP => h /=.
+- rewrite /id_f /curry_eps /curry_f /= /uncurry_M /uncurry_f /=.
+  by apply functional_extensionality => -[].
+- rewrite /uncurry_f /curry_f /curry_eta /id_f /=.
+  apply functional_extensionality => a /=.
+  by apply functional_extensionality.
+Qed.
+End adjoint_example.
 
 Module Laws.
 Section laws.
