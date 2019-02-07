@@ -211,7 +211,7 @@ Qed.
 
 Lemma uniform_naturality (M : probMonad) A B (a : A) (b : B) (f : A -> B) :
   forall x, (0 < size x)%nat ->
-  ((@uniform M _ b) \o map f) x = (fmap \# f \o uniform a) x.
+  ((@uniform M _ b) \o map f) x = (fmap M # f \o uniform a) x.
 Proof.
 elim=> // x [_ _|x' xs]; first by rewrite [in RHS]compE fmap_def bindretf.
 move/(_ isT) => IH _.

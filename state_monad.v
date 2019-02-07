@@ -572,8 +572,8 @@ Proof. move=> ps t; apply: contra ps; by case/segment_closed.H. Qed.
 (* assert p distributes over concatenation *)
 Definition promote_assert (M : failMonad) A
   (p : pred (seq A)) (q : pred (seq A * seq A)) :=
-  (bassert p) \o (fmap \# ucat) \o mpair =
-  (fmap \# ucat) \o (bassert q) \o mpair \o (bassert p)^`2 :> (_ -> M _).
+  (bassert p) \o (fmap M # ucat) \o mpair =
+  (fmap M # ucat) \o (bassert q) \o mpair \o (bassert p)^`2 :> (_ -> M _).
 
 Lemma promote_assert_sufficient_condition (M : failMonad) A :
   Laws.right_zero (@Bind M) (@Fail _) ->
@@ -728,7 +728,7 @@ Lemma SymbolsS n : Symbols n.+1 =
 Proof. by rewrite SymbolsE. Qed.
 
 Lemma Symbols_prop1 :
-  Symbols \o const 1 = fmap \# wrap \o const Fresh :> (A -> M _).
+  Symbols \o const 1 = (fmap M # wrap) \o const Fresh :> (A -> M _).
 Proof.
 apply functional_extensionality => n.
 transitivity (@Symbols _ M 1) => //.
@@ -739,19 +739,19 @@ by rewrite [in RHS]fmap_def.
 Qed.
 
 Lemma Symbols_prop2 :
-  Symbols \o uaddn = fmap \# ucat \o mpair \o (Symbols : _ -> M _)^`2.
+  Symbols \o uaddn = (fmap M # ucat) \o mpair \o (Symbols : _ -> M _)^`2.
 Proof.
 apply functional_extensionality => -[n1 n2].
 elim: n1 => [|n1 IH].
   rewrite [in LHS]compE uaddnE add0n.
-  rewrite compE [in X in _ = _ X]/= Symbols0.
+  rewrite compE [in X in _ = _ X]/= /squaring_f Symbols0.
   rewrite compE [in RHS]fmap_def bindA bindretf.
   rewrite -fmap_def fmap_bind.
   Open (X in _ >>= X).
     rewrite fcompE fmap_retE /=; reflexivity.
   by rewrite bindmret.
 rewrite compE uaddnE addSn SymbolsS -uaddnE -(compE Symbols) {}IH.
-rewrite [in RHS]compE [in X in _ = _ X]/= SymbolsS.
+rewrite [in RHS]compE [in X in _ = _ X]/= /squaring_f SymbolsS.
 rewrite [in RHS]compE fmap_bind bindA; bind_ext => a.
 rewrite 2![in LHS]compE [in LHS]fmap_bind [in LHS]bindA [in RHS]bindA.
 (* TODO(rei): bind_ext? *)
