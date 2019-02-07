@@ -360,25 +360,46 @@ Section monad_of_adjoint.
 Section def.
 Variables (M N : Type -> Type) (f : functor M) (g : functor N).
 Variables (eps : eps_type M N) (eta : eta_type M N).
-Definition muM B : M (N (M (N B))) -> M (N B) := (FComp f g) # (@eps B).
+Definition muM A : N (M (N (M A))) -> N (M A) := g # (@eps (M A)).
 Definition etaM A : A -> N (M A) := @eta A.
-Definition bind A B : M (N A) -> (A -> M (N B)) -> (M (N B)) :=
-  fun x c => muM (((FComp f g) # c) x).
+Definition bind A B : N (M A) -> (A -> N (M B)) -> (N (M B)) :=
+  fun x c => muM (((FComp g f) # c) x).
 End def.
 Section prop.
 Variables (M N : Type -> Type) (f : functor M) (g : functor N).
-Variables (eps : eps_type M N) (eta : eta_type N M).
+Variables (eps : eps_type M N) (eta : eta_type M N).
+Hypothesis Had : adjointP f g eps eta.
+Hypothesis Ht1 : forall A, triangular_law1 f eps eta A.
+Hypothesis Ht2 : forall A, triangular_law2 g eps eta A.
 Lemma law1 : Laws.left_neutral (bind f g eps) (etaM eta).
 Proof.
 rewrite /Laws.left_neutral => A B a h.
-Abort.
+case: Had; rewrite /naturalP => _ Had2.
+rewrite /bind /muM /etaM.
+rewrite -(compE (FComp g f # _)) Had2.
+by rewrite -(compE (g # _)) compA Ht2.
+Qed.
 Lemma law2 : Laws.right_neutral (bind f g eps) (etaM eta).
 Proof.
 rewrite /Laws.right_neutral => A m.
-Abort.
+rewrite /bind /muM /etaM.
+by rewrite -(compE (g # _)) -functor_o Ht1 functor_id.
+Qed.
 Lemma law3 : Laws.associative (bind f g eps).
 Proof.
 rewrite /Laws.associative => A B C m ab bc.
+case: Had; rewrite /naturalP => Had1 Had2.
+move: Ht1; rewrite /triangular_law1 => Ht1'.
+move: Ht2; rewrite /triangular_law2 => Ht2'.
+rewrite /bind /muM.
+rewrite -(compE (g # eps (A := M B))).
+rewrite -functor_o.
+rewrite -(compE (FComp g f # _)).
+rewrite -(functor_o g).
+rewrite -(compE (g # eps (A := M C))).
+rewrite -(functor_o g).
+rewrite -[in RHS](compE (g # eps (A := M C))).
+rewrite -(functor_o g).
 Abort.
 End prop.
 
