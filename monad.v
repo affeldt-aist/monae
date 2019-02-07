@@ -261,36 +261,36 @@ End uncurry_functor.
 
 Section natural_transformation.
 Variables (M N : Type -> Type) (f : functor M) (g : functor N).
-Definition transformation_type A := M A -> N A.
-Definition naturalP A B (phiA : transformation_type A) (phiB : transformation_type B) :=
-  forall h : A -> B, (g # h) \o phiA = phiB \o (f # h).
+Definition transformation_type := forall A, M A -> N A.
+Definition naturalP (phiA : transformation_type) (phiB : transformation_type) :=
+  forall A B (h : A -> B), (g # h) \o (phiA A) = (phiB B) \o (f # h).
 End natural_transformation.
 
 Section natural_transformation_example.
 Definition fork A (a : A) := (a, a).
 (* fork is a natural transformation Fid -> squaring *)
-Lemma fork_natural A B : naturalP FId squaring (@fork A) (@fork B).
+Lemma fork_natural : naturalP FId squaring (@fork) (@fork).
 Proof. by []. Qed.
 End natural_transformation_example.
 
 Section adjoint.
 Variables (M N : Type -> Type) (f : functor M) (g : functor N).
-Definition eta_type A := A -> (N \o M) A.
-Definition eps_type A := (M \o N) A -> A.
-Definition adjointP A B (eps : eps_type A) (eta : eta_type B) :=
+Definition eta_type := forall A, A -> (N \o M) A.
+Definition eps_type := forall A, (M \o N) A -> A.
+Definition adjointP (eps : eps_type) (eta : eta_type) :=
   naturalP (FComp f g) FId eps eps /\ naturalP FId (FComp g f) eta eta.
 End adjoint.
 
 Section adjoint_example.
 Variable (X : Type).
-Definition curry_eps A : eps_type (curry_M X) (uncurry_M X) A :=
-  fun af : X * (X -> A) => af.2 af.1.
-Definition curry_eta A : eta_type (curry_M X) (uncurry_M X) A :=
-  fun a : A => fun x : X => (x, a).
-Lemma adjoint_currry A :
-  adjointP (curry_F X) (uncurry_F X) (@curry_eps X) (@curry_eta A).
+Definition curry_eps : eps_type (curry_M X) (uncurry_M X) :=
+  fun (A : Type) (af : X * (X -> A)) => af.2 af.1.
+Definition curry_eta : eta_type (curry_M X) (uncurry_M X) :=
+  fun (A : Type) (a : A) => fun x : X => (x, a).
+Lemma adjoint_currry :
+  adjointP (curry_F X) (uncurry_F X) curry_eps curry_eta.
 Proof.
-split; rewrite /naturalP => h /=.
+split; rewrite /naturalP => A B h /=.
 - rewrite /id_f /curry_eps /curry_f /= /uncurry_M /uncurry_f /=.
   by apply functional_extensionality => -[].
 - rewrite /uncurry_f /curry_f /curry_eta /id_f /=.
@@ -337,6 +337,34 @@ Definition right_id (r : forall A, M A) (add : forall B, M B -> M B -> M B) :=
 
 End laws.
 End Laws.
+
+Section monad_of_adjoint.
+Section def.
+Variables (M N : Type -> Type) (f : functor M) (g : functor N).
+Variables (eps : eps_type M N) (eta : eta_type M N).
+Definition muM B : M (N (M (N B))) -> M (N B) := (FComp f g) # (@eps B).
+Definition etaM A : A -> N (M A) := @eta A.
+Definition bind A B : M (N A) -> (A -> M (N B)) -> (M (N B)) :=
+  fun x c => muM (((FComp f g) # c) x).
+End def.
+Section prop.
+Variables (M N : Type -> Type) (f : functor M) (g : functor N).
+Variables (eps : eps_type M N) (eta : eta_type N M).
+Lemma law1 : Laws.left_neutral (bind f g eps) (etaM eta).
+Proof.
+rewrite /Laws.left_neutral => A B a h.
+Abort.
+Lemma law2 : Laws.right_neutral (bind f g eps) (etaM eta).
+Proof.
+rewrite /Laws.right_neutral => A m.
+Abort.
+Lemma law3 : Laws.associative (bind f g eps).
+Proof.
+rewrite /Laws.associative => A B C m ab bc.
+Abort.
+End prop.
+
+End monad_of_adjoint.
 
 Section join_laws.
 Context {M : Type -> Type}.
