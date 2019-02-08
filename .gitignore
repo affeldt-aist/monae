@@ -3,6 +3,6 @@
 *~
 *.aux
 .*.aux
-Makefile.conf
-Makefile
+Makefile.coq
+Makefile.coq.conf
 .coqdeps.d
