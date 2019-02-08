@@ -280,17 +280,21 @@ Definition eps_type := forall A, (M \o N) A -> A.
 Definition adjointP (eps : eps_type) (eta : eta_type) :=
   naturalP (FComp f g) FId eps /\ naturalP FId (FComp g f) eta.
 Definition triangular_law1 (eps : eps_type) (eta : eta_type) A :=
-  (eps (M A)) \o (f # eta A) = id.
+  (eps (M A)) \o (f # eta A) = @id (M A).
 Definition triangular_law2 (eps : eps_type) (eta : eta_type) A :=
-  (g # eps A) \o (eta (N A)) = id.
+  (g # eps A) \o (eta (N A)) = @id (N A).
+Definition phi A B (eta : eta_type) : (M A -> B) -> A -> N B :=
+  fun h => (g # h) \o (@eta A).
+Definition psi A B (eps : eps_type) : (A -> N B) -> M A -> B :=
+  fun h => (@eps B) \o (f # h).
 End adjoint.
 
 Section adjoint_example.
 Variable (X : Type).
 Definition curry_eps : eps_type (curry_M X) (uncurry_M X) :=
-  fun (A : Type) (af : X * (X -> A)) => af.2 af.1.
+  fun A (af : X * (X -> A)) => af.2 af.1.
 Definition curry_eta : eta_type (curry_M X) (uncurry_M X) :=
-  fun (A : Type) (a : A) => fun x : X => (x, a).
+  fun A (a : A) => fun x : X => (x, a).
 Lemma adjoint_currry :
   adjointP (curry_F X) (uncurry_F X) curry_eps curry_eta.
 Proof.
@@ -362,8 +366,9 @@ Variables (M N : Type -> Type) (f : functor M) (g : functor N).
 Variables (eps : eps_type M N) (eta : eta_type M N).
 Definition muM A : N (M (N (M A))) -> N (M A) := g # (@eps (M A)).
 Definition etaM A : A -> N (M A) := @eta A.
-Definition bind A B : N (M A) -> (A -> N (M B)) -> (N (M B)) :=
-  fun x c => muM (((FComp g f) # c) x).
+Definition bind A B : N (M A) -> (A -> N (M B)) -> N (M B) :=
+  fun x c => muM ((g # (f # c)) x).
+(*  fun x c => muM (((FComp g f) # c) x).*)
 End def.
 Section prop.
 Variables (M N : Type -> Type) (f : functor M) (g : functor N).
@@ -374,10 +379,20 @@ Hypothesis Ht2 : forall A, triangular_law2 g eps eta A.
 Lemma law1 : Laws.left_neutral (bind f g eps) (etaM eta).
 Proof.
 rewrite /Laws.left_neutral => A B a h.
-case: Had; rewrite /naturalP => _ Had2.
+
+case: Had; rewrite /naturalP => _ /(_ _ _ h) Had2.
+
 rewrite /bind /muM /etaM.
-rewrite -(compE (FComp g f # _)) Had2.
-by rewrite -(compE (g # _)) compA Ht2.
+
+rewrite /= /functorcomposition /= in Had2.
+rewrite -(compE (g # (f # h))).
+rewrite Had2.
+
+move: Ht2; rewrite /triangular_law2 => Ht2'.
+
+rewrite -(compE (g # _)) compA.
+rewrite Ht2'.
+done.
 Qed.
 Lemma law2 : Laws.right_neutral (bind f g eps) (etaM eta).
 Proof.
@@ -392,15 +407,31 @@ case: Had; rewrite /naturalP => Had1 Had2.
 move: Ht1; rewrite /triangular_law1 => Ht1'.
 move: Ht2; rewrite /triangular_law2 => Ht2'.
 rewrite /bind /muM.
-rewrite -(compE (g # eps (A := M B))).
+
+rewrite (_ : (fun x : A => (g # eps (A:=M C)) ((FComp g f # bc) (ab x))) =
+             ((g # eps (A:=M C)) \o (FComp g f # bc)) \o ab); last first.
+  apply functional_extensionality => a.
+  by rewrite -(compE (g # _)).
+
+rewrite -[in LHS](compE (g # (f # bc))).
+rewrite -[in LHS](compE _ (g # (f # ab))).
+rewrite -(functor_o g (f # bc)).
+rewrite -(functor_o g _ (f # ab)).
+
+rewrite -[in RHS](functor_o g _ (f # bc)).
+rewrite (functor_o f).
+rewrite -[in RHS](compE (g # eps (A:= M C))).
+rewrite -(functor_o g (eps (A := M C))).
+rewrite -[in RHS](functor_o f).
+set h := (eps (A:=M C) \o f # bc).
+rewrite [in RHS](functor_o f).
+rewrite (compA (eps (A:=M C))).
+rewrite -Had1 /=.
+rewrite /id_f /h.
+rewrite -(compE (g # eps (A:=M C))).
 rewrite -functor_o.
-rewrite -(compE (FComp g f # _)).
-rewrite -(functor_o g).
-rewrite -(compE (g # eps (A := M C))).
-rewrite -(functor_o g).
-rewrite -[in RHS](compE (g # eps (A := M C))).
-rewrite -(functor_o g).
-Abort.
+by rewrite compA.
+Qed.
 End prop.
 
 End monad_of_adjoint.
