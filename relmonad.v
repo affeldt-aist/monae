@@ -37,6 +37,39 @@ Reserved Notation "'do' x <- m ; e"
   (at level 60, x ident, m at level 200, e at level 60).
 Reserved Notation "x '[~]' y" (at level 50).
 
+Module relFunctorLaws.
+Section def.
+Variable (M : finType -> Type) (f : forall (A B : finType), (A -> B) -> M A -> M B).
+Definition id := forall A, f id = id :> (M A -> M A).
+Definition comp := forall (A B C : finType) (g : B -> C) (h : A -> B),
+  f (g \o h) = f g \o f h :> (M A -> M C).
+End def.
+End relFunctorLaws.
+
+Module relFunctor.
+Record class_of (m : finType -> Type) : Type := Class {
+  f : forall (A B : finType), (A -> B) -> m A -> m B ;
+  _ : relFunctorLaws.id f ;
+  _ : relFunctorLaws.comp f
+}.
+Structure t (M : finType -> Type) : Type := Pack { class : class_of M }.
+Module Exports.
+Notation relfunctor := t.
+Definition relFun (M : finType -> Type) (F : relfunctor M)
+  : forall (A B : finType), (A -> B) -> M A -> M B :=
+  let: Pack (Class f _ _) := F in f.
+End Exports.
+End relFunctor.
+Export relFunctor.Exports.
+Notation "F # f" := (relFun F f) (at level 11).
+
+Section relnatural_transformation.
+Variables (M N : finType -> Type) (f : relfunctor M) (g : relfunctor N).
+Definition reltransformation_type := forall A : finType, M A -> N A.
+Definition relnaturalP (phi : reltransformation_type) :=
+  forall (A B : finType) (h : A -> B), (g # h) \o (phi A) = (phi B) \o (f # h).
+End relnatural_transformation.
+
 Module relLaws.
 Section rellaws.
 Variable M : finType -> Type.

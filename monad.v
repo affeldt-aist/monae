@@ -287,7 +287,7 @@ Lemma fork_natural : naturalP FId squaring fork.
 Proof. by []. Qed.
 End natural_transformation_example.
 
-Section adjoint.
+Section adjoint_functors.
 Variables (M N : Type -> Type) (f : functor M) (g : functor N).
 Definition eta_type := forall A, A -> (N \o M) A.
 Definition eps_type := forall A, (M \o N) A -> A.
@@ -301,7 +301,7 @@ Definition phi A B (eta : eta_type) : (M A -> B) -> A -> N B :=
   fun h => (g # h) \o (@eta A).
 Definition psi A B (eps : eps_type) : (A -> N B) -> M A -> B :=
   fun h => (@eps B) \o (f # h).
-End adjoint.
+End adjoint_functos.
 
 Section adjoint_example.
 Variable (X : Type).
