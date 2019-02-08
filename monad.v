@@ -367,7 +367,7 @@ Variables (eps : eps_type M N) (eta : eta_type M N).
 Definition muM A : N (M (N (M A))) -> N (M A) := g # (@eps (M A)).
 Definition etaM A : A -> N (M A) := @eta A.
 Definition bind A B : N (M A) -> (A -> N (M B)) -> N (M B) :=
-  fun x c => muM ((g # (f # c)) x).
+  fun x c => muM (((FComp g f) # c) x).
 (*  fun x c => muM (((FComp g f) # c) x).*)
 End def.
 Section prop.
@@ -384,8 +384,8 @@ case: Had; rewrite /naturalP => _ /(_ _ _ h) Had2.
 
 rewrite /bind /muM /etaM.
 
-rewrite /= /functorcomposition /= in Had2.
-rewrite -(compE (g # (f # h))).
+(*rewrite /= /functorcomposition /= in Had2. *)
+rewrite -(compE (FComp g f # h)).
 rewrite Had2.
 
 move: Ht2; rewrite /triangular_law2 => Ht2'.
@@ -402,10 +402,20 @@ by rewrite -(compE (g # _)) -functor_o Ht1 functor_id.
 Qed.
 Lemma law3 : Laws.associative (bind f g eps).
 Proof.
+(*
 rewrite /Laws.associative => A B C m ab bc.
-case: Had; rewrite /naturalP => Had1 Had2.
-move: Ht1; rewrite /triangular_law1 => Ht1'.
-move: Ht2; rewrite /triangular_law2 => Ht2'.
+rewrite /bind.
+set T := FComp g f.
+congr (muM g eps).
+have -> : (T # (fun x : A => muM g eps ((T # bc) (ab x)))) m
+            = (T # (muM g eps (A:=C))) ((T # (T # bc)) ((T # ab) m)).
+- rewrite functor_o /funcomp.
+  congr (T # muM g eps (A:=C)).
+    by rewrite functor_o /funcomp.
+(*have: naturalP (muM g eps) _ _. ?*)
+*)
+rewrite /Laws.associative => A B C m ab bc.
+case: Had; rewrite /naturalP => Had1 _.
 rewrite /bind /muM.
 
 rewrite (_ : (fun x : A => (g # eps (A:=M C)) ((FComp g f # bc) (ab x))) =
@@ -413,8 +423,8 @@ rewrite (_ : (fun x : A => (g # eps (A:=M C)) ((FComp g f # bc) (ab x))) =
   apply functional_extensionality => a.
   by rewrite -(compE (g # _)).
 
-rewrite -[in LHS](compE (g # (f # bc))).
-rewrite -[in LHS](compE _ (g # (f # ab))).
+rewrite -[in LHS](compE (FComp g f # bc)).
+rewrite -[in LHS](compE _ (FComp g f # ab)).
 rewrite -(functor_o g (f # bc)).
 rewrite -(functor_o g _ (f # ab)).
 
@@ -429,7 +439,8 @@ rewrite (compA (eps (A:=M C))).
 rewrite -Had1 /=.
 rewrite /id_f /h.
 rewrite -(compE (g # eps (A:=M C))).
-rewrite -functor_o.
+rewrite functor_id.
+rewrite -functor_o compfid.
 by rewrite compA.
 Qed.
 End prop.
