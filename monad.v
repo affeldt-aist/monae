@@ -410,10 +410,18 @@ rewrite -Heps.
 rewrite !FCompE /FId /id_f /=.
 by rewrite functor_o.
 Qed.
-Lemma muMA A : m # muM (A:=M A) = m # (m # muM (A:=A)).
+Lemma epsC A : eps (A:=A) \o eps (A:=(F \o G)A) = eps (A:=A) \o f # (g # eps (A:=A)).
 Proof.
-move:Had=>[] Heps _;move:Heps;rewrite/naturalP.
-Abort.
+move:Had=>[];rewrite/naturalP=>Heps _.
+by move:(Heps _ _ (eps (A:=A))) => <-.
+Qed.
+Lemma muMA A : muM (A:=A) \o muM (A:=M A) = muM (A:=A) \o (m # muM (A:=A)).
+Proof.
+rewrite muME.
+have->: g # eps (A:=F A) \o g # eps (A:=F (M A)) =
+        g # (eps (A:=F A) \o eps (A:=F (M A))) by rewrite functor_o.
+by rewrite epsC functor_o.
+Qed.
 End muM_natural.
 Lemma law1 : Laws.left_neutral (bind f g eps) (etaM eta).
 Proof.
@@ -438,61 +446,34 @@ Proof.
 rewrite /Laws.right_neutral => A m.
 rewrite /bind /muM /etaM.
 rewrite -(compE (g # _)).
-rewrite (_:g # eps (A:=F A) \o FComp g f # eta (A:=A) =
-           g # (eps (A:=F A) \o  f # eta (A:=A))); last by rewrite functor_o.
+rewrite -(functor_o g).
+(* NB: simple "rewrite -functor_o" does not work. Notation issue? *)
 by rewrite Ht1 functor_id.
 Qed.
 Lemma law3 : Laws.associative (bind f g eps).
 Proof.
-(*set M := M F G.
 rewrite /Laws.associative => A B C x ab bc.
 rewrite /bind.
 set T := FComp g f.
-congr (muM g eps).
+(*congr (muM g eps).*)
 have -> : (T # (fun x : A => muM g eps ((T # bc) (ab x)))) x
             = (T # (muM g eps (A:=C))) ((T # (T # bc)) ((T # ab) x)).
 - rewrite functor_o /funcomp.
   congr (T # muM g eps (A:=C)).
     by rewrite functor_o /funcomp.
 move: (muM_natural bc).
+move: muMA.
+set M := M F G.
 set muM := muM g eps.
 change (monad_of_adjoint.m f g) with T.
+move=>muMA.
 rewrite FCompE.
 have->:(T # bc) (muM B ((T # ab) x)) = (T # bc \o muM B) ((T # ab) x) by done.
 move->.
-rewrite muMA.
-*)
-(*have: naturalP (muM g eps) _ _. ?*)
-rewrite /Laws.associative => A B C m ab bc.
-case: Had; rewrite /naturalP => Had1 _.
-rewrite /bind /muM.
-
-rewrite (_ : (fun x : A => (g # eps (A:=F C)) ((FComp g f # bc) (ab x))) =
-             ((g # eps (A:=F C)) \o (FComp g f # bc)) \o ab); last first.
-  apply functional_extensionality => a.
-  by rewrite -(compE (g # _)).
-
-rewrite -[in LHS](compE (FComp g f # bc)).
-rewrite -[in LHS](compE _ (FComp g f # ab)).
-rewrite -(functor_o g (f # bc)).
-rewrite -(functor_o g _ (f # ab)).
-
-rewrite -[in RHS](functor_o g _ (f # bc)).
-rewrite (functor_o f).
-rewrite -[in RHS](compE (g # eps (A:= F C))).
-rewrite -(functor_o g (eps (A := F C))).
-rewrite -[in RHS](functor_o f).
-set h := (eps (A:=F C) \o f # bc).
-rewrite [in RHS](functor_o f).
-rewrite (compA (eps (A:=F C))).
-rewrite -Had1 /=.
-rewrite /id_f /h.
-rewrite -(compE (g # eps (A:=F C))).
-rewrite functor_id.
-rewrite compfid.
-have->: g # eps (A:=F C) \o g # ((f # bc \o eps (A:=F B)) \o f # ab) =
-        g # (eps (A:=F C) \o ((f # bc \o eps (A:=F B)) \o f # ab)) by rewrite -functor_o.
-by rewrite compA.
+rewrite compE.
+change (muM C (muM (M C) ((T # (T # bc)) ((T # ab) x)))) with
+    ((muM C \o muM (M C)) ((T # (T # bc)) ((T # ab) x))).
+by rewrite muMA.
 Qed.
 End prop.
 
