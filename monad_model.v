@@ -40,7 +40,7 @@ by exists a' => //; exists b.
 by exists b => //; exists a'.
 Qed.
 
-Lemma setUDl : Laws.bind_left_distributive (fun I A => @bigsetU A I) (@setU).
+Lemma setUDl : BindLaws.bind_left_distributive (fun I A => @bigsetU A I) (@setU).
 Proof.
 move=> A B /= p q r; apply functional_extensionality => b; apply prop_ext; split.
 move=> -[a [?|?] ?]; by [left; exists a | right; exists a].

@@ -51,14 +51,14 @@ Export MonadState.Exports.
 Section state_lemmas.
 Variables (S : Type) (M : stateMonad S).
 Lemma putput s s' : Put s >> Put s' = Put s' :> M _.
-Proof. by case: M => m [[? ? ? ? ? []] ]. Qed.
+Proof. by case: M => m [[[? ? ? ? []]]]. Qed.
 Lemma putget s : Put s >> Get = Put s >> Ret s :> M _.
-Proof. by case: M => m [[? ? ? ? ? []] ]. Qed.
+Proof. by case: M => m [[[? ? ? ? []]]]. Qed.
 Lemma getputskip : Get >>= Put = skip :> M _.
-Proof. by case: M => m [[? ? ? ? ? []] ]. Qed.
+Proof. by case: M => m [[[? ? ? ? []]]]. Qed.
 Lemma getget (k : S -> S -> M S) :
  (Get >>= (fun s => Get >>= k s)) = (Get >>= fun s => k s s).
-Proof. by case: M k => m [[? ? ? ? ? []] ]. Qed.
+Proof. by case: M k => m [[[? ? ? ? []]]]. Qed.
 End state_lemmas.
 
 Lemma putgetput S {M : stateMonad S} x {B} (k : _ -> M B) :
@@ -144,9 +144,9 @@ End staterun_lemmas.
 Module MonadNondetState.
 Record mixin_of (M : nondetMonad) : Type := Mixin {
   (* backtrackable state *)
-  _ : Laws.right_zero (@Bind M) (@Fail _) ;
+  _ : BindLaws.right_zero (@Bind M) (@Fail _) ;
   (* composition distributes rightwards over choice *)
-  _ : Laws.bind_right_distributive (@Bind M) [~p]
+  _ : BindLaws.bind_right_distributive (@Bind M) [~p]
 }.
 Record class_of S (m : Type -> Type) : Type := Class {
   base : MonadNondet.class_of m ;
@@ -168,9 +168,9 @@ Export MonadNondetState.Exports.
 
 Section nondetstate_lemmas.
 Variables (S : Type) (M : nondetStateMonad S).
-Lemma bindmfail : Laws.right_zero (@Bind M) (@Fail _).
+Lemma bindmfail : BindLaws.right_zero (@Bind M) (@Fail _).
 Proof. by case: M => m [? ? [? ?]]. Qed.
-Lemma alt_bindDr : Laws.bind_right_distributive (@Bind M) (@Alt _).
+Lemma alt_bindDr : BindLaws.bind_right_distributive (@Bind M) (@Alt _).
 Proof. by case: M => m [? ? []]. Qed.
 End nondetstate_lemmas.
 
@@ -572,11 +572,11 @@ Proof. move=> ps t; apply: contra ps; by case/segment_closed.H. Qed.
 (* assert p distributes over concatenation *)
 Definition promote_assert (M : failMonad) A
   (p : pred (seq A)) (q : pred (seq A * seq A)) :=
-  (bassert p) \o (fmap M # ucat) \o mpair =
-  (fmap M # ucat) \o (bassert q) \o mpair \o (bassert p)^`2 :> (_ -> M _).
+  (bassert p) \o (M # ucat) \o mpair =
+  (M # ucat) \o (bassert q) \o mpair \o (bassert p)^`2 :> (_ -> M _).
 
 Lemma promote_assert_sufficient_condition (M : failMonad) A :
-  Laws.right_zero (@Bind M) (@Fail _) ->
+  BindLaws.right_zero (@Bind M) (@Fail _) ->
   forall (p : segment_closed.t A) q, promotable p q ->
   promote_assert M p q.
 Proof.
@@ -678,7 +678,7 @@ Record mixin_of S (M : failMonad) (fresh : M S) : Type := Mixin {
   distinct : segment_closed.t S ;
   _ : bassert distinct \o symbols = symbols ;
   (* failure is a right zero of composition (backtracking interpretation) *)
-  _ : Laws.right_zero (@Bind M) (@Fail _)
+  _ : BindLaws.right_zero (@Bind M) (@Fail _)
 }.
 Record class_of S (m : Type -> Type) := Class {
   base : MonadFail.class_of m ;
@@ -708,7 +708,7 @@ Export MonadFailFresh.Exports.
 
 Section failfresh_lemmas.
 Variables (S : eqType) (M : failFreshMonad S).
-Lemma failfresh_bindmfail : Laws.right_zero (@Bind M) (@Fail _).
+Lemma failfresh_bindmfail : BindLaws.right_zero (@Bind M) (@Fail _).
 Proof. by case: M => m [? ? []]. Qed.
 Lemma bassert_symbols : bassert (Distinct M) \o Symbols = Symbols :> (nat -> M _).
 Proof. by case: M => m [? ? []]. Qed.
@@ -728,7 +728,7 @@ Lemma SymbolsS n : Symbols n.+1 =
 Proof. by rewrite SymbolsE. Qed.
 
 Lemma Symbols_prop1 :
-  Symbols \o const 1 = (fmap M # wrap) \o const Fresh :> (A -> M _).
+  Symbols \o const 1 = (M # wrap) \o const Fresh :> (A -> M _).
 Proof.
 apply functional_extensionality => n.
 transitivity (@Symbols _ M 1) => //.
@@ -739,7 +739,7 @@ by rewrite [in RHS]fmap_def.
 Qed.
 
 Lemma Symbols_prop2 :
-  Symbols \o uaddn = (fmap M # ucat) \o mpair \o (Symbols : _ -> M _)^`2.
+  Symbols \o uaddn = (M # ucat) \o mpair \o (Symbols : _ -> M _)^`2.
 Proof.
 apply functional_extensionality => -[n1 n2].
 elim: n1 => [|n1 IH].

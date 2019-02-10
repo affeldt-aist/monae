@@ -46,7 +46,7 @@ Record mixin_of (M : monad) : Type := Mixin {
     (p = r * s :> R /\ s.~ = p.~ * q.~)%R ->
     mx <| p |> (my <| q |> mz) = (mx <| r |> my) <| s |> mz ;
   (* composition distributes leftwards over [probabilistic] choice *)
-  _ : forall p, Laws.bind_left_distributive (@Bind M) (choice p)
+  _ : forall p, BindLaws.bind_left_distributive (@Bind M) (choice p)
 }.
 Record class_of (m : Type -> Type) := Class {
   base : Monad.class_of m ; mixin : mixin_of (Monad.Pack base) }.
@@ -81,7 +81,7 @@ Lemma choiceA A : forall (p q r s : prob) (mx my mz : M A),
 Proof. by case: M A => m [? []]. Qed.
 Lemma choiceC : forall A (p : prob) (mx my : M A), mx <| p |> my = my <| `Pr p.~ |> mx.
 Proof. by case: M => m [? []]. Qed.
-Lemma prob_bindDl p : Laws.bind_left_distributive (@Bind M) (Choice p).
+Lemma prob_bindDl p : BindLaws.bind_left_distributive (@Bind M) (Choice p).
 Proof. by case: M => m [? []]. Qed.
 End prob_lemmas.
 Arguments choiceA {M} {A} _ _ _ _ {mx} {my} {mz}.
@@ -187,7 +187,7 @@ Module MonadProbDr.
 Record mixin_of (M : probMonad) : Type := Mixin {
   (* composition distributes rightwards over [probabilistic] choice *)
   (* WARNING: this should not be asserted as an axiom in conjunction with distributivity of <||> over [] *)
-  prob_bindDr : forall p, Laws.bind_right_distributive (@Bind M) (Choice p) (* NB: not used *)
+  prob_bindDr : forall p, BindLaws.bind_right_distributive (@Bind M) (Choice p) (* NB: not used *)
 } .
 Record class_of (m : Type -> Type) := Class {
   base : MonadProb.class_of m ;
@@ -211,7 +211,7 @@ Qed.
 
 Lemma uniform_naturality (M : probMonad) A B (a : A) (b : B) (f : A -> B) :
   forall x, (0 < size x)%nat ->
-  ((@uniform M _ b) \o map f) x = (fmap M # f \o uniform a) x.
+  ((@uniform M _ b) \o map f) x = (M # f \o uniform a) x.
 Proof.
 elim=> // x [_ _|x' xs]; first by rewrite [in RHS]compE fmap_def bindretf.
 move/(_ isT) => IH _.
@@ -376,7 +376,7 @@ by rewrite altC choicemm altC.
 Qed.
 
 Lemma coinarb_spec_convexity p w : coinarb p =
-  (bcoin w : M _) [~] Ret false [~] Ret true [~] bcoin (`Pr w.~).
+  (bcoin w : M _) [~] (Ret false : M _) [~] (Ret true  : M _) [~] bcoin (`Pr w.~).
 Proof.
 rewrite coinarb_spec [in LHS]/arb [in LHS](convexity _ _ w) 2!choicemm.
 rewrite [in LHS]altC -(altA _ (Ret false)) altCA -2![in RHS]altA; congr (_ [~] _).
