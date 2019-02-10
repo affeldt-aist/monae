@@ -697,6 +697,96 @@ Lemma sequence_cons (M : monad) A h (t : seq (M A)) :
   sequence (h :: t) = do x <- h ; do vs <- sequence t ; Ret (x :: vs).
 Proof. by []. Qed.
 
+Module Monad_of_bind_ret.
+Section monad_of_bind_ret.
+Variable M : Type -> Type.
+Variable bind : forall (A B : Type), M A -> (A -> M B) -> M B.
+Variable ret : forall A, A -> M A.
+Hypothesis bindretf : BindLaws.left_neutral bind ret.
+Hypothesis bindmret : BindLaws.right_neutral bind ret.
+Hypothesis bindA : BindLaws.associative bind.
+
+Definition fmap A B (f : A -> B) (m : M A) := bind m (ret (A:=B) \o f).
+Lemma fmap_id : FunctorLaws.id fmap.
+Proof.
+move=> A; apply functional_extensionality => m; by rewrite /fmap bindmret.
+Qed.
+Lemma fmap_o : FunctorLaws.comp fmap.
+Proof.
+move=> A B C g h; apply functional_extensionality => m.
+rewrite /fmap compE bindA.
+congr bind.
+apply functional_extensionality => a.
+by rewrite bindretf.
+Qed.
+
+Definition functor_mixin := Functor.Class fmap_id fmap_o.
+(*Notation "f ($) m" := ((fmap _ # f) m).*)
+
+Lemma bind_fmap A B C (f : A -> B) (m : M A) (g : B -> M C) :
+  bind (fmap f m) g = bind m (g \o f).
+Proof.
+rewrite /fmap bindA.
+congr bind.
+apply functional_extensionality => a.
+by rewrite bindretf.
+Qed.
+
+Let M' := Functor.Pack functor_mixin.
+Let ret' : forall A, A -> M' A := ret.
+Definition join A (pp : M' (M' A)) := bind pp id.
+
+Lemma ret_naturality : naturalP FId M' ret.
+Proof.
+move => A B h.
+rewrite /FId /id_f /=.
+apply functional_extensionality => a.
+rewrite /fmap.
+rewrite !compE.
+by rewrite bindretf.
+Qed.
+
+Lemma bindE A B m (f : A -> M' B) : bind m f = join ((M' # f) m).
+Proof. by rewrite /join bind_fmap. Qed.
+
+Lemma fmap_bind A B C (f : A -> B) m (g : C -> M A) :
+  (fmap f) (bind m g) = bind m (fmap f \o g).
+Proof. by rewrite /fmap bindA bindE. Qed.
+
+Lemma joinretM : JoinLaws.join_left_unit ret' join.
+Proof.
+rewrite /join => A; apply functional_extensionality => ma.
+by rewrite compE bindretf.
+Qed.
+Lemma joinMret : JoinLaws.join_right_unit ret' join.
+Proof.
+rewrite /join => A; apply functional_extensionality => ma.
+by rewrite compE bind_fmap compidf bindmret.
+Qed.
+
+Lemma join_naturality : naturalP (FComp M' M') M' join.
+Proof.
+move => A B h.
+apply functional_extensionality => mma.
+rewrite /Fun 2!compE /fmap [in RHS]/join bind_fmap [in LHS]/join.
+by rewrite bindA.
+Qed.
+
+Lemma joinA : JoinLaws.join_associativity join.
+Proof.
+move => A; apply functional_extensionality => mmma.
+rewrite /join /Fun /fmap !compE.
+by rewrite bind_fmap compidf bindA.
+Qed.
+
+Definition monad_mixin := Monad.Mixin ret_naturality join_naturality joinretM joinMret joinA.
+End monad_of_bind_ret.
+Module Exports.
+Definition Monad_of_bind_ret M bind ret a b c := Monad.Pack (Monad.Class (@monad_mixin M bind ret a b c)).
+End Exports.
+End Monad_of_bind_ret.
+Export Monad_of_bind_ret.Exports.
+
 Section fmap_def.
 Variable M : monad.
 Definition fmap' := fun A B (f : A -> B) (m : M _) => locked (m >>= (Ret \o f)).

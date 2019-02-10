@@ -53,53 +53,46 @@ Module ModelMonad.
 
 Section identity.
 Local Obligation Tactic := by [].
-Program Definition identity_class : Monad.class_of id :=
-  @Monad.Class _ (fun A (a : A) => a)
-  (fun A B (a : id A) (f : A -> id B) => f a) _ _ _.
-Definition identity := Monad.Pack identity_class.
+Program Definition identity := (@Monad_of_bind_ret _ (fun A B (a : id A) (f : A -> id B) => f a) (fun A (a : A) => a)_ _ _).
 End identity.
 
 Section list.
 Local Obligation Tactic := idtac.
-Program Definition list_class := @Monad.Class _ (fun A (a : A) => [:: a])
-  (fun A B (a : seq A) (f : A -> seq B) => flatten (map f a)) _ _ _.
+Program Definition list := @Monad_of_bind_ret _ (fun A B (a : seq A) (f : A -> seq B) => flatten (map f a)) (fun A (a : A) => [:: a]) _ _ _.
 Next Obligation. move=> ? ? ? ? /=; by rewrite cats0. Qed.
 Next Obligation. move=> ? ?; by rewrite flatten_seq1. Qed.
 Next Obligation.
 move=> A B C; elim=> // h t IH f g /=; by rewrite map_cat flatten_cat IH.
 Qed.
-Definition list := Monad.Pack list_class.
 End list.
 
 Section option.
 Local Obligation Tactic := idtac.
-Program Definition option_class : Monad.class_of option :=
-  @Monad.Class _ (@Some) (fun A B (a : option A) (f : A -> option B) =>
-    if a isn't Some x then None else f x) _ _ _.
+Program Definition option := @Monad_of_bind_ret option (fun A B (a : option A) (f : A -> option B) =>
+    if a isn't Some x then None else f x) (@Some) _ _ _.
 Next Obligation. by []. Qed.
 Next Obligation. by []. Qed.
 Next Obligation. move=> ?; by case. Qed.
 Next Obligation. move=> ? ? ?; by case. Qed.
-Definition option := Monad.Pack option_class.
 End option.
 
 Section set.
 Hypothesis prop_ext : ClassicalFacts.prop_extensionality.
 Local Obligation Tactic := idtac.
-Program Definition set_class := @Monad.Class _ (@set1) (fun I A => @bigsetU A I) _ _ _.
+Program Definition set := @Monad_of_bind_ret _ (fun I A => @bigsetU A I) (@set1) _ _ _.
 Next Obligation. move=> ? ? ? ?; exact: bigset1U. Qed.
 Next Obligation. move=> ? ?; exact: bigsetU1. Qed.
 Next Obligation. move=> ? ? ? ? ? ?; exact: bigsetUA. Qed.
-Definition set := Monad.Pack set_class.
 End set.
 
 Section state.
 Variables S T : Type.
 Let m0 := fun A => S * list T -> A * (S * list T).
 Definition state : monad.
-refine (@Monad.Pack _ (@Monad.Class m0
+refine (@Monad_of_bind_ret m0
+  (fun A B m f => fun s => let (a, s') := m s in f a s') (* bind *)
   (fun A a => fun s => (a, s)) (* ret *)
-  (fun A B m f => fun s => let (a, s') := m s in f a s') (* bind *) _ _ _)).
+   _ _ _).
 by [].
 move=> A f; apply functional_extensionality => ?; by case: f.
 move=> A B C a b c; apply functional_extensionality => ?; by case: a.
@@ -145,7 +138,10 @@ Local Obligation Tactic := idtac.
 Program Definition list_class := @MonadAlt.Class _ _
   (@MonadAlt.Mixin ModelMonad.list (@cat) catA _).
 Next Obligation.
-move=> A B /= s1 s2 k; by rewrite /Bind /= map_cat flatten_cat.
+move=> A B /= s1 s2 k.
+rewrite !bindE /Join /= /Monad_of_bind_ret.join /=.
+rewrite /Monad_of_bind_ret.fmap.
+by rewrite map_cat flatten_cat map_cat flatten_cat.
 Qed.
 Definition list := MonadAlt.Pack list_class.
 End list.
@@ -156,7 +152,11 @@ Local Obligation Tactic := idtac.
 Program Definition set_class := @MonadAlt.Class _ _
   (@MonadAlt.Mixin (ModelMonad.set prop_ext) (@setU) _ _).
 Next Obligation. exact: setUA. Qed.
-Next Obligation. exact: setUDl. Qed.
+Next Obligation.
+rewrite /BindLaws.bind_left_distributive /= => A B m1 m2 k.
+rewrite !bindE /Join /= /Monad_of_bind_ret.join /= /Monad_of_bind_ret.fmap /=.
+by rewrite setUDl // setUDl.
+Qed.
 Definition set := MonadAlt.Pack set_class.
 End set.
 
@@ -232,7 +232,10 @@ refine (@MonadRun.Pack _ _ (@MonadRun.Class _ _ (Monad.class m)
   (@MonadRun.Mixin _ m
   (fun A m (s : S * list T) => m s) (* run *) _ _))).
 by [].
-by [].
+move=> A B m0 f s.
+rewrite !bindE /=.
+rewrite /Monad_of_bind_ret.fmap /= /Join /= /Monad_of_bind_ret.join /=.
+by destruct (m0 s).
 Defined.
 
 End ModelRun.
