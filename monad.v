@@ -576,6 +576,14 @@ Lemma joinA : JoinLaws.join_associativity (@Join M).
 Proof. by case: M => ? [? []]. Qed.
 Lemma bindE (A B:Type) : forall x (f : A -> M B), Bind x f = Join ((M # f) x).
 Proof. by case: M => ? [? []]. Qed.
+Lemma bindE' (A B:Type) : Bind = fun x (f : A -> M B) => Join ((M # f) x).
+Proof. by case: M => ? [? []]. Qed.
+Lemma joinretM' A C (f:C->_) : @Join M A \o (@Ret M (M A) \o f) = f.
+Proof. by rewrite compA joinretM. Qed.
+Lemma joinMret' A C (f:C->_) : @Join M A \o (M # @Ret M A \o f) = f.
+Proof. by rewrite compA joinMret. Qed.
+Lemma joinA' A C (f:C->_) : @Join M A \o (M # @Join M A \o f) = @Join M A \o (@Join M (M A) \o f).
+Proof. by rewrite compA joinA. Qed.
 End monad_interface.
 
 Section monad_lemmas.
@@ -962,9 +970,45 @@ Notation "m >=> n" := (kleisli m n).
 Notation "f =<< m" := (rbind f m) : mu_scope.
 Notation "n <=< m" := (rkleisli n m) : mu_scope.
 
+(*
+(* monads on Type are strong monads *)
+Section strength.
+Variable M : monad.
+Definition strength A B (xy : (A * M B)%type) : M (A * B)%type :=
+  let (x,my) := xy in my >>= (fun y => Ret (x,y)).
+Lemma strengthE A B (x:A) (my:M B) : strength (x,my) = my >>= (fun y => Ret (x,y)).
+Proof. done. Qed.
+Lemma strength_unit A : snd = M # snd \o strength (A:=unit) (B:=A).
+Proof.
+apply functional_extensionality => x.
+case: x => i ma.
+rewrite compE strengthE.
+rewrite -fmapE fmap_bind fcomp_def.
+rewrite bindE.
+have ->: Join ((M # (M # snd \o (fun y : A => Ret (i, y)))) ma) =
+((M # snd \o Join) \o M # (fun y : A => Ret (i, y))) ma
+  by rewrite functor_o join_naturality.
+rewrite functor_o.
+have ->: ((M # snd \o Join) \o (M # Ret \o M # pair i)) ma =
+(M # snd \o (Join \o M # Ret) \o M # pair i) ma by done.
+rewrite joinMret compfid.
+rewrite -functor_o.
+have ->: snd \o pair i = id by done.
+by rewrite functor_id.
+Qed.
+End strength.
+*)
+
 Definition mpair {M : monad} {A} (xy : (M A * M A)%type) : M (A * A)%type :=
   let (mx, my) := xy in
   mx >>= (fun x => my >>= fun y => Ret (x, y)).
+
+Lemma mpairE (M : monad) A (mx my : M A) : mpair (mx, my) = mx >>= (fun x => my >>= fun y => Ret (x, y)).
+Proof. done. Qed.
+
+Notation "[ \o f , .. , g , h ]" := (f \o .. (g \o h) ..)
+  (at level 0). (*, format "[ \o '['  f , '/' .. , '/' g , '/' h ']' ]"
+  ).*)
 
 Lemma naturality_mpair (M : monad) A B (f : A -> B) (g : A -> M A):
   (M # f^`2) \o (mpair \o g^`2) = mpair \o ((M # f) \o g)^`2.
@@ -974,6 +1018,59 @@ rewrite compE fmap_bind compE [in RHS]/= bind_fmap; bind_ext => a2.
 rewrite fcompE fmap_bind compE bind_fmap; bind_ext => a3.
 by rewrite fcompE -(compE (M # f^`2)) fmap_ret.
 Qed.
+
+Lemma naturality_mpair' (M : monad) A B (f : A -> B) (g : A -> M A):
+  (M # f^`2) \o (mpair \o g^`2) = mpair \o ((M # f) \o g)^`2.
+Proof.
+apply functional_extensionality => -[a0 a1].
+change ((M # f^`2 \o (mpair \o g^`2)) (a0, a1)) with
+    ((M # f^`2) (mpair (g a0, g a1))).
+change ((mpair \o (M # f \o g)^`2) (a0, a1)) with
+    (mpair ((M # f \o g) a0,(M # f \o g) a1)).
+rewrite !mpairE.
+rewrite !bindE.
+evar (T : Type);evar (RHS : A -> T).
+have ->: (fun x : A => do y <- g a1; Ret (x, y)) = RHS.
+ - apply functional_extensionality => x; rewrite bindE.
+  rewrite functor_o.
+change (Join ([\o M # Ret,M # pair x] (g a1))) with
+      ([\o Join,M # Ret,M # pair x] (g a1)).
+  rewrite joinMret'.
+  exact: erefl.
+rewrite /RHS {RHS}; rewrite {T}.
+change ((M # f^`2) (Join ((M # (fun x : A => (M # pair x) (g a1))) (g a0)))) with
+    ((M # f^`2 \o Join) ((M # (fun x : A => (M # pair x) (g a1))) (g a0))).
+rewrite join_naturality.
+evar (T : Type);evar (RHS : T).
+have->:(M # (fun x : B => do y <- (M # f \o g) a1; Ret (x, y))) = RHS.
+- rewrite functor_o.
+  rewrite bindE'.
+  rewrite functor_o.
+  exact: erefl.
+rewrite/RHS{RHS};rewrite{T}.
+change
+  (
+    Join
+    (((M # Join \o M # (Fun M (B:=M (B * B)%type))^~ ((M # f \o g) a1)) \o
+        M # (fun x y : B => Ret (x, y))) ((M # f \o g) a0))
+  ) with
+    (
+      (
+        [ \o Join ,
+          (M # Join) ,
+          (M # (Fun M (B:=M (B * B)%type))^~ ((M # f \o g) a1)) ,
+          (M # (fun x y : B => Ret (x, y))) ,
+          (M # f \o g) ]
+      ) a0)
+    .
+rewrite joinA'.
+(*
+rewrite fmap_bind. compE [in RHS]/= bind_fmap; bind_ext => a2.
+rewrite fcompE fmap_bind compE bind_fmap; bind_ext => a3.
+by rewrite fcompE -(compE (fmap M # f^`2)) fmap_ret.
+Qed.
+*)
+Abort.
 
 Section rep.
 
