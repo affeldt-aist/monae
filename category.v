@@ -22,14 +22,14 @@ Lemma compidf A B (f : A -> B) : id \o f = f. Proof. by []. Qed.
 Lemma compE A B C (g : B -> C) (f : A -> B) a : (g \o f) a = g (f a).
 Proof. by []. Qed.
 
-
+(* Our `category' is always concrete; a subcategory of the category of types and functions. *)
 Module Category.
 Record class_of (T : Type) : Type := Class {
-  obj : T -> Type ; (* T and ob forms a ``universe a la Tarski'' *)
+  obj : T -> Type ; (* T and obj is like a ``universe a la Tarski'' *)
   hom : forall A B, (obj A -> obj B) -> Prop ; (* subset of morphisms *)
-(*  _  : injective obj ; (* obj is injective *)*)
+(*  _ : injective obj ; (* NB: do we need this? *)*)
   _ : forall (A : T), hom (A:=A) (B:=A) id ; (* id is in hom *)
-  _  : forall (A B C : T) (f : obj A -> obj B) (g : obj B -> obj C),
+  _ : forall (A B C : T) (f : obj A -> obj B) (g : obj B -> obj C),
       hom f -> hom g -> hom (g \o f) ; (* hom is closed under composition *)
 }.
 Structure t : Type := Pack { car : Type ; class : class_of car }.
@@ -60,8 +60,8 @@ End ClassDef.
 Module Exports.
 Coercion apply : map >-> Funclass.
 Notation HomPhant fA := (Pack (Phant _) fA).
-Notation "{ 'hom' U  , V }" := (map (Phant (El U -> El V)))
-  (at level 0, format "{ 'hom' U , V }") : category_scope.
+Notation "{ 'hom' U , V }" := (map (Phant (El U -> El V)))
+  (at level 0) : category_scope.
 (*
 Notation "{ 'hom' fUV }" := (map (Phant fUV))
   (at level 0, format "{ 'hom'  fUV }") : category_scope.
@@ -89,7 +89,7 @@ Definition Type_category_class : Category.class_of Type :=
 Canonical Type_category := Category.Pack Type_category_class.
 End Type_category.
 
-Section Examples.
+Module Category_Examples.
 Section Example_cat.
 Variables (C : category) (A B : C) (f g : {hom A,B}).
 End Example_cat.
@@ -106,6 +106,8 @@ Check (f : A -> B).
 Check (g : A -> B).
 Fail Check (f : {affine A -> B}).
 Fail Check (g : {hom A,B}).
+Goal affine_function f.
+Proof. by case: f. Qed.
 End Example_convType.
 Section Example_Type.
 Variables (A B : Type) (f : {hom A,B}) (g : A -> B).
@@ -117,5 +119,5 @@ Check (g x : El B).
 Check (f : A -> B).
 Fail Check (g : {hom A,B}).
 End Example_Type.
-End Examples.
+End Category_Examples.
 
