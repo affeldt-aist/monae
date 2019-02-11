@@ -438,23 +438,22 @@ Qed.
 
 End probabilistic_choice_nondeterministic_choice.
 
-(* non-empty convex sets of distributions *)
+(* non-empty convex sets *)
 Module NECSet.
 Section def.
 Local Open Scope classical_set_scope.
 Local Open Scope proba_scope.
-Variable A : finType.
+Variable A : convType.
 Record t : Type := mk {
-  car : {convex_set (dist A)} ;
+  car : {convex_set A} ;
   H : car != cset0 _ }.
 End def.
 End NECSet.
 Notation necset := NECSet.t.
-Notation "{ 'csdist+' T }" := (necset T) (format "{ 'csdist+'  T }") : convex_scope.
 Coercion NECSet.car : necset >-> convex_set_of.
 
 Section necset_canonical.
-Variable (A : finType).
+Variable (A : convType).
 
 Canonical necset_subType := [subType for @NECSet.car A].
 Canonical necset_predType :=
@@ -463,6 +462,9 @@ Definition necset_eqMixin := Eval hnf in [eqMixin of (@necset A) by <:].
 Canonical necset_eqType := Eval hnf in EqType (@necset A) necset_eqMixin.
 
 End necset_canonical.
+
+(* non-empty convex sets of distributions *)
+Notation "{ 'csdist+' T }" := (necset (dist_convType T)) (format "{ 'csdist+'  T }") : convex_scope.
 
 Section necset_prop.
 
@@ -482,6 +484,34 @@ End necset_prop.
 
 Require Import relmonad.
 
+Module relFunctorLaws.
+Section def.
+Variable (M : convType -> convType) (f : forall (A B : convType),
+  ({affine A -> B}) -> {affine M A -> M B}).
+Definition id := forall A, f (@affine_function_id A) = (@affine_function_id (M A)) :> {affine M A -> M A}.
+Definition comp := forall (A B C : convType) (h : {affine A -> B}) (g : {affine B -> C}),
+  f (affine_function_comp h g) = affine_function_comp (f h) (f g) :> {affine M A -> M C}.
+End def.
+End relFunctorLaws.
+
+Module relFunctor.
+Record class_of (m : convType -> convType) : Type := Class {
+  f : forall (A B : convType), ({affine A -> B}) -> {affine m A -> m B} ;
+  _ : relFunctorLaws.id f ;
+  _ : relFunctorLaws.comp f
+}.
+Structure t : Type := Pack { m : convType -> convType ; class : class_of m }.
+Module Exports.
+Definition relFun (F : t) : forall (A B : convType), ({affine A -> B}) -> {affine m F A -> m F B} :=
+  let: Pack _ (Class f _ _) := F return forall A B : convType, ({affine A -> B}) -> {affine m F A -> m F B} in f.
+Arguments relFun _ [A] [B].
+Notation relfunctor := t.
+Coercion m : relfunctor >-> Funclass.
+End Exports.
+End relFunctor.
+Export relFunctor.Exports.
+Notation "F # f" := (relFun F f) (at level 11).
+
 (* wip *)
 Module Functor.
 
@@ -497,6 +527,34 @@ move=> H.
 case/cset0PN : car0 => a carx.
 apply/cset0PN; exists (f a) => /=; by exists a.
 Defined.
+
+(* the functor goes through as follows: *)
+(* NB: see also Functorslaws.id *)
+Lemma map_laws_id A (Z : {csdist+ A}) :
+  (F (affine_function_id (dist_convType A))) Z = ssrfun.id Z.
+Proof.
+apply/val_inj => /=.
+case: Z => Z HZ.
+apply/val_inj => /=.
+rewrite predeqE => x; split.
+  by case => y Zy <-.
+move=> Zx; by exists x.
+Qed.
+
+(* NB: see FunctorLaws.comp *)
+Lemma map_laws_comp (A B C : finType) (f : {affine {dist B} -> {dist C}})
+  (g : {affine {dist A} -> {dist B}}) (Z : {csdist+ A})
+  : (F (affine_function_comp g f)) Z = (F f \o F g) Z.
+Proof.
+apply/val_inj => /=.
+case: Z => Z HZ.
+apply/val_inj => /=.
+rewrite predeqE => c; split.
+  case => a Za <-.
+  exists (g a) => //; by exists a.
+case => b -[a Za <-{b} <-{c}].
+by exists a.
+Qed.
 
 Let nepchoice : prob -> forall A, {csdist+ A} -> {csdist+ A} -> {csdist+ A} :=
   fun p A m1 m2 => NECSet.mk (pchoice_ne p m1 m2).
@@ -610,33 +668,6 @@ exists a => //; by left.
 exists a => //; by right.
 Qed.
 
-(* the functor goes through as follows: *)
-(* NB: see also Map_laws.id *)
-Lemma map_laws_id A (Z : {csdist+ A}) :
-  (F (affine_function_id (dist_convType A))) Z = ssrfun.id Z.
-Proof.
-apply/val_inj => /=.
-case: Z => Z HZ.
-apply/val_inj => /=.
-rewrite predeqE => x; split.
-  by case => y Zy <-.
-move=> Zx; by exists x.
-Qed.
-
-(* NB: see Map_laws.comp *)
-Lemma map_laws_comp (A B C : finType) (f : {affine {dist B} -> {dist C}})
-  (g : {affine {dist A} -> {dist B}}) (Z : {csdist+ A})
-  : (F (affine_function_comp g f)) Z = (F f \o F g) Z.
-Proof.
-apply/val_inj => /=.
-case: Z => Z HZ.
-apply/val_inj => /=.
-rewrite predeqE => c; split.
-  case => a Za <-.
-  exists (g a) => //; by exists a.
-case => b -[a Za <-{b} <-{c}].
-by exists a.
-Qed.
 
 Definition eta (A : finType) (d : dist A) : {csdist+ A} := NECSet.mk (cset1_neq0 d).
 
@@ -670,14 +701,14 @@ Section modelaltprob.
 
 Local Obligation Tactic := idtac.
 
-Let F := necset.
+Let F := (fun A : finType => necset (dist_convType A)).
 
 (* we assume the existence of appropriate BIND and RET *)
 Axiom BIND : forall (A B : finType) (m : F A) (f : A -> F B), F B.
 Axiom RET : forall A : finType, A -> F A.
-Axiom BINDretf : relLaws.left_neutral BIND RET.
-Axiom BINDmret : relLaws.right_neutral BIND RET.
-Axiom BINDA : relLaws.associative BIND.
+Axiom BINDretf : relBindLaws.left_neutral BIND RET.
+Axiom BINDmret : relBindLaws.right_neutral BIND RET.
+Axiom BINDA : relBindLaws.associative BIND.
 
 Program Definition apmonad : relMonad.t := @relMonad.Pack F
   (@relMonad.Class _ (@RET) BIND _ _ _ ).
@@ -703,14 +734,14 @@ Lemma nepchoiceA A (p q r s : prob) (mx my mz : F A) :
   mx <.| p |.> (my <.| q |.> mz) = (mx <.| r |.> my) <.| s |.> mz.
 Proof. move=> H; apply val_inj => /=; exact: nepchoiceA. Qed.
 
-Axiom nepchoice_bindDl : forall p, relLaws.bind_left_distributive BIND (nepchoice p).
+Axiom nepchoice_bindDl : forall p, relBindLaws.bind_left_distributive BIND (nepchoice p).
 
 Let nenchoice : forall A, F A -> F A -> F A := fun A m1 m2 => NECSet.mk (nchoice_ne m1 m2).
 
 Let nenchoiceA A : associative (@nenchoice A).
 Proof. move=> a b c; apply val_inj => /=; by rewrite nchoiceA. Qed.
 
-Axiom nenchoice_bindDl : relLaws.bind_left_distributive BIND nenchoice.
+Axiom nenchoice_bindDl : relBindLaws.bind_left_distributive BIND nenchoice.
 
 Let nenchoicemm A : idempotent (@nenchoice A).
 Proof. move=> a; apply val_inj => /=; by rewrite nchoicemm. Qed.

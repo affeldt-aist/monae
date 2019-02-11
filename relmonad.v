@@ -37,41 +37,8 @@ Reserved Notation "'do' x <- m ; e"
   (at level 60, x ident, m at level 200, e at level 60).
 Reserved Notation "x '[~]' y" (at level 50).
 
-Module relFunctorLaws.
-Section def.
-Variable (M : finType -> Type) (f : forall (A B : finType), (A -> B) -> M A -> M B).
-Definition id := forall A, f id = id :> (M A -> M A).
-Definition comp := forall (A B C : finType) (g : B -> C) (h : A -> B),
-  f (g \o h) = f g \o f h :> (M A -> M C).
-End def.
-End relFunctorLaws.
-
-Module relFunctor.
-Record class_of (m : finType -> Type) : Type := Class {
-  f : forall (A B : finType), (A -> B) -> m A -> m B ;
-  _ : relFunctorLaws.id f ;
-  _ : relFunctorLaws.comp f
-}.
-Structure t (M : finType -> Type) : Type := Pack { class : class_of M }.
-Module Exports.
-Notation relfunctor := t.
-Definition relFun (M : finType -> Type) (F : relfunctor M)
-  : forall (A B : finType), (A -> B) -> M A -> M B :=
-  let: Pack (Class f _ _) := F in f.
-End Exports.
-End relFunctor.
-Export relFunctor.Exports.
-Notation "F # f" := (relFun F f) (at level 11).
-
-Section relnatural_transformation.
-Variables (M N : finType -> Type) (f : relfunctor M) (g : relfunctor N).
-Definition reltransformation_type := forall A : finType, M A -> N A.
-Definition relnaturalP (phi : reltransformation_type) :=
-  forall (A B : finType) (h : A -> B), (g # h) \o (phi A) = (phi B) \o (f # h).
-End relnatural_transformation.
-
-Module relLaws.
-Section rellaws.
+Module relBindLaws.
+Section relbindlaws.
 Variable M : finType -> Type.
 
 Variable b : forall A B, M A -> (A -> M B) -> M B.
@@ -106,16 +73,16 @@ Definition left_id (r : forall A, M A) (add : forall B, M B -> M B -> M B) := fo
 Definition right_id (r : forall A, M A) (add : forall B, M B -> M B -> M B) := forall A (m : M A),
   add _ m (r _) = m.
 
-End rellaws.
-End relLaws.
+End relbindlaws.
+End relBindLaws.
 
 Module relMonad.
 Record class_of (m : finType -> Type) : Type := Class {
   ret : forall A : finType, A -> m A;
   bind : forall A B : finType, m A -> (A -> m B) -> m B ;
-  _ : relLaws.left_neutral bind ret ;
-  _ : relLaws.right_neutral bind ret ;
-  _ : relLaws.associative bind }.
+  _ : relBindLaws.left_neutral bind ret ;
+  _ : relBindLaws.right_neutral bind ret ;
+  _ : relBindLaws.associative bind }.
 Record t : Type := Pack { m : finType -> Type; class : class_of m }.
 Module Exports.
 Definition Bind (M : t) A B : m M A -> (A -> m M B) -> m M B :=
@@ -153,7 +120,7 @@ Record mixin_of (m : relMonad.t) : Type := Mixin {
     (p = r * s :> R /\ s.~ = p.~ * q.~)%R ->
     mx <| p |> (my <| q |> mz) = (mx <| r |> my) <| s |> mz ;
   (* composition distributes leftwards over [probabilistic] choice *)
-  _ : forall p, relLaws.bind_left_distributive (@Bind m) (choice p) ;
+  _ : forall p, relBindLaws.bind_left_distributive (@Bind m) (choice p) ;
 } .
 Record class_of (m : finType -> Type) := Class {
   base : relMonad.class_of m ; mixin : mixin_of (relMonad.Pack base) }.
@@ -164,7 +131,7 @@ Module relMonadFail.
 Record mixin_of (M : relmonad) : Type := Mixin {
   fail : forall A, M A ;
   (* exceptions are left-zeros of sequential composition *)
-  _ : relLaws.left_zero (@Bind M) fail (* fail A >>= f = fail B *)
+  _ : relBindLaws.left_zero (@Bind M) fail (* fail A >>= f = fail B *)
 }.
 Record class_of (m : finType -> Type) := Class {
   base : relMonad.class_of m ; mixin : mixin_of (relMonad.Pack base) }.
@@ -186,7 +153,7 @@ Record mixin_of (M : relmonad) : Type := Mixin {
   alt : forall A, M A -> M A -> M A ;
   _ : forall A, associative (@alt A) ;
   (* composition distributes leftwards over choice *)
-  _ : relLaws.bind_left_distributive (@Bind M) alt
+  _ : relBindLaws.bind_left_distributive (@Bind M) alt
   (* in general, composition does not distribute rightwards over choice *)
   (* NB: no bindDr to accommodate both angelic and demonic interpretations of nondeterminism *)
 }.
@@ -228,8 +195,8 @@ Export relMonadAltCI.Exports.
 
 Module relMonadNondet.
 Record mixin_of (M : relfailMonad) (a : forall A, M A -> M A -> M A) : Type :=
-  Mixin { _ : relLaws.left_id (@Fail M) a ;
-          _ : relLaws.right_id (@Fail M) a
+  Mixin { _ : relBindLaws.left_id (@Fail M) a ;
+          _ : relBindLaws.right_id (@Fail M) a
 }.
 Record class_of (m : finType -> Type) : Type := Class {
   base : relMonadFail.class_of m ;
@@ -306,9 +273,9 @@ Export relMonadState.Exports.
 Module relMonadNondetState.
 Record mixin_of (M : relnondetMonad) : Type := Mixin {
   (* backtrackable state *)
-  _ : relLaws.right_zero (@Bind M) (@Fail _) ;
+  _ : relBindLaws.right_zero (@Bind M) (@Fail _) ;
   (* composition distributes rightwards over choice *)
-  _ : relLaws.bind_right_distributive (@Bind M) [~p]
+  _ : relBindLaws.bind_right_distributive (@Bind M) [~p]
 }.
 Record class_of S (m : finType -> Type) : Type := Class {
   base : relMonadNondet.class_of m ;
