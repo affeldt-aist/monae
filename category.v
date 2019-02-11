@@ -77,12 +77,6 @@ Variable C : category.
 Lemma category_id_proof : forall (a : C), @CategoryHomPhant.axiom C a a id.
 Proof. by case: C => [? []]. Qed.
 Definition category_id (a : C) : {hom a,a} := Hom (category_id_proof a).
-(* 
-Canonical category_id.
-Variable A : C.
-Check id : {hom A,A}.
-(* this does not work *)
-*)
 Lemma category_comp_proof : forall (a b c : C) (f : {hom a,b}) (g : {hom b,c}),
     @CategoryHomPhant.axiom C a c (g \o f).
 Proof.
@@ -91,9 +85,39 @@ by apply/hom_comp;case:f;case:g.
 Qed.
 Definition category_comp (a b c : C) (f : {hom a,b}) (g : {hom b,c})
   : {hom a,c} := Hom (category_comp_proof f g).
+(* 
+(* these do not work *)
+Canonical category_id.
+Variable A : C.
+Check id : {hom A,A}.
+Canonical category_comp.
+Variables (a b c:C) (f : {hom a,b}) (g : {hom b,c}).
+Check (g \o f) : {hom a,c}.
+*)
 End category_interface.
 Notation "'Id' a" := (category_id a) (at level 10) : category_scope.
 Notation "g '\\o' f" := (category_comp f g) (at level 50) : category_scope.
+
+Section category_lemmas.
+Variable C : category.
+Lemma hom_ext (a b : C) (f g : El a -> El b) 
+      (p : @CategoryHomPhant.axiom C a b f)
+      (q : @CategoryHomPhant.axiom C a b g)
+      (H : f = g) : Hom p = Hom q.
+Proof.
+move:p q.
+rewrite H=>p q.
+by have->:p=q by apply/proof_irrelevance.
+Qed.
+Lemma hom_extext (a b : C) (f g : El a -> El b) 
+      (p : @CategoryHomPhant.axiom C a b f)
+      (q : @CategoryHomPhant.axiom C a b g)
+      : (forall x, f x = g x) -> Hom p = Hom q.
+Proof.
+move/functional_extensionality=>H.
+by apply hom_ext.
+Qed.
+End category_lemmas.
 
 Section convType_category.
 Import convex.
@@ -110,6 +134,7 @@ Section Type_category.
 Definition Type_category_class : Category.class_of Type :=
 @Category.Class Type id (fun _ _ _ => True) (fun _ => I) (fun _ _ _ _ _ _ _ => I).
 Canonical Type_category := Category.Pack Type_category_class.
+Definition hom_Type (a b : Type) (f : a -> b) : {hom a,b} := Hom (I : CategoryHomPhant.axiom (f : El a -> El b)).
 End Type_category.
 
 Module Category_Examples.
@@ -163,13 +188,45 @@ Record class_of (C D : category) (m : C -> D) : Type := Class {
 }.
 Structure t (C D : category) : Type := Pack { m : C -> D ; class : class_of m }.
 Module Exports.
+Section exports.
 Variables (C D : category).
-Notation functor := (t C D).
-Coercion m : functor >-> Funclass.
-Definition Fun (F : functor) : forall A B, {hom A, B} -> {hom F A, F B} :=
-  let: Pack _ (Class f _ _) := F return forall A B, {hom A, B} -> {hom F A, F B} in f.
+Definition Fun (F : t C D) : forall A B, {hom A, B} -> {hom m F A, m F B} :=
+  let: Pack _ (Class f _ _) := F return forall A B, {hom A, B} -> {hom m F A, m F B} in f.
 Arguments Fun _ [A] [B].
+End exports.
+Notation functor := t.
+Coercion m : functor >-> Funclass.
 End Exports.
 End Functor.
 Export Functor.Exports.
 Notation "F # f" := (Fun F f) (at level 11).
+
+Section functor_lemmas.
+Variable C D : category.
+Variable F : functor C D.
+Lemma functor_id : FunctorLaws.id (Fun F).
+Proof. by case: F => [? []]. Qed.
+Lemma functor_o : FunctorLaws.comp (Fun F).
+Proof. by case: F => [? []]. Qed.
+End functor_lemmas.
+
+Section squaring.
+Definition Squaring (A : Type) := (A * A)%type.
+Notation "A `2" := (Squaring A) (at level 100).
+Definition squaring_f A B (f : {hom A, B}) : {hom A`2,B`2} := hom_Type (fun x => (f x.1, f x.2)).
+Lemma squaring_f_id : FunctorLaws.id squaring_f.
+Proof. by move=> A /=; apply hom_extext => -[x1 x2]. Qed.
+Lemma squaring_f_comp : FunctorLaws.comp squaring_f.
+Proof. by move=> A B C g h /=; apply hom_extext => -[x1 x2]. Qed.
+Definition squaring : functor _ _ :=
+  Functor.Pack (Functor.Class squaring_f_id squaring_f_comp).
+Notation "f ^`2" := (squaring # f) (at level 100).
+End squaring.
+
+Section functorid.
+Definition id_f (A B : Type) (f : {hom A,B}) := hom_Type f.
+Lemma id_id : FunctorLaws.id id_f. Proof. by move=>A;apply hom_extext. Qed.
+Lemma id_comp : FunctorLaws.comp id_f. Proof. by move=>*;apply hom_extext. Qed.
+Definition FId : functor _ _ := Functor.Pack (Functor.Class id_id id_comp).
+End functorid.
+
