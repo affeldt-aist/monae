@@ -21,10 +21,10 @@ Lemma fmap_ret (A B : Type) (h : A -> B) : (F # h) \o (@ret _) = (@ret _) \o h.
 Proof.
 rewrite /ret.
 rewrite -[in RHS]compA.
-rewrite -(fmap_ret N h).
+rewrite -(ret_naturality N h).
 rewrite [in RHS]compA.
 rewrite [in LHS]compA.
-by rewrite fmap_ret.
+by rewrite ret_naturality.
 Qed.
 End comp.
 End Comp.
@@ -57,7 +57,7 @@ Qed.
 Lemma JOIN_ret : JoinLaws.join_left_unit (@Comp.ret _ _) (@JOIN).
 Proof.
 move=> A; rewrite /JOIN /Comp.ret compA.
-rewrite -(compA Join (M # prod) Ret) (fmap_ret M prod).
+rewrite -(compA Join (M # prod) Ret) (ret_naturality M prod).
 by rewrite compA (compA Join) joinretM compidf Hprod2.
 Qed.
 
@@ -201,7 +201,7 @@ Lemma prod3 : Prod.prod3 (@prod).
 Proof.
 move=> A; rewrite /prod /Comp.ret.
 rewrite (functor_o N) (compA (M # Join \o swap)) -(compA (_ # Join)) Hswap3.
-by rewrite fmap_ret -compA joinMret compfid.
+by rewrite ret_naturality -compA joinMret compfid.
 Qed.
 
 Lemma prod4 : Prod.prod4 (@prod).
@@ -222,7 +222,7 @@ Qed.
 Lemma dorp2 : Dorp.dorp2 (@dorp).
 Proof.
 move=> A; rewrite /dorp /Comp.ret (compA (Join \o M # swap)) -(compA Join).
-by rewrite fmap_ret (compA Join) joinretM compidf Hswap2.
+by rewrite ret_naturality (compA Join) joinretM compidf Hswap2.
 Qed.
 
 Lemma dorp3 : Dorp.dorp3 (@dorp).

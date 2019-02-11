@@ -230,6 +230,8 @@ Proof.
 destruct f as [m [f0 f1 f2]]; congr Functor.Pack; congr Functor.Class => //;
   exact/ProofIrrelevance.proof_irrelevance.
 Qed.
+Lemma FIdf A B (f : A -> B) : FId # f = f.
+Proof. by []. Qed.
 Lemma FCompA (f g h : functor) : FComp (FComp f g) h = FComp f (FComp g h).
 Proof.
 destruct f as [m [f0 f1 f2]].
@@ -503,7 +505,7 @@ Section from_join_laws_to_bind_laws.
 Variable F : functor.
 Variable (ret : forall A, A -> F A) (join : forall A, F (F A) -> F A).
 
-Hypothesis fmap_ret : forall (A B : Type) (f : A -> B), F # f \o (@ret _) = (@ret _) \o f.
+Hypothesis ret_natural : naturalP FId F ret.
 Hypothesis join_ret : JoinLaws.join_left_unit ret join.
 Hypothesis join_fmap_ret : JoinLaws.join_right_unit ret join.
 Hypothesis join_naturality : JoinLaws.join_functor_commutativity join.
@@ -514,7 +516,7 @@ Let bind (A B : Type) (m : F A) (f : A -> F B) : F B := join ((F # f) m).
 Lemma bindretf_derived : BindLaws.left_neutral bind ret.
 Proof.
 move=> A B a f; rewrite /bind -(compE (@join _)) -(compE _ (@ret _)) -compA.
-by rewrite fmap_ret compA join_ret compidf.
+by rewrite ret_natural compA join_ret compidf.
 Qed.
 
 Lemma bindmret_derived : BindLaws.right_neutral bind ret.
@@ -807,10 +809,10 @@ Variable M : monad.
 Lemma fmap_def A B (f : A -> B) (m : M _) : f ($) m = m >>= (Ret \o f).
 Proof. by rewrite bindE [in RHS](functor_o M) compE -(compE Join) joinMret. Qed.
 
-Lemma fmap_ret A B (f : A -> B) : (M # f) \o Ret = Ret \o f.
+(*Lemma fmap_ret A B (f : A -> B) : (M # f) \o Ret = Ret \o f.
 Proof.
-by apply functional_extensionality => a; rewrite compE fmap_def bindretf.
-Qed.
+by rewrite ret_naturality.
+Qed.*)
 
 (*Lemma fmap_retE A B (f : A -> B) a : f ($) Ret a = (Ret \o f) a :> M _.
 Proof. by rewrite -fmap_ret. Qed.*)
@@ -996,7 +998,7 @@ Proof.
 apply functional_extensionality => -[a0 a1].
 rewrite compE fmap_bind compE [in RHS]/= bind_fmap; bind_ext => a2.
 rewrite fcompE fmap_bind compE bind_fmap; bind_ext => a3.
-by rewrite fcompE -(compE (M # f^`2)) fmap_ret.
+by rewrite fcompE -(compE (M # f^`2)) ret_naturality.
 Qed.
 
 Local Open Scope test_scope.
@@ -1388,11 +1390,11 @@ Lemma insert_map A B (f : A -> B) (a : A) :
   insert (f a) \o map f = map f (o) insert a :> (_ -> M _).
 Proof.
 apply functional_extensionality; elim => [|y xs IH].
-  by rewrite fcompE insertE -(compE (M # map f)) fmap_ret compE insertE.
+  by rewrite fcompE insertE -(compE (M # map f)) ret_naturality compE insertE.
 apply/esym.
 rewrite fcompE insertE alt_fmapDl.
 (* first branch *)
-rewrite -(compE (M # map f)) fmap_ret [ in X in X [~] _ ]/=.
+rewrite -(compE (M # map f)) ret_naturality [ in X in X [~] _ ]/=.
 (* second branch *)
 rewrite -fmap_comp (_ : map f \o cons y = cons (f y) \o map f) //.
 by rewrite fmap_comp -(fcompE (map f)) -IH [RHS]/= insertE.
@@ -1403,7 +1405,7 @@ Lemma perm_map A B (f : A -> B) :
   perm \o map f = map f (o) perm :> (seq A -> M (seq B)).
 Proof.
 apply functional_extensionality; elim => [/=|x xs IH].
-  by rewrite fcompE [perm _]/= -(compE (M # map f)) fmap_ret.
+  by rewrite fcompE [perm _]/= -(compE (M # map f)) ret_naturality.
 by rewrite fcompE [in perm _]/= fmap_bind -insert_map -bind_fmap -fcompE -IH.
 Qed.
 
@@ -1423,9 +1425,9 @@ Lemma filter_insertN a : ~~ p a ->
   forall s, (filter p (o) insert a) s = Ret (filter p s) :> M _.
 Proof.
 move=> pa; elim => [|h t IH].
-  by rewrite fcompE insertE -(compE (M # _)) fmap_ret /= (negbTE pa).
+  by rewrite fcompE insertE -(compE (M # _)) ret_naturality FIdf /= (negbTE pa).
 rewrite fcompE insertE alt_fmapDl.
-rewrite -(compE (M # _)) fmap_ret [in X in X [~] _]/= (negbTE pa).
+rewrite -(compE (M # _)) ret_naturality FIdf [in X in X [~] _]/= (negbTE pa).
 case: ifPn => ph.
 - rewrite -fmap_comp (_ : filter p \o cons h = cons h \o filter p); last first.
     apply functional_extensionality => x /=; by rewrite ph.
