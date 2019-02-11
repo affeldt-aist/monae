@@ -483,14 +483,14 @@ transitivity (do x <- Ret (u, v) [~] (do y_ys <- select v; Ret (y_ys.1, u :: y_y
 bind_ext => x.
 rewrite {1}/op /opdot_queens /opdot.
 rewrite commute_nondetState; last first.
-  rewrite fmap_def.
+  rewrite fmapE.
   case: (unfoldM_is_nondetState (@select_is_nondetState _ M Z) (@decr_size_select M _) x.2).
   move=> m <-.
   by exists (ndBind m (fun y => ndRet (x.1 :: y))).
 rewrite {2}/op /opdot_queens /opdot.
 bind_ext => st.
 rewrite commute_nondetState //; last first.
-  rewrite fmap_def.
+  rewrite fmapE.
   case: (unfoldM_is_nondetState (@select_is_nondetState _ M Z) (@decr_size_select _ _) x.2).
   move=> m <-.
   by exists (ndBind m (fun y => ndRet (x.1 :: y))).

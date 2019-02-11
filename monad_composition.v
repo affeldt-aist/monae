@@ -48,7 +48,7 @@ Hypothesis Hprod2 : prod2.
 Hypothesis Hprod3 : prod3.
 Hypothesis Hprod4 : prod4.
 
-Lemma JOIN_naturality : JoinLaws.join_functor_commutativity (@JOIN).
+Lemma JOIN_naturality : JoinLaws.join_naturality (@JOIN).
 Proof.
 move=> A B g; apply/esym; rewrite {1}/JOIN -[in LHS]compA -functor_o Hprod1.
 by rewrite functor_o compA /JOIN FCompE -(FCompE M M) -(@join_naturality M _ _ (N # g)) -compA.
@@ -104,7 +104,7 @@ Hypothesis Hdorp2 : dorp2.
 Hypothesis Hdorp3 : dorp3.
 Hypothesis Hdorp4 : dorp4.
 
-Lemma join_naturality : JoinLaws.join_functor_commutativity (@JOIN).
+Lemma join_naturality : JoinLaws.join_naturality (@JOIN).
 Proof.
 move=> A B g; apply/esym; rewrite {1}/JOIN -compA Hdorp1.
 rewrite compA.
@@ -234,11 +234,11 @@ Lemma dorp4 : Dorp.dorp4 (@dorp).
 Proof.
 move=> A; rewrite {1}/dorp {1}/Dorp.JOIN -JOIN_dorp JOIN_prod.
 rewrite (compA (Join \o M # swap)) -(compA Join) join_naturality.
-rewrite (compA Join Join) -joinA -2!compA -2!functor_o.
+rewrite (compA Join Join) -joinA -2!compA FCompE -functor_o -(functor_o M).
 by rewrite compA -/dorp -Hswap4 functor_o compA -JOINE JOIN_dorp.
 Qed.
 
-Lemma JOIN_naturality : JoinLaws.join_functor_commutativity (@JOIN).
+Lemma JOIN_naturality : JoinLaws.join_naturality (@JOIN).
 Proof. by move=> ?? g; rewrite JOINE -/prod (Prod.JOIN_naturality prod1 g) JOINE. Qed.
 
 Lemma JOIN_ret : JoinLaws.join_left_unit (@Comp.ret _ _) (@JOIN).
