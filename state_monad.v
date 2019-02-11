@@ -199,9 +199,9 @@ Qed.
 Lemma putselectC (x : S) A (s : seq A) B (f : A * (seq A) -> M B) :
   Put x >> (do rs <- select s; f rs) = do rs <- select s; Put x >> f rs.
 Proof.
-rewrite selectE {1}fmap_def.
+rewrite selectE {1}fmapE.
 rewrite_ bindA.
-rewrite puttselectC [in RHS]fmap_def bindA.
+rewrite puttselectC [in RHS]fmapE bindA.
 bind_ext => x0; by rewrite 2!bindretf.
 Qed.
 
@@ -307,7 +307,7 @@ rewrite /assert /guard ltnS.
 case: ifPn => b1b2; last by rewrite !bindfailf.
 rewrite !bindskipf !bindretf /g.
 case: Bool.bool_dec => // x2t.
-case: (IH x2) => // x0 <-; by rewrite fmap_def.
+case: (IH x2) => // x0 <-; by rewrite fmapE.
 Qed.
 
 (* definition 5.1, mu2017 *)
@@ -365,7 +365,7 @@ Lemma loopp_of_scanl_helper s
   do x <- ms; mu >> (do xs <- cons s ($) (mu' >> m); f x >> Ret xs) =
   cons s ($) (do x <- ms; mu >> mu' >> (do xs <- m; f x >> Ret xs)).
 Proof.
-rewrite [in RHS]fmap_def !bindA.
+rewrite [in RHS]fmapE !bindA.
 rewrite_ bindA.
 bind_ext => s'.
 rewrite !bindA; bind_ext; case.
@@ -403,7 +403,7 @@ transitivity (cons (op s x) ($) do y <- Get; Put (op s x) >>
 transitivity (cons (op s x) ($)
   (do y <- Get; loopp (op s x) xs >>= overwrite y)); last first.
   congr (_ ($) _); by Inf rewrite -bindA.
-by rewrite -IH fmap_def bindretf.
+by rewrite -IH fmapE bindretf.
 Qed.
 
 End loop.
@@ -512,7 +512,7 @@ transitivity (do st <- Get; guard (ok (op st x)) >>
   bind_ext => s.
   rewrite fcompE fmap_bind /=.
   bind_ext; case.
-  by rewrite fcompE fmap_def bindretf.
+  by rewrite fcompE fmapE bindretf.
 by rewrite [in RHS]/= -IH /opdot !bindA.
 Qed.
 
@@ -583,7 +583,7 @@ Proof.
 move=> right_z p q promotable_pq.
 rewrite /promote_assert.
 apply functional_extensionality => -[x1 x2].
-rewrite 3![in RHS]compE [in RHS]fmap_def.
+rewrite 3![in RHS]compE [in RHS]fmapE.
 rewrite 2![in LHS]compE {1}/bassert [in LHS]bind_fmap !bindA.
 bind_ext => s.
 rewrite 2!bindA bindretf 2!bindA.
@@ -735,7 +735,7 @@ transitivity (@Symbols _ M 1) => //.
 rewrite SymbolsE sequence_cons sequence_nil.
 rewrite_ bindretf.
 rewrite compE.
-by rewrite [in RHS]fmap_def.
+by rewrite [in RHS]fmapE.
 Qed.
 
 Lemma Symbols_prop2 :
@@ -745,10 +745,10 @@ apply functional_extensionality => -[n1 n2].
 elim: n1 => [|n1 IH].
   rewrite [in LHS]compE uaddnE add0n.
   rewrite compE [in X in _ = _ X]/= /squaring_f Symbols0.
-  rewrite compE [in RHS]fmap_def bindA bindretf.
-  rewrite -fmap_def fmap_bind.
+  rewrite compE [in RHS]fmapE bindA bindretf.
+  rewrite -fmapE fmap_bind.
   Open (X in _ >>= X).
-    rewrite fcompE fmap_def bindretf /=; reflexivity.
+    rewrite fcompE fmapE bindretf /=; reflexivity.
   by rewrite bindmret.
 rewrite compE uaddnE addSn SymbolsS -uaddnE -(compE Symbols) {}IH.
 rewrite [in RHS]compE [in X in _ = _ X]/= /squaring_f SymbolsS.
@@ -760,7 +760,7 @@ rewrite [in RHS]bindretf [in RHS]fcompE [in RHS]fmap_bind.
 rewrite [in LHS]fcompE [in LHS]bind_fmap [in LHS]bindA.
 rewrite_ bindretf.
 rewrite_ fcompE.
-rewrite_ fmap_def.
+rewrite_ fmapE.
 by rewrite_ bindretf.
 Qed.
 

@@ -250,7 +250,7 @@ Lemma uniform_doors_unfold (P : rel door) :
  (Ret (P C A) <|`Pr / 3|> (Ret (P C B) <|`Pr / 2|> Ret (P C C)))))))) :> M _.
 Proof.
 rewrite [LHS](_ : _ = (M # (uncurry P)) (uniform (def, def) (cp doors doors))); last first.
-  rewrite fmap_def; bind_ext; by case.
+  rewrite fmapE; bind_ext; by case.
 rewrite -(compE (M # _)) -(uniform_naturality _ true); last first.
   by rewrite /doors Set3.enumE.
 by rewrite /doors Set3.enumE.
@@ -381,7 +381,7 @@ Let try (d : door) := do p <- pick; Ret (d, p).
 
 Lemma try_uFFT d : (M # (uncurry (fun a b => a == b))) (try d) = uFFT.
 Proof.
-rewrite fmap_def /try bindA.
+rewrite fmapE /try bindA.
 rewrite_ bindretf.
 rewrite /pick /monty.pick.
 transitivity (do p <- Ret A <| `Pr /3 |> (Ret B <| `Pr /2 |> Ret C); Ret (d == p) : M _).
@@ -405,7 +405,7 @@ Qed.
 Lemma hide_pick_nondeter : do h <- hide_n; do p <- pick; Ret (h == p) = uFFT.
 Proof.
 transitivity ((M # (uncurry (fun a b => a == b))) (do h <- hide_n; do p <- pick; Ret (h, p))).
-  rewrite fmap_def !bindA; bind_ext => y1.
+  rewrite fmapE !bindA; bind_ext => y1.
   rewrite !bindA; by rewrite_ bindretf.
 rewrite monty_choice_your_choice_combine -!/(try _).
 by rewrite 2!naturality_nondeter !try_uFFT 2!altmm.

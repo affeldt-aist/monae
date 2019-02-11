@@ -115,17 +115,17 @@ Lemma join_and_pairs :
 Proof.
 apply functional_extensionality => -[x1 x2].
 rewrite 3!compE.
-rewrite join_def.
-rewrite fmap_def.
+rewrite joinE.
+rewrite fmapE.
 rewrite 2![in RHS]compE.
 rewrite [in RHS]/mpair.
 rewrite [in LHS]/mpair.
 move H : (M # dlabels) => h.
 rewrite /=.
-rewrite 2![in RHS]join_def.
+rewrite 2![in RHS]joinE.
 rewrite 3!bindA.
 rewrite -H.
-rewrite !fmap_def.
+rewrite !fmapE.
 rewrite 3!bindA.
 bind_ext => {x1}x1.
 rewrite 2!bindretf 2!bindA.
