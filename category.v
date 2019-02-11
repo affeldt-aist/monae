@@ -38,18 +38,18 @@ Notation category := t.
 Coercion car : category >-> Sortclass.
 Definition El (C : t) : C -> Type :=
   let: Pack _ (Class x _ _ _) := C in x.
-Definition Hom (C : t) : forall (A B : C), (El A -> El B) -> Prop :=
-  let: Pack _ (Class _ x _ _) := C in x.
 End Exports.
 End Category.
 Export Category.Exports.
 
-Module HomPhant.
+Module CategoryHomPhant.
 Section ClassDef.
 Variables (C : category) (U V : C).
 Local Notation U' := (El U).
 Local Notation V' := (El V).
-Definition axiom (f : U' -> V') := Hom f.
+Let hom (X : category) : forall (A B : X), (El A -> El B) -> Prop :=
+  let: Category.Pack _ (Category.Class _ x _ _) := X in x.
+Definition axiom (f : U' -> V') := hom f.
 Structure map (phUV : phant (U' -> V')) := Pack {apply; _ : axiom apply}.
 Local Coercion apply : map >-> Funclass.
 Variables (phUV : phant (U' -> V')) (f g : U' -> V') (cF : map phUV).
@@ -59,7 +59,7 @@ Definition clone fA of phant_id g (apply cF) & phant_id fA class :=
 End ClassDef.
 Module Exports.
 Coercion apply : map >-> Funclass.
-Notation HomPhant fA := (Pack (Phant _) fA).
+Notation Hom fA := (Pack (Phant _) fA).
 Notation "{ 'hom' U , V }" := (map (Phant (El U -> El V)))
   (at level 0) : category_scope.
 (*
@@ -67,10 +67,33 @@ Notation "{ 'hom' fUV }" := (map (Phant fUV))
   (at level 0, format "{ 'hom'  fUV }") : category_scope.
 *)
 End Exports.
-End HomPhant.
-Export HomPhant.Exports.
+End CategoryHomPhant.
+Export CategoryHomPhant.Exports.
 
 Open Scope category_scope.
+
+Section category_interface.
+Variable C : category.
+Lemma category_id_proof : forall (a : C), @CategoryHomPhant.axiom C a a id.
+Proof. by case: C => [? []]. Qed.
+Definition category_id (a : C) : {hom a,a} := Hom (category_id_proof a).
+(* 
+Canonical category_id.
+Variable A : C.
+Check id : {hom A,A}.
+(* this does not work *)
+*)
+Lemma category_comp_proof : forall (a b c : C) (f : {hom a,b}) (g : {hom b,c}),
+    @CategoryHomPhant.axiom C a c (g \o f).
+Proof.
+case: C => [car [el hom ? hom_comp]] a b c f g.
+by apply/hom_comp;case:f;case:g.
+Qed.
+Definition category_comp (a b c : C) (f : {hom a,b}) (g : {hom b,c})
+  : {hom a,c} := Hom (category_comp_proof f g).
+End category_interface.
+Notation "'Id' a" := (category_id a) (at level 10) : category_scope.
+Notation "g '\\o' f" := (category_comp f g) (at level 50) : category_scope.
 
 Section convType_category.
 Import convex.
@@ -121,3 +144,32 @@ Fail Check (g : {hom A,B}).
 End Example_Type.
 End Category_Examples.
 
+(* map laws of a functor *)
+Module FunctorLaws.
+Section def.
+Variable (C D : category).
+Variable (M : C -> D) (f : forall A B, {hom A,B} -> {hom M A, M B}).
+Definition id := forall A, f (Id A) = (Id (M A)) :> {hom M A, M A}.
+Definition comp := forall A B C (g : {hom B,C}) (h : {hom A,B}),
+  f (g \\o h) = f g \\o f h :> {hom M A, M C}.
+End def.
+End FunctorLaws.
+
+Module Functor.
+Record class_of (C D : category) (m : C -> D) : Type := Class {
+  f : forall A B, {hom A,B} -> {hom m A, m B} ;
+  _ : FunctorLaws.id f ;
+  _ : FunctorLaws.comp f
+}.
+Structure t (C D : category) : Type := Pack { m : C -> D ; class : class_of m }.
+Module Exports.
+Variables (C D : category).
+Notation functor := (t C D).
+Coercion m : functor >-> Funclass.
+Definition Fun (F : functor) : forall A B, {hom A, B} -> {hom F A, F B} :=
+  let: Pack _ (Class f _ _) := F return forall A B, {hom A, B} -> {hom F A, F B} in f.
+Arguments Fun _ [A] [B].
+End Exports.
+End Functor.
+Export Functor.Exports.
+Notation "F # f" := (Fun F f) (at level 11).
