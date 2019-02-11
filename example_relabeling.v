@@ -144,11 +144,11 @@ Lemma dlabels_relabel_is_fold :
 Proof.
 apply foldt_universal.
   (* dlabels >=> relabel \o Tip = drTip *)
-  rewrite /kleisli -2!compA (_ : _ \o Tip = (M # Tip) \o const Fresh) //.
+  rewrite /kleisli -(compA (Join \o _)) -(compA Join) (_ : _ \o Tip = (M # Tip) \o const Fresh) //.
   rewrite (compA (M # dlabels)) -functor_o (_ : dlabels \o _ = Ret \o wrap) //.
   by rewrite functor_o 2!compA joinMret.
 (* dlabels >=> relabel \o Bin = drBin \o _ *)
-rewrite /kleisli -2![in LHS]compA.
+rewrite /kleisli -[in LHS](compA (Join \o _)) -[in LHS](compA Join).
 rewrite (_ : _ \o _ Bin = (M # uncurry Bin) \o (mpair \o relabel^`2)); last first.
   by apply functional_extensionality; case.
 rewrite (compA (M # dlabels)) -functor_o.
@@ -157,7 +157,7 @@ rewrite (_ : _ \o _ Bin = (M # ucat) \o bassert q \o mpair \o dlabels^`2); last 
 transitivity ((M # ucat) \o Join \o (M # (bassert q \o mpair)) \o mpair \o
     (M # dlabels \o relabel)^`2).
   rewrite -2![in LHS](compA (M # ucat)) [in LHS]functor_o.
-  rewrite -[in LHS](compA (M # _)) [in LHS](compA _ (M # _)).
+  rewrite -[in LHS](compA (M # _)) [in LHS](compA (Join \o _) (M # _)).
   rewrite -join_naturality -2![in RHS]compA; congr (_ \o _).
   by rewrite [in LHS]functor_o -[in LHS]compA naturality_mpair.
 rewrite functor_o (compA _ (M # bassert q)) -(compA _ _ (M # bassert q)).

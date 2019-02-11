@@ -200,14 +200,15 @@ Proof. by move=> A; rewrite /prod -compA Hswap2 -functor_o joinretM functor_id. 
 Lemma prod3 : Prod.prod3 (@prod).
 Proof.
 move=> A; rewrite /prod /Comp.ret.
-rewrite (functor_o N) compA -(compA (_ # Join)) Hswap3.
+rewrite (functor_o N) (compA (M # Join \o swap)) -(compA (_ # Join)) Hswap3.
 by rewrite fmap_ret -compA joinMret compfid.
 Qed.
 
 Lemma prod4 : Prod.prod4 (@prod).
 Proof.
 move=> A; rewrite {1}/Prod.JOIN -JOIN_prod JOIN_dorp {1}/prod (functor_o N).
-rewrite compA -(compA (_ # Join)) Hswap1 compA -functor_o joinA functor_o.
+rewrite (compA (M # Join \o swap)) -(compA (_ # Join)) Hswap1.
+rewrite (compA (M # Join)) -functor_o joinA functor_o.
 rewrite -compA -(compA (_ # Join)) (compA (_ # Join) swap) -/prod Hswap4.
 by rewrite compA /Prod.JOIN -JOIN_prod JOIN_dorp.
 Qed.
@@ -220,8 +221,8 @@ Qed.
 
 Lemma dorp2 : Dorp.dorp2 (@dorp).
 Proof.
-move=> A; rewrite /dorp /Comp.ret compA -(compA Join).
-by rewrite fmap_ret compA joinretM compidf Hswap2.
+move=> A; rewrite /dorp /Comp.ret (compA (Join \o M # swap)) -(compA Join).
+by rewrite fmap_ret (compA Join) joinretM compidf Hswap2.
 Qed.
 
 Lemma dorp3 : Dorp.dorp3 (@dorp).
@@ -232,7 +233,7 @@ Qed.
 Lemma dorp4 : Dorp.dorp4 (@dorp).
 Proof.
 move=> A; rewrite {1}/dorp {1}/Dorp.JOIN -JOIN_dorp JOIN_prod.
-rewrite compA -(compA Join) join_naturality.
+rewrite (compA (Join \o M # swap)) -(compA Join) join_naturality.
 rewrite (compA Join Join) -joinA -2!compA -2!functor_o.
 by rewrite compA -/dorp -Hswap4 functor_o compA -JOINE JOIN_dorp.
 Qed.
