@@ -44,10 +44,10 @@ Lemma lemma_35 a :
   foldl op b (o) insert a = Ret \o foldl op b \o (rcons^~ a) :> (_ -> M _).
 Proof.
 apply functional_extensionality => xs; move: xs; elim/last_ind => [/=|xs y IH].
-  by rewrite fcompE insertE fmap_retE.
+  by rewrite fcompE insertE fmap_def bindretf.
 rewrite fcompE.
 rewrite insert_rcons.
-rewrite naturality_nondeter fmap_retE.
+rewrite naturality_nondeter fmap_def bindretf.
 rewrite -fmap_comp.
 have H : forall w, foldl op b \o rcons^~ w = op^~ w \o foldl op b.
   by move=> w; apply functional_extensionality => ws /=; rewrite -cats1 foldl_cat.
@@ -58,7 +58,7 @@ rewrite IH.
 rewrite -[in X in _ [~] X]bindretf.
 rewrite bindretf.
 rewrite -{1}compA.
-rewrite fmap_retE.
+rewrite fmap_def bindretf.
 rewrite (H a).
 rewrite [in X in _ [~] X]/=.
 rewrite opP.
@@ -78,7 +78,7 @@ Hypothesis opP : forall (x y : A) (w : B), (w (.) x) (.) y = (w (.) y) (.) x.
 Lemma lemma_34 b : foldl op b (o) perm = Ret \o foldl op b :> (_ -> M _).
 Proof.
 apply functional_extensionality => xs; move: xs b; elim => [/=|x xs IH] b.
-  by rewrite fcompE fmap_retE.
+  by rewrite fcompE fmap_def bindretf.
 rewrite fcompE fmap_bind.
 have opP' : forall (x y : A) (w : seq A), (foldl op b w (.) x) (.) y = (foldl op b w (.) y) (.) x.
   move=> ? ? ?.

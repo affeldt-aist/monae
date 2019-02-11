@@ -403,7 +403,7 @@ transitivity (cons (op s x) ($) do y <- Get; Put (op s x) >>
 transitivity (cons (op s x) ($)
   (do y <- Get; loopp (op s x) xs >>= overwrite y)); last first.
   congr (_ ($) _); by Inf rewrite -bindA.
-by rewrite -IH fmap_retE.
+by rewrite -IH fmap_def bindretf.
 Qed.
 
 End loop.
@@ -512,7 +512,7 @@ transitivity (do st <- Get; guard (ok (op st x)) >>
   bind_ext => s.
   rewrite fcompE fmap_bind /=.
   bind_ext; case.
-  by rewrite fcompE fmap_retE.
+  by rewrite fcompE fmap_def bindretf.
 by rewrite [in RHS]/= -IH /opdot !bindA.
 Qed.
 
@@ -748,7 +748,7 @@ elim: n1 => [|n1 IH].
   rewrite compE [in RHS]fmap_def bindA bindretf.
   rewrite -fmap_def fmap_bind.
   Open (X in _ >>= X).
-    rewrite fcompE fmap_retE /=; reflexivity.
+    rewrite fcompE fmap_def bindretf /=; reflexivity.
   by rewrite bindmret.
 rewrite compE uaddnE addSn SymbolsS -uaddnE -(compE Symbols) {}IH.
 rewrite [in RHS]compE [in X in _ = _ X]/= /squaring_f SymbolsS.
@@ -760,7 +760,8 @@ rewrite [in RHS]bindretf [in RHS]fcompE [in RHS]fmap_bind.
 rewrite [in LHS]fcompE [in LHS]bind_fmap [in LHS]bindA.
 rewrite_ bindretf.
 rewrite_ fcompE.
-by rewrite_ fmap_retE.
+rewrite_ fmap_def.
+by rewrite_ bindretf.
 Qed.
 
 End properties_of_Symbols.
