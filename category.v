@@ -262,4 +262,12 @@ Definition transformation_type := forall A, {hom f A ,g A}.
 Definition naturalP (phi : transformation_type) :=
   forall A B (h : {hom A,B}), (g # h) \o (phi A) = (phi B) \o (f # h).
 End natural_transformation.
-Arguments naturalP : clear implicits.
+Arguments naturalP [C D] f g.
+
+Section natural_transformation_example.
+Definition fork' A (a : A) := (a, a).
+Definition fork A := hom_Type (@fork' A).
+(* fork is a natural transformation FId -> squaring *)
+Lemma fork_natural : naturalP (FId _) squaring fork.
+Proof. by []. Qed.
+End natural_transformation_example.
