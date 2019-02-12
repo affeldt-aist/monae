@@ -42,7 +42,7 @@ End Exports.
 End Category.
 Export Category.Exports.
 
-Module CategoryHomPhant.
+Module Hom.
 Section ClassDef.
 Variables (C : category) (U V : C).
 Local Notation U' := (El U).
@@ -58,60 +58,57 @@ Definition clone fA of phant_id g (apply cF) & phant_id fA class :=
   @Pack phUV f fA.
 End ClassDef.
 Module Exports.
+Notation hom f := (axiom f).
 Coercion apply : map >-> Funclass.
 Notation Hom fA := (Pack (Phant _) fA).
 Notation "{ 'hom' U , V }" := (map (Phant (El U -> El V)))
   (at level 0) : category_scope.
+Notation "[ 'hom' 'of' f 'as' g ]" := (@clone _ _ _ _ f g _ _ idfun id)
+  (at level 0, format "[ 'hom'  'of'  f  'as'  g ]") : category_scope.
+Notation "[ 'hom' 'of' f ]" := (@clone _ _ _ _ f f _ _ id id)
+  (at level 0, format "[ 'hom'  'of'  f ]") : category_scope.
 (*
 Notation "{ 'hom' fUV }" := (map (Phant fUV))
   (at level 0, format "{ 'hom'  fUV }") : category_scope.
 *)
 End Exports.
-End CategoryHomPhant.
-Export CategoryHomPhant.Exports.
+End Hom.
+Export Hom.Exports.
 
 Open Scope category_scope.
 
 Section category_interface.
 Variable C : category.
-Lemma category_id_proof : forall (a : C), @CategoryHomPhant.axiom C a a id.
+
+Lemma category_idfun_proof : forall (a : C), hom (idfun : El a -> El a).
 Proof. by case: C => [? []]. Qed.
-Definition category_id (a : C) : {hom a,a} := Hom (category_id_proof a).
+Canonical idfun_hom a := Hom (category_idfun_proof a).
 Lemma category_comp_proof : forall (a b c : C) (f : {hom a,b}) (g : {hom b,c}),
-    @CategoryHomPhant.axiom C a c (g \o f).
+    hom (g \o f).
 Proof.
 case: C => [car [el hom ? hom_comp]] a b c f g.
 by apply/hom_comp;case:f;case:g.
 Qed.
-Definition category_comp (a b c : C) (f : {hom a,b}) (g : {hom b,c})
-  : {hom a,c} := Hom (category_comp_proof f g).
-(* 
-(* these do not work *)
-Canonical category_id.
-Variable A : C.
-Check id : {hom A,A}.
-Canonical category_comp.
+Canonical comp_hom (a b c : C) (f : {hom a, b}) (g : {hom b, c}) := Hom (category_comp_proof f g).
+
 Variables (a b c:C) (f : {hom a,b}) (g : {hom b,c}).
-Check (g \o f) : {hom a,c}.
-*)
+Check [hom of (g \o f)].
 End category_interface.
+(*
 Notation "'Id' a" := (category_id a) (at level 10) : category_scope.
 Notation "g '\\o' f" := (category_comp f g) (at level 50) : category_scope.
+*)
 
 Section category_lemmas.
 Variable C : category.
-Lemma hom_ext (a b : C) (f g : El a -> El b) 
-      (p : @CategoryHomPhant.axiom C a b f)
-      (q : @CategoryHomPhant.axiom C a b g)
-      (H : f = g) : Hom p = Hom q.
+Lemma hom_ext (a b : C) (f g : El a -> El b) (p : hom f) (q : hom g) (H : f = g)
+  : Hom p = Hom q.
 Proof.
 move:p q.
 rewrite H=>p q.
 by have->:p=q by apply/proof_irrelevance.
 Qed.
-Lemma hom_extext (a b : C) (f g : El a -> El b) 
-      (p : @CategoryHomPhant.axiom C a b f)
-      (q : @CategoryHomPhant.axiom C a b g)
+Lemma hom_extext (a b : C) (f g : El a -> El b) (p : hom f) (q : hom g)
       : (forall x, f x = g x) -> Hom p = Hom q.
 Proof.
 move/functional_extensionality=>H.
@@ -134,7 +131,7 @@ Section Type_category.
 Definition Type_category_class : Category.class_of Type :=
 @Category.Class Type id (fun _ _ _ => True) (fun _ => I) (fun _ _ _ _ _ _ _ => I).
 Canonical Type_category := Category.Pack Type_category_class.
-Definition hom_Type (a b : Type) (f : a -> b) : {hom a,b} := Hom (I : CategoryHomPhant.axiom (f : El a -> El b)).
+Definition hom_Type (a b : Type) (f : a -> b) : {hom a,b} := Hom (I : hom (f : El a -> El b)).
 End Type_category.
 
 Module Category_Examples.
@@ -174,9 +171,9 @@ Module FunctorLaws.
 Section def.
 Variable (C D : category).
 Variable (M : C -> D) (f : forall A B, {hom A,B} -> {hom M A, M B}).
-Definition id := forall A, f (Id A) = (Id (M A)) :> {hom M A, M A}.
+Definition id := forall A, f [hom of idfun] = [hom of idfun] :> {hom M A, M A}.
 Definition comp := forall A B C (g : {hom B,C}) (h : {hom A,B}),
-  f (g \\o h) = f g \\o f h :> {hom M A, M C}.
+  f [hom of g \o h] = [hom of f g \o f h] :> {hom M A, M C}.
 End def.
 End FunctorLaws.
 
