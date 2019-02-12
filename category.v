@@ -114,20 +114,35 @@ Notation "g '\\o' f" := (category_comp f g) (at level 50) : category_scope.
 
 Section category_lemmas.
 Variable C : category.
-Lemma hom_ext (a b : C) (f g : El a -> El b) (p : hom f) (q : hom g) (H : f = g)
+(*
+Lemma hom_ext' (a b : C) (f g : El a -> El b) (p : hom f) (q : hom g) (H : f = g)
   : Hom p = Hom q.
 Proof.
 move:p q.
 rewrite H=>p q.
 by have->:p=q by apply/proof_irrelevance.
 Qed.
-Lemma hom_extext (a b : C) (f g : El a -> El b) (p : hom f) (q : hom g)
+Lemma hom_extext' (a b : C) (f g : El a -> El b) (p : hom f) (q : hom g)
       : (forall x, f x = g x) -> Hom p = Hom q.
+Proof. by move/functional_extensionality=>H; apply hom_ext'. Qed.
+*)
+(*
+Definition hom_ext_apply := locked Hom.apply.
+Local Notation "[ 'ext' f ]" := (hom_ext_apply f).
+*)
+Local Notation "[ 'ext' f ]" := (Hom.apply f).
+Lemma hom_ext (a b : C) (f g : {hom a,b}) : [ext f] = [ext g] -> f = g.
 Proof.
-move/functional_extensionality=>H.
-by apply hom_ext.
+case:f=>f Hf;case:g=>g Hg.
+rewrite/Hom.apply=>H.
+move:H Hf Hg=>->Hf Hg.
+by have->:Hf=Hg by apply proof_irrelevance.
 Qed.
+Lemma hom_extext (a b : C) (f g : {hom a,b}) :
+  (forall x, [ext f] x = [ext g] x) -> f = g.
+Proof. by move/functional_extensionality=>H; apply hom_ext. Qed.
 End category_lemmas.
+(*Notation "[ 'ext' f ]" := (hom_ext_apply f).*)
 
 Section Type_category.
 Definition Type_category_class : Category.class_of Type :=
@@ -191,9 +206,60 @@ Notation "f ^`2" := (squaring # f).
 End squaring.
 
 Section functorid.
-Definition id_f (A B : Type) (f : {hom A,B}) := hom_Type f.
+Variables C : category.
+Definition id_f (A B : C) (f : {hom A,B}) := f.
 Lemma id_id : FunctorLaws.id id_f. Proof. by move=>A;apply hom_extext. Qed.
 Lemma id_comp : FunctorLaws.comp id_f. Proof. by move=>*;apply hom_extext. Qed.
 Definition FId : functor _ _ := Functor.Pack (Functor.Class id_id id_comp).
+Lemma FIdf (A B : C) (f : {hom A,B}) : FId # f = f.
+Proof. by []. Qed.
 End functorid.
 
+Section functorcomposition.
+Variables (C0 C1 C2 : category) (F : functor C1 C2) (G : functor C0 C1).
+Definition functorcomposition a b := fun h : {hom a,b} => F # (G # h).
+Lemma functorcomposition_id : FunctorLaws.id functorcomposition.
+Proof.
+by rewrite /FunctorLaws.id => A; rewrite /functorcomposition 2!functor_id.
+Qed.
+Lemma functorcomposition_comp : FunctorLaws.comp functorcomposition.
+Proof.
+rewrite /FunctorLaws.comp => a b c g h; rewrite /functorcomposition.
+by rewrite 2!functor_o.
+Qed.
+Definition FComp : functor C0 C2:=
+  Functor.Pack (Functor.Class functorcomposition_id functorcomposition_comp).
+End functorcomposition.
+
+Section functorcomposition_lemmas.
+Variables (C0 C1 C2 C3 : category).
+Lemma FCompId (f : functor C0 C1) : FComp f (FId C0) = f.
+Proof.
+destruct f as [m [f0 f1 f2]]; congr Functor.Pack; congr Functor.Class => //;
+  exact/ProofIrrelevance.proof_irrelevance.
+Qed.
+Lemma FIdComp (f : functor C0 C1) : FComp (FId _) f = f.
+Proof.
+destruct f as [m [f0 f1 f2]]; congr Functor.Pack; congr Functor.Class => //;
+  exact/ProofIrrelevance.proof_irrelevance.
+Qed.
+Lemma FCompA (f : functor C2 C3) (g : functor C1 C2) (h : functor C0 C1)
+  : FComp (FComp f g) h = FComp f (FComp g h).
+Proof.
+destruct f as [m [f0 f1 f2]].
+destruct g as [n [g0 g1 g2]].
+destruct h as [o [h0 h1 h2]].
+congr Functor.Pack; congr Functor.Class => //;
+  exact/ProofIrrelevance.proof_irrelevance.
+Qed.
+Lemma FCompE (f : functor C1 C2) (g : functor C0 C1) A B (k : {hom A, B}) : (FComp f g) # k = f # (g # k).
+Proof. by []. Qed.
+End functorcomposition_lemmas.
+
+Section natural_transformation.
+Variables (C D : category) (f g : functor C D).
+Definition transformation_type := forall A, {hom f A ,g A}.
+Definition naturalP (phi : transformation_type) :=
+  forall A B (h : {hom A,B}), (g # h) \o (phi A) = (phi B) \o (f # h).
+End natural_transformation.
+Arguments naturalP : clear implicits.

@@ -14,7 +14,6 @@ Unset Strict Implicit.
 Unset Printing Implicit Defensive.
 
 Section convType_category.
-Import convex.
 Lemma affine_function_comp_proof' :
   forall (A B C : convType) (f : A -> B) (g : B -> C),
     affine_function f -> affine_function g -> affine_function (g \o f).
