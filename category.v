@@ -1,17 +1,33 @@
-From mathcomp Require Import ssreflect ssrbool ssrfun eqtype ssrnat seq div.
-From mathcomp Require Import choice fintype tuple finfun bigop prime binomial.
-From mathcomp Require Import ssralg finset fingroup perm finalg matrix.
-From mathcomp Require Import boolp classical_sets.
-Require Import ProofIrrelevance FunctionalExtensionality.
-Require Reals Lra.
-From infotheo Require ssrR Reals_ext Ranalysis_ext ssr_ext ssralg_ext logb Rbigop.
-From infotheo Require proba.
-From infotheo Require convex.
+Ltac typeof X := type of X.
+Require Import FunctionalExtensionality Coq.Program.Tactics ProofIrrelevance.
+Require Classical.
+Require Import ssreflect ssrmatching ssrfun ssrbool.
+From mathcomp Require Import eqtype ssrnat seq path div choice fintype tuple.
+From mathcomp Require Import finfun bigop.
 
 Set Implicit Arguments.
 Unset Strict Implicit.
 Unset Printing Implicit Defensive.
 
+Reserved Notation "A `2" (format "A `2", at level 3).
+Reserved Notation "f ^`2" (format "f ^`2", at level 3).
+Reserved Notation "l \\ p" (at level 50).
+Reserved Notation "m >>= f" (at level 50).
+Reserved Notation "f =<< m" (at level 50).
+Reserved Notation "'do' x <- m ; e"
+  (at level 60, x ident, m at level 200, e at level 60).
+Reserved Notation "'do' x : T <- m ; e"
+  (at level 60, x ident, m at level 200, e at level 60).
+Reserved Notation "m >=> n" (at level 50).
+Reserved Notation "n <=< m" (at level 50).
+Reserved Notation "x '[~]' y" (at level 50).
+Reserved Notation "'[~p]'".
+Reserved Notation "f ($) m" (at level 11).
+Reserved Notation "f (o) g" (at level 11).
+
+Notation "l \\ p" := ([seq x <- l | x \notin p]).
+
+Section funcomp_lemmas.
 Lemma compA {A B C D} (f : C -> D) (g : B -> C) (h : A -> B) : f \o (g \o h) = (f \o g) \o h.
 Proof. by []. Qed.
 
@@ -21,8 +37,9 @@ Lemma compidf A B (f : A -> B) : id \o f = f. Proof. by []. Qed.
 
 Lemma compE A B C (g : B -> C) (f : A -> B) a : (g \o f) a = g (f a).
 Proof. by []. Qed.
+End funcomp_lemmas.
 
-(* Our `category' is always concrete; a subcategory of the category of types and functions. *)
+(* Our `category' is always concrete; morphisms are just functions. *)
 Module Category.
 Record class_of (T : Type) : Type := Class {
   obj : T -> Type ; (* T and obj is like a ``universe a la Tarski'' *)
@@ -67,10 +84,6 @@ Notation "[ 'hom' 'of' f 'as' g ]" := (@clone _ _ _ _ f g _ _ idfun id)
   (at level 0, format "[ 'hom'  'of'  f  'as'  g ]") : category_scope.
 Notation "[ 'hom' 'of' f ]" := (@clone _ _ _ _ f f _ _ id id)
   (at level 0, format "[ 'hom'  'of'  f ]") : category_scope.
-(*
-Notation "{ 'hom' fUV }" := (map (Phant fUV))
-  (at level 0, format "{ 'hom'  fUV }") : category_scope.
-*)
 End Exports.
 End Hom.
 Export Hom.Exports.
@@ -116,55 +129,12 @@ by apply hom_ext.
 Qed.
 End category_lemmas.
 
-Section convType_category.
-Import convex.
-Lemma affine_function_comp_proof' :
-  forall (A B C : convType) (f : A -> B) (g : B -> C),
-    affine_function f -> affine_function g -> affine_function (g \o f).
-Proof. by move=>A B C f g Hf Hg a b t; rewrite /affine_function_at compE Hf Hg. Qed.
-Definition convType_category_class : Category.class_of convType :=
-  Category.Class affine_function_id_proof affine_function_comp_proof'.
-Canonical convType_category := Category.Pack convType_category_class.
-End convType_category.
-
 Section Type_category.
 Definition Type_category_class : Category.class_of Type :=
 @Category.Class Type id (fun _ _ _ => True) (fun _ => I) (fun _ _ _ _ _ _ _ => I).
 Canonical Type_category := Category.Pack Type_category_class.
 Definition hom_Type (a b : Type) (f : a -> b) : {hom a,b} := Hom (I : hom (f : El a -> El b)).
 End Type_category.
-
-Module Category_Examples.
-Section Example_cat.
-Variables (C : category) (A B : C) (f g : {hom A,B}).
-End Example_cat.
-Section Example_convType.
-Import convex.
-Local Open Scope convex_scope.
-Variables (A B : convType) (f : {hom A,B}) (g : {affine A -> B}).
-Variable x : A.
-Check (f x : B).
-Check (f x : El B).
-Check (g x : B).
-Check (g x : El B).
-Check (f : A -> B).
-Check (g : A -> B).
-Fail Check (f : {affine A -> B}).
-Fail Check (g : {hom A,B}).
-Goal affine_function f.
-Proof. by case: f. Qed.
-End Example_convType.
-Section Example_Type.
-Variables (A B : Type) (f : {hom A,B}) (g : A -> B).
-Variable x : A.
-Check (f x : B).
-Check (f x : El B).
-Check (g x : B).
-Check (g x : El B).
-Check (f : A -> B).
-Fail Check (g : {hom A,B}).
-End Example_Type.
-End Category_Examples.
 
 (* map laws of a functor *)
 Module FunctorLaws.
@@ -209,7 +179,7 @@ End functor_lemmas.
 
 Section squaring.
 Definition Squaring (A : Type) := (A * A)%type.
-Notation "A `2" := (Squaring A) (at level 100).
+Notation "A `2" := (Squaring A).
 Definition squaring_f A B (f : {hom A, B}) : {hom A`2,B`2} := hom_Type (fun x => (f x.1, f x.2)).
 Lemma squaring_f_id : FunctorLaws.id squaring_f.
 Proof. by move=> A /=; apply hom_extext => -[x1 x2]. Qed.
@@ -217,7 +187,7 @@ Lemma squaring_f_comp : FunctorLaws.comp squaring_f.
 Proof. by move=> A B C g h /=; apply hom_extext => -[x1 x2]. Qed.
 Definition squaring : functor _ _ :=
   Functor.Pack (Functor.Class squaring_f_id squaring_f_comp).
-Notation "f ^`2" := (squaring # f) (at level 100).
+Notation "f ^`2" := (squaring # f).
 End squaring.
 
 Section functorid.
