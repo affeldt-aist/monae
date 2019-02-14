@@ -68,53 +68,48 @@ rewrite (bigID (fun i => g i \in x)).
 set sa1 := \big[_/_]_(i < n | _) _.
 set sa2 := \big[_/_]_(i < n | _) _.
 move=> Hsa.
-have Hpty: forall Ha2: (0 < (weight (dist_convType A)) sa2)%R, point Ha2 \in y.
-  move=> Ha2; apply scaled_set_extract.
+have sa2_in_y (Ha2 : (0 < weight _ sa2)%R) : point Ha2 \in y.
+  apply scaled_set_extract.
   rewrite /sa2; apply big_ind.
   + by rewrite in_setE.
   + apply addpt_scaled_set.
-  + move=> i Hi. apply scalept_scaled_set.
+  + move=> i Hi; apply scalept_scaled_set.
     rewrite in_setE /= -[_ \in _]orFb -(negbTE Hi) -in_setU in_setE.
     by apply /gX /imageP.
 case/boolP: (weight _ sa1 >b 0)%R => /ltRP Ha1; last first.
   exists dx; split.
     by rewrite in_setE.
+  have Hw1 := eqR_le_Ngt (pos_f_ge0 _ _) Ha1.
   have : weight _ (S1 a) = 1%R by [].
-  rewrite Hsa weight_addpt (eqR_le_Ngt _ Ha1) ?add0R; last by apply pos_f_ge0.
-  move=> Hw2.
+  rewrite Hsa weight_addpt Hw1 add0R => Hw2.
   move: Rlt_0_1; rewrite -Hw2 => Hw2'.
   exists (point Hw2'); split => //.
   exists `Pr 0.
   rewrite conv0; apply S1_inj.
-  rewrite Hsa (@weight0_Zero _ sa1) /=; last first.
-    rewrite -(eqR_le_Ngt _ Ha1) //; by apply pos_f_ge0.
-  rewrite -[LHS](Scaled_point Hw2'); congr Scaled.
+  rewrite Hsa (weight0_Zero Hw1) -[LHS](Scaled_point Hw2'); congr Scaled.
   by apply val_inj; rewrite /= -Hw2.
 exists (point Ha1); split.
   apply scaled_set_extract.
-  rewrite /sa1.
-  apply big_ind.
+  rewrite /sa1; apply big_ind.
   + by rewrite in_setE.
   + apply addpt_scaled_set.
-  + move=> i Hi. apply scalept_scaled_set.
+  + move=> i Hi; apply scalept_scaled_set.
     by rewrite in_setE.
 case/boolP: (weight _ sa2 >b 0)%R => /ltRP Ha2; last first.
   exists dy; split.
     by rewrite in_setE.
   exists `Pr 1.
   rewrite conv1; apply S1_inj.
-  rewrite Hsa (@weight0_Zero _ sa2) /=; last first.
-    rewrite -(eqR_le_Ngt _ Ha2) //; by apply pos_f_ge0.
-  rewrite addpt0 -[LHS](Scaled_point Ha1); congr Scaled; apply val_inj => /=.
-  have <- : weight _ (S1 a) = 1%R by [].
-  rewrite Hsa weight_addpt (eqR_le_Ngt _ Ha2) ?addR0 //; by apply pos_f_ge0.
+  have Hw2 := eqR_le_Ngt (pos_f_ge0 _ _) Ha2.
+  rewrite Hsa (weight0_Zero Hw2) /= addpt0 -[LHS](Scaled_point Ha1).
+  congr Scaled; apply val_inj => /=.
+  by rewrite (_ : 1%R = weight _ (S1 a)) // Hsa weight_addpt Hw2 addR0.
 exists (point Ha2); split => //.
 exists (Rpos_prob (mkRpos Ha1) (mkRpos Ha2)).
 apply S1_inj.
 rewrite -(Scaled_point Ha1) -(Scaled_point Ha2) /= in Hsa.
 rewrite Hsa; congr Scaled; apply val_inj => /=.
-have H1 : weight _ (S1 a) = 1%R by [].
-by rewrite -H1 Hsa.
+by rewrite (_ : 1%R = weight _ (S1 a)) // Hsa.
 Qed.
 
 End CSet_prop.
