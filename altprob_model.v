@@ -63,53 +63,39 @@ rewrite in_setE.
 case=> n -[g [e [gX Ha]]].
 case: x0 => dx dx_x.
 case: y0 => dy dy_y.
+suff : exists a1, a1 \in scaled_set x /\ exists a2, a2 \in scaled_set y
+         /\ S1 a = addpt a1 a2.
+  case => -[p a1|] [Ha1] [] [q a2|] /= [Ha2] // [Hpq ->];
+    (exists a1; split;
+      first by rewrite -(@point_Scaled _ p a1 (Rpos_gt0 _));
+      apply scaled_set_extract)
+     || (exists dx; split; first by rewrite in_setE);
+    (exists a2; split;
+      first by rewrite -(@point_Scaled _ q a2 (Rpos_gt0 _));
+      apply scaled_set_extract)
+     || (exists dy; split; first by rewrite in_setE).
+  + esplit; congr Conv.
+  + exists `Pr 1; by rewrite conv1.
+  + exists `Pr 0; by rewrite conv0.
 move/(f_equal (@S1 _)): Ha; rewrite S1_convn.
 rewrite (bigID (fun i => g i \in x)).
 set sa1 := \big[_/_]_(i < n | _) _.
 set sa2 := \big[_/_]_(i < n | _) _.
 move=> Hsa.
-have sa2_in_y (Ha2 : (0 < weight _ sa2)%R) : point Ha2 \in y.
-  apply scaled_set_extract.
+exists sa1; split.
+  rewrite /sa1; apply big_ind.
+  + by rewrite in_setE.
+  + apply addpt_scaled_set.
+  + move=> i Hi; apply scalept_scaled_set.
+    by rewrite in_setE.
+exists sa2; split.
   rewrite /sa2; apply big_ind.
   + by rewrite in_setE.
   + apply addpt_scaled_set.
   + move=> i Hi; apply scalept_scaled_set.
     rewrite in_setE /= -[_ \in _]orFb -(negbTE Hi) -in_setU in_setE.
     by apply /gX /imageP.
-case/boolP: (weight _ sa1 >b 0)%R => /ltRP Ha1; last first.
-  exists dx; split.
-    by rewrite in_setE.
-  have Hw1 := eqR_le_Ngt (pos_f_ge0 _ _) Ha1.
-  have : weight _ (S1 a) = 1%R by [].
-  rewrite Hsa weight_addpt Hw1 add0R => Hw2.
-  move: Rlt_0_1; rewrite -Hw2 => Hw2'.
-  exists (point Hw2'); split => //.
-  exists `Pr 0.
-  rewrite conv0; apply S1_inj.
-  rewrite Hsa (weight0_Zero Hw1) -[LHS](Scaled_point Hw2'); congr Scaled.
-  by apply val_inj; rewrite /= -Hw2.
-exists (point Ha1); split.
-  apply scaled_set_extract.
-  rewrite /sa1; apply big_ind.
-  + by rewrite in_setE.
-  + apply addpt_scaled_set.
-  + move=> i Hi; apply scalept_scaled_set.
-    by rewrite in_setE.
-case/boolP: (weight _ sa2 >b 0)%R => /ltRP Ha2; last first.
-  exists dy; split.
-    by rewrite in_setE.
-  exists `Pr 1.
-  rewrite conv1; apply S1_inj.
-  have Hw2 := eqR_le_Ngt (pos_f_ge0 _ _) Ha2.
-  rewrite Hsa (weight0_Zero Hw2) /= addpt0 -[LHS](Scaled_point Ha1).
-  congr Scaled; apply val_inj => /=.
-  by rewrite (_ : 1%R = weight _ (S1 a)) // Hsa weight_addpt Hw2 addR0.
-exists (point Ha2); split => //.
-exists (Rpos_prob (mkRpos Ha1) (mkRpos Ha2)).
-apply S1_inj.
-rewrite -(Scaled_point Ha1) -(Scaled_point Ha2) /= in Hsa.
-rewrite Hsa; congr Scaled; apply val_inj => /=.
-by rewrite (_ : 1%R = weight _ (S1 a)) // Hsa.
+by [].
 Qed.
 
 End CSet_prop.
