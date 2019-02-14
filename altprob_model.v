@@ -51,56 +51,8 @@ Qed.
 End convex_set_of_distributions_prop.
 
 Section CSet_prop.
-Variable A : finType.
-
 Import ScaledConvex.
-
-Section ScaledSet.
-Variables (B : convType).
-
-Definition scaled_set (D : set B) :=
-  [set x | if x is Scaled p a then a \in D else True].
-
-Lemma addpt_scaled_set (D : {convex_set B}) x y :
-  x \in scaled_set D -> y \in scaled_set D -> addpt x y \in scaled_set D.
-Proof.
-case: x => [p x|]; case: y => [q y|] //=.
-rewrite !in_setE /scaled_set.
-move/CSet.H/asboolP: (D); apply.
-Qed.
-
-Lemma scalept_scaled_set (D : {convex_set B}) r x :
-  x \in scaled_set D -> scalept r x \in scaled_set D.
-Proof.
-case: x => [p x|] //=.
-rewrite !in_setE /scaled_set /mkscaled.
-by case: Rlt_dec.
-Qed.
-
-Lemma scaled_set_extract (D : {convex_set B}) x (H : (0 < weight _ x)%R) :
-  x \in scaled_set D -> point H \in CSet.car D.
-Proof.
-case: x H => [p x|] //=.
-  by rewrite in_setE.
-by move/ltRR.
-Qed.
-
-Lemma point_Scaled p x H : @point B (Scaled p x) H = x.
-Proof. by []. Qed.
-
-Lemma Scaled_point x H : Scaled (mkRpos H) (@point B x H) = x.
-Proof.
-case: x H => [p x|] H.
-  by congr Scaled; apply val_inj.
-by elim: (ltRR 0).
-Qed.
-
-Lemma weight0_Zero x : weight B x = 0%R -> x = @Zero B.
-Proof.
-case: x => //= r c /esym Hr.
-by move/ltR_eqF: (Rpos_gt0 r).
-Qed.
-End ScaledSet.
+Variable A : finType.
 
 Lemma hull_setU (a : dist A) (x y : {convex_set (dist A)}) :
   x !=set0 -> y !=set0 -> a \in hull (x `|` y) ->
