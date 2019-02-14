@@ -114,25 +114,9 @@ by apply/hom_comp;case:f;case:g.
 Qed.
 Canonical comp_hom (a b c : C) (f : {hom b, c}) (g : {hom a, b}) := Hom (category_comp_proof f g).
 End category_interface.
-(*
-Notation "'Id' a" := (category_id a) (at level 10) : category_scope.
-Notation "f '\\o' g" := (category_comp f g) (at level 50) : category_scope.
-*)
 
 Section category_lemmas.
 Variable C : category.
-(*
-Lemma hom_ext' (a b : C) (f g : El a -> El b) (p : hom f) (q : hom g) (H : f = g)
-  : Hom p = Hom q.
-Proof.
-move:p q.
-rewrite H=>p q.
-by have->:p=q by apply/proof_irrelevance.
-Qed.
-Lemma hom_extext' (a b : C) (f g : El a -> El b) (p : hom f) (q : hom g)
-      : (forall x, f x = g x) -> Hom p = Hom q.
-Proof. by move/functional_extensionality=>H; apply hom_ext'. Qed.
-*)
 
 Lemma hom_ext (a b : C) (f g : {hom a,b})
   : f = g <-> [fun of f] = [fun of g].
@@ -147,16 +131,72 @@ Lemma hom_extext (a b : C) (f g : {hom a,b}) :
   f = g <-> (forall x, [fun of f] x = [fun of g] x).
 Proof. split. by move->. by move/functional_extensionality=>H; apply hom_ext. Qed.
 
+Lemma homfunK (a b : C) (f : {hom a,b}) : [hom of [fun of f]] = f.
+Proof. by case:f. Qed.
+
 Lemma hom_compA (a b c d : C) (h : {hom c, d}) (g : {hom b, c}) (f : {hom a, b})
   : [hom of [hom of h \o g] \o f] = [hom of h \o [hom of g \o f]].
 Proof. by case:f=>f Hf;case:g=>g Hg;case:h=>h Hh; apply hom_ext. Qed.
-
 Lemma hom_idfunE (a : C) : [hom of idfun] = idfun :> (El a -> El a).
 Proof. done. Qed.
-Lemma hom_compE (a b c : C) (g : {hom b,c}) (f : {hom a,b})
-  : [hom of g \o f] = g \o f :> (El a -> El c).
+
+(* experiment: to avoid "_ \o id" or "id \o _" popping out when we rewrite !compA.
+ "homp" = "\h"
+ g \h f = [fun of g] \o [fun of f]
+*)
+Local Notation "[ \h f , .. , g , h ]" := ([fun of f] \o .. ([fun of g] \o [fun of h]) ..)
+  (at level 0, format "[ \h '['  f ,  '/' .. ,  '/' g ,  '/' h ']' ]") : category_scope.
+Lemma hompA (a b c d : C) (h : {hom c, d}) (g : {hom b, c}) (f : {hom a, b})
+  : (h \o g) \o f = [\h h, g, f].
 Proof. done. Qed.
+Lemma hompE (a b c : C) (g : {hom b,c}) (f : {hom a,b}) x : g (f x) = (g \o f) x.
+Proof. done. Qed.
+Lemma homp_idfun (a b : C) (f : {hom a,b}) : f = [\h f, [hom of idfun]] :> (El a -> El b).
+Proof. done. Qed.
+Lemma hom_homp (a b c : C) (g : {hom b,c}) (f : {hom a,b})
+  : [fun of [hom of g \o f]] = g \o f :> (El a -> El c).
+Proof. done. Qed.
+Lemma hom_homp_head (a b c x: C) (g : {hom b,c}) (f : {hom a,b}) (e : {hom x,a})
+  : [\h [hom of g \o f], e] = [\h g, f, e] :> (El x -> El c).
+Proof. done. Qed.
+
+(* example *)
+Example hompA' (a b c d : C) (h : {hom c, d}) (g : {hom b, c}) (f : {hom a, b})
+  : (h \o g) \o f = [\h h, g, f].
+Proof.
+(*
+If we issue
+ rewrite !compA.
+here, the result is :
+  C : category
+  a, b, c, d : C
+  h : {hom c,d}
+  g : {hom b,c}
+  f : {hom a,b}
+  ============================
+  ((((((((((((((((((((((((((((((((((((((((((((... \o id) \o id) \o id) \o id) \o
+                                            id) \o id) \o id) \o id) \o id) \o
+                                       id) \o id) \o id) \o id) \o id) \o id) \o
+                                 id) \o id) \o id) \o id) \o id) \o id) \o id) \o
+                          id) \o id) \o id) \o id) \o id) \o id) \o id) \o id) \o
+                  id) \o id) \o id) \o id) \o id) \o id) \o id) \o id) \o id) \o
+         id) \o id) \o id) \o id) \o id) \o id =
+  ((((((((((((((((((((((((((((((((((((((((((((... \o id) \o id) \o id) \o id) \o
+                                            id) \o id) \o id) \o id) \o id) \o
+                                       id) \o id) \o id) \o id) \o id) \o id) \o
+                                 id) \o id) \o id) \o id) \o id) \o id) \o id) \o
+                          id) \o id) \o id) \o id) \o id) \o id) \o id) \o id) \o
+                  id) \o id) \o id) \o id) \o id) \o id) \o id) \o id) \o id) \o
+         id) \o id) \o id) \o id) \o id) \o id
+*)
+by rewrite !hompA.
+(* rewrite !hompA blocks id's from coming in, thanks to {hom _,_} conditions on arguments. *)
+Abort.
 End category_lemmas.
+(*
+Notation "[ \h f , .. , g , h ]" := ([fun of f] \o .. ([fun of g] \o [fun of h]) ..)
+  (at level 0, format "[ \h '['  f ,  '/' .. ,  '/' g ,  '/' h ']' ]") : category_scope.
+*)
 
 Section Type_category.
 Definition Type_category_class : Category.class_of Type :=
@@ -283,8 +323,14 @@ Definition transformation_type := forall a, {hom F a ,G a}.
 Definition naturalP (phi : transformation_type) :=
   forall a b (h : {hom a,b}),
     (G # h) \o (phi a) = (phi b) \o (F # h).
+Local Notation "[ \h f , .. , g , h ]" := ([fun of f] \o .. ([fun of g] \o [fun of h]) ..)
+  (at level 0, format "[ \h '['  f ,  '/' .. ,  '/' g ,  '/' h ']' ]") : category_scope.
+Definition naturalP_head (phi : transformation_type) :=
+  forall a b c (h : {hom a,b}) (f : {hom c,F a}),
+    [\h (G # h), (phi a), f] = [\h (phi b), (F # h), f].
 End natural_transformation.
 Arguments naturalP [C D] F G.
+Arguments naturalP_head [C D] F G.
 
 Section natural_transformation_example.
 Definition fork' A (a : A) := (a, a).
@@ -451,6 +497,21 @@ Lemma joinMret : JoinLaws.join_right_unit (@Ret C M) (@Join C M).
 Proof. by case: M => ? [? []]. Qed.
 Lemma joinA : JoinLaws.join_associativity (@Join C M).
 Proof. by case: M => ? [? []]. Qed.
+
+(* *_head lemmas are for [fun of f] \o ([fun of g] \o ([fun of h] \o ..))*)
+Local Notation "[ \h f , .. , g , h ]" := ([fun of f] \o .. ([fun of g] \o [fun of h]) ..)
+  (at level 0, format "[ \h '['  f ,  '/' .. ,  '/' g ,  '/' h ']' ]") : category_scope.
+Lemma ret_naturality_head : naturalP_head (FId C) M (@Ret C M).
+Proof. by move=>*; rewrite -hompA ret_naturality. Qed.
+Lemma join_naturality_head : naturalP_head (FComp M M) M (@Join C M).
+Proof. by move=>*; rewrite -hompA join_naturality. Qed.
+Lemma joinretM_head a (c:C) (f:{hom c,M a}) : [\h Join, Ret, f] = f.
+Proof. by rewrite compA joinretM. Qed.
+Lemma joinMret_head a (c:C) (f:{hom c,M a}) : [\h Join, M # Ret, f] = f.
+Proof. by rewrite compA joinMret. Qed.
+Lemma joinA_head a (c:C) (f:{hom c,M (M (M a))})
+  :[\h Join, M # Join, f] = [\h Join, Join, f].
+Proof. by rewrite compA joinA. Qed.
 End monad_interface.
 
 Section from_join_laws_to_bind_laws.
@@ -463,31 +524,49 @@ Hypothesis joinretM : JoinLaws.join_left_unit ret join.
 Hypothesis joinMret : JoinLaws.join_right_unit ret join.
 Hypothesis joinA : JoinLaws.join_associativity join.
 
+Local Notation "[ \h f , .. , g , h ]" := ([fun of f] \o .. ([fun of g] \o [fun of h]) ..)
+  (at level 0, format "[ \h '['  f ,  '/' .. ,  '/' g ,  '/' h ']' ]") : category_scope.
+
+Let ret_naturality_head : naturalP_head (FId C) F ret.
+Proof. by move=>*; rewrite -hompA ret_naturality. Qed.
+Let join_naturality_head : naturalP_head (FComp F F) F join.
+Proof. by move=>*; rewrite -hompA join_naturality. Qed.
+Let joinretM_head a (c:C) (f:{hom c,F a}) : [\h @join _, @ret _, f] = f.
+Proof. by rewrite compA joinretM. Qed.
+Let joinMret_head a (c:C) (f:{hom c,F a}) : [\h @join _, F # @ret _, f] = f.
+Proof. by rewrite compA joinMret. Qed.
+Let joinA_head a (c:C) (f:{hom c,F (F (F a))})
+  :[\h @join _, F # @join _, f] = [\h @join _, @join _, f].
+Proof. by rewrite compA joinA. Qed.
+
 Let bind (A B : C) (f : {hom A, F B}) : {hom F A, F B} := [hom of (@join B) \o (F # f)].
 
 Lemma bindretf_derived : BindLaws.left_neutral bind ret.
 Proof.
 move=> A B f.
 apply hom_ext=>/=.
-rewrite -(compA (join _)) ret_naturality compA.
-by rewrite joinretM compidf /FId /id_f /=.
+by rewrite hompA ret_naturality joinretM_head.
 Qed.
 
 Lemma bindmret_derived : BindLaws.right_neutral bind ret.
 Proof.
-move=>A;rewrite /bind.
-have->: [hom of join A \o F # ret A] = [hom of idfun]=>//.
-apply hom_ext=>/=.
-by rewrite joinMret.
+by move=>A m;rewrite /bind/= !hompE joinMret.
 Qed.
 
 Lemma bindA_derived : BindLaws.associative bind.
 Proof.
-move=> a b c m f g; rewrite /bind /=.
-rewrite [LHS](_ : _ = ((@join _ \o (F # g \o @join _) \o F # f) m)) //.
-rewrite join_naturality (compA (@join c)) -joinA -(compE (@join _)).
-  by have->:F # [hom of ([fun of join c] \o [fun of F # g]) \o [fun of f]]
-     = [hom of F # join c \o FComp F F # g \o F # f] by rewrite 2!functor_o.
+move=>a b c m f g; rewrite /bind.
+(* LHS *)
+rewrite hompE.
+rewrite hom_homp_head.
+rewrite hom_homp.
+(* RHS *)
+rewrite 2!functor_o.
+rewrite !hom_compA.
+rewrite 3!hom_homp.
+(* NB : Changing the order of lemmas above easily leads to a dependency error.
+   Can we fix this fragility? *)
+by rewrite join_naturality_head joinA_head.
 Qed.
 End from_join_laws_to_bind_laws.
 
@@ -512,14 +591,6 @@ Proof. apply bindA_derived; [exact: join_naturality | exact: joinA]. Qed.
 
 Lemma bindE_ext A B : forall x (f : {hom A, M B}), x >>= f = Join ((M # f) x).
 Proof. by []. Qed.
-
-(* *_seqcomp lemmas are for the head of a chain of funcomps f \o (g \o (h \o ..))*)
-Lemma joinretM_seqcomp a (c:C) (f:El c->_) : @Join C M a \o (@Ret C M (M a) \o f) = f.
-Proof. by rewrite compA joinretM. Qed.
-Lemma joinMret_seqcomp a (c:C) (f:El c->_) : @Join C M a \o (M # @Ret C M a \o f) = f.
-Proof. by rewrite compA joinMret. Qed.
-Lemma joinA_seqcomp a (c:C) (f:El c->_) : @Join C M a \o (M # @Join C M a \o f) = @Join C M a \o (@Join C M (M a) \o f).
-Proof. by rewrite compA joinA. Qed.
 End monad_lemmas.
 Arguments Bind {C M A B} : simpl never.
 Notation "m >>= f" := (Bind f m).
