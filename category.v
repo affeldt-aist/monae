@@ -379,7 +379,7 @@ End JoinLaws.
 
 Module BindLaws.
 Section bindlaws.
-Variables (C : category) (M : functor C C) .
+Variables (C : category) (M : C -> C).
 
 Variable b : forall A B, {hom A, M B} -> {hom M A, M B}.
 Local Notation "m >>= f" := (b f m).
@@ -441,7 +441,7 @@ End bindlaws_on_Type.
 End BindLaws.
 
 Section bind_lemmas.
-Variables (C : category) (M : functor C C) .
+Variables (C : category) (M : C -> C).
 Variable b : forall A B, {hom A, M B} -> {hom M A, M B}.
 Local Notation "m >>= f" := (b f m).
 Lemma bind_left_neutral_hom_fun (r : forall A, {hom A, M A})
@@ -593,34 +593,26 @@ Notation "m >>= f" := (Bind f m).
 
 (*** monad defined by adjointness ***)
 Module MonadOfAdjoint.
+Section monad_of_adjoint.
 Local Notation "[ \h f , .. , g , h ]" := ([fun of f] \o .. ([fun of g] \o [fun of h]) ..)
   (at level 0, format "[ \h '['  f ,  '/' .. ,  '/' g ,  '/' h ']' ]") : category_scope.
-Section def.
 Variables C D : category.
 Variables (f : functor C D) (g : functor D C).
 Variables (eps : eps_type f g) (eta : eta_type f g).
 Definition M := FComp g f.
 Definition join A : {hom M (M A), M A} := g # (@eps (f A)).
 Definition ret A : {hom A, M A} := @eta A.
-End def.
-Section prop.
-Variables C D : category.
-Variables (f : functor C D) (g : functor D C).
-Variables (eps : eps_type f g) (eta : eta_type f g).
 Hypothesis Had : adjointP eps eta.
 Let Heps := let: conj x (conj _ (conj _ _)) := Had in x.
 Let Heta := let: conj _ (conj x (conj _ _)) := Had in x.
 Let Ht1 : triangular_law1 eps eta := let: conj _ (conj _ (conj x _)) := Had in x.
 Let Ht2 : triangular_law2 eps eta := let: conj _ (conj _ (conj _ x)) := Had in x.
-Local Notation M := (M f g).
-Let ret := ret eta.
-Let join := join eps.
 Let joinE : join = fun A => g # (@eps (f A)).
 Proof. done. Qed.
 Lemma join_natural : JoinLaws.join_naturality join.
 Proof.
 rewrite !joinE => A B h.
-rewrite/M/MonadOfAdjoint.M.
+rewrite/M.
 rewrite !FCompE.
 have->:g#(f#(g#(f#h)))=g#((FComp f g)#(f#h))=>//.
 rewrite /= -2!functor_o_fun.
@@ -647,15 +639,129 @@ rewrite /= -functor_o_fun  -[in RHS]functor_id_fun.
 congr (Fun g).
 by rewrite hom_ext/= Ht1.
 Qed.
-End prop.
-End MonadOfAdjoint.
-
-Section monad_of_adjoint.
-Variables C D : category.
-Variables (f : functor C D) (g : functor D C).
-Variables (eps : eps_type f g) (eta : eta_type f g).
-Hypothesis Had : adjointP eps eta.
-Import MonadOfAdjoint.
-Definition monad_of_adjoint_mixin : Monad.mixin_of (M f g) := Monad.Mixin (ret_natural Had) (join_natural Had) (join_left_unit Had) (join_right_unit Had) (join_associativity Had).
-Definition monad_of_adjoint := Monad.Pack (Monad.Class monad_of_adjoint_mixin).
+Definition monad_of_adjoint_mixin : Monad.mixin_of M
+  := Monad.Mixin ret_natural
+                 join_natural
+                 join_left_unit
+                 join_right_unit
+                 join_associativity.
 End monad_of_adjoint.
+Module Exports.
+Definition Monad_of_adjoint C D (f:functor C D) (g:functor D C) (eps:eps_type f g) (eta:eta_type f g) (Had:adjointP eps eta) := Monad.Pack (Monad.Class (monad_of_adjoint_mixin Had)).
+End Exports.
+End MonadOfAdjoint.
+Export MonadOfAdjoint.Exports.
+
+(*** monad defined by bind and ret ***)
+Module Monad_of_bind_ret.
+Local Notation "[ \h f , .. , g , h ]" := ([fun of f] \o .. ([fun of g] \o [fun of h]) ..)
+  (at level 0, format "[ \h '['  f ,  '/' .. ,  '/' g ,  '/' h ']' ]") : category_scope.
+Section monad_of_bind_ret.
+Variables C : category.
+Variable M : C -> C.
+Variable bind : forall A B, {hom A,M B} -> {hom M A,M B}.
+Variable ret : forall A, {hom A, M A}.
+Hypothesis bindretf : BindLaws.left_neutral bind ret.
+Hypothesis bindmret : BindLaws.right_neutral bind ret.
+Hypothesis bindA : BindLaws.associative bind.
+
+Lemma bindretf_fun : 
+  (forall (A B : C) (f : {hom A,M B}),
+      [fun of bind f] \o [fun of ret A] = [fun of f]).
+Proof. by apply bind_left_neutral_hom_fun. Qed.
+
+Definition fmap A B (f : {hom A,B}) := bind [hom of ret B \o f].
+Lemma fmap_id : FunctorLaws.id fmap.
+Proof.
+move=> A; apply hom_extext=>m. rewrite /fmap.
+rewrite/idfun/=.
+rewrite /funcomp.
+rewrite -[in RHS](bindmret m).
+congr (fun f => bind f m).
+by rewrite hom_ext.
+Qed.
+Lemma fmap_o : FunctorLaws.comp fmap.
+Proof.
+move=> a b c g h; apply hom_extext=>m; rewrite /fmap/=.
+rewrite bindA/=.
+congr (fun f => bind f m); rewrite hom_ext/=.
+by rewrite -[in RHS]hompA bindretf_fun.
+Qed.
+Definition functor_mixin := Functor.Class fmap_id fmap_o.
+Let M' := Functor.Pack functor_mixin.
+
+Let ret' : forall A, {hom A, M' A} := ret.
+Definition join A : {hom M' (M' A), M' A} := bind [hom of idfun].
+
+Lemma bind_fmap a b c (f : {hom a,b}) (m : El (M a)) (g : {hom b, M c}) :
+  bind g (fmap f m) = bind [hom of g \o f] m .
+Proof.
+rewrite /fmap bindA. congr (fun f => bind f m).
+rewrite homfunK comp_homE /= hom_ext/=.
+rewrite -hompA. congr (fun x => x \o [fun of f]).
+by rewrite bindretf_fun.
+Qed.
+
+Lemma bind_fmap_fun a b c (f : {hom a,b}) (g : {hom b, M c}) :
+  bind g \o fmap f = bind [hom of g \o f].
+Proof. by apply functional_extensionality=>x; apply bind_fmap. Qed.
+
+Lemma ret_naturality : naturalP (FId C) M' ret.
+Proof. by move=> A B h; rewrite FIdf bindretf_fun. Qed.
+
+Lemma bindE A B (f : {hom A, M' B}) : bind f = [hom of (join B) \o (M' # f)].
+Proof.
+rewrite /join.
+rewrite hom_extext=>m.
+rewrite /=bind_fmap/idfun/=.
+congr (fun f => bind f m).
+by rewrite hom_ext.
+Qed.
+
+Lemma fmap_bind a b c (f : {hom a,b}) m (g : {hom c,M a}) :
+  (fmap f) (bind g m) = bind [hom of fmap f \o g] m.
+Proof. by rewrite /fmap bindA bindE. Qed.
+
+Lemma join_naturality : naturalP (FComp M' M') M' join.
+Proof.
+move => A B h.
+rewrite /join/=; apply functional_extensionality=>m/=.
+rewrite fmap_bind bindA/=.
+congr (fun f => bind f m).
+rewrite hom_ext/=.
+rewrite -[in RHS]hompA.
+by rewrite bindretf_fun.
+Qed.
+
+Lemma joinretM : JoinLaws.join_left_unit ret' join.
+Proof.
+rewrite /join => A.
+by rewrite bindretf_fun.
+Qed.
+
+Lemma joinMret : JoinLaws.join_right_unit ret' join.
+Proof.
+rewrite /join => A; apply functional_extensionality => ma.
+rewrite bind_fmap_fun/= -[in RHS](bindmret ma).
+congr (fun f => bind f ma).
+by rewrite hom_ext.
+Qed.
+
+Lemma joinA : JoinLaws.join_associativity join.
+Proof.
+move => A; apply functional_extensionality => mmma.
+rewrite /join.
+rewrite bind_fmap_fun/= bindA/=.
+congr (fun f => bind f mmma).
+by rewrite hom_ext.
+Qed.
+
+Definition monad_mixin := Monad.Mixin
+  ret_naturality join_naturality joinretM joinMret joinA.
+End monad_of_bind_ret.
+Module Exports.
+Definition Monad_of_bind_ret C M bind ret a b c :=
+  Monad.Pack (Monad.Class (@monad_mixin C M bind ret a b c)).
+End Exports.
+End Monad_of_bind_ret.
+Export Monad_of_bind_ret.Exports.
