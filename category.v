@@ -111,6 +111,12 @@ End category_interface.
 Section category_lemmas.
 Variable C : category.
 
+Lemma homfunK (a b : C) (f : {hom a,b}) : [hom of [fun of f]] = f.
+Proof. by case:f. Qed.
+
+Lemma comp_homE (a b c:C) (g:{hom b,c}) (f:{hom a,b}) : comp_hom g f = [hom of g \o f].
+Proof. done. Qed.
+
 Lemma hom_ext (a b : C) (f g : {hom a,b})
   : f = g <-> [fun of f] = [fun of g].
 Proof.
@@ -123,9 +129,6 @@ Qed.
 Lemma hom_extext (a b : C) (f g : {hom a,b}) :
   f = g <-> (forall x, [fun of f] x = [fun of g] x).
 Proof. split. by move->. by move/functional_extensionality=>H; apply hom_ext. Qed.
-
-Lemma homfunK (a b : C) (f : {hom a,b}) : [hom of [fun of f]] = f.
-Proof. by case:f. Qed.
 
 Lemma hom_compA (a b c d : C) (h : {hom c, d}) (g : {hom b, c}) (f : {hom a, b})
   : [hom of [hom of h \o g] \o f] = [hom of h \o [hom of g \o f]].
@@ -587,3 +590,72 @@ Proof. by []. Qed.
 End monad_lemmas.
 Arguments Bind {C M A B} : simpl never.
 Notation "m >>= f" := (Bind f m).
+
+(*** monad defined by adjointness ***)
+Module MonadOfAdjoint.
+Local Notation "[ \h f , .. , g , h ]" := ([fun of f] \o .. ([fun of g] \o [fun of h]) ..)
+  (at level 0, format "[ \h '['  f ,  '/' .. ,  '/' g ,  '/' h ']' ]") : category_scope.
+Section def.
+Variables C D : category.
+Variables (f : functor C D) (g : functor D C).
+Variables (eps : eps_type f g) (eta : eta_type f g).
+Definition M := FComp g f.
+Definition join A : {hom M (M A), M A} := g # (@eps (f A)).
+Definition ret A : {hom A, M A} := @eta A.
+End def.
+Section prop.
+Variables C D : category.
+Variables (f : functor C D) (g : functor D C).
+Variables (eps : eps_type f g) (eta : eta_type f g).
+Hypothesis Had : adjointP eps eta.
+Let Heps := let: conj x (conj _ (conj _ _)) := Had in x.
+Let Heta := let: conj _ (conj x (conj _ _)) := Had in x.
+Let Ht1 : triangular_law1 eps eta := let: conj _ (conj _ (conj x _)) := Had in x.
+Let Ht2 : triangular_law2 eps eta := let: conj _ (conj _ (conj _ x)) := Had in x.
+Local Notation M := (M f g).
+Let ret := ret eta.
+Let join := join eps.
+Let joinE : join = fun A => g # (@eps (f A)).
+Proof. done. Qed.
+Lemma join_natural : JoinLaws.join_naturality join.
+Proof.
+rewrite !joinE => A B h.
+rewrite/M/MonadOfAdjoint.M.
+rewrite !FCompE.
+have->:g#(f#(g#(f#h)))=g#((FComp f g)#(f#h))=>//.
+rewrite /= -2!functor_o_fun.
+congr (Fun g).
+by rewrite hom_ext/= -Heps.
+Qed.
+Let join_associativity' A : join A \o join (M A) = join A \o (M # join A).
+Proof.
+rewrite joinE.
+have->: g # eps (f A) \o g # eps (f (M A)) =
+        g # [hom of eps (f A) \o eps (f (M A))] by rewrite functor_o.
+by rewrite /= -functor_o_fun; congr (Fun g); rewrite hom_ext/= Heps.
+Qed.
+Lemma join_associativity : JoinLaws.join_associativity join.
+Proof. by move=>A; rewrite join_associativity'. Qed.
+Lemma ret_natural : JoinLaws.ret_naturality ret.
+Proof. by move=>*; rewrite Heta. Qed.
+Lemma join_left_unit : JoinLaws.join_left_unit ret join.
+Proof. by move=>a;rewrite joinE Ht2. Qed.
+Lemma join_right_unit : JoinLaws.join_right_unit ret join.
+Proof.
+move=>a;rewrite joinE. rewrite/M FCompE.
+rewrite /= -functor_o_fun  -[in RHS]functor_id_fun.
+congr (Fun g).
+by rewrite hom_ext/= Ht1.
+Qed.
+End prop.
+End MonadOfAdjoint.
+
+Section monad_of_adjoint.
+Variables C D : category.
+Variables (f : functor C D) (g : functor D C).
+Variables (eps : eps_type f g) (eta : eta_type f g).
+Hypothesis Had : adjointP eps eta.
+Import MonadOfAdjoint.
+Definition monad_of_adjoint_mixin : Monad.mixin_of (M f g) := Monad.Mixin (ret_natural Had) (join_natural Had) (join_left_unit Had) (join_right_unit Had) (join_associativity Had).
+Definition monad_of_adjoint := Monad.Pack (Monad.Class monad_of_adjoint_mixin).
+End monad_of_adjoint.
