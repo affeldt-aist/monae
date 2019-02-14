@@ -51,6 +51,7 @@ Qed.
 End convex_set_of_distributions_prop.
 
 Section CSet_prop.
+Import ScaledConvex.
 Variable A : finType.
 
 Lemma hull_setU (a : dist A) (x y : {convex_set (dist A)}) :
@@ -62,140 +63,53 @@ rewrite in_setE.
 case=> n -[g [e [gX Ha]]].
 case: x0 => dx dx_x.
 case: y0 => dy dy_y.
-set gx := fun i : 'I_n => if g i \in x then g i else dx.
-set gy := fun i : 'I_n => if g i \in y then g i else dy.
-pose norm_pmf_e1 := \rsum_(i < n | g i \in x) e i.
-have norm_pmf_e1_ge0 : (0 <= norm_pmf_e1)%R.
-  rewrite /norm_pmf_e1; apply: rsumr_ge0 => i _; exact/dist_ge0.
-case/boolP : (norm_pmf_e1 == 0%R) => [norm_pmf_e1_eq0|norm_pmf_e1_neq0].
-  have ge (i : 'I_n) : g i \in x -> e i = 0%R.
-    move=> gix.
-    move/eqP/prsumr_eq0P : norm_pmf_e1_eq0; apply => //= j _.
-    exact/dist_ge0.
-  exists dx; split; first by rewrite in_setE.
-  exists (\Sum_(CodomDDist.d gX ge) gy); split.
-    move: (CSet.H y); rewrite is_convex_setP /is_convex_set_n => /asboolP.
-    apply => d.
-    rewrite -in_setE => /imsetP[i _ ->{d}].
-    rewrite /gy -in_setE; case: ifPn => //; by rewrite in_setE.
-  exists (`Pr 0).
-  rewrite Ha conv0; apply/dist_ext => a0.
-  rewrite 2!convn_convdist 2!ConvDist.dE; apply eq_bigr => i _.
-  rewrite /gy CodomDDist.dE; case: ifPn => // giy.
-  have : g i \in x `|` y by rewrite in_setE; apply/gX; by exists i.
-  rewrite in_setU (negbTE giy) orbF => /ge ->; by rewrite !mul0R.
-have {norm_pmf_e1_neq0}norm_pmf_e1_gt0 : (0 < norm_pmf_e1)%R.
-  rewrite ltR_neqAle; split => //; by apply/eqP; by rewrite eq_sym.
-set pmf_e1 := fun i : 'I_n => ((if g i \in x then e i else 0) / norm_pmf_e1)%R.
-have pmf_e10 : forall i : 'I_n, (0 <= pmf_e1 i)%R.
-  move=> i; rewrite /pmf_e1; apply/divR_ge0 => //.
-  case: ifPn => _; [exact/dist_ge0|exact/leRR].
-have pmf_e11 : \rsum_(i < n) pmf_e1 i = 1%R.
-  rewrite /pmf_e1 -big_distrl /= -/norm_pmf_e1 eqR_divr_mulr ?mul1R; last first.
-    exact/eqP/gtR_eqF.
-  by rewrite /norm_pmf_e1 [in RHS]big_mkcond.
-set e1 := makeDist pmf_e10 pmf_e11.
-pose norm_pmf_e2 := \rsum_(i < n | (g i \in y) && (g i \notin x)) e i.
-have norm_pmf_e2_ge0 : (0 <= norm_pmf_e2)%R.
-  rewrite /norm_pmf_e2; apply: rsumr_ge0 => i _; exact/dist_ge0.
-case/boolP : (norm_pmf_e2 == 0%R) => [norm_pmf_e2_eq0|norm_pmf_e2_neq0].
-  have ge (i : 'I_n) : (g i \in y) && (g i \notin x) -> e i = 0%R.
-    move=> gix.
-    move/eqP/prsumr_eq0P : norm_pmf_e2_eq0; apply => /=.
-      move=> ? _; exact/dist_ge0.
-    done.
-  rewrite setUC in gX.
-  exists (ConvDist.d (CodomDDist.d' gX ge) gx); split.
-    move: (CSet.H x); rewrite is_convex_setP /is_convex_set_n => /asboolP.
-    rewrite -convn_convdist; apply => d.
-    rewrite -in_setE => /imsetP[i _ ->{d}].
-    rewrite /gx -in_setE; case: ifPn => //; by rewrite in_setE.
-  exists dy; split; first by rewrite in_setE.
-  exists (`Pr 1).
-  rewrite Ha conv1; apply/dist_ext => a0.
-  rewrite convn_convdist 2!ConvDist.dE; apply eq_bigr => i _.
-  rewrite /gx CodomDDist.dE'; case: ifPn => // gix.
-  have : g i \in y `|` x by rewrite in_setE; apply/gX; by exists i.
-  rewrite in_setU (negbTE gix) orbF => giy.
-  by rewrite ge ?mul0R // giy.
-have {norm_pmf_e2_neq0}norm_pmf_e2_gt0 : (0 < norm_pmf_e2)%R.
-  rewrite ltR_neqAle; split => //; by apply/eqP; by rewrite eq_sym.
-set pmf_e2 := fun i : 'I_n => ((if (g i \in y) && (g i \notin x) then e i else 0) / norm_pmf_e2)%R.
-have pmf_e20 : forall i : 'I_n, (0 <= pmf_e2 i)%R.
-  move=> i.
-  rewrite /pmf_e2.
-  apply divR_ge0 => //.
-  case: ifPn => _; [exact/dist_ge0|exact/leRR].
-have pmf_e21 : \rsum_(i < n) pmf_e2 i = 1%R.
-  rewrite /pmf_e2 -big_distrl /= -/norm_pmf_e2 eqR_divr_mulr ?mul1R; last first.
-    exact/eqP/gtR_eqF.
-  by rewrite /norm_pmf_e2 [in RHS]big_mkcond /=.
-set e2 := makeDist pmf_e20 pmf_e21.
-exists (\Sum_e1 gx); split.
-  move: (CSet.H x).
-  rewrite is_convex_setP /is_convex_set_n => /asboolP; apply.
-  move=> d.
-  rewrite -in_setE.
-  case/imsetP => i _ ->{d}.
-  rewrite /gx -in_setE.
-  case: ifPn => //; by rewrite in_setE.
-exists (\Sum_e2 gy); split.
-  move: (CSet.H y).
-  rewrite is_convex_setP /is_convex_set_n => /asboolP; apply.
-  move=> d.
-  rewrite -in_setE.
-  case/imsetP => i _ ->{d}.
-  rewrite /gy -in_setE.
-  case: ifPn => //; by rewrite in_setE.
-set p := norm_pmf_e1.
-have p01 : (0 <= norm_pmf_e1 <= 1)%R.
-  split => //.
-  rewrite -(pmf1 e) /=.
-  apply: ler_rsum_l => //= i _; [exact/leRR|exact/dist_ge0].
-exists (Prob.mk p01) => /=.
-rewrite Ha.
-apply/dist_ext => a0.
-rewrite convn_convdist ConvDist.dE Conv2Dist.dE.
-rewrite (bigID [pred i | (g i \in y) && (g i \notin x)]) /= addRC.
-congr (_ + _)%R.
-- rewrite convn_convdist ConvDist.dE big_distrr /= big_mkcond /=; apply eq_bigr => i _.
-  rewrite negb_and negbK /pmf_e1.
-  rewrite mulRCA -mulRA (mulRA (/ _)%R) mulVR ?mul1R; last exact/eqP/gtR_eqF.
-  rewrite /gx.
-  case: ifPn.
-    case/orP.
-      move=> giy.
-      have : g i \in x `|` y by rewrite in_setE; apply/gX; by exists i.
-      by rewrite in_setU (negbTE giy) orbF => ->.
-    by move=> -> //.
-  rewrite negb_or negbK => /andP[H1 H2].
-  by rewrite (negbTE H2) mul0R.
-- rewrite convn_convdist ConvDist.dE big_distrr /= big_mkcond /=; apply eq_bigr => i _.
-  have -> : norm_pmf_e1.~ = norm_pmf_e2.
-    rewrite /onem.
-    rewrite subR_eq.
-    rewrite /norm_pmf_e2 /norm_pmf_e1.
-    rewrite [in X in (_ = X + _)%R]big_mkcond /=.
-    rewrite [in X in (_ = _ + X)%R]big_mkcond /=.
-    rewrite -big_split.
-    rewrite -(pmf1 e) /=.
-    apply/eq_bigr => j _.
-    case: ifPn.
-      case/andP => gjy gjx.
-      by rewrite (negbTE gjx) addR0.
-    rewrite negb_and => /orP[gjy|].
-      have : g j \in x `|` y by rewrite in_setE; apply/gX; by exists j.
-      rewrite in_setU (negbTE gjy) orbF => ->; by rewrite add0R.
-    rewrite negbK => ->; by rewrite add0R.
-  rewrite /pmf_e2.
-  rewrite mulRCA -mulRA (mulRA (/ _)%R) mulVR ?mul1R; last exact/eqP/gtR_eqF.
-  rewrite /gy.
-  case: ifPn.
-    by case/andP => ->.
-  rewrite negb_and => /orP[_|].
-    by rewrite mul0R.
-  rewrite negbK => gix.
-  by rewrite mul0R.
+move/(f_equal (@S1 _)): Ha; rewrite S1_convn.
+rewrite (bigID (fun i => g i \in x)).
+set sa1 := \big[_/_]_(i < n | _) _.
+set sa2 := \big[_/_]_(i < n | _) _.
+move=> Hsa.
+have sa2_in_y (Ha2 : (0 < weight _ sa2)%R) : point Ha2 \in y.
+  apply scaled_set_extract.
+  rewrite /sa2; apply big_ind.
+  + by rewrite in_setE.
+  + apply addpt_scaled_set.
+  + move=> i Hi; apply scalept_scaled_set.
+    rewrite in_setE /= -[_ \in _]orFb -(negbTE Hi) -in_setU in_setE.
+    by apply /gX /imageP.
+case/boolP: (weight _ sa1 >b 0)%R => /ltRP Ha1; last first.
+  exists dx; split.
+    by rewrite in_setE.
+  have Hw1 := eqR_le_Ngt (pos_f_ge0 _ _) Ha1.
+  have : weight _ (S1 a) = 1%R by [].
+  rewrite Hsa weight_addpt Hw1 add0R => Hw2.
+  move: Rlt_0_1; rewrite -Hw2 => Hw2'.
+  exists (point Hw2'); split => //.
+  exists `Pr 0.
+  rewrite conv0; apply S1_inj.
+  rewrite Hsa (weight0_Zero Hw1) -[LHS](Scaled_point Hw2'); congr Scaled.
+  by apply val_inj; rewrite /= -Hw2.
+exists (point Ha1); split.
+  apply scaled_set_extract.
+  rewrite /sa1; apply big_ind.
+  + by rewrite in_setE.
+  + apply addpt_scaled_set.
+  + move=> i Hi; apply scalept_scaled_set.
+    by rewrite in_setE.
+case/boolP: (weight _ sa2 >b 0)%R => /ltRP Ha2; last first.
+  exists dy; split.
+    by rewrite in_setE.
+  exists `Pr 1.
+  rewrite conv1; apply S1_inj.
+  have Hw2 := eqR_le_Ngt (pos_f_ge0 _ _) Ha2.
+  rewrite Hsa (weight0_Zero Hw2) /= addpt0 -[LHS](Scaled_point Ha1).
+  congr Scaled; apply val_inj => /=.
+  by rewrite (_ : 1%R = weight _ (S1 a)) // Hsa weight_addpt Hw2 addR0.
+exists (point Ha2); split => //.
+exists (Rpos_prob (mkRpos Ha1) (mkRpos Ha2)).
+apply S1_inj.
+rewrite -(Scaled_point Ha1) -(Scaled_point Ha2) /= in Hsa.
+rewrite Hsa; congr Scaled; apply val_inj => /=.
+by rewrite (_ : 1%R = weight _ (S1 a)) // Hsa.
 Qed.
 
 End CSet_prop.
