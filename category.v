@@ -39,13 +39,6 @@ Lemma compE A B C (g : B -> C) (f : A -> B) a : (g \o f) a = g (f a).
 Proof. by []. Qed.
 End funcomp_lemmas.
 
-Section misc_lemmas.
-Lemma funextP (T U : Type) (f g: T->U) : f = g <-> (forall x, f x = g x).
-split; first by move->.
-by apply:functional_extensionality.
-Qed.
-End misc_lemmas.
-
 (* Our `category' is always concrete; morphisms are just functions. *)
 Module Category.
 Record class_of (T : Type) : Type := Class {
