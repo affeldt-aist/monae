@@ -116,7 +116,7 @@ Proof.
 apply functional_extensionality => -[x1 x2].
 rewrite 3!compE.
 rewrite joinE.
-rewrite fmapE.
+rewrite -/(fmap _ _) fmapE.
 rewrite 2![in RHS]compE.
 rewrite [in RHS]/mpair.
 rewrite [in LHS]/mpair.
@@ -125,7 +125,7 @@ rewrite /=.
 rewrite 2![in RHS]joinE.
 rewrite 3!bindA.
 rewrite -H.
-rewrite !fmapE.
+rewrite -!/(fmap _ _) !fmapE.
 rewrite 3!bindA.
 bind_ext => {x1}x1.
 rewrite 2!bindretf 2!bindA.

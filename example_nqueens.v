@@ -416,10 +416,10 @@ Let p := @nilp Z.
 Lemma base_case y : p y -> (foldr op (Ret [::]) >=> unfoldM p select) y = Ret [::].
 Proof.
 move=> py.
-transitivity (foldr op (Ret [::]) =<< Ret [::]).
-  rewrite /kleisli /rbind bindretf /= join_fmap unfoldME; last exact: decr_size_select.
+transitivity (Ret [::] >>= foldr op (Ret [::])).
+  rewrite /kleisli bindretf /= join_fmap unfoldME; last exact: decr_size_select.
   by rewrite py bindretf.
-by rewrite /rbind bindretf.
+by rewrite bindretf.
 Qed.
 
 Lemma theorem_42 :
@@ -430,7 +430,7 @@ apply: (well_founded_induction (@well_founded_size _)) => y IH.
 rewrite hyloME; last exact: decr_size_select.
 case/boolP : (p y) => py.
   by rewrite base_case.
-rewrite /rkleisli /kleisli /= join_fmap.
+rewrite /kleisli /= join_fmap.
 rewrite unfoldME; last exact: decr_size_select.
 rewrite (negbTE py) bindA.
 rewrite(@decr_size_select _ _) /bassert !bindA; bind_ext => -[b a] /=.
@@ -448,14 +448,14 @@ destruct a as [|u v] => //.
 rewrite unfoldME; last exact: decr_size_select.
 rewrite !bindA.
 transitivity (do x <- Ret (u, v) [~] (do y_ys <- select v; Ret (y_ys.1, u :: y_ys.2));
-  op b (do x0 <- cons x.1 ($) unfoldM p select x.2; foldr op (Ret [::]) x0)); last first.
+  op b (do x0 <- fmap (cons x.1) (unfoldM p select x.2); foldr op (Ret [::]) x0)); last first.
   apply/esym.
   rewrite {1}/op /opdot_queens /opdot fmap_bind.
   transitivity (do st <- Get;
   (guard (queens_ok (queens_next st b)) >> do x <- Ret (u, v) [~] (do y_ys <- select v; Ret (y_ys.1, u :: y_ys.2));
    (Put (queens_next st b)) >>
   ((cons b
-    (o) (fun x : Z * seq Z => do x0 <- cons x.1 ($) unfoldM p select x.2; foldr op (Ret [::]) x0)) x))).
+    (o) (fun x : Z * seq Z => do x0 <- fmap (cons x.1) (unfoldM p select x.2); foldr op (Ret [::]) x0)) x))).
     bind_ext => st.
     rewrite !bindA.
     bind_ext; case.
@@ -467,7 +467,7 @@ transitivity (do x <- Ret (u, v) [~] (do y_ys <- select v; Ret (y_ys.1, u :: y_y
   guard (queens_ok (queens_next st b)) >>
    Put (queens_next st b) >>
    (cons b
-    (o) (fun x0 : Z * seq Z => do x1 <- cons x0.1 ($) unfoldM p select x0.2; foldr op (Ret [::]) x1))
+    (o) (fun x0 : Z * seq Z => do x1 <- fmap (cons x0.1) (unfoldM p select x0.2); foldr op (Ret [::]) x1))
      x)).
     bind_ext => st.
     rewrite -bindA guardsC; last exact: bindmfail.
@@ -522,7 +522,7 @@ Qed.
 Lemma queensBodyE' xs : queensBody M xs = if xs is [::] then Ret [::] else
   select xs >>= (fun xys =>
   Get >>= (fun st => guard (queens_ok (queens_next st xys.1)) >>
-  Put (queens_next st xys.1) >> (cons xys.1 ($) queensBody M xys.2))).
+  Put (queens_next st xys.1) >> (fmap (cons xys.1) (queensBody M xys.2)))).
 Proof.
 case: xs => [|h t].
   rewrite queensBodyE // hyloME //; exact: decr_size_select.

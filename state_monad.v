@@ -352,7 +352,7 @@ Variables (A S : Type) (M : stateMonad S) (op : S -> A -> S).
 Local Open Scope mu_scope.
 
 Definition opmul x m : M _ :=
-  Get >>= fun st => let st' := op st x in cons st' ($) (Put st' >> m).
+  Get >>= fun st => let st' := op st x in fmap (cons st') (Put st' >> m).
 
 Definition loopp s xs : M (seq S) :=
   let mul x m := opmul x m in Put s >> foldr mul (Ret [::]) xs.
@@ -362,8 +362,8 @@ Proof. by []. Qed.
 
 Lemma loopp_of_scanl_helper s
   (ms : M S) (mu mu' : M unit) (m : M (seq S)) (f : S -> M unit) :
-  do x <- ms; mu >> (do xs <- cons s ($) (mu' >> m); f x >> Ret xs) =
-  cons s ($) (do x <- ms; mu >> mu' >> (do xs <- m; f x >> Ret xs)).
+  do x <- ms; mu >> (do xs <- fmap (cons s) (mu' >> m); f x >> Ret xs) =
+  fmap (cons s) (do x <- ms; mu >> mu' >> (do xs <- m; f x >> Ret xs)).
 Proof.
 rewrite [in RHS]fmapE !bindA.
 rewrite_ bindA.
@@ -391,18 +391,18 @@ set mul := fun (a : A) m => _.
 Inf rewrite !bindA.
 (* TODO(rei): tactic for nested function bodies? *)
 transitivity (do y <- Get; (Put s >> Get) >>= fun z =>
-  do a <- cons (op z x) ($) (Put (op z x) >> foldr mul (Ret [::]) xs);
+  do a <- fmap (cons (op z x)) (Put (op z x) >> foldr mul (Ret [::]) xs);
   Put y >> Ret a); last by Inf rewrite !bindA.
 rewrite_ putget.
 rewrite_ bindA.
 rewrite_ bindretf.
 rewrite loopp_of_scanl_helper.
-transitivity (cons (op s x) ($) do y <- Get; Put (op s x) >>
-  (do a <- foldr mul (Ret [::]) xs; Put y >> Ret a)); last first.
-  congr (_ ($) _); by rewrite_ putput.
-transitivity (cons (op s x) ($)
+transitivity (fmap (cons (op s x)) (do y <- Get; Put (op s x) >>
+  (do a <- foldr mul (Ret [::]) xs; Put y >> Ret a))); last first.
+  congr (fmap _ _); by rewrite_ putput.
+transitivity (fmap (cons (op s x))
   (do y <- Get; loopp (op s x) xs >>= overwrite y)); last first.
-  congr (_ ($) _); by Inf rewrite -bindA.
+  congr (fmap _ _); by Inf rewrite -bindA.
 by rewrite -IH fmapE bindretf.
 Qed.
 
@@ -447,7 +447,7 @@ elim: xs x => [x|h t _ x].
 rewrite /= !bindA.
 transitivity (Put (op st x) >>
   (do x0 <- Get; do x1 <- let st' := op x0 h in
-    cons st' ($) (Put st' >> foldr (opmul op) (Ret [::]) t);
+    fmap (cons st') (Put st' >> foldr (opmul op) (Ret [::]) t);
     guard (ok (op st x)) >> guard (all ok x1)) : M _).
   bind_ext; case.
   bind_ext => st'.
@@ -466,7 +466,7 @@ Let B := A.
 Let res := @cons A.
 
 Definition opdot (a : A) (m : M (seq B)) : M (seq B) :=
-  Get >>= (fun st => guard (ok (op st a)) >> Put (op st a) >> (res a ($) m)).
+  Get >>= (fun st => guard (ok (op st a)) >> Put (op st a) >> fmap (res a) m).
 
 (* mu2017 *)
 Lemma theorem_53 (xs : seq A) :
@@ -502,7 +502,7 @@ transitivity (do st <- Get; guard (ok (op st x)) >>
   by rewrite put_foldr.
 transitivity (do st <- Get; guard (ok (op st x)) >>
   Put (op st x) >>
-    (cons x) ($) (foldr (opmul op) (Ret [::]) xs >>= (fun ys =>
+    fmap (cons x) (foldr (opmul op) (Ret [::]) xs >>= (fun ys =>
    guard (all ok ys)) >> Ret xs) : M _).
   bind_ext => st.
   rewrite !bindA.
@@ -583,7 +583,7 @@ Proof.
 move=> right_z p q promotable_pq.
 rewrite /promote_assert.
 apply functional_extensionality => -[x1 x2].
-rewrite 3![in RHS]compE [in RHS]fmapE.
+rewrite 3![in RHS]compE -/(fmap _ _) [in RHS]fmapE.
 rewrite 2![in LHS]compE {1}/bassert [in LHS]bind_fmap !bindA.
 bind_ext => s.
 rewrite 2!bindA bindretf 2!bindA.
@@ -734,8 +734,7 @@ apply functional_extensionality => n.
 transitivity (@Symbols _ M 1) => //.
 rewrite SymbolsE sequence_cons sequence_nil.
 rewrite_ bindretf.
-rewrite compE.
-by rewrite [in RHS]fmapE.
+by rewrite compE -/(fmap _ _) [in RHS]fmapE.
 Qed.
 
 Lemma Symbols_prop2 :
@@ -745,15 +744,15 @@ apply functional_extensionality => -[n1 n2].
 elim: n1 => [|n1 IH].
   rewrite [in LHS]compE uaddnE add0n.
   rewrite compE [in X in _ = _ X]/= /squaring_f Symbols0.
-  rewrite compE [in RHS]fmapE bindA bindretf.
+  rewrite compE -/(fmap _ _) [in RHS]fmapE bindA bindretf.
   rewrite -fmapE fmap_bind.
   Open (X in _ >>= X).
     rewrite fcompE fmapE bindretf /=; reflexivity.
   by rewrite bindmret.
 rewrite compE uaddnE addSn SymbolsS -uaddnE -(compE Symbols) {}IH.
 rewrite [in RHS]compE [in X in _ = _ X]/= /squaring_f SymbolsS.
-rewrite [in RHS]compE fmap_bind bindA; bind_ext => a.
-rewrite 2![in LHS]compE [in LHS]fmap_bind [in LHS]bindA [in RHS]bindA.
+rewrite [in RHS]compE -/(fmap _ _) fmap_bind bindA; bind_ext => a.
+rewrite 2![in LHS]compE -/(fmap _ _) [in LHS]fmap_bind [in LHS]bindA [in RHS]bindA.
 (* TODO(rei): bind_ext? *)
 congr Bind; apply functional_extensionality => s.
 rewrite [in RHS]bindretf [in RHS]fcompE [in RHS]fmap_bind.

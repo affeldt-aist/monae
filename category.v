@@ -22,7 +22,6 @@ Reserved Notation "m >=> n" (at level 50).
 Reserved Notation "n <=< m" (at level 50).
 Reserved Notation "x '[~]' y" (at level 50).
 Reserved Notation "'[~p]'".
-Reserved Notation "f ($) m" (at level 11).
 Reserved Notation "f (o) g" (at level 11).
 
 Notation "l \\ p" := ([seq x <- l | x \notin p]).
@@ -82,7 +81,7 @@ Notation "[ 'fun' 'of' f ]" := (apply f)
   (at level 0, format "[ 'fun'  'of'  f ]") : category_scope.
 Notation Hom fA := (Pack (Phant _) fA).
 Notation "{ 'hom' U , V }" := (map (Phant (El U -> El V)))
-  (at level 0, format "{ 'hom'  U , V }") : category_scope.
+  (at level 0, format "{ 'hom'  U ,  V }") : category_scope.
 Notation "[ 'hom' 'of' f 'as' g ]" := (@clone _ _ _ _ f g _ _ idfun id)
   (at level 0, format "[ 'hom'  'of'  f  'as'  g ]") : category_scope.
 Notation "[ 'hom' 'of' f ]" := (@clone _ _ _ _ f f _ _ id id)
@@ -693,7 +692,7 @@ Let M' := Functor.Pack functor_mixin.
 Let ret' : forall A, {hom A, M' A} := ret.
 Definition join A : {hom M' (M' A), M' A} := bind [hom of idfun].
 
-Lemma bind_fmap a b c (f : {hom a,b}) (m : El (M a)) (g : {hom b, M c}) :
+Let bind_fmap a b c (f : {hom a,b}) (m : El (M a)) (g : {hom b, M c}) :
   bind g (fmap f m) = bind [hom of g \o f] m .
 Proof.
 rewrite /fmap bindA. congr (fun f => bind f m).
@@ -709,7 +708,7 @@ Proof. by apply functional_extensionality=>x; apply bind_fmap. Qed.
 Lemma ret_naturality : naturalP (FId C) M' ret.
 Proof. by move=> A B h; rewrite FIdf bindretf_fun. Qed.
 
-Lemma bindE A B (f : {hom A, M' B}) : bind f = [hom of (join B) \o (M' # f)].
+Let bindE A B (f : {hom A, M' B}) : bind f = [hom of (join B) \o (M' # f)].
 Proof.
 rewrite /join.
 rewrite hom_extext=>m.
@@ -718,7 +717,7 @@ congr (fun f => bind f m).
 by rewrite hom_ext.
 Qed.
 
-Lemma fmap_bind a b c (f : {hom a,b}) m (g : {hom c,M a}) :
+Let fmap_bind a b c (f : {hom a,b}) m (g : {hom c,M a}) :
   (fmap f) (bind g m) = bind [hom of fmap f \o g] m.
 Proof. by rewrite /fmap bindA bindE. Qed.
 
@@ -765,3 +764,16 @@ Definition Monad_of_bind_ret C M bind ret a b c :=
 End Exports.
 End Monad_of_bind_ret.
 Export Monad_of_bind_ret.Exports.
+
+(* wip *)
+Section fmap_and_join.
+Variable (C : category) (M : monad C).
+
+Definition fmap A B (f : {hom A,B}) (m : El (M _)) := (M # f) m.
+
+Lemma fmapE A B (f : {hom A, B}) (m : El (M _)) : fmap f m = m >>= [hom of (Ret \o f)].
+Proof.
+by rewrite bindE [in RHS](functor_o M) (hom_homp Join) -hompA joinMret compidf.
+Qed.
+
+End fmap_and_join.

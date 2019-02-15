@@ -52,7 +52,6 @@ Reserved Notation "m >=> n" (at level 50).
 Reserved Notation "n <=< m" (at level 50).
 Reserved Notation "x '[~]' y" (at level 50).
 Reserved Notation "'[~p]'".
-Reserved Notation "f ($) m" (at level 11).
 Reserved Notation "f (o) g" (at level 11).
 
 Notation "l \\ p" := ([seq x <- l | x \notin p]).
@@ -714,7 +713,7 @@ Let M' := Functor.Pack functor_mixin.
 Let ret' : forall A, A -> M' A := ret.
 Definition join A (pp : M' (M' A)) := bind pp id.
 
-Lemma bind_fmap A B C (f : A -> B) (m : M A) (g : B -> M C) :
+Let bind_fmap A B C (f : A -> B) (m : M A) (g : B -> M C) :
   bind (fmap f m) g = bind m (g \o f).
 Proof.
 rewrite /fmap bindA; congr bind.
@@ -727,12 +726,12 @@ move=> A B h; rewrite FIdf; apply functional_extensionality => ?.
 by rewrite compE /= /fmap bindretf.
 Qed.
 
-Lemma bindE A B m (f : A -> M' B) : bind m f = join ((M' # f) m).
-Proof. by rewrite /join bind_fmap. Qed.
+(*Lemma bindE A B m (f : A -> M' B) : bind m f = join ((M' # f) m).
+Proof. by rewrite /join bind_fmap. Qed.*)
 
-Lemma fmap_bind A B C (f : A -> B) m (g : C -> M A) :
+(*Lemma fmap_bind A B C (f : A -> B) m (g : C -> M A) :
   (fmap f) (bind m g) = bind m (fmap f \o g).
-Proof. by rewrite /fmap bindA bindE. Qed.
+Proof. by rewrite /fmap bindA bindE. Qed.*)
 
 Lemma join_naturality : naturalP (FComp M' M') M' join.
 Proof.
@@ -774,18 +773,19 @@ Export Monad_of_bind_ret.Exports.
 (* aka liftM in gibbons2011icfp, notation ($) in mu2017 *)
 
 Section fmap_and_join.
-Local Notation "f ($) m" := ((_ # f) m).
 Variable M : monad.
 
-Lemma fmapE A B (f : A -> B) (m : M _) : f ($) m = m >>= (Ret \o f).
+Definition fmap A B (f : A -> B) (m : M _) := (M # f) m.
+
+Lemma fmapE A B (f : A -> B) (m : M _) : fmap f m = m >>= (Ret \o f).
 Proof. by rewrite bindE [in RHS](functor_o M) compE -(compE Join) joinMret. Qed.
 
 Lemma bind_fmap A B C (f : A -> B) (m : M A) (g : B -> M C) :
-  f ($) m >>= g = m >>= (g \o f).
+  fmap f m >>= g = m >>= (g \o f).
 Proof. by rewrite fmapE bindA; rewrite_ bindretf. Qed.
 
 Lemma fmap_if A B (f : A -> B) b (m : M A) a :
-  f ($) (if b then m else Ret a) = if b then f ($) m else Ret (f a).
+  fmap f (if b then m else Ret a) = if b then fmap f m else Ret (f a).
 Proof. case: ifPn => Hb //; by rewrite fmapE bindretf. Qed.
 
 (* monadic counterpart of function composition:
@@ -797,11 +797,11 @@ Local Notation "f (o) g" := (fcomp f g).
 Lemma fcomp_def A B C (f : A -> B) (g : C -> M A) : f (o) g = (M # f) \o g.
 Proof. by rewrite /fcomp; unlock. Qed.
 
-Lemma fcompE A B C (f : A -> B) (g : C -> M A) c : (f (o) g) c = f ($) g c.
+Lemma fcompE A B C (f : A -> B) (g : C -> M A) c : (f (o) g) c = fmap f (g c).
 Proof. by rewrite /fcomp; unlock. Qed.
 
 Lemma fmap_comp A B C (f : A -> B) (g : C -> A) (m : M C) :
-  (f \o g) ($) m = f ($) (g ($) m).
+  fmap (f \o g) m = fmap f (fmap g m).
 Proof. by rewrite 3!fmapE bindA; rewrite_ bindretf. Qed.
 
 Lemma fcomp_comp A B C D (f : A -> B) (g : C -> A) (m : D -> M C) :
@@ -809,13 +809,13 @@ Lemma fcomp_comp A B C D (f : A -> B) (g : C -> A) (m : D -> M C) :
 Proof. by rewrite 3!fcomp_def functor_o compA. Qed.
 
 Lemma fmap_bind A B C (f : A -> B) m (g : C -> M A) :
-  f ($) (m >>= g) = m >>= (f (o) g).
+  fmap f (m >>= g) = m >>= (f (o) g).
 Proof.
-rewrite fcomp_def fmapE bindA; bind_ext => c; by rewrite compE fmapE.
+rewrite fcomp_def fmapE bindA; bind_ext => c; by rewrite compE -/(fmap _ _) fmapE.
 Qed.
 
 Lemma skip_fmap A B (f : A -> B) (mb : M B) ma :
-  mb >> (f ($) ma) = f ($) (mb >> ma).
+  mb >> (fmap f ma) = fmap f (mb >> ma).
 Proof. by rewrite fmap_bind fcomp_def. Qed.
 
 (*Lemma rev_map A B (f : A -> B) : rev \o map f = map f \o rev.
@@ -838,11 +838,11 @@ Proof. by apply functional_extensionality => s; rewrite -foldl_rev. Qed.
 Lemma joinE A (pp : M (M A)) : Join pp = pp >>= id.
 Proof. rewrite bindE; congr Join; by rewrite functor_id. Qed.
 
-Lemma join_fmap A B (f : A -> M B) m : Join (f ($) m) = m >>= f.
+Lemma join_fmap A B (f : A -> M B) m : Join (fmap f m) = m >>= f.
 Proof. by rewrite bindE. Qed.
 
 Definition kleisli A B C (m : B -> M C) (n : A -> M B) : A -> M C :=
-  (Join) \o (M # m) \o n.
+  Join \o (M # m) \o n.
 Local Notation "m >=> n" := (kleisli m n).
 
 Lemma fcomp_kleisli A B C D (f : A -> B) (g : C -> M A) (h : D -> M C) :
@@ -861,19 +861,10 @@ Lemma bind_kleisli A B C m (f : B -> M C) (g : A -> M B) :
   m >>= (f >=> g) = (m >>= g) >>= f.
 Proof. by rewrite bindA; bind_ext => a; rewrite /kleisli !compE join_fmap. Qed.
 
-Definition rbind A B (f : A -> M B) (m : M A) : M B := m >>= f.
-Local Notation "f =<< m" := (rbind f m).
-
-Definition rkleisli A B C (f : A -> M B) (g : B -> M C) : A -> M C := g >=> f.
-Local Notation "n <=< m" := (rkleisli n m).
-
 End fmap_and_join.
-Notation "f ($) m" := ((_ # f) m) : mu_scope.
 Notation "f (o) g" := (fcomp f g) : mu_scope.
 Arguments fcomp : simpl never.
 Notation "m >=> n" := (kleisli m n).
-Notation "f =<< m" := (rbind f m) : mu_scope.
-Notation "n <=< m" := (rkleisli n m) : mu_scope.
 
 (*
 (* monads on Type are strong monads *)
@@ -916,9 +907,10 @@ Lemma naturality_mpair (M : monad) A B (f : A -> B) (g : A -> M A):
   (M # f^`2) \o (mpair \o g^`2) = mpair \o ((M # f) \o g)^`2.
 Proof.
 apply functional_extensionality => -[a0 a1].
-rewrite compE fmap_bind compE [in RHS]/= bind_fmap; bind_ext => a2.
-rewrite fcompE fmap_bind compE bind_fmap; bind_ext => a3.
-by rewrite fcompE -(compE (M # f^`2)) ret_naturality.
+rewrite compE -/(fmap _ _) fmap_bind.
+rewrite compE mpairE compE -/(fmap _ _) bind_fmap; bind_ext => a2.
+rewrite fcompE fmap_bind 2!compE -/(fmap _ _) bind_fmap; bind_ext => a3.
+by rewrite fcompE -(compE (fmap f^`2)) ret_naturality.
 Qed.
 
 Local Notation "[ \o f , .. , g , h ]" := (f \o .. (g \o h) ..)
@@ -1049,7 +1041,7 @@ Lemma bindfailf : BindLaws.left_zero (@Bind M) (@Fail _).
 Proof. by case : M => m [? []]. Qed.
 End fail_lemmas.
 
-Lemma fmap_fail {A B} (M : failMonad) (f : A -> B) : (M # f) Fail = Fail :> M _.
+Lemma fmap_fail {A B} (M : failMonad) (f : A -> B) : fmap f Fail = Fail :> M _.
 Proof. by rewrite fmapE bindfailf. Qed.
 
 Section guard_assert.
@@ -1116,7 +1108,7 @@ Variables (p : pred B) (f : B -> M (A * B)%type).
 Definition unfoldM' (y : B) (g : forall y' : B, r y' y -> M (seq A)) : M (seq A) :=
   if p y then Ret [::] else f y >>=
     (fun xz => match Bool.bool_dec (r xz.2 y) true with
-            | left H => cons xz.1 ($) g xz.2 H
+            | left H => fmap (cons xz.1) (g xz.2 H)
             | right H => Ret [::]
             end).
 (* superfluous match to define the "recursive" call,
@@ -1136,7 +1128,7 @@ Hypothesis decr_size : bassert_size f.
 
 Lemma unfoldME y : unfoldM p f y =
   if p y then Ret [::]
-  else f y >>= (fun xz => cons xz.1 ($) unfoldM p f xz.2).
+  else f y >>= (fun xz => fmap (cons xz.1) (unfoldM p f xz.2)).
 Proof.
 rewrite /unfoldM Fix_eq; last first.
   move => b g g' H; rewrite /unfoldM'; case: ifPn => // pb.
@@ -1227,13 +1219,13 @@ Proof. by case: M => m [? []]. Qed.
 
 (* TODO: name ok? *)
 Lemma naturality_nondeter A B (f : A -> B) p q :
-  (M # f) (p [~] q) = (M # f) p [~] (M # f) q :> M _.
+  fmap f (p [~] q) = fmap f p [~] fmap f q :> M _.
 Proof. by rewrite 3!fmapE alt_bindDl. Qed.
 
 Local Open Scope mu_scope.
 
 Lemma alt_fmapDl A B (f : A -> B) (m1 m2 : M A) :
-  (M # f) (m1 [~] m2) = f ($) m1 [~] f ($) m2.
+  fmap f (m1 [~] m2) = fmap f m1 [~] fmap f m2.
 Proof. by rewrite 3!fmapE alt_bindDl. Qed.
 
 End monadalt_lemmas.
@@ -1257,7 +1249,7 @@ Variables (M : altMonad) (A : Type).
 Fixpoint subs (s : seq A) : M (seq A) :=
   if s isn't h :: t then Ret [::] else
   let t' := subs t in
-  (cons h) ($) t' [~] t'.
+  fmap (cons h) t' [~] t'.
 
 Fixpoint SUBS (s : seq A) : Functor.m (Monad.baseType (MonadAlt.baseType M)) _ :=
   if s isn't h :: t then @Ret (MonadAlt.baseType M) _ [::] else
@@ -1267,7 +1259,7 @@ Fixpoint SUBS (s : seq A) : Functor.m (Monad.baseType (MonadAlt.baseType M)) _ :
 Goal subs = SUBS. by []. Abort.
 
 Lemma subs_cons x (xs : seq A) :
-  subs (x :: xs) = let t' := subs xs in (cons x ($) t') [~] t'.
+  subs (x :: xs) = let t' := subs xs in (fmap (cons x) t') [~] t'.
 Proof. by []. Qed.
 
 Lemma subs_cat (xs ys : seq A) :
@@ -1280,7 +1272,7 @@ Open (X in subs xs >>= X).
   rewrite bindretf.
   rewrite_ cat_cons.
   reflexivity.
-rewrite [X in _ = X [~] _](_ : _ = (cons x) ($) (do x0 <- subs xs; do x1 <- subs ys; Ret (x0 ++ x1))); last first.
+rewrite [X in _ = X [~] _](_ : _ = fmap (cons x) (do x0 <- subs xs; do x1 <- subs ys; Ret (x0 ++ x1))); last first.
   rewrite fmapE bindA.
   bind_ext => x0.
   rewrite bindA.
@@ -1299,12 +1291,12 @@ Local Open Scope mu_scope.
 
 Fixpoint insert {A} (a : A) (s : seq A) : M (seq A) :=
   if s isn't h :: t then Ret [:: a] else
-  Ret (a :: h :: t) [~] (cons h ($) insert a t).
+  Ret (a :: h :: t) [~] fmap (cons h) (insert a t).
 Arguments insert : simpl never.
 
 Lemma insertE A (a : A) s :
   insert a s = if s isn't h :: t then Ret [:: a] else
-  Ret (a :: h :: t) [~] (cons h ($) insert a t).
+  Ret (a :: h :: t) [~] fmap (cons h) (insert a t).
 Proof. by case: s. Qed.
 
 Fixpoint perm {A} (s : seq A) : M (seq A) :=
@@ -1315,11 +1307,11 @@ Lemma insert_map A B (f : A -> B) (a : A) :
   insert (f a) \o map f = map f (o) insert a :> (_ -> M _).
 Proof.
 apply functional_extensionality; elim => [|y xs IH].
-  by rewrite fcompE insertE -(compE (M # map f)) ret_naturality compE insertE.
+  by rewrite fcompE insertE /fmap -(compE (M # map f)) ret_naturality compE insertE.
 apply/esym.
 rewrite fcompE insertE alt_fmapDl.
 (* first branch *)
-rewrite -(compE (M # map f)) ret_naturality [ in X in X [~] _ ]/=.
+rewrite {1}/fmap -(compE (M # map f)) ret_naturality [ in X in X [~] _ ]/=.
 (* second branch *)
 rewrite -fmap_comp (_ : map f \o cons y = cons (f y) \o map f) //.
 by rewrite fmap_comp -(fcompE (map f)) -IH [RHS]/= insertE.
@@ -1330,7 +1322,7 @@ Lemma perm_map A B (f : A -> B) :
   perm \o map f = map f (o) perm :> (seq A -> M (seq B)).
 Proof.
 apply functional_extensionality; elim => [/=|x xs IH].
-  by rewrite fcompE [perm _]/= -(compE (M # map f)) ret_naturality.
+  by rewrite fcompE [perm _]/= /fmap -(compE (M # map f)) ret_naturality.
 by rewrite fcompE [in perm _]/= fmap_bind -insert_map -bind_fmap -fcompE -IH.
 Qed.
 
@@ -1350,9 +1342,9 @@ Lemma filter_insertN a : ~~ p a ->
   forall s, (filter p (o) insert a) s = Ret (filter p s) :> M _.
 Proof.
 move=> pa; elim => [|h t IH].
-  by rewrite fcompE insertE -(compE (M # _)) ret_naturality FIdf /= (negbTE pa).
+  by rewrite fcompE insertE /fmap -(compE (M # _)) ret_naturality FIdf /= (negbTE pa).
 rewrite fcompE insertE alt_fmapDl.
-rewrite -(compE (M # _)) ret_naturality FIdf [in X in X [~] _]/= (negbTE pa).
+rewrite {1}/fmap -(compE (M # _)) ret_naturality FIdf [in X in X [~] _]/= (negbTE pa).
 case: ifPn => ph.
 - rewrite -fmap_comp (_ : filter p \o cons h = cons h \o filter p); last first.
     apply functional_extensionality => x /=; by rewrite ph.
@@ -1394,7 +1386,7 @@ apply functional_extensionality; elim=> [|h t /= IH].
   by rewrite fcompE fmapE bindretf.
 case: ifPn => ph.
   rewrite [in LHS]/= IH [in LHS]fcomp_def compE [in LHS]bind_fmap.
-  rewrite [in RHS]fcomp_def compE [in RHS]fmap_bind; bind_ext => s.
+  rewrite [in RHS]fcomp_def compE -/(fmap _ _) [in RHS]fmap_bind; bind_ext => s.
   by rewrite filter_insertT.
 rewrite fcompE fmap_bind IH fcompE fmapE; bind_ext => s.
 by rewrite filter_insertN.
@@ -1442,7 +1434,7 @@ Local Open Scope mu_scope.
 
 Lemma insert_rcons a' s :
   insert a (rcons s a') =
-    Ret (s ++ [:: a'; a]) [~] (rcons^~ a' ($) insert a s) :> M _.
+    Ret (s ++ [:: a'; a]) [~] fmap (rcons^~ a') (insert a s) :> M _.
 Proof.
 elim: s a' => [a'|s1 s2 IH a'].
   rewrite cat0s fmapE bindretf insertE altC; congr (_ [~] _).
@@ -1460,7 +1452,7 @@ apply functional_extensionality; elim => [|h t IH].
 rewrite fcompE insertE compE alt_fmapDl fmapE bindretf compE [in RHS]rev_cons insert_rcons.
 rewrite rev_cons -cats1 rev_cons -cats1 -catA; congr (_ [~] _).
 move: IH; rewrite fcompE [X in X -> _]/= => <-.
-rewrite -!fmap_comp; congr (_ ($) insert a t).
+rewrite -!fmap_comp; congr (fmap _ (insert a t)).
 apply functional_extensionality => s; by rewrite /= -rev_cons.
 Qed.
 
@@ -1570,7 +1562,7 @@ Qed.
 Local Open Scope mu_scope.
 
 Lemma selectE s : select s =
-  (fun xy => (xy.1, tval xy.2)) ($) tselect s :> M (A * seq A)%type.
+  fmap (fun xy => (xy.1, tval xy.2)) (tselect s) :> M (A * seq A)%type.
 Proof.
 elim: s => [|h [|h' t] IH].
 - by rewrite fmapE bindfailf.
@@ -1741,7 +1733,7 @@ Definition work s : M nat :=
 
 (* work refined to eliminate multiple traversals *)
 Lemma workE :
-  let next := fun n mx => if n == 0 then Fail else (*muln n ($) mx*) (M # muln n) mx in
+  let next := fun n mx => if n == 0 then Fail else fmap (muln n) mx in
   work = foldr next (Ret 1).
 Proof.
 apply foldr_universal => // h t; case: ifPn => [/eqP -> //| h0].
