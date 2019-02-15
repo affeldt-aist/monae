@@ -50,56 +50,6 @@ rewrite predeqE => d; split.
 Qed.
 End convex_set_of_distributions_prop.
 
-Section CSet_prop.
-Import ScaledConvex.
-Variable A : finType.
-
-Lemma hull_setU (a : dist A) (x y : {convex_set (dist A)}) :
-  x !=set0 -> y !=set0 -> a \in hull (x `|` y) ->
-  exists a1, a1 \in x /\ exists a2, a2 \in y /\ exists p : prob, a = a1 <| p |> a2.
-Proof.
-move=> x0 y0.
-rewrite in_setE.
-case=> n -[g [e [gX Ha]]].
-case: x0 => dx dx_x.
-case: y0 => dy dy_y.
-suff : exists a1, a1 \in scaled_set x /\ exists a2, a2 \in scaled_set y
-         /\ S1 a = addpt a1 a2.
-  case => -[p a1|] [Ha1] [] [q a2|] /= [Ha2] // [Hpq ->];
-    (exists a1; split;
-      first by rewrite -(@point_Scaled _ p a1 (Rpos_gt0 _));
-      apply scaled_set_extract)
-     || (exists dx; split; first by rewrite in_setE);
-    (exists a2; split;
-      first by rewrite -(@point_Scaled _ q a2 (Rpos_gt0 _));
-      apply scaled_set_extract)
-     || (exists dy; split; first by rewrite in_setE).
-  + esplit; congr Conv.
-  + exists `Pr 1; by rewrite conv1.
-  + exists `Pr 0; by rewrite conv0.
-move/(f_equal (@S1 _)): Ha; rewrite S1_convn.
-rewrite (bigID (fun i => g i \in x)).
-set sa1 := \big[_/_]_(i < n | _) _.
-set sa2 := \big[_/_]_(i < n | _) _.
-move=> Hsa.
-exists sa1; split.
-  rewrite /sa1; apply big_ind.
-  + by rewrite in_setE.
-  + apply addpt_scaled_set.
-  + move=> i Hi; apply scalept_scaled_set.
-    by rewrite in_setE.
-exists sa2; split.
-  rewrite /sa2; apply big_ind.
-  + by rewrite in_setE.
-  + apply addpt_scaled_set.
-  + move=> i Hi; apply scalept_scaled_set.
-    rewrite in_setE /= -[_ \in _]orFb -(negbTE Hi) -in_setU in_setE.
-    by apply /gX /imageP.
-by [].
-Qed.
-
-End CSet_prop.
-
 Section probabilistic_choice_nondeterministic_choice.
 Local Open Scope proba_scope.
 Local Open Scope classical_set_scope.
