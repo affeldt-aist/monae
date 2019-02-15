@@ -21,35 +21,6 @@ Local Open Scope proba_scope.
 Local Open Scope classical_set_scope.
 Local Open Scope reals_ext_scope.
 
-(* NB: generalization in progress *)
-Section convex_set_of_distributions_prop.
-Variable A : finType.
-
-Lemma convex_hull (X : set (dist A)) : is_convex_set (hull X).
-Proof.
-apply/asboolP => x y p; rewrite 2!in_setE.
-move=> -[n [g [d [gX ->{x}]]]].
-move=> -[m [h [e [hX ->{y}]]]].
-rewrite in_setE.
-exists (n + m).
-exists [ffun i => match fintype.split i with inl a => g a | inr a => h a end].
-exists (AddDist.d d e p).
-split.
-  move=> a -[i _]; rewrite ffunE.
-  case: splitP => j _ <-; by [apply gX; exists j | apply hX; exists j].
-by rewrite !convn_convdist ConvDist_Add.
-Qed.
-
-Lemma hullI (X : set (dist A)) : hull (hull X) = hull X.
-Proof.
-rewrite predeqE => d; split.
-- move=> -[n [g [e [gX ->{d}]]]].
-  move: (convex_hull X); rewrite is_convex_setP /is_convex_set_n => /asboolP/(_ _ g e gX).
-  by rewrite in_setE.
-- by rewrite -in_setE => /hull_mem; rewrite in_setE.
-Qed.
-End convex_set_of_distributions_prop.
-
 Section probabilistic_choice_nondeterministic_choice.
 Local Open Scope proba_scope.
 Local Open Scope classical_set_scope.
