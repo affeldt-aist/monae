@@ -223,7 +223,7 @@ Section exports.
 Variables (C D : category).
 Definition Fun (F : t C D) : forall A B, {hom A, B} -> {hom m F A, m F B} :=
   let: Pack _ (Class f _ _) := F return forall A B, {hom A, B} -> {hom m F A, m F B} in f.
-Arguments Fun _ [A] [B].
+Arguments Fun _ [A] [B] : simpl never.
 End exports.
 Notation functor := t.
 Coercion m : functor >-> Funclass.
@@ -258,6 +258,8 @@ Proof. by move=> A B C g h /=; apply hom_extext => -[x1 x2]. Qed.
 Definition squaring : functor _ _ :=
   Functor.Pack (Functor.Class squaring_f_id squaring_f_comp).
 Notation "f ^`2" := (squaring # f).
+Lemma squaringE A B (f : {hom A, B}) x : (f ^`2) x = (f x.1, f x.2).
+Proof. by []. Qed.
 End squaring.
 
 Section functorid.
@@ -772,8 +774,6 @@ Variable (C : category) (M : monad C).
 Definition fmap A B (f : {hom A,B}) (m : El (M _)) := (M # f) m.
 
 Lemma fmapE A B (f : {hom A, B}) (m : El (M _)) : fmap f m = m >>= [hom of (Ret \o f)].
-Proof.
-by rewrite bindE [in RHS](functor_o M) (hom_homp Join) -hompA joinMret compidf.
-Qed.
+Proof. by rewrite bindE functor_o (hom_homp Join) -hompA joinMret compidf. Qed.
 
 End fmap_and_join.

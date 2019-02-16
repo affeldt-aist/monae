@@ -140,8 +140,7 @@ Program Definition list_class := @MonadAlt.Class _ _
 Next Obligation.
 move=> A B /= s1 s2 k.
 rewrite !bindE /Join /= /Monad_of_bind_ret.join /=.
-rewrite /Monad_of_bind_ret.fmap.
-by rewrite map_cat flatten_cat map_cat flatten_cat.
+by rewrite Monad_of_bind_ret.fmapE map_cat flatten_cat map_cat flatten_cat.
 Qed.
 Definition list := MonadAlt.Pack list_class.
 End list.
@@ -154,7 +153,7 @@ Program Definition set_class := @MonadAlt.Class _ _
 Next Obligation. exact: setUA. Qed.
 Next Obligation.
 rewrite /BindLaws.bind_left_distributive /= => A B m1 m2 k.
-rewrite !bindE /Join /= /Monad_of_bind_ret.join /= /Monad_of_bind_ret.fmap /=.
+rewrite !bindE /Join /= /Monad_of_bind_ret.join /= Monad_of_bind_ret.fmapE /=.
 by rewrite setUDl // setUDl.
 Qed.
 Definition set := MonadAlt.Pack set_class.
@@ -234,7 +233,7 @@ refine (@MonadRun.Pack _ _ (@MonadRun.Class _ _ (Monad.class m)
 by [].
 move=> A B m0 f s.
 rewrite !bindE /=.
-rewrite /Monad_of_bind_ret.fmap /= /Join /= /Monad_of_bind_ret.join /=.
+rewrite Monad_of_bind_ret.fmapE /= /Join /= /Monad_of_bind_ret.join /=.
 by destruct (m0 s).
 Defined.
 

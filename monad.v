@@ -162,7 +162,7 @@ Structure t : Type := Pack { m : Type -> Type ; class : class_of m }.
 Module Exports.
 Definition Fun (F : t) : forall A B, (A -> B) -> m F A -> m F B :=
   let: Pack _ (Class f _ _) := F return forall A B, (A -> B) -> m F A -> m F B in f.
-Arguments Fun _ [A] [B].
+Arguments Fun _ [A] [B] : simpl never.
 Notation functor := t.
 Coercion m : functor >-> Funclass.
 End Exports.
@@ -194,6 +194,8 @@ Proof. by move=> A B C g h /=; apply functional_extensionality => -[x1 x2]. Qed.
 Definition squaring : functor (*Squaring*) :=
   Functor.Pack (Functor.Class squaring_f_id squaring_f_comp).
 Notation "f ^`2" := (squaring # f).
+Lemma squaringE A B (f : A -> B) x : (f ^`2) x = (f x.1, f x.2).
+Proof. by []. Qed.
 
 Section functorid.
 Definition id_f A B (f : A -> B) := f.
@@ -710,6 +712,9 @@ Qed.
 Definition functor_mixin := Functor.Class fmap_id fmap_o.
 Let M' := Functor.Pack functor_mixin.
 
+Lemma fmapE A B (f : A -> B) m : (M' # f) m = bind m (ret (A:=B) \o f).
+Proof. by []. Qed.
+
 Let ret' : forall A, A -> M' A := ret.
 Definition join A (pp : M' (M' A)) := bind pp id.
 
@@ -723,15 +728,15 @@ Qed.
 Lemma ret_naturality : naturalP FId M' ret.
 Proof.
 move=> A B h; rewrite FIdf; apply functional_extensionality => ?.
-by rewrite compE /= /fmap bindretf.
+by rewrite compE /= /fmap fmapE /= bindretf.
 Qed.
 
-(*Lemma bindE A B m (f : A -> M' B) : bind m f = join ((M' # f) m).
-Proof. by rewrite /join bind_fmap. Qed.*)
+Let bindE A B m (f : A -> M' B) : bind m f = join ((M' # f) m).
+Proof. by rewrite /join bind_fmap. Qed.
 
-(*Lemma fmap_bind A B C (f : A -> B) m (g : C -> M A) :
+Let fmap_bind A B C (f : A -> B) m (g : C -> M A) :
   (fmap f) (bind m g) = bind m (fmap f \o g).
-Proof. by rewrite /fmap bindA bindE. Qed.*)
+Proof. by rewrite /fmap bindA bindE. Qed.
 
 Lemma join_naturality : naturalP (FComp M' M') M' join.
 Proof.
@@ -778,7 +783,7 @@ Variable M : monad.
 Definition fmap A B (f : A -> B) (m : M _) := (M # f) m.
 
 Lemma fmapE A B (f : A -> B) (m : M _) : fmap f m = m >>= (Ret \o f).
-Proof. by rewrite bindE [in RHS](functor_o M) compE -(compE Join) joinMret. Qed.
+Proof. by rewrite bindE functor_o compE -(compE Join) joinMret. Qed.
 
 Lemma bind_fmap A B C (f : A -> B) (m : M A) (g : B -> M C) :
   fmap f m >>= g = m >>= (g \o f).

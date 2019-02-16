@@ -743,14 +743,14 @@ Proof.
 apply functional_extensionality => -[n1 n2].
 elim: n1 => [|n1 IH].
   rewrite [in LHS]compE uaddnE add0n.
-  rewrite compE [in X in _ = _ X]/= /squaring_f Symbols0.
+  rewrite compE [in X in _ = _ X]/= squaringE Symbols0.
   rewrite compE -/(fmap _ _) [in RHS]fmapE bindA bindretf.
   rewrite -fmapE fmap_bind.
   Open (X in _ >>= X).
     rewrite fcompE fmapE bindretf /=; reflexivity.
   by rewrite bindmret.
 rewrite compE uaddnE addSn SymbolsS -uaddnE -(compE Symbols) {}IH.
-rewrite [in RHS]compE [in X in _ = _ X]/= /squaring_f SymbolsS.
+rewrite [in RHS]compE [in X in _ = _ X]/= squaringE SymbolsS.
 rewrite [in RHS]compE -/(fmap _ _) fmap_bind bindA; bind_ext => a.
 rewrite 2![in LHS]compE -/(fmap _ _) [in LHS]fmap_bind [in LHS]bindA [in RHS]bindA.
 (* TODO(rei): bind_ext? *)
