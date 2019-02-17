@@ -26,6 +26,49 @@ Reserved Notation "f (o) g" (at level 11).
 
 Notation "l \\ p" := ([seq x <- l | x \notin p]).
 
+(*** flist (list of composable functions) and funcomp ***)
+Module FList.
+Inductive T (A:Type) (B:Type) : Type :=
+| Just (f:A->B) : T A B
+| Cons (X:Type) (f:X->B) (fs:T A X) : T A B.
+
+Fixpoint apply A B (fs : T A B) (x : A) {struct fs} : B
+ :=
+  match fs with
+  | Just f => f x
+  | Cons _ f fs' => f (apply fs' x)
+  end.
+
+Module Exports.
+Notation "[ \f f , .. , g , h ]" := (apply (Cons f ( .. (Cons g (Just h)) ..)))
+  (at level 0, format "[ \f '['  f ,  '/' .. ,  '/' g ,  '/' h ']' ]") : flist_scope.
+End Exports.
+
+Local Notation "[ \o f , .. , g , h ]" := (f \o .. (g \o h) ..)
+  (at level 0).
+Local Notation "[ \f f , .. , g , h ]" := (apply (Cons f ( .. (Cons g (Just h)) ..)))
+  (at level 0).
+Example apply_FList_is_funcomp :
+  forall A B C (f:A->B) (g:B->C), [\o g,f] = [\f g,f].
+Proof. reflexivity. Qed.
+End FList.
+Export FList.Exports.
+Open Scope flist_scope.
+
+Section flist_lemmas.
+Variables (A B C D : Type) (h : C -> D) (g : B -> C) (f : A -> B).
+Lemma flistA1 : [\f [\f h,g],f] = [\f h,g,f].
+Proof. reflexivity. Qed.
+Lemma flistA2 : [\f h,[\f g,f]] = [\f h,g,f].
+Proof. reflexivity. Qed.
+Lemma flistfid : [\f f,id] = f.
+Proof. reflexivity. Qed.
+Lemma flistidf : [\f id,f] = f.
+Proof. reflexivity. Qed.
+Lemma flistE : [\f g,f] = g \o f.
+Proof. reflexivity. Qed.
+End flist_lemmas.
+
 Section funcomp_lemmas.
 Lemma compA {A B C D} (f : C -> D) (g : B -> C) (h : A -> B) : f \o (g \o h) = (f \o g) \o h.
 Proof. by []. Qed.
@@ -38,6 +81,7 @@ Lemma compE A B C (g : B -> C) (f : A -> B) a : (g \o f) a = g (f a).
 Proof. by []. Qed.
 End funcomp_lemmas.
 
+(*** category ***)
 (* Our `category' is always concrete; morphisms are just functions. *)
 Module Category.
 Record class_of (T : Type) : Type := Class {
