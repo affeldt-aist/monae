@@ -217,7 +217,7 @@ Let unif_pair := @uniform M _ (def, def).
 
 Definition hide {N : probMonad} : N door := unif_door _ doors.
 
-Definition pick {N : probMonad} : N door := uniform def doors.
+Definition pick {N : probMonad} : N door := unif_door _ doors.
 
 Definition tease (h p : door) : M door := unif_door _ (doors \\ [:: h ; p]).
 

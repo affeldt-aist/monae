@@ -2,27 +2,29 @@ Require Import FunctionalExtensionality Reals.
 Require Import ssreflect ssrmatching ssrfun ssrbool.
 From mathcomp Require Import eqtype ssrnat seq choice fintype tuple finset.
 
-From infotheo Require Import proba ssr_ext ssrR Reals_ext.
+From infotheo Require Import ssr_ext ssrR Reals_ext dist.
 
-(*
+Reserved Notation "x <| p |> y" (format "x  <| p |>  y", at level 50).
+
+(* wip:
   This file duplicates the hierarchy of monads using
-  functor of type finType -> Type instead of Type -> Type.
+  functor of type choiceType -> choiceType instead of Type -> Type.
   The intent is to be able to use MathComp-compatible libraries
-  (MathComp's finset, infotheo's proba) to build concrete models
-  (see relmonad_model.v).
+  (MathComp's finmap, infotheo's dist) to build concrete models
+  (see choicemonad_model.v).
 
   Contents:
-  - Module relLaws.
-      the algebraic laws from monad.v for monads with a finite type
-  - Module relMonad.
-  - Module relMonadProb.
-  - Module relMonadFail.
-  - Module relMonadAlt.
-  - Module relMonadAltCI.
-  - Module relMonadNondet.
-  - Module relMonadAltProb.
-  - Module relMonadState.
-  - Module relMonadNondetState.
+  - Module choiceBindLaws.
+      the algebraic laws from monad.v for monads with a choice type
+  - Module choiceMonad.
+  - Module choiceMonadProb.
+  - Module choiceMonadFail.
+  - Module choiceMonadAlt.
+  - Module choiceMonadAltCI.
+  - Module choiceMonadNondet.
+  - Module choiceMonadAltProb.
+  - Module relMonadState. TODO
+  - Module relMonadNondetState. TODO
 
 *)
 
@@ -35,9 +37,9 @@ Reserved Notation "'do' x <- m ; e"
   (at level 60, x ident, m at level 200, e at level 60).
 Reserved Notation "x '[~]' y" (at level 50).
 
-Module relBindLaws.
-Section relbindlaws.
-Variable M : finType -> Type.
+Module choiceBindLaws.
+Section choicebindlaws.
+Variable M : choiceType -> choiceType.
 
 Variable b : forall A B, M A -> (A -> M B) -> M B.
 
@@ -59,10 +61,10 @@ Definition right_zero (f : forall A, M A) :=
 
 Definition left_zero (f : forall A, M A) := forall A B g, f A >>= g = f B.
 
-Definition left_neutral (r : forall A : finType, A -> M A) := forall (A B : finType) (x : A) (f : A -> M B),
+Definition left_neutral (r : forall A : choiceType, A -> M A) := forall (A B : choiceType) (x : A) (f : A -> M B),
   r _ x >>= f = f x.
 
-Definition right_neutral (r : forall A : finType, A -> M A) := forall A (m : M A),
+Definition right_neutral (r : forall A : choiceType, A -> M A) := forall A (m : M A),
   m >>= r _ = m.
 
 Definition left_id (r : forall A, M A) (add : forall B, M B -> M B -> M B) := forall A (m : M A),
@@ -71,30 +73,30 @@ Definition left_id (r : forall A, M A) (add : forall B, M B -> M B -> M B) := fo
 Definition right_id (r : forall A, M A) (add : forall B, M B -> M B -> M B) := forall A (m : M A),
   add _ m (r _) = m.
 
-End relbindlaws.
-End relBindLaws.
+End choicebindlaws.
+End choiceBindLaws.
 
-Module relMonad.
-Record class_of (m : finType -> Type) : Type := Class {
-  ret : forall A : finType, A -> m A;
-  bind : forall A B : finType, m A -> (A -> m B) -> m B ;
-  _ : relBindLaws.left_neutral bind ret ;
-  _ : relBindLaws.right_neutral bind ret ;
-  _ : relBindLaws.associative bind }.
-Record t : Type := Pack { m : finType -> Type; class : class_of m }.
+Module choiceMonad.
+Record class_of (m : choiceType -> choiceType) : Type := Class {
+  ret : forall A : choiceType, A -> m A;
+  bind : forall A B : choiceType, m A -> (A -> m B) -> m B ;
+  _ : choiceBindLaws.left_neutral bind ret ;
+  _ : choiceBindLaws.right_neutral bind ret ;
+  _ : choiceBindLaws.associative bind }.
+Record t : Type := Pack { m : choiceType -> choiceType; class : class_of m }.
 Module Exports.
 Definition Bind (M : t) A B : m M A -> (A -> m M B) -> m M B :=
   let: Pack _ (Class _ x _ _ _) := M in x A B.
 Arguments Bind {M A B} : simpl never.
-Definition Ret (M : t) (A : finType) : A -> m M A :=
+Definition Ret (M : t) (A : choiceType) : A -> m M A :=
   let: Pack _ (Class x _ _ _ _) := M in x A.
 Arguments Ret {M A} : simpl never.
 Notation "m >>= f" := (Bind m f).
-Notation relmonad := t.
-Coercion m : relmonad >-> Funclass.
+Notation choicemonad := t.
+Coercion m : choicemonad >-> Funclass.
 End Exports.
-End relMonad.
-Export relMonad.Exports.
+End choiceMonad.
+Export choiceMonad.Exports.
 
 Notation "'do' x <- m ; e" := (m >>= (fun x => e)).
 Notation "m >> f" := (m >>= fun _ => f) (at level 50).
@@ -103,62 +105,62 @@ Arguments skip {M} : simpl never.
 
 Local Open Scope reals_ext_scope.
 
-Module relMonadProb.
-Record mixin_of (m : relMonad.t) : Type := Mixin {
-  choice : forall (p : prob) (A : finType), m A -> m A -> m A
+Module choiceMonadProb.
+Record mixin_of (m : choiceMonad.t) : Type := Mixin {
+  choice : forall (p : prob) (A : choiceType), m A -> m A -> m A
            where "mx <| p |> my" := (choice p mx my) ;
   (* identity laws *)
-  _ : forall (A : finType) (mx my : m A), mx <| `Pr 0 |> my = my ;
-  _ : forall (A : finType) (mx my : m A), mx <| `Pr 1 |> my = mx ;
+  _ : forall (A : choiceType) (mx my : m A), mx <| `Pr 0 |> my = my ;
+  _ : forall (A : choiceType) (mx my : m A), mx <| `Pr 1 |> my = mx ;
   (* skewed commutativity law *)
-  _ : forall (A : finType) p (mx my : m A), mx <| p |> my = my <| `Pr p.~ |> mx ;
+  _ : forall (A : choiceType) p (mx my : m A), mx <| p |> my = my <| `Pr p.~ |> mx ;
   _ : forall A p, idempotent (@choice p A) ;
   (* quasi associativity *)
-  _ : forall (A : finType) (p q r s : prob) (mx my mz : m A),
+  _ : forall (A : choiceType) (p q r s : prob) (mx my mz : m A),
     (p = r * s :> R /\ s.~ = p.~ * q.~)%R ->
     mx <| p |> (my <| q |> mz) = (mx <| r |> my) <| s |> mz ;
   (* composition distributes leftwards over [probabilistic] choice *)
-  _ : forall p, relBindLaws.bind_left_distributive (@Bind m) (choice p) ;
+  _ : forall p, choiceBindLaws.bind_left_distributive (@Bind m) (choice p) ;
 } .
-Record class_of (m : finType -> Type) := Class {
-  base : relMonad.class_of m ; mixin : mixin_of (relMonad.Pack base) }.
-Structure t := Pack { m : finType -> Type ; class : class_of m }.
-End relMonadProb.
+Record class_of (m : choiceType -> choiceType) := Class {
+  base : choiceMonad.class_of m ; mixin : mixin_of (choiceMonad.Pack base) }.
+Structure t := Pack { m : choiceType -> choiceType ; class : class_of m }.
+End choiceMonadProb.
 
-Module relMonadFail.
-Record mixin_of (M : relmonad) : Type := Mixin {
+Module choiceMonadFail.
+Record mixin_of (M : choicemonad) : Type := Mixin {
   fail : forall A, M A ;
   (* exceptions are left-zeros of sequential composition *)
-  _ : relBindLaws.left_zero (@Bind M) fail (* fail A >>= f = fail B *)
+  _ : choiceBindLaws.left_zero (@Bind M) fail (* fail A >>= f = fail B *)
 }.
-Record class_of (m : finType -> Type) := Class {
-  base : relMonad.class_of m ; mixin : mixin_of (relMonad.Pack base) }.
-Structure t := Pack { m : finType -> Type ; class : class_of m }.
-Definition baseType (M : t) := relMonad.Pack (base (class M)).
+Record class_of (m : choiceType -> choiceType) := Class {
+  base : choiceMonad.class_of m ; mixin : mixin_of (choiceMonad.Pack base) }.
+Structure t := Pack { m : choiceType -> choiceType ; class : class_of m }.
+Definition baseType (M : t) := choiceMonad.Pack (base (class M)).
 Module Exports.
 Definition Fail (M : t) : forall A, m M A :=
   let: Pack _ (Class _ (Mixin x _)) := M return forall A, m M A in x.
 Arguments Fail {M A} : simpl never.
-Notation relfailMonad := t.
-Coercion baseType : relfailMonad >-> relmonad.
+Notation choicefailMonad := t.
+Coercion baseType : choicefailMonad >-> choicemonad.
 Canonical baseType.
 End Exports.
-End relMonadFail.
-Export relMonadFail.Exports.
+End choiceMonadFail.
+Export choiceMonadFail.Exports.
 
-Module relMonadAlt.
-Record mixin_of (M : relmonad) : Type := Mixin {
+Module choiceMonadAlt.
+Record mixin_of (M : choicemonad) : Type := Mixin {
   alt : forall A, M A -> M A -> M A ;
   _ : forall A, associative (@alt A) ;
   (* composition distributes leftwards over choice *)
-  _ : relBindLaws.bind_left_distributive (@Bind M) alt
+  _ : choiceBindLaws.bind_left_distributive (@Bind M) alt
   (* in general, composition does not distribute rightwards over choice *)
   (* NB: no bindDr to accommodate both angelic and demonic interpretations of nondeterminism *)
 }.
-Record class_of (m : finType -> Type) : Type := Class {
-  base : relMonad.class_of m ; mixin : mixin_of (relMonad.Pack base) }.
-Structure t := Pack { m : finType -> Type ; class : class_of m }.
-Definition baseType (M : t) := relMonad.Pack (base (class M)).
+Record class_of (m : choiceType -> choiceType) : Type := Class {
+  base : choiceMonad.class_of m ; mixin : mixin_of (choiceMonad.Pack base) }.
+Structure t := Pack { m : choiceType -> choiceType ; class : class_of m }.
+Definition baseType (M : t) := choiceMonad.Pack (base (class M)).
 Module Exports.
 Definition Alt M : forall A, m M A -> m M A -> m M A :=
   let: Pack _ (Class _ (Mixin x _ _)) := M
@@ -166,80 +168,80 @@ Definition Alt M : forall A, m M A -> m M A -> m M A :=
 Arguments Alt {M A} : simpl never.
 Notation "'[~p]'" := (@Alt _). (* postfix notation *)
 Notation "x '[~]' y" := (Alt x y). (* infix notation *)
-Notation relaltMonad := t.
-Coercion baseType : relaltMonad >-> relmonad.
+Notation choicealtMonad := t.
+Coercion baseType : choicealtMonad >-> choicemonad.
 Canonical baseType.
 End Exports.
-End relMonadAlt.
-Export relMonadAlt.Exports.
+End choiceMonadAlt.
+Export choiceMonadAlt.Exports.
 
-Module relMonadAltCI.
-Record mixin_of (M : finType -> Type) (op : forall A, M A -> M A -> M A) : Type := Mixin {
+Module choiceMonadAltCI.
+Record mixin_of (M : choiceType -> choiceType) (op : forall A, M A -> M A -> M A) : Type := Mixin {
   _ : forall A, idempotent (op A) ;
   _ : forall A, commutative (op A)
 }.
-Record class_of (m : finType -> Type) : Type := Class {
-  base : relMonadAlt.class_of m ;
-  mixin : mixin_of (@Alt (relMonadAlt.Pack base)) }.
-Structure t := Pack { m : finType -> Type ; class : class_of m }.
-Definition baseType (M : t) := relMonadAlt.Pack (base (class M)).
+Record class_of (m : choiceType -> choiceType) : Type := Class {
+  base : choiceMonadAlt.class_of m ;
+  mixin : mixin_of (@Alt (choiceMonadAlt.Pack base)) }.
+Structure t := Pack { m : choiceType -> choiceType ; class : class_of m }.
+Definition baseType (M : t) := choiceMonadAlt.Pack (base (class M)).
 Module Exports.
-Notation relaltCIMonad := t.
-Coercion baseType : relaltCIMonad >-> relaltMonad.
+Notation choicealtCIMonad := t.
+Coercion baseType : choicealtCIMonad >-> choicealtMonad.
 Canonical baseType.
 End Exports.
-End relMonadAltCI.
-Export relMonadAltCI.Exports.
+End choiceMonadAltCI.
+Export choiceMonadAltCI.Exports.
 
-Module relMonadNondet.
-Record mixin_of (M : relfailMonad) (a : forall A, M A -> M A -> M A) : Type :=
-  Mixin { _ : relBindLaws.left_id (@Fail M) a ;
-          _ : relBindLaws.right_id (@Fail M) a
+Module choiceMonadNondet.
+Record mixin_of (M : choicefailMonad) (a : forall A, M A -> M A -> M A) : Type :=
+  Mixin { _ : choiceBindLaws.left_id (@Fail M) a ;
+          _ : choiceBindLaws.right_id (@Fail M) a
 }.
-Record class_of (m : finType -> Type) : Type := Class {
-  base : relMonadFail.class_of m ;
-  base2 : relMonadAlt.mixin_of (relMonad.Pack (relMonadFail.base base)) ;
-  mixin : @mixin_of (relMonadFail.Pack base) (relMonadAlt.alt base2)
+Record class_of (m : choiceType -> choiceType) : Type := Class {
+  base : choiceMonadFail.class_of m ;
+  base2 : choiceMonadAlt.mixin_of (choiceMonad.Pack (choiceMonadFail.base base)) ;
+  mixin : @mixin_of (choiceMonadFail.Pack base) (choiceMonadAlt.alt base2)
 }.
-Structure t : Type := Pack { m : finType -> Type ; class : class_of m }.
-Definition baseType (M : t) := relMonadFail.Pack (base (class M)).
+Structure t : Type := Pack { m : choiceType -> choiceType ; class : class_of m }.
+Definition baseType (M : t) := choiceMonadFail.Pack (base (class M)).
 Module Exports.
-Notation relnondetMonad := t.
-Coercion baseType : relnondetMonad >-> relfailMonad.
+Notation choicenondetMonad := t.
+Coercion baseType : choicenondetMonad >-> choicefailMonad.
 Canonical baseType.
-Definition alt_of_nondet (M : relnondetMonad) : relaltMonad :=
-  relMonadAlt.Pack (relMonadAlt.Class (base2 (class M))).
+Definition alt_of_nondet (M : choicenondetMonad) : choicealtMonad :=
+  choiceMonadAlt.Pack (choiceMonadAlt.Class (base2 (class M))).
 Canonical alt_of_nondet.
 End Exports.
-End relMonadNondet.
-Export relMonadNondet.Exports.
+End choiceMonadNondet.
+Export choiceMonadNondet.Exports.
 
-Module relMonadAltProb.
-Record mixin_of (M : relaltCIMonad) (a : prob -> forall A, M A -> M A -> M A) := Mixin {
+Module choiceMonadAltProb.
+Record mixin_of (M : choicealtCIMonad) (a : prob -> forall A, M A -> M A -> M A) := Mixin {
   _ : forall A (p : prob),
     right_distributive (fun x y : M A => a p _ x y) (fun x y => Alt x y)
 }.
-Record class_of (m : finType -> Type) := Class {
-  base : relMonadAltCI.class_of m ;
-  base2 : relMonadProb.mixin_of (relMonad.Pack (relMonadAlt.base (relMonadAltCI.base base))) ;
-  mixin : @mixin_of (relMonadAltCI.Pack base) (@relMonadProb.choice _ base2)
+Record class_of (m : choiceType -> choiceType) := Class {
+  base : choiceMonadAltCI.class_of m ;
+  base2 : choiceMonadProb.mixin_of (choiceMonad.Pack (choiceMonadAlt.base (choiceMonadAltCI.base base))) ;
+  mixin : @mixin_of (choiceMonadAltCI.Pack base) (@choiceMonadProb.choice _ base2)
 }.
-Structure t : Type := Pack { m : finType -> Type ; class : class_of m }.
-Definition baseType (M : t) : relaltCIMonad := relMonadAltCI.Pack (base (class M)).
-Definition altType (M : t) : relaltMonad := relMonadAlt.Pack (relMonadAltCI.base (base (class M))).
+Structure t : Type := Pack { m : choiceType -> choiceType ; class : class_of m }.
+Definition baseType (M : t) : choicealtCIMonad := choiceMonadAltCI.Pack (base (class M)).
+Definition altType (M : t) : choicealtMonad := choiceMonadAlt.Pack (choiceMonadAltCI.base (base (class M))).
 Module Exports.
-Notation relaltProbMonad := t.
-Coercion baseType : relaltProbMonad >-> relaltCIMonad.
+Notation choicealtProbMonad := t.
+Coercion baseType : choicealtProbMonad >-> choicealtCIMonad.
 Canonical baseType.
 Definition altprob_is_prob M :=
-  relMonadProb.Pack (relMonadProb.Class (base2 (class M))).
+  choiceMonadProb.Pack (choiceMonadProb.Class (base2 (class M))).
 Canonical altprob_is_prob.
 Canonical altType.
 End Exports.
-End relMonadAltProb.
-Export relMonadAltProb.Exports.
+End choiceMonadAltProb.
+Export choiceMonadAltProb.Exports.
 
-Module relMonadState.
+(* TODO Module relMonadState.
 Record mixin_of (S : finType) (M : relmonad) : Type := Mixin {
   get : M S ;
   put : S -> M unit_finType ;
@@ -292,3 +294,4 @@ Canonical state_of_nondetstate.
 End Exports.
 End relMonadNondetState.
 Export relMonadNondetState.Exports.
+*)

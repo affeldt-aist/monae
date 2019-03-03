@@ -17,6 +17,7 @@ Unset Printing Implicit Defensive.
 - Module MonadNondetState.
 - Module MonadFresh.
 - Module MonadFailFresh.
+- Module MonadArray.
 *)
 
 Module MonadState.

@@ -523,7 +523,7 @@ Proof. by move=> A m; rewrite /bind -(compE (@join _)) joinMret. Qed.
 
 Lemma bindA_derived : BindLaws.associative bind.
 Proof.
-move=> A B C m f g; rewrite /bind /=.
+move=> A B C m f g; rewrite /bind.
 rewrite [LHS](_ : _ = ((@join _ \o (F # g \o @join _) \o F # f) m)) //.
 rewrite join_naturality (compA (@join C)) -joinA -(compE (@join _)).
 transitivity ((@join _ \o F # (@join _ \o (F # g \o f))) m) => //.

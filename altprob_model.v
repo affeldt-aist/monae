@@ -340,9 +340,9 @@ Definition F (A B : finType) (f : {affine {dist A} -> {dist B}}) : {csdist+ A} -
 case=> car car0.
 apply: (@NECSet.mk _ (@CSet.mk _ (f @` car) _)).
   rewrite /is_convex_set.
-  apply/asboolP => x y p /imsetP[a0 Ha0 ->{x}] /imsetP[a1 Ha1 ->{y}].
-  apply/imsetP; exists (a0 <|p|> a1).
-  exact/mem_convex_set.
+  apply/asboolP => x y p; rewrite 3!in_setE => -[a0 Ha0 <-{x}] [a1 Ha1 <-{y}].
+  exists (a0 <|p|> a1) => //.
+  by rewrite -in_setE; apply/mem_convex_set; rewrite in_setE.
   by rewrite (affine_functionP' f).
 move=> H.
 case/cset0PN : car0 => a carx.
