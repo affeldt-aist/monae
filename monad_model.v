@@ -20,12 +20,12 @@ Section classical_sets_extra.
 Hypothesis prop_ext : ClassicalFacts.prop_extensionality.
 
 (* from master branch *)
-Lemma setUA A : associative (@setU A).
+(*Lemma setUA A : associative (@setU A).
 Proof. move=> p q r; rewrite /setU predeqE => a; tauto. Qed.
 Lemma setUid A : idempotent (@setU A).
 Proof. move=> p; rewrite /setU predeqE => a; tauto. Qed.
 Lemma setUC A : commutative (@setU A).
-Proof. move=> p q; rewrite /setU predeqE => a; tauto. Qed.
+Proof. move=> p q; rewrite /setU predeqE => a; tauto. Qed.*)
 
 Lemma bigset1U A B a (f : A -> set B) : bigsetU [set a] f = f a.
 Proof.

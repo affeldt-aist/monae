@@ -131,21 +131,21 @@ Qed.
 
 Lemma uniform_cat (M : probMonad) A (a : A) s t :
   let m := size s in let n := size t in
-  uniform a (s ++ t) = uniform a s <| `Pr (INR m / INR (m + n)) |> uniform a t :> M _.
+  uniform a (s ++ t) = uniform a s <| `Pr (divRnnm m n) |> uniform a t :> M _.
 Proof.
 elim: s t => [t m n|s1 s2 IH t m n].
   rewrite cat0s uniform_nil /= [X in _ <| X |> _](_ : _ = `Pr 0) ?choice0 //.
-  by apply prob_ext => /=; rewrite div0R.
+  by apply prob_ext => /=; rewrite /divRnnm div0R.
 case/boolP : (m.-1 + n == 0)%nat => [{IH}|] m1n0.
   have s20 : s2 = [::] by move: m1n0; rewrite {}/m /=; case: s2.
   have t0 : t = [::] by move: m1n0; rewrite {}/n /= addnC; case: t.
   subst s2 t.
   rewrite cats0 (_ : Prob.mk _ = `Pr 1) ?choice1 //.
-  by apply prob_ext => /=; rewrite div1R invR1.
+  by apply prob_ext => /=; rewrite /divRnnm div1R invR1.
 rewrite cat_cons uniform_cons uniform_cons.
 set pv := ((/ _)%R).
 set v : prob := @Prob.mk pv _.
-set u := @Prob.mk (INR (size s2) / INR (size s2 + size t))%R (prob_addn _ _).
+set u := @Prob.mk (INR (size s2) / INR (size s2 + size t))%R (prob_divRnnm _ _).
 rewrite -[RHS](choiceA v u).
   by rewrite -IH.
 split.
@@ -258,9 +258,9 @@ pose m := size xxs.
 have lmn : (l = m * n)%nat by rewrite /l /m /n size_allpairs.
 rewrite (_ : probaddn _ _ = @Prob.mk (/ (INR (1 + m))) (prob_invn _))%R; last first.
   apply prob_ext => /=.
-  rewrite lmn -mulSn mult_INR {1}/Rdiv Rinv_mult_distr; last 2 first.
-    exact/not_0_INR.
-    by apply/not_0_INR/eqP; rewrite -lt0n.
+  rewrite lmn /divRnnm -mulSn mult_INR {1}/Rdiv Rinv_mult_distr; last 2 first.
+    by rewrite INR_eq0.
+    by rewrite INR_eq0; apply/eqP; rewrite -lt0n.
   rewrite mulRC -mulRA mulVR; last by rewrite INR_eq0' -lt0n.
   by rewrite mulR1 -addn1 addnC.
 rewrite -IH //.
@@ -270,7 +270,7 @@ rewrite {1}[cp _ _]/= cats0 => ->.
 rewrite -prob_bindDl.
 rewrite [in RHS]/mpair uniform_cat.
 rewrite [in RHS](_ : Prob.mk _ = probinvn m) //.
-by apply prob_ext => /=; rewrite div1R.
+by apply prob_ext => /=; rewrite /divRnnm div1R.
 Qed.
 
 Module MonadAltProb.

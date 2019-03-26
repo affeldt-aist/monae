@@ -24,19 +24,19 @@ Local Open Scope reals_ext_scope.
 Section probabilistic_choice_nondeterministic_choice.
 Local Open Scope proba_scope.
 Local Open Scope classical_set_scope.
-Variable A : finType.
+Variable T : finType.
 
-Definition pchoice' (p : prob) (X Y : {convex_set (dist A)}) : set (dist A) :=
+Definition pchoice' (p : prob) (X Y : {convex_set (dist T)}) : set (dist T) :=
   [set d | exists x, x \in X /\ exists y, y \in Y /\ d = x <| p |> y].
 
-Lemma pchoice'_self (p : prob) (X : {convex_set (dist A)}) :
+Lemma pchoice'_self (p : prob) (X : {convex_set (dist T)}) :
   [set d | exists x, x \in X /\ d = x <| p |> x] `<=` pchoice' p X X.
 Proof.
 move=> d [x [xX ->{d}]]; rewrite /pchoice'.
 exists x; split => //; by exists x; split.
 Qed.
 
-Lemma Hpchoice (p : prob) (X Y : {convex_set (dist A)}) : is_convex_set (pchoice' p X Y).
+Lemma Hpchoice (p : prob) (X Y : {convex_set (dist T)}) : is_convex_set (pchoice' p X Y).
 Proof.
 apply/asboolP => x y q /=; rewrite in_setE => -[d [dX [d' [d'Y ->]]]].
 rewrite in_setE => -[e [eX [e' [e'Y ->]]]]; rewrite in_setE commute.
@@ -44,12 +44,12 @@ exists (Conv2Dist.d d e q); split; first exact: (asboolW (CSet.H X)).
 exists (Conv2Dist.d d' e' q); split => //; exact: (asboolW (CSet.H Y)).
 Qed.
 
-Definition pchoice (p : prob) (X Y : {convex_set (dist A)}) : {convex_set (dist A)} :=
+Definition pchoice (p : prob) (X Y : {convex_set (dist T)}) : {convex_set (dist T)} :=
   CSet.mk (@Hpchoice p X Y).
 
 Local Notation "mx <.| p |.> my" := (@pchoice p mx my).
 
-Lemma pchoice_cset0 (x : {convex_set (dist A)}) p : x <.|p|.> cset0 _ = cset0 _.
+Lemma pchoice_cset0 (x : {convex_set (dist T)}) p : x <.|p|.> cset0 _ = cset0 _.
 Proof.
 apply val_inj => /=; rewrite /pchoice'.
 rewrite predeqE => d; split => // -[d1 [d1x [d2 []]]]; by rewrite in_setE.
@@ -72,7 +72,7 @@ rewrite -H; exists da; split; first by rewrite in_setE.
 exists db; split => //; by rewrite in_setE.
 Qed.
 
-Lemma pchoice0 (a b : {convex_set (dist A)}) : a !=set0 -> a <.| `Pr 0 |.> b = b.
+Lemma pchoice0 (a b : {convex_set (dist T)}) : a !=set0 -> a <.| `Pr 0 |.> b = b.
 Proof.
 move=> a0; apply/val_inj=> /=; rewrite /pchoice' predeqE => d; split.
 - move=> [x [xa]] [y [yb ->{d}]]; by rewrite -in_setE conv0.
@@ -80,7 +80,7 @@ move=> a0; apply/val_inj=> /=; rewrite /pchoice' predeqE => d; split.
   exists d; split; by [rewrite in_setE | rewrite conv0].
 Qed.
 
-Lemma pchoice1 (a b : {convex_set (dist A)}) : b !=set0 -> a <.| `Pr 1 |.> b = a.
+Lemma pchoice1 (a b : {convex_set (dist T)}) : b !=set0 -> a <.| `Pr 1 |.> b = a.
 Proof.
 move=> b0; apply/val_inj => /=; rewrite /pchoice' predeqE => d; split.
 - move=> [x [xa]] [y [yb ->{d}]]; by rewrite -in_setE conv1.
@@ -88,7 +88,7 @@ move=> b0; apply/val_inj => /=; rewrite /pchoice' predeqE => d; split.
   exists d'; split; by [rewrite in_setE | rewrite conv1].
 Qed.
 
-Lemma pchoiceC p (x y : {convex_set (dist A)}) : x <.| p |.> y = y <.| `Pr p.~ |.> x.
+Lemma pchoiceC p (x y : {convex_set (dist T)}) : x <.| p |.> y = y <.| `Pr p.~ |.> x.
 Proof.
 apply/val_inj/classical_sets.eqEsubset => /=; rewrite /pchoice'.
 - move=> d [a [aX [b [bY ->{d}]]]].
@@ -104,7 +104,7 @@ move=> Y; apply/val_inj/classical_sets.eqEsubset => /=.
 - move=> d; rewrite /pchoice' => -[x [Hx [y [Hy ->{d}]]]].
   by rewrite -in_setE (asboolW (CSet.H Y)).
 - apply: classical_sets.subset_trans; last exact: pchoice'_self.
-  set Y' := (X in _ `<=` X). suff : Y = Y' :> set (dist A) by move=> <-. rewrite {}/Y'.
+  set Y' := (X in _ `<=` X). suff : Y = Y' :> set (dist T) by move=> <-. rewrite {}/Y'.
   transitivity [set y | y \in Y].
     rewrite predeqE => d; split; by rewrite in_setE.
   rewrite predeqE => d; split.
@@ -112,7 +112,7 @@ move=> Y; apply/val_inj/classical_sets.eqEsubset => /=.
   - case=> d' [d'Y ->{d}]; by rewrite (asboolW (CSet.H Y)).
 Qed.
 
-Lemma nepchoiceA (p q r s : prob) (x y z : {convex_set (dist A)}) :
+Lemma nepchoiceA (p q r s : prob) (x y z : {convex_set (dist T)}) :
   (p = r * s :> R /\ s.~ = p.~ * q.~)%R ->
   x <.| p |.> (y <.| q |.> z) = (x <.| r |.> y) <.| s |.> z.
 Proof.
@@ -130,22 +130,22 @@ move=> [H1 H2]; apply/val_inj/classical_sets.eqEsubset => /=.
   by rewrite (@convA0 _ _ _ r s).
 Qed.
 
-Definition nchoice' (X Y : set (dist A)) : set (dist A) := hull (X `|` Y).
+Definition nchoice' (X Y : set (dist T)) : set (dist T) := hull (X `|` Y).
 
-Lemma Hnchoice (X Y : {convex_set (dist A)}) : is_convex_set (nchoice' X Y).
+Lemma Hnchoice (X Y : {convex_set (dist T)}) : is_convex_set (nchoice' X Y).
 Proof.
 apply/asboolP => x y p; rewrite /nchoice' => Hx Hy.
 have := convex_hull (X `|` Y).
 by move/asboolP => /(_ x y p Hx Hy).
 Qed.
 
-Definition nchoice (X Y : {convex_set (dist A)}) : {convex_set (dist A)} :=
+Definition nchoice (X Y : {convex_set (dist T)}) : {convex_set (dist T)} :=
   CSet.mk (@Hnchoice X Y).
 
-Lemma nchoice0X (X : {convex_set (dist A)}) : nchoice (cset0 _) X = X.
+Lemma nchoice0X (X : {convex_set (dist T)}) : nchoice (cset0 _) X = X.
 Proof. by apply val_inj => /=; rewrite /nchoice' set0U hull_cset. Qed.
 
-Lemma nchoiceX0 (X : {convex_set (dist A)}) : nchoice X (cset0 _) = X.
+Lemma nchoiceX0 (X : {convex_set (dist T)}) : nchoice X (cset0 _) = X.
 Proof. by apply val_inj => /=; rewrite /nchoice' setU0 hull_cset. Qed.
 
 Lemma nchoice_eq0 a b :
