@@ -251,12 +251,12 @@ rewrite /cp -cat1s allpairs_cat -/(cp _ _) cp1 uniform_cat.
 pose n := size y.
 pose l := size (cp xxs y).
 rewrite (_ : size _ = n); last by rewrite size_map.
-rewrite (_ : Prob.mk _ = probaddn n l); last first.
+rewrite (_ : Prob.mk _ = probdivRnnm n l); last first.
   rewrite -/(cp _ _) -/l.
   by apply prob_ext => /=.
 pose m := size xxs.
 have lmn : (l = m * n)%nat by rewrite /l /m /n size_allpairs.
-rewrite (_ : probaddn _ _ = @Prob.mk (/ (INR (1 + m))) (prob_invn _))%R; last first.
+rewrite (_ : probdivRnnm _ _ = @Prob.mk (/ (INR (1 + m))) (prob_invn _))%R; last first.
   apply prob_ext => /=.
   rewrite lmn /divRnnm -mulSn mult_INR {1}/Rdiv Rinv_mult_distr; last 2 first.
     by rewrite INR_eq0.
