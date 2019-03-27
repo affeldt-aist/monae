@@ -423,7 +423,7 @@ rewrite predeqE => b; split.
   by rewrite affine_function_Sum.
 case=> n [g [e [Hg]]] ->{b}.
 suff [h Hh] : exists h : 'I_n -> dist_convType A, forall i, h i \in Z /\ f (h i) = g i.
-  exists (\Sum_e h).
+  exists (\Conv_e h).
     exists n; exists h; exists e; split => //.
     move=> a [i _] <-.
     move: (Hh i) => [].
