@@ -67,7 +67,7 @@ Definition foldr1 (A : Type) (def : A) (f : A -> A -> A) (s : seq A) :=
 Definition cp {A B} (x : seq A) (y : seq B) := [seq (x', y') | x' <- x, y' <- y].
 
 Lemma cp1 A B (a : A) (s : seq B) : cp [:: a] s = map (fun b => (a, b)) s.
-Proof. elim: s => // h t /= <-; by rewrite cats0. Qed.
+Proof. by  elim: s => // h t /= <-. Qed.
 
 Definition zipWith {A B C} (op : A -> B -> C) a b : seq C :=
   map (fun x => op x.1 x.2) (zip a b).

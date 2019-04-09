@@ -266,7 +266,7 @@ rewrite (_ : probdivRnnm _ _ = @Prob.mk (/ (INR (1 + m))) (prob_invn _))%R; last
 rewrite -IH //.
 rewrite -/xxs.
 move: (@mpair_uniform_base_case M _ a x _ size_y).
-rewrite {1}[cp _ _]/= cats0 => ->.
+rewrite {1}/cp [in X in uniform _ X]/= cats0 => ->.
 rewrite -prob_bindDl.
 rewrite [in RHS]/mpair uniform_cat.
 rewrite [in RHS](_ : Prob.mk _ = probinvn m) //.

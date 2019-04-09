@@ -35,7 +35,7 @@ Other reference:
 ** Requirements
 
 - [[https://coq.inria.fr][Coq 8.9.0]]
-- [[https://github.com/math-comp/math-comp][Mathematical Components library]] 1.7.0
+- [[https://github.com/math-comp/math-comp][Mathematical Components library]] 1.8.0
 - [[https://github.com/math-comp/analysis][MathComp-Analysis]] github master version
   used in particular for ~classical_sets.v~ (in [[monad_model.v][monad_model.v]] and [[altprob_model.v][altprob_model.v]] for example)
   which requires
