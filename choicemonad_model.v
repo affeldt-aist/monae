@@ -194,11 +194,11 @@ Next Obligation. move=> ? ? ? ? ?; exact: DistBindA. Qed.
 Program Definition prob_mixin : choiceMonadProb.mixin_of monad :=
   @choiceMonadProb.Mixin monad (fun p (A : choiceType) (m1 m2 : Dist A) =>
     (@Conv2Dist.d A m1 m2 p)) _ _ _ _ _ _.
-Next Obligation. move=> ? ? ?(*; exact: conv0*). Admitted.
-Next Obligation. move=> ? ? ?(*; exact: conv1*). Admitted.
-Next Obligation. move=> ? ? ? ?(*; exact: convC*). Admitted.
-Next Obligation. move=> ? ? ?(*; exact: convmm*). Admitted.
-Next Obligation. move=> ? ? ? ? ? ? ? ? [? ?] /=(*; exact: convA0*). Admitted.
+Next Obligation. move=> ? ? ?; exact: Conv2Dist.conv0. Qed.
+Next Obligation. move=> ? ? ?; exact: Conv2Dist.conv1. Qed.
+Next Obligation. move=> ? ? ?; exact: Conv2Dist.convC. Qed.
+Next Obligation. move=> ? ? ?; exact: Conv2Dist.convmm. Qed.
+Next Obligation. move=> ? ? ? ? ? ? ? ? [? ?] /=; exact: Conv2Dist.convA. Qed.
 Next Obligation. move=> ? ? ? ? ? ?; exact: Conv2Dist.bind_left_distr. Qed.
 
 Definition prob_class : choiceMonadProb.class_of Dist :=
