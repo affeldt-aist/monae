@@ -6,7 +6,7 @@ From mathcomp Require Import finfun finset bigop.
 From mathcomp Require Import boolp classical_sets.
 Require Import Reals Lra.
 From infotheo Require Import ssrR Reals_ext Rbigop proba convex.
-Require Import monad monad_model.
+Require Import monad (*monad_model*).
 
 Reserved Notation "mx <.| p |.> my" (format "mx  <.| p |.>  my", at level 50).
 

@@ -6,8 +6,10 @@ From mathcomp Require Import boolp classical_sets.
 
 Require Import monad state_monad trace_monad.
 
-(* Contents:
-   sample models for the monads in monad.v, state_monad.v, trace_monad.v *)
+(* Contents: sample models for
+   - the monads in monad.v, state_monad.v, trace_monad.v
+   - for the nondeterministic-state monad
+*)
 
 Set Implicit Arguments.
 Unset Strict Implicit.
@@ -264,3 +266,245 @@ by [].
 Defined.
 
 End ModelStateTraceRun.
+
+From mathcomp Require Import bigop finmap.
+
+Section PR.
+Local Open Scope fset_scope.
+Section ImfsetTh.
+Variables (key : unit) (K V : choiceType).
+Variable (f : K -> V).
+Lemma imfset_set1 x : f @` [fset x] = [fset f x].
+Proof.
+apply/fsetP => y.
+by apply/imfsetP/fset1P=> [[x' /fset1P-> //]| ->]; exists x; rewrite ?fset11.
+Qed.
+End ImfsetTh.
+Section BigOps.
+Variables (T : choiceType) (I : eqType) (r : seq I).
+(* In order to avoid "&& true" popping up everywhere,
+ we prepare a specialized version of bigfcupP *)
+Lemma bigfcupP' x (F : I -> {fset T}) :
+  reflect (exists2 i : I, (i \in r) & x \in F i)
+          (x \in \bigcup_(i <- r | true) F i).
+Proof.
+apply: (iffP idP) => [|[i ri]]; last first.
+  by apply: fsubsetP x; rewrite bigfcup_sup.
+rewrite big_seq_cond; elim/big_rec: _ => [|i _ /andP[ri Pi] _ /fsetUP[|//]].
+  by rewrite in_fset0.
+by exists i; rewrite ?ri.
+Qed.
+End BigOps.
+End PR.
+
+Module ModelBacktrackableState.
+Local Open Scope fset_scope.
+
+Let Type_of_choice (T : choiceType) : Type := Choice.sort T.
+
+Let equality_mixin_of_Type (T : Type) : Equality.mixin_of T :=
+  EqMixin (fun x y : T => asboolP (x = y)).
+
+Let choice_of_Type (T : Type) : choiceType :=
+  Choice.Pack (Choice.Class (equality_mixin_of_Type T) gen_choiceMixin).
+
+Section monad.
+Variable S : Type.
+Local Obligation Tactic := try by [].
+
+Definition _m : Type -> Type :=
+  (fun A : Type => [choiceType of S -> {fset (choice_of_Type A * choice_of_Type S)}]).
+
+Program Definition _monad : monad := @Monad_of_bind_ret
+_m
+(fun A B m (f : A -> S -> {fset (choice_of_Type B * choice_of_Type S)}) =>
+     fun s => \bigcup_(i <- (fun x : [choiceType of choice_of_Type A * choice_of_Type S] => f x.1 x.2) @` (m s)) i) (* bind *)
+(fun A (a : A) s => [fset (a : choice_of_Type A, s : choice_of_Type S)]) (* ret *) _ _ _.
+Next Obligation.
+move=> A B /= m f; extensionality s; by rewrite imfset_set1 /= big_seq_fset1.
+Qed.
+Next Obligation.
+move=> A B /=; extensionality s.
+apply/fsetP => /= x; apply/bigfcupP'; case: ifPn => xBs.
+  set x' := (x : [choiceType of choice_of_Type A * choice_of_Type S]).
+  exists [fset x']; last by rewrite inE.
+    apply/imfsetP; exists x' => //=.
+  by case: x'.
+case => /= SA /imfsetP[] /= sa saBs ->{SA} /fset1P => Hx.
+move: xBs; rewrite Hx; apply/negP; rewrite negbK; by case: sa saBs Hx.
+Qed.
+Next Obligation.
+move=> A B C /= m f g; extensionality s.
+have @g' : choice_of_Type B -> choice_of_Type S -> {fset choice_of_Type C * choice_of_Type S}.
+  move=> b' s'; exact: (g b' s').
+apply/fsetP => /= x; apply/bigfcupP'/bigfcupP'; case => /= CS  /imfsetP[/=].
+- move=> bs /bigfcupP'[/= BS]  /imfsetP[/= sa] sams ->{BS} bsfsa ->{CS} xgbs.
+  exists (\bigcup_(i <- [fset g' x0.1 x0.2 | x0 in f sa.1 sa.2]) i).
+    by apply/imfsetP => /=; exists sa.
+  apply/bigfcupP'; exists (g bs.1 bs.2) => //; by apply/imfsetP => /=; exists bs.
+- move=> sa sams ->{CS} /bigfcupP'[/= CS]  /imfsetP[/= bs] bsfsa ->{CS} xgbs.
+  exists (g bs.1 bs.2) => //; apply/imfsetP => /=; exists bs => //.
+  apply/bigfcupP' => /=; exists (f sa.1 sa.2) => //; by apply/imfsetP => /=; exists sa.
+Qed.
+
+Lemma BindE (A B : Type) m (f : A -> _monad B) :
+  (m >>= f) = (fun s => \bigcup_(i <- (fun x : [choiceType of choice_of_Type A * choice_of_Type S] => f x.1 x.2) @` (m s)) i).
+Proof.
+apply functional_extensionality => s.
+rewrite /Bind /Join /= /Monad_of_bind_ret.join /=.
+set lhs := [fset _ _ | _ in _]. set rhs := [fset _ _ | _ in _].
+rewrite (_ : lhs = rhs) //; apply/fsetP => x; rewrite {}/lhs {}/rhs.
+apply/idP/imfsetP => /=.
+- case/imfsetP => -[a1 a2] /=.
+  rewrite /Fun /= /Monad_of_bind_ret.fmap /=.
+  case/bigfcupP' => /= b.
+  by case/imfsetP => -[b1 b2] /= Hb ->{b} /fset1P[-> -> ->{x a1 a2}]; exists (b1, b2).
+- case=> -[a1 s1] Ha /= ->{x}.
+  apply/imfsetP => /=.
+  rewrite /Fun /= /Monad_of_bind_ret.fmap /=.
+  eexists.
+  + apply/bigfcupP' => /=.
+    eexists.
+      apply/imfsetP => /=.
+      by exists (a1, s1).
+    apply/fset1P; reflexivity.
+  + by [].
+Qed.
+
+End monad.
+
+Section state.
+Variable S : Type.
+Local Obligation Tactic := try by [].
+
+Program Definition _state : stateMonad S :=
+(@MonadState.Pack S (_m S)
+  (@MonadState.Class S (_m S) (Monad.class (_monad S)) (@MonadState.Mixin S (_monad S)
+((fun s => [fset (s : choice_of_Type S , s : choice_of_Type S)]) : (_monad S S)) (* get *)
+((fun s => (fun _ => [fset (tt : choice_of_Type unit, s : choice_of_Type S)])) : S -> (_monad S unit)) (* put *)
+_ _ _ _))).
+Next Obligation.
+move=> s s'; extensionality s''.
+rewrite BindE; apply/fsetP => /= x; apply/bigfcupP'/fset1P.
+- by case => /= x0 /imfsetP[/= x1] /fset1P _ -> /fset1P.
+- move=> -> /=.
+  exists [fset ((tt, s') : [choiceType of choice_of_Type unit * choice_of_Type S])] => /=; last first.
+    exact/fset1P.
+  apply/imfsetP => /=; exists (tt, s) => //; exact/fset1P.
+Qed.
+Next Obligation.
+move=> s; extensionality s'.
+rewrite 2!BindE /=; apply/fsetP => /= x; apply/bigfcupP'/bigfcupP'.
+- case => /= x0 /imfsetP[/= x1] /fset1P -> -> /fset1P ->.
+  exists [fset ((s, s) : [choiceType of choice_of_Type S * choice_of_Type S])]; last first.
+    exact/fset1P.
+  apply/imfsetP => /=; exists (tt, s) => //; exact/fset1P.
+- case => /= x0 /imfsetP[/= x1] /fset1P -> -> /fset1P ->.
+  exists [fset ((s ,s) : [choiceType of choice_of_Type S * choice_of_Type S])]; last first.
+    exact/fset1P.
+  apply/imfsetP => /=; exists (tt, s) => //; exact/fset1P.
+Qed.
+Next Obligation.
+extensionality s.
+rewrite BindE /skip /= /Ret; apply/fsetP => /= x; apply/bigfcupP'/idP.
+- case => /= x0 /imfsetP[/= x1] /fset1P -> -> /fset1P ->; exact/fset1P.
+- move/fset1P => ->; exists [fset ((tt, s) : [choiceType of choice_of_Type unit * choice_of_Type S])]; last first.
+    exact/fset1P.
+  apply/imfsetP; exists (s, s) => //; by rewrite inE.
+Qed.
+Next Obligation.
+move=> A k; extensionality s.
+rewrite 2!BindE; apply/fsetP => x; apply/bigfcupP'/bigfcupP'.
+- case => /= x0 /imfsetP[/= x1] /fset1P -> ->.
+  rewrite BindE => /bigfcupP'[/= x2] /imfsetP[/= x3] /fset1P -> -> xkss.
+  exists (k s s s) => //; apply/imfsetP; exists (s, s) => //; by rewrite inE.
+- case => /= x0 /imfsetP[/= x1] /fset1P -> -> /= xksss.
+  have @k' : choice_of_Type S -> choice_of_Type S -> (choice_of_Type S -> {fset choice_of_Type A * choice_of_Type S}).
+    move=> a b s'; exact: (k a b s').
+  exists (\bigcup_(i <- [fset k' (s, s).1 x2.1 x2.2 | x2 in [fset (((s, s).2, (s, s).2) : [choiceType of choice_of_Type S * choice_of_Type S])]]) i).
+    apply/imfsetP ; exists (s, s); by [rewrite inE | rewrite BindE].
+  apply/bigfcupP'; exists (k s s s) => //;   apply/imfsetP; exists (s, s) => //=; exact/fset1P.
+Qed.
+
+End state.
+
+Section fail.
+Variable S : choiceType.
+Program Definition _fail : failMonad := @MonadFail.Pack _
+  (@MonadFail.Class _ (Monad.class (_monad S))
+    (@MonadFail.Mixin _ (fun (A : Type) (_ : S) => fset0) _)).
+Next Obligation.
+move=> A B g; extensionality s; apply/fsetP => x; rewrite inE BindE; apply/negbTE.
+apply/bigfcupP'; case => /= x0 /imfsetP[/= sa].
+by rewrite (@in_fset0 [choiceType of choice_of_Type A * choice_of_Type S]).
+Qed.
+
+End fail.
+
+Section alt.
+
+Variable S : choiceType.
+Local Obligation Tactic := try by [].
+Program Definition _alt : altMonad := @MonadAlt.Pack _
+  (@MonadAlt.Class _ (@Monad.class (_monad S))
+    (@MonadAlt.Mixin (_monad S)
+      (fun (A : Type) (a b : S -> {fset [choiceType of choice_of_Type A * choice_of_Type S]}) (s : S) => a s `|` b s) _ _)).
+Next Obligation. by move=> A a b c; extensionality s; rewrite fsetUA. Qed.
+Next Obligation.
+move=> A B /= m1 m2 k; extensionality s; rewrite !BindE /=.
+apply/fsetP => /= bs; apply/bigfcupP'/fsetUP.
+- case => /= BS /imfsetP[/= sa] /fsetUP[sam1s ->{BS} Hbs|sam2s ->{BS} Hbs].
+  + left; apply/bigfcupP' => /=; exists (k sa.1 sa.2) => //; apply/imfsetP; by exists sa.
+  + right; apply/bigfcupP' => /=; exists (k sa.1 sa.2) => //; apply/imfsetP; by exists sa.
+- case => /bigfcupP'[/= BS /imfsetP[/= sa sams ->{BS} bsksa]].
+  by exists (k sa.1 sa.2) => //; apply/imfsetP; exists sa => //; rewrite inE sams.
+  by exists (k sa.1 sa.2) => //; apply/imfsetP; exists sa => //; rewrite inE sams orbT.
+Qed.
+
+End alt.
+
+Section nondet.
+
+Variable S : choiceType.
+Local Obligation Tactic := try by [].
+Program Definition nondetbase : nondetMonad :=
+  @MonadNondet.Pack _ (@MonadNondet.Class _ (@MonadFail.class (_fail S))
+    (@MonadAlt.mixin (_alt S) _) (@MonadNondet.Mixin _ _ _ _)).
+Next Obligation. move=> A /= m; extensionality s; by rewrite fset0U. Qed.
+Next Obligation. move=> A /= m; extensionality s; by rewrite fsetU0. Qed.
+End nondet.
+
+Section nondetstate.
+
+Variable S : choiceType.
+Local Obligation Tactic := try by [].
+Program Definition nondetstate : nondetStateMonad S :=
+  @MonadNondetState.Pack _ _
+    (@MonadNondetState.Class _ _ (MonadNondet.class (nondetbase S))
+      (MonadState.mixin (MonadState.class (_state S))) (@MonadNondetState.Mixin _ _ _)).
+Next Obligation.
+move=> A B /= g; rewrite !BindE /=; extensionality s; apply/fsetP => /= sa.
+apply/idP/idP/bigfcupP'.
+case => /= SA /imfsetP[/= bs bsgs ->{SA}].
+by rewrite (@in_fset0 [choiceType of choice_of_Type A * choice_of_Type S]).
+Qed.
+Next Obligation.
+move=> A B /= m k1 k2; extensionality s; rewrite !BindE /=; apply/fsetP => /= bs.
+apply/bigfcupP'/idP.
+- case => /= BS /imfsetP[/= sa sams ->{BS}] /fsetUP[bsk1|bsk2].
+  + apply/fsetUP; left; apply/bigfcupP'; exists (k1 sa.1 sa.2) => //.
+    apply/imfsetP; by exists sa.
+  + apply/fsetUP; right; apply/bigfcupP'; exists (k2 sa.1 sa.2) => //.
+    apply/imfsetP; by exists sa.
+- move/fsetUP => [|] /bigfcupP'[/= BS] /imfsetP[/= sa sams ->{BS}] bsk.
+  exists (k1 sa.1 sa.2 `|` k2 sa.1 sa.2).
+    apply/imfsetP; by exists sa.
+  by apply/fsetUP; left.
+  exists (k1 sa.1 sa.2 `|` k2 sa.1 sa.2).
+    apply/imfsetP; by exists sa.
+  by apply/fsetUP; right.
+Qed.
+
+End nondetstate.
+
+End ModelBacktrackableState.

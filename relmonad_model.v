@@ -13,11 +13,12 @@ Unset Printing Implicit Defensive.
 
 (*
   This file provides models:
-  - for the nondeterministic-state monad
   - for the probability monad.
       depends on the formalization of distributions from the infotheo library
       (https://github.com/affeldt-aist/infotheo).
 *)
+
+(*NB(rei): moved to monad_model.v
 
 Module ModelBacktrackableState.
 
@@ -179,7 +180,7 @@ Qed.
 
 End nondetstate.
 
-End ModelBacktrackableState.
+End ModelBacktrackableState.*)
 
 From infotheo Require Import convex.
 
