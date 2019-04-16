@@ -168,7 +168,7 @@ Coercion m : functor >-> Funclass.
 End Exports.
 End Functor.
 Export Functor.Exports.
-Notation "F # f" := (Fun F f) (at level 11).
+Notation "F # g" := (Fun F g) (at level 11).
 
 Section functor_lemmas.
 Variable F : functor.
@@ -540,7 +540,7 @@ Record mixin_of (M : functor) : Type := Mixin {
   _ : JoinLaws.join_naturality join ;
   _ : JoinLaws.join_left_unit ret join ;
   _ : JoinLaws.join_right_unit ret join ;
-  _ : JoinLaws.join_associativity join;
+  _ : JoinLaws.join_associativity join
   }.
 Record class_of (M : Type -> Type) := Class {
   base : Functor.class_of M ; mixin : mixin_of (Functor.Pack base) }.
