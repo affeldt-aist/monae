@@ -8,10 +8,7 @@ proba_monad.v
 trace_monad.v
 monad_composition.v
 monad_model.v
-relmonad.v
-choicemonad.v
-relmonad_model.v
-choicemonad_model.v
+proba_monad_model.v
 altprob_model.v
 example_spark.v
 example_nqueens.v

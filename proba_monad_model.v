@@ -8,6 +8,12 @@ Require Import monad proba_monad.
 
 From infotheo Require Import Reals_ext ssr_ext dist convex.
 
+(*
+  This file provides a model for the probability monad.
+      depends on the formalization of distributions from the infotheo library
+      (https://github.com/affeldt-aist/infotheo).
+*)
+
 Module MonadProbModel.
 Local Obligation Tactic := idtac.
 

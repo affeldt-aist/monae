@@ -6,7 +6,8 @@ From mathcomp Require Import finfun finset bigop.
 From mathcomp Require Import boolp classical_sets.
 Require Import Reals Lra.
 From infotheo Require Import ssrR Reals_ext Rbigop proba convex.
-Require Import monad (*monad_model*).
+Require Import monad proba_monad.
+From infotheo Require Import dist.
 
 Reserved Notation "mx <.| p |.> my" (format "mx  <.| p |.>  my", at level 50).
 
@@ -24,19 +25,19 @@ Local Open Scope reals_ext_scope.
 Section probabilistic_choice_nondeterministic_choice.
 Local Open Scope proba_scope.
 Local Open Scope classical_set_scope.
-Variable T : finType.
+Variable T : choiceType.
 
-Definition pchoice' (p : prob) (X Y : {convex_set (dist T)}) : set (dist T) :=
+Definition pchoice' (p : prob) (X Y : {convex_set (Dist T)}) : set (Dist T) :=
   [set d | exists x, x \in X /\ exists y, y \in Y /\ d = x <| p |> y].
 
-Lemma pchoice'_self (p : prob) (X : {convex_set (dist T)}) :
+Lemma pchoice'_self (p : prob) (X : {convex_set (Dist T)}) :
   [set d | exists x, x \in X /\ d = x <| p |> x] `<=` pchoice' p X X.
 Proof.
 move=> d [x [xX ->{d}]]; rewrite /pchoice'.
 exists x; split => //; by exists x; split.
 Qed.
 
-Lemma Hpchoice (p : prob) (X Y : {convex_set (dist T)}) : is_convex_set (pchoice' p X Y).
+Lemma Hpchoice (p : prob) (X Y : {convex_set (Dist T)}) : is_convex_set (pchoice' p X Y).
 Proof.
 apply/asboolP => x y q /=; rewrite in_setE => -[d [dX [d' [d'Y ->]]]].
 rewrite in_setE => -[e [eX [e' [e'Y ->]]]]; rewrite in_setE commute.
@@ -44,12 +45,12 @@ exists (Conv2Dist.d d e q); split; first exact: (asboolW (CSet.H X)).
 exists (Conv2Dist.d d' e' q); split => //; exact: (asboolW (CSet.H Y)).
 Qed.
 
-Definition pchoice (p : prob) (X Y : {convex_set (dist T)}) : {convex_set (dist T)} :=
+Definition pchoice (p : prob) (X Y : {convex_set (Dist T)}) : {convex_set (Dist T)} :=
   CSet.mk (@Hpchoice p X Y).
 
 Local Notation "mx <.| p |.> my" := (@pchoice p mx my).
 
-Lemma pchoice_cset0 (x : {convex_set (dist T)}) p : x <.|p|.> cset0 _ = cset0 _.
+Lemma pchoice_cset0 (x : {convex_set (Dist T)}) p : x <.|p|.> cset0 _ = cset0 _.
 Proof.
 apply val_inj => /=; rewrite /pchoice'.
 rewrite predeqE => d; split => // -[d1 [d1x [d2 []]]]; by rewrite in_setE.
@@ -72,7 +73,7 @@ rewrite -H; exists da; split; first by rewrite in_setE.
 exists db; split => //; by rewrite in_setE.
 Qed.
 
-Lemma pchoice0 (a b : {convex_set (dist T)}) : a !=set0 -> a <.| `Pr 0 |.> b = b.
+Lemma pchoice0 (a b : {convex_set (Dist T)}) : a !=set0 -> a <.| `Pr 0 |.> b = b.
 Proof.
 move=> a0; apply/val_inj=> /=; rewrite /pchoice' predeqE => d; split.
 - move=> [x [xa]] [y [yb ->{d}]]; by rewrite -in_setE conv0.
@@ -80,7 +81,7 @@ move=> a0; apply/val_inj=> /=; rewrite /pchoice' predeqE => d; split.
   exists d; split; by [rewrite in_setE | rewrite conv0].
 Qed.
 
-Lemma pchoice1 (a b : {convex_set (dist T)}) : b !=set0 -> a <.| `Pr 1 |.> b = a.
+Lemma pchoice1 (a b : {convex_set (Dist T)}) : b !=set0 -> a <.| `Pr 1 |.> b = a.
 Proof.
 move=> b0; apply/val_inj => /=; rewrite /pchoice' predeqE => d; split.
 - move=> [x [xa]] [y [yb ->{d}]]; by rewrite -in_setE conv1.
@@ -88,14 +89,14 @@ move=> b0; apply/val_inj => /=; rewrite /pchoice' predeqE => d; split.
   exists d'; split; by [rewrite in_setE | rewrite conv1].
 Qed.
 
-Lemma pchoiceC p (x y : {convex_set (dist T)}) : x <.| p |.> y = y <.| `Pr p.~ |.> x.
+Lemma pchoiceC p (x y : {convex_set (Dist T)}) : x <.| p |.> y = y <.| `Pr p.~ |.> x.
 Proof.
 apply/val_inj/classical_sets.eqEsubset => /=; rewrite /pchoice'.
 - move=> d [a [aX [b [bY ->{d}]]]].
   by exists b; split => //; exists a; split => //; rewrite convC.
 - move=> d [a [aY [b [bX ->{d}]]]].
   exists b; split => //; exists a; split => //; rewrite convC.
-  by apply/dist_ext => a0; rewrite !Conv2Dist.dE /= !onemK.
+  by apply/Dist_ext => a0; rewrite !Conv2Dist.dE /= !onemK.
 Qed.
 
 Lemma pchoicemm p : idempotent (pchoice p).
@@ -104,7 +105,7 @@ move=> Y; apply/val_inj/classical_sets.eqEsubset => /=.
 - move=> d; rewrite /pchoice' => -[x [Hx [y [Hy ->{d}]]]].
   by rewrite -in_setE (asboolW (CSet.H Y)).
 - apply: classical_sets.subset_trans; last exact: pchoice'_self.
-  set Y' := (X in _ `<=` X). suff : Y = Y' :> set (dist T) by move=> <-. rewrite {}/Y'.
+  set Y' := (X in _ `<=` X). suff : Y = Y' :> set (Dist T) by move=> <-. rewrite {}/Y'.
   transitivity [set y | y \in Y].
     rewrite predeqE => d; split; by rewrite in_setE.
   rewrite predeqE => d; split.
@@ -112,7 +113,7 @@ move=> Y; apply/val_inj/classical_sets.eqEsubset => /=.
   - case=> d' [d'Y ->{d}]; by rewrite (asboolW (CSet.H Y)).
 Qed.
 
-Lemma nepchoiceA (p q r s : prob) (x y z : {convex_set (dist T)}) :
+Lemma nepchoiceA (p q r s : prob) (x y z : {convex_set (Dist T)}) :
   (p = r * s :> R /\ s.~ = p.~ * q.~)%R ->
   x <.| p |.> (y <.| q |.> z) = (x <.| r |.> y) <.| s |.> z.
 Proof.
@@ -130,22 +131,22 @@ move=> [H1 H2]; apply/val_inj/classical_sets.eqEsubset => /=.
   by rewrite (@convA0 _ _ _ r s).
 Qed.
 
-Definition nchoice' (X Y : set (dist T)) : set (dist T) := hull (X `|` Y).
+Definition nchoice' (X Y : set (Dist T)) : set (Dist T) := hull (X `|` Y).
 
-Lemma Hnchoice (X Y : {convex_set (dist T)}) : is_convex_set (nchoice' X Y).
+Lemma Hnchoice (X Y : {convex_set (Dist T)}) : is_convex_set (nchoice' X Y).
 Proof.
 apply/asboolP => x y p; rewrite /nchoice' => Hx Hy.
 have := convex_hull (X `|` Y).
 by move/asboolP => /(_ x y p Hx Hy).
 Qed.
 
-Definition nchoice (X Y : {convex_set (dist T)}) : {convex_set (dist T)} :=
+Definition nchoice (X Y : {convex_set (Dist T)}) : {convex_set (Dist T)} :=
   CSet.mk (@Hnchoice X Y).
 
-Lemma nchoice0X (X : {convex_set (dist T)}) : nchoice (cset0 _) X = X.
+Lemma nchoice0X (X : {convex_set (Dist T)}) : nchoice (cset0 _) X = X.
 Proof. by apply val_inj => /=; rewrite /nchoice' set0U hull_cset. Qed.
 
-Lemma nchoiceX0 (X : {convex_set (dist T)}) : nchoice X (cset0 _) = X.
+Lemma nchoiceX0 (X : {convex_set (Dist T)}) : nchoice X (cset0 _) = X.
 Proof. by apply val_inj => /=; rewrite /nchoice' setU0 hull_cset. Qed.
 
 Lemma nchoice_eq0 a b :
@@ -155,7 +156,7 @@ case/boolP : (a == cset0 _) => // /cset0PN a0.
 case/boolP : (b == cset0 _) => //= /cset0PN b0 H.
 suff : hull (a `|` b) == set0.
   move/eqP : H => /(congr1 val) /= /eqP.
-  rewrite /nchoice' hull_eq0 => /eqP; rewrite setU_eq0 => -[Ha _] _.
+  rewrite /nchoice' (@hull_eq0 (Dist_convType T)) => /eqP; rewrite setU_eq0 => -[Ha _] _.
   by case: a0 => a0; rewrite Ha.
 by move/eqP : H => /(congr1 val) /=; rewrite /nchoice /nchoice' => ->.
 Qed.
@@ -165,7 +166,7 @@ Proof. move=> x y; apply/val_inj => /=; by rewrite /nchoice' setUC. Qed.
 
 Lemma nchoicemm : idempotent nchoice.
 Proof.
-move=> d; apply/val_inj => /=; rewrite /nchoice' setUid; exact: hull_cset.
+move=> d; apply/val_inj => /=; rewrite /nchoice' setUid; exact: (@hull_cset (Dist_convType T)).
 Qed.
 
 Lemma nchoiceA : associative nchoice.
@@ -280,12 +281,15 @@ Canonical necset_subType := [subType for @NECSet.car A].
 Canonical necset_predType :=
   Eval hnf in mkPredType (fun t : necset A => (fun x => x \in NECSet.car t)).
 Definition necset_eqMixin := Eval hnf in [eqMixin of (@necset A) by <:].
-Canonical necset_eqType := Eval hnf in EqType (@necset A) necset_eqMixin.
+Canonical necset_eqType := Eval hnf in EqType (necset A) necset_eqMixin.
+Definition necset_choiceMixin : Choice.mixin_of (necset A) := @gen_choiceMixin (necset A).
+Canonical cont_choiceType : choiceType :=
+  Eval hnf in Choice.Pack (Choice.Class necset_eqMixin necset_choiceMixin).
 
 End necset_canonical.
 
 (* non-empty convex sets of distributions *)
-Notation "{ 'csdist+' T }" := (necset (dist_convType T)) (format "{ 'csdist+'  T }") : convex_scope.
+Notation "{ 'csdist+' T }" := (necset (Dist_convType T)) (format "{ 'csdist+'  T }") : convex_scope.
 
 Section necset_prop.
 
@@ -303,9 +307,7 @@ Qed.
 
 End necset_prop.
 
-Require Import relmonad.
-
-Module relFunctorLaws.
+Module convFunctorLaws.
 Section def.
 Variable (M : convType -> convType) (f : forall (A B : convType),
   ({affine A -> B}) -> {affine M A -> M B}).
@@ -313,30 +315,30 @@ Definition id := forall A, f (@affine_function_id A) = (@affine_function_id (M A
 Definition comp := forall (A B C : convType) (h : {affine A -> B}) (g : {affine B -> C}),
   f (affine_function_comp h g) = affine_function_comp (f h) (f g) :> {affine M A -> M C}.
 End def.
-End relFunctorLaws.
+End convFunctorLaws.
 
-Module relFunctor.
+Module convFunctor.
 Record class_of (m : convType -> convType) : Type := Class {
   f : forall (A B : convType), ({affine A -> B}) -> {affine m A -> m B} ;
-  _ : relFunctorLaws.id f ;
-  _ : relFunctorLaws.comp f
+  _ : convFunctorLaws.id f ;
+  _ : convFunctorLaws.comp f
 }.
 Structure t : Type := Pack { m : convType -> convType ; class : class_of m }.
 Module Exports.
-Definition relFun (F : t) : forall (A B : convType), ({affine A -> B}) -> {affine m F A -> m F B} :=
+Definition convFun (F : t) : forall (A B : convType), ({affine A -> B}) -> {affine m F A -> m F B} :=
   let: Pack _ (Class f _ _) := F return forall A B : convType, ({affine A -> B}) -> {affine m F A -> m F B} in f.
-Arguments relFun _ [A] [B].
-Notation relfunctor := t.
-Coercion m : relfunctor >-> Funclass.
+Arguments convFun _ [A] [B].
+Notation convfunctor := t.
+Coercion m : convfunctor >-> Funclass.
 End Exports.
-End relFunctor.
-Export relFunctor.Exports.
-Notation "F # f" := (relFun F f) (at level 11).
+End convFunctor.
+Export convFunctor.Exports.
+Notation "F # f" := (convFun F f) (at level 11).
 
 (* wip *)
 Module Functor.
 
-Definition F (A B : finType) (f : {affine {dist A} -> {dist B}}) : {csdist+ A} -> {csdist+ B}.
+Definition F (A B : choiceType) (f : {affine {Dist A} -> {Dist B}}) : {csdist+ A} -> {csdist+ B}.
 case=> car car0.
 apply: (@NECSet.mk _ (@CSet.mk _ (f @` car) _)).
   rewrite /is_convex_set.
@@ -352,7 +354,7 @@ Defined.
 (* the functor goes through as follows: *)
 (* NB: see also Functorslaws.id *)
 Lemma map_laws_id A (Z : {csdist+ A}) :
-  (F (affine_function_id (dist_convType A))) Z = ssrfun.id Z.
+  (F (affine_function_id (Dist_convType A))) Z = ssrfun.id Z.
 Proof.
 apply/val_inj => /=.
 case: Z => Z HZ.
@@ -363,8 +365,8 @@ move=> Zx; by exists x.
 Qed.
 
 (* NB: see FunctorLaws.comp *)
-Lemma map_laws_comp (A B C : finType) (f : {affine {dist B} -> {dist C}})
-  (g : {affine {dist A} -> {dist B}}) (Z : {csdist+ A})
+Lemma map_laws_comp (A B C : choiceType) (f : {affine {Dist B} -> {Dist C}})
+  (g : {affine {Dist A} -> {Dist B}}) (Z : {csdist+ A})
   : (F (affine_function_comp g f)) Z = (F f \o F g) Z.
 Proof.
 apply/val_inj => /=.
@@ -382,7 +384,7 @@ Let nepchoice : prob -> forall A, {csdist+ A} -> {csdist+ A} -> {csdist+ A} :=
 
 Local Notation "mx <.| p |.> my" := (@nepchoice p _ mx my).
 
-Lemma F_preserves_pchoice (A B : finType) (f : {affine {dist A} -> {dist B}}) (Z Z' : {csdist+ A}) (p : prob) :
+Lemma F_preserves_pchoice (A B : choiceType) (f : {affine {Dist A} -> {Dist B}}) (Z Z' : {csdist+ A}) (p : prob) :
   (F f) (Z <.| p |.> Z') = (F f) Z <.| p |.> (F f) Z'.
 Proof.
 do 2 apply val_inj => /=.
@@ -406,14 +408,14 @@ rewrite predeqE => b; split.
   rewrite in_setE {1}/F /=.
   case: Z' => Z' HZ' /=.
   case=> a1 Z'a1 <-{b1} ->{b}.
-  exists (a0 <|p|> a1); last by rewrite (affine_functionP' f).
+  exists ((a0 : Dist_convType A) <|p|> a1); last by rewrite (affine_functionP' f).
   rewrite /pchoice'.
   exists a0; split; first by rewrite in_setE.
   exists a1; split => //; by rewrite in_setE.
 Qed.
 
-Lemma image_preserves_convex_hull (A B : finType) (f : {affine {dist A} -> {dist B}})
-  (Z : set {dist A}) : f @` hull Z = hull (f @` Z).
+Lemma image_preserves_convex_hull (A B : choiceType) (f : {affine {Dist A} -> {Dist B}})
+  (Z : set {Dist A}) : f @` hull Z = hull (f @` Z).
 Proof.
 rewrite predeqE => b; split.
   case=> a [n [g [e [Hg]]]] ->{a} <-{b}.
@@ -422,7 +424,7 @@ rewrite predeqE => b; split.
     by exists (g i) => //; apply Hg; exists i.
   by rewrite affine_function_Sum.
 case=> n [g [e [Hg]]] ->{b}.
-suff [h Hh] : exists h : 'I_n -> dist_convType A, forall i, h i \in Z /\ f (h i) = g i.
+suff [h Hh] : exists h : 'I_n -> Dist_convType A, forall i, h i \in Z /\ f (h i) = g i.
   exists (\Conv_e h).
     exists n; exists h; exists e; split => //.
     move=> a [i _] <-.
@@ -439,11 +441,11 @@ Qed.
 Let nenchoice : forall A, {csdist+ A} -> {csdist+ A} -> {csdist+ A} :=
   fun A m1 m2 => NECSet.mk (nchoice_ne m1 m2).
 
-Lemma F_preserves_nchoice (A B : finType) (f : {affine {dist A} -> {dist B}}) (Z Z' : {csdist+ A}) :
+Lemma F_preserves_nchoice (A B : choiceType) (f : {affine {Dist A} -> {Dist B}}) (Z Z' : {csdist+ A}) :
   (F f) (nenchoice Z Z') = nenchoice (F f Z) (F f Z').
 Proof.
 do 2 apply val_inj => /=.
-rewrite /nchoice' image_preserves_convex_hull; congr hull.
+rewrite /nchoice' image_preserves_convex_hull; congr (@hull (Dist_convType B)).
 rewrite predeqE => /= b; split.
   case=> a [] Za <-{b}.
     move: Z Z' Za => [Z Z0] [Z' Z'0] /= Za.
@@ -455,10 +457,9 @@ exists a => //; by left.
 exists a => //; by right.
 Qed.
 
+Definition eta (A : choiceType) (d : Dist A) : {csdist+ A} := NECSet.mk (cset1_neq0 d).
 
-Definition eta (A : finType) (d : dist A) : {csdist+ A} := NECSet.mk (cset1_neq0 d).
-
-Lemma eta_preserves_pchoice (A : finType) (P Q : dist A) (p : prob) :
+Lemma eta_preserves_pchoice (A : choiceType) (P Q : Dist A) (p : prob) :
   eta (P <| p |> Q) = eta P <.| p |.> eta Q.
 Proof.
 do 2 apply val_inj => /=.
@@ -472,7 +473,7 @@ by case => Q' []; rewrite in_setE /= {1}/set1 => ->{Q'}.
 Qed.
 
 (* wip *)
-Lemma naturality (A B : finType) (f : {affine {dist A} -> {dist B}}) (x : dist A) :
+Lemma naturality (A B : choiceType) (f : {affine {Dist A} -> {Dist B}}) (x : Dist A) :
   F f (eta x) = eta (f x).
 Proof.
 do 2 apply/val_inj => /=.
@@ -488,20 +489,25 @@ Section modelaltprob.
 
 Local Obligation Tactic := idtac.
 
-Let F := (fun A : finType => necset (dist_convType A)).
+(* TODO(rei): same Let definitions in monad_model.v *)
+Let Type_of_choice (T : choiceType) : Type := Choice.sort T.
+
+Let equality_mixin_of_Type (T : Type) : Equality.mixin_of T :=
+  EqMixin (fun x y : T => asboolP (x = y)).
+
+Let choice_of_Type (T : Type) : choiceType :=
+  Choice.Pack (Choice.Class (equality_mixin_of_Type T) gen_choiceMixin).
+
+Let F : Type -> Type := (fun A : Type => [choiceType of necset (Dist_convType (choice_of_Type A))]).
 
 (* we assume the existence of appropriate BIND and RET *)
-Axiom BIND : forall (A B : finType) (m : F A) (f : A -> F B), F B.
-Axiom RET : forall A : finType, A -> F A.
-Axiom BINDretf : relBindLaws.left_neutral BIND RET.
-Axiom BINDmret : relBindLaws.right_neutral BIND RET.
-Axiom BINDA : relBindLaws.associative BIND.
+Axiom BIND : forall (A B : Type) (m : F A) (f : A -> F B), F B.
+Axiom RET : forall A : Type, A -> F A.
+Axiom BINDretf : BindLaws.left_neutral BIND RET.
+Axiom BINDmret : BindLaws.right_neutral BIND RET.
+Axiom BINDA : BindLaws.associative BIND.
 
-Program Definition apmonad : relMonad.t := @relMonad.Pack F
-  (@relMonad.Class _ (@RET) BIND _ _ _ ).
-Next Obligation. exact: BINDretf. Qed.
-Next Obligation. exact: BINDmret. Qed.
-Next Obligation. exact: BINDA. Qed.
+Definition apmonad : Monad.t := Monad_of_bind_ret BINDretf BINDmret BINDA.
 
 Let nepchoice : prob -> forall A, F A -> F A -> F A :=
   fun p A m1 m2 => NECSet.mk (pchoice_ne p m1 m2).
@@ -521,14 +527,15 @@ Lemma nepchoiceA A (p q r s : prob) (mx my mz : F A) :
   mx <.| p |.> (my <.| q |.> mz) = (mx <.| r |.> my) <.| s |.> mz.
 Proof. move=> H; apply val_inj => /=; exact: nepchoiceA. Qed.
 
-Axiom nepchoice_bindDl : forall p, relBindLaws.bind_left_distributive BIND (nepchoice p).
+Axiom nepchoice_bindDl : forall p : prob,
+  BindLaws.bind_left_distributive (@Bind apmonad) (nepchoice p).
 
 Let nenchoice : forall A, F A -> F A -> F A := fun A m1 m2 => NECSet.mk (nchoice_ne m1 m2).
 
 Let nenchoiceA A : associative (@nenchoice A).
 Proof. move=> a b c; apply val_inj => /=; by rewrite nchoiceA. Qed.
 
-Axiom nenchoice_bindDl : relBindLaws.bind_left_distributive BIND nenchoice.
+Axiom nenchoice_bindDl : BindLaws.bind_left_distributive (@Bind apmonad) nenchoice.
 
 Let nenchoicemm A : idempotent (@nenchoice A).
 Proof. move=> a; apply val_inj => /=; by rewrite nchoicemm. Qed.
@@ -537,8 +544,8 @@ Proof. move=> a b; apply val_inj => /=; by rewrite nchoiceC. Qed.
 Let nenchoiceDr A p : right_distributive (fun x y : F A => x <.| p |.> y) (fun x y => nenchoice x y).
 Proof. move=> a b c; apply val_inj => /=; by rewrite nchoiceDr. Qed.
 
-Program Let nepprob_mixin : relMonadProb.mixin_of apmonad :=
-  @relMonadProb.Mixin apmonad (fun p (A : finType) (m1 m2 : F A) =>
+Program Let nepprob_mixin : MonadProb.mixin_of apmonad :=
+  @MonadProb.Mixin apmonad (fun p (A : Type) (m1 m2 : F A) =>
     (@nepchoice p _ m1 m2 )) _ _ _ _ _ _.
 Next Obligation. exact: nepchoice0. Qed.
 Next Obligation. exact: nepchoice1. Qed.
@@ -547,23 +554,23 @@ Next Obligation. exact: nepchoicemm. Qed.
 Next Obligation. exact: nepchoiceA. Qed.
 Next Obligation. exact: nepchoice_bindDl. Qed.
 
-Let nepprob_class : relMonadProb.class_of F := @relMonadProb.Class _ _ nepprob_mixin.
+Let nepprob_class : MonadProb.class_of F := @MonadProb.Class _ _ nepprob_mixin.
 
-Definition nepprob : relMonadProb.t := relMonadProb.Pack nepprob_class.
+Definition nepprob : MonadProb.t := MonadProb.Pack nepprob_class.
 
-Program Definition nepalt : relaltMonad := @relMonadAlt.Pack _
-  (@relMonadAlt.Class _ (relMonad.class apmonad)
-    (@relMonadAlt.Mixin apmonad nenchoice _ _)).
+Program Definition nepalt : altMonad := @MonadAlt.Pack _
+  (@MonadAlt.Class _ (Monad.class apmonad)
+    (@MonadAlt.Mixin apmonad nenchoice _ _)).
 Next Obligation. exact: nenchoiceA. Qed.
 Next Obligation. exact: nenchoice_bindDl. Qed.
 
-Program Definition apaltci := @relMonadAltCI.Pack _
-  (@relMonadAltCI.Class _ (relMonadAlt.class nepalt) (@relMonadAltCI.Mixin _ _ _ _)).
+Program Definition apaltci := @MonadAltCI.Pack _
+  (@MonadAltCI.Class _ (MonadAlt.class nepalt) (@MonadAltCI.Mixin _ _ _ _)).
 Next Obligation. exact: nenchoicemm. Qed.
 Next Obligation. exact: nenchoiceC. Qed.
 
-Program Definition altprob := @relMonadAltProb.Pack F
-  (@relMonadAltProb.Class _ (relMonadAltCI.class apaltci) (relMonadProb.mixin (relMonadProb.class nepprob)) (@relMonadAltProb.Mixin _ _ _)).
+Program Definition altprob := @MonadAltProb.Pack F
+  (@MonadAltProb.Class _ (MonadAltCI.class apaltci) (MonadProb.mixin (MonadProb.class nepprob)) (@MonadAltProb.Mixin _ _ _)).
 Next Obligation. exact: nenchoiceDr. Qed.
 
 End modelaltprob.
