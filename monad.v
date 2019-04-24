@@ -1736,6 +1736,11 @@ Variable M : failMonad.
 Definition work s : M nat :=
   if O \in s then Fail else Ret (product s).
 
+Let Work s := match O \in s with
+              | true => @Fail M nat
+              | false => @Ret (MonadFail.baseType M) nat (product s)
+              end.
+
 (* work refined to eliminate multiple traversals *)
 Lemma workE :
   let next := fun n mx => if n == 0 then Fail else fmap (muln n) mx in
@@ -1751,6 +1756,10 @@ Arguments work {M}.
 Variable M : exceptMonad.
 
 Definition fastprod s : M _ := Catch (work s) (Ret O).
+
+Let Fastprod s :=
+  @Catch M nat (@work (MonadExcept.baseType M) s)
+             (@Ret (MonadExcept.monadType M) nat O).
 
 (* fastprod is pure, never throwing an unhandled exception *)
 Lemma fastprodE s : fastprod s = Ret (product s).

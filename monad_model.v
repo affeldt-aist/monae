@@ -6,9 +6,39 @@ From mathcomp Require Import boolp classical_sets.
 
 Require Import monad state_monad trace_monad.
 
-(* Contents: sample models for
-   - the monads in monad.v, state_monad.v, trace_monad.v
-   - for the nondeterministic-state monad
+(* Contents: sample models for the monads in monad.v, state_monad.v, trace_monad.v
+   - Module ModelMonad
+       identity monad
+       list monad
+       option monad
+       set monad (using classical sets)
+       state monad
+   - Module ModelFail
+       using ModelMonad.option
+       using ModelMonad.list
+       using ModelMonad.set.
+   - Module ModelAlt
+       using ModelMonad.list
+       using ModelMonad.set
+   - Module ModelAltCI.
+       using ModelAlt.set
+   - Module ModelNondet
+       using ModelFail.list and ModelAlt.list
+       using ModelFail.set and ModelAlt.set
+   - ModelStateTrace
+       using ModelMonad.state
+   - Module ModelRun
+       using ModelMonad.state.
+   - ModelStateTraceRun
+       using ModelStateTrace and ModelRun
+   - Module ModelBacktrackableState
+       from scratch using fsets, i.e., redefinition of
+         monad
+         state monad
+         fail monad
+         alt monad
+         nondet monad
+         nondetstate monad
 *)
 
 Set Implicit Arguments.
@@ -96,8 +126,8 @@ Next Obligation. move=> ? ? ? ? ? ?; exact: bigsetUA. Qed.
 End set.
 
 Section state.
-Variables S T : Type.
-Let m0 := fun A => S * list T -> A * (S * list T).
+Variables S : Type.
+Let m0 := fun A => S -> A * S.
 Definition state : monad.
 refine (@Monad_of_bind_ret m0
   (fun A B m f => fun s => let (a, s') := m s in f a s') (* bind *)
@@ -173,7 +203,6 @@ End ModelAlt.
 
 Module ModelAltCI.
 
-(* finite sets form the initial model *)
 Section set.
 Hypothesis prop_ext : ClassicalFacts.prop_extensionality.
 Local Obligation Tactic := idtac.
@@ -216,7 +245,7 @@ Section st.
 Variables (S T : Type).
 Local Obligation Tactic := idtac.
 Program Definition mk : stateTraceMonad S T :=
-let m := Monad.class (@ModelMonad.state S T) in
+let m := Monad.class (@ModelMonad.state (S * list T)) in
 let stm := @MonadStateTrace.Class S T _ m
 (@MonadStateTrace.Mixin _ _ (Monad.Pack m)
  (fun s => (s.1, s)) (* st_get *)
@@ -236,7 +265,7 @@ End ModelStateTrace.
 Module ModelRun.
 
 Definition mk {S T} : runMonad (S * seq T).
-set m := @ModelMonad.state S T.
+set m := @ModelMonad.state (S * seq T).
 refine (@MonadRun.Pack _ _ (@MonadRun.Class _ _ (Monad.class m)
   (@MonadRun.Mixin _ m
   (fun A m (s : S * list T) => m s) (* run *) _ _))).
