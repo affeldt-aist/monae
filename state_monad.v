@@ -1,9 +1,10 @@
-Require Import FunctionalExtensionality Coq.Program.Tactics ProofIrrelevance.
+Require Import Coq.Program.Tactics.
 Require Import Coq.Logic.IndefiniteDescription.
 Require Classical.
 Require Import ZArith.
 Require Import ssreflect ssrmatching ssrfun ssrbool.
 From mathcomp Require Import eqtype ssrnat seq choice fintype tuple.
+From mathcomp Require Import boolp.
 From infotheo Require Import ssrZ.
 Require Import monad.
 
@@ -582,8 +583,7 @@ Lemma promote_assert_sufficient_condition (M : failMonad) A :
   promote_assert M p q.
 Proof.
 move=> right_z p q promotable_pq.
-rewrite /promote_assert.
-apply functional_extensionality => -[x1 x2].
+rewrite /promote_assert funeqE => -[x1 x2].
 rewrite 3![in RHS]compE -/(fmap _ _) [in RHS]fmapE.
 rewrite 2![in LHS]compE {1}/bassert [in LHS]bind_fmap !bindA.
 bind_ext => s.
@@ -731,7 +731,7 @@ Proof. by rewrite SymbolsE. Qed.
 Lemma Symbols_prop1 :
   Symbols \o const 1 = (M # wrap) \o const Fresh :> (A -> M _).
 Proof.
-apply functional_extensionality => n.
+rewrite funeqE => n.
 transitivity (@Symbols _ M 1) => //.
 rewrite SymbolsE sequence_cons sequence_nil.
 rewrite_ bindretf.
@@ -741,7 +741,7 @@ Qed.
 Lemma Symbols_prop2 :
   Symbols \o uaddn = (M # ucat) \o mpair \o (Symbols : _ -> M _)^`2.
 Proof.
-apply functional_extensionality => -[n1 n2].
+rewrite funeqE => -[n1 n2].
 elim: n1 => [|n1 IH].
   rewrite [in LHS]compE uaddnE add0n.
   rewrite compE [in X in _ = _ X]/= squaringE Symbols0.
@@ -755,7 +755,7 @@ rewrite [in RHS]compE [in X in _ = _ X]/= squaringE SymbolsS.
 rewrite [in RHS]compE -/(fmap _ _) fmap_bind bindA; bind_ext => a.
 rewrite 2![in LHS]compE -/(fmap _ _) [in LHS]fmap_bind [in LHS]bindA [in RHS]bindA.
 (* TODO(rei): bind_ext? *)
-congr Bind; apply functional_extensionality => s.
+congr Bind; rewrite funeqE => s.
 rewrite [in RHS]bindretf [in RHS]fcompE [in RHS]fmap_bind.
 rewrite [in LHS]fcompE [in LHS]bind_fmap [in LHS]bindA.
 rewrite_ bindretf.

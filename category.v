@@ -1,9 +1,10 @@
 Ltac typeof X := type of X.
-Require Import FunctionalExtensionality Coq.Program.Tactics ProofIrrelevance.
+Require Import Coq.Program.Tactics ProofIrrelevance.
 Require Classical.
 Require Import ssreflect ssrmatching ssrfun ssrbool.
 From mathcomp Require Import eqtype ssrnat seq path div choice fintype tuple.
 From mathcomp Require Import finfun bigop.
+From mathcomp Require Import boolp.
 
 Set Implicit Arguments.
 Unset Strict Implicit.
@@ -170,8 +171,8 @@ move:H Hf Hg=>->Hf Hg.
   by have->:Hf=Hg by apply proof_irrelevance.
 Qed.
 Lemma hom_extext (a b : C) (f g : {hom a,b}) :
-  f = g <-> (forall x, [fun of f] x = [fun of g] x).
-Proof. split. by move->. by move/functional_extensionality=>H; apply hom_ext. Qed.
+  f = g <-> [fun of f] =1 [fun of g].
+Proof. split => [->//|]; rewrite -funeqE => ?; by apply hom_ext. Qed.
 
 Lemma hom_compA (a b c d : C) (h : {hom c, d}) (g : {hom b, c}) (f : {hom a, b})
   : [hom of [hom of h \o g] \o f] = [hom of h \o [hom of g \o f]].
@@ -749,7 +750,7 @@ Qed.
 
 Lemma bind_fmap_fun a b c (f : {hom a,b}) (g : {hom b, M c}) :
   bind g \o fmap f = bind [hom of g \o f].
-Proof. by apply functional_extensionality=>x; apply bind_fmap. Qed.
+Proof. rewrite funeqE => ?; exact: bind_fmap. Qed.
 
 Lemma ret_naturality : naturalP (FId C) M' ret.
 Proof. by move=> A B h; rewrite FIdf bindretf_fun. Qed.
@@ -770,7 +771,7 @@ Proof. by rewrite /fmap bindA bindE. Qed.
 Lemma join_naturality : naturalP (FComp M' M') M' join.
 Proof.
 move => A B h.
-rewrite /join/=; apply functional_extensionality=>m/=.
+rewrite /join /= funeqE => m /=.
 rewrite fmap_bind bindA/=.
 congr (fun f => bind f m).
 rewrite hom_ext/=.
@@ -786,7 +787,7 @@ Qed.
 
 Lemma joinMret : JoinLaws.join_right_unit ret' join.
 Proof.
-rewrite /join => A; apply functional_extensionality => ma.
+rewrite /join => A; rewrite funeqE => ma.
 rewrite bind_fmap_fun/= -[in RHS](bindmret ma).
 congr (fun f => bind f ma).
 by rewrite hom_ext.
@@ -794,7 +795,7 @@ Qed.
 
 Lemma joinA : JoinLaws.join_associativity join.
 Proof.
-move => A; apply functional_extensionality => mmma.
+move => A; rewrite funeqE => mmma.
 rewrite /join.
 rewrite bind_fmap_fun/= bindA/=.
 congr (fun f => bind f mmma).

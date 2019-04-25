@@ -1,5 +1,5 @@
 Ltac typeof X := type of X.
-Require Import FunctionalExtensionality Coq.Program.Tactics ProofIrrelevance.
+Require Import FunctionalExtensionality Coq.Program.Tactics.
 Require Classical.
 Require Import ZArith.
 Require Import ssreflect ssrmatching ssrfun ssrbool.

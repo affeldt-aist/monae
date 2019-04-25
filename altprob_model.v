@@ -1,4 +1,4 @@
-Require Import FunctionalExtensionality Coq.Program.Tactics ProofIrrelevance.
+Require Import FunctionalExtensionality Coq.Program.Tactics.
 Require Classical.
 Require Import ssreflect ssrmatching ssrfun ssrbool.
 From mathcomp Require Import eqtype ssrnat seq choice fintype tuple.
@@ -6,7 +6,7 @@ From mathcomp Require Import finfun finset bigop.
 From mathcomp Require Import boolp classical_sets.
 Require Import Reals Lra.
 From infotheo Require Import ssrR Reals_ext Rbigop proba convex.
-Require Import monad proba_monad.
+Require Import monad proba_monad model.
 From infotheo Require Import dist.
 
 Reserved Notation "mx <.| p |.> my" (format "mx  <.| p |.>  my", at level 50).
@@ -488,15 +488,6 @@ Module ModelAltProb.
 Section modelaltprob.
 
 Local Obligation Tactic := idtac.
-
-(* TODO(rei): same Let definitions in monad_model.v *)
-Let Type_of_choice (T : choiceType) : Type := Choice.sort T.
-
-Let equality_mixin_of_Type (T : Type) : Equality.mixin_of T :=
-  EqMixin (fun x y : T => asboolP (x = y)).
-
-Let choice_of_Type (T : Type) : choiceType :=
-  Choice.Pack (Choice.Class (equality_mixin_of_Type T) gen_choiceMixin).
 
 Let F : Type -> Type := (fun A : Type => [choiceType of necset (Dist_convType (choice_of_Type A))]).
 

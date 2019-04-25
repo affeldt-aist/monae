@@ -1,9 +1,9 @@
-Require Import FunctionalExtensionality Coq.Program.Tactics ProofIrrelevance.
-Require Import Coq.Logic.IndefiniteDescription.
+Require Import Coq.Program.Tactics Coq.Logic.IndefiniteDescription.
 Require Classical.
 Require Import ZArith.
 Require Import ssreflect ssrmatching ssrfun ssrbool.
 From mathcomp Require Import eqtype ssrnat seq choice fintype tuple.
+From mathcomp Require Import boolp.
 From infotheo Require Import ssrZ.
 Require Import monad state_monad.
 
@@ -30,7 +30,7 @@ Hypothesis H1 : h \o Tip = f.
 Hypothesis H2 : h \o uncurry Bin = g \o (fun x => (h x.1, h x.2)).
 Lemma foldt_universal : h = foldt f g.
 Proof.
-apply functional_extensionality; elim => [a|]; first by rewrite -H1.
+rewrite funeqE; elim => [a|]; first by rewrite -H1.
 by move=> t1 IH1 t2 IH2 /=; rewrite -IH1 -IH2 -(uncurryE Bin) -compE H2.
 Qed.
 End foldt_universal.
@@ -39,7 +39,7 @@ Definition size_Tree (t : Tree) := foldt (const 1) uaddn t.
 
 Lemma size_Tree_Bin :
   size_Tree \o uncurry Bin = uaddn \o size_Tree^`2.
-Proof. by apply functional_extensionality; case. Qed.
+Proof. by rewrite funeqE; case. Qed.
 
 Fixpoint labels (t : Tree) : seq A :=
   match t with
@@ -113,7 +113,7 @@ Lemma join_and_pairs :
   (Join \o (M # mpair) \o mpair) \o ((M # dlabels) \o relabel)^`2 =
   (mpair \o Join^`2) \o            ((M # dlabels) \o relabel)^`2 :> (_ -> M _).
 Proof.
-apply functional_extensionality => -[x1 x2].
+rewrite funeqE => -[x1 x2].
 rewrite 3!compE.
 rewrite joinE.
 rewrite -/(fmap _ _) fmapE.
@@ -150,10 +150,10 @@ apply foldt_universal.
 (* dlabels >=> relabel \o Bin = drBin \o _ *)
 rewrite /kleisli -[in LHS](compA (Join \o _)) -[in LHS](compA Join).
 rewrite (_ : _ \o _ Bin = (M # uncurry Bin) \o (mpair \o relabel^`2)); last first.
-  by apply functional_extensionality; case.
+  by rewrite funeqE; case.
 rewrite (compA (M # dlabels)) -functor_o.
 rewrite (_ : _ \o _ Bin = (M # ucat) \o bassert q \o mpair \o dlabels^`2); last first.
-  by apply functional_extensionality; case.
+  by rewrite funeqE; case.
 transitivity ((M # ucat) \o Join \o (M # (bassert q \o mpair)) \o mpair \o
     (M # dlabels \o relabel)^`2).
   rewrite -2![in LHS](compA (M # ucat)) [in LHS]functor_o.

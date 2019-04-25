@@ -1,8 +1,9 @@
-Require Import FunctionalExtensionality Coq.Program.Tactics ProofIrrelevance.
+Require Import Coq.Program.Tactics.
 Require Classical.
 Require Import Reals Lra.
 Require Import ssreflect ssrmatching ssrfun ssrbool.
 From mathcomp Require Import eqtype ssrnat seq choice fintype tuple.
+From mathcomp Require Import boolp.
 
 Require Import monad.
 From infotheo Require Import ssrR Reals_ext proba.
@@ -97,11 +98,6 @@ Fixpoint uniform {M : probMonad} {A} (def(*NB: Coq functions are total*) : A) (s
 Lemma uniform_nil (M : probMonad) A (def : A) :
   uniform def [::] = Ret def :> M A.
 Proof. by []. Qed.
-
-Lemma prob_ext (p q : prob) : Prob.p p = Prob.p q -> p = q.
-Proof.
-move: p q => [p Hp] [q Hq] /= ?; subst q; f_equal; exact: proof_irrelevance.
-Qed.
 
 Lemma choice_ext (q p : prob) (M : probMonad) A (m1 m2 : M A) :
   p = q :> R -> m1 <| p |> m2 = m1 <| q |> m2.
@@ -342,11 +338,11 @@ Definition coinarb p : M bool :=
 
 Lemma Ret_eqb_addL b :
   (fun c => Ret (b == c)) = (fun c => Ret (~~ b (+) c)) :> (bool -> M bool).
-Proof. case: b; apply functional_extensionality; by case. Qed.
+Proof. case: b; rewrite funeqE; by case. Qed.
 
 Lemma Ret_eqb_addR b :
   (fun c => Ret (c == b)) = (fun c => Ret (~~ b (+) c)) :> (bool -> M bool).
-Proof. case: b; apply functional_extensionality; by case. Qed.
+Proof. case: b; rewrite funeqE; by case. Qed.
 
 Definition Ret_eqb_add := (Ret_eqb_addL, Ret_eqb_addR).
 

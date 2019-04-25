@@ -1,9 +1,9 @@
-Require Import FunctionalExtensionality Coq.Program.Tactics ProofIrrelevance.
-Require Import Coq.Logic.IndefiniteDescription.
+Require Import Coq.Program.Tactics Coq.Logic.IndefiniteDescription.
 Require Classical.
 Require Import ZArith.
 Require Import ssreflect ssrmatching ssrfun ssrbool.
 From mathcomp Require Import eqtype ssrnat seq choice fintype tuple.
+From mathcomp Require Import boolp.
 From infotheo Require Import ssrZ.
 Require Import monad state_monad.
 
@@ -510,13 +510,9 @@ Local Open Scope mu_scope.
 Lemma queensBodyE : queensBody M =
   hyloM (@opdot_queens M) [::] (@nilp _) select seed_select (@well_founded_size _).
 Proof.
-rewrite /queensBody; apply functional_extensionality.
-case => [|h t].
-  rewrite /= permsE /= hyloME; last 2 first.
-    by rewrite bindretf.
-    exact: decr_size_select.
-rewrite [h :: t]lock -theorem_42.
-by rewrite /kleisli /= join_fmap perms_mu_perm.
+rewrite /queensBody funeqE => -[|h t].
+- rewrite /= permsE /= hyloME ?bindretf //; exact: decr_size_select.
+- by rewrite [h :: t]lock -theorem_42 /kleisli /= join_fmap perms_mu_perm.
 Qed.
 
 Lemma queensBodyE' xs : queensBody M xs = if xs is [::] then Ret [::] else

@@ -1,4 +1,4 @@
-Require Import FunctionalExtensionality Coq.Program.Tactics ProofIrrelevance.
+Require Import FunctionalExtensionality Coq.Program.Tactics.
 Require Classical.
 Require Import Reals Lra.
 Require Import ssreflect ssrmatching ssrfun ssrbool.

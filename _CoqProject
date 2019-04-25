@@ -7,6 +7,7 @@ state_monad.v
 proba_monad.v
 trace_monad.v
 monad_composition.v
+model.v
 monad_model.v
 proba_monad_model.v
 altprob_model.v

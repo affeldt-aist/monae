@@ -1,9 +1,10 @@
 Ltac typeof X := type of X.
-Require Import FunctionalExtensionality Coq.Program.Tactics ProofIrrelevance.
+Require Import Coq.Program.Tactics ProofIrrelevance.
 Require Classical.
 Require Import ssreflect ssrmatching ssrfun ssrbool.
 From mathcomp Require Import eqtype ssrnat seq path div choice fintype tuple.
 From mathcomp Require Import finfun bigop.
+From mathcomp Require Import boolp.
 
 Set Implicit Arguments.
 Unset Strict Implicit.
@@ -80,9 +81,7 @@ Variable (g : seq T -> R).
 Hypothesis H1 : g nil = r.
 Hypothesis H2 : forall h t, g (h :: t) = f h (g t).
 Lemma foldr_universal : g = foldr f r.
-Proof.
-apply functional_extensionality; elim => // h t ih /=; by rewrite H2 ih.
-Qed.
+Proof. rewrite funeqE; elim => // h t ih /=; by rewrite H2 ih. Qed.
 Lemma foldr_universal_ext x : g x = foldr f r x.
 Proof. by rewrite -(foldr_universal). Qed.
 End universal.
@@ -92,9 +91,7 @@ Variables (U : Type) (h : U -> R) (w : U) (g : T -> U -> U).
 Hypothesis H1 : h w = r.
 Hypothesis H2 : forall x y, h (g x y) = f x (h y).
 Lemma foldr_fusion : h \o foldr g w = foldr f r.
-Proof.
-apply functional_extensionality; elim => // a b /= ih; by rewrite H2 ih.
-Qed.
+Proof. rewrite funeqE; elim => // a b /= ih; by rewrite H2 ih. Qed.
 Lemma foldr_fusion_ext x : (h \o foldr g w) x = foldr f r x.
 Proof. by rewrite -foldr_fusion. Qed.
 End fusion_law.
@@ -113,7 +110,7 @@ Lemma uncurryE f a b : (uncurry f) (a, b) = f a b. Proof. by []. Qed.
 Definition curry (g : A * B -> C) : A -> B -> C := fun a b => g (a, b).
 
 Lemma curryK : cancel curry uncurry.
-Proof. by move=> f; apply functional_extensionality; case. Qed.
+Proof. by move=> f; rewrite funeqE; case. Qed.
 
 Lemma uncurryK f : cancel uncurry curry.
 Proof. by []. Qed.
@@ -188,9 +185,9 @@ Definition Squaring (A : Type) := (A * A)%type.
 Notation "A `2" := (Squaring A).
 Definition squaring_f A B (f : A -> B) : A`2 -> B`2 := fun x => (f x.1, f x.2).
 Lemma squaring_f_id : FunctorLaws.id squaring_f.
-Proof. by move=> A /=; apply functional_extensionality => -[x1 x2]. Qed.
+Proof. by move=> A /=; rewrite funeqE => -[x1 x2]. Qed.
 Lemma squaring_f_comp : FunctorLaws.comp squaring_f.
-Proof. by move=> A B C g h /=; apply functional_extensionality => -[x1 x2]. Qed.
+Proof. by move=> A B C g h /=; rewrite funeqE => -[x1 x2]. Qed.
 Definition squaring : functor (*Squaring*) :=
   Functor.Pack (Functor.Class squaring_f_id squaring_f_comp).
 Notation "f ^`2" := (squaring # f).
@@ -214,7 +211,7 @@ Qed.
 Lemma functorcomposition_comp : FunctorLaws.comp functorcomposition.
 Proof.
 rewrite /FunctorLaws.comp => A B C g' h; rewrite /functorcomposition.
-apply functional_extensionality => m; by rewrite [in RHS]compE 2!functor_o.
+rewrite funeqE => m; by rewrite [in RHS]compE 2!functor_o.
 Qed.
 Definition FComp : functor :=
   Functor.Pack (Functor.Class functorcomposition_id functorcomposition_comp).
@@ -251,13 +248,11 @@ Definition curry_f X A B (f : A -> B) : curry_M X A -> curry_M X B :=
   fun x : X * A => (x.1, f x.2).
 Lemma curry_f_id X : FunctorLaws.id (@curry_f X).
 Proof.
-rewrite /FunctorLaws.id => A.
-by rewrite /curry_f; apply functional_extensionality => -[].
+by rewrite /FunctorLaws.id => A; rewrite /curry_f; rewrite funeqE; case.
 Qed.
 Lemma curry_f_comp X : FunctorLaws.comp (@curry_f X).
 Proof.
-rewrite /FunctorLaws.comp => A B C g h.
-by rewrite /curry_f; apply functional_extensionality => -[].
+by rewrite /FunctorLaws.comp => A B C g h; rewrite /curry_f funeqE; case.
 Qed.
 Definition curry_F X : functor :=
   Functor.Pack (Functor.Class (curry_f_id X) (curry_f_comp X)).
@@ -269,13 +264,13 @@ Definition uncurry_f X A B (f : A -> B) : uncurry_M X A -> uncurry_M X B :=
   fun g : X -> A => f \o g.
 Lemma uncurry_f_id X : FunctorLaws.id (@uncurry_f X).
 Proof.
-rewrite /FunctorLaws.id => A; rewrite /uncurry_f.
-apply functional_extensionality => x; by rewrite compidf.
+rewrite /FunctorLaws.id => A; rewrite /uncurry_f funeqE => ?.
+by rewrite compidf.
 Qed.
 Lemma uncurry_f_comp X : FunctorLaws.comp (@uncurry_f X).
 Proof.
-rewrite /FunctorLaws.comp => A B C g h; rewrite /uncurry_f.
-apply functional_extensionality => x; by rewrite compE compA.
+rewrite /FunctorLaws.comp => A B C g h; rewrite /uncurry_f funeqE => ?.
+by rewrite compE compA.
 Qed.
 Definition uncurry_F X : functor :=
   Functor.Pack (Functor.Class (uncurry_f_id X) (uncurry_f_comp X)).
@@ -321,24 +316,16 @@ Definition curry_eta : eta_type (curry_F X) (uncurry_F X) :=
 Lemma adjoint_currry : adjointP curry_eps curry_eta.
 Proof.
 split; rewrite /naturalP => A B h /=.
-- rewrite /id_f /curry_eps /curry_f /= /uncurry_M /uncurry_f /=.
-  by apply functional_extensionality => -[].
-- rewrite /uncurry_f /curry_f /curry_eta /id_f /=.
-  apply functional_extensionality => a /=.
-  by apply functional_extensionality.
+- by rewrite /id_f /curry_eps /curry_f /= /uncurry_M /uncurry_f /= funeqE; case.
+- rewrite /uncurry_f /curry_f /curry_eta /id_f /= funeqE => a /=.
+  by rewrite funeqE.
 Qed.
 Lemma curry_triangular_law1 A : triangular_law1 curry_eps curry_eta A.
-Proof.
-rewrite /triangular_law1.
-by apply functional_extensionality => -[].
-Qed.
+Proof. by rewrite /triangular_law1 funeqE; case. Qed.
 Lemma curry_triangular_law2 A : triangular_law2 curry_eps curry_eta A.
 Proof.
-rewrite /triangular_law2.
-rewrite /uncurry_F /curry_eps /curry_eta /uncurry_M /=.
-rewrite /uncurry_f /= /comp /=.
-apply functional_extensionality => f.
-exact/functional_extensionality.
+rewrite /triangular_law2 /uncurry_F /curry_eps /curry_eta /uncurry_M /=.
+by rewrite /uncurry_f /= /comp /= funeqE => f; rewrite funeqE.
 Qed.
 End adjoint_example.
 
@@ -640,7 +627,7 @@ Definition skip M := @Ret M _ tt.
 Arguments skip {M} : simpl never.
 
 Ltac bind_ext :=
-  let congr_ext m := ltac:(congr (Bind m); apply functional_extensionality) in
+  let congr_ext m := ltac:(congr (Bind m); rewrite funeqE) in
   match goal with
     | |- @Bind _ _ _ ?m ?f1 = @Bind _ _ _ ?m ?f2 =>
       congr_ext m
@@ -659,7 +646,7 @@ Tactic Notation "With" tactic(tac) "Open" ssrpatternarg(pat) :=
   evar (g : typ);
   rewrite (_ : f = g);
   [rewrite {}/f {}/g|
-   apply functional_extensionality => x; rewrite {}/g {}/f; tac]; last first.
+   rewrite funeqE => x; rewrite {}/g {}/f; tac]; last first.
 
 Tactic Notation "Open" ssrpatternarg(pat) :=
   With (idtac) Open pat.
@@ -700,14 +687,12 @@ Hypothesis bindA : BindLaws.associative bind.
 
 Definition fmap A B (f : A -> B) (m : M A) := bind m (ret (A:=B) \o f).
 Lemma fmap_id : FunctorLaws.id fmap.
-Proof.
-move=> A; apply functional_extensionality => m; by rewrite /fmap bindmret.
-Qed.
+Proof. by move=> A; rewrite funeqE => m; rewrite /fmap bindmret. Qed.
 Lemma fmap_o : FunctorLaws.comp fmap.
 Proof.
-move=> A B C g h; apply functional_extensionality => m.
+move=> A B C g h; rewrite funeqE => m.
 rewrite /fmap compE bindA; congr bind.
-apply functional_extensionality => a; by rewrite bindretf.
+by rewrite funeqE => a; rewrite bindretf.
 Qed.
 Definition functor_mixin := Functor.Class fmap_id fmap_o.
 Let M' := Functor.Pack functor_mixin.
@@ -722,12 +707,12 @@ Let bind_fmap A B C (f : A -> B) (m : M A) (g : B -> M C) :
   bind (fmap f m) g = bind m (g \o f).
 Proof.
 rewrite /fmap bindA; congr bind.
-apply functional_extensionality => a; by rewrite bindretf.
+by rewrite funeqE => ?; rewrite bindretf.
 Qed.
 
 Lemma ret_naturality : naturalP FId M' ret.
 Proof.
-move=> A B h; rewrite FIdf; apply functional_extensionality => ?.
+move=> A B h; rewrite FIdf funeqE => ?.
 by rewrite compE /= /fmap fmapE /= bindretf.
 Qed.
 
@@ -740,27 +725,22 @@ Proof. by rewrite /fmap bindA bindE. Qed.
 
 Lemma join_naturality : naturalP (FComp M' M') M' join.
 Proof.
-move => A B h.
-apply functional_extensionality => mma.
-rewrite /Fun 2!compE /fmap [in RHS]/join bind_fmap [in LHS]/join.
-by rewrite bindA.
+move=> A B h; rewrite funeqE => mma.
+by rewrite /Fun 2!compE /fmap [in RHS]/join bind_fmap [in LHS]/join bindA.
 Qed.
 
 Lemma joinretM : JoinLaws.join_left_unit ret' join.
-Proof.
-rewrite /join => A; apply functional_extensionality => ma.
-by rewrite compE bindretf.
-Qed.
+Proof. by rewrite /join => A; rewrite funeqE => ma; rewrite compE bindretf. Qed.
 
 Lemma joinMret : JoinLaws.join_right_unit ret' join.
 Proof.
-rewrite /join => A; apply functional_extensionality => ma.
+rewrite /join => A; rewrite funeqE => ma;
 by rewrite compE bind_fmap compidf bindmret.
 Qed.
 
 Lemma joinA : JoinLaws.join_associativity join.
 Proof.
-move => A; apply functional_extensionality => mmma.
+move=> A; rewrite funeqE => mmma.
 by rewrite /join !compE bind_fmap compidf bindA.
 Qed.
 
@@ -832,13 +812,13 @@ Qed.*)
 Lemma mfoldl_rev (T R : Type) (f : R -> T -> R) (z : R) (s : seq T -> M (seq T)) :
   foldl f z (o) (rev (o) s) = foldr (fun x => f^~ x) z (o) s.
 Proof.
-apply functional_extensionality => x; rewrite !fcompE 3!fmapE !bindA.
+rewrite funeqE => x; rewrite !fcompE 3!fmapE !bindA.
 bind_ext => ?; by rewrite bindretf /= -foldl_rev.
 Qed.
 
 Lemma foldl_revE (T R : Type) (f : R -> T -> R) (z : R) :
   foldl f z \o rev = foldr (fun x : T => f^~ x) z.
-Proof. by apply functional_extensionality => s; rewrite -foldl_rev. Qed.
+Proof. by rewrite funeqE => s; rewrite -foldl_rev. Qed.
 
 Lemma joinE A (pp : M (M A)) : Join pp = pp >>= id.
 Proof. rewrite bindE; congr Join; by rewrite functor_id. Qed.
@@ -911,7 +891,7 @@ Proof. by []. Qed.
 Lemma naturality_mpair (M : monad) A B (f : A -> B) (g : A -> M A):
   (M # f^`2) \o (mpair \o g^`2) = mpair \o ((M # f) \o g)^`2.
 Proof.
-apply functional_extensionality => -[a0 a1].
+rewrite funeqE => -[a0 a1].
 rewrite compE -/(fmap _ _) fmap_bind.
 rewrite compE mpairE compE -/(fmap _ _) bind_fmap; bind_ext => a2.
 rewrite fcompE fmap_bind 2!compE -/(fmap _ _) bind_fmap; bind_ext => a3.
@@ -927,7 +907,7 @@ Local Open Scope test_scope.
 Lemma naturality_mpair' (M : monad) A B (f : A -> B) (g : A -> M A):
   (M # f^`2) \o (mpair \o g^`2) = mpair \o ((M # f) \o g)^`2.
 Proof.
-apply functional_extensionality => -[a0 a1].
+rewrite funeqE => -[a0 a1].
 change ((M # f^`2 \o (mpair \o g^`2)) (a0, a1)) with
     ((M # f^`2) (mpair (g a0, g a1))).
 change ((mpair \o (M # f \o g)^`2) (a0, a1)) with
@@ -936,11 +916,11 @@ rewrite !mpairE.
 rewrite !bindE.
 evar (T : Type);evar (RHS : A -> T).
 have ->: (fun x : A => do y <- g a1; Ret (x, y)) = RHS.
- - apply functional_extensionality => x; rewrite bindE.
+  rewrite funeqE => x; rewrite bindE.
   rewrite functor_o.
-change (Join ([\o M # Ret,M # pair x] (g a1))) with
-      ([\o Join,M # Ret,M # pair x] (g a1)).
-  rewrite joinMret'.
+  change (Join ([\o M # Ret,M # pair x] (g a1))) with
+        ([\o Join,M # Ret,M # pair x] (g a1)).
+    rewrite joinMret'.
   exact: erefl.
 rewrite /RHS {RHS}; rewrite {T}.
 change ((M # f^`2) (Join ((M # (fun x : A => (M # pair x) (g a1))) (g a0)))) with
@@ -1068,8 +1048,7 @@ Definition bassert {A} (p : pred A) (m : M A) : M A := m >>= assert p.
 Lemma commutativity_of_assertions A q :
   Join \o (M # bassert q) = bassert q \o Join :> (_ -> M A).
 Proof.
-apply functional_extensionality => x.
-by rewrite !compE join_fmap /bassert joinE bindA.
+by rewrite funeqE => x; rewrite !compE join_fmap /bassert joinE bindA.
 Qed.
 
 (* guards commute with anything *)
@@ -1311,7 +1290,7 @@ Fixpoint perm {A} (s : seq A) : M (seq A) :=
 Lemma insert_map A B (f : A -> B) (a : A) :
   insert (f a) \o map f = map f (o) insert a :> (_ -> M _).
 Proof.
-apply functional_extensionality; elim => [|y xs IH].
+rewrite funeqE; elim => [|y xs IH].
   by rewrite fcompE insertE /fmap -(compE (M # map f)) ret_naturality compE insertE.
 apply/esym.
 rewrite fcompE insertE alt_fmapDl.
@@ -1326,7 +1305,7 @@ Qed.
 Lemma perm_map A B (f : A -> B) :
   perm \o map f = map f (o) perm :> (seq A -> M (seq B)).
 Proof.
-apply functional_extensionality; elim => [/=|x xs IH].
+rewrite funeqE; elim => [/=|x xs IH].
   by rewrite fcompE [perm _]/= /fmap -(compE (M # map f)) ret_naturality.
 by rewrite fcompE [in perm _]/= fmap_bind -insert_map -bind_fmap -fcompE -IH.
 Qed.
@@ -1352,19 +1331,19 @@ rewrite fcompE insertE alt_fmapDl.
 rewrite {1}/fmap -(compE (M # _)) ret_naturality FIdf [in X in X [~] _]/= (negbTE pa).
 case: ifPn => ph.
 - rewrite -fmap_comp (_ : filter p \o cons h = cons h \o filter p); last first.
-    apply functional_extensionality => x /=; by rewrite ph.
+    rewrite funeqE => x /=; by rewrite ph.
   rewrite fmap_comp.
   move: (IH); rewrite fcompE => ->.
   by rewrite fmapE /= ph bindretf /= altmm.
 - rewrite -fmap_comp (_ : filter p \o cons h = filter p); last first.
-    apply functional_extensionality => x /=; by rewrite (negbTE ph).
+    rewrite funeqE => x /=; by rewrite (negbTE ph).
   move: (IH); rewrite fcompE => -> /=; by rewrite (negbTE ph) altmm.
 Qed.
 
 Lemma filter_insertT a : p a ->
   filter p (o) insert a = insert a \o filter p :> (_ -> M _).
 Proof.
-move=> pa; apply functional_extensionality => s; elim: s => [|h t IH].
+move=> pa; rewrite funeqE; elim => [|h t IH].
   by rewrite fcompE !insertE fmapE bindretf /= pa.
 rewrite fcompE [in RHS]/=; case: ifPn => ph.
 - rewrite [in RHS]insertE.
@@ -1376,8 +1355,8 @@ rewrite fcompE [in RHS]/=; case: ifPn => ph.
   by rewrite /= ph.
 - rewrite [in LHS]insertE alt_fmapDl.
   rewrite -[in X in _ [~] X = _]fmap_comp.
-    rewrite (_ : (filter p \o cons h) = filter p); last first.
-    apply functional_extensionality => x /=; by rewrite (negbTE ph).
+  rewrite (_ : (filter p \o cons h) = filter p); last first.
+    by rewrite funeqE => x /=; rewrite (negbTE ph).
   move: (IH); rewrite fcompE => ->.
   rewrite fmapE bindretf /= pa (negbTE ph) [in RHS]insertE; case: (filter _ _) => [|h' t'].
     by rewrite insertE altmm.
@@ -1387,7 +1366,7 @@ Qed.
 (* netys2017 *)
 Lemma perm_filter : perm \o filter p = filter p (o) perm :> (_ -> M _).
 Proof.
-apply functional_extensionality; elim=> [|h t /= IH].
+rewrite funeqE; elim => [|h t /= IH].
   by rewrite fcompE fmapE bindretf.
 case: ifPn => ph.
   rewrite [in LHS]/= IH [in LHS]fcomp_def compE [in LHS]bind_fmap.
@@ -1452,13 +1431,13 @@ Qed.
 
 Lemma rev_insert : rev (o) insert a = insert a \o rev :> (_ -> M _).
 Proof.
-apply functional_extensionality; elim => [|h t IH].
+rewrite funeqE; elim => [|h t IH].
   by rewrite fcompE insertE fmapE bindretf.
 rewrite fcompE insertE compE alt_fmapDl fmapE bindretf compE [in RHS]rev_cons insert_rcons.
 rewrite rev_cons -cats1 rev_cons -cats1 -catA; congr (_ [~] _).
 move: IH; rewrite fcompE [X in X -> _]/= => <-.
 rewrite -!fmap_comp; congr (fmap _ (insert a t)).
-apply functional_extensionality => s; by rewrite /= -rev_cons.
+by rewrite funeqE => s; rewrite /= -rev_cons.
 Qed.
 
 End altci_insert.
@@ -1545,7 +1524,7 @@ Lemma tselect_nil : tselect [::] = Fail. Proof. by []. Qed.
 Lemma tselect1 a : tselect [:: a] = Ret (a, [tuple]).
 Proof.
 rewrite /= bindfailf altmfail /tselect_obligation_1 /= tupleE /nil_tuple.
-do 3 f_equal; exact: proof_irrelevance.
+by do 3 f_equal; apply eq_irrelevance.
 Qed.
 
 Program Definition tselect_cons_statement a t (_ : t <> nil) :=

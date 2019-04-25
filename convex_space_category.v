@@ -2,7 +2,7 @@ From mathcomp Require Import ssreflect ssrbool ssrfun eqtype ssrnat seq div.
 From mathcomp Require Import choice fintype tuple finfun bigop prime binomial.
 From mathcomp Require Import ssralg finset fingroup perm finalg matrix.
 From mathcomp Require Import boolp classical_sets.
-Require Import ProofIrrelevance FunctionalExtensionality.
+Require Import FunctionalExtensionality.
 Require Import Reals Lra.
 From infotheo Require Import ssrR Reals_ext Ranalysis_ext ssr_ext logb Rbigop.
 From infotheo Require Import proba.
