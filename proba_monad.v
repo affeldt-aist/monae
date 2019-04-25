@@ -1,10 +1,6 @@
-Require Import Coq.Program.Tactics.
-Require Classical.
-Require Import Reals Lra.
-Require Import ssreflect ssrmatching ssrfun ssrbool.
+Require Import Reals Lra ssreflect ssrmatching ssrfun ssrbool.
 From mathcomp Require Import eqtype ssrnat seq choice fintype tuple.
 From mathcomp Require Import boolp.
-
 Require Import monad.
 From infotheo Require Import ssrR Reals_ext proba.
 

@@ -1,7 +1,5 @@
 Ltac typeof X := type of X.
-Require Import Coq.Program.Tactics ProofIrrelevance.
-Require Classical.
-Require Import ssreflect ssrmatching ssrfun ssrbool.
+Require Import ProofIrrelevance ssreflect ssrmatching ssrfun ssrbool.
 From mathcomp Require Import eqtype ssrnat seq path div choice fintype tuple.
 From mathcomp Require Import finfun bigop.
 From mathcomp Require Import boolp.

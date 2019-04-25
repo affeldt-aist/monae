@@ -1,5 +1,3 @@
-Require Import Coq.Program.Tactics.
-Require Classical.
 Require Import ssreflect ssrmatching ssrfun ssrbool.
 From mathcomp Require Import eqtype ssrnat seq choice fintype tuple.
 From mathcomp Require Import bigop finmap.
@@ -48,24 +46,20 @@ Unset Printing Implicit Defensive.
 Section classical_sets_extra.
 Local Open Scope classical_set_scope.
 
-Hypothesis prop_ext : ClassicalFacts.prop_extensionality.
-
 Lemma bigset1U A B a (f : A -> set B) : bigsetU [set a] f = f a.
 Proof.
-rewrite funeqE => b; apply prop_ext.
-split => [[a' <-] //| ?]; by exists a.
+rewrite funeqE => b; rewrite propeqE; split => [[a' <-] //| ?]; by exists a.
 Qed.
 Lemma bigsetU1 A (s : set A) : bigsetU s (@set1 A) = s.
 Proof.
-rewrite funeqE => b; apply prop_ext.
-split.
+rewrite funeqE => b; rewrite propeqE; split.
 - by move=> -[a ?]; rewrite /set1 => ->.
 - by move=> ?; rewrite /bigsetU; exists b.
 Qed.
 Lemma bigsetUA A B C (s : set A) (f : A -> set B) (g : B -> set C) :
   bigsetU (bigsetU s f) g = bigsetU s (fun x => bigsetU (f x) g).
 Proof.
-rewrite funeqE => c; apply prop_ext.
+rewrite funeqE => c; rewrite propeqE.
 split => [[b [a' aa' ?] ?]|[a' aa' [b ? ?]]].
 by exists a' => //; exists b.
 by exists b => //; exists a'.
@@ -73,7 +67,7 @@ Qed.
 
 Lemma setUDl : BindLaws.bind_left_distributive (fun I A => @bigsetU A I) (@setU).
 Proof.
-move=> A B /= p q r; rewrite funeqE => b; apply prop_ext; split.
+move=> A B /= p q r; rewrite funeqE => b; rewrite propeqE; split.
 move=> -[a [?|?] ?]; by [left; exists a | right; exists a].
 rewrite /setU => -[[a ? ?]|[a ? ?]]; exists a; tauto.
 Qed.
@@ -136,7 +130,6 @@ Next Obligation. move=> ? ? ?; by case. Qed.
 End option.
 
 Section set.
-Hypothesis prop_ext : ClassicalFacts.prop_extensionality.
 Local Obligation Tactic := idtac.
 Program Definition set := @Monad_of_bind_ret _ (fun I A => @bigsetU A I) (@set1) _ _ _.
 Next Obligation. move=> ? ? ? ?; exact: bigset1U. Qed.
@@ -177,12 +170,11 @@ Definition list := MonadFail.Pack list_class.
 End list.
 
 Section set.
-Hypothesis prop_ext : ClassicalFacts.prop_extensionality.
 Local Obligation Tactic := idtac.
 Program Definition set_class := @MonadFail.Class _ _
-  (@MonadFail.Mixin (ModelMonad.set prop_ext) (@set0) _).
+  (@MonadFail.Mixin ModelMonad.set (@set0) _).
 Next Obligation.
-move=> A B f /=; rewrite funeqE => b; apply prop_ext.
+move=> A B f /=; rewrite funeqE => b; rewrite propeqE.
 by split=> // -[a []].
 Qed.
 Definition set := MonadFail.Pack set_class.
@@ -205,10 +197,9 @@ Definition list := MonadAlt.Pack list_class.
 End list.
 
 Section set.
-Hypothesis prop_ext : ClassicalFacts.prop_extensionality.
 Local Obligation Tactic := idtac.
 Program Definition set_class := @MonadAlt.Class _ _
-  (@MonadAlt.Mixin (ModelMonad.set prop_ext) (@setU) _ _).
+  (@MonadAlt.Mixin ModelMonad.set (@setU) _ _).
 Next Obligation. exact: setUA. Qed.
 Next Obligation.
 rewrite /BindLaws.bind_left_distributive /= => A B m1 m2 k.
@@ -223,10 +214,9 @@ End ModelAlt.
 Module ModelAltCI.
 
 Section set.
-Hypothesis prop_ext : ClassicalFacts.prop_extensionality.
 Local Obligation Tactic := idtac.
 Program Definition set_class := @MonadAltCI.Class _
-  (ModelAlt.set_class prop_ext) (@MonadAltCI.Mixin _ (@setU) _ _).
+  ModelAlt.set_class (@MonadAltCI.Mixin _ (@setU) _ _).
 Next Obligation. exact: setUid. Qed.
 Next Obligation. exact: setUC. Qed.
 Definition set := MonadAltCI.Pack set_class.
@@ -245,13 +235,12 @@ Definition list := MonadNondet.Pack list_class.
 End list.
 
 Section set.
-Hypothesis prop_ext : ClassicalFacts.prop_extensionality.
 Local Obligation Tactic := idtac.
 Program Definition set_class := @MonadNondet.Class _
-  (ModelFail.set_class _) (MonadAlt.mixin (ModelAlt.set_class prop_ext)) _.
+  ModelFail.set_class (MonadAlt.mixin ModelAlt.set_class) _.
 Next Obligation.
 apply: MonadNondet.Mixin => //= A p; rewrite funeqE => a;
-  apply prop_ext; rewrite /Fail /= /set0 /setU; split; tauto.
+  rewrite propeqE; rewrite /Fail /= /set0 /setU; split; tauto.
 Qed.
 Definition set := MonadNondet.Pack list_class.
 End set.

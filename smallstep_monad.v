@@ -3,7 +3,7 @@
   Prove that the small-step semantics is equivalent to the denotation.
 *)
 
-Require Import ssreflect ssrfun ssrbool FunctionalExtensionality Eqdep List.
+Require Import ssreflect ssrfun ssrbool Eqdep List.
 Import ListNotations.
 Require Import monad state_monad trace_monad smallstep.
 From mathcomp Require Import seq.

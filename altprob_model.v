@@ -1,13 +1,10 @@
-Require Import FunctionalExtensionality Coq.Program.Tactics.
-Require Classical.
 Require Import ssreflect ssrmatching ssrfun ssrbool.
 From mathcomp Require Import eqtype ssrnat seq choice fintype tuple.
 From mathcomp Require Import finfun finset bigop.
 From mathcomp Require Import boolp classical_sets.
 Require Import Reals Lra.
-From infotheo Require Import ssrR Reals_ext Rbigop proba convex.
+From infotheo Require Import ssrR Reals_ext Rbigop proba dist convex.
 Require Import monad proba_monad model.
-From infotheo Require Import dist.
 
 Reserved Notation "mx <.| p |.> my" (format "mx  <.| p |.>  my", at level 50).
 

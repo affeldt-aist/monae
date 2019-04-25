@@ -1,9 +1,7 @@
-Require Import Coq.Program.Tactics.
-Require Classical.
 Require Import ssreflect ssrmatching ssrfun ssrbool.
 From mathcomp Require Import eqtype ssrnat seq choice fintype tuple.
 From mathcomp Require Import boolp classical_sets.
-From infotheo Require Import Reals_ext ssr_ext dist convex.
+From infotheo Require Import Reals_ext ssr_ext dist.
 Require Import monad proba_monad model.
 
 (*
