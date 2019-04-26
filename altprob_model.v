@@ -12,7 +12,13 @@ Set Implicit Arguments.
 Unset Strict Implicit.
 Unset Printing Implicit Defensive.
 
-(* wip *)
+(* NB: this file has recently [2019-04-26] been updated to use the
+probability distributions of type "Dist : choiceType -> choiceType"
+from infotheo/dist.v instead of the probability distributions of type
+"dist : finType -> Type" from infotheo/proba.v; as far as this file is
+concerned, both types provide the same interface and the statements
+and proofs have essentially not changed (besides the change from dist
+to Dist) *)
 
 Local Open Scope convex_scope.
 Local Open Scope proba_scope.

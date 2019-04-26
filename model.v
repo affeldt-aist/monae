@@ -4,8 +4,6 @@ From mathcomp Require Import boolp.
 
 Section choice_cast.
 
-Definition Type_of_choice (T : choiceType) : Type := Choice.sort T.
-
 Definition equality_mixin_of_Type (T : Type) : Equality.mixin_of T :=
   EqMixin (fun x y : T => asboolP (x = y)).
 
