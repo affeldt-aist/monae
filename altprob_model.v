@@ -522,14 +522,14 @@ Lemma nepchoiceA A (p q r s : prob) (mx my mz : F A) :
 Proof. move=> H; apply val_inj => /=; exact: nepchoiceA. Qed.
 
 Axiom nepchoice_bindDl : forall p : prob,
-  BindLaws.bind_left_distributive (@Bind apmonad) (nepchoice p).
+  BindLaws.left_distributive (@Bind apmonad) (nepchoice p).
 
 Let nenchoice : forall A, F A -> F A -> F A := fun A m1 m2 => NECSet.mk (nchoice_ne m1 m2).
 
 Let nenchoiceA A : associative (@nenchoice A).
 Proof. move=> a b c; apply val_inj => /=; by rewrite nchoiceA. Qed.
 
-Axiom nenchoice_bindDl : BindLaws.bind_left_distributive (@Bind apmonad) nenchoice.
+Axiom nenchoice_bindDl : BindLaws.left_distributive (@Bind apmonad) nenchoice.
 
 Let nenchoicemm A : idempotent (@nenchoice A).
 Proof. move=> a; apply val_inj => /=; by rewrite nchoicemm. Qed.

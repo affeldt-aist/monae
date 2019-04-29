@@ -144,7 +144,7 @@ Record mixin_of (M : nondetMonad) : Type := Mixin {
   (* backtrackable state *)
   _ : BindLaws.right_zero (@Bind M) (@Fail _) ;
   (* composition distributes rightwards over choice *)
-  _ : BindLaws.bind_right_distributive (@Bind M) [~p]
+  _ : BindLaws.right_distributive (@Bind M) [~p]
 }.
 Record class_of S (m : Type -> Type) : Type := Class {
   base : MonadNondet.class_of m ;
@@ -168,7 +168,7 @@ Section nondetstate_lemmas.
 Variables (S : Type) (M : nondetStateMonad S).
 Lemma bindmfail : BindLaws.right_zero (@Bind M) (@Fail _).
 Proof. by case: M => m [? ? [? ?]]. Qed.
-Lemma alt_bindDr : BindLaws.bind_right_distributive (@Bind M) (@Alt _).
+Lemma alt_bindDr : BindLaws.right_distributive (@Bind M) (@Alt _).
 Proof. by case: M => m [? ? []]. Qed.
 End nondetstate_lemmas.
 

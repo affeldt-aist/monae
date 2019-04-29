@@ -65,7 +65,7 @@ by exists a' => //; exists b.
 by exists b => //; exists a'.
 Qed.
 
-Lemma setUDl : BindLaws.bind_left_distributive (fun I A => @bigsetU A I) (@setU).
+Lemma setUDl : BindLaws.left_distributive (fun I A => @bigsetU A I) (@setU).
 Proof.
 move=> A B /= p q r; rewrite funeqE => b; rewrite propeqE; split.
 move=> -[a [?|?] ?]; by [left; exists a | right; exists a].
@@ -202,7 +202,7 @@ Program Definition set_class := @MonadAlt.Class _ _
   (@MonadAlt.Mixin ModelMonad.set (@setU) _ _).
 Next Obligation. exact: setUA. Qed.
 Next Obligation.
-rewrite /BindLaws.bind_left_distributive /= => A B m1 m2 k.
+rewrite /BindLaws.left_distributive /= => A B m1 m2 k.
 rewrite !bindE /Join /= /Monad_of_bind_ret.join /= Monad_of_bind_ret.fmapE /=.
 by rewrite setUDl // setUDl.
 Qed.

@@ -338,11 +338,11 @@ Local Notation "m >>= f" := (b m f).
 Definition associative := forall A B C (m : M A) (f : A -> M B) (g : B -> M C),
   (m >>= f) >>= g = m >>= (fun x => (f x >>= g)).
 
-Definition bind_right_distributive (add : forall B, M B -> M B -> M B) :=
+Definition right_distributive (add : forall B, M B -> M B -> M B) :=
   forall A B (m : M A) (k1 k2 : A -> M B),
     m >>= (fun x => add _ (k1 x) (k2 x)) = add _ (m >>= k1) (m >>= k2).
 
-Definition bind_left_distributive (add : forall B, M B -> M B -> M B) :=
+Definition left_distributive (add : forall B, M B -> M B -> M B) :=
   forall A B (m1 m2 : M A) (k : A -> M B),
     (add _ m1 m2) >>= k = add _ (m1 >>= k) (m2 >>= k).
 
@@ -475,11 +475,11 @@ Definition ret_naturality := naturalP FId M ret.
 
 Definition join_naturality := naturalP (FComp M M) M join.
 
-Definition join_left_unit := forall A, @join _ \o @ret _ = id :> (M A -> M A).
+Definition left_unit := forall A, @join _ \o @ret _ = id :> (M A -> M A).
 
-Definition join_right_unit := forall A, @join _ \o M # @ret _ = id :> (M A -> M A).
+Definition right_unit := forall A, @join _ \o M # @ret _ = id :> (M A -> M A).
 
-Definition join_associativity :=
+Definition associativity :=
   forall A, @join _ \o M # @join _ = @join _ \o @join _ :> (M (M (M A)) -> M A).
 
 End join_laws.
@@ -491,9 +491,9 @@ Variable (ret : forall A, A -> F A) (join : forall A, F (F A) -> F A).
 
 Hypothesis ret_naturality : JoinLaws.ret_naturality ret.
 Hypothesis join_naturality : JoinLaws.join_naturality join.
-Hypothesis joinretM : JoinLaws.join_left_unit ret join.
-Hypothesis joinMret : JoinLaws.join_right_unit ret join.
-Hypothesis joinA : JoinLaws.join_associativity join.
+Hypothesis joinretM : JoinLaws.left_unit ret join.
+Hypothesis joinMret : JoinLaws.right_unit ret join.
+Hypothesis joinA : JoinLaws.associativity join.
 
 Let bind (A B : Type) (m : F A) (f : A -> F B) : F B := join ((F # f) m).
 
@@ -523,9 +523,9 @@ Record mixin_of (M : functor) : Type := Mixin {
   join : forall A, M (M A) -> M A ;
   _ : JoinLaws.ret_naturality ret ;
   _ : JoinLaws.join_naturality join ;
-  _ : JoinLaws.join_left_unit ret join ;
-  _ : JoinLaws.join_right_unit ret join ;
-  _ : JoinLaws.join_associativity join
+  _ : JoinLaws.left_unit ret join ;
+  _ : JoinLaws.right_unit ret join ;
+  _ : JoinLaws.associativity join
   }.
 Record class_of (M : Type -> Type) := Class {
   base : Functor.class_of M ; mixin : mixin_of (Functor.Pack base) }.
@@ -551,11 +551,11 @@ Lemma ret_naturality : JoinLaws.ret_naturality (@Ret M).
 Proof. by case: M => ? [? []]. Qed.
 Lemma join_naturality : JoinLaws.join_naturality (@Join M).
 Proof. by case: M => ? [? []]. Qed.
-Lemma joinretM : JoinLaws.join_left_unit (@Ret M) (@Join M).
+Lemma joinretM : JoinLaws.left_unit (@Ret M) (@Join M).
 Proof. by case: M => ? [? []]. Qed.
-Lemma joinMret : JoinLaws.join_right_unit (@Ret M) (@Join M).
+Lemma joinMret : JoinLaws.right_unit (@Ret M) (@Join M).
 Proof. by case: M => ? [? []]. Qed.
-Lemma joinA : JoinLaws.join_associativity (@Join M).
+Lemma joinA : JoinLaws.associativity (@Join M).
 Proof. by case: M => ? [? []]. Qed.
 End monad_interface.
 
@@ -727,16 +727,16 @@ move=> A B h; rewrite funeqE => mma.
 by rewrite /Fun 2!compE /fmap [in RHS]/join bind_fmap [in LHS]/join bindA.
 Qed.
 
-Lemma joinretM : JoinLaws.join_left_unit ret' join.
+Lemma joinretM : JoinLaws.left_unit ret' join.
 Proof. by rewrite /join => A; rewrite funeqE => ma; rewrite compE bindretf. Qed.
 
-Lemma joinMret : JoinLaws.join_right_unit ret' join.
+Lemma joinMret : JoinLaws.right_unit ret' join.
 Proof.
 rewrite /join => A; rewrite funeqE => ma;
 by rewrite compE bind_fmap compidf bindmret.
 Qed.
 
-Lemma joinA : JoinLaws.join_associativity join.
+Lemma joinA : JoinLaws.associativity join.
 Proof.
 move=> A; rewrite funeqE => mmma.
 by rewrite /join !compE bind_fmap compidf bindA.
@@ -1170,7 +1170,7 @@ Record mixin_of (M : monad) : Type := Mixin {
   alt : forall A, M A -> M A -> M A ;
   _ : forall A, associative (@alt A) ;
   (* composition distributes leftwards over choice *)
-  _ : BindLaws.bind_left_distributive (@Bind M) alt
+  _ : BindLaws.left_distributive (@Bind M) alt
   (* in general, composition does not distribute rightwards over choice *)
   (* NB: no bindDr to accommodate both angelic and demonic interpretations of nondeterminism *)
 }.
@@ -1194,7 +1194,7 @@ Export MonadAlt.Exports.
 
 Section monadalt_lemmas.
 Variable (M : altMonad).
-Lemma alt_bindDl : BindLaws.bind_left_distributive (@Bind M) [~p].
+Lemma alt_bindDl : BindLaws.left_distributive (@Bind M) [~p].
 Proof. by case: M => m [? []]. Qed.
 Lemma altA : forall A, associative (@Alt M A).
 Proof. by case: M => m [? []]. Qed.

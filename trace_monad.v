@@ -112,7 +112,7 @@ Lemma st_putput s s' : stPut s >> stPut s' = stPut s' :> M _.
 Proof. by case: M => m [? []]. Qed.
 Lemma st_putget s : stPut s >> stGet = stPut s >> Ret s :> M _.
 Proof. by case: M => m [? []]. Qed.
-Lemma st_getputskipt : stGet >>= stPut = skip :> M _.
+Lemma st_getputskip : stGet >>= stPut = skip :> M _.
 Proof. by case: M => m [? []]. Qed.
 Lemma st_getget (k : S -> S -> M S) :
   stGet >>= (fun s => stGet >>= k s) = stGet >>= fun s => k s s.

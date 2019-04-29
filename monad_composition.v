@@ -52,20 +52,20 @@ move=> A B g; apply/esym; rewrite {1}/JOIN -[in LHS]compA -functor_o Hprod1.
 by rewrite functor_o compA /JOIN FCompE -(FCompE M M) -(@join_naturality M _ _ (N # g)) -compA.
 Qed.
 
-Lemma JOIN_ret : JoinLaws.join_left_unit (@Comp.ret _ _) (@JOIN).
+Lemma JOIN_ret : JoinLaws.left_unit (@Comp.ret _ _) (@JOIN).
 Proof.
 move=> A; rewrite /JOIN /Comp.ret compA.
 rewrite -(compA Join (M # prod) Ret) (ret_naturality M prod).
 by rewrite compA (compA Join) joinretM compidf Hprod2.
 Qed.
 
-Lemma JOIN_fmap_ret : JoinLaws.join_right_unit (@Comp.ret _ _) (@JOIN).
+Lemma JOIN_fmap_ret : JoinLaws.right_unit (@Comp.ret _ _) (@JOIN).
 Proof.
 move=> A.
 by rewrite /JOIN /Comp.ret -compA -functor_o Hprod3 joinMret.
 Qed.
 
-Lemma JOIN_fmap_JOIN : JoinLaws.join_associativity (@JOIN).
+Lemma JOIN_fmap_JOIN : JoinLaws.associativity (@JOIN).
 Proof.
 move=> A; rewrite {1 2}/JOIN -[in LHS]compA.
 rewrite -functor_o.
@@ -112,14 +112,14 @@ rewrite -join_naturality.
 by rewrite functor_o.
 Qed.
 
-Lemma JOIN_ret : JoinLaws.join_left_unit (@Comp.ret _ _) (@JOIN).
+Lemma JOIN_ret : JoinLaws.left_unit (@Comp.ret _ _) (@JOIN).
 Proof.
 move=> A; rewrite /JOIN -compA Hdorp2.
 rewrite -(functor_o M).
 by rewrite joinretM functor_id.
 Qed.
 
-Lemma JOIN_fmap_ret : JoinLaws.join_right_unit (@Comp.ret _ _) (@JOIN).
+Lemma JOIN_fmap_ret : JoinLaws.right_unit (@Comp.ret _ _) (@JOIN).
 Proof.
 move=> A; rewrite /JOIN /Comp.ret.
 rewrite -(compA (M # Join) dorp).
@@ -129,7 +129,7 @@ rewrite compidf -functor_o.
 by rewrite joinMret functor_id.
 Qed.
 
-Lemma JOIN_fmap_JOIN : JoinLaws.join_associativity (@JOIN).
+Lemma JOIN_fmap_JOIN : JoinLaws.associativity (@JOIN).
 Proof.
 move=> A; rewrite {1 2}/JOIN.
 rewrite FCompE.
@@ -239,13 +239,13 @@ Qed.
 Lemma JOIN_naturality : JoinLaws.join_naturality (@JOIN).
 Proof. by move=> ?? g; rewrite JOINE -/prod (Prod.JOIN_naturality prod1 g) JOINE. Qed.
 
-Lemma JOIN_ret : JoinLaws.join_left_unit (@Comp.ret _ _) (@JOIN).
+Lemma JOIN_ret : JoinLaws.left_unit (@Comp.ret _ _) (@JOIN).
 Proof. by move=> A; rewrite JOINE -/prod (Prod.JOIN_ret prod2). Qed.
 
-Lemma JOIN_fmap_ret : JoinLaws.join_right_unit (@Comp.ret _ _) (@JOIN).
+Lemma JOIN_fmap_ret : JoinLaws.right_unit (@Comp.ret _ _) (@JOIN).
 Proof. by move=> A; rewrite JOINE -/prod (Prod.JOIN_fmap_ret prod3). Qed.
 
-Lemma JOIN_fmap_JOIN : JoinLaws.join_associativity (@JOIN).
+Lemma JOIN_fmap_JOIN : JoinLaws.associativity (@JOIN).
 Proof. by move=> A; rewrite !JOINE -!/prod (Prod.JOIN_fmap_JOIN prod4). Qed.
 
 End swap.
