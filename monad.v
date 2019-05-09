@@ -100,7 +100,6 @@ Section curry.
 Variables A B C : Type.
 Implicit Types f : A -> B -> C.
 
-(*Definition uncurry f : A * B -> C := fun x => f x.1 x.2.*)
 Definition uncurry f := prod_curry f.
 
 Lemma uncurryE f a b : (uncurry f) (a, b) = f a b. Proof. by []. Qed.
@@ -171,12 +170,6 @@ Lemma functor_id : FunctorLaws.id (Fun F).
 Proof. by case: F => [? []]. Qed.
 Lemma functor_o : FunctorLaws.comp (Fun F).
 Proof. by case: F => [? []]. Qed.
-(*Lemma functor_ext (F G : functor) : Fun F = Fun G -> F = G.
-Proof.
-move: F G => [[F f1 f2]] [[G g1 g2]] /= ?; subst G; congr Functor.Pack.
-have {g2}<- : f2 = g2 by exact/ProofIrrelevance.proof_irrelevance.
-congr Functor.Class; exact/ProofIrrelevance.proof_irrelevance.
-Qed.*)
 End functor_lemmas.
 
 Definition Squaring (A : Type) := (A * A)%type.
@@ -346,22 +339,23 @@ Definition left_distributive (add : forall B, M B -> M B -> M B) :=
   forall A B (m1 m2 : M A) (k : A -> M B),
     (add _ m1 m2) >>= k = add _ (m1 >>= k) (m2 >>= k).
 
+Definition left_zero (f : forall A, M A) :=
+  forall A B (g : A -> M B), f A >>= g = f B.
+
 Definition right_zero (f : forall A, M A) :=
   forall A B (g : M B), g >>= (fun _ => f A) = f A.
 
-Definition left_zero (f : forall A, M A) := forall A B g, f A >>= g = f B.
-
 Definition left_neutral (r : forall A, A -> M A) :=
-  forall A B (x : A) (f : A -> M B), r _ x >>= f = f x.
+  forall A B (a : A) (f : A -> M B), r _ a >>= f = f a.
 
 Definition right_neutral (r : forall A, A -> M A) :=
   forall A (m : M A), m >>= r _ = m.
 
-Definition left_id (r : forall A, M A) (add : forall B, M B -> M B -> M B) :=
-  forall A (m : M A), add _ (r _) m = m.
+Definition left_id (r : forall A, M A) (op : forall B, M B -> M B -> M B) :=
+  forall A (m : M A), op _ (r _) m = m.
 
-Definition right_id (r : forall A, M A) (add : forall B, M B -> M B -> M B) :=
-  forall A (m : M A), add _ m (r _) = m.
+Definition right_id (r : forall A, M A) (op : forall B, M B -> M B -> M B) :=
+  forall A (m : M A), op _ m (r _) = m.
 
 End bindlaws.
 End BindLaws.
@@ -421,7 +415,6 @@ Proof.
 rewrite /BindLaws.left_neutral => A B a h.
 case: Had; rewrite /naturalP => _ /(_ _ _ h) Had2.
 rewrite /bind /muM /etaM.
-(*rewrite /= /functorcomposition /= in Had2. *)
 rewrite -(compE (FComp g f # h)).
 rewrite Had2.
 move: Ht2; rewrite /triangular_law2 => Ht2'.
@@ -434,7 +427,7 @@ rewrite /BindLaws.right_neutral => A m.
 rewrite /bind /muM /etaM.
 rewrite -(compE (g # _)).
 rewrite -(functor_o g).
-(* NB: simple "rewrite -functor_o" does not work. Notation issue? *)
+(* NB: "rewrite -functor_o" does not work. Notation issue? *)
 by rewrite Ht1 functor_id.
 Qed.
 Lemma law3 : BindLaws.associative (bind eps).
@@ -443,23 +436,22 @@ rewrite /BindLaws.associative => A B C x ab bc.
 rewrite /bind.
 set T := FComp g f.
 (*congr (muM g eps).*)
-have -> : (T # (fun x : A => muM eps ((T # bc) (ab x)))) x
-            = (T # (muM eps (A:=C))) ((T # (T # bc)) ((T # ab) x)).
-- rewrite functor_o /funcomp.
+have -> : (T # (fun x : A => muM eps ((T # bc) (ab x)))) x =
+         (T # (muM eps (A:=C))) ((T # (T # bc)) ((T # ab) x)).
+  rewrite functor_o /funcomp.
   congr (T # muM eps (A:=C)).
-    by rewrite functor_o /funcomp.
-move: (muM_natural bc).
-move: muMA.
+  by rewrite functor_o /funcomp.
+move: muMA (muM_natural bc).
 set M := M f g.
 set muM := muM eps.
 change (monad_of_adjoint.m f g) with T.
-move=>muMA.
+move=> muMA.
 rewrite FCompE.
-have->:(T # bc) (muM B ((T # ab) x)) = (T # bc \o muM B) ((T # ab) x) by done.
-move->.
+have -> : (T # bc) (muM B ((T # ab) x)) = (T # bc \o muM B) ((T # ab) x) by [].
+move=> ->.
 rewrite compE.
 change (muM C (muM (M C) ((T # (T # bc)) ((T # ab) x)))) with
-    ((muM C \o muM (M C)) ((T # (T # bc)) ((T # ab) x))).
+       ((muM C \o muM (M C)) ((T # (T # bc)) ((T # ab) x))).
 by rewrite muMA.
 Qed.
 End prop.
@@ -585,38 +577,6 @@ Proof. by rewrite compA joinA. Qed.
 End monad_lemmas.
 Arguments Bind {M A B} : simpl never.
 Notation "m >>= f" := (Bind m f).
-
-(*Module Monad.
-Record class_of (m : Type -> Type) : Type := Class {
-  ret : forall A, A -> m A ;
-  bind : forall A B, m A -> (A -> m B) -> m B ;
-  _ : BindLaws.left_neutral bind ret ;
-  _ : BindLaws.right_neutral bind ret ;
-  _ : BindLaws.associative bind }.
-Structure t : Type := Pack { m : Type -> Type ; class : class_of m }.
-Module Exports.
-Definition Ret (M : t) A : A -> m M A :=
-  let: Pack _ (Class x _ _ _ _) := M in x A.
-Arguments Ret {M A} : simpl never.
-Definition Bind (M : t) A B : m M A -> (A -> m M B) -> m M B :=
-  let: Pack _ (Class _ x _ _ _) := M in x A B.
-Arguments Bind {M A B} : simpl never.
-Notation "m >>= f" := (Bind m f).
-Notation monad := t.
-Coercion m : monad >-> Funclass.
-End Exports.
-End Monad.
-Export Monad.Exports.
-
-Section monad_lemmas.
-Variable M : monad.
-Lemma bindretf : BindLaws.left_neutral (@Bind M) (@Ret _).
-Proof. by case: M => m []. Qed.
-Lemma bindmret : BindLaws.right_neutral (@Bind M) (@Ret _).
-Proof. by case: M => m []. Qed.
-Lemma bindA : BindLaws.associative (@Bind M).
-Proof. by case: M => m []. Qed.
-End monad_lemmas.*)
 
 Notation "'do' x <- m ; e" := (m >>= (fun x => e)).
 Notation "'do' x : T <- m ; e" := (m >>= (fun x : T => e)) (only parsing).
@@ -896,7 +856,7 @@ rewrite fcompE fmap_bind 2!compE -/(fmap _ _) bind_fmap; bind_ext => a3.
 by rewrite fcompE -(compE (fmap f^`2)) ret_naturality.
 Qed.
 
-Local Notation "[ \o f , .. , g , h ]" := (f \o .. (g \o h) ..)
+(*Local Notation "[ \o f , .. , g , h ]" := (f \o .. (g \o h) ..)
   (at level 0) (*, format "[ \o '['  f , '/' .. , '/' g , '/' h ']' ]"
   ).*) : test_scope.
 
@@ -956,6 +916,7 @@ Qed.
 Abort.
 
 Local Close Scope test_scope.
+*)
 
 Section rep.
 
@@ -1183,7 +1144,7 @@ Definition Alt M : forall A, m M A -> m M A -> m M A :=
   let: Pack _ (Class _ (Mixin x _ _)) := M
   return forall A, m M A -> m M A -> m M A in x.
 Arguments Alt {M A} : simpl never.
-Notation "'[~p]'" := (@Alt _). (* postfix notation *)
+Notation "'[~p]'" := (@Alt _). (* prefix notation *)
 Notation "x '[~]' y" := (Alt x y). (* infix notation *)
 Notation altMonad := t.
 Coercion baseType : altMonad >-> monad.
@@ -1679,6 +1640,7 @@ Arguments Catch {M A} : simpl never.
 Notation exceptMonad := t.
 Coercion baseType : exceptMonad >-> failMonad.
 Canonical baseType.
+(* NB: ignore the warning *)
 Canonical monadType.
 End Exports.
 End MonadExcept.
@@ -1698,7 +1660,7 @@ End except_lemmas.
 
 Section fastproduct.
 
-Definition product (s : seq nat) := foldr muln 1 s.
+Definition product := foldr muln 1.
 
 Lemma product0 s : O \in s -> product s = O.
 Proof.
@@ -1713,10 +1675,8 @@ Variable M : failMonad.
 Definition work s : M nat :=
   if O \in s then Fail else Ret (product s).
 
-Let Work s := match O \in s with
-              | true => @Fail M nat
-              | false => @Ret (MonadFail.baseType M) nat (product s)
-              end.
+Let Work s := if O \in s then @Fail M nat
+              else @Ret (MonadFail.baseType M) nat (product s).
 
 (* work refined to eliminate multiple traversals *)
 Lemma workE :
@@ -1734,9 +1694,8 @@ Variable M : exceptMonad.
 
 Definition fastprod s : M _ := Catch (work s) (Ret O).
 
-Let Fastprod s :=
-  @Catch M nat (@work (MonadExcept.baseType M) s)
-             (@Ret (MonadExcept.monadType M) nat O).
+Let Fastprod s := @Catch M nat (@work (MonadExcept.baseType M) s)
+                    (@Ret (MonadExcept.monadType M) nat O).
 
 (* fastprod is pure, never throwing an unhandled exception *)
 Lemma fastprodE s : fastprod s = Ret (product s).
