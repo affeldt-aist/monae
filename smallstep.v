@@ -5,6 +5,7 @@
 
 Require Import Eqdep JMeq List ssreflect.
 Import ListNotations.
+From mathcomp Require Import ssrnat.
 
 Set Universe Polymorphism.
 Unset Universe Minimization ToSet.
@@ -37,8 +38,8 @@ Local Notation "'p_do' x <- m ; e" := (p_bind m (fun x => e)).
 Local Notation "'p_do' x : T <- m ; e" :=(p_bind m (fun x : T => e)).
 
 Inductive continuation : Type :=
-| stop : forall (A : Type), A -> continuation
-| cont : forall (A : Type), program A -> (A -> continuation) -> continuation.
+| stop : forall A, A -> continuation
+| cont : forall A, program A -> (A -> continuation) -> continuation.
 
 End Syntax.
 
@@ -76,13 +77,13 @@ Inductive step : state -> option T -> state -> Prop :=
   step (s, p_cond false p1 p2 `; k) None (s, p2 `; k)
 | s_repeat_O : forall s p k, step (s, p_repeat O p `; k) None (s, k tt)
 | s_repeat_S : forall s n p k,
-  step (s, p_repeat (Datatypes.S n) p `; k) None
+  step (s, p_repeat n.+1 p `; k) None
     (s, p `; fun _ => p_repeat n p `; k)
 | s_while_true : forall fuel s c p k, c s = true ->
-  step (s, p_while (Datatypes.S fuel) c p `; k) None
+  step (s, p_while fuel.+1 c p `; k) None
     (s, p `; fun _ => p_while fuel c p `; k)
 | s_while_false : forall fuel s c p k, c s = false ->
-  step (s, p_while (Datatypes.S fuel) c p `; k) None (s, k tt)
+  step (s, p_while fuel.+1 c p `; k) None (s, k tt)
 | s_while_broke : forall s c p k, step (s, p_while O c p `; k) None (s, k tt)
 | s_get  : forall s k, step (s, p_get `; k) None (s, k s)
 | s_put  : forall s s' k, step (s, p_put s' `; k) None (s', k tt)
@@ -92,10 +93,10 @@ Inductive step_n : nat -> state -> list T -> state -> Prop :=
 | sn_0 : forall sk, step_n O sk [] sk
 | sn_S_None : forall n sk1 sk2 sk3 l,
   step sk1 None sk2 -> step_n n sk2 l sk3 ->
-  step_n (Datatypes.S n) sk1 l sk3
+  step_n n.+1 sk1 l sk3
 | sn_S_Some : forall n sk1 sk2 sk3 t l,
   step sk1 (Some t) sk2 -> step_n n sk2 l sk3 ->
-  step_n (Datatypes.S n) sk1 (t :: l) sk3.
+  step_n n.+1 sk1 (t :: l) sk3.
 
 Inductive step_star : state -> list T -> state -> Prop :=
 | ss_refl : forall sk, step_star sk [] sk

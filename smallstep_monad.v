@@ -1,7 +1,7 @@
 Require Import ssreflect ssrfun ssrbool Eqdep List.
 Import ListNotations.
 Require Import monad state_monad trace_monad smallstep.
-From mathcomp Require Import seq.
+From mathcomp Require Import ssrnat seq.
 
 (* contents:
   Denotation of the imperative language given in terms of the state/trace monad.
@@ -26,18 +26,13 @@ Fixpoint denote A (p : program A) : M A :=
   | p_ret _ v => Ret v
   | p_bind _ _ m f => do a <- denote m; denote (f a)
   | p_cond _ b p1 p2 => if b then denote p1 else denote p2
-  | p_repeat n p => (fix loop (m : nat) : M unit :=
-    match m with
-    | 0 => Ret tt
-    | Datatypes.S m' => denote p >> loop m'
-    end) n
-  | p_while fuel c p => (fix loop (m : nat) : M unit :=
-    match m with
-    | 0 => Ret tt
-    | Datatypes.S m' =>
-      do s <- stGet ;
-      if c s then denote p >> loop m' else Ret tt
-    end) fuel
+  | p_repeat n p => (fix loop m : M unit :=
+    if m is m'.+1 then denote p >> loop m' else Ret tt) n
+  | p_while fuel c p => (fix loop m : M unit :=
+    if m is m'.+1 then
+      (do s <- stGet ;
+      if c s then denote p >> loop m' else Ret tt)
+    else Ret tt) fuel
   | p_get => stGet
   | p_put s' => stPut s'
   | p_mark t => stMark t
@@ -47,14 +42,14 @@ Notation "'Repeat' n {{ p }}" := (
   (fix loop (m : nat) : MonadStateTrace.m M unit :=
    match m with
    | 0 => Ret tt
-   | Datatypes.S m' => denote p >> loop m'
+   | m'.+1 => denote p >> loop m'
    end) n) (at level 200).
 
 Notation "'While' fuel @ c {{ p }}" := (
   (fix loop (m : nat) : MonadStateTrace.m M unit :=
    match m with
    | 0 => Ret tt
-   | Datatypes.S m' =>
+   | m'.+1 =>
      do s <- stGet ;
      if c s then denote p >> loop m' else Ret tt
    end) fuel) (at level 200).
