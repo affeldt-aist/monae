@@ -1,5 +1,5 @@
 Ltac typeof X := type of X.
-Require Import ProofIrrelevance ssreflect ssrmatching ssrfun ssrbool.
+Require Import ssreflect ssrmatching ssrfun ssrbool.
 From mathcomp Require Import eqtype ssrnat seq path div choice fintype tuple.
 From mathcomp Require Import finfun bigop.
 From mathcomp Require Import boolp.
@@ -212,12 +212,12 @@ Section functorcomposition_lemmas.
 Lemma FCompId (f : functor) : FComp f FId = f.
 Proof.
 destruct f as [m [f0 f1 f2]]; congr Functor.Pack; congr Functor.Class => //;
-  exact/ProofIrrelevance.proof_irrelevance.
+  exact/Prop_irrelevance.
 Qed.
 Lemma FIdComp (f : functor) : FComp FId f = f.
 Proof.
 destruct f as [m [f0 f1 f2]]; congr Functor.Pack; congr Functor.Class => //;
-  exact/ProofIrrelevance.proof_irrelevance.
+  exact/Prop_irrelevance.
 Qed.
 Lemma FIdf A B (f : A -> B) : FId # f = f.
 Proof. by []. Qed.
@@ -226,8 +226,7 @@ Proof.
 destruct f as [m [f0 f1 f2]].
 destruct g as [n [g0 g1 g2]].
 destruct h as [o [h0 h1 h2]].
-congr Functor.Pack; congr Functor.Class => //;
-  exact/ProofIrrelevance.proof_irrelevance.
+congr Functor.Pack; congr Functor.Class => //; exact/Prop_irrelevance.
 Qed.
 Lemma FCompE (f g : functor) A B (k : A -> B) : (FComp f g) # k = f # (g # k).
 Proof. by []. Qed.

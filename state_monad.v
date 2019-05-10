@@ -266,7 +266,7 @@ Qed.
 
 End state_commute.
 
-Definition nondetState_sub {S} {M : nondetStateMonad S} {A} (n : M A) : Type :=
+Definition nondetState_sub S (M : nondetStateMonad S) A (n : M A) :=
   {m | ndDenote m = n}.
 
 Lemma select_is_nondetState S (M : nondetStateMonad S) A (s : seq A) :

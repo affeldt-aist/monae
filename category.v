@@ -1,5 +1,5 @@
 Ltac typeof X := type of X.
-Require Import ProofIrrelevance ssreflect ssrmatching ssrfun ssrbool.
+Require Import ssreflect ssrmatching ssrfun ssrbool.
 From mathcomp Require Import eqtype ssrnat seq path div choice fintype tuple.
 From mathcomp Require Import finfun bigop.
 From mathcomp Require Import boolp.
@@ -162,11 +162,8 @@ Proof. done. Qed.
 Lemma hom_ext (a b : C) (f g : {hom a,b})
   : f = g <-> [fun of f] = [fun of g].
 Proof.
-split; first by move->.
-case:f=>f Hf;case:g=>g Hg.
-rewrite/Hom.apply=>H.
-move:H Hf Hg=>->Hf Hg.
-  by have->:Hf=Hg by apply proof_irrelevance.
+split => [->//|]; move: f g => [f Hf] [g Hg]; rewrite /Hom.apply => fg.
+by move : fg => -> in Hf Hg *; rewrite (Prop_irrelevance Hf Hg).
 Qed.
 Lemma hom_extext (a b : C) (f g : {hom a,b}) :
   f = g <-> [fun of f] =1 [fun of g].
@@ -336,12 +333,12 @@ Variables (C0 C1 C2 C3 : category).
 Lemma FCompId (F : functor C0 C1) : FComp F (FId C0) = F.
 Proof.
 destruct F as [m [f0 f1 f2]]; congr Functor.Pack; congr Functor.Class => //;
-  exact/ProofIrrelevance.proof_irrelevance.
+  exact/Prop_irrelevance.
 Qed.
 Lemma FIdComp (F : functor C0 C1) : FComp (FId _) F = F.
 Proof.
 destruct F as [m [f0 f1 f2]]; congr Functor.Pack; congr Functor.Class => //;
-  exact/ProofIrrelevance.proof_irrelevance.
+  exact/Prop_irrelevance.
 Qed.
 Lemma FCompA (F : functor C2 C3) (G : functor C1 C2) (H : functor C0 C1)
   : FComp (FComp F G) H = FComp F (FComp G H).
@@ -349,8 +346,7 @@ Proof.
 destruct F as [m [f0 f1 f2]].
 destruct G as [n [g0 g1 g2]].
 destruct H as [o [h0 h1 h2]].
-congr Functor.Pack; congr Functor.Class => //;
-  exact/ProofIrrelevance.proof_irrelevance.
+congr Functor.Pack; congr Functor.Class => //; exact/Prop_irrelevance.
 Qed.
 Lemma FCompE (F : functor C1 C2) (G : functor C0 C1) a b (k : {hom a, b}) : (FComp F G) # k = F # (G # k).
 Proof. by []. Qed.
