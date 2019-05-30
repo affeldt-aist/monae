@@ -34,14 +34,20 @@ Other reference:
 
 ** Requirements
 
-- [[https://coq.inria.fr][Coq]] 8.9.0
+- [[https://coq.inria.fr][Coq]] 8.9.0 or 8.9.1
 - [[https://github.com/math-comp/math-comp][Mathematical Components library]] 1.8.0
-- [[https://github.com/math-comp/analysis][MathComp-Analysis]] github master version
+- [[https://github.com/math-comp/analysis][MathComp-Analysis]] 0.2.0
   which requires
   + [[https://github.com/math-comp/bigenough/][bigenough]] first release
   + [[https://github.com/math-comp/finmap][finmap]] 1.2.0
 - [[https://github.com/affeldt-aist/infotheo][infotheo]] github master version
 
+All versions (except infotheo) available from opam.
+
+Compiles also with mathcomp 1.9.0, analysis 0.2.2, finmap 1.2.1 (using the mathcomp-1.9.0 branch of infotheo).
+
 ** Installation
 
 1. ~make~
+  - ~rm Makefile.coq~ beforehand in case of Coq upgrade
+
