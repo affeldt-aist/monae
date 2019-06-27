@@ -410,7 +410,7 @@ Notation unfoldM := (unfoldM (@well_founded_size _)).
 Let op := @opdot_queens M.
 Let p := @nilp Z.
 
-Lemma base_case y : p y -> (foldr op (Ret [::]) >=> unfoldM p select) y = Ret [::].
+Lemma base_case y : p y -> (unfoldM p select >=> foldr op (Ret [::])) y = Ret [::].
 Proof.
 move=> py.
 transitivity (Ret [::] >>= foldr op (Ret [::])).
@@ -420,7 +420,7 @@ by rewrite bindretf.
 Qed.
 
 Lemma theorem_42 :
-  (foldr op (Ret [::]) >=> unfoldM p select) =1
+  (unfoldM p select >=> foldr op (Ret [::])) =1
   @hyloM _ _ _ _ op [::] p select seed_select (@well_founded_size _).
 Proof.
 apply: (well_founded_induction (@well_founded_size _)) => y IH.

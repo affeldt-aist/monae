@@ -14,6 +14,7 @@ build: [
   [make]
 ]
 install: [
+  ["coq_makefile" "-f" "_CoqProject" "-o" "Makefile"]
   [make "install"]
 ]
 depends: [

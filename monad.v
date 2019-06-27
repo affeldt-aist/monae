@@ -785,28 +785,28 @@ Proof. by rewrite bindE. Qed.
 
 Definition kleisli A B C (m : B -> M C) (n : A -> M B) : A -> M C :=
   Join \o (M # m) \o n.
-Local Notation "m >=> n" := (kleisli m n).
+Local Notation "m <=< n" := (kleisli m n).
+Local Notation "m >=> n" := (kleisli n m).
 
 Lemma fcomp_kleisli A B C D (f : A -> B) (g : C -> M A) (h : D -> M C) :
-  f (o) (g >=> h) = (f (o) g) >=> h.
+  f (o) (g <=< h) = (f (o) g) <=< h.
 Proof.
 rewrite /kleisli 2!fcomp_def 2!(compA (M # f)).
 by rewrite join_naturality functor_o compA.
 Qed.
 
 Lemma kleisli_fcomp A B C (f : A -> M B) (g : B -> A) (h : C -> M B) :
-  ((f \o g) >=> h) = f >=> (g (o) h).
+  ((f \o g) <=< h) = f <=< (g (o) h).
 Proof. by rewrite /kleisli fcomp_def functor_o 2!compA. Qed.
-Local Notation "m >=> n" := (kleisli m n).
 
-Lemma bind_kleisli A B C m (f : B -> M C) (g : A -> M B) :
-  m >>= (f >=> g) = (m >>= g) >>= f.
+Lemma bind_kleisli A B C m (f : A -> M B) (g : B -> M C) :
+  m >>= (f >=> g) = (m >>= f) >>= g.
 Proof. by rewrite bindA; bind_ext => a; rewrite /kleisli !compE join_fmap. Qed.
 
 End fmap_and_join.
 Notation "f (o) g" := (fcomp f g) : mu_scope.
 Arguments fcomp : simpl never.
-Notation "m >=> n" := (kleisli m n).
+Notation "m >=> n" := (kleisli n m).
 
 (*
 (* monads on Type are strong monads *)

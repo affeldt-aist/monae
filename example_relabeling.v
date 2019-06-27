@@ -137,15 +137,15 @@ Qed.
 
 (* first property of Sect. 9.3 *)
 Lemma dlabels_relabel_is_fold :
-  dlabels >=> relabel = foldt drTip drBin.
+  relabel >=> dlabels = foldt drTip drBin.
 Proof.
 apply foldt_universal.
-  (* dlabels >=> relabel \o Tip = drTip *)
-  rewrite /kleisli -(compA (Join \o _)) -(compA Join) (_ : _ \o Tip = (M # Tip) \o const Fresh) //.
+  (* relabel >=> dlabels \o Tip = drTip *)
+  rewrite /kleisli (* TODO(rei): don't unfold *) -(compA (Join \o _)) -(compA Join) (_ : _ \o Tip = (M # Tip) \o const Fresh) //.
   rewrite (compA (M # dlabels)) -functor_o (_ : dlabels \o _ = Ret \o wrap) //.
   by rewrite functor_o 2!compA joinMret.
-(* dlabels >=> relabel \o Bin = drBin \o _ *)
-rewrite /kleisli -[in LHS](compA (Join \o _)) -[in LHS](compA Join).
+(* relabel >=> dlabels \o Bin = drBin \o _ *)
+rewrite /kleisli (* TODO(rei): don't unfold *) -[in LHS](compA (Join \o _)) -[in LHS](compA Join).
 rewrite (_ : _ \o _ Bin = (M # uncurry Bin) \o (mpair \o relabel^`2)); last first.
   by rewrite funeqE; case.
 rewrite (compA (M # dlabels)) -functor_o.
@@ -192,7 +192,7 @@ Qed.
 
 (* main claim *)
 Lemma dlabels_relabel_never_fails :
-  dlabels >=> relabel = Symbols \o @size_Tree Symbol.
+  relabel >=> dlabels = Symbols \o @size_Tree Symbol.
 Proof. by rewrite dlabels_relabel_is_fold symbols_size_is_fold. Qed.
 
 End tree_relabelling.
