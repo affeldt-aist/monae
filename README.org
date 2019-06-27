@@ -36,6 +36,22 @@ Other reference:
 
 GNU GPLv3
 
+** Installation
+
+- ~git clone git@github.com:affeldt-aist/monae.git~
+- ~cd monae~
+
+If opam is installed, do:
+
+1. ~opam install .~
+
+opam takes care of the dependencies.
+
+If opam is not installed but if the Requirements (see below) are met, do:
+
+1. ~make~
+2. ~make install~
+
 ** Requirements
 
 - [[https://coq.inria.fr][Coq]] 8.9.1
@@ -47,9 +63,4 @@ GNU GPLv3
       - [[https://github.com/math-comp/finmap][finmap]] 1.2.1
 
 All versions available from opam (except infotheo that however comes with an opam file).
-
-** Installation
-
-1. ~make~
-  - ~rm Makefile.coq~ beforehand in case of Coq upgrade
 
