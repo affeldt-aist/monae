@@ -18,4 +18,4 @@ example_monty.v
 smallstep.v
 smallstep_monad.v
 smallstep_examples.v
--R . monad
+-R . monae
