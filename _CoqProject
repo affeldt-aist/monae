@@ -1,11 +1,9 @@
 -arg -w -arg -notation-overridden
 
-category.v
-convex_space_category.v
 monad.v
 state_monad.v
-proba_monad.v
 trace_monad.v
+proba_monad.v
 monad_composition.v
 model.v
 monad_model.v
