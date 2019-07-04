@@ -23,7 +23,6 @@ Other reference:
 - [[model.v][model.v]]: definition common to ~*_model.v~ files
 - [[monad_model.v][monad_model.v]]: concrete models of monads (corresponding to ~{,state_,trace_}monad.v~)
 - [[proba_monad_model.v][proba_monad_model.v]]: concrete model of the probability monad
-- [[altprob_model.v][altprob_model.v]]: model of combined choice
 - [[example_spark.v][example_spark.v]]: example of Spark aggregation
 - [[example_nqueens.v][example_nqueens.v]]: example of the n-queens puzzle
 - [[example_relabeling.v][example_relabeling.v]]: example of tree relabeling
@@ -64,4 +63,3 @@ If opam is not installed but if the Requirements (see below) are met, do:
       - [[https://github.com/math-comp/finmap][finmap]] 1.2.1
 
 All versions available from opam.
-
