@@ -19,8 +19,6 @@ install: [
 ]
 depends: [
   "coq" { (>= "8.9.1" & < "8.10.0~") }
-  "coq-mathcomp-field" { (>= "1.9.0") & < "1.10.0~"}
-  "coq-mathcomp-analysis"   {(>= "0.2.0" & <= "0.2.2")}
   "coq-infotheo" { (>= "0.0.1") }
 ]
 synopsis: "Monae"
