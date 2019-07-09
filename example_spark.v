@@ -103,7 +103,7 @@ Variable M : altCIMonad.
 Variables (A B : Type) (b : B) (mul : B -> A -> B) (add : B -> B -> B).
 Hypotheses (addA : associative add) (addC : commutative add).
 
-(* theorem 3.6 in mu2017, see also netys2017 *)
+(* theorem 4.5 in mu2019tr2, see also netys2017 *)
 Lemma aggregateE :
   aggregate b mul add = Ret \o foldl add b \o map (foldl mul b) :> (_ -> M _).
 Proof.

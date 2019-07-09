@@ -52,6 +52,8 @@ If opam is not installed but if the Requirements (see below) are met, do:
 2. ~make~
 2. ~make install~
 
+The [[file:installation_windows.org][instructions]] are less simple for Windows 10.
+
 ** Requirements
 
 - [[https://coq.inria.fr][Coq]] 8.9.1

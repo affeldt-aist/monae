@@ -1368,7 +1368,7 @@ Lemma altACA A : @interchange (M A) (fun x y => x [~] y) (fun x y => x [~] y).
 Proof. move=> x y z t; rewrite !altA; congr (_ [~] _); by rewrite altAC. Qed.
 End altci_lemmas.
 
-(* mu2017, Sect. 3.2, see also netsys2017 *)
+(* mu2019tr2, Sect. 3, see also netsys2017 *)
 Section altci_insert.
 Variables (M : altCIMonad) (A : Type) (a : A).
 
