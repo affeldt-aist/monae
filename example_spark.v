@@ -124,7 +124,7 @@ Section homomorphism.
 Variables (A B : Type) (add : B -> B -> B) (k : A -> B) (z : B).
 Definition is_hom (h : seq A -> B) :=
   h nil = z /\ (forall x : A, h [:: x] = k x) /\
-  (forall xs ys, h (xs ++ ys) = add (h xs) (h ys)).
+  {morph h : xs ys / xs ++ ys >-> add xs ys}.
 End homomorphism.
 
 Section lemma45.
