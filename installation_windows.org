@@ -1,7 +1,7 @@
-#+TITLE: Installation of monae on Windows 10
+#+TITLE: Installation of MathComp and monae on Windows 10
 
-On a Linux-based system, one can use ~opam~ to install monae as
-explained in the [[file:README.org][README]].
+On a Linux-based system, one can use ~opam~ to install MathComp and
+monae as explained in the [[file:README.org][README]].
 
 On Windows 10, ~opam~ does not work correctly and one needs to install
 the required libraries "by hand", using cygwin to recreate a Unix-like
@@ -20,7 +20,7 @@ environment together with the Windows binary distribution of Coq.
    + Right-clicking this icon gives access to XTerm
      * You can launch emacs from the command line
  - Add a few more useful programs by re-running the cygwin installer
-   + these programs would be useful in particular for ~opam~ that
+   + the following programs would be useful in particular for ~opam~ that
      unfortunately does not work correctly with Windows 10 as of today
      + ~rsync~, ~patch~, ~make~, ~diffutils~, ~curl~, ~unzip~, ~git~,
        ~m4~, ~perl~, ~mingw64-x86_64-gcc-core~
@@ -42,7 +42,7 @@ environment together with the Windows binary distribution of Coq.
    + ~rm /cygdrive/c/coq/lib/user_contrib/mathcomp~
  - install MathComp 1.9.0
    + download the [[https://github.com/math-comp/math-comp/releases][source files]]
-   + unzip, untar, make, make install
+   + unzip, untar, cd, make, make install
 
 * Step 2: Installed the Required Libraries on top of MathComp and then monae
 
@@ -61,7 +61,7 @@ environment together with the Windows binary distribution of Coq.
  - Cygwin may be confused by a non-American keyboard; you can change
    the keyboard layout with ~setxkbmap~, e.g., for a Japanese keyboard,
    the following command ~setxkbmap -model jp106 -layout jp~
- - You may want to get rid of the CAPS LOCK key by creatinge a file,
+ - You may want to get rid of the CAPS LOCK key by creating a file,
    say, ~Xmodmap~ with the following contents:
  #+BEGIN_SRC
  keycode 66 = Control_L
