@@ -1,69 +1,77 @@
-One way to install monae on Windows 10 is to
-1. use the Windows binary distribution of Coq
-2. use cygwin to recreate a Unix-like environment
+#+TITLE: Installation of monae on Windows 10
 
-* Step 1: Install cygwin
+On a Linux-based system, one can use ~opam~ to install monae as
+explained in the [[file:README.org][README]].
 
-- Download and execute ~setup-x86_64.exe~ from [[https://www.cygwin.com/][https://www.cygwin.com/]]
-  + Choose ~emacs~, ~emacs-X11~, ~xinit~, ~make~, ~texlive~ to have a
-    minimal working environment
-- Double-click the "Cygwin64 Terminal" on the Desktop
-- In the terminal, execute ~startxwin~ to start X11
-  + An Cygwin-X11 icon (a black "C" with a green "X" inside) appears
-    among the System Tray icons
-  + Right-clicking this icon gives access to XTerm, Emacs, etc.
-- Add a few more useful programs by re-running the cygwin installer
-  + these programs would be useful in particular for ~opam~ that
-    unfortunately does not work correctly with Windows 10 as of today
-    + ~rsync~, ~patch~, ~make~, ~diffutils~, ~curl~, ~unzip~, ~git~,
-      ~m4~, ~perl~, ~mingw64-x86_64-gcc-core~
+On Windows 10, ~opam~ does not work correctly and one needs to install
+the required libraries "by hand", using cygwin to recreate a Unix-like
+environment together with the the Windows binary distribution of Coq.
 
-** Trouble shooting
+* Step 1: Install MathComp on Windows 10
+** Step 1a: Install cygwin
 
-- Cygwin may be confused by a non-American keyboard; you can change
-  the keyboard layout with ~setxkbmap~, e.g., for a Japanese keyboard,
-  the following command ~setxkbmap -model jp106 -layout jp~
-- You may want to get rid of the CAPS LOCK key by creatinge a file,
-  say, ~Xmodmap~ with the following contents:
-#+BEGIN_SRC
-keycode 66 = Control_L
-clear Lock
-add Control = Control_L
-#+END_SRC
-  Append the following to ~.bashrc~:
-#+BEGIN_SRC
-xmodmap /home/username/Xmodmap
-#+END_SRC
+ - Download and execute ~setup-x86_64.exe~ from [[https://www.cygwin.com/][https://www.cygwin.com/]]
+   + Choose ~emacs~, ~emacs-X11~, ~xinit~, ~make~, ~texlive~ to have a
+     minimal working environment
+ - Double-click the "Cygwin64 Terminal" on the Desktop
+ - In the terminal, execute ~startxwin~ to start X11
+   + An Cygwin-X11 icon (a black "C" with a green "X" inside) appears
+     among the System Tray icons
+   + Right-clicking this icon gives access to XTerm, Emacs, etc.
+ - Add a few more useful programs by re-running the cygwin installer
+   + these programs would be useful in particular for ~opam~ that
+     unfortunately does not work correctly with Windows 10 as of today
+     + ~rsync~, ~patch~, ~make~, ~diffutils~, ~curl~, ~unzip~, ~git~,
+       ~m4~, ~perl~, ~mingw64-x86_64-gcc-core~
+** Step 1b: Install Coq
 
-* Step 2: Install Coq
+ - Download and execute ~coq-8.9.1-installer-windows-x86_64.exe~ from
+   the [[https://github.com/coq/coq/releases/latest][release page]]
+ - Add ~/cygdrive/c/coq/bin~ to ~PATH~ by appending ~export
+   PATH=${PATH}~ to ~.bashrc~
 
-- Download and execute ~coq-8.9.1-installer-windows-x86_64.exe~ from
-  the [[https://github.com/coq/coq/releases/latest][release page]]
-- Add ~/cygdrive/c/coq/bin~ to ~PATH~ by appending ~export
-  PATH=${PATH}~ to ~.bashrc~
+** Step 1c: Install Proof General
 
-* Step 3: Install Proof General
+ - Install proof general following the instructions [[https://proofgeneral.github.io/][online]]
 
-- Install proof general following the instructions [[https://proofgeneral.github.io/][online]]
+** Step 1d: Install MathComp
 
-* Step 4: Install the Required Libraries
+ - The MathComp library that comes with the Coq binaries is maybe not
+   up-to-date
+   + ~rm /cygdrive/c/coq/lib/user_contrib/mathcomp~
+   + install MathComp 1.9.0
+     * download the [[https://github.com/math-comp/math-comp/releases][source files]]
+     * unzip, untar, make, make install
 
-- The MathComp library that comes with the Coq binaries is maybe not
-  up-to-date
-  + ~rm /cygdrive/c/coq/lib/user_contrib/mathcomp~
-  + install MathComp 1.9.0
-    * download the [[https://github.com/math-comp/math-comp/releases][source files]]
-    * unzip, untar, make, make install
-- Install MathComp-Analysis
-  + Install bigenough 1.0.0 ([[https://github.com/math-comp/bigenough][download]])
-  + Install finmap 1.2.1 ([[https://github.com/math-comp/finmap][download]])
-  + Install analysis 0.2.2 ([[https://github.com/math-comp/analysis][download]])
-- Install Infotheo ([[https://github.com/affeldt-aist/infotheo][download]])
-- Install monae
-  + ~git clone git@github.com:affeldt-aist/monae.git~
-  + ~coq_makefile -o Makefile -f _CoqProject~
+* Step 2: Installed the Required Libraries on top of MathComp and then monae
+
+ - Install MathComp-Analysis
+   + Install bigenough 1.0.0 ([[https://github.com/math-comp/bigenough][download]])
+   + Install finmap 1.2.1 ([[https://github.com/math-comp/finmap][download]])
+   + Install analysis 0.2.2 ([[https://github.com/math-comp/analysis][download]])
+ - Install Infotheo ([[https://github.com/affeldt-aist/infotheo][download]])
+ - Install monae
+   + ~git clone git@github.com:affeldt-aist/monae.git~
+   + ~coq_makefile -o Makefile -f _CoqProject~
 
 * Addendum
+** Cygwin: Troubleshooting
+
+ - Cygwin may be confused by a non-American keyboard; you can change
+   the keyboard layout with ~setxkbmap~, e.g., for a Japanese keyboard,
+   the following command ~setxkbmap -model jp106 -layout jp~
+ - You may want to get rid of the CAPS LOCK key by creatinge a file,
+   say, ~Xmodmap~ with the following contents:
+ #+BEGIN_SRC
+ keycode 66 = Control_L
+ clear Lock
+ add Control = Control_L
+ #+END_SRC
+   Append the following to ~.bashrc~:
+ #+BEGIN_SRC
+ xmodmap /home/username/Xmodmap
+ #+END_SRC
+
 ** Install OCaml
 
 - Re-run the cygwin installer to install ~opam~ (version 2 or higher)
@@ -78,7 +86,7 @@ xmodmap /home/username/Xmodmap
 - ~opam install ocamlfind~ (version 1.8.0 [2019-07-08 Mon])
 - ~opam install num.1.2~
 
-** FAILURE Installing lablgtk
+** Failure Installing lablgtk with opam
 
 - ~opam install lablgtk~ fails with the following error despite having
   ~libgtk2.0-devel~ and ~mingw64-x86_64-gtk2.0~ installed with cygwin
@@ -86,8 +94,7 @@ xmodmap /home/username/Xmodmap
 This package requires gtk+ 2.0 development packages installed on your system
 #+END_SRC
 
-** FAILURE Installing Coq
-
+** Failure Installing Coq from the source code
 **** Using Opam
 
 - ~opam repo add coq-released https://coq.inria.fr/opam/released~
