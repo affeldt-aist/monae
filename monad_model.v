@@ -1,8 +1,9 @@
 Require Import ssreflect ssrmatching ssrfun ssrbool.
+
 From mathcomp Require Import eqtype ssrnat seq choice fintype tuple.
 From mathcomp Require Import bigop finmap.
 From mathcomp Require Import boolp classical_sets.
-Require Import monad state_monad trace_monad model.
+From monae Require Import monad state_monad trace_monad model.
 
 (* Contents: sample models for the monads in monad.v, state_monad.v, trace_monad.v
    - Module ModelMonad
@@ -141,7 +142,7 @@ Section state.
 Variables S : Type.
 Let m0 := fun A => S -> A * S.
 Definition state : monad.
-refine (@Monad_of_bind_ret m0
+apply: (@Monad_of_bind_ret m0
   (fun A B m f => fun s => let (a, s') := m s in f a s') (* bind *)
   (fun A a => fun s => (a, s)) (* ret *)
    _ _ _).
@@ -269,6 +270,37 @@ Next Obligation. by []. Qed.
 Next Obligation. by []. Qed.
 End st.
 End ModelStateTrace.
+
+Module ModelLoop.
+(* Variable M : Type -> Type. *)
+Definition loop := fun A => forall r, (A -> r) -> r.
+
+Local Obligation Tactic := by [].
+Program Definition loopM : monad := (@Monad_of_bind_ret loop
+ (fun A B ma f => fun _ cont => ma _ (fun a => f a _ cont)) (* bind *)
+ (fun A a => fun _ cont => cont a) (* ret *)
+ _ _ _).
+Set Printing All.
+Fixpoint mforeach (it min : nat) (body : nat -> loopM unit) : unit :=
+  if it <= min then tt
+  else if it is it'.+1 then
+      body it _ (fun _  => mforeach it' min body)
+      else tt.
+
+Set Printing All.
+Definition fm : loopMonad.
+refine (MonadLoop.Pack (@MonadLoop.Class _ (Monad.class loopM) (@MonadLoop.Mixin loopM mforeach _ _ _))).
+:= @MonadLoop.Class M m
+ (@MonadLoop.Mixin _ _ (Monad.Pack m)
+  mforeach
+                                             
+                                          
+End ModelLoop.
+
+Module ModelStateLoop.
+End ModelStateLoop.
+(* Definition mk : loopStateMonad S. *)
+(* set m := @ModelMonad.state.  *)
 
 Module ModelRun.
 
