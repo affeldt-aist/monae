@@ -30,7 +30,7 @@ keycode 66 = Control_L
 clear Lock
 add Control = Control_L
 #+END_SRC
-  + Append the following to ~.bashrc~:
+  Append the following to ~.bashrc~:
 #+BEGIN_SRC
 xmodmap /home/username/Xmodmap
 #+END_SRC

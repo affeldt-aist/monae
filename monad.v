@@ -34,6 +34,8 @@ Unset Printing Implicit Defensive.
 - Module MonadAltCI.
 - Module MonadNondet
   Section permutations.
+- Section nondet_insert.
+- Module MonadCINondet.
 - Module MonadExcept.
     example of the fast product
 *)
@@ -1224,7 +1226,7 @@ Qed.
 
 End subsequences_of_a_list.
 
-(* mu2017, Sect. 3.1 *)
+(* mu2019tr2, Sect. 3 *)
 Section permutation_and_insertion.
 
 Variable M : altMonad.
@@ -1259,8 +1261,8 @@ rewrite -fmap_comp (_ : map f \o cons y = cons (f y) \o map f) //.
 by rewrite fmap_comp -(fcompE (map f)) -IH [RHS]/= insertE.
 Qed.
 
-(* see also netys2017 *)
-Lemma perm_map A B (f : A -> B) :
+(* lemma 3.3 in mu2019tr2 *)
+Lemma perm_o_map A B (f : A -> B) :
   perm \o map f = map f (o) perm :> (seq A -> M (seq B)).
 Proof.
 rewrite funeqE; elim => [/=|x xs IH].
@@ -1438,6 +1440,43 @@ Set Printing All.
 Unset Printing All.
 by rewrite bindfailf.
 Abort.
+
+Section nondet_insert.
+Variables (M : nondetMonad) (A : Type).
+Implicit Types s : seq A.
+
+Lemma insert_Ret a s : exists m, insert a s = Ret (a :: s) [~] m :> M _.
+Proof.
+elim: s => [|h t [m ih]] /=; last by eexists; rewrite insertE; reflexivity.
+by rewrite insertE; exists Fail; rewrite altmfail.
+Qed.
+
+Lemma perm_is_alt_ret s : exists m, perm s = Ret s [~] m :> M _.
+Proof.
+elim: s => [|h t [m ih] /=]; first by exists Fail; rewrite altmfail.
+case: (insert_Ret h t) => n Hn.
+by eexists; rewrite ih alt_bindDl bindretf Hn -altA.
+Qed.
+
+End nondet_insert.
+
+Module MonadCINondet.
+Record class_of (m : Type -> Type) : Type := Class {
+  base : MonadNondet.class_of m ;
+  mixin : MonadAltCI.mixin_of (@Alt (MonadAlt.Pack (MonadAlt.Class (MonadNondet.base2 base))))
+}.
+Structure t : Type := Pack { m : Type -> Type ; class : class_of m }.
+Definition baseType (M : t) := MonadNondet.Pack (base (class M)).
+Module Exports.
+Notation nondetCIMonad := t.
+Coercion baseType : nondetCIMonad >-> nondetMonad.
+Canonical baseType.
+Definition altCI_of_nondet (M : nondetCIMonad) : altCIMonad :=
+  MonadAltCI.Pack (MonadAltCI.Class (mixin (class M))).
+Canonical altCI_of_nondet.
+End Exports.
+End MonadCINondet.
+Export MonadCINondet.Exports.
 
 Section nondet_big.
 Variables (M : nondetMonad) (A : Type).

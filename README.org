@@ -7,6 +7,7 @@ to program semantics.
 Formalized papers:
 - [Gibbons and Hinze, Just do It: Simple Monadic Equational Reasoning, ICFP 2011] (except Sect. 10.2)
 - [Gibbons, Unifying Theories of Programming with Monads, UTP 2012] (up to Sect. 7.2)
+- [Mu, Equational Reasoning for Non-deterministic Monad: A Case study of Spark Aggregation, TR-IIS-19-002, Academia Sinica],
 - [Mu, Functional Pearls: Reasoning and Derivation of Monadic Programs, A case study of non-determinism and state, 2017] (up to Sect. 5)
 - [Jones and Duponcheel, Composing Monads, Yale RR 1993] (Sections 2 and 3)
 
