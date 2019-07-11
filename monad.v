@@ -713,8 +713,9 @@ End Exports.
 End Monad_of_bind_ret.
 Export Monad_of_bind_ret.Exports.
 
-(* monadic counterpart of function application: applies a pure function to a monad *)
-(* aka liftM in gibbons2011icfp, notation ($) in mu2017 *)
+(* monadic counterpart of function application: applies a pure
+   function to a monad (a.k.a. liftM in gibbons2011icfp, notation ($)
+   in mu2019tr) *)
 
 Section fmap_and_join.
 Variable M : monad.
@@ -1038,7 +1039,6 @@ Definition bassert_size {M : failMonad} A B
   (f : seq B -> M (A * seq B)%type) :=
   @bassert_hylo M _ _ f predT (fun _ _ x y => size x < size y).
 
-(* section 4.3, mu2017 *)
 Section unfoldM.
 
 Local Open Scope mu_scope.
@@ -1089,7 +1089,7 @@ End unfoldM_failMonad.
 End unfoldM.
 Arguments unfoldM : simpl never.
 
-(* section 4.4, mu2017 *)
+(* section 5.1, mu2019tr3 *)
 Section hyloM.
 Variables (M : failMonad) (A B C : Type).
 Variables (op : A -> M C -> M C) (e : C) (p : pred B) (f : B -> M (A * B)%type).

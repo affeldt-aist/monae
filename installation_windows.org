@@ -4,8 +4,9 @@ On a Linux-based system, one can use ~opam~ to install MathComp and
 monae as explained in the [[file:README.org][README]].
 
 On Windows 10, ~opam~ does not work correctly and one needs to install
-the required libraries "by hand", using cygwin to recreate a Unix-like
-environment together with the Windows binary distribution of Coq.
+the required libraries one-by-one with ~make~, using cygwin to
+recreate a Unix-like environment together with the binary
+distribution of Coq for Windows 10.
 
 * Step 1: Install MathComp on Windows 10
 ** Step 1a: Install cygwin
@@ -17,23 +18,27 @@ environment together with the Windows binary distribution of Coq.
  - In the terminal, execute ~startxwin~ to start X11
    + An Cygwin-X11 icon (a black "C" with a green "X" inside) appears
      among the System Tray icons
-   + Right-clicking this icon gives access to XTerm
+   + Right-clicking the Cygwin-X11 icon icon gives access to XTerm
      * You can launch emacs from the command line
  - Add a few more useful programs by re-running the cygwin installer
-   + the following programs would be useful in particular for ~opam~ that
-     unfortunately does not work correctly with Windows 10 as of today
+   + for example, the following programs would be useful in particular
+     for ~opam~ that unfortunately does not work correctly on Windows 10
      + ~rsync~, ~patch~, ~make~, ~diffutils~, ~curl~, ~unzip~, ~git~,
        ~m4~, ~perl~, ~mingw64-x86_64-gcc-core~
 ** Step 1b: Install Coq
 
  - Download and execute ~coq-8.9.1-installer-windows-x86_64.exe~ from
    the [[https://github.com/coq/coq/releases/latest][release page]]
- - Add ~/cygdrive/c/coq/bin~ to ~PATH~ by appending ~export
-   PATH=${PATH}:/cygdrive/c/coq/bin/~ to ~.bashrc~
+   + This will add the Coq distribution as the ~C:\Coq~ directory
+ - Add ~/cygdrive/c/coq/bin~ to ~PATH~
+   + By appending ~export PATH=${PATH}:/cygdrive/c/coq/bin/~ to
+     ~.bashrc~ for example
 
 ** Step 1c: Install Proof General
 
  - Install proof general following the instructions [[https://proofgeneral.github.io/][online]]
+ - Add this point, you can already use Coq and /some version/ of
+   MathComp almost as if we were on a Linux-based system
 
 ** Step 1d: Install MathComp
 
@@ -42,25 +47,30 @@ environment together with the Windows binary distribution of Coq.
    + ~rm /cygdrive/c/coq/lib/user_contrib/mathcomp~
  - install MathComp 1.9.0
    + download the [[https://github.com/math-comp/math-comp/releases][source files]]
-   + unzip, untar, cd, make, make install
+   + installation amounts to: unzip, untar, cd, make, make install
+   + as result the MathComp libraries populates the ~user-contrib~
+     directory of the Coq installation
 
-* Step 2: Installed the Required Libraries on top of MathComp and then monae
+* Step 2: Installed the Required Libraries on Top of MathComp and Then monae
 
- - Install MathComp-Analysis
-   1. Install bigenough 1.0.0 ([[https://github.com/math-comp/bigenough][download]]) using ~make; make install~
-   2. Install finmap 1.2.1 ([[https://github.com/math-comp/finmap][download]]) using ~make; make install~
-   3. Install analysis 0.2.2 ([[https://github.com/math-comp/analysis][download]]) using ~make; make install~
- - Install Infotheo ([[https://github.com/affeldt-aist/infotheo][download]])
+ - Install MathComp-Analysis using unzip, untar, cd, make, make install
+   1. Install bigenough 1.0.0 ([[https://github.com/math-comp/bigenough][download]]) 
+   2. Install finmap 1.2.1 ([[https://github.com/math-comp/finmap][download]])
+   3. Install analysis 0.2.2 ([[https://github.com/math-comp/analysis][download]])
+ - Install Infotheo using ~coq_makefile~, ~make~, ~make install~
+   + [[https://github.com/affeldt-aist/infotheo][download]]
  - Install monae
    + ~git clone git@github.com:affeldt-aist/monae.git~
    + ~coq_makefile -o Makefile -f _CoqProject~
+   + ~make~
+   + optionally, ~make install~
 
 * Addendum
-** Cygwin: Troubleshooting
+** Cygwin Troubleshooting
 
  - Cygwin may be confused by a non-American keyboard; you can change
    the keyboard layout with ~setxkbmap~, e.g., for a Japanese keyboard,
-   the following command ~setxkbmap -model jp106 -layout jp~
+   ~setxkbmap -model jp106 -layout jp~
  - You may want to get rid of the CAPS LOCK key by creating a file,
    say, ~Xmodmap~ with the following contents:
  #+BEGIN_SRC
@@ -68,19 +78,18 @@ environment together with the Windows binary distribution of Coq.
  clear Lock
  add Control = Control_L
  #+END_SRC
-   Append the following to ~.bashrc~:
+   Then append the following to ~.bashrc~:
  #+BEGIN_SRC
  xmodmap /home/username/Xmodmap
  #+END_SRC
 
-** Install OCaml
+** Install OCaml with opam on Windows 10
 
 - Re-run the cygwin installer to install ~opam~ (version 2 or higher)
 - ~opam init~ (Answer "y" to questions)
 - ~eval $(opam env)~
 - Check that OCaml has been properly installed
-  + ~ocaml --version~
-  + (version at the time of this writing [2019-07-08 Mon]: 4.04.2)
+  + ~ocaml --version~ (version at the time of this writing [2019-07-08 Mon]: 4.04.2)
 - ~opam switch create 4.07.1~
 - ~eval $(opam env)~
 - ~opam install camlp5~ (version 7.06.10 [2019-07-08 Mon])
@@ -90,22 +99,25 @@ environment together with the Windows binary distribution of Coq.
 ** Failure Installing lablgtk with opam
 
 - ~opam install lablgtk~ fails with the following error despite having
-  ~libgtk2.0-devel~ and ~mingw64-x86_64-gtk2.0~ installed with cygwin
+  ~libgtk2.0-devel~ and ~mingw64-x86_64-gtk2.0~ installed with cygwin:
 #+BEGIN_SRC
 This package requires gtk+ 2.0 development packages installed on your system
 #+END_SRC
 
+- still, ~coqIDE~ has been installed along Coq with the binary distribution for Windows 10
+
 ** Failure Installing Coq from the source code
 **** Using Opam
 
+Installation fails because of Coq's ~configure~ is confused by cygwin:
 - ~opam repo add coq-released https://coq.inria.fr/opam/released~
-- ~opam install coq.8.0.1~ fails because of the Coq's ~configure~
+- ~opam install coq.8.0.1~
 
 **** From the source
 
+Installation fails with an "address space is already occupied error" for ~dllunix.so~:
 - Download ~coq.8.9.1.tar.gz~
-- unzip and untar
-- fail with an "address space is already occupied error" for ~dllunix.so~
+- unzip, untar, cd, make
 
 
 

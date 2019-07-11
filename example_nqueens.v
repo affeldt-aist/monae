@@ -4,13 +4,11 @@ From mathcomp Require Import boolp.
 From infotheo Require Import ssrZ.
 Require Import monad state_monad.
 
-(* from gibbons2011icfp and mu2017 *)
+Section nqueens_gibbons2011icfp.
 
 Definition place n {B} (rs : seq B) := zip (map Z_of_nat (iota 0 n)) rs.
 
 Definition empty {B} : (seq B * seq B):= ([::] , [::]).
-
-Section nqueens.
 
 (* input: queen position, already threatened up/down diagonals
    output: safe or not, update up/down diagonals *)
@@ -19,6 +17,7 @@ Definition test : Z`2 -> (seq Z)`2 -> bool * (seq Z)`2 :=
     let (u, d) := (r - c, r + c)%Z in
     ((u \notin upds) && (d \notin downs), (u :: upds, d :: downs)).
 
+(* section 6.1 *)
 Section purely_functional.
 
 Definition start1 : (seq Z)`2 -> bool * (seq Z)`2 :=
@@ -41,8 +40,9 @@ Definition queens {M : nondetMonad} n : M (seq Z) :=
 
 End purely_functional.
 
-Section statefully.
+(* section 6.2 *)
 (* statefully constructing the sets of up/down diagonals threatened by the queens so far *)
+Section statefully.
 
 Variable M : stateMonad (seq Z)`2.
 
@@ -133,7 +133,6 @@ Qed.
 
 End statefully.
 
-End nqueens.
 Arguments step2 {M}.
 Arguments safe2 {M}.
 Arguments start2 {M}.
@@ -150,6 +149,7 @@ Qed.
 
 End safe_reification.
 
+(* section 7.1 *)
 Section queens_statefully_nondeterministically.
 
 Variable M : nondetStateMonad (seq Z)`2.
@@ -186,6 +186,7 @@ Qed.
 End queens_statefully_nondeterministically.
 Arguments queens_state_nondeter {M}.
 
+(* section 6.2 *)
 Section queens_exploratively.
 
 Variable M : nondetStateMonad (seq Z)`2.
@@ -287,12 +288,15 @@ Qed.
 
 End queens_exploratively.
 
-Section mu2017.
+End nqueens_gibbons2011icfp.
+
+Section nqueens_mu2019tr3.
 
 Section queens_definition.
 
 Local Open Scope mu_scope.
 
+(* section 3.3 *)
 Definition ups s i := zipWith Zplus (map Z_of_nat (iota i (size s))) s.
 Definition downs s i := zipWith Zminus (map Z_of_nat (iota i (size s))) s.
 Definition safe s := uniq (ups s 0) && uniq (downs s 0).
@@ -360,7 +364,7 @@ Qed.
 
 End queens_definition.
 
-Section section_52.
+Section section5a.
 
 Variable M : nondetStateMonad (Z * seq Z * seq Z).
 
@@ -382,7 +386,7 @@ transitivity (perms (map Z.of_nat (iota 0 n)) >>= (fun xs => Get >>=
   bind_ext => st.
   rewrite 2!bindA.
   bind_ext; case.
-  by rewrite -theorem_53 bindA.
+  by rewrite -theorem44 bindA.
 transitivity (Get >>= (fun ini => Put (0, [::], [::])%Z >>
   perms (map Z.of_nat (iota 0 n)) >>= (fun xs => (foldr opdot_queens (Ret [::]) xs >>= overwrite ini)))).
   rewrite -getpermsC.
@@ -393,14 +397,13 @@ bind_ext => st.
 by rewrite !bindA.
 Qed.
 
-End section_52.
+End section5a.
 
 Definition seed_select {M : nondetStateMonad (Z * seq Z * seq Z)%type} :=
   fun (p : pred (seq Z)) (f : seq Z -> M (Z * seq Z)%type)
   (a b : seq Z) => size a < size b.
 
-(* direct proof of theorem 4.2 *)
-Section theorem_42.
+Section theorem51.
 Variables (M : nondetStateMonad (Z * seq Z * seq Z)%type).
 
 Local Open Scope mu_scope.
@@ -419,7 +422,7 @@ transitivity (Ret [::] >>= foldr op (Ret [::])).
 by rewrite bindretf.
 Qed.
 
-Lemma theorem_42 :
+Lemma theorem51 :
   (unfoldM p select >=> foldr op (Ret [::])) =1
   @hyloM _ _ _ _ op [::] p select seed_select (@well_founded_size _).
 Proof.
@@ -496,22 +499,21 @@ rewrite !bind_fmap !fmap_bind.
 by rewrite_ fcomp_def.
 Qed.
 
-End theorem_42.
+End theorem51.
 
-Section section_52_contd.
+Section section52.
 
 Variables (M : nondetStateMonad (Z * seq Z * seq Z)%type).
-
-Local Open Scope mu_scope.
 
 Lemma queensBodyE : queensBody M =
   hyloM (@opdot_queens M) [::] (@nilp _) select seed_select (@well_founded_size _).
 Proof.
 rewrite /queensBody funeqE => -[|h t].
 - rewrite /= permsE /= hyloME ?bindretf //; exact: decr_size_select.
-- by rewrite [h :: t]lock -theorem_42 /kleisli /= join_fmap perms_mu_perm.
+- by rewrite [h :: t]lock -theorem51 /kleisli /= join_fmap perms_mu_perm.
 Qed.
 
+(* last step of Section 5.2 *)
 Lemma queensBodyE' xs : queensBody M xs = if xs is [::] then Ret [::] else
   select xs >>= (fun xys =>
   Get >>= (fun st => guard (queens_ok (queens_next st xys.1)) >>
@@ -532,8 +534,7 @@ bind_ext; case.
 by rewrite queensBodyE.
 Qed.
 
-End section_52_contd.
+End section52.
 
-End mu2017.
-
+End nqueens_mu2019tr3.
 Arguments opdot_queens {M}.

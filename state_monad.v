@@ -308,11 +308,11 @@ case: Bool.bool_dec => // x2t.
 case: (IH x2) => // x0 <-; by rewrite fmapE.
 Qed.
 
-(* definition 5.1, mu2017 *)
+(* definition 4.2, mu2019tr3 *)
 Definition commute {M : monad} A B (m : M A) (n : M B) C (f : A -> B -> M C) : Prop :=
   m >>= (fun x => n >>= (fun y => f x y)) = n >>= (fun y => m >>= (fun x => f x y)) :> M _.
 
-(* theorem 5.2, mu2017 *)
+(* theorem 4.3, mu2019tr3 *)
 Lemma commute_nondetState S (M : nondetStateMonad S)
   A (m : M A) B (n : M B) C (f : A -> B -> M C) :
   nondetState_sub m -> commute m n f.
@@ -342,7 +342,7 @@ elim: x m n f => [{A}A a m n f <-| B0 {A}A n0 H0 n1 H1 m n2 f <- |
   by rewrite alt_bindDr H0 // H1.
 Qed.
 
-(* section 4.2, mu2017 *)
+(* section 4.1, mu2019tr3 *)
 Section loop.
 
 Variables (A S : Type) (M : stateMonad S) (op : S -> A -> S).
@@ -372,7 +372,7 @@ rewrite_ bindA.
 by rewrite_ bindretf.
 Qed.
 
-(* theorem 4.1, mu2017 *)
+(* theorem 4.1, mu2019tr3 *)
 Lemma loopp_of_scanl s xs :
   Ret (scanl op s xs) = do ini <- Get; loopp s xs >>= overwrite ini.
 Proof.
@@ -406,7 +406,8 @@ Qed.
 
 End loop.
 
-Section section_51. (* mu2017 *)
+(* mu2019tr3 *)
+Section section43.
 
 Variables (S : Type) (M : nondetStateMonad S).
 Variables (A : Type) (op : S -> A -> S) (ok : pred S).
@@ -466,8 +467,8 @@ Let res := @cons A.
 Definition opdot (a : A) (m : M (seq B)) : M (seq B) :=
   Get >>= (fun st => guard (ok (op st a)) >> Put (op st a) >> fmap (res a) m).
 
-(* mu2017 *)
-Lemma theorem_53 (xs : seq A) :
+(* mu2019tr3 *)
+Lemma theorem44 (xs : seq A) :
   foldr (opmul op) (Ret [::]) xs >>=
     (fun ys => guard (all ok ys) >> Ret xs) = foldr opdot (Ret [::]) xs.
 Proof.
@@ -514,7 +515,7 @@ transitivity (do st <- Get; guard (ok (op st x)) >>
 by rewrite [in RHS]/= -IH /opdot !bindA.
 Qed.
 
-End section_51.
+End section43.
 
 (* TODO: move? *)
 Definition intersect {A : eqType} (s t : seq A) : seq A := filter (mem s) t.
