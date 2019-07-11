@@ -66,6 +66,21 @@ Proof. by rewrite putget bindA bindretf. Qed.
 Definition overwrite {A S} {M : stateMonad S} s a : M A :=
   Put s >> Ret a.
 
+Definition protect {A S} {M : stateMonad S} (n : M A) :=
+  Get >>= (fun ini => n >>= overwrite ini).
+
+Lemma protect_put_ret {A S} {M : stateMonad S} (s : S) (a : A) :
+  protect (Put s >> Ret a) = Ret a :> M _.
+Proof.
+rewrite /protect.
+rewrite_ bindA.
+rewrite_ bindretf.
+rewrite /overwrite.
+Inf rewrite -bindA.
+rewrite_ putput.
+by rewrite -bindA getputskip bindskipf.
+Qed.
+
 Example test_nonce0 (M : stateMonad nat) : M nat :=
   Get >>= (fun s => Put s.+1 >> Ret s).
 (*Reset test_nonce0.
@@ -301,9 +316,8 @@ refine (ex_intro _ (ndBind x (fun x => ndBind (g x.2) (@ndRet _ \o cons x.1 ))) 
 rewrite [in LHS]/=.
 rewrite Hx size_f /bassert !bindA.
 bind_ext => -[x1 x2].
-rewrite /assert /guard ltnS.
-case: ifPn => b1b2; last by rewrite !bindfailf.
-rewrite !bindskipf !bindretf /g.
+case: assertPn => /=; rewrite ltnS => b1b2; last by rewrite !bindfailf.
+rewrite !bindretf /g.
 case: Bool.bool_dec => // x2t.
 case: (IH x2) => // x0 <-; by rewrite fmapE.
 Qed.
@@ -352,13 +366,13 @@ Local Open Scope mu_scope.
 Definition opmul x m : M _ :=
   Get >>= fun st => let st' := op st x in fmap (cons st') (Put st' >> m).
 
-Definition loopp s xs : M (seq S) :=
+Definition scanlM s xs : M (seq S) :=
   let mul x m := opmul x m in Put s >> foldr mul (Ret [::]) xs.
 
-Lemma loopp_nil s : loopp s [::] = Put s >> Ret [::].
+Lemma scanlM_nil s : scanlM s [::] = Put s >> Ret [::].
 Proof. by []. Qed.
 
-Lemma loopp_of_scanl_helper s
+Let scanlM_of_scanl_helper s
   (ms : M S) (mu mu' : M unit) (m : M (seq S)) (f : S -> M unit) :
   do x <- ms; mu >> (do xs <- fmap (cons s) (mu' >> m); f x >> Ret xs) =
   fmap (cons s) (do x <- ms; mu >> mu' >> (do xs <- m; f x >> Ret xs)).
@@ -373,18 +387,11 @@ by rewrite_ bindretf.
 Qed.
 
 (* theorem 4.1, mu2019tr3 *)
-Lemma loopp_of_scanl s xs :
-  Ret (scanl op s xs) = do ini <- Get; loopp s xs >>= overwrite ini.
+Lemma scanlM_of_scanl s xs : Ret (scanl op s xs) = protect (scanlM s xs).
 Proof.
 elim: xs s => [/=|x xs IH] s.
-  rewrite loopp_nil.
-  rewrite_ bindA.
-  rewrite_ bindretf.
-  rewrite /overwrite.
-  Inf rewrite -bindA.
-  rewrite_ putput.
-  by rewrite -bindA getputskip bindskipf.
-rewrite /loopp /overwrite [in RHS]/=.
+  by rewrite scanlM_nil protect_put_ret.
+rewrite /scanlM [in RHS]/=.
 set mul := fun (a : A) m => _.
 Inf rewrite !bindA.
 (* TODO(rei): tactic for nested function bodies? *)
@@ -394,17 +401,17 @@ transitivity (do y <- Get; (Put s >> Get) >>= fun z =>
 rewrite_ putget.
 rewrite_ bindA.
 rewrite_ bindretf.
-rewrite loopp_of_scanl_helper.
+rewrite scanlM_of_scanl_helper.
 transitivity (fmap (cons (op s x)) (do y <- Get; Put (op s x) >>
   (do a <- foldr mul (Ret [::]) xs; Put y >> Ret a))); last first.
   congr (fmap _ _); by rewrite_ putput.
-transitivity (fmap (cons (op s x))
-  (do y <- Get; loopp (op s x) xs >>= overwrite y)); last first.
+transitivity (fmap (cons (op s x)) (protect (scanlM (op s x) xs))); last first.
   congr (fmap _ _); by Inf rewrite -bindA.
 by rewrite -IH fmapE bindretf.
 Qed.
 
 End loop.
+Arguments scanlM {A S M}.
 
 (* mu2019tr3 *)
 Section section43.
@@ -414,20 +421,20 @@ Variables (A : Type) (op : S -> A -> S) (ok : pred S).
 
 Lemma assert_all_scanl s (xs : seq A) :
   assert (all ok \o scanl op s) xs =
-  Get >>= (fun ini => loopp _ op s xs >>=
-    (fun ys => guard (all ok ys) >> Ret xs >>= overwrite ini)) :> M _.
+  protect (scanlM op s xs >>=
+    (fun ys => guard (all ok ys) >> Ret xs)) :> M _.
 Proof.
-rewrite /assert.
-rewrite guardsC; last exact: bindmfail.
-transitivity (Get >>= (fun ini => loopp _ op s xs >>= overwrite ini >>=
-    (fun ys => guard (all ok ys) >> Ret xs) : M _)).
-  by rewrite -!bindA -loopp_of_scanl bindA !bindretf.
+rewrite assertE guardsC; last exact: bindmfail.
+transitivity (protect (scanlM op s xs) >>=
+    (fun ys => guard (all ok ys) >> Ret xs) : M _).
+  by rewrite -!bindA -scanlM_of_scanl bindA !bindretf assertE.
+rewrite bindA [in RHS]/protect.
 bind_ext => st.
-rewrite bindA; bind_ext => xs'.
+rewrite 2!bindA; bind_ext => xs'.
 rewrite [in RHS]bindA [in RHS]guardsC; last exact: bindmfail.
 rewrite bindA bindretf.
-rewrite /overwrite 2!bindA; bind_ext; case.
-by rewrite 2!bindretf.
+rewrite /overwrite bindA bindretf bindA; bind_ext; case.
+by rewrite bindretf assertE.
 Qed.
 
 Local Open Scope mu_scope.
@@ -439,8 +446,9 @@ Lemma put_foldr st x xs :
     (do ys <- foldr (opmul op) (Ret [::]) xs; guard (all ok ys))) :> M _.
 Proof.
 elim: xs x => [x|h t _ x].
-  rewrite /= bindretf /= bindskipf /= bindretf (_ : guard (_ _ [::]) = skip) //.
-  rewrite bindmskip /guard; case: ifPn => H.
+  rewrite /= bindretf /= guardT /= bindskipf /= bindretf.
+  rewrite (_ : guard (_ _ [::]) = skip) //= ?guardT //.
+  rewrite bindmskip; case: guardPn => H.
   - by rewrite bindskipf bindmskip.
   - by rewrite bindmfail bindfailf.
 rewrite /= !bindA.
@@ -472,7 +480,7 @@ Lemma theorem44 (xs : seq A) :
   foldr (opmul op) (Ret [::]) xs >>=
     (fun ys => guard (all ok ys) >> Ret xs) = foldr opdot (Ret [::]) xs.
 Proof.
-elim: xs => [|x xs IH]; first by rewrite /= bindretf /= bindskipf.
+elim: xs => [|x xs IH]; first by rewrite /= bindretf /= guardT bindskipf.
 rewrite [in LHS]/=.
 rewrite {1}/opmul.
 rewrite {1}bindA.
@@ -584,22 +592,22 @@ rewrite /promote_assert funeqE => -[x1 x2].
 rewrite 3![in RHS]compE -/(fmap _ _) [in RHS]fmapE.
 rewrite 2![in LHS]compE {1}/bassert [in LHS]bind_fmap !bindA.
 bind_ext => s.
-rewrite 2!bindA bindretf 2!bindA.
-rewrite {1}[in RHS]/guard.
-case: ifPn => ps; last first.
+rewrite bindA; rewrite_ bindretf.
+case: assertPn => ps; last first.
   rewrite bindfailf.
-  rewrite_ bindretf.
   With (idtac) Open (X in _ >>= X).
-    rewrite /assert /guard /= (negbTE (segment_closed_suffix ps x)) bindfailf.
+    rewrite /assert; unlock => /=.
+    rewrite (negbTE (segment_closed_suffix ps x)) guardF bindfailf.
     reflexivity.
   by rewrite right_z.
-rewrite bindskipf; bind_ext => t.
-rewrite bindretf.
+rewrite bindretf bindA /=.
 rewrite_ bindretf.
-rewrite bindA {1}[in RHS]/guard.
-case: ifPn => pt; last first.
-  by rewrite bindfailf /assert /guard /= (negbTE (segment_closed_prefix pt s)) bindfailf.
-by rewrite bindskipf bindretf bindA bindretf /= /assert promotable_pq.
+rewrite bindA.
+bind_ext => t.
+case: (assertPn _ _ t) => pt; last first.
+  rewrite bindfailf assertE (negbTE (segment_closed_prefix pt s)) guardF.
+  by rewrite bindfailf.
+by rewrite bindretf /=  2!assertE promotable_pq //= bindA bindretf.
 Qed.
 
 Section examples_promotable_segment_closed.

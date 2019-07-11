@@ -994,14 +994,39 @@ Section guard_assert.
 
 Variable M : failMonad.
 
-Definition guard (b : bool) : M unit := if b then skip else Fail.
+Definition guard (b : bool) : M unit := locked (if b then skip else Fail).
+
+Lemma guardPn (b : bool) : if_spec b skip Fail (~~ b) b (guard b).
+Proof. by rewrite /guard; unlock; case: ifPn => ?; constructor. Qed.
+
+Lemma guardT : guard true = skip. Proof. by rewrite /guard; unlock. Qed.
+
+Lemma guardF : guard false = Fail. Proof. by rewrite /guard; unlock. Qed.
 
 (* guard distributes over conjunction *)
 Lemma guard_and a b : guard (a && b) = guard a >> guard b.
-Proof. move: a b => -[b|b]; by [rewrite bindskipf| rewrite bindfailf]. Qed.
+Proof.
+move: a b => -[|] b /=; by [rewrite guardT bindskipf | rewrite guardF bindfailf].
+Qed.
 
 Definition assert {A} (p : pred A) (a : A) : M A :=
-  guard (p a) >> Ret a.
+  locked (guard (p a) >> Ret a).
+
+Lemma assertE {A} (p : pred A) (a : A) : assert p a = guard (p a) >> Ret a.
+Proof. by rewrite /assert; unlock. Qed.
+
+Lemma assertT {A} (a : A) : assert xpredT a = Ret a :> M _.
+Proof. by rewrite assertE guardT bindskipf. Qed.
+
+Lemma assertF {A} (a : A) : assert xpred0 a = Fail :> M _.
+Proof. by rewrite assertE guardF bindfailf. Qed.
+
+Lemma assertPn {A} (p : pred A) (a : A) :
+  if_spec (p a) (Ret a) Fail (~~ (p a)) (p a) (assert p a).
+Proof.
+rewrite assertE; case: guardPn => pa;
+  by [rewrite bindskipf; constructor | rewrite bindfailf; constructor].
+Qed.
 
 Definition bassert {A} (p : pred A) (m : M A) : M A := m >>= assert p.
 
@@ -1014,12 +1039,14 @@ Qed.
 
 (* guards commute with anything *)
 Lemma guardsC (HM : BindLaws.right_zero (@Bind M) (@Fail _)) b B (m : M B) :
-  (guard b >> m) = (m >>= fun x => guard b >> Ret x).
+  guard b >> m = m >>= assert (fun=> b).
 Proof.
-rewrite /guard; case: ifPn => Hb.
+case: guardPn => Hb.
   rewrite bindskipf.
+  rewrite /assert; unlock; rewrite guardT.
   rewrite_ bindskipf.
   by rewrite bindmret.
+rewrite /assert; unlock; rewrite guardF.
 rewrite_ bindfailf.
 by rewrite bindfailf HM.
 Qed.
@@ -1080,8 +1107,8 @@ rewrite /unfoldM Fix_eq; last first.
   destruct Bool.bool_dec => //; by rewrite H.
 rewrite /unfoldM'; case: ifPn => // py.
 rewrite decr_size /bassert 2!bindA; bind_ext => -[a' b'].
-rewrite /assert /guard /=; case: ifPn => b'y; last by rewrite !bindfailf.
-by rewrite bindskipf 2!bindretf /= b'y.
+case: assertPn => b'y; last by rewrite 2!bindfailf.
+by rewrite 2!bindretf /= b'y.
 Qed.
 
 End unfoldM_failMonad.
@@ -1119,9 +1146,10 @@ rewrite /hyloM Fix_eq; last first.
   destruct Bool.bool_dec => //.
   by rewrite K.
 rewrite {1}/hyloM'; case: ifPn => // py.
-rewrite Hdecr_seed /bassert !bindA /assert /guard; bind_ext => -[b' a'].
-case: ifPn => Hseed; last by rewrite !bindfailf.
-by rewrite !bindskipf !bindretf Hseed.
+rewrite Hdecr_seed /bassert !bindA.
+bind_ext => -[b' a'].
+case: assertPn => Hseed; last by rewrite 2!bindfailf.
+by rewrite 2!bindretf Hseed.
 Qed.
 
 End hyloM.
@@ -1557,8 +1585,8 @@ Qed.
 Lemma decr_size_select : bassert_size select.
 Proof.
 case => [|h t]; first by rewrite !selectE fmap_fail /bassert bindfailf.
-rewrite /bassert selectE bind_fmap fmapE; bind_ext => -[x y].
-by rewrite /assert /guard /= size_tuple ltnS leqnn bindskipf.
+rewrite /bassert selectE bind_fmap fmapE; bind_ext => -[x y] /=.
+by case: assertPn => //=; rewrite size_tuple /= ltnS leqnn.
 Qed.
 
 End select.

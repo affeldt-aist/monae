@@ -36,7 +36,7 @@ Definition safe1 : (seq Z)`2 -> seq Z`2 -> bool * (seq Z)`2 :=
 
 Definition queens {M : nondetMonad} n : M (seq Z) :=
   do rs <- perms (map Z_of_nat (iota 0 n)) ;
-     (guard (safe1 empty (place n rs)).1 >> Ret rs).
+     assert (fun x => (safe1 empty (place n x)).1) rs.
 
 End purely_functional.
 
@@ -174,7 +174,7 @@ rewrite (_ : f =
   case: (safe1 _ _) => a b.
   rewrite 2!bindA bindretf bindA.
   by rewrite_ bindretf.
-rewrite -bindA; congr (_ >> _).
+rewrite assertE -bindA; congr (_ >> _).
 rewrite -bindA.
 rewrite putgetput.
 rewrite 2!bindA.
@@ -209,6 +209,7 @@ rewrite 2!bindA.
 bind_ext => u.
 rewrite guardsC; last exact: bindmfail.
 rewrite 2!bindA.
+rewrite_ assertE.
 rewrite_ bindA.
 by rewrite_ bindretf.
 Qed.
@@ -242,7 +243,7 @@ transitivity (((fun x => x >>= (guard : _ -> M _)) \o
               crs).
   by [].
 apply foldr_fusion_ext => [|cr {crs}k].
-  by rewrite /= /safe3 /= /start2 /= bindretf.
+  by rewrite /= /safe3 /= /start2 /= bindretf guardT.
 transitivity ((do b' <- k ;
                do uds <- Get ;
                let (b, uds') := test cr uds in
@@ -293,8 +294,6 @@ End nqueens_gibbons2011icfp.
 Section nqueens_mu2019tr3.
 
 Section queens_definition.
-
-Local Open Scope mu_scope.
 
 (* section 3.3 *)
 Definition ups s i := zipWith Zplus (map Z_of_nat (iota i (size s))) s.
@@ -359,7 +358,8 @@ Qed.
 Lemma mu_queensE {M : nondetMonad} n : mu_queens n =
   perms (map Z_of_nat (iota 0 n)) >>= assert (safeAcc_scanl 0 [::] [::]) :> M _.
 Proof.
-rewrite /mu_queens; bind_ext => s; by rewrite /assert (safeE s) safeAccE.
+rewrite /mu_queens; bind_ext => s.
+by rewrite assertE (safeE s) safeAccE -assertE.
 Qed.
 
 End queens_definition.
@@ -370,30 +370,33 @@ Variable M : nondetStateMonad (Z * seq Z * seq Z).
 
 Definition opdot_queens : Z -> M (seq Z) -> M (seq Z) := opdot queens_next queens_ok.
 
-Local Open Scope mu_scope.
+Lemma corollary45 s : assert (safeAcc_scanl 0 [::] [::]) s =
+  protect (Put (0%Z, [::], [::]) >> foldr opdot_queens (Ret [::]) s).
+Proof.
+rewrite assert_all_scanl. (* NB: uses theorem 4.1 *)
+rewrite /protect; bind_ext => st.
+rewrite 3!bindA.
+bind_ext; case.
+by rewrite -theorem44 bindA.
+Qed.
 
 Definition queensBody (xs : seq Z) : M (seq Z) :=
   perms xs >>= foldr opdot_queens (Ret [::]).
 
-Lemma mu_queens_state_nondeter n : mu_queens n = Get >>=
-  (fun ini => Put (0, [::], [::])%Z >> queensBody (map Z_of_nat (iota 0 n)) >>= overwrite ini).
+Lemma mu_queens_state_nondeter n : mu_queens n =
+  protect (Put (0, [::], [::])%Z >> queensBody (map Z_of_nat (iota 0 n))).
 Proof.
 rewrite mu_queensE.
-transitivity (perms (map Z.of_nat (iota 0 n)) >>= (fun xs => Get >>=
-  (fun ini => Put (0, [::], [::])%Z >> foldr opdot_queens (Ret [::]) xs >>= overwrite ini))).
+transitivity (perms (map Z.of_nat (iota 0 n)) >>= (fun xs =>
+    protect (Put (0, [::], [::])%Z >> foldr opdot_queens (Ret [::]) xs))).
   bind_ext => s /=.
-  rewrite assert_all_scanl. (* NB: uses theorem 4.1 *)
-  bind_ext => st.
-  rewrite 2!bindA.
-  bind_ext; case.
-  by rewrite -theorem44 bindA.
-transitivity (Get >>= (fun ini => Put (0, [::], [::])%Z >>
-  perms (map Z.of_nat (iota 0 n)) >>= (fun xs => (foldr opdot_queens (Ret [::]) xs >>= overwrite ini)))).
-  rewrite -getpermsC.
-  bind_ext => s.
+  exact: corollary45.
+transitivity (protect (Put (0, [::], [::])%Z >>
+    perms (map Z.of_nat (iota 0 n)) >>= foldr opdot_queens (Ret [::]))).
+  rewrite -getpermsC /protect; bind_ext => s.
   rewrite !bindA putpermsC.
   by rewrite_ bindA.
-bind_ext => st.
+rewrite /protect; bind_ext => st.
 by rewrite !bindA.
 Qed.
 
@@ -434,9 +437,8 @@ rewrite /kleisli /= join_fmap.
 rewrite unfoldME; last exact: decr_size_select.
 rewrite (negbTE py) bindA.
 rewrite(@decr_size_select _ _) /bassert !bindA; bind_ext => -[b a] /=.
-rewrite /assert /guard /=.
-case: ifPn => ay; last by rewrite !bindfailf.
-rewrite bindskipf !bindretf /= -IH // bind_fmap /kleisli /= join_fmap.
+case: assertPn => ay; last by rewrite !bindfailf.
+rewrite !bindretf /= -IH // bind_fmap /kleisli /= join_fmap.
 suff : do x <- unfoldM p select a; op b (foldr op (Ret [::]) x) =
   op b (do x <- unfoldM p select a; foldr op (Ret [::]) x) by done.
 rewrite {ay}.
@@ -473,7 +475,7 @@ transitivity (do x <- Ret (u, v) [~] (do y_ys <- select v; Ret (y_ys.1, u :: y_y
     rewrite -bindA guardsC; last exact: bindmfail.
     rewrite !bindA.
     bind_ext => x.
-    rewrite !bindA.
+    rewrite assertE !bindA.
     bind_ext; case.
     by rewrite bindretf.
   rewrite -commute_nondetState; last first.
@@ -525,9 +527,8 @@ rewrite {1}queensBodyE hyloME; last exact: decr_size_select.
 rewrite {-1}[h :: t]lock decr_size_select /bassert 2!bindA.
 rewrite (_ : nilp _ = false) //.
 bind_ext => -[x ys].
-rewrite /assert /guard.
-case: ifPn => ysht; last by rewrite !bindfailf.
-rewrite bindskipf !bindretf /opdot_queens /opdot.
+case: assertPn => /= ysht; last by rewrite !bindfailf.
+rewrite !bindretf /opdot_queens /opdot.
 bind_ext => st.
 rewrite !bindA; bind_ext; case.
 bind_ext; case.

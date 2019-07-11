@@ -79,22 +79,24 @@ rewrite [in RHS]/drBin [in RHS]/bassert 2!compE ![in RHS]bindA.
 transitivity (do x0 <- relabel u;
   (do x <- dlabels t1;
    do x <- (do x1 <- (do y <- dlabels t2; Ret (x, y));
-            (do x <- guard (q x1) >> Ret x1; (Ret \o ucat) x));
+            (do x <- assert q x1; (Ret \o ucat) x));
    m x0 x)); last first.
   bind_ext => u'; rewrite bind_fmap bindA; bind_ext => sS.
   rewrite 4!bindA; bind_ext => x; rewrite 2!bindretf !bindA.
-  by do 3 rewrite_ bindretf.
+  by rewrite_ bindretf.
 rewrite -H1.
 rewrite [in LHS]/drBin bind_fmap [in LHS]/bassert /= ![in LHS]bindA.
 bind_ext => s.
 rewrite !bindA.
 transitivity (do x0 <- relabel u;
   (do x <- dlabels t2; (do x <-
-    (do x1 <- Ret (s, x); (do x3 <- guard (q x1) >> Ret x1; Ret (ucat x3)));
+    (do x1 <- Ret (s, x); (do x3 <- assert q x1; Ret (ucat x3)));
     m x0 x))); last by bind_ext => y2; rewrite bindA.
 rewrite -H2.
 bind_ext => s'.
-rewrite !bindretf !bindA.
+rewrite !bindretf.
+rewrite assertE.
+rewrite bindA.
 transitivity (guard (q (s, s')) >>
   (do x1 <- (Ret \o ucat) (s, s'); do x3 <- relabel u; m x3 x1)).
   bind_ext; case; by rewrite 2!bindretf.
