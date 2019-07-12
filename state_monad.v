@@ -118,7 +118,7 @@ Notation loopStateMonad := t.
 (* Definition Break S (M : t S) : m M unit := *)
 (*   let: Pack _ (Class _ _ (Mixin x _ _ _ _)) := M return m M unit in x. *)
 (* Arguments Break {S M} : simpl never. *)
-Definition Foreach (M : t) : nat -> nat -> (nat -> m M unit) -> m M unit :=
+Definition Foreach S (M : t S) : nat -> nat -> (nat -> m M unit) -> m M unit :=
   let: Pack _ (Class _ (Mixin x _ _ _)) :=
     M return nat -> nat -> (nat -> m M unit) -> m M unit in x.
 Coercion baseType : loopStateMonad >-> stateMonad.

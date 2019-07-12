@@ -88,8 +88,8 @@ Qed.
 End ImfsetTh.
 Section BigOps.
 Variables (T : choiceType) (I : eqType) (r : seq I).
-(* In order to avoid "&& true" popping up everywhere,
- we prepare a specialized version of bigfcupP *)
+(* In order to avoid "&& true" popping up everywhere, *)
+(*  we prepare a specialized version of bigfcupP *)
 Lemma bigfcupP' x (F : I -> {fset T}) :
   reflect (exists2 i : I, (i \in r) & x \in F i)
           (x \in \bigcup_(i <- r | true) F i).
@@ -140,15 +140,17 @@ End set.
 
 Section state.
 Variables S : Type.
-Let m0 := fun A => S -> A * S.
+Definition m0 := fun A => S -> A * S.
+Definition bind := (fun A B (m : m0 A) (f : A -> m0 B) => fun s => let (a, s') := m s in f a s').
+Definition ret := (fun A a => (fun s : S => (a, s)) : m0 A).
 Definition state : monad.
 apply: (@Monad_of_bind_ret m0
-  (fun A B m f => fun s => let (a, s') := m s in f a s') (* bind *)
-  (fun A a => fun s => (a, s)) (* ret *)
+  bind
+  ret
    _ _ _).
 by [].
-move=> A f; rewrite funeqE => ?; by case: f.
-move=> A B C a b c; rewrite funeqE => ?; by case: a.
+move=> A f; rewrite /bind funeqE => ?; by case: f.
+move=> A B C a b c; rewrite /bind funeqE => ?; by case: a.
 Defined.
 End state.
 
@@ -182,6 +184,14 @@ Definition set := MonadFail.Pack set_class.
 End set.
 
 End ModelFail.
+
+Module ModelState.
+
+Program Definition state S := MonadState.Pack (MonadState.Class
+  (@MonadState.Mixin _ (ModelMonad.state S)
+  (fun s => (s, s)) (fun s' _ => (tt, s')) _ _ _ _)).
+
+End ModelState.
 
 Module ModelAlt.
 
@@ -271,37 +281,88 @@ Next Obligation. by []. Qed.
 End st.
 End ModelStateTrace.
 
-Module ModelLoop.
-(* Variable M : Type -> Type. *)
-Definition loop := fun A => forall r, (A -> r) -> r.
+(* Module ModelLoop. *)
+(* (* Variable M : Type -> Type. *) *)
+(* Definition loop := fun A => forall r, (A -> r) -> r. *)
 
-Local Obligation Tactic := by [].
-Program Definition loopM : monad := (@Monad_of_bind_ret loop
- (fun A B ma f => fun _ cont => ma _ (fun a => f a _ cont)) (* bind *)
- (fun A a => fun _ cont => cont a) (* ret *)
- _ _ _).
-Set Printing All.
-Fixpoint mforeach (it min : nat) (body : nat -> loopM unit) : unit :=
-  if it <= min then tt
-  else if it is it'.+1 then
-      body it _ (fun _  => mforeach it' min body)
-      else tt.
+(* Local Obligation Tactic := by []. *)
+(* Program Definition loopM : monad := (@Monad_of_bind_ret loop *)
+(*  (fun A B ma f => fun _ cont => ma _ (fun a => f a _ cont)) (* bind *) *)
+(*  (fun A a => fun _ cont => cont a) (* ret *) *)
+(*  _ _ _). *)
+(* Set Printing All. *)
+(* Fixpoint mforeach (it min : nat) (body : nat -> loopM unit) : unit := *)
+(*   if it <= min then tt *)
+(*   else if it is it'.+1 then *)
+(*       body it _ (fun _  => mforeach it' min body) *)
+(*       else tt. *)
 
-Set Printing All.
-Definition fm : loopMonad.
-refine (MonadLoop.Pack (@MonadLoop.Class _ (Monad.class loopM) (@MonadLoop.Mixin loopM mforeach _ _ _))).
-:= @MonadLoop.Class M m
- (@MonadLoop.Mixin _ _ (Monad.Pack m)
-  mforeach
-                                             
-                                          
-End ModelLoop.
+(* Set Printing All. *)
+(* Definition fm : loopMonad. *)
+(* refine (MonadLoop.Pack (@MonadLoop.Class _ (Monad.class loopM) (@MonadLoop.Mixin loopM mforeach _ _ _))). *)
+(* := @MonadLoop.Class M m *)
+(*  (@MonadLoop.Mixin _ _ (Monad.Pack m) *)
+(*   mforeach *)
 
 Module ModelStateLoop.
-End ModelStateLoop.
-(* Definition mk : loopStateMonad S. *)
-(* set m := @ModelMonad.state.  *)
 
+(* Variable S : Type. *)
+(* Let m : stateMonad S := @ModelState.state S.  *)
+(* Axiom foreach : nat -> nat -> (nat -> m unit) -> m unit. *)
+(* Fixpoint mforeach S (it min : nat) (body : nat -> (@ModelMonad.m0 S) unit) : (@ModelMonad.m0 S) unit := *)
+(*   if it <= min then ModelMonad.ret tt *)
+(*   else if it is it'.+1 then *)
+(*       ModelMonad.bind (body it) (fun _ => mforeach it' min body) *)
+(*       else ModelMonad.ret tt. *)
+Fixpoint mforeach S (it min : nat) (body : nat -> (@ModelMonad.state S) unit) : (@ModelMonad.state S) unit :=
+  if it <= min then Ret tt
+  else if it is it'.+1 then
+      (body it) >>= (fun _ => mforeach it' min body)
+      else Ret tt.
+
+Program Definition mk S : loopStateMonad S :=
+let m : stateMonad S := @ModelState.state S in
+let slm := @MonadStateLoop.Class S _ (MonadState.class m)
+  (@MonadStateLoop.Mixin _ m 
+  (@mforeach S)
+   _ _ _ ) in
+@MonadStateLoop.Pack S _ slm.
+Next Obligation.
+have mn : m < ( m + n .+1).
+  rewrite addnS.
+  rewrite ltnS.
+  rewrite leq_addr.
+  by [].
+(*move: mn.
+move: m.
+case => //.
+move=> m.
+move=> /=.
+rewrite ltn_neqAle.
+move/andP.
+case.
+move=> _.
+move=> ->.
+by [].
+*)
+by case: m mn => //= m; rewrite ltn_neqAle =>/andP[_ ->].
+Defined.
+
+Next Obligation.
+
+Next Obligation. by []. Qed.
+Next Obligation. move=> *; by rewrite funeqE; case. Qed.
+Next Obligation. by []. Qed.
+Next Obligation. by []. Qed.
+Next Obligation. by []. Qed.
+End st.
+End ModelStateTrace.
+Next Obligation.
+    (MonadStateTrace.class stm)
+    (MonadRun.mixin (MonadRun.class run))
+    (@MonadStateTraceRun.Mixin _ _ run _ _ _ _ _ _))).
+
+End ModelStateLoop.
 Module ModelRun.
 
 Definition mk {S T} : runMonad (S * seq T).
