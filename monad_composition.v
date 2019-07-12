@@ -250,3 +250,52 @@ Proof. by move=> A; rewrite !JOINE -!/prod (Prod.JOIN_fmap_JOIN prod4). Qed.
 
 End swap.
 End Swap.
+
+(* monad morphism, Jaskelioff ESOP 2009 *)
+
+From mathcomp Require Import boolp.
+
+Module monadM.
+Section monad_morphism.
+Variables M N : monad.
+Record t := mkMonadMorphism {
+  e : forall A (m : M A), N A ;
+  ret : forall {A} (a : A), Ret a = e (Ret a) ;
+  bind : forall {A B} (m : M A) (f : A -> M B),
+    e (m >>= f) = e m >>= (fun a => e (f a))
+}.
+End monad_morphism.
+Module Exports.
+Notation monadM := t.
+Definition coercion := e.
+Coercion coercion : monadM >-> Funclass.
+End Exports.
+End monadM.
+Export monadM.Exports.
+
+Section monadM_lemmas.
+Variables M N : monad.
+Lemma monadMret (f : monadM M N) : forall {A} (a : A), Ret a = f _ (Ret a).
+Proof. by case: f. Qed.
+Lemma monadMbind (f : monadM M N) : forall {A B} (m : M A) (h : A -> M B),
+  f _ (m >>= h) = f _ m >>= (fun a => f _ (h a)).
+Proof. by case: f. Qed.
+End monadM_lemmas.
+
+Section monad_morphism.
+Variables M N : monad.
+
+Lemma natural_monad_morphism (f : monadM M N) : naturalP M N f.
+Proof.
+move=> A B h; rewrite funeqE => m /=.
+have <- : Join ((M # (Ret \o h)) m) = (M # h) m.
+  by rewrite functor_o [LHS](_ : _ = (Join \o M # Ret) ((M # h) m)) // joinMret.
+move: (@monadMbind M N f A B m (Ret \o h)); rewrite 2!bindE => ->.
+rewrite (_ : (fun a => f _ ((Ret \o h) a)) = Ret \o h); last first.
+  by rewrite funeqE => y; rewrite -monadMret.
+rewrite [RHS](_ : _ = (Join \o (N # Ret \o N # h)) (f _ m)); last first.
+  by rewrite compE functor_o.
+by rewrite compA joinMret.
+Qed.
+
+End monad_morphism.
