@@ -258,7 +258,7 @@ From mathcomp Require Import boolp.
 Module monadM.
 Section monad_morphism.
 Variables M N : monad.
-Record t := mkMonadMorphism {
+Record t := mk {
   e : forall A (m : M A), N A ;
   ret : forall {A} (a : A), Ret a = e (Ret a) ;
   bind : forall {A B} (m : M A) (f : A -> M B),
@@ -299,3 +299,74 @@ by rewrite compA joinMret.
 Qed.
 
 End monad_morphism.
+
+Module MonadT.
+Section monad_transformer.
+Record t := mk {
+  T : monad -> monad ;
+  retT : forall (M : monad) A, A -> (T M) A ;
+  bindT : forall (M : monad) A B (m : (T M) A) (f : A -> (T M) B), (T M) B ;
+  liftT :> forall (M : monad), monadM M (T M)
+}.
+End monad_transformer.
+Module Exports.
+Notation monadT := t.
+End Exports.
+End MonadT.
+Export MonadT.Exports.
+
+From mathcomp Require Import boolp.
+
+Section state_monad_transformer.
+
+Local Obligation Tactic := idtac.
+
+Variable S : Type.
+
+Definition M0 (M : monad) := fun A => S -> M (A * S)%type.
+
+Definition retS (M : monad) A (a : A) : M0 M A :=
+  fun (s : S) => Ret (a, s) : M (A * S)%type.
+
+Definition bindS (M : monad) A B (m : (M0 M) A) f :=
+  (fun s => m s >>= uncurry f) : M0 M B.
+
+Program Definition estateMonadM (M : monad) : monad :=
+  @Monad_of_bind_ret (M0 M) (@bindS M) (retS M) _ _ _.
+Next Obligation.
+move=> M A B a f; rewrite /bindS funeqE => s.
+by rewrite bindretf.
+Qed.
+Next Obligation.
+move=> M A m; rewrite /bindS funeqE => s.
+rewrite -[in RHS](bindmret (m s)); by bind_ext; case.
+Qed.
+Next Obligation.
+move=> M A B C m f g; rewrite /bindS funeqE => s.
+by rewrite bindA; bind_ext; case.
+Qed.
+
+Definition liftS (M : monad) A (m : M A) : (estateMonadM M) A :=
+  fun s => @Bind M _ _ m (fun x => @Ret M _ (x, s)).
+
+Program Definition stateMonadM (M : monad) : monadM M (estateMonadM M) :=
+  @monadM.mk _ _ (@liftS M) _ _.
+Next Obligation.
+move=> M A a; rewrite /liftS funeqE => s.
+by rewrite bindretf.
+Qed.
+Next Obligation.
+move=> M A B m f; rewrite /liftS funeqE => s.
+rewrite [in RHS]/Bind.
+rewrite [in RHS]/Join /=.
+rewrite /Monad_of_bind_ret.join /=.
+rewrite /bindS.
+rewrite !bindA.
+bind_ext => a.
+by rewrite !bindretf.
+Qed.
+
+Definition statemonad_transformer : monadT :=
+  @MonadT.mk estateMonadM retS bindS stateMonadM.
+
+End state_monad_transformer.
