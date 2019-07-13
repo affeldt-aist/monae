@@ -19,7 +19,7 @@ Unset Printing Implicit Defensive.
 - Module JoinLaws.
 - Module Monad.
     with ret and join
-- Module Monad_of_bind_ret.
+- Module Monad_of_ret_bind.
     with bind and ret
 - Section fmap_and_join.
 - Section rep.
@@ -635,11 +635,11 @@ Lemma sequence_cons (M : monad) A h (t : seq (M A)) :
   sequence (h :: t) = do x <- h ; do vs <- sequence t ; Ret (x :: vs).
 Proof. by []. Qed.
 
-Module Monad_of_bind_ret.
-Section monad_of_bind_ret.
+Module Monad_of_ret_bind.
+Section monad_of_ret_bind.
 Variable M : Type -> Type.
-Variable bind : forall (A B : Type), M A -> (A -> M B) -> M B.
 Variable ret : forall A, A -> M A.
+Variable bind : forall (A B : Type), M A -> (A -> M B) -> M B.
 Hypothesis bindretf : BindLaws.left_neutral bind ret.
 Hypothesis bindmret : BindLaws.right_neutral bind ret.
 Hypothesis bindA : BindLaws.associative bind.
@@ -705,13 +705,13 @@ Qed.
 
 Definition monad_mixin := Monad.Mixin
   ret_naturality join_naturality joinretM joinMret joinA.
-End monad_of_bind_ret.
+End monad_of_ret_bind.
 Module Exports.
-Definition Monad_of_bind_ret M bind ret a b c :=
+Definition Monad_of_ret_bind M bind ret a b c :=
   Monad.Pack (Monad.Class (@monad_mixin M bind ret a b c)).
 End Exports.
-End Monad_of_bind_ret.
-Export Monad_of_bind_ret.Exports.
+End Monad_of_ret_bind.
+Export Monad_of_ret_bind.Exports.
 
 (* monadic counterpart of function application: applies a pure
    function to a monad (a.k.a. liftM in gibbons2011icfp, notation ($)

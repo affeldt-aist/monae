@@ -53,7 +53,7 @@ opam takes care of the dependencies.
 
 If opam is not installed but if the Requirements (see below) are met, do:
 
-1. ~coq_makefile -f _CoqProject -o Makefile.coq~
+1. ~coq_makefile -f _CoqProject -o Makefile~
 2. ~make~
 3. ~make install~
 

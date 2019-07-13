@@ -332,7 +332,7 @@ Definition bindS (M : monad) A B (m : (M0 M) A) f :=
   (fun s => m s >>= uncurry f) : M0 M B.
 
 Program Definition estateMonadM (M : monad) : monad :=
-  @Monad_of_bind_ret (M0 M) (@bindS M) (retS M) _ _ _.
+  @Monad_of_ret_bind (M0 M) (retS M) (@bindS M) _ _ _.
 Next Obligation.
 move=> M A B a f; rewrite /bindS funeqE => s.
 by rewrite bindretf.
@@ -359,7 +359,7 @@ Next Obligation.
 move=> M A B m f; rewrite /liftS funeqE => s.
 rewrite [in RHS]/Bind.
 rewrite [in RHS]/Join /=.
-rewrite /Monad_of_bind_ret.join /=.
+rewrite /Monad_of_ret_bind.join /=.
 rewrite /bindS.
 rewrite !bindA.
 bind_ext => a.

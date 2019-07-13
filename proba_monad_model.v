@@ -13,13 +13,14 @@ Require Import monad proba_monad model.
 Module MonadProbModel.
 Local Obligation Tactic := idtac.
 
-Let _bind : forall A B : Type, Dist (choice_of_Type A) -> (A -> Dist (choice_of_Type B)) -> Dist (choice_of_Type B) :=
+Definition _ret : forall A : Type, A -> Dist (choice_of_Type A) :=
+  fun A a => Dist1.d (a : choice_of_Type A).
+
+Definition _bind : forall A B : Type, Dist (choice_of_Type A) -> (A -> Dist (choice_of_Type B)) -> Dist (choice_of_Type B) :=
   fun A B m f => DistBind.d m f.
 
-Let _ret : forall A : Type, A -> Dist (choice_of_Type A) := fun A a => Dist1.d (a : choice_of_Type A).
-
 Program Definition monad : Monad.t :=
-  @Monad_of_bind_ret _ _bind _ret _ _ _.
+  @Monad_of_ret_bind _ _ret _bind _ _ _.
 Next Obligation. move=> ? ? ? ?; exact: DistBind1f. Qed.
 Next Obligation. move=> ? ?; exact: DistBindp1. Qed.
 Next Obligation. move=> A B C m f g; exact: DistBindA. Qed.
@@ -27,8 +28,8 @@ Next Obligation. move=> A B C m f g; exact: DistBindA. Qed.
 Lemma BindE (A B : choiceType) m (f : A -> monad B) :
   (m >>= f) = DistBind.d m f.
 Proof.
-rewrite /Bind /Join /= /Monad_of_bind_ret.join /Fun /=.
-rewrite /Monad_of_bind_ret.fmap /_bind DistBindA; congr DistBind.d.
+rewrite /Bind /Join /= /Monad_of_ret_bind.join /Fun /=.
+rewrite /Monad_of_ret_bind.fmap /_bind DistBindA; congr DistBind.d.
 by rewrite funeqE => a; rewrite /= DistBind1f.
 Qed.
 

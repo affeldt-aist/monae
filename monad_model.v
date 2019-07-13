@@ -106,12 +106,14 @@ Module ModelMonad.
 
 Section identity.
 Local Obligation Tactic := by [].
-Program Definition identity := (@Monad_of_bind_ret _ (fun A B (a : id A) (f : A -> id B) => f a) (fun A (a : A) => a)_ _ _).
+Program Definition identity := @Monad_of_ret_bind _ (fun A (a : A) => a)
+  (fun A B (a : id A) (f : A -> id B) => f a) _ _ _.
 End identity.
 
 Section list.
 Local Obligation Tactic := idtac.
-Program Definition list := @Monad_of_bind_ret _ (fun A B (a : seq A) (f : A -> seq B) => flatten (map f a)) (fun A (a : A) => [:: a]) _ _ _.
+Program Definition list := @Monad_of_ret_bind _ (fun A (a : A) => [:: a])
+  (fun A B (a : seq A) (f : A -> seq B) => flatten (map f a)) _ _ _.
 Next Obligation. move=> ? ? ? ? /=; by rewrite cats0. Qed.
 Next Obligation. move=> ? ?; by rewrite flatten_seq1. Qed.
 Next Obligation.
@@ -121,8 +123,8 @@ End list.
 
 Section option.
 Local Obligation Tactic := idtac.
-Program Definition option := @Monad_of_bind_ret option (fun A B (a : option A) (f : A -> option B) =>
-    if a isn't Some x then None else f x) (@Some) _ _ _.
+Program Definition option := @Monad_of_ret_bind option (@Some)
+  (fun A B (a : option A) (f : A -> option B) => if a isn't Some x then None else f x) _ _ _.
 Next Obligation. by []. Qed.
 Next Obligation. by []. Qed.
 Next Obligation. move=> ?; by case. Qed.
@@ -131,7 +133,7 @@ End option.
 
 Section set.
 Local Obligation Tactic := idtac.
-Program Definition set := @Monad_of_bind_ret _ (fun I A => @bigsetU A I) (@set1) _ _ _.
+Program Definition set := @Monad_of_ret_bind _ (@set1) (fun I A => @bigsetU A I) _ _ _.
 Next Obligation. move=> ? ? ? ?; exact: bigset1U. Qed.
 Next Obligation. move=> ? ?; exact: bigsetU1. Qed.
 Next Obligation. move=> ? ? ? ? ? ?; exact: bigsetUA. Qed.
@@ -141,9 +143,9 @@ Section state.
 Variables S : Type.
 Let m0 := fun A => S -> A * S.
 Definition state : monad.
-refine (@Monad_of_bind_ret m0
-  (fun A B m f => fun s => let (a, s') := m s in f a s') (* bind *)
+refine (@Monad_of_ret_bind m0
   (fun A a => fun s => (a, s)) (* ret *)
+  (fun A B m f => fun s => uncurry f (m s)) (* bind *)
    _ _ _).
 by [].
 move=> A f; rewrite funeqE => ?; by case: f.
@@ -190,8 +192,8 @@ Program Definition list_class := @MonadAlt.Class _ _
   (@MonadAlt.Mixin ModelMonad.list (@cat) catA _).
 Next Obligation.
 move=> A B /= s1 s2 k.
-rewrite !bindE /Join /= /Monad_of_bind_ret.join /=.
-by rewrite Monad_of_bind_ret.fmapE map_cat flatten_cat map_cat flatten_cat.
+rewrite !bindE /Join /= /Monad_of_ret_bind.join /=.
+by rewrite Monad_of_ret_bind.fmapE map_cat flatten_cat map_cat flatten_cat.
 Qed.
 Definition list := MonadAlt.Pack list_class.
 End list.
@@ -203,7 +205,7 @@ Program Definition set_class := @MonadAlt.Class _ _
 Next Obligation. exact: setUA. Qed.
 Next Obligation.
 rewrite /BindLaws.left_distributive /= => A B m1 m2 k.
-rewrite !bindE /Join /= /Monad_of_bind_ret.join /= Monad_of_bind_ret.fmapE /=.
+rewrite !bindE /Join /= /Monad_of_ret_bind.join /= Monad_of_ret_bind.fmapE /=.
 by rewrite setUDl // setUDl.
 Qed.
 Definition set := MonadAlt.Pack set_class.
@@ -280,7 +282,7 @@ refine (@MonadRun.Pack _ _ (@MonadRun.Class _ _ (Monad.class m)
 by [].
 move=> A B m0 f s.
 rewrite !bindE /=.
-rewrite Monad_of_bind_ret.fmapE /= /Join /= /Monad_of_bind_ret.join /=.
+rewrite Monad_of_ret_bind.fmapE /= /Join /= /Monad_of_ret_bind.join /=.
 by destruct (m0 s).
 Defined.
 
@@ -314,11 +316,11 @@ Local Obligation Tactic := try by [].
 Definition _m : Type -> Type :=
   fun A => S -> {fset (choice_of_Type A * choice_of_Type S)}.
 
-Program Definition _monad : monad := @Monad_of_bind_ret
-_m
+Program Definition _monad : monad := @Monad_of_ret_bind _m
+(fun A (a : A) s => [fset (a : choice_of_Type A, s : choice_of_Type S)])
 (fun A B m (f : A -> S -> {fset (choice_of_Type B * choice_of_Type S)}) =>
-     fun s => \bigcup_(i <- (fun x : [choiceType of choice_of_Type A * choice_of_Type S] => f x.1 x.2) @` (m s)) i) (* bind *)
-(fun A (a : A) s => [fset (a : choice_of_Type A, s : choice_of_Type S)]) (* ret *) _ _ _.
+  fun s => \bigcup_(i <- (fun x : [choiceType of choice_of_Type A * choice_of_Type S] => f x.1 x.2) @` (m s)) i)
+_ _ _.
 Next Obligation.
 move=> A B /= m f; rewrite funeqE => s; by rewrite imfset_set1 /= big_seq_fset1.
 Qed.
@@ -347,20 +349,20 @@ apply/fsetP => /= x; apply/bigfcupP'/bigfcupP'; case => /= CS  /imfsetP[/=].
 Qed.
 
 Lemma BindE (A B : Type) m (f : A -> _monad B) :
-  (m >>= f) = (fun s => \bigcup_(i <- (fun x : [choiceType of choice_of_Type A * choice_of_Type S] => f x.1 x.2) @` (m s)) i).
+  m >>= f = fun s => \bigcup_(i <- (fun x : [choiceType of choice_of_Type A * choice_of_Type S] => f x.1 x.2) @` (m s)) i.
 Proof.
 rewrite funeqE => s.
-rewrite /Bind /Join /= /Monad_of_bind_ret.join /=.
+rewrite /Bind /Join /= /Monad_of_ret_bind.join /=.
 set lhs := [fset _ _ | _ in _]. set rhs := [fset _ _ | _ in _].
 rewrite (_ : lhs = rhs) //; apply/fsetP => x; rewrite {}/lhs {}/rhs.
 apply/idP/imfsetP => /=.
 - case/imfsetP => -[a1 a2] /=.
-  rewrite /Fun /= /Monad_of_bind_ret.fmap /=.
+  rewrite /Fun /= /Monad_of_ret_bind.fmap /=.
   case/bigfcupP' => /= b.
   by case/imfsetP => -[b1 b2] /= Hb ->{b} /fset1P[-> -> ->{x a1 a2}]; exists (b1, b2).
 - case=> -[a1 s1] Ha /= ->{x}.
   apply/imfsetP => /=.
-  rewrite /Fun /= /Monad_of_bind_ret.fmap /=.
+  rewrite /Fun /= /Monad_of_ret_bind.fmap /=.
   eexists.
   + apply/bigfcupP' => /=.
     eexists.
