@@ -13,8 +13,8 @@ Require Import monad.
 Module Comp.
 Section comp.
 Variables (M N : monad).
-Definition F : functor (*(M \o N)*) := FComp M N.
-Definition ret A : A -> FComp M N A := Ret \o Ret.
+Definition F := M \O N.
+Definition ret : forall A, A  -> (M \O N) A := fun A => @Ret M _ \o @Ret N A.
 Lemma fmap_ret (A B : Type) (h : A -> B) : (F # h) \o (@ret _) = (@ret _) \o h.
 Proof.
 rewrite /ret.
@@ -31,7 +31,7 @@ Arguments Comp.ret {M} {N} {A}.
 Module Prod.
 Section prod.
 Variables M N(* NB: actually, premonad is enough for N*) : monad.
-Variable prod : forall A, N (M (N A)) -> M (N A).
+Variable prod : forall A, N ((M \O N) A) -> (M \O N) A.
 Arguments prod {A}.
 
 Definition JOIN A : Comp.F M N (Comp.F M N A) -> Comp.F M N A := Join \o M # prod.
@@ -90,7 +90,7 @@ Variables M  (* actually, premonad is enough for M *) N : monad.
 Variable dorp : forall A, M (N (M A)) -> M (N A).
 Arguments dorp {A}.
 
-Definition JOIN A : FComp M N (FComp M N A) -> FComp M N A := _ # Join \o dorp.
+Definition JOIN A : (M \O N) ((M \O N) A) -> (M \O N) A := _ # Join \o dorp.
 Arguments JOIN {A}.
 
 Definition dorp1 := forall A B (f : A -> B), dorp \o Comp.F M N # (_ # f) = Comp.F M N # f \o dorp.
@@ -123,7 +123,7 @@ Lemma JOIN_fmap_ret : JoinLaws.right_unit (@Comp.ret _ _) (@JOIN).
 Proof.
 move=> A; rewrite /JOIN /Comp.ret.
 rewrite -(compA (M # Join) dorp).
-rewrite (functor_o (FComp M N)).
+rewrite (functor_o (M \O N)).
 rewrite (compA dorp) Hdorp3.
 rewrite compidf -functor_o.
 by rewrite joinMret functor_id.
@@ -157,7 +157,7 @@ Variables M N : monad.
 Variable swap : forall A, N (M A) -> M (N A).
 Arguments swap {A}.
 
-Definition JOIN A : FComp M N (FComp M N A) -> FComp M N A := _ # Join \o Join \o _ # (@swap (N A)).
+Definition JOIN A : ((M \O N) \o (M \O N)) A -> (M \O N) A := _ # Join \o Join \o _ # (@swap (N A)).
 
 Lemma JOINE A : @JOIN A = Join \o _ # (_ # Join \o swap).
 Proof.
@@ -174,7 +174,7 @@ Fact JOIN_prod A : @JOIN A = Join \o _ # prod.
 Proof. by rewrite JOINE. Qed.
 
 Fact JOIN_dorp A : @JOIN A = _ # Join \o dorp.
-Proof. by rewrite /dorp compA. Qed.
+Proof. by rewrite /dorp. Qed.
 
 Definition swap1 := forall A B (f : A -> B), swap \o _ # (_ # f) = _ # (_ # f) \o swap .
 Definition swap2 := forall A, @swap A \o Ret = _ # Ret :> (M A -> M (N A)).
@@ -193,7 +193,7 @@ by rewrite -join_naturality functor_o -compA.
 Qed.
 
 Lemma prod2 : Prod.prod2 (@prod).
-Proof. by move=> A; rewrite /prod -compA Hswap2 -functor_o joinretM functor_id. Qed.
+Proof. by move=> A; rewrite /prod -compA Hswap2 -(functor_o M) joinretM functor_id. Qed.
 
 Lemma prod3 : Prod.prod3 (@prod).
 Proof.
@@ -259,7 +259,7 @@ Module monadM.
 Section monad_morphism.
 Variables M N : monad.
 Record t := mk {
-  e : forall A (m : M A), N A ;
+  e : M ~> N ;
   ret : forall {A} (a : A), Ret a = e (Ret a) ;
   bind : forall {A B} (m : M A) (f : A -> M B),
     e (m >>= f) = e m >>= (fun a => e (f a))
@@ -305,9 +305,8 @@ Section monad_transformer.
 Record t := mk {
   T : monad -> monad ;
   retT : forall (M : monad) A, A -> (T M) A ;
-  bindT : forall (M : monad) A B (m : (T M) A) (f : A -> (T M) B), (T M) B ;
-  liftT :> forall (M : monad), monadM M (T M)
-}.
+  bindT : forall (M : monad) A B, (T M) A -> (A -> (T M) B) -> (T M) B ;
+  liftT :> forall (M : monad), monadM M (T M) }.
 End monad_transformer.
 Module Exports.
 Notation monadT := t.

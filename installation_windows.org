@@ -83,7 +83,7 @@ installing MathComp as in *Step 2b*.
 - Add this point, you can already use Coq and /some version/ of
   MathComp almost as if you were on a Linux-based system
 
-* Step 4: Installed the Required Libraries on Top of MathComp and Then monae
+* Step 4: Install the Required Libraries on Top of MathComp and Then monae
 ** In case you chose Step 2:
 - Install MathComp-Analysis using unzip, untar, cd, make, make install
   1. Install bigenough 1.0.0 ([[https://github.com/math-comp/bigenough][download]]) 
