@@ -13,34 +13,31 @@ Require Import monad.
 Module Comp.
 Section comp.
 Variables (M N : monad).
-Definition F := M \O N.
-Definition ret : forall A, A  -> (M \O N) A := fun A => @Ret M _ \o @Ret N A.
-Lemma fmap_ret (A B : Type) (h : A -> B) : (F # h) \o (@ret _) = (@ret _) \o h.
+Definition ret : FId ~> M \O N := fun _ => Ret \o Ret.
+Arguments ret {_}.
+Lemma fmap_ret A B (h : A -> B) : ((M \O N) # h) \o ret = ret \o h.
 Proof.
-rewrite /ret.
-rewrite -[in RHS]compA.
-rewrite -(ret_naturality N h).
-rewrite [in RHS]compA.
-rewrite [in LHS]compA.
-by rewrite ret_naturality.
+rewrite {2}/ret -[in RHS]compA -(ret_naturality N h) [in RHS]compA.
+by rewrite {1}/ret [in LHS]compA ret_naturality FIdf.
 Qed.
 End comp.
 End Comp.
-Arguments Comp.ret {M} {N} {A}.
+Arguments Comp.ret _ _ {_}.
+Notation CRet := (Comp.ret).
 
 Module Prod.
 Section prod.
 Variables M N(* NB: actually, premonad is enough for N*) : monad.
-Variable prod : forall A, N ((M \O N) A) -> (M \O N) A.
-Arguments prod {A}.
+Variable prod : N \O (M \O N) ~> M \O N.
+Arguments prod {_}.
 
-Definition JOIN A : Comp.F M N (Comp.F M N A) -> Comp.F M N A := Join \o M # prod.
-Arguments JOIN {A}.
+Definition JOIN : (M \O N) \O (M \O N) ~> M \O N := fun _ => Join \o M # prod.
+Arguments JOIN {_}.
 
-Definition prod1 := forall A B (f : A -> B), prod \o _ # (Comp.F M N # f) = Comp.F M N # f \o prod.
-Definition prod2 := forall A, prod \o Ret = id :> (_ -> M (N A)).
-Definition prod3 := forall A, prod \o _ # Comp.ret = Ret :> (_ -> M (N A)).
-Definition prod4 := forall A, prod \o _ # JOIN = JOIN \o prod :> (_ -> M (N A)).
+Definition prod1 := forall A B (f : A -> B), prod \o N # ((M \O N) # f) = (M \O N) # f \o prod.
+Definition prod2 := forall A, prod \o Ret = id :> (_ -> (M \O N) A).
+Definition prod3 := forall A, prod \o N # CRet M N = Ret :> (_ -> (M \O N) A).
+Definition prod4 := forall A, prod \o N # JOIN = JOIN \o prod :> (_ -> (M \O N) A).
 Hypothesis Hprod1 : prod1.
 Hypothesis Hprod2 : prod2.
 Hypothesis Hprod3 : prod3.
@@ -52,14 +49,14 @@ move=> A B g; apply/esym; rewrite {1}/JOIN -[in LHS]compA -functor_o Hprod1.
 by rewrite functor_o compA /JOIN FCompE -(FCompE M M) -(@join_naturality M _ _ (N # g)) -compA.
 Qed.
 
-Lemma JOIN_ret : JoinLaws.left_unit (@Comp.ret _ _) (@JOIN).
+Lemma JOIN_ret : JoinLaws.left_unit (@CRet M N) (@JOIN).
 Proof.
 move=> A; rewrite /JOIN /Comp.ret compA.
 rewrite -(compA Join (M # prod) Ret) (ret_naturality M prod).
 by rewrite compA (compA Join) joinretM compidf Hprod2.
 Qed.
 
-Lemma JOIN_fmap_ret : JoinLaws.right_unit (@Comp.ret _ _) (@JOIN).
+Lemma JOIN_fmap_ret : JoinLaws.right_unit (@CRet M N) (@JOIN).
 Proof.
 move=> A.
 by rewrite /JOIN /Comp.ret -compA -functor_o Hprod3 joinMret.
@@ -87,16 +84,16 @@ End Prod.
 Module Dorp.
 Section dorp.
 Variables M  (* actually, premonad is enough for M *) N : monad.
-Variable dorp : forall A, M (N (M A)) -> M (N A).
-Arguments dorp {A}.
+Variable dorp : M \O (N \O M) ~> M \O N.
+Arguments dorp {_}.
 
-Definition JOIN A : (M \O N) ((M \O N) A) -> (M \O N) A := _ # Join \o dorp.
-Arguments JOIN {A}.
+Definition JOIN : (M \O N) \O (M \O N) ~> M \O N := fun _ => M # Join \o dorp.
+Arguments JOIN {_}.
 
-Definition dorp1 := forall A B (f : A -> B), dorp \o Comp.F M N # (_ # f) = Comp.F M N # f \o dorp.
-Definition dorp2 := forall A, (@dorp A) \o Comp.ret = _ # Ret.
-Definition dorp3 := forall A, (@dorp A) \o Comp.F M N # Ret = id.
-Definition dorp4 := forall A, (@dorp A) \o JOIN = JOIN \o Comp.F M N # dorp.
+Definition dorp1 := forall A B (f : A -> B), dorp \o (M \O N) # (M # f) = (M \O N) # f \o dorp.
+Definition dorp2 := forall A, (@dorp A) \o CRet M N = M # Ret.
+Definition dorp3 := forall A, (@dorp A) \o (M \O N) # Ret = id.
+Definition dorp4 := forall A, (@dorp A) \o JOIN = JOIN \o (M \O N) # dorp.
 Hypothesis Hdorp1 : dorp1.
 Hypothesis Hdorp2 : dorp2.
 Hypothesis Hdorp3 : dorp3.
@@ -112,14 +109,14 @@ rewrite -join_naturality.
 by rewrite functor_o.
 Qed.
 
-Lemma JOIN_ret : JoinLaws.left_unit (@Comp.ret _ _) (@JOIN).
+Lemma JOIN_ret : JoinLaws.left_unit (@CRet M N) (@JOIN).
 Proof.
 move=> A; rewrite /JOIN -compA Hdorp2.
 rewrite -(functor_o M).
 by rewrite joinretM functor_id.
 Qed.
 
-Lemma JOIN_fmap_ret : JoinLaws.right_unit (@Comp.ret _ _) (@JOIN).
+Lemma JOIN_fmap_ret : JoinLaws.right_unit (@CRet M N) (@JOIN).
 Proof.
 move=> A; rewrite /JOIN /Comp.ret.
 rewrite -(compA (M # Join) dorp).
@@ -142,7 +139,7 @@ rewrite -(compA _ dorp).
 rewrite (compA (M # Join)) -functor_o.
 rewrite joinA.
 rewrite functor_o.
-rewrite -compA (compA (_ # Join) dorp).
+rewrite -compA (compA (M # Join) dorp).
 rewrite -/JOIN.
 rewrite -Hdorp4.
 by rewrite compA.
@@ -154,32 +151,33 @@ End Dorp.
 Module Swap.
 Section swap.
 Variables M N : monad.
-Variable swap : forall A, N (M A) -> M (N A).
-Arguments swap {A}.
+Variable swap : N \O M ~> M \O N.
+Arguments swap {_}.
 
-Definition JOIN A : ((M \O N) \o (M \O N)) A -> (M \O N) A := _ # Join \o Join \o _ # (@swap (N A)).
+Definition JOIN : (M \O N) \o (M \O N) ~> M \O N :=
+  fun A => M # Join \o Join \o M # (@swap (N A)).
 
-Lemma JOINE A : @JOIN A = Join \o _ # (_ # Join \o swap).
+Lemma JOINE A : @JOIN A = Join \o M # (M # Join \o swap).
 Proof.
 rewrite /JOIN join_naturality.
 by rewrite -(compA Join) FCompE -functor_o.
 Qed.
 
-Let prod A := _ # (@Join _ A) \o (@swap _).
+Let prod A := M # (@Join N A) \o (@swap _).
 Arguments prod {A}.
-Let dorp A := Join \o _ # (@swap A).
+Let dorp A := Join \o M # (@swap A).
 Arguments dorp {A}.
 
-Fact JOIN_prod A : @JOIN A = Join \o _ # prod.
+Fact JOIN_prod A : @JOIN A = Join \o M # prod.
 Proof. by rewrite JOINE. Qed.
 
-Fact JOIN_dorp A : @JOIN A = _ # Join \o dorp.
+Fact JOIN_dorp A : @JOIN A = M # Join \o dorp.
 Proof. by rewrite /dorp. Qed.
 
-Definition swap1 := forall A B (f : A -> B), swap \o _ # (_ # f) = _ # (_ # f) \o swap .
-Definition swap2 := forall A, @swap A \o Ret = _ # Ret :> (M A -> M (N A)).
-Definition swap3 := forall A, @swap A \o _ # Ret = Ret :> (N A -> M (N A)).
-Definition swap4 := forall A, (@prod A) \o _ # (@dorp _) = (@dorp _) \o (@prod _).
+Definition swap1 := forall A B (f : A -> B), swap \o N # (M # f) = M # (N # f) \o swap .
+Definition swap2 := forall A, @swap A \o Ret = M # Ret :> (M A -> (M \O N) A).
+Definition swap3 := forall A, @swap A \o N # Ret = Ret :> (N A -> (M \O N) A).
+Definition swap4 := forall A, (@prod A) \o N # (@dorp _) = (@dorp _) \o (@prod _).
 Hypothesis Hswap1 : swap1.
 Hypothesis Hswap2 : swap2.
 Hypothesis Hswap3 : swap3.
@@ -207,7 +205,7 @@ Proof.
 move=> A; rewrite {1}/Prod.JOIN -JOIN_prod JOIN_dorp {1}/prod (functor_o N).
 rewrite (compA (M # Join \o swap)) -(compA (_ # Join)) Hswap1.
 rewrite (compA (M # Join)) -functor_o joinA functor_o.
-rewrite -compA -(compA (_ # Join)) (compA (_ # Join) swap) -/prod Hswap4.
+rewrite -compA -(compA (_ # Join)) (compA (M # Join) swap) -/prod Hswap4.
 by rewrite compA /Prod.JOIN -JOIN_prod JOIN_dorp.
 Qed.
 
@@ -239,10 +237,10 @@ Qed.
 Lemma JOIN_naturality : JoinLaws.join_naturality (@JOIN).
 Proof. by move=> ?? g; rewrite JOINE -/prod (Prod.JOIN_naturality prod1 g) JOINE. Qed.
 
-Lemma JOIN_ret : JoinLaws.left_unit (@Comp.ret _ _) (@JOIN).
+Lemma JOIN_ret : JoinLaws.left_unit (@CRet M N) (@JOIN).
 Proof. by move=> A; rewrite JOINE -/prod (Prod.JOIN_ret prod2). Qed.
 
-Lemma JOIN_fmap_ret : JoinLaws.right_unit (@Comp.ret _ _) (@JOIN).
+Lemma JOIN_fmap_ret : JoinLaws.right_unit (@CRet M N) (@JOIN).
 Proof. by move=> A; rewrite JOINE -/prod (Prod.JOIN_fmap_ret prod3). Qed.
 
 Lemma JOIN_fmap_JOIN : JoinLaws.associativity (@JOIN).
@@ -304,7 +302,7 @@ Module MonadT.
 Section monad_transformer.
 Record t := mk {
   T : monad -> monad ;
-  retT : forall (M : monad) A, A -> (T M) A ;
+  retT : forall (M : monad), FId ~> (T M);
   bindT : forall (M : monad) A B, (T M) A -> (A -> (T M) B) -> (T M) B ;
   liftT :> forall (M : monad), monadM M (T M) }.
 End monad_transformer.

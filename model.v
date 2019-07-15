@@ -10,4 +10,6 @@ Definition equality_mixin_of_Type (T : Type) : Equality.mixin_of T :=
 Definition choice_of_Type (T : Type) : choiceType :=
   Choice.Pack (Choice.Class (equality_mixin_of_Type T) gen_choiceMixin).
 
+Definition choice_of_Object {T} (t : T) : choice_of_Type T := t.
+
 End choice_cast.
