@@ -318,42 +318,41 @@ Section state_monad_transformer.
 
 Local Obligation Tactic := idtac.
 
-Variable S : Type.
+Variables (S : Type) (M : monad).
 
-Definition M0 (M : monad) := fun A => S -> M (A * S)%type.
+Definition MS := fun A => S -> M (A * S)%type.
 
-Definition retS (M : monad) A (a : A) : M0 M A :=
+Definition retS A (a : A) : MS A :=
   fun (s : S) => Ret (a, s) : M (A * S)%type.
 
-Definition bindS (M : monad) A B (m : (M0 M) A) f :=
-  (fun s => m s >>= uncurry f) : M0 M B.
+Definition bindS A B (m : MS A) f := (fun s => m s >>= uncurry f) : MS B.
 
-Program Definition estateMonadM (M : monad) : monad :=
-  @Monad_of_ret_bind (M0 M) (retS M) (@bindS M) _ _ _.
+Program Definition estateMonadM : monad :=
+  @Monad_of_ret_bind MS retS bindS _ _ _.
 Next Obligation.
-move=> M A B a f; rewrite /bindS funeqE => s.
+move=> A B a f; rewrite /bindS funeqE => s.
 by rewrite bindretf.
 Qed.
 Next Obligation.
-move=> M A m; rewrite /bindS funeqE => s.
+move=> A m; rewrite /bindS funeqE => s.
 rewrite -[in RHS](bindmret (m s)); by bind_ext; case.
 Qed.
 Next Obligation.
-move=> M A B C m f g; rewrite /bindS funeqE => s.
+move=> A B C m f g; rewrite /bindS funeqE => s.
 by rewrite bindA; bind_ext; case.
 Qed.
 
-Definition liftS (M : monad) A (m : M A) : (estateMonadM M) A :=
+Definition liftS A (m : M A) : estateMonadM A :=
   fun s => @Bind M _ _ m (fun x => @Ret M _ (x, s)).
 
-Program Definition stateMonadM (M : monad) : monadM M (estateMonadM M) :=
-  @monadM.mk _ _ (@liftS M) _ _.
+Program Definition stateMonadM : monadM M estateMonadM :=
+  @monadM.mk _ _ liftS _ _.
 Next Obligation.
-move=> M A a; rewrite /liftS funeqE => s.
+move=> A a; rewrite /liftS funeqE => s.
 by rewrite bindretf.
 Qed.
 Next Obligation.
-move=> M A B m f; rewrite /liftS funeqE => s.
+move=> A B m f; rewrite /liftS funeqE => s.
 rewrite [in RHS]/Bind.
 rewrite [in RHS]/Join /=.
 rewrite /Monad_of_ret_bind.join /=.
@@ -363,7 +362,53 @@ bind_ext => a.
 by rewrite !bindretf.
 Qed.
 
-Definition statemonad_transformer : monadT :=
-  @MonadT.mk estateMonadM retS bindS stateMonadM.
-
 End state_monad_transformer.
+
+Definition statemonad_transformer S : monadT :=
+  @MonadT.mk (estateMonadM S) (@retS S) (@bindS S) (@stateMonadM S).
+
+Section exception_monad_transformer.
+
+Local Obligation Tactic := idtac.
+
+Variables (Z : Type) (* the type of exceptions *) (M : monad).
+
+Definition MX := fun X => M (Z + X)%type.
+
+Definition retX X x : MX X := Ret (inr x).
+
+Definition bindX X Y (t : MX X) (f : X -> MX Y) : MX Y :=
+  t >>= fun c => match c with inl z => Ret (inl z) | inr x => f x end.
+
+Program Definition eexceptionMonadM : monad :=
+  @Monad_of_ret_bind MX retX bindX _ _ _.
+Next Obligation. by move=> A B a f; rewrite /bindX bindretf. Qed.
+Next Obligation.
+move=> A m; rewrite /bindX -[in RHS](bindmret m); by bind_ext; case.
+Qed.
+Next Obligation.
+move=> A B C m f g; rewrite /bindX bindA; bind_ext; case => //.
+by move=> z; rewrite bindretf.
+Qed.
+
+Definition liftX X (m : M X) : eexceptionMonadM X := @Bind M _ _ m (fun x => @Ret eexceptionMonadM _ x).
+
+Program Definition exceptionMonadM : monadM M eexceptionMonadM :=
+  @monadM.mk _ _ liftX _ _.
+Next Obligation. by move=> A a; rewrite /liftX bindretf. Qed.
+Next Obligation.
+move=> A B m f.
+rewrite /liftX.
+rewrite [in RHS]/Bind.
+rewrite [in RHS]/Join /=.
+rewrite /Monad_of_ret_bind.join /=.
+rewrite /bindX.
+rewrite !bindA.
+bind_ext => a.
+by rewrite !bindretf.
+Qed.
+
+End exception_monad_transformer.
+
+Definition exceptionmonad_transformer Z : monadT :=
+  @MonadT.mk (eexceptionMonadM Z) (@retX Z) (@bindX Z) (@exceptionMonadM Z).
