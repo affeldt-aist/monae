@@ -1,4 +1,5 @@
 Require Import ZArith ssreflect ssrmatching ssrfun ssrbool.
+
 From mathcomp Require Import eqtype ssrnat seq choice fintype tuple.
 From mathcomp Require Import boolp.
 From infotheo Require Import ssrZ.
@@ -53,7 +54,7 @@ Proof. by case: M => m [[[? ? ? ? []]]]. Qed.
 Lemma putget s : Put s >> Get = Put s >> Ret s :> M _.
 Proof. by case: M => m [[[? ? ? ? []]]]. Qed.
 Lemma getputskip : Get >>= Put = skip :> M _.
-Proof. by case: M => m [[[? ? ? ? []]]]. Qed.
+Proof.  by case: M => m [[[? ? ? ? []]]]. Qed.
 Lemma getget (k : S -> S -> M S) :
  (Get >>= (fun s => Get >>= k s)) = (Get >>= fun s => k s s).
 Proof. by case: M k => m [[[? ? ? ? []]]]. Qed.
@@ -71,16 +72,11 @@ Example test_nonce0 (M : stateMonad nat) : M nat :=
 (*Reset test_nonce0.
 Fail Check test_nonce0.*)
 
-(* Module MonadLoop. *)
-(* Record mixin_of (M : monad -> monad) (mo : monad) : Type := Mixin { *)
-(*    lift : forall A, mo A -> M mo A ; *)
-(*    run : forall A, M mo A -> mo A ; *)
-(*    foreach : nat -> nat -> (nat -> M mo unit) -> mo unit ; *)
-(*   _ : forall m n body, foreach m (m + n.+1) body = Ret tt ; *)
-(*   _ : forall m body, foreach m m body = run (body m); *)
-(*   _ : forall m n body, foreach (m.+1 + n) m body = *)
-(*      run (body (m.+1 + n)) >> foreach (m + n) m body :> mo unit *)
-(* }. *)
+Module MonadContinuation.
+Record mixin_of (M : monad) : Type := Mixin {
+   abort : forall A R, R -> M A ;
+   callcc : forall A R, ((M A -> R) -> M A) -> M A
+}.
 
 (* Record class_of (M : monad -> monad) (mo : monad) := Class { *)
 (*   base : Monad.class_of (M mo) ; mixin : mixin_of (Monad.Pack base) mo }. *)
@@ -101,10 +97,12 @@ Fail Check test_nonce0.*)
 Module MonadStateLoop.
   Record mixin_of S (M : stateMonad S) : Type := Mixin {
    foreach : nat -> nat -> (nat -> M unit) -> M unit ;
-  _ : forall m n body, foreach m (m + n.+1) body = Ret tt ;
-  _ : forall m body, foreach m m body = (body m);
+  (* _ : forall m n body, foreach m (m + n.+1) body = Ret tt ; *)
+  (* _ : forall m body, foreach m m body = (body m); *)
+  _ : forall m body, foreach m m body = Ret tt ;
+  (* _ : forall m body, foreach (m .+1) m body = (body m); *)
   _ : forall m n body, foreach (m.+1 + n) m body =
-     (body (m.+1 + n)) >> foreach (m + n) m body :> M unit
+     (body (m + n)) >> foreach (m + n) m body :> M unit
 }.
 Record class_of S (m : Type -> Type) := Class {
   (* base : MonadLoop.class_of m ; *)
@@ -119,7 +117,7 @@ Notation loopStateMonad := t.
 (*   let: Pack _ (Class _ _ (Mixin x _ _ _ _)) := M return m M unit in x. *)
 (* Arguments Break {S M} : simpl never. *)
 Definition Foreach S (M : t S) : nat -> nat -> (nat -> m M unit) -> m M unit :=
-  let: Pack _ (Class _ (Mixin x _ _ _)) :=
+  let: Pack _ (Class _ (Mixin x _ _)) :=
     M return nat -> nat -> (nat -> m M unit) -> m M unit in x.
 Coercion baseType : loopStateMonad >-> stateMonad.
 Canonical baseType.
@@ -132,33 +130,46 @@ Export MonadStateLoop.Exports.
 
 Section stateloop_lemmas.
 Variables (S : Type) (M : loopStateMonad S).
-Lemma loop0 m n (body : nat -> M unit) :
-  Foreach m (m + n.+1) body = Ret tt :> M _.
+Lemma loop0 m (body : nat -> M unit) :
+  Foreach m m body = Ret tt :> M _.
 Proof. by case: M body => ? [? []]. Qed.
-Lemma loop1 m (body : nat -> M unit) : Foreach m m body = body m.
-Proof. by case: M body => ? [? []]. Qed.
-Lemma loop2 m n body :
+(* Lemma loop1 m (body : nat -> M unit) : Foreach (m .+1) m body = body m. *)
+(* Proof. by case: M body => ? [? []]. Qed. *)
+Lemma loop1 m n body :
   Foreach (m.+1 + n) m body =
-  (body (m.+1 + n) : M _) >> Foreach (m + n) m body :> M unit.
+  (body (m + n) : M _) >> Foreach (m + n) m body :> M unit.
 Proof. by case: M body => ? [? []]. Qed.
 End stateloop_lemmas.
 
 Section examples.
 Variable (M : loopStateMonad nat).
-Set Printing All.
+(* Set Printing All. *)
 Let example min max : M unit := Foreach max min (fun i : nat => (Get >> Ret tt : M _)).
 Print example.
 Let sum n : M unit := Foreach n O
   (fun i : nat => (Get >>= (fun z => Put (z + i)) : M _)).
 
 Lemma sum_test n :
-  sum n = Get >>= (fun m => Put (m + sumn (iota 0 n.+1))).
+  sum n = Get >>= (fun m => Put (m + sumn (iota 0 n))).
 Proof.
-elim: n => [|n ih]; first by rewrite /sum loop1.
-rewrite {1}/sum -add1n loop2 bindA; bind_ext => m.
+elim: n => [|n ih].
+  rewrite /sum.
+  rewrite loop0.
+  rewrite (_ : sumn (iota 0 0) = 0) //.
+  rewrite -[LHS]bindskipf.
+  rewrite -getputskip.
+  rewrite bindA.
+  bind_ext => a.
+  rewrite addn0.
+  rewrite -[RHS]bindmret.
+  bind_ext.
+  by case.
+rewrite {1}/sum -add1n loop1 bindA; bind_ext => m.
 rewrite -/(sum n) {}ih -bindA putget bindA bindretf putput.
-rewrite add1n -(addn1 n.+1) [in RHS]iota_add sumn_cat /=.
-by rewrite !(add0n,addn0) addnAC addnA.
+congr Put.
+rewrite add0n (addnC 1).
+rewrite iota_add /= sumn_cat /=.
+by rewrite add0n addn0 /= addnAC addnA.
 Qed.
 
 (* Let sumbreak n : M unit := Foreach n O *)

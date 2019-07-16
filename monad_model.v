@@ -306,18 +306,10 @@ End ModelStateTrace.
 
 Module ModelStateLoop.
 
-(* Variable S : Type. *)
-(* Let m : stateMonad S := @ModelState.state S.  *)
-(* Axiom foreach : nat -> nat -> (nat -> m unit) -> m unit. *)
-(* Fixpoint mforeach S (it min : nat) (body : nat -> (@ModelMonad.m0 S) unit) : (@ModelMonad.m0 S) unit := *)
-(*   if it <= min then ModelMonad.ret tt *)
-(*   else if it is it'.+1 then *)
-(*       ModelMonad.bind (body it) (fun _ => mforeach it' min body) *)
-(*       else ModelMonad.ret tt. *)
 Fixpoint mforeach S (it min : nat) (body : nat -> (@ModelMonad.state S) unit) : (@ModelMonad.state S) unit :=
   if it <= min then Ret tt
   else if it is it'.+1 then
-      (body it) >>= (fun _ => mforeach it' min body)
+      (body it') >>= (fun _ => mforeach it' min body)
       else Ret tt.
 
 Program Definition mk S : loopStateMonad S :=
@@ -325,44 +317,23 @@ let m : stateMonad S := @ModelState.state S in
 let slm := @MonadStateLoop.Class S _ (MonadState.class m)
   (@MonadStateLoop.Mixin _ m 
   (@mforeach S)
-   _ _ _ ) in
+   _ _ ) in
 @MonadStateLoop.Pack S _ slm.
 Next Obligation.
-have mn : m < ( m + n .+1).
-  rewrite addnS.
-  rewrite ltnS.
-  rewrite leq_addr.
-  by [].
-(*move: mn.
-move: m.
-case => //.
-move=> m.
-move=> /=.
-rewrite ltn_neqAle.
-move/andP.
-case.
-move=> _.
-move=> ->.
+  have mm : m <=  m by [].
+  by case: m mm => //= m; move => mm; rewrite mm.
+Qed.
+
+Next Obligation.
+  have: m <= m + n by rewrite leq_addr.
+  rewrite leqNgt.
+case : ((m + n) < m).
 by [].
-*)
-by case: m mn => //= m; rewrite ltn_neqAle =>/andP[_ ->].
-Defined.
-
-Next Obligation.
-
-Next Obligation. by []. Qed.
-Next Obligation. move=> *; by rewrite funeqE; case. Qed.
-Next Obligation. by []. Qed.
-Next Obligation. by []. Qed.
-Next Obligation. by []. Qed.
-End st.
-End ModelStateTrace.
-Next Obligation.
-    (MonadStateTrace.class stm)
-    (MonadRun.mixin (MonadRun.class run))
-    (@MonadStateTraceRun.Mixin _ _ run _ _ _ _ _ _))).
-
+move => Hcond.
+by [].
+Qed.
 End ModelStateLoop.
+
 Module ModelRun.
 
 Definition mk {S T} : runMonad (S * seq T).
