@@ -282,10 +282,9 @@ Next Obligation. by []. Qed.
 End st.
 End ModelStateTrace.
 
+(* Work In Progress *)
 Module ModelCont.
 Definition cont r := fun A => (A -> r) -> r.
-
-(* Local Obligation Tactic := by []. *)
 Program Definition contM r : monad := (@Monad_of_bind_ret (cont r)
  (fun A B ma f => fun cont => ma (fun a => f a cont)) (* bind *)
  (fun A a => fun cont => cont a) (* ret *)
@@ -294,47 +293,14 @@ Next Obligation. by []. Qed.
 Next Obligation. by []. Qed.
 Next Obligation. by []. Qed.
 
-Check (fun _ R r => fun _ cont => r).
-
-Local Obligation Tactic := idtac.
-(* Set Printing All. *)
 Program Definition cm r := (MonadContinuation.Pack (MonadContinuation.Class
   (@MonadContinuation.Mixin (contM r)
-   _ 
    (fun A B (f : (A -> cont r B) -> cont r A) => (fun c => f (fun (x:A) _ => c x) c))
-
-(*ContT $ \ c -> runContT (f (\ x -> ContT $ \ _ -> c x)) c*)
-
-      (* fun  (k : A -> cont B) => f (fun x _ => k x) k) *)
 ))).
-Next Obligation.
-admit.
-(* Obligation 1 of cm: (forall A R : Type, R -> contM A). *)
-(* Obligation 2 of cm: (forall A R : Type, ((contM A -> R) -> contM A) -> contM A). *)
-Admitted.
-Next Obligation.
+End ModelCont.
 
-move=> A B f.
-move=> r Ar.
-apply f.
-move=> a.
-
-apply f.
-move=> a r Br.
-apply Br.
-Show Proof.
-
-refine . 
-
-(* Set Printing All. *)
-(* Definition fm : loopMonad. *)
-(* refine (MonadLoop.Pack (@MonadLoop.Class _ (Monad.class loopM) (@MonadLoop.Mixin loopM mforeach _ _ _))). *)
-(* := @MonadLoop.Class M m *)
-(*  (@MonadLoop.Mixin _ _ (Monad.Pack m) *)
-(*   mforeach *)
-
+(* Work In Progress *)
 Module ModelStateLoop.
-
 Fixpoint mforeach S (it min : nat) (body : nat -> (@ModelMonad.state S) unit) : (@ModelMonad.state S) unit :=
   if it <= min then Ret tt
   else if it is it'.+1 then

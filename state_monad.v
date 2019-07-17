@@ -72,59 +72,26 @@ Example test_nonce0 (M : stateMonad nat) : M nat :=
 (*Reset test_nonce0.
 Fail Check test_nonce0.*)
 
-Module MonadContinuation.
-Record mixin_of (M : monad) : Type := Mixin {
-   abort : forall A, M A ;
-   callcc : forall A B, ((A -> M B) -> M A) -> M A
-}.
-Record class_of (m : Type -> Type) := Class {
-  base : Monad.class_of m ; mixin : mixin_of (Monad.Pack base) }.
-Structure t : Type := Pack { m : Type -> Type ; class : class_of m }.
-Definition baseType (M : t) := Monad.Pack (base (class M)).
-Module Exports.
-Definition Abort (M : t) : forall A, m M A :=
-  let: Pack _ (Class _ (Mixin x _)) :=
-    M return forall A, m M A in x.
-Definition CallCC (M : t) : forall A B, ((A -> m M B) -> m M A) -> m M A :=
-  let: Pack _ (Class _ (Mixin _ x)) :=
-    M return forall A B, ((A -> m M B) -> m M A) -> m M A in x.
-Notation contMonad := t.
-Coercion baseType : contMonad >-> monad.
-Canonical baseType.
-End Exports.
-End MonadContinuation.
-Export MonadContinuation.Exports.
-
+(* Work In Progress *)  
 Module MonadStateLoop.
   Record mixin_of S (M : stateMonad S) : Type := Mixin {
    foreach : nat -> nat -> (nat -> M unit) -> M unit ;
-  (* _ : forall m n body, foreach m (m + n.+1) body = Ret tt ; *)
-  (* _ : forall m body, foreach m m body = (body m); *)
   _ : forall m body, foreach m m body = Ret tt ;
-  (* _ : forall m body, foreach (m .+1) m body = (body m); *)
   _ : forall m n body, foreach (m.+1 + n) m body =
      (body (m + n)) >> foreach (m + n) m body :> M unit
 }.
 Record class_of S (m : Type -> Type) := Class {
-  (* base : MonadLoop.class_of m ; *)
   base : MonadState.class_of S m ;
-  (* base2 : MonadLoop.mixin_of (Monad.Pack (MonadState.base base)) ; *)
   mixin : mixin_of (MonadState.Pack base)}.
 Structure t S : Type := Pack { m : Type -> Type ; class : class_of S m }.
 Definition baseType S (M : t S) : stateMonad S := MonadState.Pack (base (class M)).
 Module Exports.
 Notation loopStateMonad := t.
-(* Definition Break S (M : t S) : m M unit := *)
-(*   let: Pack _ (Class _ _ (Mixin x _ _ _ _)) := M return m M unit in x. *)
-(* Arguments Break {S M} : simpl never. *)
 Definition Foreach S (M : t S) : nat -> nat -> (nat -> m M unit) -> m M unit :=
   let: Pack _ (Class _ (Mixin x _ _)) :=
     M return nat -> nat -> (nat -> m M unit) -> m M unit in x.
 Coercion baseType : loopStateMonad >-> stateMonad.
 Canonical baseType.
-(* Definition l_of_loopstate S (M : loopStateMonad S) : loopMonad := *)
-(*   MonadLoop.Pack  (MonadLoop.Class (base2 (class M))). *)
-(* Canonical loop_of_loopstate. *)
 End Exports.
 End MonadStateLoop.
 Export MonadStateLoop.Exports.
@@ -134,8 +101,6 @@ Variables (S : Type) (M : loopStateMonad S).
 Lemma loop0 m (body : nat -> M unit) :
   Foreach m m body = Ret tt :> M _.
 Proof. by case: M body => ? [? []]. Qed.
-(* Lemma loop1 m (body : nat -> M unit) : Foreach (m .+1) m body = body m. *)
-(* Proof. by case: M body => ? [? []]. Qed. *)
 Lemma loop1 m n body :
   Foreach (m.+1 + n) m body =
   (body (m + n) : M _) >> Foreach (m + n) m body :> M unit.
@@ -144,7 +109,6 @@ End stateloop_lemmas.
 
 Section examples.
 Variable (M : loopStateMonad nat).
-(* Set Printing All. *)
 Let example min max : M unit := Foreach max min (fun i : nat => (Get >> Ret tt : M _)).
 Print example.
 Let sum n : M unit := Foreach n O
@@ -172,15 +136,6 @@ rewrite add0n (addnC 1).
 rewrite iota_add /= sumn_cat /=.
 by rewrite add0n addn0 /= addnAC addnA.
 Qed.
-
-(* Let sumbreak n : M unit := Foreach n O *)
-(*  (fun i : nat => if i < 5 then Break else Get >>= (fun z => Put (z + i))). *)
-
-(* Let sumbreaknested n : M unit := Foreach n O *)
-(*   (fun i : nat => if i < 5 then Break else sum i). *)
-
-(* Let sumbreaknested2 n : M unit := Foreach n O *)
-(*   (fun i : nat => if i < 5 then Break else Foreach i 0 (fun y : nat => Get >>= (fun z => Put (z + i + y)))). *)
 
 End examples.
 
