@@ -1,4 +1,5 @@
 Require Import ZArith ssreflect ssrmatching ssrfun ssrbool.
+
 From mathcomp Require Import eqtype ssrnat seq choice fintype tuple.
 From mathcomp Require Import boolp.
 From infotheo Require Import ssrZ.
@@ -53,7 +54,7 @@ Proof. by case: M => m [[[? ? ? ? []]]]. Qed.
 Lemma putget s : Put s >> Get = Put s >> Ret s :> M _.
 Proof. by case: M => m [[[? ? ? ? []]]]. Qed.
 Lemma getputskip : Get >>= Put = skip :> M _.
-Proof. by case: M => m [[[? ? ? ? []]]]. Qed.
+Proof.  by case: M => m [[[? ? ? ? []]]]. Qed.
 Lemma getget (k : S -> S -> M S) :
  (Get >>= (fun s => Get >>= k s)) = (Get >>= fun s => k s s).
 Proof. by case: M k => m [[[? ? ? ? []]]]. Qed.
@@ -85,6 +86,73 @@ Example test_nonce0 (M : stateMonad nat) : M nat :=
   Get >>= (fun s => Put s.+1 >> Ret s).
 (*Reset test_nonce0.
 Fail Check test_nonce0.*)
+
+(* Work In Progress *)  
+Module MonadStateLoop.
+  Record mixin_of S (M : stateMonad S) : Type := Mixin {
+   foreach : nat -> nat -> (nat -> M unit) -> M unit ;
+  _ : forall m body, foreach m m body = Ret tt ;
+  _ : forall m n body, foreach (m.+1 + n) m body =
+     (body (m + n)) >> foreach (m + n) m body :> M unit
+}.
+Record class_of S (m : Type -> Type) := Class {
+  base : MonadState.class_of S m ;
+  mixin : mixin_of (MonadState.Pack base)}.
+Structure t S : Type := Pack { m : Type -> Type ; class : class_of S m }.
+Definition baseType S (M : t S) : stateMonad S := MonadState.Pack (base (class M)).
+Module Exports.
+Notation loopStateMonad := t.
+Definition Foreach S (M : t S) : nat -> nat -> (nat -> m M unit) -> m M unit :=
+  let: Pack _ (Class _ (Mixin x _ _)) :=
+    M return nat -> nat -> (nat -> m M unit) -> m M unit in x.
+Coercion baseType : loopStateMonad >-> stateMonad.
+Canonical baseType.
+End Exports.
+End MonadStateLoop.
+Export MonadStateLoop.Exports.
+
+Section stateloop_lemmas.
+Variables (S : Type) (M : loopStateMonad S).
+Lemma loop0 m (body : nat -> M unit) :
+  Foreach m m body = Ret tt :> M _.
+Proof. by case: M body => ? [? []]. Qed.
+Lemma loop1 m n body :
+  Foreach (m.+1 + n) m body =
+  (body (m + n) : M _) >> Foreach (m + n) m body :> M unit.
+Proof. by case: M body => ? [? []]. Qed.
+End stateloop_lemmas.
+
+Section examples.
+Variable (M : loopStateMonad nat).
+Let example min max : M unit := Foreach max min (fun i : nat => (Get >> Ret tt : M _)).
+Print example.
+Let sum n : M unit := Foreach n O
+  (fun i : nat => (Get >>= (fun z => Put (z + i)) : M _)).
+
+Lemma sum_test n :
+  sum n = Get >>= (fun m => Put (m + sumn (iota 0 n))).
+Proof.
+elim: n => [|n ih].
+  rewrite /sum.
+  rewrite loop0.
+  rewrite (_ : sumn (iota 0 0) = 0) //.
+  rewrite -[LHS]bindskipf.
+  rewrite -getputskip.
+  rewrite bindA.
+  bind_ext => a.
+  rewrite addn0.
+  rewrite -[RHS]bindmret.
+  bind_ext.
+  by case.
+rewrite {1}/sum -add1n loop1 bindA; bind_ext => m.
+rewrite -/(sum n) {}ih -bindA putget bindA bindretf putput.
+congr Put.
+rewrite add0n (addnC 1).
+rewrite iota_add /= sumn_cat /=.
+by rewrite add0n addn0 /= addnAC addnA.
+Qed.
+
+End examples.
 
 Module MonadRun.
 Record mixin_of S (M : monad) : Type := Mixin {

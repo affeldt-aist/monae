@@ -711,8 +711,8 @@ Definition monad_mixin := Monad.Mixin
   ret_naturality join_naturality joinretM joinMret joinA.
 End monad_of_ret_bind.
 Module Exports.
-Definition Monad_of_ret_bind M bind ret a b c :=
-  Monad.Pack (Monad.Class (@monad_mixin M bind ret a b c)).
+Definition Monad_of_ret_bind M ret bind a b c :=
+  Monad.Pack (Monad.Class (@monad_mixin M ret bind a b c)).
 End Exports.
 End Monad_of_ret_bind.
 Export Monad_of_ret_bind.Exports.
@@ -1715,6 +1715,26 @@ Canonical monadType.
 End Exports.
 End MonadExcept.
 Export MonadExcept.Exports.
+
+
+Module MonadContinuation.
+Record mixin_of (M : monad) : Type := Mixin {
+   callcc : forall A B, ((A -> M B) -> M A) -> M A
+}.
+Record class_of (m : Type -> Type) := Class {
+  base : Monad.class_of m ; mixin : mixin_of (Monad.Pack base) }.
+Structure t : Type := Pack { m : Type -> Type ; class : class_of m }.
+Definition baseType (M : t) := Monad.Pack (base (class M)).
+Module Exports.
+Definition CallCC (M : t) : forall A B, ((A -> m M B) -> m M A) -> m M A :=
+  let: Pack _ (Class _ (Mixin x)) :=
+    M return forall A B, ((A -> m M B) -> m M A) -> m M A in x.
+Notation contMonad := t.
+Coercion baseType : contMonad >-> monad.
+Canonical baseType.
+End Exports.
+End MonadContinuation.
+Export MonadContinuation.Exports.
 
 Section except_lemmas.
 Variables (M : exceptMonad).

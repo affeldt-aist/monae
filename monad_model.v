@@ -87,8 +87,8 @@ Qed.
 End ImfsetTh.
 Section BigOps.
 Variables (T : choiceType) (I : eqType) (r : seq I).
-(* In order to avoid "&& true" popping up everywhere,
- we prepare a specialized version of bigfcupP *)
+(* In order to avoid "&& true" popping up everywhere, *)
+(*  we prepare a specialized version of bigfcupP *)
 Lemma bigfcupP' x (F : I -> {fset T}) :
   reflect (exists2 i : I, (i \in r) & x \in F i)
           (x \in \bigcup_(i <- r | true) F i).
@@ -142,14 +142,16 @@ End set.
 Section state.
 Variables S : Type.
 Definition state_act_obj := fun A => S -> A * S.
+Definition bind := (fun A B (m : state_act_obj A) (f : A -> state_act_obj B) => fun s => let (a, s') := m s in f a s').
+Definition ret := (fun A a => (fun s : S => (a, s)) : state_act_obj A).
 Definition state : monad.
-refine (@Monad_of_ret_bind state_act_obj
-  (fun A a => fun s => (a, s)) (* ret *)
-  (fun A B m f => fun s => uncurry f (m s)) (* bind *)
+apply: (@Monad_of_ret_bind state_act_obj
+  ret
+  bind
    _ _ _).
 by [].
-move=> A f; rewrite funeqE => ?; by case: f.
-move=> A B C a b c; rewrite funeqE => ?; by case: a.
+move=> A f; rewrite /bind funeqE => ?; by case: f.
+move=> A B C a b c; rewrite /bind funeqE => ?; by case: a.
 Defined.
 End state.
 
@@ -183,6 +185,14 @@ Definition set := MonadFail.Pack set_class.
 End set.
 
 End ModelFail.
+
+Module ModelState.
+
+Program Definition state S := MonadState.Pack (MonadState.Class
+  (@MonadState.Mixin _ (ModelMonad.state S)
+  (fun s => (s, s)) (fun s' _ => (tt, s')) _ _ _ _)).
+
+End ModelState.
 
 Module ModelAlt.
 
@@ -272,17 +282,58 @@ Next Obligation. by []. Qed.
 End st.
 End ModelStateTrace.
 
+(* Work In Progress *)
+Module ModelCont.
+Definition cont r := fun A => (A -> r) -> r.
+Program Definition contM r : monad := (@Monad_of_ret_bind (cont r)
+ (fun A a => fun cont => cont a) (* ret *)
+ (fun A B ma f => fun cont => ma (fun a => f a cont)) (* bind *)
+ _ _ _).
+Next Obligation. by []. Qed.
+Next Obligation. by []. Qed.
+Next Obligation. by []. Qed.
+
+Program Definition cm r := (MonadContinuation.Pack (MonadContinuation.Class
+  (@MonadContinuation.Mixin (contM r)
+   (fun A B (f : (A -> cont r B) -> cont r A) => (fun c => f (fun (x:A) _ => c x) c))
+))).
+End ModelCont.
+
+(* Work In Progress *)
+Module ModelStateLoop.
+Fixpoint mforeach S (it min : nat) (body : nat -> (@ModelMonad.state S) unit) : (@ModelMonad.state S) unit :=
+  if it <= min then Ret tt
+  else if it is it'.+1 then
+      (body it') >>= (fun _ => mforeach it' min body)
+      else Ret tt.
+
+Program Definition mk S : loopStateMonad S :=
+let m : stateMonad S := @ModelState.state S in
+let slm := @MonadStateLoop.Class S _ (MonadState.class m)
+  (@MonadStateLoop.Mixin _ m 
+  (@mforeach S)
+   _ _ ) in
+@MonadStateLoop.Pack S _ slm.
+Next Obligation.
+by case: m => //= n; rewrite ltnS leqnn.
+Qed.
+Next Obligation.
+by case: ifPn => //; rewrite ltnNge leq_addr.
+Qed.
+End ModelStateLoop.
+
 Module ModelRun.
 
 Definition mk {S T} : runMonad (S * seq T).
 set m := @ModelMonad.state (S * seq T).
 refine (@MonadRun.Pack _ _ (@MonadRun.Class _ _ (Monad.class m)
   (@MonadRun.Mixin _ m
-  (fun A m (s : S * list T) => m s) (* run *) _ _))).
+  (fun A m (s : S * seq T) => m s) (* run *) _ _))).
 by [].
 move=> A B m0 f s.
 rewrite !bindE /=.
 rewrite Monad_of_ret_bind.fmapE /= /Join /= /Monad_of_ret_bind.join /=.
+rewrite /ModelMonad.bind /=.
 by destruct (m0 s).
 Defined.
 
@@ -294,8 +345,8 @@ Definition mk {S T} :
   stateTraceRunMonad S T.
 refine (let stm := @ModelStateTrace.mk S T in
         let run := @ModelRun.mk S T in
-@MonadStateTraceRun.Pack S T (fun A => S * list T -> A * (S * list T))
-  (@MonadStateTraceRun.Class S T (fun A => S * list T -> A * (S * list T))
+@MonadStateTraceRun.Pack S T (fun A => S * seq T -> A * (S * seq T))
+  (@MonadStateTraceRun.Class S T (fun A => S * seq T -> A * (S * seq T))
     (MonadStateTrace.class stm)
     (MonadRun.mixin (MonadRun.class run))
     (@MonadStateTraceRun.Mixin _ _ run _ _ _ _ _ _))).
