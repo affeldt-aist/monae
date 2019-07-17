@@ -64,15 +64,15 @@ installing MathComp as in *Step 2b*.
 - ~opam install depext-cygwinports~ ([2019-07-12 Fri]'s version: 0.0.7)
   + Add ~/usr/x86_64-w64-mingw32/sys-root/mingw/bin~ to ~PATH~ as said
 - ~opam install pcre~
-  + fails partially, not sur whether it is important
+  + fails partially, not sure whether it is important
 - ~opam install lablgtk~ fails
   + this means no ~coqIDE~ but you still gave Proof General
 - ~opam install num~ ([2019-07-12 Fri]'s version: 1.2)
 - ~opam repo add coq-released https://coq.inria.fr/opam/released~
 - ~opam install coq.8.9.1~
 ** Step 2'c: Install MathComp
-- ~export CAML=/home/username/.opam/4.07.1+mingw64c/bin/:${PATH}~
-- ~export COQBIN=/home/username/.opam/4.07.1+mingw64c/bin/:${PATH}~
+- ~export CAML=/home/username/.opam/4.07.1+mingw64c/bin/~
+- ~export COQBIN=/home/username/.opam/4.07.1+mingw64c/bin/~
 - ~opam install coq-mathcomp-ssreflect~ ([2019-07-12 Fri]'s version: 1.9.0)
 - ~opam install coq-mathcomp-fingroup~
 - ~opam install coq-mathcomp-algebra~
