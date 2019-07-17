@@ -1,4 +1,6 @@
 Require Import ssreflect ssrmatching ssrfun ssrbool.
+
+
 From mathcomp Require Import eqtype ssrnat seq choice fintype tuple.
 From mathcomp Require Import bigop finmap.
 From mathcomp Require Import boolp classical_sets.
@@ -87,8 +89,8 @@ Qed.
 End ImfsetTh.
 Section BigOps.
 Variables (T : choiceType) (I : eqType) (r : seq I).
-(* In order to avoid "&& true" popping up everywhere,
- we prepare a specialized version of bigfcupP *)
+(* In order to avoid "&& true" popping up everywhere, *)
+(*  we prepare a specialized version of bigfcupP *)
 Lemma bigfcupP' x (F : I -> {fset T}) :
   reflect (exists2 i : I, (i \in r) & x \in F i)
           (x \in \bigcup_(i <- r | true) F i).
@@ -139,15 +141,17 @@ End set.
 
 Section state.
 Variables S : Type.
-Let m0 := fun A => S -> A * S.
+Definition m0 := fun A => S -> A * S.
+Definition bind := (fun A B (m : m0 A) (f : A -> m0 B) => fun s => let (a, s') := m s in f a s').
+Definition ret := (fun A a => (fun s : S => (a, s)) : m0 A).
 Definition state : monad.
-refine (@Monad_of_bind_ret m0
-  (fun A B m f => fun s => let (a, s') := m s in f a s') (* bind *)
-  (fun A a => fun s => (a, s)) (* ret *)
+apply: (@Monad_of_bind_ret m0
+  bind
+  ret
    _ _ _).
 by [].
-move=> A f; rewrite funeqE => ?; by case: f.
-move=> A B C a b c; rewrite funeqE => ?; by case: a.
+move=> A f; rewrite /bind funeqE => ?; by case: f.
+move=> A B C a b c; rewrite /bind funeqE => ?; by case: a.
 Defined.
 End state.
 
@@ -181,6 +185,14 @@ Definition set := MonadFail.Pack set_class.
 End set.
 
 End ModelFail.
+
+Module ModelState.
+
+Program Definition state S := MonadState.Pack (MonadState.Class
+  (@MonadState.Mixin _ (ModelMonad.state S)
+  (fun s => (s, s)) (fun s' _ => (tt, s')) _ _ _ _)).
+
+End ModelState.
 
 Module ModelAlt.
 
@@ -269,6 +281,46 @@ Next Obligation. by []. Qed.
 Next Obligation. by []. Qed.
 End st.
 End ModelStateTrace.
+
+(* Work In Progress *)
+Module ModelCont.
+Definition cont r := fun A => (A -> r) -> r.
+Program Definition contM r : monad := (@Monad_of_bind_ret (cont r)
+ (fun A B ma f => fun cont => ma (fun a => f a cont)) (* bind *)
+ (fun A a => fun cont => cont a) (* ret *)
+ _ _ _).
+Next Obligation. by []. Qed.
+Next Obligation. by []. Qed.
+Next Obligation. by []. Qed.
+
+Program Definition cm r := (MonadContinuation.Pack (MonadContinuation.Class
+  (@MonadContinuation.Mixin (contM r)
+   (fun A B (f : (A -> cont r B) -> cont r A) => (fun c => f (fun (x:A) _ => c x) c))
+))).
+End ModelCont.
+
+(* Work In Progress *)
+Module ModelStateLoop.
+Fixpoint mforeach S (it min : nat) (body : nat -> (@ModelMonad.state S) unit) : (@ModelMonad.state S) unit :=
+  if it <= min then Ret tt
+  else if it is it'.+1 then
+      (body it') >>= (fun _ => mforeach it' min body)
+      else Ret tt.
+
+Program Definition mk S : loopStateMonad S :=
+let m : stateMonad S := @ModelState.state S in
+let slm := @MonadStateLoop.Class S _ (MonadState.class m)
+  (@MonadStateLoop.Mixin _ m 
+  (@mforeach S)
+   _ _ ) in
+@MonadStateLoop.Pack S _ slm.
+Next Obligation.
+by case: m => //= n; rewrite ltnS leqnn.
+Qed.
+Next Obligation.
+by case: ifPn => //; rewrite ltnNge leq_addr.
+Qed.
+End ModelStateLoop.
 
 Module ModelRun.
 
