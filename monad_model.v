@@ -141,9 +141,9 @@ End set.
 
 Section state.
 Variables S : Type.
-Let m0 := fun A => S -> A * S.
+Definition state_act_obj := fun A => S -> A * S.
 Definition state : monad.
-refine (@Monad_of_ret_bind m0
+refine (@Monad_of_ret_bind state_act_obj
   (fun A a => fun s => (a, s)) (* ret *)
   (fun A B m f => fun s => uncurry f (m s)) (* bind *)
    _ _ _).

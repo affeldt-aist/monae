@@ -330,8 +330,7 @@ Definition bindS A B (m : MS A) f := (fun s => m s >>= uncurry f) : MS B.
 Program Definition estateMonadM : monad :=
   @Monad_of_ret_bind MS retS bindS _ _ _.
 Next Obligation.
-move=> A B a f; rewrite /bindS funeqE => s.
-by rewrite bindretf.
+by move=> A B a f; rewrite /bindS funeqE => s; rewrite bindretf.
 Qed.
 Next Obligation.
 move=> A m; rewrite /bindS funeqE => s.
@@ -348,18 +347,12 @@ Definition liftS A (m : M A) : estateMonadM A :=
 Program Definition stateMonadM : monadM M estateMonadM :=
   @monadM.mk _ _ liftS _ _.
 Next Obligation.
-move=> A a; rewrite /liftS funeqE => s.
-by rewrite bindretf.
+by move=> A a; rewrite /liftS funeqE => s; rewrite bindretf.
 Qed.
 Next Obligation.
 move=> A B m f; rewrite /liftS funeqE => s.
-rewrite [in RHS]/Bind.
-rewrite [in RHS]/Join /=.
-rewrite /Monad_of_ret_bind.join /=.
-rewrite /bindS.
-rewrite !bindA.
-bind_ext => a.
-by rewrite !bindretf.
+rewrite [in RHS]/Bind [in RHS]/Join /= /Monad_of_ret_bind.join /= /bindS !bindA.
+bind_ext => a; by rewrite !bindretf.
 Qed.
 
 End state_monad_transformer.
@@ -397,18 +390,45 @@ Program Definition exceptionMonadM : monadM M eexceptionMonadM :=
   @monadM.mk _ _ liftX _ _.
 Next Obligation. by move=> A a; rewrite /liftX bindretf. Qed.
 Next Obligation.
-move=> A B m f.
-rewrite /liftX.
-rewrite [in RHS]/Bind.
-rewrite [in RHS]/Join /=.
-rewrite /Monad_of_ret_bind.join /=.
-rewrite /bindX.
-rewrite !bindA.
-bind_ext => a.
-by rewrite !bindretf.
+move=> A B m f; rewrite /liftX [in RHS]/Bind [in RHS]/Join /=.
+rewrite  /Monad_of_ret_bind.join /= /bindX !bindA.
+bind_ext => a; by rewrite !bindretf.
 Qed.
 
 End exception_monad_transformer.
 
 Definition exceptionmonad_transformer Z : monadT :=
   @MonadT.mk (eexceptionMonadM Z) (@retX Z) (@bindX Z) (@exceptionMonadM Z).
+
+Record operation (E : functor) (M : monad) := mkOperation {
+  op : E \O M ~> M ;
+  Hop : naturalP (E \O M) M op }.
+
+Section get_functor.
+Variable S : Type.
+Definition get_act_obj X := S -> X.
+Definition get_act_mor X Y (f : X -> Y) (t : get_act_obj X) : get_act_obj Y := fun s => f (t s).
+Program Definition get_fun := Functor.Pack (@Functor.Class get_act_obj get_act_mor _ _ ).
+Next Obligation. by move=> A; rewrite /get_act_mor funeqE. Qed.
+Next Obligation. by move=> A B C g h; rewrite /get_act_mor funeqE. Qed.
+End get_functor.
+
+Require Import monad_model.
+
+(* TODO: move to monad_model *)
+
+Definition get_op S A (k : S -> ModelMonad.state_act_obj S A) : ModelMonad.state_act_obj S A :=
+  fun s => k s s.
+
+Program Definition get_operation S : operation (get_fun S) (ModelMonad.state S) :=
+  @mkOperation _ _ (@get_op S) _.
+Next Obligation.
+move=> A B h; rewrite funeqE => /= m /=.
+rewrite funeqE => s.
+by rewrite FCompE Monad_of_ret_bind.fmapE.
+Qed.
+
+Definition usual_get S : ModelMonad.state_act_obj S S := fun s => (s, s).
+
+Goal forall S, @usual_get S = @get_op S S (@Ret (ModelMonad.state S) S).
+Proof. by []. Qed.
