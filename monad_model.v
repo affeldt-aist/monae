@@ -1,5 +1,6 @@
 Require Import ssreflect ssrmatching ssrfun ssrbool.
 
+
 From mathcomp Require Import eqtype ssrnat seq choice fintype tuple.
 From mathcomp Require Import bigop finmap.
 From mathcomp Require Import boolp classical_sets.
@@ -281,21 +282,49 @@ Next Obligation. by []. Qed.
 End st.
 End ModelStateTrace.
 
-(* Module ModelLoop. *)
-(* (* Variable M : Type -> Type. *) *)
-(* Definition loop := fun A => forall r, (A -> r) -> r. *)
+Module ModelCont.
+Definition cont r := fun A => (A -> r) -> r.
 
 (* Local Obligation Tactic := by []. *)
-(* Program Definition loopM : monad := (@Monad_of_bind_ret loop *)
-(*  (fun A B ma f => fun _ cont => ma _ (fun a => f a _ cont)) (* bind *) *)
-(*  (fun A a => fun _ cont => cont a) (* ret *) *)
-(*  _ _ _). *)
+Program Definition contM r : monad := (@Monad_of_bind_ret (cont r)
+ (fun A B ma f => fun cont => ma (fun a => f a cont)) (* bind *)
+ (fun A a => fun cont => cont a) (* ret *)
+ _ _ _).
+Next Obligation. by []. Qed.
+Next Obligation. by []. Qed.
+Next Obligation. by []. Qed.
+
+Check (fun _ R r => fun _ cont => r).
+
+Local Obligation Tactic := idtac.
 (* Set Printing All. *)
-(* Fixpoint mforeach (it min : nat) (body : nat -> loopM unit) : unit := *)
-(*   if it <= min then tt *)
-(*   else if it is it'.+1 then *)
-(*       body it _ (fun _  => mforeach it' min body) *)
-(*       else tt. *)
+Program Definition cm r := (MonadContinuation.Pack (MonadContinuation.Class
+  (@MonadContinuation.Mixin (contM r)
+   _ 
+   (fun A B (f : (A -> cont r B) -> cont r A) => (fun c => f (fun (x:A) _ => c x) c))
+
+(*ContT $ \ c -> runContT (f (\ x -> ContT $ \ _ -> c x)) c*)
+
+      (* fun  (k : A -> cont B) => f (fun x _ => k x) k) *)
+))).
+Next Obligation.
+admit.
+(* Obligation 1 of cm: (forall A R : Type, R -> contM A). *)
+(* Obligation 2 of cm: (forall A R : Type, ((contM A -> R) -> contM A) -> contM A). *)
+Admitted.
+Next Obligation.
+
+move=> A B f.
+move=> r Ar.
+apply f.
+move=> a.
+
+apply f.
+move=> a r Br.
+apply Br.
+Show Proof.
+
+refine . 
 
 (* Set Printing All. *)
 (* Definition fm : loopMonad. *)
@@ -320,17 +349,10 @@ let slm := @MonadStateLoop.Class S _ (MonadState.class m)
    _ _ ) in
 @MonadStateLoop.Pack S _ slm.
 Next Obligation.
-  have mm : m <=  m by [].
-  by case: m mm => //= m; move => mm; rewrite mm.
+by case: m => //= n; rewrite ltnS leqnn.
 Qed.
-
 Next Obligation.
-  have: m <= m + n by rewrite leq_addr.
-  rewrite leqNgt.
-case : ((m + n) < m).
-by [].
-move => Hcond.
-by [].
+by case: ifPn => //; rewrite ltnNge leq_addr.
 Qed.
 End ModelStateLoop.
 

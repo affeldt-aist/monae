@@ -74,25 +74,26 @@ Fail Check test_nonce0.*)
 
 Module MonadContinuation.
 Record mixin_of (M : monad) : Type := Mixin {
-   abort : forall A R, R -> M A ;
-   callcc : forall A R, ((M A -> R) -> M A) -> M A
+   abort : forall A, M A ;
+   callcc : forall A B, ((A -> M B) -> M A) -> M A
 }.
-
-(* Record class_of (M : monad -> monad) (mo : monad) := Class { *)
-(*   base : Monad.class_of (M mo) ; mixin : mixin_of (Monad.Pack base) mo }. *)
-(* Structure t : Type := Pack { m : Type -> Type ; class : class_of m }. *)
-(* Definition baseType (M : t) := Monad.Pack (base (class M)). *)
-(* Module Exports. *)
-(* Definition Foreach (M : t) : nat -> nat -> (nat -> m M unit) -> m M unit := *)
-(*   let: Pack _ (Class _ (Mixin x _ _ _)) :=  *)
-(*     M return nat -> nat -> (nat -> m M unit) -> m M unit in x. *)
-(* Arguments Foreach {M} : simpl never. *)
-(* Notation loopMonad := t. *)
-(* Coercion baseType : loopMonad >-> monad. *)
-(* Canonical baseType. *)
-(* End Exports. *)
-(* End MonadLoop. *)
-(* Export MonadLoop.Exports. *)
+Record class_of (m : Type -> Type) := Class {
+  base : Monad.class_of m ; mixin : mixin_of (Monad.Pack base) }.
+Structure t : Type := Pack { m : Type -> Type ; class : class_of m }.
+Definition baseType (M : t) := Monad.Pack (base (class M)).
+Module Exports.
+Definition Abort (M : t) : forall A, m M A :=
+  let: Pack _ (Class _ (Mixin x _)) :=
+    M return forall A, m M A in x.
+Definition CallCC (M : t) : forall A B, ((A -> m M B) -> m M A) -> m M A :=
+  let: Pack _ (Class _ (Mixin _ x)) :=
+    M return forall A B, ((A -> m M B) -> m M A) -> m M A in x.
+Notation contMonad := t.
+Coercion baseType : contMonad >-> monad.
+Canonical baseType.
+End Exports.
+End MonadContinuation.
+Export MonadContinuation.Exports.
 
 Module MonadStateLoop.
   Record mixin_of S (M : stateMonad S) : Type := Mixin {
