@@ -8,7 +8,7 @@ Unset Printing Implicit Defensive.
 
 (* jones and duponcheel, composing monads, sect 2, 3 *)
 
-Require Import monad.
+From monae Require Import monad.
 
 Module Comp.
 Section comp.
@@ -304,10 +304,11 @@ Record t := mk {
   T : monad -> monad ;
   retT : forall (M : monad), FId ~> (T M);
   bindT : forall (M : monad) A B, (T M) A -> (A -> (T M) B) -> (T M) B ;
-  liftT :> forall (M : monad), monadM M (T M) }.
+  liftT : forall (M : monad), monadM M (T M) }.
 End monad_transformer.
 Module Exports.
 Notation monadT := t.
+Coercion T : monadT >-> Funclass.
 End Exports.
 End MonadT.
 Export MonadT.Exports.
@@ -400,6 +401,87 @@ End exception_monad_transformer.
 Definition exceptionmonad_transformer Z : monadT :=
   @MonadT.mk (eexceptionMonadM Z) (@retX Z) (@bindX Z) (@exceptionMonadM Z).
 
+Section continuation_monad_tranformer.
+
+Local Obligation Tactic := idtac.
+
+Variables (r : Type)  (M : monad).
+
+Definition MC : Type -> Type := fun A => (A -> M r) -> M r %type.
+
+Definition retC A (a : A) : MC A :=
+  fun cont => cont a.
+
+Definition bindC A B (m : MC A) f : MC B :=
+  fun cont => m (f^~ cont).
+
+Program Definition econtMonadM : monad :=
+  @Monad_of_ret_bind MC retC bindC _ _ _.
+Next Obligation. by []. Qed.
+Next Obligation. by []. Qed.
+Next Obligation. by []. Qed.
+
+Definition liftC A (x : M A) : econtMonadM A :=
+  fun cont => x >>= cont.
+
+Program Definition contMonadM : monadM M econtMonadM  :=
+  @monadM.mk _ _ liftC  _ _.
+Next Obligation.
+move => A a.
+rewrite /liftC funeqE => cont.
+by rewrite !bindretf.
+Qed.
+Next Obligation.
+move => A B m f.
+rewrite /liftC funeqE => cont.
+by rewrite !bindA.
+Qed.
+
+End continuation_monad_tranformer.
+
+Definition continuationmonad_transformer R : monadT :=
+  @MonadT.mk (econtMonadM R) (@retC R) (@bindC R) (@contMonadM R).
+
+Let CMT := fun R M => @continuationmonad_transformer R M.
+
+Definition callCC R M A B (f : (A -> CMT R M B) -> CMT R M A) : CMT R M A :=
+  fun cont => f (fun x _ => cont x) cont.
+
+Definition break (m : monad) : CMT unit m unit := fun _ => Ret tt.
+
+Definition forLoop (m : monad) (items : list nat) (body : nat -> CMT unit m unit) : m unit :=
+  foldr
+    (fun x next => (body x) (fun _ => next))
+    (Ret tt)
+    items.
+
+From monae Require Import monad_model state_monad.
+(* From monae Require Import state_monad. *)
+
+Definition ms : stateMonad nat := ModelState.state nat.
+
+Definition exLoop : ms unit :=
+  forLoop (iota 0 100) (fun i => if i > 10 then
+                            @break _
+                          else
+                            liftC (Get >>= (fun z => Put (z + i)))).
+
+Fail Definition goto :=
+  callCC (fun out => let fn := out fn in retC fn).
+
+Section foldM.
+Variables (M : monad) (T R : Type) (f : R -> T -> M R).
+Fixpoint foldM z s : M _ := if s is x :: s' then f z x >>= (fun y => foldM y s') else (Ret z).
+End foldM.
+
+Definition sumTilNothing' (m : monad) (break : _) (acc : nat) (x : option nat) : m nat :=
+  if x is Some x then Ret (x + acc) else break acc.
+
+Definition sumTilNothing (xs : seq (option nat)) : contM nat nat :=
+  callcc (fun break : nat -> contM nat nat => foldM (sumTilNothing' break) 0 xs).
+
+Compute (sumTilNothing [:: Some 2; Some 6; None; Some 4]).
+  
 Record operation (E : functor) (M : monad) := mkOperation {
   op : E \O M ~> M ;
   Hop : naturalP (E \O M) M op }.
@@ -413,11 +495,9 @@ Next Obligation. by move=> A; rewrite /get_act_mor funeqE. Qed.
 Next Obligation. by move=> A B C g h; rewrite /get_act_mor funeqE. Qed.
 End get_functor.
 
-Require Import monad_model.
-
 (* TODO: move to monad_model *)
 
-Definition get_op S A (k : S -> ModelMonad.state_act_obj S A) : ModelMonad.state_act_obj S A :=
+Definition get_op S A (k : S -> ModelMonad.acto S A) : ModelMonad.acto S A :=
   fun s => k s s.
 
 Program Definition get_operation S : operation (get_fun S) (ModelMonad.state S) :=
@@ -428,7 +508,6 @@ rewrite funeqE => s.
 by rewrite FCompE Monad_of_ret_bind.fmapE.
 Qed.
 
-Definition usual_get S : ModelMonad.state_act_obj S S := fun s => (s, s).
-
-Goal forall S, @usual_get S = @get_op S S (@Ret (ModelMonad.state S) S).
+Goal forall S, @ModelState.get S = @get_op S S (@Ret (ModelMonad.state S) S).
 Proof. by []. Qed.
+

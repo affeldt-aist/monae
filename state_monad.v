@@ -1,5 +1,4 @@
 Require Import ZArith ssreflect ssrmatching ssrfun ssrbool.
-
 From mathcomp Require Import eqtype ssrnat seq choice fintype tuple.
 From mathcomp Require Import boolp.
 From infotheo Require Import ssrZ.
