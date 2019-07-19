@@ -1782,6 +1782,42 @@ Qed.
 
 End fastproduct.
 
+Module MonadJump.
+(* Monad Transformers and Modular Algebraic Eﬀects: What Binds Them Together
+   Tom Schrijvers & al. Report CW699, September 2016 
+   $8.2 p10 *)
+Variable ref : Type -> Type.
+Record mixin_of (M : monad) : Type := Mixin {
+   jump : forall A B, ref A -> A -> M B;
+   sub : forall A B, (ref A -> M B) -> (A -> M B) -> M B;
+   _ : forall A B k x, sub (fun r => @jump A B r x) k = k x;
+   _ : forall A B p k, @sub A B (fun _ => p k) = p;
+   l2 : forall A B p r', sub p (@jump A B r') = p r';
+  l3 : forall A B p k1 k2 , @sub A B (fun r1 => @sub A B (fun r2 => p r1 r2) (fun _ => k2 r1)) k1 =
+                       sub (fun r2 => sub (fun r1 => p r1 r2) k1) (fun _ => sub k2 k1);
+   _ : forall A B r x k, (@jump A B r x) >>= k = @jump A B r x;
+   _ : forall A B p q k, @sub A B p q >>= k = @sub A B (p >=> k) (q >=> k) 
+}.
+Record class_of (m : Type -> Type) := Class {
+  base : Monad.class_of m ; mixin : mixin_of (Monad.Pack base) }.
+Structure t : Type := Pack { m : Type -> Type ; class : class_of m }.
+Definition baseType (M : t) := Monad.Pack (base (class M)).
+Module Exports.
+Definition Jump (M : t) : forall A B, ref A -> A -> m M B :=
+  let: Pack _ (Class _ (Mixin x _ _ _ _ _ _ _)) :=
+    M return forall A B, ref A -> A -> m M B in x.
+Arguments Jump {M A B} : simpl never.
+Definition Sub (M : t) : forall A B, (ref A -> m M B) -> (A -> m M B) -> m M B :=
+  let: Pack _ (Class _ (Mixin _ x _ _ _ _ _ _)) :=
+    M return forall A B, (ref A -> m M B) -> (A -> m M B) -> m M B in x.
+Arguments Sub {M A B} : simpl never.
+Notation jumpMonad := t.
+Coercion baseType : jumpMonad >-> monad.
+Canonical baseType.
+End Exports.
+End MonadJump.
+Export MonadJump.Exports.
+
 Module MonadContinuation.
 Record mixin_of (M : monad) : Type := Mixin {
    callcc : forall A B, ((A -> M B) -> M A) -> M A
@@ -1800,4 +1836,3 @@ Canonical baseType.
 End Exports.
 End MonadContinuation.
 Export MonadContinuation.Exports.
-
