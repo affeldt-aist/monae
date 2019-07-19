@@ -284,7 +284,6 @@ End ModelStateTrace.
 (* Work In Progress *)
 Module ModelCont.
   (* https://qiita.com/suharahiromichi/items/f07f932103c28f36dd0e *)
-  
 Definition cont r := fun A => (A -> r) -> r.
 Program Definition contM r : monad := (@Monad_of_ret_bind (cont r)
  (fun A a => fun cont => cont a) (* ret *)
@@ -293,22 +292,17 @@ Program Definition contM r : monad := (@Monad_of_ret_bind (cont r)
 Next Obligation. by []. Qed.
 Next Obligation. by []. Qed.
 Next Obligation. by []. Qed.
-
 Definition callcc r := fun A B (f : (A -> cont r B) -> cont r A) => (fun c => f (fun (x:A) _ => c x) c).
-
 Program Definition cm r := (MonadContinuation.Pack (MonadContinuation.Class
   (@MonadContinuation.Mixin (contM r) (@callcc r)))).
-Section fibo.
-  
+
+Section examples.
 Fixpoint fib (n : nat) : nat :=
   match n with
     | 0 => 1
     | 1 => 1
     | (m.+1 as sm).+1 => fib sm + fib m
   end.
-
-Compute fib 10.
-
 Fixpoint fib_cps {M : monad} (n : nat) : M nat :=
   match n with
     | 0 => Ret 1
@@ -319,25 +313,16 @@ Fixpoint fib_cps {M : monad} (n : nat) : M nat :=
       fun b => Ret (a + b)
   end.
 
-Definition sumJust' (m : monad) (acc : nat) (x : option nat) : m nat :=
+Definition sum_until_none (m : monad) (acc : nat) (x : option nat) : m nat :=
   if x is Some x then Ret (x + acc) else Ret acc.
+Definition sum_just (m : monad) (xs : seq (option nat)) := foldM (sum_until_none m) 0 xs.
 
-Section foldM.
-Variables (M : monad) (T R : Type) (f : R -> T -> M R).
-Fixpoint foldM z s : M _ := if s is x :: s' then f z x >>= (fun y => foldM y s') else (Ret z).
-End foldM.
-
-Definition sumJust (m : monad) (xs : seq (option nat)) := foldM (sumJust' m) 0 xs.
-
-Definition sumTilNothing' (m : monad) (break : _) (acc : nat) (x : option nat) : m nat :=
+Definition sum_until_break (m : monad) (break : _) (acc : nat) (x : option nat) : m nat :=
   if x is Some x then Ret (x + acc) else break acc.
-
-Definition sumTilNothing (xs : seq (option nat)) : contM nat nat :=
-  callcc (fun break : nat -> contM nat nat => foldM (sumTilNothing' break) 0 xs).
-
-Compute (sumTilNothing [:: Some 2; Some 6; None; Some 4]).
-
-End fibo. 
+Definition sum_break (xs : seq (option nat)) : contM nat nat :=
+  callcc (fun break : nat -> contM nat nat => foldM (sum_until_break break) 0 xs).
+Compute (sum_break [:: Some 2; Some 6; None; Some 4]).
+End examples. 
 
 End ModelCont.
 

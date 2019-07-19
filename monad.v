@@ -38,6 +38,7 @@ Unset Printing Implicit Defensive.
 - Module MonadCINondet.
 - Module MonadExcept.
     example of the fast product
+- Module MonadContinuation.
 *)
 
 Reserved Notation "A `2" (format "A `2", at level 3).
@@ -1070,6 +1071,11 @@ Definition bassert_size {M : failMonad} A B
   (f : seq B -> M (A * seq B)%type) :=
   @bassert_hylo M _ _ f predT (fun _ _ x y => size x < size y).
 
+Section foldM.
+Variables (M : monad) (T R : Type) (f : R -> T -> M R).
+Fixpoint foldM z s : M _ := if s is x :: s' then f z x >>= (fun y => foldM y s') else (Ret z).
+End foldM.
+
 Section unfoldM.
 
 Local Open Scope mu_scope.
@@ -1716,26 +1722,6 @@ End Exports.
 End MonadExcept.
 Export MonadExcept.Exports.
 
-
-Module MonadContinuation.
-Record mixin_of (M : monad) : Type := Mixin {
-   callcc : forall A B, ((A -> M B) -> M A) -> M A
-}.
-Record class_of (m : Type -> Type) := Class {
-  base : Monad.class_of m ; mixin : mixin_of (Monad.Pack base) }.
-Structure t : Type := Pack { m : Type -> Type ; class : class_of m }.
-Definition baseType (M : t) := Monad.Pack (base (class M)).
-Module Exports.
-Definition CallCC (M : t) : forall A B, ((A -> m M B) -> m M A) -> m M A :=
-  let: Pack _ (Class _ (Mixin x)) :=
-    M return forall A B, ((A -> m M B) -> m M A) -> m M A in x.
-Notation contMonad := t.
-Coercion baseType : contMonad >-> monad.
-Canonical baseType.
-End Exports.
-End MonadContinuation.
-Export MonadContinuation.Exports.
-
 Section except_lemmas.
 Variables (M : exceptMonad).
 Lemma catchfailm : forall A, left_id Fail (@Catch M A).
@@ -1795,3 +1781,23 @@ by rewrite catchret; case: ifPn => // /product0 <-.
 Qed.
 
 End fastproduct.
+
+Module MonadContinuation.
+Record mixin_of (M : monad) : Type := Mixin {
+   callcc : forall A B, ((A -> M B) -> M A) -> M A
+}.
+Record class_of (m : Type -> Type) := Class {
+  base : Monad.class_of m ; mixin : mixin_of (Monad.Pack base) }.
+Structure t : Type := Pack { m : Type -> Type ; class : class_of m }.
+Definition baseType (M : t) := Monad.Pack (base (class M)).
+Module Exports.
+Definition CallCC (M : t) : forall A B, ((A -> m M B) -> m M A) -> m M A :=
+  let: Pack _ (Class _ (Mixin x)) :=
+    M return forall A B, ((A -> m M B) -> m M A) -> m M A in x.
+Notation contMonad := t.
+Coercion baseType : contMonad >-> monad.
+Canonical baseType.
+End Exports.
+End MonadContinuation.
+Export MonadContinuation.Exports.
+
