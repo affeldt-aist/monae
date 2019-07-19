@@ -3,7 +3,7 @@ Require Import ZArith ssreflect ssrmatching ssrfun ssrbool.
 From mathcomp Require Import eqtype ssrnat seq choice fintype tuple.
 From mathcomp Require Import boolp.
 From infotheo Require Import ssrZ.
-Require Import monad.
+From monae Require Import monad.
 
 Set Implicit Arguments.
 Unset Strict Implicit.
@@ -11,6 +11,7 @@ Unset Printing Implicit Defensive.
 
 (* Contents:
 - Module MonadState.
+- Module MonadStateLoop.
 - Module MonadStateRun.
 - Module MonadNondetState.
 - Module MonadFresh.
@@ -151,9 +152,38 @@ rewrite add0n (addnC 1).
 rewrite iota_add /= sumn_cat /=.
 by rewrite add0n addn0 /= addnAC addnA.
 Qed.
-
 End examples.
 
+(* TODO : utility ? *)
+Module MonadContStateLoop.
+Record mixin_of S (M : stateMonad S) : Type := Mixin {
+  foreach : nat -> nat -> (nat -> M unit) -> M unit ;
+  _ : forall m body, foreach m m body = Ret tt ;
+  _ : forall m n body, foreach (m.+1 + n) m body =
+     (body (m + n)) >> foreach (m + n) m body :> M unit
+}.
+Record class_of S (m : Type -> Type) := Class {
+  base : MonadState.class_of S m ;
+  base2 : MonadContinuation.mixin_of (Monad.Pack (MonadState.base base));
+  mixin : @mixin_of S (MonadState.Pack base)
+}.
+Structure t S : Type := Pack { m : Type -> Type ; class : class_of S m }.
+Definition baseType S (M : t S) : stateMonad S := MonadState.Pack (base (class M)).
+Module Exports.
+Notation loopContStateMonad := t.
+Definition Foreach S (M : t S) : nat -> nat -> (nat -> m M unit) -> m M unit :=
+  let: Pack _ (Class _ _ (Mixin x _ _)) :=
+    M return nat -> nat -> (nat -> m M unit) -> m M unit in x.
+Coercion baseType : loopContStateMonad >-> stateMonad.
+Canonical baseType.
+Definition cont_of_loop S (M : loopContStateMonad S) : contMonad :=
+  MonadContinuation.Pack (MonadContinuation.Class (base2 (class M))).
+Canonical cont_of_loop.
+End Exports.
+End MonadContStateLoop.
+Export MonadContStateLoop.Exports.
+
+  
 Module MonadRun.
 Record mixin_of S (M : monad) : Type := Mixin {
   run : forall A, M A -> S -> A * S ;

@@ -2,7 +2,7 @@ Require Import ssreflect ssrmatching ssrfun ssrbool.
 From mathcomp Require Import eqtype ssrnat seq choice fintype tuple.
 From mathcomp Require Import bigop finmap.
 From mathcomp Require Import boolp classical_sets.
-Require Import monad state_monad trace_monad model.
+From monae Require Import monad state_monad trace_monad model.
 
 (* Contents: sample models for the monads in monad.v, state_monad.v, trace_monad.v
    - Module ModelMonad
@@ -141,18 +141,14 @@ End set.
 
 Section state.
 Variables S : Type.
-Definition state_act_obj := fun A => S -> A * S.
-Definition bind := (fun A B (m : state_act_obj A) (f : A -> state_act_obj B) => fun s => let (a, s') := m s in f a s').
-Definition ret := (fun A a => (fun s : S => (a, s)) : state_act_obj A).
-Definition state : monad.
-apply: (@Monad_of_ret_bind state_act_obj
-  ret
-  bind
-   _ _ _).
-by [].
-move=> A f; rewrite /bind funeqE => ?; by case: f.
-move=> A B C a b c; rewrite /bind funeqE => ?; by case: a.
-Defined.
+Definition acto := fun A => S -> A * S.
+Local Notation M := acto. 
+Definition bind := fun A B (m : M A) (f : A -> M B) => fun s => uncurry f (m s).
+Definition ret : FId ~> M := fun A a => fun s => (a, s).
+Program Definition state := @Monad_of_ret_bind M ret bind _ _ _.
+Next Obligation. by []. Qed.
+Next Obligation. by move=> A f; rewrite /bind funeqE => ?; case: f. Qed.
+Next Obligation. by move=> A B C a b c; rewrite /bind funeqE => ?; case: a. Qed.
 End state.
 
 End ModelMonad.
@@ -187,11 +183,14 @@ End set.
 End ModelFail.
 
 Module ModelState.
-
-Program Definition state S := MonadState.Pack (MonadState.Class
-  (@MonadState.Mixin _ (ModelMonad.state S)
-  (fun s => (s, s)) (fun s' _ => (tt, s')) _ _ _ _)).
-
+Section modelstate.
+Variable S : Type.
+Local Notation M := (ModelMonad.acto S).
+Definition get : M S := fun s => (s, s).
+Definition put : S -> M unit := fun s' _ => (tt, s').
+Program Definition state := MonadState.Pack (MonadState.Class
+  (@MonadState.Mixin _ (ModelMonad.state S) get put _ _ _ _)).
+End modelstate.
 End ModelState.
 
 Module ModelAlt.
@@ -284,6 +283,7 @@ End ModelStateTrace.
 
 (* Work In Progress *)
 Module ModelCont.
+  (* https://qiita.com/suharahiromichi/items/f07f932103c28f36dd0e *)
 Definition cont r := fun A => (A -> r) -> r.
 Program Definition contM r : monad := (@Monad_of_ret_bind (cont r)
  (fun A a => fun cont => cont a) (* ret *)
@@ -292,34 +292,58 @@ Program Definition contM r : monad := (@Monad_of_ret_bind (cont r)
 Next Obligation. by []. Qed.
 Next Obligation. by []. Qed.
 Next Obligation. by []. Qed.
-
+Definition callcc r := fun A B (f : (A -> cont r B) -> cont r A) => (fun c => f (fun (x:A) _ => c x) c).
 Program Definition cm r := (MonadContinuation.Pack (MonadContinuation.Class
-  (@MonadContinuation.Mixin (contM r)
-   (fun A B (f : (A -> cont r B) -> cont r A) => (fun c => f (fun (x:A) _ => c x) c))
-))).
+  (@MonadContinuation.Mixin (contM r) (@callcc r)))).
+
+Section examples.
+Fixpoint fib (n : nat) : nat :=
+  match n with
+    | 0 => 1
+    | 1 => 1
+    | (m.+1 as sm).+1 => fib sm + fib m
+  end.
+Fixpoint fib_cps {M : monad} (n : nat) : M nat :=
+  match n with
+    | 0 => Ret 1
+    | 1 => Ret 1
+    | (m.+1 as sm).+1 =>
+      fib_cps sm >>=
+      fun a => fib_cps m >>=
+      fun b => Ret (a + b)
+  end.
+
+Definition sum_until_none (m : monad) (acc : nat) (x : option nat) : m nat :=
+  if x is Some x then Ret (x + acc) else Ret acc.
+Definition sum_just (m : monad) (xs : seq (option nat)) := foldM (sum_until_none m) 0 xs.
+
+Definition sum_until_break (m : monad) (break : _) (acc : nat) (x : option nat) : m nat :=
+  if x is Some x then Ret (x + acc) else break acc.
+Definition sum_break (xs : seq (option nat)) : contM nat nat :=
+  callcc (fun break : nat -> contM nat nat => foldM (sum_until_break break) 0 xs).
+Compute (sum_break [:: Some 2; Some 6; None; Some 4]).
+End examples. 
+
 End ModelCont.
 
 (* Work In Progress *)
 Module ModelStateLoop.
-Fixpoint mforeach S (it min : nat) (body : nat -> (@ModelMonad.state S) unit) : (@ModelMonad.state S) unit :=
+Section modelstateloop.
+Variable S : Type.
+Local Notation M := (@ModelMonad.state S).
+Fixpoint mforeach (it min : nat) (body : nat -> M unit) : M unit :=
   if it <= min then Ret tt
   else if it is it'.+1 then
       (body it') >>= (fun _ => mforeach it' min body)
       else Ret tt.
-
-Program Definition mk S : loopStateMonad S :=
-let m : stateMonad S := @ModelState.state S in
+Program Definition mk : loopStateMonad S :=
+let m := @ModelState.state S in
 let slm := @MonadStateLoop.Class S _ (MonadState.class m)
-  (@MonadStateLoop.Mixin _ m 
-  (@mforeach S)
-   _ _ ) in
-@MonadStateLoop.Pack S _ slm.
-Next Obligation.
-by case: m => //= n; rewrite ltnS leqnn.
-Qed.
-Next Obligation.
-by case: ifPn => //; rewrite ltnNge leq_addr.
-Qed.
+  (@MonadStateLoop.Mixin _ m mforeach _ _ ) in
+MonadStateLoop.Pack slm.
+Next Obligation. by case: m => //= n; rewrite ltnS leqnn. Qed.
+Next Obligation. by case: ifPn => //; rewrite ltnNge leq_addr. Qed.
+End modelstateloop.
 End ModelStateLoop.
 
 Module ModelRun.
