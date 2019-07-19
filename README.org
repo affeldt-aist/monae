@@ -24,6 +24,7 @@ Other references:
 - [[trace_monad.v][trace_monad.v]]: about the state-trace monad
 - [[proba_monad.v][proba_monad.v]]: about the probability monad
 - [[monad_composition.v][monad_composition.v]]: composing monads
+- [[monad_transformer.v][monad_transformer.v]]: monad transformers
 - [[model.v][model.v]]: definition common to ~*_model.v~ files
 - [[monad_model.v][monad_model.v]]: concrete models of monads (corresponding to ~{,state_,trace_}monad.v~)
 - [[proba_monad_model.v][proba_monad_model.v]]: concrete model of the probability monad

@@ -74,7 +74,7 @@ installing MathComp as in *Step 2b*.
 - ~opam install num~ ([2019-07-12 Fri]'s version: 1.2)
 - ~opam repo add coq-released https://coq.inria.fr/opam/released~
 - ~opam install coq.8.9.1~
-** Step 2'c: Install MathComp
+** Step 2c(bis): Install MathComp
 - ~export CAML=/home/username/.opam/4.07.1+mingw64c/bin/~
 - ~export COQBIN=/home/username/.opam/4.07.1+mingw64c/bin/~
 - ~opam install coq-mathcomp-ssreflect~ ([2019-07-12 Fri]'s version: 1.9.0)
