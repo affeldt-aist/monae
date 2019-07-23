@@ -1,4 +1,5 @@
 Require Import ssreflect ssrmatching ssrfun ssrbool.
+
 From mathcomp Require Import eqtype ssrnat seq choice fintype tuple.
 From mathcomp Require Import bigop finmap.
 From mathcomp Require Import boolp classical_sets.
@@ -292,9 +293,9 @@ Program Definition contM r : monad := (@Monad_of_ret_bind (cont r)
 Next Obligation. by []. Qed.
 Next Obligation. by []. Qed.
 Next Obligation. by []. Qed.
-Definition callcc r := fun A B (f : (A -> cont r B) -> cont r A) => (fun c => f (fun (x:A) _ => c x) c).
+Definition callcc r := fun A B (f : (A -> contM r B) -> contM r A) => (fun c => f (fun (x:A) _ => c x) c).
 Program Definition cm r := (MonadContinuation.Pack (MonadContinuation.Class
-  (@MonadContinuation.Mixin (contM r) (@callcc r)))).
+  (@MonadContinuation.Mixin (contM r) (@callcc r) _))).
 
 Section examples.
 Fixpoint fib (n : nat) : nat :=
@@ -325,6 +326,71 @@ Compute (sum_break [:: Some 2; Some 6; None; Some 4]).
 End examples. 
 
 End ModelCont.
+
+Module ModelJump.
+
+Definition Ref r A := A -> (ModelCont.contM r) A.
+
+Definition jump r := fun A (B : pointedType) (exit : Ref r A) (x : A) => exit x >> Ret (@point B).
+Definition sub r := fun A B (k1 : Ref r A -> ModelCont.contM r B) (k2 : A -> ModelCont.contM r B) =>
+ ModelCont.callcc (fun (exit : B -> (ModelCont.contM r) A) => k1 (k2 >=> exit) ).
+
+(* Set Printing All. *)
+Program Definition jm r := (MonadJump.Pack (MonadJump.Class
+  (@MonadJump.Mixin (Ref r) (ModelCont.contM r) (@jump r) (@sub r) _ _ _ _ _))).
+Next Obligation.
+(* rewrite /sub /=. *)
+(* move: (@callcc0 (ModelCont.cm r) B A); rewrite /CallCC /= => H. *)
+(* rewrite /ModelCont.callcc. *)
+(* rewrite funeqE => g. *)
+(* congr (p _ g). *)
+(* rewrite /kleisli. *)
+(* rewrite funeqE => a. *)
+(* rewrite /=. *)
+(* rewrite join_fmap. *)
+(* rewrite bindA. *)
+
+(* have @k : A -> ModelCont.cont r A. *)
+(*   move=> a. *)
+(*   red. *)
+(*   move=> g. *)
+(*   exact: (g a). *)
+(* have @f : (B -> ModelCont.cont r A) -> ModelCont.cont r B. *)
+(*   move=> g. *)
+(*   move: (p r') => m1. *)
+(*   exact (((m1 : ModelCont.contM r B))). *)
+(* set h := (fun (g : B -> r) (x : Pointed.sort B) => *)
+(*         @Bind (ModelCont.contM r) A A (@Bind (MonadContinuation.baseType (ModelCont.cm r)) A A (fun _ : forall _ : A, r => g x) k) *)
+(*           (fun x0 : A => k x0)). *)
+(* have K : (fun exit : B -> ModelCont.cont r A => f (fun x : B => ((do x <- (exit x : ModelCont.contM r A); k x)))) = *)
+(*          (fun exit : B -> ModelCont.contM r A => p ((fun x : A => r' x >> Ret point) >=> exit)). *)
+(*   rewrite funeqE => g. *)
+(*   rewrite /kleisli. *)
+(*   rewrite -compA. *)
+(*   rewrite /f. *)
+(*   rewrite funeqE => b. *)
+(*   congr (p _ _). *)
+(*   rewrite funeqE => a0. *)
+(*   rewrite /=. *)
+(*   rewrite join_fmap. *)
+(*   rewrite bindA. *)
+(*   rewrite bindretf. *)
+  admit.
+(* rewrite -K (H _ k). *)
+(* rewrite /ModelCont.callcc funeqE => g. *)
+(* have L : f (h g) = p r'. *)
+(*   rewrite /f /h. *)
+(*   done. *)
+(* by rewrite L. *)
+Admitted.
+Next Obligation.
+(* rewrite /jump. *)
+(* rewrite bindA. *)
+(* rewrite bindretf. *)
+admit.
+Admitted.
+
+End ModelJump.
 
 (* Work In Progress *)
 Module ModelStateLoop.
