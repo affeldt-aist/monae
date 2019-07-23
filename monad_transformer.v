@@ -220,6 +220,10 @@ Definition callcc R M A B (f : (A -> continuationmonad_transformer R M B) -> con
 Definition abort R r (m : monad) A : continuationmonad_transformer R m A := fun (k : A -> m R) => Ret r.
 Arguments abort {R} _ {m} {A}.
 
+Definition abort_tt := 
+  @abort unit tt.
+Arguments abort_tt {m} {A}.
+
 From monae Require Import monad_model.
 
 Record operation (E : functor) (M : monad) := mkOperation {
@@ -257,25 +261,108 @@ Section examples_continuation_monad_transformer.
   
 Local Notation CMT := (@continuationmonad_transformer).
 
-Definition forLoop (m : monad) (items : list nat) (body : nat -> CMT unit m unit) : m unit :=
+Definition foreach (m : monad) (items : list nat) (body : nat -> CMT unit m unit) : m unit :=
   foldr
     (fun x next => (body x) (fun _ => next))
     (Ret tt)
     items.
 
+Fixpoint for_loop (m : monad) (it min : nat) (body : nat -> CMT unit m unit) : m unit :=
+  if it <= min then Ret tt
+  else if it is it'.+1 then
+      (body it') (fun _ => for_loop it' min body)
+      else Ret tt.
+
+Section for_loop_lemmas.
+Variable m : monad.
+Lemma loop0 : forall i body, @for_loop m i i body = Ret tt :> m _.
+Proof.
+move => i body /=.
+by case i => //= n; rewrite ltnS leqnn.
+Qed.
+
+Lemma loop1 : forall i j body, for_loop (i.+1 + j) i body =
+     (body (i + j)) (fun _ => @for_loop m (i + j) i body) :> m _.
+Proof.
+move => i j body /=.
+by case : ifPn ; rewrite ltnNge leq_addr.
+Qed.
+
+Lemma loop2 : forall i j body,
+    body (i + j) = @abort_tt m unit -> for_loop (i + j).+1 i body = Ret tt.
+Proof.
+move => i j body Hbody /=.
+case : ifPn => Hcond.
+reflexivity.
+by rewrite Hbody /= /abort_tt /abort.
+Qed.
+
+(* Lemma loop3 : forall i j body, *)
+(*      foreach (i + j).+1 i body = Ret tt -> body (i + j) = @abort_tt m unit. *)
+(* Proof. *)
+(* move => i j body /=. *)
+(* case : ifPn => //; rewrite ltnNge; rewrite leq_addr. *)
+(* by []. *)
+(* move => _ /= Hfor. *)
+(* have Hcont2 : forall cont, body (i + j) = @abort_tt m unit -> body (i + j) cont = Ret tt. *)
+(*   (* split. *) *)
+(*   rewrite /= /abort_tt /abort. *)
+(*   by rewrite funeqE. *)
+(* have Hcont1 : (forall cont, body (i + j) cont = Ret tt) -> body (i + j) = @abort_tt m unit.   *)
+(*   move => Hcont. *)
+(*   rewrite /= /abort_tt /abort. *)
+(*   rewrite funeqE => k. *)
+(*   exact: Hcont. *)
+(* apply Hcont1. *)
+(* move => cont. *)
+(* rewrite Hcont2 //. *)
+
+(* set bl := (fun _ : unit => foreach (i + j) i body). *)
+(* (* Check (fun _ : unit => foreach (i + j) i body). *) *)
+(* generalize (Hcont1 bl). *)
+
+(* move => bl. *)
+(* Qed *)
+
+End for_loop_lemmas.
 (* TODO : instantiate with RunStateMonad *)
 
 Let ms : stateMonad nat := ModelState.state nat.
 
+Let sum n : ms unit := for_loop n O
+  (fun i : nat => liftC (Get >>= (fun z => Put (z + i)) ) ).
+
+Lemma sum_test n :
+  sum n = Get >>= (fun m => Put (m + sumn (iota 0 n))).
+Proof.
+elim: n => [|n ih].
+  rewrite /sum.
+  rewrite loop0.
+  rewrite (_ : sumn (iota 0 0) = 0) //.
+  rewrite -[LHS]bindskipf.
+  rewrite -getputskip.
+  rewrite bindA.
+  bind_ext => a.
+  rewrite addn0.
+  rewrite -[RHS]bindmret.
+  bind_ext.
+  by case.
+rewrite /sum -add1n loop1 /liftC bindA; bind_ext => m.
+rewrite -/(sum n) {}ih -bindA putget bindA bindretf putput.
+congr Put.
+rewrite add0n (addnC 1).
+rewrite iota_add /= sumn_cat /=.
+by rewrite add0n addn0 /= addnAC addnA.
+Qed.
+
 Example sum_from_0_to_10 : ms unit :=
-  forLoop (iota 0 100) (fun i => if i > 10 then
-                            abort tt
+  foreach (iota 100 0) (fun i => if i > 90 then
+                            abort_tt
                           else
                             liftC (Get >>= (fun z => Put (z + i)))).
 
 Let CM := @continuationmonad_transformer^~ ModelMonad.identity.
 Let callcc_i := @callcc^~ ModelMonad.identity.
-
 Goal forall R, @ModelCont.callcc R = @callcc_i R.
 by []. Qed.
 
