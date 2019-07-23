@@ -236,7 +236,6 @@ Next Obligation. by move=> A B C g h; rewrite /get_act_mor funeqE. Qed.
 End get_functor.
 
 (* TODO: rewrite ModelState.get with get_op *)
-
 Definition get_op S A (k : S -> ModelMonad.acto S A) : ModelMonad.acto S A :=
   fun s => k s s.
 
@@ -251,10 +250,22 @@ Qed.
 Goal forall S, @ModelState.get S = @get_op S S (@Ret (ModelMonad.state S) S).
 Proof. by []. Qed.
 
+Section set_functor.
+Variable S : Type.
+Definition set_act_obj X := (S * X)%type.
+Definition set_act_mor X Y (f : X -> Y) (sx : set_act_obj X) : set_act_obj Y := (sx.1, f sx.2).
+Program Definition set_fun := Functor.Pack (@Functor.Class set_act_obj set_act_mor _ _ ).
+Next Obligation. by move=> A; rewrite /set_act_mor funeqE; case. Qed.
+Next Obligation. by move=> A B C g h; rewrite /get_act_mor funeqE. Qed.
+End set_functor.
+
+Definition set_op S (s : S) A (m : ModelMonad.acto S A) : ModelMonad.acto S A :=
+  fun _ => m s.
+
 From monae Require Import state_monad.
 
 Section examples_continuation_monad_transformer.
-  
+
 Local Notation CMT := (@continuationmonad_transformer).
 
 Definition foreach (m : monad) (items : list nat) (body : nat -> CMT unit m unit) : m unit :=

@@ -1796,43 +1796,6 @@ Qed.
 
 End fastproduct.
 
-(* NB: wip *)
-Module MonadJump.
-(* Monad Transformers and Modular Algebraic Eﬀects: What Binds Them Together
-   Tom Schrijvers & al. Report CW699, September 2016
-   $8.2 p10 *)
-Record mixin_of ref (M : monad) : Type := Mixin {
-   jump : forall A B, ref A -> A -> M B;
-   sub : forall A B, (ref A -> M B) -> (A -> M B) -> M B;
-   _ : forall A B k x, sub (fun r => @jump A B r x) k = k x;
-   _ : forall A B p k, @sub A B (fun _ => p) k = p;
-   _ : forall A B p r', sub p (@jump A B r') = p r';
-   _ : forall A B (p : ref A -> ref A -> M B) (k1 : A -> M B) k2  ,
-       sub (fun r1 : ref A => sub (fun r2 => p r1 r2) (fun _ => k2 r1)) k1 =
-       sub (fun r2 : ref A => sub (fun r1 => p r1 r2) k1) (fun _ => sub k2 k1);
-   _ : forall A B r x k, (@jump A B r x) >>= k = @jump A B r x;
-   _ : forall A B p q k, @sub A B p q >>= k = @sub A B (p >=> k) (q >=> k)
-}.
-Record class_of ref (m : Type -> Type) := Class {
-  base : Monad.class_of m ; mixin : mixin_of ref (Monad.Pack base) }.
-Structure t ref : Type := Pack { m : Type -> Type ; class : class_of ref m }.
-Definition baseType ref (M : t ref) := Monad.Pack (base (class M)).
-Module Exports.
-Definition Jump ref (M : t ref) : forall A B, ref A -> A -> m M B :=
-  let: Pack _ (Class _ (Mixin x _ _ _ _ _ _ _)) :=
-    M return forall A B, ref A -> A -> m M B in x.
-Arguments Jump {ref M A B} : simpl never.
-Definition Sub ref (M : t ref) : forall A B, (ref A -> m M B) -> (A -> m M B) -> m M B :=
-  let: Pack _ (Class _ (Mixin _ x _ _ _ _ _ _)) :=
-    M return forall A B, (ref A -> m M B) -> (A -> m M B) -> m M B in x.
-Arguments Sub {ref M A B} : simpl never.
-Notation jumpMonad := t.
-Coercion baseType : jumpMonad >-> monad.
-Canonical baseType.
-End Exports.
-End MonadJump.
-Export MonadJump.Exports.
-
 Module MonadContinuation.
 Record mixin_of (M : monad) : Type := Mixin {
    callcc : forall A B, ((A -> M B) -> M A) -> M A;
@@ -1899,7 +1862,7 @@ Record mixin_of (M : contMonad) B : Type := Mixin {
   shift : forall A, ((A -> M B) -> M B) -> M A ;
   reset : M B -> M B ;
   _ : forall A (m : M A), shift (fun k => m >>= k) = m ;
-  _ : forall A B (h : ((A -> M B) -> M A)),
+  _ : forall A B (h : (A -> M B) -> M A),
     Callcc h = shift (fun k' => h (fun x => shift (fun k'' => k' x)) >>= k')
 }.
 Record class_of (m : Type -> Type) B := Class {
@@ -1922,6 +1885,9 @@ Section shiftreset_lemmas.
 Variable (B : Type) (M : shiftresetMonad B).
 Lemma shiftreset0 A (m : M A) : Shift (fun k => m >>= k) = m.
 Proof. by case: M A m => m [? []]. Qed.
+Lemma shiftreset1 A C (h : (A -> M C) -> M A) :
+  Callcc h = Shift (fun k' => h (fun x => Shift (fun k'' => k' x)) >>= k').
+Proof. by case: M A C h => m [? []]. Qed.
 End shiftreset_lemmas.
 
 Section shiftreset_examples.
@@ -1932,3 +1898,40 @@ Let wadler_example :
 Proof.
 Abort.
 End shiftreset_examples.
+
+(* NB: wip, no model *)
+Module MonadJump.
+(* Monad Transformers and Modular Algebraic Eﬀects: What Binds Them Together
+   Tom Schrijvers & al. Report CW699, September 2016
+   $8.2 p10 *)
+Record mixin_of ref (M : monad) : Type := Mixin {
+   jump : forall A B, ref A -> A -> M B;
+   sub : forall A B, (ref A -> M B) -> (A -> M B) -> M B;
+   _ : forall A B k x, sub (fun r => @jump A B r x) k = k x;
+   _ : forall A B p k, @sub A B (fun _ => p) k = p;
+   _ : forall A B p r', sub p (@jump A B r') = p r';
+   _ : forall A B (p : ref A -> ref A -> M B) (k1 : A -> M B) k2  ,
+       sub (fun r1 : ref A => sub (fun r2 => p r1 r2) (fun _ => k2 r1)) k1 =
+       sub (fun r2 : ref A => sub (fun r1 => p r1 r2) k1) (fun _ => sub k2 k1);
+   _ : forall A B r x k, (@jump A B r x) >>= k = @jump A B r x;
+   _ : forall A B p q k, @sub A B p q >>= k = @sub A B (p >=> k) (q >=> k)
+}.
+Record class_of ref (m : Type -> Type) := Class {
+  base : Monad.class_of m ; mixin : mixin_of ref (Monad.Pack base) }.
+Structure t ref : Type := Pack { m : Type -> Type ; class : class_of ref m }.
+Definition baseType ref (M : t ref) := Monad.Pack (base (class M)).
+Module Exports.
+Definition Jump ref (M : t ref) : forall A B, ref A -> A -> m M B :=
+  let: Pack _ (Class _ (Mixin x _ _ _ _ _ _ _)) :=
+    M return forall A B, ref A -> A -> m M B in x.
+Arguments Jump {ref M A B} : simpl never.
+Definition Sub ref (M : t ref) : forall A B, (ref A -> m M B) -> (A -> m M B) -> m M B :=
+  let: Pack _ (Class _ (Mixin _ x _ _ _ _ _ _)) :=
+    M return forall A B, (ref A -> m M B) -> (A -> m M B) -> m M B in x.
+Arguments Sub {ref M A B} : simpl never.
+Notation jumpMonad := t.
+Coercion baseType : jumpMonad >-> monad.
+Canonical baseType.
+End Exports.
+End MonadJump.
+Export MonadJump.Exports.
