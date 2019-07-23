@@ -4,7 +4,6 @@ Require Import ssreflect ssrmatching ssrfun ssrbool.
 From mathcomp Require Import eqtype ssrnat seq path div choice fintype tuple.
 From mathcomp Require Import finfun bigop.
 From mathcomp Require Import boolp.
-From mathcomp Require classical_sets.
 
 Set Implicit Arguments.
 Unset Strict Implicit.
@@ -821,6 +820,9 @@ Proof. by rewrite /kleisli fcomp_def functor_o 2!compA. Qed.
 Lemma bind_kleisli A B C m (f : A -> M B) (g : B -> M C) :
   m >>= (f >=> g) = (m >>= f) >>= g.
 Proof. by rewrite bindA; bind_ext => a; rewrite /kleisli !compE join_fmap. Qed.
+
+Lemma ret_kleisli A B (k : A -> M B) : Ret >=> k = k.
+Proof. by rewrite /kleisli -compA ret_naturality FIdf joinretM'. Qed.
 
 End fmap_and_join.
 Notation "f (o) g" := (fcomp f g) : mu_scope.
@@ -1793,15 +1795,14 @@ Qed.
 
 End fastproduct.
 
-Locate pointedType.
-
+(* NB: wip *)
 Module MonadJump.
 (* Monad Transformers and Modular Algebraic Eﬀects: What Binds Them Together
-   Tom Schrijvers & al. Report CW699, September 2016 
+   Tom Schrijvers & al. Report CW699, September 2016
    $8.2 p10 *)
 (* Variable ref : Type -> Type. *)
 Record mixin_of ref (M : monad) : Type := Mixin {
-   jump : forall A (B : classical_sets.Pointed.type), ref A -> A -> M (classical_sets.Pointed.sort B);
+   jump : forall A B, ref A -> A -> M B;
    sub : forall A B, (ref A -> M B) -> (A -> M B) -> M B;
    _ : forall A B k x, sub (fun r => @jump A B r x) k = k x;
    _ : forall A B p k, @sub A B (fun _ => p) k = p;
@@ -1810,16 +1811,16 @@ Record mixin_of ref (M : monad) : Type := Mixin {
    (*              @sub A B (fun r1 : ref A => @sub A B (fun r2 => p r1 r2) (fun _ => k2 r1)) k1 = *)
    (*               sub (fun r2 => sub (fun r1 => p r1 r2) k1) (fun _ => sub k2 k1); *)
    _ : forall A B r x k, (@jump A B r x) >>= k = @jump A B r x;
-   _ : forall A B p q k, @sub A B p q >>= k = @sub A B (p >=> k) (q >=> k) 
+   _ : forall A B p q k, @sub A B p q >>= k = @sub A B (p >=> k) (q >=> k)
 }.
 Record class_of ref (m : Type -> Type) := Class {
   base : Monad.class_of m ; mixin : mixin_of ref (Monad.Pack base) }.
 Structure t ref : Type := Pack { m : Type -> Type ; class : class_of ref m }.
 Definition baseType ref (M : t ref) := Monad.Pack (base (class M)).
 Module Exports.
-Definition Jump ref (M : t ref) : forall A (B : classical_sets.Pointed.type), ref A -> A -> m M (classical_sets.Pointed.sort B) :=
+Definition Jump ref (M : t ref) : forall A B, ref A -> A -> m M B :=
   let: Pack _ (Class _ (Mixin x _ _ _ _ _ _)) :=
-    M return forall A (B : classical_sets.Pointed.type), ref A -> A -> m M (classical_sets.Pointed.sort B) in x.
+    M return forall A B, ref A -> A -> m M B in x.
 Arguments Jump {ref M A B} : simpl never.
 Definition Sub ref (M : t ref) : forall A B, (ref A -> m M B) -> (A -> m M B) -> m M B :=
   let: Pack _ (Class _ (Mixin _ x _ _ _ _ _)) :=
@@ -1854,7 +1855,7 @@ Export MonadContinuation.Exports.
 
 Section cont_lemmas.
 Variables (M : contMonad).
-Lemma callcc0 : forall A B f k, 
-    @CallCC M A B f = @CallCC M A B (fun exit => f (fun x => exit x >>= k)).
+Lemma callcc0 : forall A B f k,
+   @CallCC M A B f = @CallCC M A B (fun exit => f (fun x => exit x >>= k)).
 Proof. by case: M => m [? []]. Qed.
 End cont_lemmas.
