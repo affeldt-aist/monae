@@ -1800,16 +1800,15 @@ Module MonadJump.
 (* Monad Transformers and Modular Algebraic Eﬀects: What Binds Them Together
    Tom Schrijvers & al. Report CW699, September 2016
    $8.2 p10 *)
-(* Variable ref : Type -> Type. *)
 Record mixin_of ref (M : monad) : Type := Mixin {
    jump : forall A B, ref A -> A -> M B;
    sub : forall A B, (ref A -> M B) -> (A -> M B) -> M B;
    _ : forall A B k x, sub (fun r => @jump A B r x) k = k x;
    _ : forall A B p k, @sub A B (fun _ => p) k = p;
    _ : forall A B p r', sub p (@jump A B r') = p r';
-   (* _ : forall A B (p : ref A -> ref A -> M B) (k1 : A -> M B) k2  , *)
-   (*              @sub A B (fun r1 : ref A => @sub A B (fun r2 => p r1 r2) (fun _ => k2 r1)) k1 = *)
-   (*               sub (fun r2 => sub (fun r1 => p r1 r2) k1) (fun _ => sub k2 k1); *)
+   _ : forall A B (p : ref A -> ref A -> M B) (k1 : A -> M B) k2  ,
+       sub (fun r1 : ref A => sub (fun r2 => p r1 r2) (fun _ => k2 r1)) k1 =
+       sub (fun r2 : ref A => sub (fun r1 => p r1 r2) k1) (fun _ => sub k2 k1);
    _ : forall A B r x k, (@jump A B r x) >>= k = @jump A B r x;
    _ : forall A B p q k, @sub A B p q >>= k = @sub A B (p >=> k) (q >=> k)
 }.
@@ -1819,11 +1818,11 @@ Structure t ref : Type := Pack { m : Type -> Type ; class : class_of ref m }.
 Definition baseType ref (M : t ref) := Monad.Pack (base (class M)).
 Module Exports.
 Definition Jump ref (M : t ref) : forall A B, ref A -> A -> m M B :=
-  let: Pack _ (Class _ (Mixin x _ _ _ _ _ _)) :=
+  let: Pack _ (Class _ (Mixin x _ _ _ _ _ _ _)) :=
     M return forall A B, ref A -> A -> m M B in x.
 Arguments Jump {ref M A B} : simpl never.
 Definition Sub ref (M : t ref) : forall A B, (ref A -> m M B) -> (A -> m M B) -> m M B :=
-  let: Pack _ (Class _ (Mixin _ x _ _ _ _ _)) :=
+  let: Pack _ (Class _ (Mixin _ x _ _ _ _ _ _)) :=
     M return forall A B, (ref A -> m M B) -> (A -> m M B) -> m M B in x.
 Arguments Sub {ref M A B} : simpl never.
 Notation jumpMonad := t.
@@ -1836,15 +1835,22 @@ Export MonadJump.Exports.
 Module MonadContinuation.
 Record mixin_of (M : monad) : Type := Mixin {
    callcc : forall A B, ((A -> M B) -> M A) -> M A;
-   _ : forall A B f k, @callcc A B f = @callcc A B (fun exit => f (fun x => exit x >>= k));
-}.
+   _ : forall A B (f : (A -> M B) -> M A) (k : B -> M B),
+       callcc f = callcc (fun exit => f (fun x => exit x >>= k));
+   _ : forall A B (m : M B), callcc (fun _ : B -> M A => m) = m ;
+   _ : forall A B C (m : M A) x (k : A -> B -> M C),
+       callcc (fun f : _ -> M _ => m >>= (fun a => f x >>= (fun b => k a b))) =
+       callcc (fun f : _ -> M _ => m >> f x) ;
+   _ : forall A B (m : M A) b,
+       callcc (fun f : B -> M B => m >> f b) =
+       callcc (fun _ : B -> M B => m >> Ret b) }.
 Record class_of (m : Type -> Type) := Class {
   base : Monad.class_of m ; mixin : mixin_of (Monad.Pack base) }.
 Structure t : Type := Pack { m : Type -> Type ; class : class_of m }.
 Definition baseType (M : t) := Monad.Pack (base (class M)).
 Module Exports.
-Definition CallCC (M : t) : forall A B, ((A -> m M B) -> m M A) -> m M A :=
-  let: Pack _ (Class _ (Mixin x _)) :=
+Definition Callcc (M : t) : forall A B, ((A -> m M B) -> m M A) -> m M A :=
+  let: Pack _ (Class _ (Mixin x _ _ _ _)) :=
     M return forall A B, ((A -> m M B) -> m M A) -> m M A in x.
 Notation contMonad := t.
 Coercion baseType : contMonad >-> monad.
@@ -1853,9 +1859,34 @@ End Exports.
 End MonadContinuation.
 Export MonadContinuation.Exports.
 
-Section cont_lemmas.
+Section continuation_lemmas.
 Variables (M : contMonad).
-Lemma callcc0 : forall A B f k,
-   @CallCC M A B f = @CallCC M A B (fun exit => f (fun x => exit x >>= k)).
-Proof. by case: M => m [? []]. Qed.
-End cont_lemmas.
+Lemma callcc0 A B (f : (A -> M B) -> M A) (k : B -> M B) :
+  Callcc f = Callcc (fun exit => f (fun x => exit x >>= k)).
+Proof. by case: M A B f k => m [? []]. Qed.
+Lemma callcc1 A B p : Callcc (fun _ : B -> M A => p) = p.
+Proof. by case: M A B p => m [? []]. Qed.
+Lemma callcc2 A B C (m : M A) x (k : A -> B -> M C) :
+  Callcc (fun f : _ -> M _ => do a <- m; do b <- f x; k a b) =
+  Callcc (fun f : _ -> M _ => m >> f x).
+Proof. by case: M A B C m x k => m [? []]. Qed.
+Lemma callcc3 A B (m : M A) b :
+  Callcc (fun f : B -> M B => m >> f b) = Callcc (fun _ : B -> M B => m >> Ret b).
+Proof. by case: M A B m b => m [? []]. Qed.
+End continuation_lemmas.
+
+Section continuation_example.
+Variable M : contMonad.
+Goal Ret 1 >>=
+       (fun x => (Callcc (fun f => Ret 10 >>= (fun a => f 100 >>= (fun b => Ret (a + b)))) : M _) >>=
+         (fun y => Ret (x + y))) =
+     Ret (1 + 100).
+Proof.
+rewrite /= bindretf (_ : Callcc _ = Ret 100) ?bindretf //.
+transitivity (Callcc (fun _ : nat -> M nat => Ret 100)); last by rewrite callcc1.
+transitivity (Callcc (fun f : nat -> M nat => Ret 10 >>= (fun a => f 100))); first by rewrite callcc2.
+rewrite callcc3 //; congr Callcc.
+rewrite funeqE => g.
+by rewrite bindretf.
+Abort.
+End continuation_example.

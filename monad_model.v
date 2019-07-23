@@ -284,19 +284,18 @@ End ModelStateTrace.
 
 (* Work In Progress *)
 Module ModelCont.
-  (* https://qiita.com/suharahiromichi/items/f07f932103c28f36dd0e *)
+(* https://qiita.com/suharahiromichi/items/f07f932103c28f36dd0e *)
 Definition cont r := fun A => (A -> r) -> r.
 Program Definition contM r : monad := (@Monad_of_ret_bind (cont r)
- (fun A a => fun cont => cont a) (* ret *)
- (fun A B ma f => fun cont => ma (fun a => f a cont)) (* bind *)
- _ _ _).
+ (fun A a => fun cont => cont a)
+ (fun A B ma f => fun cont => ma (fun a => f a cont)) _ _ _).
 Next Obligation. by []. Qed.
 Next Obligation. by []. Qed.
 Next Obligation. by []. Qed.
-Definition callcc r := fun A B (f : (A -> contM r B) -> contM r A) => (fun c => f (fun (x:A) _ => c x) c).
-Program Definition cm r := (MonadContinuation.Pack (MonadContinuation.Class
-  (@MonadContinuation.Mixin (contM r) (@callcc r) _))).
-
+Definition callcc r := fun A B (f : (A -> contM r B) -> contM r A) =>
+  (fun k : A -> r => f (fun a _ => k a) k).
+Program Definition cm r := MonadContinuation.Pack (MonadContinuation.Class
+  (@MonadContinuation.Mixin (contM r) (@callcc r) _ _ _ _)).
 End ModelCont.
 
 Section continuation_examples.
@@ -318,13 +317,24 @@ Fixpoint fib_cps {M : monad} (n : nat) : M nat :=
 
 Definition sum_until_none (m : monad) (acc : nat) (x : option nat) : m nat :=
   if x is Some x then Ret (x + acc) else Ret acc.
-Definition sum_just (m : monad) (xs : seq (option nat)) := foldM (sum_until_none m) 0 xs.
+Definition sum_just (m : monad) (xs : seq (option nat)) :=
+  foldM (sum_until_none m) 0 xs.
 
-Definition sum_until_break (m : monad) (break : _) (acc : nat) (x : option nat) : m nat :=
+Definition sum_until_break (m : monad) (break : nat -> m nat) (acc : nat) (x : option nat) : m nat :=
   if x is Some x then Ret (x + acc) else break acc.
-Definition sum_break (xs : seq (option nat)) : ModelCont.contM nat nat :=
-  ModelCont.callcc (fun break : nat -> ModelCont.contM nat nat => foldM (sum_until_break break) 0 xs).
+
+Let M : monad := ModelCont.contM nat.
+
+Definition sum_break (xs : seq (option nat)) : M nat :=
+  ModelCont.callcc
+    (fun break : nat -> ModelCont.contM nat nat => foldM (sum_until_break break) 0 xs).
 Compute (sum_break [:: Some 2; Some 6; None; Some 4]).
+
+Goal (Ret 1 >>=
+       (fun x => (ModelCont.callcc (fun f => Ret 10 >>= (fun a => f 100 >>= (fun b => Ret (a + b)))) : M _) >>=
+          (fun y => Ret (x + y)))) =
+     Ret (1 + 100).
+Proof. by rewrite bindretf funeqE. Qed.
 
 End continuation_examples.
 
