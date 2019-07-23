@@ -39,7 +39,7 @@ libraries one after the other using ~make~.
   + ~rm /cygdrive/c/coq/lib/user_contrib/mathcomp~
 - Install MathComp 1.9.0
   + Download the [[https://github.com/math-comp/math-comp/releases][source files]]
-  + Installation amounts to:~unzip, untar, cd, make, make install
+  + Installation amounts to: unzip, untar, cd, make, make install
   + As a result the MathComp libraries populates the ~user-contrib~
     directory of the Coq installation
 * Step 2(bis): Install MathComp using opam
@@ -66,7 +66,7 @@ installing MathComp as in *Step 2b*.
 - ~opam install depext-cygwinports~ ([2019-07-12 Fri]'s version: 0.0.7)
   + Add ~/usr/x86_64-w64-mingw32/sys-root/mingw/bin~ to ~PATH~ as indicated
 - ~opam install pcre~
-  + mail fail partially, but this is no worry be cause it shoudl not
+  + mail fail partially, but this is no worry because it should not
     prevent you from installing Coq, MathComp, etc.
 - try ~opam install lablgtk~
   + the complete installation is likely to fail, this means no
@@ -74,7 +74,7 @@ installing MathComp as in *Step 2b*.
 - ~opam install num~ ([2019-07-12 Fri]'s version: 1.2)
 - ~opam repo add coq-released https://coq.inria.fr/opam/released~
 - ~opam install coq.8.9.1~
-** Step 2'c: Install MathComp
+** Step 2c(bis): Install MathComp
 - ~export CAML=/home/username/.opam/4.07.1+mingw64c/bin/~
 - ~export COQBIN=/home/username/.opam/4.07.1+mingw64c/bin/~
 - ~opam install coq-mathcomp-ssreflect~ ([2019-07-12 Fri]'s version: 1.9.0)
@@ -98,7 +98,7 @@ installing MathComp as in *Step 2b*.
   + ~coq_makefile -o Makefile -f _CoqProject~
   + ~make~
   + optionally, ~make install~
-** In case you chose Step 2' (and succeeded):
+** In case you chose Step 2(bis) (and succeeded):
 - ~opam install coq-mathcomp-bigenough~ (1.0.0)
 - ~opam install coq-mathcomp-finmap.1.2.1~
 - ~opam install coq-mathcomp-analysis.0.2.2~
@@ -121,7 +121,7 @@ add Control = Control_L
 #+BEGIN_SRC
 xmodmap /home/username/Xmodmap
 #+END_SRC
-** Opam troubleshooting
+** Opam Troubleshooting
 - You may witness ~Device or resource busy~ when installing with opam,
   they seem to be harmless
 - ~opam install lablgtk~ fails with the following error despite having
@@ -146,7 +146,7 @@ be used to compile Coq.
 - ~opam install num.1.2~
 ** Failure Installing Coq from the source code using cygwin's opam's OCaml
 *** Using cygwin's opam
-Installation fails because of Coq's ~configure~ is confused by cygwin:
+Installation fails because Coq's ~configure~ is confused by cygwin:
 - ~opam repo add coq-released https://coq.inria.fr/opam/released~
 - ~opam install coq.8.0.1~
 *** From the source, using cygwin's opam's Ocaml

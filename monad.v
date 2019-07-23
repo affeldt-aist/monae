@@ -280,14 +280,15 @@ End natural_transformation_example.
 
 Section adjoint_functors.
 Variables f g : functor.
-Definition adjointP eta eps := naturalP (f \O g) FId eps /\
-                               naturalP FId (g \O f) eta.
 Definition eta_type := FId ~> g \O f.
 Definition eps_type := f \O g ~> FId.
-Implicit Types eta : eta_type.
-Implicit Types eps : eps_type.
-Definition triangular_law1 eps eta A := eps (f A) \o (f # eta A) = @id (f A).
-Definition triangular_law2 eps eta A := (g # eps A) \o eta (g A) = @id (g A).
+Definition triangular_law1 (eps : eps_type) (eta : eta_type) :=
+  forall A, eps (f A) \o (f # eta A) = @id (f A).
+Definition triangular_law2 (eps : eps_type) (eta : eta_type) :=
+  forall A, (g # eps A) \o eta (g A) = @id (g A).
+Definition adjointP eta eps :=
+  (naturalP (f \O g) FId eps /\ naturalP FId (g \O f) eta) /\
+  (triangular_law1 eps eta /\ triangular_law2 eps eta).
 Definition phi A B eta (h : f A -> B) : A -> g B := (g # h) \o eta A.
 Definition psi A B eps (h : A -> g B) : f A -> B := eps B \o (f # h).
 End adjoint_functors.
@@ -300,17 +301,15 @@ Definition curry_eta : eta_type (curry_F X) (uncurry_F X) :=
   fun A (a : A) => fun x : X => (x, a).
 Lemma adjoint_currry : adjointP curry_eta curry_eps.
 Proof.
-split; rewrite /naturalP => A B h /=.
-- by rewrite /id_f /curry_eps /curry_f /= /uncurry_M /uncurry_f /= funeqE; case.
-- rewrite /uncurry_f /curry_f /curry_eta /id_f /= funeqE => a /=.
-  by rewrite funeqE.
-Qed.
-Lemma curry_triangular_law1 A : triangular_law1 curry_eps curry_eta A.
-Proof. by rewrite /triangular_law1 funeqE; case. Qed.
-Lemma curry_triangular_law2 A : triangular_law2 curry_eps curry_eta A.
-Proof.
-rewrite /triangular_law2 /uncurry_F /curry_eps /curry_eta /uncurry_M /=.
-by rewrite /uncurry_f /= /comp /= funeqE => f; rewrite funeqE.
+split.
+  split; rewrite /naturalP => A B h /=.
+  - by rewrite /id_f /curry_eps /curry_f /= /uncurry_M /uncurry_f /= funeqE; case.
+  - rewrite /uncurry_f /curry_f /curry_eta /id_f /= funeqE => a /=.
+    by rewrite funeqE.
+split.
+  by move=> A; rewrite /triangular_law1 funeqE; case.
+move=> A; rewrite /triangular_law2 /uncurry_F /curry_eps /curry_eta /uncurry_M.
+by rewrite /= /uncurry_f /= /comp /= funeqE => f; rewrite funeqE.
 Qed.
 End adjoint_example.
 
@@ -364,14 +363,12 @@ End def.
 Section prop.
 Variables (f g : functor) (eps : eps_type f g) (eta : eta_type f g).
 Hypothesis Had : adjointP eta eps.
-Hypothesis Ht1 : forall A, triangular_law1 eps eta A.
-Hypothesis Ht2 : forall A, triangular_law2 eps eta A.
 Section mu_eps_natural.
 Notation M := (M f g).
 Notation mu := (mu eps).
 Lemma muM_natural : naturalP (M \O M) M mu.
 Proof.
-move: Had => [] Heps _; move: Heps; rewrite/naturalP => Heps.
+move: Had => [[Heps _] _]; move: Heps; rewrite/naturalP => Heps.
 move => A B h.
 rewrite (_ : (M \O M) # h = g # ((f \O g) # (f # h))) //.
 rewrite (_ : _ \o g # ((f \O g) # (f # h)) =
@@ -383,10 +380,7 @@ by rewrite functor_o.
 Qed.
 Lemma epsC A :
   @eps _ \o @eps _ = @eps _ \o f # (g # @eps _) :> ((f \o g) ((f \o g) A) -> A).
-Proof.
-move : Had => []; rewrite /naturalP => Heps _.
-by rewrite -(Heps _ _ (@eps A)).
-Qed.
+Proof. by move : Had => [[Heps _] _]; rewrite -(Heps _ _ (@eps A)). Qed.
 Lemma muMA A : @mu A \o @mu (M A) = @mu A \o (M # @mu A).
 Proof.
 have -> : g # @eps (f A) \o g # @eps (f (M A)) =
@@ -397,7 +391,7 @@ End mu_eps_natural.
 Lemma bindetaf : BindLaws.left_neutral (bind eps) eta.
 Proof.
 rewrite /BindLaws.left_neutral => A B a h.
-case: Had; rewrite /naturalP => _ /(_ _ _ h) Had2.
+case: Had => [[_ Had2] [_ Ht2]]; move: Had2 => /(_ _ _ h) Had2.
 rewrite /bind /mu.
 rewrite -(compE ((g \O f) # h)).
 rewrite Had2.
@@ -411,6 +405,7 @@ rewrite /BindLaws.right_neutral => A m.
 rewrite /bind /mu.
 rewrite -(compE (g # _)).
 rewrite -functor_o.
+case: Had => [_ [Ht1 _]].
 by rewrite Ht1 functor_id.
 Qed.
 Lemma law3 : BindLaws.associative (bind eps).
@@ -448,20 +443,34 @@ Let couni : @eps_type (F \O F0) (U0 \O U) := fun A => (@eps _) \o F # (@eps0 (U 
 
 Lemma composite_adjoint : adjointP uni couni.
 Proof.
-case: H0; rewrite /naturalP => H01 H02.
-case: H; rewrite /naturalP => H1 H2.
-split => A B h; rewrite FIdf.
-- rewrite {1}/couni [in LHS]compA {}H1 -compA.
-  rewrite {1}/couni -[in RHS]compA; congr (_ \o _).
-  rewrite [in LHS]FCompE -[in LHS](functor_o F) [in LHS]H01.
-  by rewrite -[in RHS](functor_o F).
-- rewrite /uni -[in RHS]compA -[in RHS]H02 compA [in RHS]compA.
-  congr (_ \o _).
-  rewrite (FCompE U0 F0).
-  rewrite -[in RHS](functor_o U0).
-  rewrite -[in LHS](functor_o U0).
-  congr (_ # _).
-  by rewrite -H2.
+case: H0; rewrite /naturalP => [[H01 H02] [Ht01 Ht02]].
+case: H; rewrite /naturalP => [[H1 H2] [Ht1 Ht2]].
+split.
+  split => A B h; rewrite FIdf.
+  - rewrite {1}/couni [in LHS]compA {}H1 -compA.
+    rewrite {1}/couni -[in RHS]compA; congr (_ \o _).
+    rewrite [in LHS]FCompE -[in LHS](functor_o F) [in LHS]H01.
+    by rewrite -[in RHS](functor_o F).
+  - rewrite /uni -[in RHS]compA -[in RHS]H02 compA [in RHS]compA.
+    congr (_ \o _).
+    rewrite (FCompE U0 F0).
+    rewrite -[in RHS](functor_o U0).
+    rewrite -[in LHS](functor_o U0).
+    congr (_ # _).
+    by rewrite -H2.
+split.
+- rewrite /triangular_law1 => A.
+  rewrite /couni /uni /=.
+  rewrite FCompE -compA -functor_o.
+  rewrite (_ : @eps0 _ \o F0 # _ = @eta (F0 A)); first exact: Ht1.
+  rewrite functor_o compA -FCompE.
+  by rewrite -H01 /= FIdf -compA Ht01 compfid.
+- rewrite /triangular_law2 => A.
+  rewrite /couni /uni /=.
+  rewrite compA -[RHS](Ht02 (U A)); congr (_ \o _).
+  rewrite FCompE -functor_o; congr (_ # _).
+  rewrite functor_o -compA -FCompE.
+  by rewrite H2 FIdf compA Ht2 compidf.
 Qed.
 
 End composite_adjoint.
