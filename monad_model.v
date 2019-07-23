@@ -143,7 +143,7 @@ End set.
 Section state.
 Variables S : Type.
 Definition acto := fun A => S -> A * S.
-Local Notation M := acto. 
+Local Notation M := acto.
 Definition bind := fun A B (m : M A) (f : A -> M B) => fun s => uncurry f (m s).
 Definition ret : FId ~> M := fun A a => fun s => (a, s).
 Program Definition state := @Monad_of_ret_bind M ret bind _ _ _.
@@ -293,7 +293,7 @@ Next Obligation. by []. Qed.
 Next Obligation. by []. Qed.
 Next Obligation. by []. Qed.
 Definition callcc r := fun A B (f : (A -> contM r B) -> contM r A) =>
-  (fun k : A -> r => f (fun a _ => k a) k).
+  (fun k : A -> r => f (fun a _ => k a) k). (*NB(rei): similar def in monad_transformer.v*)
 Program Definition cm r := MonadContinuation.Pack (MonadContinuation.Class
   (@MonadContinuation.Mixin (contM r) (@callcc r) _ _ _ _)).
 End ModelCont.
@@ -330,13 +330,46 @@ Definition sum_break (xs : seq (option nat)) : M nat :=
     (fun break : nat -> ModelCont.contM nat nat => foldM (sum_until_break break) 0 xs).
 Compute (sum_break [:: Some 2; Some 6; None; Some 4]).
 
-Goal (Ret 1 >>=
-       (fun x => (ModelCont.callcc (fun f => Ret 10 >>= (fun a => f 100 >>= (fun b => Ret (a + b)))) : M _) >>=
-          (fun y => Ret (x + y)))) =
+Goal Ret 1 +m (ModelCont.callcc (fun f => Ret 10 +m (f 100)) : M _) =
      Ret (1 + 100).
-Proof. by rewrite bindretf funeqE. Qed.
+Proof. by rewrite /addM bindretf funeqE. Abort.
 
 End continuation_examples.
+
+Module ModelShiftReset.
+Program Definition shiftresetM r : monad :=
+  let M : contMonad := ModelCont.cm r in
+  @MonadShiftReset.Pack _ _ (@MonadShiftReset.Class _ r (MonadContinuation.class M)
+ (@MonadShiftReset.Mixin _ _
+(fun A h => fun c => h (fun v => fun c' => c' (c v)) ssrfun.id)
+(fun m => fun c => c (m ssrfun.id)) _ _)).
+
+Let M : monad := shiftresetM nat.
+Goal Ret 1 +m (Reset (Ret 10 +m (Shift (fun f : _ -> M nat => f (100) >>= f) : M _)) : M _) =
+     Ret (1 + (10 + (10 + 100))).
+Proof. by rewrite /addM bindretf funeqE. Abort.
+Goal Ret 1 +m (Reset (Ret 10 +m (Shift (fun f : _ -> M nat => Ret 100) : M _)) : M _) =
+     Ret (1 + 100).
+Proof. by rewrite /addM bindretf funeqE. Abort.
+Goal Ret 1 +m (Reset (Ret 10 +m (Shift (fun f : _ -> M nat => f 100 +m f 1000) : M _)) : M _) =
+     Ret (1 + ((10 + 100) + (10 + 1000))).
+Proof. by rewrite /addM bindretf funeqE. Abort.
+
+Let N : monad := shiftresetM (seq nat).
+Fixpoint perverse (l : seq nat) : N (seq nat) :=
+  if l is h :: t then
+    Shift (fun f : _ -> N _ => Ret h >>= (fun x => perverse t >>= f >>= (fun y => Ret (x :: y))))
+  else Ret [::].
+Goal Reset (perverse [:: 1; 2; 3]) = Ret [:: 3; 2; 1] :> shiftresetM _ (seq nat).
+by [].
+Abort.
+
+Definition stranger :=
+  let g b := Reset ((Shift (fun f : _ -> shiftresetM _ _ => f b) >>= (fun x => if x then Ret 2 else Ret 3)) : shiftresetM _ _) in
+  g true +m g false.
+Goal stranger = Ret 5. by []. Abort.
+
+End ModelShiftReset.
 
 (* Work In Progress *)
 Module ModelStateLoop.

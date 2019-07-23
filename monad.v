@@ -40,6 +40,7 @@ Unset Printing Implicit Defensive.
 - Module MonadExcept.
     example of the fast product
 - Module MonadContinuation.
+- Module MonadShiftReset.
 *)
 
 Reserved Notation "A `2" (format "A `2", at level 3).
@@ -1875,18 +1876,59 @@ Lemma callcc3 A B (m : M A) b :
 Proof. by case: M A B m b => m [? []]. Qed.
 End continuation_lemmas.
 
+Definition addM (M : monad) (a b : M nat) : M nat :=
+  a >>= (fun x => b >>= (fun y => Ret (x + y))).
+Notation "a +m b" := (addM a b) (at level 50, format "a  +m  b").
+
 Section continuation_example.
 Variable M : contMonad.
-Goal Ret 1 >>=
-       (fun x => (Callcc (fun f => Ret 10 >>= (fun a => f 100 >>= (fun b => Ret (a + b)))) : M _) >>=
-         (fun y => Ret (x + y))) =
-     Ret (1 + 100).
+Let wadler_example : Ret 1 +m Callcc (fun f => Ret 10 +m f 100) = Ret (1 + 100) :> M _.
 Proof.
-rewrite /= bindretf (_ : Callcc _ = Ret 100) ?bindretf //.
+rewrite /addM.
+rewrite bindretf (_ : Callcc _ = Ret 100) ?bindretf //.
 transitivity (Callcc (fun _ : nat -> M nat => Ret 100)); last by rewrite callcc1.
 transitivity (Callcc (fun f : nat -> M nat => Ret 10 >>= (fun a => f 100))); first by rewrite callcc2.
 rewrite callcc3 //; congr Callcc.
 rewrite funeqE => g.
 by rewrite bindretf.
-Abort.
+Qed.
 End continuation_example.
+
+Module MonadShiftReset.
+Record mixin_of (M : contMonad) B : Type := Mixin {
+  shift : forall A, ((A -> M B) -> M B) -> M A ;
+  reset : M B -> M B ;
+  _ : forall A (m : M A), shift (fun k => m >>= k) = m ;
+  _ : forall A B (h : ((A -> M B) -> M A)),
+    Callcc h = shift (fun k' => h (fun x => shift (fun k'' => k' x)) >>= k')
+}.
+Record class_of (m : Type -> Type) B := Class {
+  base : MonadContinuation.class_of m ; mixin : mixin_of (MonadContinuation.Pack base) B }.
+Structure t B : Type := Pack { m : Type -> Type ; class : class_of m B }.
+Definition baseType B (M : t B) := MonadContinuation.Pack (base (class M)).
+Module Exports.
+Definition Shift B (M : t B) : forall A, ((A -> m M B) -> m M B) -> m M A :=
+  let: Pack _ (Class _ (Mixin x _ _ _)) := M return forall A, ((A -> m M B) -> m M B) -> m M A in x.
+Definition Reset B (M : t B) : m M B -> m M B :=
+  let: Pack _ (Class _ (Mixin _ x _ _)) := M return m M B -> m M B in x.
+Notation shiftresetMonad := t.
+Coercion baseType : shiftresetMonad >-> contMonad.
+Canonical baseType.
+End Exports.
+End MonadShiftReset.
+Export MonadShiftReset.Exports.
+
+Section shiftreset_lemmas.
+Variable (B : Type) (M : shiftresetMonad B).
+Lemma shiftreset0 A (m : M A) : Shift (fun k => m >>= k) = m.
+Proof. by case: M A m => m [? []]. Qed.
+End shiftreset_lemmas.
+
+Section shiftreset_examples.
+Variable (M : shiftresetMonad nat).
+Let wadler_example :
+  Ret 1 +m (Reset (Ret 10 +m (Shift (fun f : _ -> M nat => f (100) >>= f) : M _)) : M _) =
+  Ret (1 + (10 + (10 + 100))).
+Proof.
+Abort.
+End shiftreset_examples.

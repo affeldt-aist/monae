@@ -214,17 +214,13 @@ End continuation_monad_tranformer.
 Definition continuationmonad_transformer R : monadT :=
   @MonadT.mk (econtMonadM R) (@retC R) (@bindC R) (@contMonadM R).
 
+From monae Require Import monad_model.
+
 Definition callcc R M A B (f : (A -> continuationmonad_transformer R M B) -> continuationmonad_transformer R M A) : continuationmonad_transformer R M A :=
-  fun cont => f (fun x _ => cont x) cont.
+  fun cont => f (fun x _ => cont x) cont. (*NB(rei): similar def in monad_model.*)
 
 Definition abort R r (m : monad) A : continuationmonad_transformer R m A := fun (k : A -> m R) => Ret r.
 Arguments abort {R} _ {m} {A}.
-
-Definition abort_tt := 
-  @abort unit tt.
-Arguments abort_tt {m} {A}.
-
-From monae Require Import monad_model.
 
 Record operation (E : functor) (M : monad) := mkOperation {
   op : E \O M ~> M ;
@@ -275,26 +271,28 @@ Fixpoint for_loop (m : monad) (it min : nat) (body : nat -> CMT unit m unit) : m
 
 Section for_loop_lemmas.
 Variable m : monad.
-Lemma loop0 : forall i body, @for_loop m i i body = Ret tt :> m _.
+Implicit Types body : nat -> (continuationmonad_transformer unit) m unit.
+
+Lemma loop0 : forall i body, for_loop i i body = Ret tt.
 Proof.
 move => i body /=.
 by case i => //= n; rewrite ltnS leqnn.
 Qed.
 
 Lemma loop1 : forall i j body, for_loop (i.+1 + j) i body =
-     (body (i + j)) (fun _ => @for_loop m (i + j) i body) :> m _.
+     (body (i + j)) (fun _ => for_loop (i + j) i body).
 Proof.
 move => i j body /=.
 by case : ifPn ; rewrite ltnNge leq_addr.
 Qed.
 
-Lemma loop2 : forall i j body,
-    body (i + j) = @abort_tt m unit -> for_loop (i + j).+1 i body = Ret tt.
+Lemma loop2 : forall i j body ,
+    body (i + j) = abort tt -> for_loop (i + j).+1 i body = Ret tt.
 Proof.
 move => i j body Hbody /=.
 case : ifPn => Hcond.
 reflexivity.
-by rewrite Hbody /= /abort_tt /abort.
+by rewrite Hbody /= /abort.
 Qed.
 
 (* Lemma loop3 : forall i j body, *)
@@ -357,7 +355,7 @@ Qed.
 
 Example sum_from_0_to_10 : ms unit :=
   foreach (iota 100 0) (fun i => if i > 90 then
-                            abort_tt
+                            abort tt
                           else
                             liftC (Get >>= (fun z => Put (z + i)))).
 
@@ -377,11 +375,9 @@ Compute (sum_until_none [:: Some 2; Some 6; None; Some 4]).
 (* Definition liftM A B {m : monad} (f: A -> B) (ma: m A): m B := *)
 (*  ma >>= (fun a => Ret (f a)). *)
 
-About fmap.
-
 Definition calcul : CM nat nat :=
   fmap (fun x => 8 + x) (callcc_i (fun k : (_ -> CM nat _) => (k 5) >>= (fun y => Ret (y + 4)))).
 
-Compute calcul.  
+Compute calcul.
 
 End examples_continuation_monad_transformer.
