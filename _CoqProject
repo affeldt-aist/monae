@@ -8,6 +8,7 @@ monad_composition.v
 model.v
 monad_model.v
 proba_monad_model.v
+monad_transformer.v
 example_spark.v
 example_nqueens.v
 example_relabeling.v
