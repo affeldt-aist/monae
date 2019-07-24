@@ -295,7 +295,7 @@ Next Obligation. by []. Qed.
 Definition callcc r := fun A B (f : (A -> contM r B) -> contM r A) =>
   (fun k : A -> r => f (fun a _ => k a) k). (*NB(rei): similar def in monad_transformer.v*)
 Program Definition cm r := MonadContinuation.Pack (MonadContinuation.Class
-  (@MonadContinuation.Mixin (contM r) (@callcc r) _ _ _ _)).
+  (@MonadContinuation.Mixin (contM r) (@callcc r) _ _ _ _ )).
 End ModelCont.
 
 Section continuation_examples.
@@ -336,13 +336,21 @@ Proof. by rewrite /addM bindretf funeqE. Abort.
 
 End continuation_examples.
 
+(* Work In Progress *)
 Module ModelShiftReset.
+(* Local Obligation Tactic := idtac. *)
+Definition shift r : forall A, ((A -> ModelCont.cm r r) -> ModelCont.cm r r) -> ModelCont.cm r A :=
+ fun A h => fun c => h (fun v => Ret (c v)) ssrfun.id. 
+
+Definition reset r : ModelCont.cm r r -> ModelCont.cm r r :=
+  fun m => fun c => c (m ssrfun.id).
+
 Program Definition shiftresetM r : monad :=
   let M : contMonad := ModelCont.cm r in
   @MonadShiftReset.Pack _ _ (@MonadShiftReset.Class _ r (MonadContinuation.class M)
  (@MonadShiftReset.Mixin _ _
-(fun A h => fun c => h (fun v => fun c' => c' (c v)) ssrfun.id)
-(fun m => fun c => c (m ssrfun.id)) _ _)).
+ (@shift r)
+ (@reset r) _ _ _ _ _)).
 
 Let M : monad := shiftresetM nat.
 Goal Ret 1 +m (Reset (Ret 10 +m (Shift (fun f : _ -> M nat => f (100) >>= f) : M _)) : M _) =

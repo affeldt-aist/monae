@@ -1799,8 +1799,8 @@ End fastproduct.
 Module MonadContinuation.
 Record mixin_of (M : monad) : Type := Mixin {
    callcc : forall A B, ((A -> M B) -> M A) -> M A;
-   _ : forall A B (f : (A -> M B) -> M A) (k : B -> M B),
-       callcc f = callcc (fun exit => f (fun x => exit x >>= k));
+   _ : forall A B (g : (A -> M B) -> M A) (k : B -> M B),
+       callcc (fun f => g (fun x => f x >>= k)) = callcc g;
    _ : forall A B (m : M B), callcc (fun _ : B -> M A => m) = m ;
    _ : forall A B C (m : M A) x (k : A -> B -> M C),
        callcc (fun f : _ -> M _ => m >>= (fun a => f x >>= (fun b => k a b))) =
@@ -1825,11 +1825,11 @@ Export MonadContinuation.Exports.
 
 Section continuation_lemmas.
 Variables (M : contMonad).
-Lemma callcc0 A B (f : (A -> M B) -> M A) (k : B -> M B) :
-  Callcc f = Callcc (fun exit => f (fun x => exit x >>= k)).
-Proof. by case: M A B f k => m [? []]. Qed.
+Lemma callcc0 A B (g : (A -> M B) -> M A) (k : B -> M B) :
+  Callcc (fun f => g (fun x => f x >>= k)) = Callcc g.
+Proof. by case: M A B g k => m [? []]. Qed. (* NB Schrijvers *)
 Lemma callcc1 A B p : Callcc (fun _ : B -> M A => p) = p.
-Proof. by case: M A B p => m [? []]. Qed.
+Proof. by case: M A B p => m [? []]. Qed. (* NB Wadler callcc_elim *)
 Lemma callcc2 A B C (m : M A) x (k : A -> B -> M C) :
   Callcc (fun f : _ -> M _ => do a <- m; do b <- f x; k a b) =
   Callcc (fun f : _ -> M _ => m >> f x).
@@ -1855,15 +1855,23 @@ rewrite callcc3 //; congr Callcc.
 rewrite funeqE => g.
 by rewrite bindretf.
 Qed.
+
 End continuation_example.
 
 Module MonadShiftReset.
-Record mixin_of (M : contMonad) B : Type := Mixin {
-  shift : forall A, ((A -> M B) -> M B) -> M A ;
-  reset : M B -> M B ;
-  _ : forall A (m : M A), shift (fun k => m >>= k) = m ;
+Record mixin_of (M : contMonad) U : Type := Mixin {
+  shift : forall A, ((A -> M U) -> M U) -> M A ;
+  reset : M U -> M U ;
+  _ : forall A (m : M A), shift (fun k => m >>= k) = m ; (* NB Wadler *)
   _ : forall A B (h : (A -> M B) -> M A),
-    Callcc h = shift (fun k' => h (fun x => shift (fun k'' => k' x)) >>= k')
+    Callcc h = shift (fun k' => h (fun x => shift (fun k'' => k' x)) >>= k') (* NB Wadler *) ;
+  _ : forall A (c : A) (c': U) (k : A -> U -> _),
+    reset (do x <- Ret c; do y <- shift (fun _ => Ret c'); k x y) = Ret c >> Ret c';
+  _ : forall (c c' : U) (k : U -> U -> _),
+    reset (do x <- Ret c; do y <- shift (fun f => do v <- f c'; f v); Ret (k x y)) =
+    reset (do x <- Ret c; do y <- shift (fun f => f c'); Ret (k x (k x y)));
+  _ : forall (c : U) k,
+    reset (do y <- shift (@^~ c); Ret (k y)) = Ret (k c)
 }.
 Record class_of (m : Type -> Type) B := Class {
   base : MonadContinuation.class_of m ; mixin : mixin_of (MonadContinuation.Pack base) B }.
@@ -1871,9 +1879,9 @@ Structure t B : Type := Pack { m : Type -> Type ; class : class_of m B }.
 Definition baseType B (M : t B) := MonadContinuation.Pack (base (class M)).
 Module Exports.
 Definition Shift B (M : t B) : forall A, ((A -> m M B) -> m M B) -> m M A :=
-  let: Pack _ (Class _ (Mixin x _ _ _)) := M return forall A, ((A -> m M B) -> m M B) -> m M A in x.
+  let: Pack _ (Class _ (Mixin x _ _ _ _ _ _)) := M return forall A, ((A -> m M B) -> m M B) -> m M A in x.
 Definition Reset B (M : t B) : m M B -> m M B :=
-  let: Pack _ (Class _ (Mixin _ x _ _)) := M return m M B -> m M B in x.
+  let: Pack _ (Class _ (Mixin _ x _ _ _ _ _)) := M return m M B -> m M B in x.
 Notation shiftresetMonad := t.
 Coercion baseType : shiftresetMonad >-> contMonad.
 Canonical baseType.
@@ -1882,21 +1890,54 @@ End MonadShiftReset.
 Export MonadShiftReset.Exports.
 
 Section shiftreset_lemmas.
-Variable (B : Type) (M : shiftresetMonad B).
+Variables (U : Type) (M : shiftresetMonad U).
 Lemma shiftreset0 A (m : M A) : Shift (fun k => m >>= k) = m.
 Proof. by case: M A m => m [? []]. Qed.
-Lemma shiftreset1 A C (h : (A -> M C) -> M A) :
+Lemma shiftreset1 A B (h : (A -> M B) -> M A) :
   Callcc h = Shift (fun k' => h (fun x => Shift (fun k'' => k' x)) >>= k').
-Proof. by case: M A C h => m [? []]. Qed.
+Proof. by case: M A B h => m [? []]. Qed.
+Lemma shiftreset2 A c c' (k : A -> U -> _):
+  Reset (do x <- Ret c; do y <- (Shift (fun _ => @Ret M U c') : M U); k x y) = (Ret c >> Ret c') :> M _ .
+Proof. by case: M c c' k => m [? []]. Qed.
+Lemma shiftreset3 c c' (k : U -> U -> _) :
+  Reset (do x <- Ret c; do y <- (Shift (fun f : U -> M U => do v <- f c'; f v) : M U); Ret (k x y)) =
+  Reset (do x <- Ret c; do y <- (Shift (fun f : U -> M U => f c') : M U); Ret (k x (k x y))).
+Proof. by case: M c c' k => m [? []]. Qed.
+Lemma shiftreset4 c k:
+  Reset (do y <- (Shift (@^~ c) : M U); Ret (k y)) = Ret (k c) :> M U.
+Proof. by case: M c => m [? []]. Qed.
 End shiftreset_lemmas.
 
 Section shiftreset_examples.
 Variable (M : shiftresetMonad nat).
-Let wadler_example :
+Let wadler_example2 :
+  Ret 1 +m (Reset (Ret 10 +m (Shift (fun f : _ -> M nat => Ret 100 : M _) : M _)) : M _) =
+  Ret (1 + 100).
+Proof.
+rewrite /addM.
+rewrite bindretf.
+transitivity (Ret (100) >>= (fun y => Ret (1 + y)) : M _); last first.
+  by rewrite bindretf.
+congr (Bind _ _). (* TODO : bind_ext casse *)
+rewrite (shiftreset2 _ _).
+by rewrite bindretf.
+Qed.
+
+Let wadler_example1 :
   Ret 1 +m (Reset (Ret 10 +m (Shift (fun f : _ -> M nat => f (100) >>= f) : M _)) : M _) =
   Ret (1 + (10 + (10 + 100))).
 Proof.
-Abort.
+rewrite /addM.
+rewrite bindretf.
+transitivity ((Ret (10 + (10 + 100))) >>= (fun y => Ret (1 + y)) : M _); last first.
+  by rewrite bindretf.
+congr (Bind _ _). 
+rewrite shiftreset3.
+rewrite (_ : do x <- Ret 10; _ = do y <- Shift (@^~ 100) : M _; Ret (10 + (10 + y))); last first.
+  by rewrite bindretf.
+by rewrite shiftreset4.
+Qed.
+
 End shiftreset_examples.
 
 (* NB: wip, no model *)
