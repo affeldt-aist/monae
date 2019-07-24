@@ -250,17 +250,29 @@ Qed.
 Goal forall S, @ModelState.get S = @get_op S S (@Ret (ModelMonad.state S) S).
 Proof. by []. Qed.
 
-Section set_functor.
+Section put_functor.
 Variable S : Type.
-Definition set_act_obj X := (S * X)%type.
-Definition set_act_mor X Y (f : X -> Y) (sx : set_act_obj X) : set_act_obj Y := (sx.1, f sx.2).
-Program Definition set_fun := Functor.Pack (@Functor.Class set_act_obj set_act_mor _ _ ).
-Next Obligation. by move=> A; rewrite /set_act_mor funeqE; case. Qed.
-Next Obligation. by move=> A B C g h; rewrite /get_act_mor funeqE. Qed.
-End set_functor.
+Definition put_act_obj X := (S * X)%type.
+Definition put_act_mor X Y (f : X -> Y) (sx : put_act_obj X) : put_act_obj Y := (sx.1, f sx.2).
+Program Definition put_fun := Functor.Pack (@Functor.Class put_act_obj put_act_mor _ _ ).
+Next Obligation. by move=> A; rewrite /put_act_mor funeqE; case. Qed.
+Next Obligation. by move=> A B C g h; rewrite /put_act_mor funeqE. Qed.
+End put_functor.
 
-Definition set_op S (s : S) A (m : ModelMonad.acto S A) : ModelMonad.acto S A :=
+Definition put_op S A (s : S) (m : ModelMonad.acto S A) : ModelMonad.acto S A :=
   fun _ => m s.
+
+Program Definition put_operation S : operation (put_fun S) (ModelMonad.state S) :=
+  @mkOperation _ _ (fun A => uncurry (@put_op S A)) _.
+Next Obligation.
+move=> A B h.
+rewrite boolp.funeqE => /=; case => s m /=.
+rewrite boolp.funeqE => s'.
+by rewrite 2!Monad_of_ret_bind.fmapE.
+Qed.
+
+Goal forall S, @ModelState.put S = fun s => put_op s (@Ret (ModelMonad.state S) _ tt).
+Proof. by []. Qed.
 
 From monae Require Import state_monad.
 
