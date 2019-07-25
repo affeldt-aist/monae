@@ -368,7 +368,7 @@ End get_functor.
 Definition get_op S A (k : S -> ModelMonad.acto S A) : ModelMonad.acto S A := fun s => k s s.
 
 Program Definition get_operation S : operation (get_fun S) (ModelMonad.state S) :=
-  @TransNat.mk _ _ (@get_op S) _.
+  @NatTrans.mk _ _ (@get_op S) _.
 Next Obligation.
 move=> A B h; rewrite boolp.funeqE => /= m /=.
 rewrite boolp.funeqE => s.
@@ -392,7 +392,7 @@ Definition put_op S A (s : S) (m : ModelMonad.acto S A) : ModelMonad.acto S A :=
   fun _ => m s.
 
 Program Definition put_operation S : operation (put_fun S) (ModelMonad.state S) :=
-  @TransNat.mk _ _ (fun A => uncurry (@put_op S A)) _.
+  @NatTrans.mk _ _ (fun A => uncurry (@put_op S A)) _.
 Next Obligation.
 move=> A B h.
 rewrite boolp.funeqE => /=; case => s m /=.
@@ -420,7 +420,7 @@ Definition callcc_op r A (f : (C r A -> r) -> C r A) : C r A :=
   fun k => f (fun m => m k) k.
 
 Program Definition callcc_operation r : operation (callcc_fun r) (ModelCont.contM r) :=
-  @TransNat.mk _ _ (@callcc_op r) _.
+  @NatTrans.mk _ _ (@callcc_op r) _.
 Next Obligation.
 move=> A B h.
 rewrite boolp.funeqE => /= m /=.
@@ -455,7 +455,7 @@ Definition mk H := @Lifting.mk _ _ op _ (@MonadT.liftT T M) H.
 End liftingt.
 End LiftingT.
 
-(* Algebraic operation *)
+(* Algebraic operation, mauro jaskelioff, modular monad transformers, esop 2009 *)
 Module AOperation.
 Section aoperation.
 Variables (E : functor) (M : monad).
@@ -482,7 +482,7 @@ by rewrite compA join_naturality -compA FCompE Hop'.
 Qed.
 
 Definition psi_transnat (op' : E -.> M) : operation E M :=
-  TransNat.mk (psi_g_natural op').
+  NatTrans.mk (psi_g_natural op').
 
 Lemma psi_algebraic (op' : E -.> M) : AOperation.algebraic (psi_transnat op').
 Proof.
@@ -530,7 +530,7 @@ rewrite /naturalP /= in H1.
 Admitted.
 
 Definition phi (op : aoperation E M) : transnat E M :=
-  TransNat.mk (phi_g_natural op).
+  NatTrans.mk (phi_g_natural op).
 
 (* TODO: prove bijection *)
 
