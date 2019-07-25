@@ -214,99 +214,13 @@ End continuation_monad_tranformer.
 Definition continuationmonad_transformer R : monadT :=
   @MonadT.mk (econtMonadM R) (@retC R) (@bindC R) (@contMonadM R).
 
-From monae Require Import monad_model.
+Require Import state_monad monad_model.
 
 Definition callcc R M A B (f : (A -> continuationmonad_transformer R M B) -> continuationmonad_transformer R M A) : continuationmonad_transformer R M A :=
   fun cont => f (fun x _ => cont x) cont. (*NB(rei): similar def in monad_model.*)
 
 Definition abort R r (m : monad) A : continuationmonad_transformer R m A := fun (k : A -> m R) => Ret r.
 Arguments abort {R} _ {m} {A}.
-
-Record operation (E : functor) (M : monad) := mkOperation {
-  op : E \O M ~> M ;
-  Hop : naturalP (E \O M) M op }.
-
-Section sigma_operations.
-(* TODO: rewrite ModelState.get,put,callcc with get_op, etc.? *)
-
-Section get_functor.
-Variable S : Type.
-Definition get_act_obj X := S -> X.
-Definition get_act_mor X Y (f : X -> Y) (t : get_act_obj X) : get_act_obj Y := fun s => f (t s).
-Program Definition get_fun := Functor.Pack (@Functor.Class get_act_obj get_act_mor _ _ ).
-Next Obligation. by move=> A; rewrite /get_act_mor funeqE. Qed.
-Next Obligation. by move=> A B C g h; rewrite /get_act_mor funeqE. Qed.
-End get_functor.
-
-Definition get_op S A (k : S -> ModelMonad.acto S A) : ModelMonad.acto S A := fun s => k s s.
-
-Program Definition get_operation S : operation (get_fun S) (ModelMonad.state S) :=
-  @mkOperation _ _ (@get_op S) _.
-Next Obligation.
-move=> A B h; rewrite boolp.funeqE => /= m /=.
-rewrite boolp.funeqE => s.
-by rewrite FCompE Monad_of_ret_bind.fmapE.
-Qed.
-
-Lemma getE S : @ModelState.get S = @get_op S S (@Ret (ModelMonad.state S) S).
-Proof. by []. Qed.
-
-Section put_functor.
-Variable S : Type.
-Definition put_act_obj X := (S * X)%type.
-Definition put_act_mor X Y (f : X -> Y) (sx : put_act_obj X) : put_act_obj Y := (sx.1, f sx.2).
-Program Definition put_fun := Functor.Pack (@Functor.Class put_act_obj put_act_mor _ _ ).
-Next Obligation. by move=> A; rewrite /put_act_mor funeqE; case. Qed.
-Next Obligation. by move=> A B C g h; rewrite /put_act_mor funeqE. Qed.
-End put_functor.
-
-Definition put_op S A (s : S) (m : ModelMonad.acto S A) : ModelMonad.acto S A :=
-  fun _ => m s.
-
-Program Definition put_operation S : operation (put_fun S) (ModelMonad.state S) :=
-  @mkOperation _ _ (fun A => uncurry (@put_op S A)) _.
-Next Obligation.
-move=> A B h.
-rewrite boolp.funeqE => /=; case => s m /=.
-rewrite boolp.funeqE => s'.
-by rewrite 2!Monad_of_ret_bind.fmapE.
-Qed.
-
-Lemma putE S : @ModelState.put S = fun s => put_op s (@Ret (ModelMonad.state S) _ tt).
-Proof. by []. Qed.
-
-Section callcc.
-
-Let C r := ModelCont.contM r.
-Definition callcc_op r A (f : (C r A -> r) -> C r A) : C r A := fun k => f (fun m => m k) k.
-
-Section callcc_functor.
-Definition callcc_act_obj r A := (A -> r) -> A.
-Definition callcc_act_mor r X Y (f : X -> Y) (t : callcc_act_obj r X) : callcc_act_obj r Y :=
-  fun (g : Y -> r) => f (t (fun x => g (f x))).
-Program Definition callcc_fun r := Functor.Pack (@Functor.Class (callcc_act_obj r) (@callcc_act_mor r) _ _ ).
-Next Obligation. by move=> A; rewrite /callcc_act_mor funeqE. Qed.
-Next Obligation. by move=> A B D g h; rewrite /callcc_act_mor funeqE. Qed.
-End callcc_functor.
-
-Program Definition callcc_operation r : operation (callcc_fun r) (ModelCont.contM r) :=
-  @mkOperation _ _ (@callcc_op r) _.
-Next Obligation.
-move=> A B h.
-rewrite boolp.funeqE => /= m /=.
-rewrite boolp.funeqE => g.
-by rewrite Monad_of_ret_bind.fmapE.
-Qed.
-
-Lemma callccE r A B (f : (A -> C r B) -> C r A) :
-  ModelCont.callcc f = callcc_op (fun k => f (fun x _ => k (@Ret _ _ x))).
-Proof. by []. Qed.
-
-End callcc.
-
-End sigma_operations.
-
-From monae Require Import state_monad.
 
 Section examples_continuation_monad_transformer.
 
@@ -436,3 +350,157 @@ Definition calcul : CM nat nat :=
 Compute calcul.
 
 End examples_continuation_monad_transformer.
+
+Module Operation.
+Record t (E : functor) (M : monad) := mk {
+  f :> E \O M ~> M ;
+  H : naturalP (E \O M) M f }.
+End Operation.
+Notation operation := Operation.t.
+Coercion Operation.f : operation >-> Funclass.
+
+Section sigma_operations.
+(* TODO: rewrite ModelState.get,put,callcc with get_op, etc.? *)
+
+Section get_functor.
+Variable S : Type.
+Definition get_act_obj X := S -> X.
+Definition get_act_mor X Y (f : X -> Y) (t : get_act_obj X) : get_act_obj Y := fun s => f (t s).
+Program Definition get_fun := Functor.Pack (@Functor.Class get_act_obj get_act_mor _ _ ).
+Next Obligation. by move=> A; rewrite /get_act_mor funeqE. Qed.
+Next Obligation. by move=> A B C g h; rewrite /get_act_mor funeqE. Qed.
+End get_functor.
+
+Definition get_op S A (k : S -> ModelMonad.acto S A) : ModelMonad.acto S A := fun s => k s s.
+
+Program Definition get_operation S : operation (get_fun S) (ModelMonad.state S) :=
+  @Operation.mk _ _ (@get_op S) _.
+Next Obligation.
+move=> A B h; rewrite boolp.funeqE => /= m /=.
+rewrite boolp.funeqE => s.
+by rewrite FCompE Monad_of_ret_bind.fmapE.
+Qed.
+
+Lemma getE S : @ModelState.get S = @get_op S S (@Ret (ModelMonad.state S) S).
+Proof. by []. Qed.
+
+Section put_functor.
+Variable S : Type.
+Definition put_act_obj X := (S * X)%type.
+Definition put_act_mor X Y (f : X -> Y) (sx : put_act_obj X) : put_act_obj Y := (sx.1, f sx.2).
+Program Definition put_fun := Functor.Pack (@Functor.Class put_act_obj put_act_mor _ _ ).
+Next Obligation. by move=> A; rewrite /put_act_mor funeqE; case. Qed.
+Next Obligation. by move=> A B C g h; rewrite /put_act_mor funeqE. Qed.
+End put_functor.
+
+Definition put_op S A (s : S) (m : ModelMonad.acto S A) : ModelMonad.acto S A :=
+  fun _ => m s.
+
+Program Definition put_operation S : operation (put_fun S) (ModelMonad.state S) :=
+  @Operation.mk _ _ (fun A => uncurry (@put_op S A)) _.
+Next Obligation.
+move=> A B h.
+rewrite boolp.funeqE => /=; case => s m /=.
+rewrite boolp.funeqE => s'.
+by rewrite 2!Monad_of_ret_bind.fmapE.
+Qed.
+
+Lemma putE S : @ModelState.put S = fun s => put_op s (@Ret (ModelMonad.state S) _ tt).
+Proof. by []. Qed.
+
+Section callcc.
+
+Let C r := ModelCont.contM r.
+Definition callcc_op r A (f : (C r A -> r) -> C r A) : C r A := fun k => f (fun m => m k) k.
+
+Section callcc_functor.
+Definition callcc_act_obj r A := (A -> r) -> A.
+Definition callcc_act_mor r X Y (f : X -> Y) (t : callcc_act_obj r X) : callcc_act_obj r Y :=
+  fun (g : Y -> r) => f (t (fun x => g (f x))).
+Program Definition callcc_fun r := Functor.Pack (@Functor.Class (callcc_act_obj r) (@callcc_act_mor r) _ _ ).
+Next Obligation. by move=> A; rewrite /callcc_act_mor funeqE. Qed.
+Next Obligation. by move=> A B D g h; rewrite /callcc_act_mor funeqE. Qed.
+End callcc_functor.
+
+Program Definition callcc_operation r : operation (callcc_fun r) (ModelCont.contM r) :=
+  @Operation.mk _ _ (@callcc_op r) _.
+Next Obligation.
+move=> A B h.
+rewrite boolp.funeqE => /= m /=.
+rewrite boolp.funeqE => g.
+by rewrite Monad_of_ret_bind.fmapE.
+Qed.
+
+Lemma callccE r A B (f : (A -> C r B) -> C r A) :
+  ModelCont.callcc f = callcc_op (fun k => f (fun x _ => k (@Ret _ _ x))).
+Proof. by []. Qed.
+
+End callcc.
+
+End sigma_operations.
+
+Module Lifting.
+Section lifting.
+Variables (E : functor) (M : monad) (op : operation E M).
+Variables (N : monad) (e : monadM M N).
+Record t := mk {
+  f :> operation E N ;
+  H : forall X, e X \o op X = @f X \o (E # e X) }.
+End lifting.
+End Lifting.
+
+Module LiftingT.
+Section liftingt.
+Variables (E : functor) (M : monad) (op : operation E M).
+Variable (T : monadT).
+Definition t := Lifting.t op (@MonadT.liftT T M).
+Definition mk H := @Lifting.mk _ _ op _ (@MonadT.liftT T M) H.
+End liftingt.
+End LiftingT.
+
+(* Algebraic operation *)
+Module AOperation.
+Section aoperation.
+Variables (E : functor) (M : monad).
+Record t := mk {
+  op :> operation E M ;
+  H : forall A B (f : A -> M B) (t : E (M A)),
+    (op A t >>= f) = op B ((E # (fun m => m >>= f)) t)
+}.
+End aoperation.
+End AOperation.
+Notation aoperation := AOperation.t.
+
+From mathcomp Require Import classical_sets.
+
+Local Open Scope classical_set_scope.
+
+Module Tnat.
+Record t (M N : functor) := mk {
+  f : M ~> N ;
+  H : naturalP _ _ f }.
+End Tnat.
+Notation tnat := Tnat.t.
+
+Section proposition17.
+Variables (E : functor) (M : monad).
+
+Definition phi (op : aoperation E M) : tnat E M.
+Admitted.
+
+Definition psi (op' : tnat E M) : aoperation E M.
+case: op' => op' Hop'.
+have op : operation E M.
+  have @f : E \O M ~> M.
+    move=> X m.
+    apply: (@Join M X \o @op' (M X)).
+    exact: m.
+  refine (@Operation.mk _ _ f _).
+  move=> A B h.
+  admit.
+refine (@AOperation.mk _ _ op _).
+move=> A B f  t.
+admit.
+Admitted.
+
+End proposition17.
