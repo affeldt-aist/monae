@@ -273,9 +273,20 @@ Definition naturalP (phi : f ~> g) :=
 End natural_transformation.
 Arguments naturalP : clear implicits.
 
+Module TransNat.
+Record t (M N : functor) := mk {
+  f :> M ~> N ;
+  H : naturalP _ _ f }.
+End TransNat.
+Notation transnat := TransNat.t.
+Coercion TransNat.f : transnat >-> Funclass.
+
+Notation "f -.> g" := (transnat f g) (at level 51).
+
 Section natural_transformation_example.
-Definition fork : FId ~> squaring := fun A (a : A) => (a, a).
-Lemma fork_natural : naturalP FId squaring fork. Proof. by []. Qed.
+Definition fork' : FId ~> squaring := fun A (a : A) => (a, a).
+Lemma fork_natural : naturalP FId squaring fork'. Proof. by []. Qed.
+Definition fork : FId -.> squaring := TransNat.mk fork_natural.
 End natural_transformation_example.
 
 Section adjoint_functors.

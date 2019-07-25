@@ -88,7 +88,8 @@ Example test_nonce0 (M : stateMonad nat) : M nat :=
 (*Reset test_nonce0.
 Fail Check test_nonce0.*)
 
-(* Work In Progress *)  
+(* NB: this is experimental, may disappear, see rather foreah in
+monad_transformer because it is more general *)
 Module MonadStateLoop.
   Record mixin_of S (M : stateMonad S) : Type := Mixin {
    foreach : nat -> nat -> (nat -> M unit) -> M unit ;
@@ -123,7 +124,7 @@ Lemma loop1 m n body :
 Proof. by case: M body => ? [? []]. Qed.
 End stateloop_lemmas.
 
-Section examples.
+Section stateloop_examples.
 Variable (M : loopStateMonad nat).
 Let example min max : M unit := Foreach max min (fun i : nat => (Get >> Ret tt : M _)).
 Print example.
@@ -152,7 +153,7 @@ rewrite add0n (addnC 1).
 rewrite iota_add /= sumn_cat /=.
 by rewrite add0n addn0 /= addnAC addnA.
 Qed.
-End examples.
+End stateloop_examples.
 
 (* TODO : utility ? *)
 Module MonadContStateLoop.
