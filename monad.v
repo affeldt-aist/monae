@@ -57,9 +57,10 @@ Reserved Notation "n <=< m" (at level 50).
 Reserved Notation "x '[~]' y" (at level 50).
 Reserved Notation "'[~p]'".
 Reserved Notation "f (o) g" (at level 11).
+Reserved Notation "f ~> g" (at level 51).
 
 Notation "l \\ p" := ([seq x <- l | x \notin p]).
-Notation "f ~> g" := (forall A, f A -> g A) (at level 51).
+Notation "f ~~> g" := (forall A, f A -> g A) (at level 51).
 
 (* some Haskell-like functions *)
 Definition foldr1 (A : Type) (def : A) (f : A -> A -> A) (s : seq A) :=
@@ -268,31 +269,31 @@ End uncurry_functor.
 
 Section natural_transformation.
 Variables f g : functor.
-Definition naturalP (phi : f ~> g) :=
+Definition naturalP (phi : f ~~> g) :=
   forall A B (h : A -> B), (g # h) \o phi A = phi B \o (f # h).
 End natural_transformation.
 Arguments naturalP : clear implicits.
 
 Module NatTrans.
 Record t (M N : functor) := mk {
-  f :> M ~> N ;
+  f :> M ~~> N ;
   H : naturalP _ _ f }.
 End NatTrans.
 Notation transnat := NatTrans.t.
 Coercion NatTrans.f : transnat >-> Funclass.
 
-Notation "f -.> g" := (transnat f g) (at level 51).
+Notation "f ~> g" := (transnat f g).
 
 Section natural_transformation_example.
-Definition fork' : FId ~> squaring := fun A (a : A) => (a, a).
+Definition fork' : FId ~~> squaring := fun A (a : A) => (a, a).
 Lemma fork_natural : naturalP FId squaring fork'. Proof. by []. Qed.
-Definition fork : FId -.> squaring := NatTrans.mk fork_natural.
+Definition fork : FId ~> squaring := NatTrans.mk fork_natural.
 End natural_transformation_example.
 
 Section adjoint_functors.
 Variables f g : functor.
-Definition eta_type := FId ~> g \O f.
-Definition eps_type := f \O g ~> FId.
+Definition eta_type := FId ~~> g \O f.
+Definition eps_type := f \O g ~~> FId.
 Definition triangular_law1 (eps : eps_type) (eta : eta_type) :=
   forall A, eps (f A) \o (f # eta A) = @id (f A).
 Definition triangular_law2 (eps : eps_type) (eta : eta_type) :=
@@ -368,7 +369,7 @@ Module monad_of_adjoint.
 Section def.
 Variables (f g : functor) (eps : eps_type f g) (eta : eta_type f g).
 Definition M := g \O f.
-Definition mu : M \O M ~> M := fun A => g # @eps (f A).
+Definition mu : M \O M ~~> M := fun A => g # @eps (f A).
 Definition bind A B (m : M A) (f : A -> M B) : M B := mu ((M # f) m).
 End def.
 Section prop.
@@ -489,7 +490,7 @@ End composite_adjoint.
 Module JoinLaws.
 Section join_laws.
 Context {M : functor}.
-Variables (ret : FId ~> M) (join : M \O M ~> M).
+Variables (ret : FId ~~> M) (join : M \O M ~~> M).
 
 Definition ret_naturality := naturalP FId M ret.
 
@@ -507,7 +508,7 @@ End JoinLaws.
 
 Section from_join_laws_to_bind_laws.
 Variable F : functor.
-Variable (ret : FId ~> F) (join : F \O F ~> F).
+Variable (ret : FId ~~> F) (join : F \O F ~~> F).
 
 Hypothesis ret_naturality : JoinLaws.ret_naturality ret.
 Hypothesis join_naturality : JoinLaws.join_naturality join.
@@ -539,8 +540,8 @@ End from_join_laws_to_bind_laws.
 
 Module Monad.
 Record mixin_of (M : functor) : Type := Mixin {
-  ret : FId ~> M ;
-  join : M \O M ~> M ;
+  ret : FId ~~> M ;
+  join : M \O M ~~> M ;
   _ : JoinLaws.ret_naturality ret ;
   _ : JoinLaws.join_naturality join ;
   _ : JoinLaws.left_unit ret join ;
@@ -686,7 +687,7 @@ Let M' := Functor.Pack functor_mixin.
 Lemma fmapE A B (f : A -> B) m : (M' # f) m = bind m (ret (A:=B) \o f).
 Proof. by []. Qed.
 
-Let ret' : FId ~> M' := ret.
+Let ret' : FId ~~> M' := ret.
 Definition join A (pp : M' (M' A)) := bind pp id.
 
 Let bind_fmap A B C (f : A -> B) (m : M A) (g : B -> M C) :

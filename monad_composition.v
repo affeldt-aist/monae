@@ -13,7 +13,7 @@ From monae Require Import monad.
 Module Comp.
 Section comp.
 Variables (M N : monad).
-Definition ret : FId ~> M \O N := fun _ => Ret \o Ret.
+Definition ret : FId ~~> M \O N := fun _ => Ret \o Ret.
 Arguments ret {_}.
 Lemma fmap_ret A B (h : A -> B) : ((M \O N) # h) \o ret = ret \o h.
 Proof.
@@ -28,10 +28,10 @@ Notation CRet := (Comp.ret).
 Module Prod.
 Section prod.
 Variables M N(* NB: actually, premonad is enough for N*) : monad.
-Variable prod : N \O (M \O N) ~> M \O N.
+Variable prod : N \O (M \O N) ~~> M \O N.
 Arguments prod {_}.
 
-Definition JOIN : (M \O N) \O (M \O N) ~> M \O N := fun _ => Join \o M # prod.
+Definition JOIN : (M \O N) \O (M \O N) ~~> M \O N := fun _ => Join \o M # prod.
 Arguments JOIN {_}.
 
 Definition prod1 := forall A B (f : A -> B), prod \o N # ((M \O N) # f) = (M \O N) # f \o prod.
@@ -84,10 +84,10 @@ End Prod.
 Module Dorp.
 Section dorp.
 Variables M  (* actually, premonad is enough for M *) N : monad.
-Variable dorp : M \O (N \O M) ~> M \O N.
+Variable dorp : M \O (N \O M) ~~> M \O N.
 Arguments dorp {_}.
 
-Definition JOIN : (M \O N) \O (M \O N) ~> M \O N := fun _ => M # Join \o dorp.
+Definition JOIN : (M \O N) \O (M \O N) ~~> M \O N := fun _ => M # Join \o dorp.
 Arguments JOIN {_}.
 
 Definition dorp1 := forall A B (f : A -> B), dorp \o (M \O N) # (M # f) = (M \O N) # f \o dorp.
@@ -151,10 +151,10 @@ End Dorp.
 Module Swap.
 Section swap.
 Variables M N : monad.
-Variable swap : N \O M ~> M \O N.
+Variable swap : N \O M ~~> M \O N.
 Arguments swap {_}.
 
-Definition JOIN : (M \O N) \o (M \O N) ~> M \O N :=
+Definition JOIN : (M \O N) \o (M \O N) ~~> M \O N :=
   fun A => M # Join \o Join \o M # (@swap (N A)).
 
 Lemma JOINE A : @JOIN A = Join \o M # (M # Join \o swap).

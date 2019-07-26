@@ -145,7 +145,7 @@ Variables S : Type.
 Definition acto := fun A => S -> A * S.
 Local Notation M := acto.
 Definition bind := fun A B (m : M A) (f : A -> M B) => fun s => uncurry f (m s).
-Definition ret : FId ~> M := fun A a => fun s => (a, s).
+Definition ret : FId ~~> M := fun A a => fun s => (a, s).
 Program Definition state := @Monad_of_ret_bind M ret bind _ _ _.
 Next Obligation. by []. Qed.
 Next Obligation. by move=> A f; rewrite /bind funeqE => ?; case: f. Qed.

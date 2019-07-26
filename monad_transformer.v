@@ -29,7 +29,7 @@ Module monadM.
 Section monad_morphism.
 Variables M N : monad.
 Record t := mk {
-  e : M ~> N ;
+  e : M ~~> N ;
   ret : forall {A} (a : A), Ret a = e (Ret a) ;
   bind : forall {A B} (m : M A) (f : A -> M B),
     e (m >>= f) = e m >>= (fun a => e (f a))
@@ -74,7 +74,7 @@ Module MonadT.
 Section monad_transformer.
 Record t := mk {
   T : monad -> monad ;
-  retT : forall (M : monad), FId ~> (T M);
+  retT : forall (M : monad), FId ~~> (T M);
   bindT : forall (M : monad) A B, (T M) A -> (A -> (T M) B) -> (T M) B ;
   liftT : forall (M : monad), monadM M (T M) }.
 End monad_transformer.
@@ -471,20 +471,20 @@ Coercion AOperation.op : aoperation >-> operation.
 Section proposition17.
 Variables (E : functor) (M : monad).
 
-Definition psi_g (op' : E ~> M) : E \O M ~> M :=
+Definition psi_g (op' : E ~~> M) : E \O M ~~> M :=
   fun X m => (@Join _ X \o @op' _) m.
 
-Lemma psi_g_natural (op' : E -.> M) : naturalP (E \O M) M (psi_g op').
+Lemma psi_g_natural (op' : E ~> M) : naturalP (E \O M) M (psi_g op').
 Proof.
 move=> A B h; rewrite {}/psi_g.
 case: op' => op' Hop' /=; rewrite /naturalP in Hop'.
 by rewrite compA join_naturality -compA FCompE Hop'.
 Qed.
 
-Definition psi_transnat (op' : E -.> M) : operation E M :=
+Definition psi_transnat (op' : E ~> M) : operation E M :=
   NatTrans.mk (psi_g_natural op').
 
-Lemma psi_algebraic (op' : E -.> M) : AOperation.algebraic (psi_transnat op').
+Lemma psi_algebraic (op' : E ~> M) : AOperation.algebraic (psi_transnat op').
 Proof.
 move=> A B g t.
 case: op' => op' H /=.
@@ -514,10 +514,10 @@ rewrite -[RHS]compE.
 by rewrite joinA'.
 Qed.
 
-Definition psi (op' : E -.> M) : aoperation E M :=
+Definition psi (op' : E ~> M) : aoperation E M :=
   AOperation.mk (psi_algebraic op').
 
-Definition phi_g (op : aoperation E M) : E ~> M :=
+Definition phi_g (op : aoperation E M) : E ~~> M :=
   fun X => @AOperation.op E M op X (*TODO: coercion*)\o (E # Ret).
 
 Lemma phi_g_natural (op : aoperation E M) : naturalP E M (phi_g op).
@@ -561,7 +561,7 @@ Let m : M S := Get.
 
 Let xm : XM S := (MonadT.liftT X) _ _ m.
 
-Let lift_get : ((get_fun S) \O XM) ~> XM :=
+Let lift_get : ((get_fun S) \O XM) ~~> XM :=
   alifting (get_aop S) (MonadT.liftT X M).
 
 Goal forall X, forall k : S -> XM X, lift_get k = (fun s => k s s).
