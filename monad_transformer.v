@@ -214,7 +214,7 @@ End continuation_monad_tranformer.
 Definition continuationmonad_transformer R : monadT :=
   @MonadT.mk (econtMonadM R) (@retC R) (@bindC R) (@contMonadM R).
 
-Require Import state_monad monad_model.
+From monae Require Import state_monad monad_model.
 
 Definition callcc R M A B (f : (A -> continuationmonad_transformer R M B) -> continuationmonad_transformer R M A) : continuationmonad_transformer R M A :=
   fun cont => f (fun x _ => cont x) cont. (*NB(rei): similar def in monad_model.*)
@@ -542,6 +542,12 @@ Admitted.
 Definition get_aop S : aoperation (get_fun S) (ModelMonad.state S) :=
   AOperation.mk (@Hget_aop S).
 
+Lemma Hcallcc_aop R : AOperation.algebraic (callcc_operation R).
+Admitted.
+
+Definition callcc_aop R : aoperation (callcc_fun R) (ModelCont.cm R) :=
+  AOperation.mk (@Hcallcc_aop R).
+
 Section theorem19.
 Variables (E : functor) (M : monad) (op : aoperation E M).
 Variables (N : monad) (e : monadM M N).
@@ -551,24 +557,63 @@ Definition alifting (X : Type) :=
 
 End theorem19.
 
-Section theorem19_example.
+Section theorem19_example_X.
 Variable (S Z : Type).
 Let M : monad := ModelState.state S.
 Let X : monadT := exceptionmonad_transformer Z.
 Let XM : monad := X M.
 
-Let m : M S := Get.
+(* Let m : M S := Get. *)
 
-Let xm : XM S := (MonadT.liftT X) _ _ m.
+(* Let xm : XM S := (MonadT.liftT X) _ _ m. *)
 
-Let lift_get : ((get_fun S) \O XM) ~> XM :=
+Let lift_getX : ((get_fun S) \O XM) ~> XM :=
   alifting (get_aop S) (MonadT.liftT X M).
 
-Goal forall X, forall k : S -> XM X, lift_get k = (fun s => k s s).
+Goal forall X, forall k : S -> XM X, lift_getX k = (fun s => k s s).
 move=> X0 k.
-rewrite /lift_get.
-rewrite /alifting.
+done.
+Abort. 
+
+Goal lift_getX Ret = @liftX  _ M _ (@ModelState.get S). 
+Proof.
 done.
 Abort.
+
+End theorem19_example_X.
+
+Section theorem19_example_C.
+Variable (S : Type).
+Let C R : monad := ModelCont.cm R.
+Let ST : monadT := statemonad_transformer S.
+Let STC R : monad := ST (C R).
+(* STC : S -> ((A * S) -> R) -> R *)
+
+Let lift_callccS R : ((callcc_fun R) \O (STC R)) ~> (STC R) :=
+  alifting (callcc_aop R) (MonadT.liftT ST (C R)).
+
+Goal forall A R (f : ((STC R) A -> R) -> (STC R) A) , lift_callccS f = (fun s k => f (fun m => m s k) s k) :> (STC R) A.
+Proof.
+move=> A f.
+done.
+Abort. 
+
+Definition callccS_ A B R (f : (A -> (STC R) B) -> (STC _) A) : (STC _) A := fun s k => f (fun x s' _ => k (x, s)) s k.
+
+Lemma callccS_E A B R f :
+  @callccS_ A B R f =
+  @lift_callccS _ _ (fun (k : STC R A -> R) => f (fun a => (fun (_ : S) (_ : B * S -> R) => k (fun s' x => x (a, s'))) : STC R B)).
+Proof. by []. Qed.
+
+End theorem19_example_C.
+
+Variable R : Type.
+Let C : monadT := continuationmonad_transformer R.
+Let CM : monad := C M.
+
+Let lift_getC : ((get_fun S) \O CM) ~> CM :=
+  alifting (get_aop S) (MonadT.liftT C M).
+
+(* Goal forall A, forall f : S -> CM A, lift_getC k = fun k s => . *)
 
 End theorem19_example.
