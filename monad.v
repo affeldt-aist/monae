@@ -267,26 +267,50 @@ Definition uncurry_F X : functor :=
   Functor.Pack (Functor.Class (uncurry_f_id X) (uncurry_f_comp X)).
 End uncurry_functor.
 
-Section natural_transformation.
-Variables f g : functor.
-Definition naturalP (phi : f ~~> g) :=
-  forall A B (h : A -> B), (g # h) \o phi A = phi B \o (f # h).
-End natural_transformation.
-Arguments naturalP : clear implicits.
-
+(* natural transformation *)
 Module NatTrans.
-Record t (M N : functor) := mk {
-  f :> M ~~> N ;
-  H : naturalP _ _ f }.
+Section nattrans.
+Variable M N : functor.
+Definition P (phi : M ~~> N) :=
+  forall A B (h : A -> B), (N # h) \o phi A = phi B \o (M # h).
+Record t := mk { f :> M ~~> N ; H : P f }.
+End nattrans.
 End NatTrans.
 Notation transnat := NatTrans.t.
+Arguments NatTrans.P : clear implicits.
+Notation natural := NatTrans.P.
 Coercion NatTrans.f : transnat >-> Funclass.
 
 Notation "f ~> g" := (transnat f g).
 
+Section id_natural_transformation.
+Variables C : functor.
+Lemma natural_id : natural C C (fun A => @id (C A)). Proof. by []. Qed.
+Definition NId : C ~> C := @NatTrans.mk C C (fun A => @id (C A)) natural_id.
+End id_natural_transformation.
+
+Section vertical_composition.
+Variables C D E : functor.
+Variables (g : D ~> E) (f : C ~> D).
+Lemma natural_vcomp : natural C E (fun A => g A \o f A).
+Proof. by move=> A B h; rewrite compA (NatTrans.H g) -compA (NatTrans.H f). Qed.
+
+Definition VComp : C ~> E := NatTrans.mk natural_vcomp.
+End vertical_composition.
+
+Section horizontal_composition.
+Variables (F G F' G' : functor) (s : F ~> G) (t : F' ~> G').
+Lemma natural_hcomp : natural (F' \O F) (G' \O G) (fun A => @t (G A) \o F' # (@s A)).
+Proof.
+move=> A B h; rewrite compA (NatTrans.H t) -compA -[in RHS]compA.
+by congr (_ \o _); rewrite FCompE -2!functor_o (NatTrans.H s).
+Qed.
+Definition HComp : F' \O F ~> G' \O G := NatTrans.mk natural_hcomp.
+End horizontal_composition.
+
 Section natural_transformation_example.
 Definition fork' : FId ~~> squaring := fun A (a : A) => (a, a).
-Lemma fork_natural : naturalP FId squaring fork'. Proof. by []. Qed.
+Lemma fork_natural : natural FId squaring fork'. Proof. by []. Qed.
 Definition fork : FId ~> squaring := NatTrans.mk fork_natural.
 End natural_transformation_example.
 
@@ -299,7 +323,7 @@ Definition triangular_law1 (eps : eps_type) (eta : eta_type) :=
 Definition triangular_law2 (eps : eps_type) (eta : eta_type) :=
   forall A, (g # eps A) \o eta (g A) = @id (g A).
 Definition adjointP eta eps :=
-  (naturalP (f \O g) FId eps /\ naturalP FId (g \O f) eta) /\
+  (natural (f \O g) FId eps /\ natural FId (g \O f) eta) /\
   (triangular_law1 eps eta /\ triangular_law2 eps eta).
 Definition phi A B eta (h : f A -> B) : A -> g B := (g # h) \o eta A.
 Definition psi A B eps (h : A -> g B) : f A -> B := eps B \o (f # h).
@@ -314,7 +338,7 @@ Definition curry_eta : eta_type (curry_F X) (uncurry_F X) :=
 Lemma adjoint_currry : adjointP curry_eta curry_eps.
 Proof.
 split.
-  split; rewrite /naturalP => A B h /=.
+  split => A B h /=.
   - by rewrite /id_f /curry_eps /curry_f /= /uncurry_M /uncurry_f /= funeqE; case.
   - rewrite /uncurry_f /curry_f /curry_eta /id_f /= funeqE => a /=.
     by rewrite funeqE.
@@ -378,9 +402,9 @@ Hypothesis Had : adjointP eta eps.
 Section mu_eps_natural.
 Notation M := (M f g).
 Notation mu := (mu eps).
-Lemma muM_natural : naturalP (M \O M) M mu.
+Lemma muM_natural : natural (M \O M) M mu.
 Proof.
-move: Had => [[Heps _] _]; move: Heps; rewrite/naturalP => Heps.
+move: Had => [[Heps _] _]; move: Heps; rewrite /natural => Heps.
 move => A B h.
 rewrite (_ : (M \O M) # h = g # ((f \O g) # (f # h))) //.
 rewrite (_ : _ \o g # ((f \O g) # (f # h)) =
@@ -455,8 +479,8 @@ Let couni : @eps_type (F \O F0) (U0 \O U) := fun A => (@eps _) \o F # (@eps0 (U 
 
 Lemma composite_adjoint : adjointP uni couni.
 Proof.
-case: H0; rewrite /naturalP => [[H01 H02] [Ht01 Ht02]].
-case: H; rewrite /naturalP => [[H1 H2] [Ht1 Ht2]].
+case: H0; rewrite /natural => [[H01 H02] [Ht01 Ht02]].
+case: H; rewrite /natural => [[H1 H2] [Ht1 Ht2]].
 split.
   split => A B h; rewrite FIdf.
   - rewrite {1}/couni [in LHS]compA {}H1 -compA.
@@ -492,9 +516,9 @@ Section join_laws.
 Context {M : functor}.
 Variables (ret : FId ~~> M) (join : M \O M ~~> M).
 
-Definition ret_naturality := naturalP FId M ret.
+Definition ret_naturality := natural FId M ret.
 
-Definition join_naturality := naturalP (M \O M) M join.
+Definition join_naturality := natural (M \O M) M join.
 
 Definition left_unit := forall A, @join _ \o @ret _ = id :> (M A -> M A).
 
@@ -697,7 +721,7 @@ rewrite /fmap bindA; congr bind.
 by rewrite funeqE => ?; rewrite bindretf.
 Qed.
 
-Lemma ret_naturality : naturalP FId M' ret.
+Lemma ret_naturality : natural FId M' ret.
 Proof.
 move=> A B h; rewrite FIdf funeqE => ?.
 by rewrite compE /= /fmap fmapE /= bindretf.
@@ -710,7 +734,7 @@ Let fmap_bind A B C (f : A -> B) m (g : C -> M A) :
   (fmap f) (bind m g) = bind m (fmap f \o g).
 Proof. by rewrite /fmap bindA bindE. Qed.
 
-Lemma join_naturality : naturalP (M' \O M') M' join.
+Lemma join_naturality : natural (M' \O M') M' join.
 Proof.
 move=> A B h; rewrite funeqE => mma.
 by rewrite /Fun 2!compE /fmap [in RHS]/join bind_fmap [in LHS]/join bindA.

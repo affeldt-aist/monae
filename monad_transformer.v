@@ -55,7 +55,7 @@ End monadM_lemmas.
 Section monad_morphism.
 Variables M N : monad.
 
-Lemma natural_monad_morphism (f : monadM M N) : naturalP M N f.
+Lemma natural_monad_morphism (f : monadM M N) : natural M N f.
 Proof.
 move=> A B h; rewrite boolp.funeqE => m /=.
 have <- : Join ((M # (Ret \o h)) m) = (M # h) m.
@@ -474,10 +474,10 @@ Variables (E : functor) (M : monad).
 Definition psi_g (op' : E ~~> M) : E \O M ~~> M :=
   fun X m => (@Join _ X \o @op' _) m.
 
-Lemma psi_g_natural (op' : E ~> M) : naturalP (E \O M) M (psi_g op').
+Lemma psi_g_natural (op' : E ~> M) : natural (E \O M) M (psi_g op').
 Proof.
 move=> A B h; rewrite {}/psi_g.
-case: op' => op' Hop' /=; rewrite /naturalP in Hop'.
+case: op' => op' Hop' /=; rewrite /natural in Hop'.
 by rewrite compA join_naturality -compA FCompE Hop'.
 Qed.
 
@@ -488,7 +488,7 @@ Lemma psi_algebraic (op' : E ~> M) : AOperation.algebraic (psi_transnat op').
 Proof.
 move=> A B g t.
 case: op' => op' H /=.
-rewrite /naturalP in H.
+rewrite /natural in H.
 rewrite /psi_g.
 rewrite bindE /Bind.
 rewrite -(compE (M # g)).
@@ -520,13 +520,13 @@ Definition psi (op' : E ~> M) : aoperation E M :=
 Definition phi_g (op : aoperation E M) : E ~~> M :=
   fun X => @AOperation.op E M op X (*TODO: coercion*)\o (E # Ret).
 
-Lemma phi_g_natural (op : aoperation E M) : naturalP E M (phi_g op).
+Lemma phi_g_natural (op : aoperation E M) : natural E M (phi_g op).
 Proof.
 move=> A B h; rewrite /phi_g.
 case: op => op H2 /=.
 case: op H2 => op H1 H2 /=.
 rewrite /AOperation.algebraic /= in H2.
-rewrite /naturalP /= in H1.
+rewrite /natural /= in H1.
 Admitted.
 
 Definition phi (op : aoperation E M) : transnat E M :=
