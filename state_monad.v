@@ -415,7 +415,7 @@ refine (ex_intro _ (ndBind x (fun x => ndBind (g x.2) (@ndRet _ \o cons x.1 ))) 
 rewrite [in LHS]/=.
 rewrite Hx size_f /bassert !bindA.
 bind_ext => -[x1 x2].
-case: assertPn => /=; rewrite ltnS => b1b2; last by rewrite !bindfailf.
+case: assertPn; rewrite ltnS => b1b2; last by rewrite !bindfailf.
 rewrite !bindretf /g.
 case: Bool.bool_dec => // x2t.
 case: (IH x2) => // x0 <-; by rewrite fmapE.
@@ -678,8 +678,8 @@ Proof. move=> ps t; apply: contra ps; by case/segment_closed.H. Qed.
 (* assert p distributes over concatenation *)
 Definition promote_assert (M : failMonad) A
   (p : pred (seq A)) (q : pred (seq A * seq A)) :=
-  (bassert p) \o (M # ucat) \o mpair =
-  (M # ucat) \o (bassert q) \o mpair \o (bassert p)^`2 :> (_ -> M _).
+  (bassert p) \o (fmap ucat) \o mpair =
+  (fmap ucat) \o (bassert q) \o mpair \o (bassert p)^`2 :> (_ -> M _).
 
 Lemma promote_assert_sufficient_condition (M : failMonad) A :
   BindLaws.right_zero (@Bind M) (@Fail _) ->
@@ -688,7 +688,7 @@ Lemma promote_assert_sufficient_condition (M : failMonad) A :
 Proof.
 move=> right_z p q promotable_pq.
 rewrite /promote_assert funeqE => -[x1 x2].
-rewrite 3![in RHS]compE -/(fmap _ _) [in RHS]fmapE.
+rewrite 3![in RHS]compE [in RHS]fmapE.
 rewrite 2![in LHS]compE {1}/bassert [in LHS]bind_fmap !bindA.
 bind_ext => s.
 rewrite bindA; rewrite_ bindretf.
@@ -843,13 +843,13 @@ by rewrite compE -/(fmap _ _) [in RHS]fmapE.
 Qed.
 
 Lemma Symbols_prop2 :
-  Symbols \o uaddn = (M # ucat) \o mpair \o (Symbols : _ -> M _)^`2.
+  Symbols \o uaddn = (fmap ucat) \o mpair \o (Symbols : _ -> M _)^`2.
 Proof.
 rewrite funeqE => -[n1 n2].
 elim: n1 => [|n1 IH].
   rewrite [in LHS]compE uaddnE add0n.
   rewrite compE [in X in _ = _ X]/= squaringE Symbols0.
-  rewrite compE -/(fmap _ _) [in RHS]fmapE bindA bindretf.
+  rewrite compE [in RHS]fmapE bindA bindretf.
   rewrite -fmapE fmap_bind.
   Open (X in _ >>= X).
     rewrite fcompE fmapE bindretf /=; reflexivity.
@@ -857,7 +857,7 @@ elim: n1 => [|n1 IH].
 rewrite compE uaddnE addSn SymbolsS -uaddnE -(compE Symbols) {}IH.
 rewrite [in RHS]compE [in X in _ = _ X]/= squaringE SymbolsS.
 rewrite [in RHS]compE -/(fmap _ _) fmap_bind bindA; bind_ext => a.
-rewrite 2![in LHS]compE -/(fmap _ _) [in LHS]fmap_bind [in LHS]bindA [in RHS]bindA.
+rewrite 2![in LHS]compE [in LHS]fmap_bind [in LHS]bindA [in RHS]bindA.
 (* TODO(rei): bind_ext? *)
 congr Bind; rewrite funeqE => s.
 rewrite [in RHS]bindretf [in RHS]fcompE [in RHS]fmap_bind.
