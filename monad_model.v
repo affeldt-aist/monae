@@ -145,7 +145,7 @@ Variables S : Type.
 Definition acto := fun A => S -> A * S.
 Local Notation M := acto.
 Definition bind := fun A B (m : M A) (f : A -> M B) => fun s => uncurry f (m s).
-Definition ret : FId ~> M := fun A a => fun s => (a, s).
+Definition ret : FId ~~> M := fun A a => fun s => (a, s).
 Program Definition state := @Monad_of_ret_bind M ret bind _ _ _.
 Next Obligation. by []. Qed.
 Next Obligation. by move=> A f; rewrite /bind funeqE => ?; case: f. Qed.
@@ -203,7 +203,7 @@ Program Definition list_class := @MonadAlt.Class _ _
 Next Obligation.
 move=> A B /= s1 s2 k.
 rewrite !bindE /Join /= /Monad_of_ret_bind.join /=.
-by rewrite Monad_of_ret_bind.fmapE map_cat flatten_cat map_cat flatten_cat.
+by rewrite Monad_of_ret_bind.MapE map_cat flatten_cat map_cat flatten_cat.
 Qed.
 Definition list := MonadAlt.Pack list_class.
 End list.
@@ -215,7 +215,7 @@ Program Definition set_class := @MonadAlt.Class _ _
 Next Obligation. exact: setUA. Qed.
 Next Obligation.
 rewrite /BindLaws.left_distributive /= => A B m1 m2 k.
-rewrite !bindE /Join /= /Monad_of_ret_bind.join /= Monad_of_ret_bind.fmapE /=.
+rewrite !bindE /Join /= /Monad_of_ret_bind.join /= Monad_of_ret_bind.MapE /=.
 by rewrite setUDl // setUDl.
 Qed.
 Definition set := MonadAlt.Pack set_class.
@@ -295,7 +295,7 @@ Next Obligation. by []. Qed.
 Definition callcc r := fun A B (f : (A -> contM r B) -> contM r A) =>
   (fun k : A -> r => f (fun a _ => k a) k). (*NB(rei): similar def in monad_transformer.v*)
 Program Definition cm r := MonadContinuation.Pack (MonadContinuation.Class
-  (@MonadContinuation.Mixin (contM r) (@callcc r) _ _ _ _ )).
+  (@MonadContinuation.Mixin (contM r) (@callcc r) _ _ _ _)).
 End ModelCont.
 
 Section continuation_examples.
@@ -409,7 +409,7 @@ refine (@MonadRun.Pack _ _ (@MonadRun.Class _ _ (Monad.class m)
 by [].
 move=> A B m0 f s.
 rewrite !bindE /=.
-rewrite Monad_of_ret_bind.fmapE /= /Join /= /Monad_of_ret_bind.join /=.
+rewrite Monad_of_ret_bind.MapE /= /Join /= /Monad_of_ret_bind.join /=.
 rewrite /ModelMonad.bind /=.
 by destruct (m0 s).
 Defined.
@@ -485,12 +485,12 @@ set lhs := [fset _ _ | _ in _]. set rhs := [fset _ _ | _ in _].
 rewrite (_ : lhs = rhs) //; apply/fsetP => x; rewrite {}/lhs {}/rhs.
 apply/idP/imfsetP => /=.
 - case/imfsetP => -[a1 a2] /=.
-  rewrite /Fun /= /Monad_of_ret_bind.fmap /=.
+  rewrite /Fun /= /Monad_of_ret_bind.Map /=.
   case/bigfcupP' => /= b.
   by case/imfsetP => -[b1 b2] /= Hb ->{b} /fset1P[-> -> ->{x a1 a2}]; exists (b1, b2).
 - case=> -[a1 s1] Ha /= ->{x}.
   apply/imfsetP => /=.
-  rewrite /Fun /= /Monad_of_ret_bind.fmap /=.
+  rewrite /Fun /= /Monad_of_ret_bind.Map /=.
   eexists.
   + apply/bigfcupP' => /=.
     eexists.

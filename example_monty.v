@@ -239,6 +239,8 @@ rewrite bindA.
 by rewrite_ bindretf.
 Qed.
 
+Local Open Scope mprog.
+
 Lemma uniform_doors_unfold (P : rel door) :
   do hp <- uniform (def, def) (cp doors doors); Ret (P hp.1 hp.2) =
   Ret (P A A) <|`Pr / 9|> (Ret (P A B) <|`Pr / 8|> (Ret (P A C) <|`Pr / 7|>
@@ -247,7 +249,7 @@ Lemma uniform_doors_unfold (P : rel door) :
 Proof.
 rewrite [LHS](_ : _ = fmap (uncurry P) (uniform (def, def) (cp doors doors))); last first.
   rewrite fmapE; bind_ext; by case.
-rewrite {1}/fmap -(compE (M # _)) -(uniform_naturality _ true); last first.
+rewrite -(compE (fmap _)) -(uniform_naturality _ true); last first.
   by rewrite /doors Set3.enumE.
 by rewrite /doors Set3.enumE.
 Qed.
@@ -374,6 +376,8 @@ by rewrite 2!alt_bindDl 3!bindretf.
 Qed.
 
 Let try (d : door) := do p <- pick; Ret (d, p).
+
+Local Open Scope mprog.
 
 Lemma try_uFFT d : fmap (uncurry (fun a b => a == b)) (try d) = uFFT.
 Proof.

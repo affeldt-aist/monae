@@ -29,7 +29,7 @@ Module monadM.
 Section monad_morphism.
 Variables M N : monad.
 Record t := mk {
-  e : M ~> N ;
+  e : M ~~> N ;
   ret : forall {A} (a : A), Ret a = e (Ret a) ;
   bind : forall {A B} (m : M A) (f : A -> M B),
     e (m >>= f) = e m >>= (fun a => e (f a))
@@ -55,7 +55,7 @@ End monadM_lemmas.
 Section monad_morphism.
 Variables M N : monad.
 
-Lemma natural_monad_morphism (f : monadM M N) : naturalP M N f.
+Lemma natural_monad_morphism (f : monadM M N) : natural M N f.
 Proof.
 move=> A B h; rewrite boolp.funeqE => m /=.
 have <- : Join ((M # (Ret \o h)) m) = (M # h) m.
@@ -74,7 +74,7 @@ Module MonadT.
 Section monad_transformer.
 Record t := mk {
   T : monad -> monad ;
-  retT : forall (M : monad), FId ~> (T M);
+  retT : forall (M : monad), FId ~~> (T M);
   bindT : forall (M : monad) A B, (T M) A -> (A -> (T M) B) -> (T M) B ;
   liftT : forall (M : monad), monadM M (T M) }.
 End monad_transformer.
@@ -345,13 +345,13 @@ Compute (sum_until_none [:: Some 2; Some 6; None; Some 4]).
 (*  ma >>= (fun a => Ret (f a)). *)
 
 Definition calcul : CM nat nat :=
-  fmap (fun x => 8 + x) (callcc_i (fun k : (_ -> CM nat _) => (k 5) >>= (fun y => Ret (y + 4)))).
+  (CM _ # (fun x => 8 + x)) (callcc_i (fun k : (_ -> CM nat _) => (k 5) >>= (fun y => Ret (y + 4)))).
 
 Compute calcul.
 
 End examples_continuation_monad_transformer.
 
-Definition operation (E : functor) (M : monad) := transnat (E \O M) M.
+Definition operation (E : functor) (M : monad) := nattrans (E \O M) M.
 
 Section sigma_operations.
 (* TODO: rewrite ModelState.get,put,callcc with get_op, etc.? *)
@@ -372,7 +372,7 @@ Program Definition get_operation S : operation (get_fun S) (ModelMonad.state S) 
 Next Obligation.
 move=> A B h; rewrite boolp.funeqE => /= m /=.
 rewrite boolp.funeqE => s.
-by rewrite FCompE Monad_of_ret_bind.fmapE.
+by rewrite FCompE Monad_of_ret_bind.MapE.
 Qed.
 Arguments get_operation {S}.
 
@@ -397,7 +397,7 @@ Next Obligation.
 move=> A B h.
 rewrite boolp.funeqE => /=; case => s m /=.
 rewrite boolp.funeqE => s'.
-by rewrite 2!Monad_of_ret_bind.fmapE.
+by rewrite 2!Monad_of_ret_bind.MapE.
 Qed.
 
 Lemma putE S : @ModelState.put S = fun s => put_op s (@Ret (ModelMonad.state S) _ tt).
@@ -425,7 +425,7 @@ Next Obligation.
 move=> A B h.
 rewrite boolp.funeqE => /= m /=.
 rewrite boolp.funeqE => g.
-by rewrite Monad_of_ret_bind.fmapE.
+by rewrite Monad_of_ret_bind.MapE.
 Qed.
 
 Lemma callccE r A B (f : (A -> C r B) -> C r A) :
@@ -442,7 +442,7 @@ Variables (E : functor) (M : monad) (op : operation E M).
 Variables (N : monad) (e : monadM M N).
 Record t := mk {
   f :> operation E N ;
-  H : forall X, e X \o op X = @f X \o (E # e X) }.
+  H : forall X, e X \o op X = @f X \o (E # (e X)) }.
 End lifting.
 End Lifting.
 
@@ -462,33 +462,38 @@ Variables (E : functor) (M : monad).
 Definition algebraic (op : operation E M) :=
   forall A B (f : A -> M B) (t : E (M A)),
     (op A t >>= f) = op B ((E # (fun m => m >>= f)) t).
-Record t := mk { op :> operation E M ;   H : algebraic op }.
+Record t := mk { op :> operation E M ; H : algebraic op }.
 End aoperation.
+Lemma val_injP E M (h g : t E M) : op h = op g <-> h = g.
+Proof.
+split; move: h g => [h Hh] [g Hg] /= hg; last by case: hg.
+rewrite hg in Hh Hg *; congr mk; exact: Prop_irrelevance.
+Qed.
 End AOperation.
 Notation aoperation := AOperation.t.
 Coercion AOperation.op : aoperation >-> operation.
 
 Section proposition17.
+Section psi.
 Variables (E : functor) (M : monad).
 
-Definition psi_g (op' : E ~> M) : E \O M ~> M :=
+Definition psi_g (op' : E ~~> M) : E \O M ~~> M :=
   fun X m => (@Join _ X \o @op' _) m.
 
-Lemma psi_g_natural (op' : E -.> M) : naturalP (E \O M) M (psi_g op').
+Lemma natural_psi (op' : E ~> M) : natural (E \O M) M (psi_g op').
 Proof.
 move=> A B h; rewrite {}/psi_g.
-case: op' => op' Hop' /=; rewrite /naturalP in Hop'.
+case: op' => op' Hop' /=; rewrite /natural in Hop'.
 by rewrite compA join_naturality -compA FCompE Hop'.
 Qed.
 
-Definition psi_transnat (op' : E -.> M) : operation E M :=
-  NatTrans.mk (psi_g_natural op').
+Definition psi (op' : E ~> M) : operation E M := NatTrans.mk (natural_psi op').
 
-Lemma psi_algebraic (op' : E -.> M) : AOperation.algebraic (psi_transnat op').
+Lemma algebraic_psi (op' : E ~> M) : AOperation.algebraic (psi op').
 Proof.
 move=> A B g t.
 case: op' => op' H /=.
-rewrite /naturalP in H.
+rewrite /natural in H.
 rewrite /psi_g.
 rewrite bindE /Bind.
 rewrite -(compE (M # g)).
@@ -513,30 +518,61 @@ rewrite -[in RHS]FCompE.
 rewrite -[RHS]compE.
 by rewrite joinA'.
 Qed.
+End psi.
+Section phi.
+Variables (E : functor) (M : monad).
 
-Definition psi (op' : E -.> M) : aoperation E M :=
-  AOperation.mk (psi_algebraic op').
+Definition phi_g (op : operation E M) : E ~~> M := fun X => op X \o (E # Ret).
 
-Definition phi_g (op : aoperation E M) : E ~> M :=
-  fun X => @AOperation.op E M op X (*TODO: coercion*)\o (E # Ret).
-
-Lemma phi_g_natural (op : aoperation E M) : naturalP E M (phi_g op).
+Lemma natural_phi (op : operation E M) : natural E M (phi_g op).
 Proof.
 move=> A B h; rewrite /phi_g.
 case: op => op H2 /=.
-case: op H2 => op H1 H2 /=.
-rewrite /AOperation.algebraic /= in H2.
-rewrite /naturalP /= in H1.
-Admitted.
+rewrite /natural /= in H2.
+rewrite compA.
+rewrite H2.
+rewrite -2!compA.
+congr (_ \o _).
+rewrite FCompE.
+rewrite -2!functor_o.
+rewrite ret_naturality.
+by rewrite FIdf.
+Qed.
 
-Definition phi (op : aoperation E M) : transnat E M :=
-  NatTrans.mk (phi_g_natural op).
+Definition phi (op : operation E M) : E ~> M := NatTrans.mk (natural_phi op).
+End phi.
+Section bijection.
+Variables (E : functor) (M : monad).
 
-(* TODO: prove bijection *)
+Lemma psiK (op : E ~> M) A : phi (psi op) A = op A.
+Proof.
+rewrite /= /phi_g /psi /psi_g /= funeqE => m /=.
+move: (NatTrans.H op); rewrite /natural => H.
+by rewrite -(compE (op _)) -H -(compE Join) joinMret'.
+Qed.
 
+Lemma phiK (op : aoperation E M) A : psi (phi op) A = (AOperation.op op) A.
+Proof.
+rewrite /psi /phi /= /psi_g /phi_g funeqE => m /=.
+case: op => op; rewrite /AOperation.algebraic => H /=.
+rewrite -(compE (op _)) joinE H /=.
+rewrite -(compE (E # _)) -functor_o.
+move: (NatTrans.H op); rewrite /natural => H1.
+rewrite -(compE (op _)).
+rewrite /Bind.
+rewrite (_ : (fun _ => Join _) = Join \o (M # id)) //.
+rewrite -(compA Join).
+rewrite functor_id.
+rewrite compidf.
+rewrite -(compfid Ret).
+by rewrite joinretM functor_id compfid.
+Qed.
+End bijection.
 End proposition17.
 
 Lemma Hget_aop S : AOperation.algebraic (get_operation S).
+Proof.
+rewrite /AOperation.algebraic => A B /= f t.
 Admitted.
 
 Definition get_aop S : aoperation (get_fun S) (ModelMonad.state S) :=
@@ -567,7 +603,7 @@ Let XM : monad := X M.
 
 (* Let xm : XM S := (MonadT.liftT X) _ _ m. *)
 
-Let lift_getX : ((get_fun S) \O XM) ~> XM :=
+Let lift_get : ((get_fun S) \O XM) ~~> XM :=
   alifting (get_aop S) (MonadT.liftT X M).
 
 Goal forall X, forall k : S -> XM X, lift_getX k = (fun s => k s s).

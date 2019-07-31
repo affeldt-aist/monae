@@ -29,7 +29,7 @@ Lemma BindE (A B : choiceType) m (f : A -> monad B) :
   (m >>= f) = DistBind.d m f.
 Proof.
 rewrite /Bind /Join /= /Monad_of_ret_bind.join /Fun /=.
-rewrite /Monad_of_ret_bind.fmap /_bind DistBindA; congr DistBind.d.
+rewrite /Monad_of_ret_bind.Map /_bind DistBindA; congr DistBind.d.
 by rewrite funeqE => a; rewrite /= DistBind1f.
 Qed.
 

@@ -11,7 +11,7 @@ Unset Printing Implicit Defensive.
 (* mu2019tr2 *)
 
 Section spark_aggregation.
-Local Open Scope mu_scope.
+Local Open Scope mprog.
 
 Section definitions.
 Variable M : altMonad.
@@ -146,7 +146,7 @@ Proof.
 case: (perm_is_alt_ret M xss) => m Hm.
 have step1 : (Ret \o foldl mul b \o flatten) xss =
   (Ret \o foldl add b \o map (foldl mul b)) xss [~]
-  fmap (foldl add b \o map (foldl mul b)) m.
+  fmap (foldl add b \o map (foldl mul b)) (m : M _).
   rewrite -H /aggregate perm_o_map -fcomp_comp.
   by rewrite fcompE Hm alt_fmapDl fmapE /= bindretf.
 apply esym, idempotent_converse in step1.
@@ -239,7 +239,7 @@ transitivity (foldl add b (map (foldl mul b) [:: xs; ys])).
 transitivity (foldl add b (map (foldl mul b) [:: ys; xs])).
   have [m Hm] : exists m : M _, perm [:: xs; ys] = Ret [:: ys; xs] [~] m.
     have [m Hm] := perm_is_alt_ret M [:: ys; xs].
-    by exists m; rewrite -Hm /= !bindretf !insertE /= !fmapE !bindretf /= altC.
+    by exists m; rewrite -Hm /= !bindretf !insertE !fmapE !bindretf /= altC.
   by rewrite (lemma45b idempotent_converse injective_return H Hm).
 by rewrite /= -xxs -yys -(theorem46lid idempotent_converse injective_return yys).
 Qed.
