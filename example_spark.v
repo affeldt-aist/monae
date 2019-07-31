@@ -11,7 +11,7 @@ Unset Printing Implicit Defensive.
 (* mu2019tr2 *)
 
 Section spark_aggregation.
-Local Open Scope mu_scope.
+Local Open Scope mprog.
 
 Section definitions.
 Variable M : altMonad.

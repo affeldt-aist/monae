@@ -457,10 +457,8 @@ Qed.
 
 (* section 4.1, mu2019tr3 *)
 Section loop.
-
 Variables (A S : Type) (M : stateMonad S) (op : S -> A -> S).
-
-Local Open Scope mu_scope.
+Local Open Scope mprog.
 
 Definition opmul x m : M _ :=
   Get >>= fun st => let st' := op st x in fmap (cons st') (Put st' >> m).
@@ -536,7 +534,7 @@ rewrite /overwrite bindA bindretf bindA; bind_ext; case.
 by rewrite bindretf assertE.
 Qed.
 
-Local Open Scope mu_scope.
+Local Open Scope mprog.
 
 Lemma put_foldr st x xs :
   Put (op st x) >> (do x1 <- foldr (opmul op) (Ret [::]) xs;
@@ -676,10 +674,12 @@ Lemma segment_closed_prefix A (p : segment_closed.t A) s :
 Proof. move=> ps t; apply: contra ps; by case/segment_closed.H. Qed.
 
 (* assert p distributes over concatenation *)
+Local Open Scope mprog.
 Definition promote_assert (M : failMonad) A
   (p : pred (seq A)) (q : pred (seq A * seq A)) :=
   (bassert p) \o (fmap ucat) \o mpair =
   (fmap ucat) \o (bassert q) \o mpair \o (bassert p)^`2 :> (_ -> M _).
+Local Close Scope mprog.
 
 Lemma promote_assert_sufficient_condition (M : failMonad) A :
   BindLaws.right_zero (@Bind M) (@Fail _) ->
@@ -839,8 +839,10 @@ rewrite funeqE => n.
 transitivity (@Symbols _ M 1) => //.
 rewrite SymbolsE sequence_cons sequence_nil.
 rewrite_ bindretf.
-by rewrite compE -/(fmap _ _) [in RHS]fmapE.
+by rewrite compE [in RHS]fmapE.
 Qed.
+
+Local Open Scope mprog.
 
 Lemma Symbols_prop2 :
   Symbols \o uaddn = (fmap ucat) \o mpair \o (Symbols : _ -> M _)^`2.

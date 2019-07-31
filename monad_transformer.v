@@ -58,12 +58,12 @@ Variables M N : monad.
 Lemma natural_monad_morphism (f : monadM M N) : natural M N f.
 Proof.
 move=> A B h; rewrite boolp.funeqE => m /=.
-have <- : Join (fmap (Ret \o h) m) = (fmap h) m.
-  by rewrite functor_o [LHS](_ : _ = (Join \o fmap Ret) (fmap h m)) // joinMret.
+have <- : Join ((M # (Ret \o h)) m) = (M # h) m.
+  by rewrite functor_o [LHS](_ : _ = (Join \o M # Ret) ((M # h) m)) // joinMret.
 move: (@monadMbind M N f A B m (Ret \o h)); rewrite 2!bindE => ->.
 rewrite (_ : (fun a => f _ ((Ret \o h) a)) = Ret \o h); last first.
   by rewrite boolp.funeqE => y; rewrite -monadMret.
-rewrite [RHS](_ : _ = (Join \o (fmap Ret \o fmap h)) (f _ m)); last first.
+rewrite [RHS](_ : _ = (Join \o (N # Ret \o N # h)) (f _ m)); last first.
   by rewrite compE functor_o.
 by rewrite compA joinMret.
 Qed.
@@ -345,7 +345,7 @@ Compute (sum_until_none [:: Some 2; Some 6; None; Some 4]).
 (*  ma >>= (fun a => Ret (f a)). *)
 
 Definition calcul : CM nat nat :=
-  fmap (fun x => 8 + x) (callcc_i (fun k : (_ -> CM nat _) => (k 5) >>= (fun y => Ret (y + 4)))).
+  (CM _ # (fun x => 8 + x)) (callcc_i (fun k : (_ -> CM nat _) => (k 5) >>= (fun y => Ret (y + 4)))).
 
 Compute calcul.
 
@@ -442,7 +442,7 @@ Variables (E : functor) (M : monad) (op : operation E M).
 Variables (N : monad) (e : monadM M N).
 Record t := mk {
   f :> operation E N ;
-  H : forall X, e X \o op X = @f X \o (fmap (e X)) }.
+  H : forall X, e X \o op X = @f X \o (E # (e X)) }.
 End lifting.
 End Lifting.
 
@@ -461,7 +461,7 @@ Section aoperation.
 Variables (E : functor) (M : monad).
 Definition algebraic (op : operation E M) :=
   forall A B (f : A -> M B) (t : E (M A)),
-    (op A t >>= f) = op B (fmap (fun m => m >>= f) t).
+    (op A t >>= f) = op B ((E # (fun m => m >>= f)) t).
 Record t := mk { op :> operation E M ; H : algebraic op }.
 End aoperation.
 Lemma val_injP E M (h g : t E M) : op h = op g <-> h = g.
@@ -496,7 +496,7 @@ case: op' => op' H /=.
 rewrite /natural in H.
 rewrite /psi_g.
 rewrite bindE /Bind.
-rewrite -(compE (fmap g)).
+rewrite -(compE (M # g)).
 rewrite compA.
 rewrite join_naturality.
 rewrite -compA.
@@ -510,7 +510,7 @@ rewrite -FCompE.
 rewrite compA.
 rewrite -join_naturality.
 rewrite /=.
-transitivity (Join ((fmap (Join \o (fmap g))) (op' (Monad.m M A) t))) => //.
+transitivity (Join ((M # (Join \o (M # g))) (op' (Monad.m M A) t))) => //.
 rewrite -[in X in Join X = _]compE.
 rewrite join_naturality.
 rewrite functor_o.
@@ -522,7 +522,7 @@ End psi.
 Section phi.
 Variables (E : functor) (M : monad).
 
-Definition phi_g (op : operation E M) : E ~~> M := fun X => op X \o (fmap Ret).
+Definition phi_g (op : operation E M) : E ~~> M := fun X => op X \o (E # Ret).
 
 Lemma natural_phi (op : operation E M) : natural E M (phi_g op).
 Proof.
@@ -556,11 +556,11 @@ Proof.
 rewrite /psi /phi /= /psi_g /phi_g funeqE => m /=.
 case: op => op; rewrite /AOperation.algebraic => H /=.
 rewrite -(compE (op _)) joinE H /=.
-rewrite -(compE (fmap _)) -functor_o.
+rewrite -(compE (E # _)) -functor_o.
 move: (NatTrans.H op); rewrite /natural => H1.
 rewrite -(compE (op _)).
 rewrite /Bind.
-rewrite (_ : (fun _ => Join _) = Join \o (fmap id)) //.
+rewrite (_ : (fun _ => Join _) = Join \o (M # id)) //.
 rewrite -(compA Join).
 rewrite functor_id.
 rewrite compidf.

@@ -409,7 +409,7 @@ Definition seed_select {M : nondetStateMonad (Z * seq Z * seq Z)%type} :=
 Section theorem51.
 Variables (M : nondetStateMonad (Z * seq Z * seq Z)%type).
 
-Local Open Scope mu_scope.
+Local Open Scope mprog.
 
 Notation unfoldM := (unfoldM (@well_founded_size _)).
 
@@ -515,11 +515,13 @@ rewrite /queensBody funeqE => -[|h t].
 - by rewrite [h :: t]lock -theorem51 /kleisli /= join_fmap perms_mu_perm.
 Qed.
 
+Local Open Scope mprog.
+
 (* last step of Section 5.2 *)
 Lemma queensBodyE' xs : queensBody M xs = if xs is [::] then Ret [::] else
   select xs >>= (fun xys =>
   Get >>= (fun st => guard (queens_ok (queens_next st xys.1)) >>
-  Put (queens_next st xys.1) >> (fmap (cons xys.1) (queensBody M xys.2)))).
+  Put (queens_next st xys.1) >> ((fmap (cons xys.1)) (queensBody M xys.2)))).
 Proof.
 case: xs => [|h t].
   rewrite queensBodyE // hyloME //; exact: decr_size_select.

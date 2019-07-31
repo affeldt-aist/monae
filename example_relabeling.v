@@ -55,6 +55,8 @@ Variable M : failFreshMonad Symbol.
 Variable q : pred (seq Symbol * seq Symbol).
 Hypothesis promotable_q : promotable (Distinct M) q.
 
+Local Open Scope mprog.
+
 Definition relabel : Tree Symbol -> M (Tree Symbol) :=
   foldt (M # Tip \o const Fresh) (fmap (uncurry Bin) \o mpair).
 
