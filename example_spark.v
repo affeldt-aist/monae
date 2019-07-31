@@ -48,11 +48,11 @@ rewrite funeqE; elim/last_ind => [/=|xs y IH].
 rewrite fcompE.
 rewrite insert_rcons.
 rewrite naturality_nondeter fmapE bindretf.
-rewrite -fmap_comp.
+rewrite -fmap_oE.
 have H : forall w, foldl op b \o rcons^~ w = op^~ w \o foldl op b.
   by move=> w; rewrite funeqE => ws /=; rewrite -cats1 foldl_cat.
 rewrite (H y).
-rewrite fmap_comp.
+rewrite fmap_oE.
 rewrite fcompE in IH.
 rewrite IH.
 rewrite -[in X in _ [~] X]bindretf.

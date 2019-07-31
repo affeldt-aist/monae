@@ -492,24 +492,12 @@ Definition psi (op' : E ~> M) : operation E M := NatTrans.mk (natural_psi op').
 Lemma algebraic_psi (op' : E ~> M) : AOperation.algebraic (psi op').
 Proof.
 move=> A B g t.
-case: op' => op' H /=.
-rewrite /natural in H.
-rewrite /psi_g.
 rewrite bindE /Bind.
 rewrite -(compE (M # g)).
 rewrite compA.
-rewrite join_naturality.
-rewrite -compA.
-rewrite FCompE.
-rewrite H.
-rewrite [in RHS]compE.
-rewrite -[in X in _ = Join X]compE.
-rewrite -[in RHS]H.
-rewrite -H.
-rewrite -FCompE.
-rewrite compA.
-rewrite -join_naturality.
 rewrite /=.
+rewrite -[in X in _ = Join X]compE.
+rewrite -[in RHS](NatTrans.H op').
 transitivity (Join ((M # (Join \o (M # g))) (op' (Monad.m M A) t))) => //.
 rewrite -[in X in Join X = _]compE.
 rewrite join_naturality.
@@ -527,14 +515,12 @@ Definition phi_g (op : operation E M) : E ~~> M := fun X => op X \o (E # Ret).
 Lemma natural_phi (op : operation E M) : natural E M (phi_g op).
 Proof.
 move=> A B h; rewrite /phi_g.
-case: op => op H2 /=.
-rewrite /natural /= in H2.
 rewrite compA.
-rewrite H2.
+rewrite (NatTrans.H op).
 rewrite -2!compA.
 congr (_ \o _).
 rewrite FCompE.
-rewrite -2!functor_o.
+rewrite -2!(functor_o E).
 rewrite ret_naturality.
 by rewrite FIdf.
 Qed.
@@ -555,7 +541,7 @@ Lemma phiK (op : aoperation E M) A : psi (phi op) A = (AOperation.op op) A.
 Proof.
 rewrite /psi /phi /= /psi_g /phi_g funeqE => m /=.
 case: op => op; rewrite /AOperation.algebraic => H /=.
-rewrite -(compE (op _)) joinE H /=.
+rewrite -(compE (op _)) joinE H.
 rewrite -(compE (E # _)) -functor_o.
 move: (NatTrans.H op); rewrite /natural => H1.
 rewrite -(compE (op _)).
@@ -573,7 +559,8 @@ End proposition17.
 Lemma Hget_aop S : AOperation.algebraic (get_operation S).
 Proof.
 rewrite /AOperation.algebraic => A B /= f t.
-Admitted.
+by rewrite /get_op /= funeqE.
+Qed.
 
 Definition get_aop S : aoperation (get_fun S) (ModelMonad.state S) :=
   AOperation.mk (@Hget_aop S).
@@ -588,9 +575,28 @@ Section theorem19.
 Variables (E : functor) (M : monad) (op : aoperation E M).
 Variables (N : monad) (e : monadM M N).
 
-Definition alifting (X : Type) :=
+Definition alifting : E \O N ~~> N := fun X =>
   Join \o @e (N X) \o @AOperation.op E M op (N X) \o (E # Ret) .
 
+Lemma natural_alifting : @natural (E \O N) N alifting.
+Proof.
+move=> A B h; rewrite /alifting.
+rewrite -(compA Join) -compA (compA _ Join) join_naturality.
+rewrite -2![in RHS]compA -(compA Join) -[in RHS](compA Join).
+congr (_ \o _).
+rewrite FCompE 2!(compA (N # (N # h))) (natural_monad_morphism e).
+rewrite -(compA (e (N B))) (NatTrans.H (AOperation.op op)).
+rewrite -2!compA -[in RHS]compA -(compA _ (E # Ret)).
+congr (_ \o (_ \o _)).
+by rewrite FCompE -functor_o -(functor_o E) ret_naturality FIdf.
+Qed.
+
+Lemma theorem19 : AOperation.algebraic (NatTrans.mk natural_alifting).
+Proof.
+move=> A B /= f t.
+rewrite /alifting.
+rewrite {1}/Bind.
+Abort.
 End theorem19.
 
 Section theorem19_example_X.

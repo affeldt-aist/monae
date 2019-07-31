@@ -180,7 +180,6 @@ Section functor_lemmas.
 Variable F : functor.
 Lemma functor_id : FunctorLaws.id (Fun F). Proof. by case: F => [? []]. Qed.
 Lemma functor_o : FunctorLaws.comp (Fun F). Proof. by case: F => [? []]. Qed.
-
 End functor_lemmas.
 
 Definition Squaring (A : Type) := (A * A)%type.
@@ -273,6 +272,10 @@ Qed.
 Definition uncurry_F X : functor :=
   Functor.Pack (Functor.Class (uncurry_f_id X) (uncurry_f_comp X)).
 End uncurry_functor.
+
+Lemma fmap_oE (M : functor) A B C (f : A -> B) (g : C -> A) (m : M C) :
+  (M # (f \o g)) m = (M # f) ((M # g) m).
+Proof. by rewrite functor_o. Qed.
 
 (* monadic counterpart of function composition:
    composes a pure function after a monadic function *)
@@ -840,10 +843,6 @@ Proof.
 by rewrite bindE [in RHS]functor_o [in RHS]compE -[in RHS](compE Join) joinMret.
 Qed.
 
-Lemma fmap_comp A B C (f : A -> B) (g : C -> A) (m : M C) :
-  fmap (f \o g) m = fmap f (fmap g m).
-Proof. by rewrite 3!fmapE bindA; rewrite_ bindretf. Qed.
-
 Lemma bind_fmap A B C (f : A -> B) (m : M A) (g : B -> M C) :
   fmap f m >>= g = m >>= (g \o f).
 Proof. by rewrite fmapE bindA; rewrite_ bindretf. Qed.
@@ -1362,8 +1361,8 @@ rewrite fcompE insertE alt_fmapDl.
 (* first branch *)
 rewrite -(compE (fmap (map f))) ret_naturality FIdf [ in X in X [~] _ ]/=.
 (* second branch *)
-rewrite -fmap_comp (_ : map f \o cons y = cons (f y) \o map f) //.
-by rewrite fmap_comp -(fcompE (map f)) -IH [RHS]/= insertE.
+rewrite -fmap_oE (_ : map f \o cons y = cons (f y) \o map f) //.
+by rewrite fmap_oE -(fcompE (map f)) -IH [RHS]/= insertE.
 Qed.
 
 (* lemma 3.3 in mu2019tr2 *)
@@ -1395,12 +1394,12 @@ move=> pa; elim => [|h t IH].
 rewrite fcompE insertE alt_fmapDl.
 rewrite -(compE (fmap _)) ret_naturality FIdf [in X in X [~] _]/= (negbTE pa).
 case: ifPn => ph.
-- rewrite -fmap_comp (_ : filter p \o cons h = cons h \o filter p); last first.
+- rewrite -fmap_oE (_ : filter p \o cons h = cons h \o filter p); last first.
     rewrite funeqE => x /=; by rewrite ph.
-  rewrite fmap_comp.
+  rewrite fmap_oE.
   move: (IH); rewrite fcompE => ->.
   by rewrite fmapE /= ph bindretf /= altmm.
-- rewrite -fmap_comp (_ : filter p \o cons h = filter p); last first.
+- rewrite -fmap_oE (_ : filter p \o cons h = filter p); last first.
     rewrite funeqE => x /=; by rewrite (negbTE ph).
   move: (IH); rewrite fcompE => -> /=; by rewrite (negbTE ph) altmm.
 Qed.
@@ -1419,7 +1418,7 @@ rewrite fcompE [in RHS]/=; case: ifPn => ph.
   rewrite_ bindretf.
   by rewrite /= ph.
 - rewrite [in LHS]insertE alt_fmapDl.
-  rewrite -[in X in _ [~] X = _]fmap_comp.
+  rewrite -[in X in _ [~] X = _]fmap_oE.
   rewrite (_ : (filter p \o cons h) = filter p); last first.
     by rewrite funeqE => x /=; rewrite (negbTE ph).
   move: (IH); rewrite fcompE => ->.
@@ -1490,7 +1489,7 @@ elim: s a' => [a'|s1 s2 IH a'].
 rewrite [in LHS]/= insertE IH.
 rewrite naturality_nondeter [in X in _ [~] X = _]fmapE bindretf.
 rewrite naturality_nondeter [in X in _ = _ [~] X]fmapE bindretf.
-by rewrite -!fmap_comp altCA.
+by rewrite -!fmap_oE altCA.
 Qed.
 
 Lemma rev_insert : rev (o) insert a = insert a \o rev :> (_ -> M _).
@@ -1500,7 +1499,7 @@ rewrite funeqE; elim => [|h t IH].
 rewrite fcompE insertE compE alt_fmapDl fmapE bindretf compE [in RHS]rev_cons insert_rcons.
 rewrite rev_cons -cats1 rev_cons -cats1 -catA; congr (_ [~] _).
 move: IH; rewrite fcompE [X in X -> _]/= => <-.
-rewrite -!fmap_comp; congr (fmap _ (insert a t)).
+rewrite -!fmap_oE; congr (fmap _ (insert a t)).
 by rewrite funeqE => s; rewrite /= -rev_cons.
 Qed.
 
