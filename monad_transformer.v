@@ -603,7 +603,7 @@ Let XM : monad := X M.
 
 (* Let xm : XM S := (MonadT.liftT X) _ _ m. *)
 
-Let lift_get : ((get_fun S) \O XM) ~~> XM :=
+Let lift_getX : ((get_fun S) \O XM) ~~> XM :=
   alifting (get_aop S) (MonadT.liftT X M).
 
 Goal forall X, forall k : S -> XM X, lift_getX k = (fun s => k s s).
@@ -625,7 +625,7 @@ Let ST : monadT := statemonad_transformer S.
 Let STC R : monad := ST (C R).
 (* STC : S -> ((A * S) -> R) -> R *)
 
-Let lift_callccS R : ((callcc_fun R) \O (STC R)) ~> (STC R) :=
+Let lift_callccS R : ((callcc_fun R) \O (STC R)) ~~> (STC R) :=
   alifting (callcc_aop R) (MonadT.liftT ST (C R)).
 
 Goal forall A R (f : ((STC R) A -> R) -> (STC R) A) , lift_callccS f = (fun s k => f (fun m => m s k) s k) :> (STC R) A.
@@ -643,7 +643,7 @@ Proof. by []. Qed.
 
 End theorem19_example_C.
 
-Variable R : Type.
+(* Variable R : Type.
 Let C : monadT := continuationmonad_transformer R.
 Let CM : monad := C M.
 
@@ -652,4 +652,4 @@ Let lift_getC : ((get_fun S) \O CM) ~> CM :=
 
 (* Goal forall A, forall f : S -> CM A, lift_getC k = fun k s => . *)
 
-End theorem19_example.
+End theorem19_example. *)
