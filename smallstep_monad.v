@@ -16,22 +16,24 @@ Set Implicit Arguments.
 Unset Strict Implicit.
 Unset Printing Implicit Defensive.
 
+Local Open Scope monae_scope.
+
 Section DenotationalSemantics.
 
 Variables S T : Type.
 Variable M : stateTraceMonad S T.
 
-Fixpoint denote A (p : program A) : M A :=
+Fixpoint denote {A} (p : program A) : M A :=
   match p with
   | p_ret _ v => Ret v
-  | p_bind _ _ m f => do a <- denote m; denote (f a)
+  | p_bind _ _ m f => denote m >>= (denote \o f)
   | p_cond _ b p1 p2 => if b then denote p1 else denote p2
   | p_repeat n p => (fix loop m : M unit :=
     if m is m'.+1 then denote p >> loop m' else Ret tt) n
   | p_while fuel c p => (fix loop m : M unit :=
     if m is m'.+1 then
-      (do s <- stGet ;
-      if c s then denote p >> loop m' else Ret tt)
+      (stGet >>= (fun s =>
+      if c s then denote p >> loop m' else Ret tt))
     else Ret tt) fuel
   | p_get => stGet
   | p_put s' => stPut s'
@@ -50,16 +52,14 @@ Notation "'While' fuel @ c {{ p }}" := (
    match m with
    | 0 => Ret tt
    | m'.+1 =>
-     do s <- stGet ;
-     if c s then denote p >> loop m' else Ret tt
+     stGet >>= (fun s =>
+     if c s then denote p >> loop m' else Ret tt)
    end) fuel) (at level 200).
 
 Fixpoint denote_continuation (k : continuation) : M (@continuation T S) :=
   match k with
   | stop A a => Ret (stop A a)
-  | p `; f =>
-      do a <- denote p ;
-      denote_continuation (f a)
+  | p `; f => denote p >>= (denote_continuation \o f)
   end.
 
 Definition stateTrace_sub A (m : M A) : Type :=

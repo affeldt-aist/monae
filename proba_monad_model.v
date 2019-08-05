@@ -10,6 +10,8 @@ Require Import monad proba_monad model.
       (https://github.com/affeldt-aist/infotheo).
 *)
 
+Local Open Scope monae_scope.
+
 Module MonadProbModel.
 Local Obligation Tactic := idtac.
 

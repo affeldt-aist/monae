@@ -8,7 +8,7 @@ Unset Printing Implicit Defensive.
 
 (* jones and duponcheel, composing monads, sect 2, 3 *)
 
-From monae Require Import monad.
+Require Import monad.
 
 Module Comp.
 Section comp.

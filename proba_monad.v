@@ -26,6 +26,7 @@ Contents:
 
 Reserved Notation "mx <| p |> my" (format "mx  <| p |>  my", at level 50).
 
+Local Open Scope monae_scope.
 Local Open Scope reals_ext_scope.
 
 Module MonadProb.
@@ -195,7 +196,7 @@ End MonadProbDr.
 Export MonadProbDr.Exports.
 
 Lemma uniform_inde (M : probMonad) A a (x : seq A) {B} (m : M B) :
-  do x <- uniform a x; m = m.
+  uniform a x >> m = m.
 Proof.
 elim: x m => [/= m|x xs IH m]; first by rewrite bindretf.
 by rewrite uniform_cons prob_bindDl IH bindretf choicemm.
@@ -221,9 +222,9 @@ Lemma mpair_uniform_base_case (M : probMonad) A a x (y : seq A) :
   uniform (a, a) (cp [:: x] y) = mpair (uniform a [:: x], uniform a y) :> M _.
 Proof.
 move=> y0; rewrite cp1.
-transitivity (do y' <- @uniform M _ a y; Ret (x, y')).
+transitivity (@uniform M _ a y >>= (fun y' => Ret (x, y'))).
   by rewrite -(compE (uniform _)) (uniform_naturality a) // compE fmapE.
-transitivity (do z <- Ret x; do y' <- uniform a y; Ret (z, y') : M _).
+transitivity (do z <- Ret x; do y' <- uniform a y; Ret (z, y') : M _)%Do.
   by rewrite bindretf.
 by [].
 Qed.
@@ -327,9 +328,9 @@ Section mixing_choices.
 Variable M : altProbMonad.
 
 Definition arbcoin p : M bool :=
-  do a <- arb ; (do c <- bcoin p; Ret (a == c) : M _).
+  (do a <- arb ; (do c <- bcoin p; Ret (a == c) : M _))%Do.
 Definition coinarb p : M bool :=
-  do c <- bcoin p ; (do a <- arb; Ret (a == c) : M _).
+  (do c <- bcoin p ; (do a <- arb; Ret (a == c) : M _))%Do.
 
 Lemma Ret_eqb_addL b :
   (fun c => Ret (b == c)) = (fun c => Ret (~~ b (+) c)) :> (bool -> M bool).
@@ -483,8 +484,8 @@ Lemma uniform_notin (M : probMonad) (A : eqType) (def : A) (s : seq A) B
   (ma mb : A -> M B) (p : pred A) :
   s != [::] ->
   (forall x, x \in s -> ~~ p x) ->
-  (do t <- uniform def s ; if p t then ma t else mb t) =
-  (do t <- uniform def s ; mb t).
+  uniform def s >>= (fun t => if p t then ma t else mb t) =
+  uniform def s >>= mb.
 Proof.
 elim: s => [//|h t IH _ H].
 rewrite uniform_cons.

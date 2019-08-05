@@ -4,6 +4,8 @@ From mathcomp Require Import boolp.
 From infotheo Require Import ssrZ.
 Require Import monad state_monad.
 
+Local Open Scope monae_scope.
+
 Section nqueens_gibbons2011icfp.
 
 Definition place n {B} (rs : seq B) := zip (map Z_of_nat (iota 0 n)) rs.
@@ -35,8 +37,8 @@ Definition safe1 : (seq Z)`2 -> seq Z`2 -> bool * (seq Z)`2 :=
   foldr step1 \o start1.
 
 Definition queens {M : nondetMonad} n : M (seq Z) :=
-  do rs <- perms (map Z_of_nat (iota 0 n)) ;
-     assert (fun x => (safe1 empty (place n x)).1) rs.
+  perms (map Z_of_nat (iota 0 n)) >>=
+     assert (fun x => (safe1 empty (place n x)).1).
 
 End purely_functional.
 
@@ -49,73 +51,73 @@ Variable M : stateMonad (seq Z)`2.
 Definition start2 : M bool := Ret true.
 
 Definition step2 (cr : Z`2) (k : M bool) : M bool :=
-  do b' <- k ;
-  do uds <- Get;
-  let (b, uds') := test cr uds in
-  Put uds' >> Ret (b && b').
+  (do b' <- k ;
+   do uds <- Get;
+   let (b, uds') := test cr uds in
+   Put uds' >> Ret (b && b'))%Do.
 
 Definition safe2 : seq Z`2 -> M bool :=
   foldr step2 start2.
 
 Lemma safe2E crs :
-  safe2 crs = do uds <- Get; let (ok, uds') := safe1 uds crs in
-                             (Put uds' >> Ret ok).
+  safe2 crs = Get >>= (fun uds => let (ok, uds') := safe1 uds crs in
+                               (Put uds' >> Ret ok)).
 Proof.
 (* TODO(rei): how to write this proof w.o. the "set" and "transitivity"'s? *)
 apply/esym; rewrite /safe2.
-set f := fun x => do uds <- Get; let (ok, uds') := safe1 uds x in Put uds' >> Ret ok : M _.
+set f := fun x => Get >>= (fun uds => let (ok, uds') := safe1 uds x in Put uds' >> Ret ok) : M _.
 rewrite -(@foldr_universal_ext _ _ _ _ f) //;
   [apply/esym|move=> cr {crs}crs; apply/esym].
   by rewrite /start2 /f /= -bindA getputskip bindskipf.
 (* definition of safe1 *)
 transitivity
-  (do uds <- Get;
-  let (ok, uds') := step1 cr (safe1  uds crs) in Put uds'>> Ret ok : M _); last first.
+  (Get >>= (fun uds =>
+  let (ok, uds') := step1 cr (safe1  uds crs) in Put uds'>> Ret ok) : M _); last first.
   by [].
 (* introduce a let *)
 transitivity
-  (do uds <- Get;
+  (Get >>= (fun uds =>
   let (b', uds'') := safe1 uds crs in
-  let (ok, uds') := step1 cr (b', uds'') in Put uds' >> Ret ok : M _); last first.
+  let (ok, uds') := step1 cr (b', uds'') in Put uds' >> Ret ok) : M _); last first.
   bind_ext => x.
   by case: safe1.
 (* definition of step1 *)
 transitivity
-  (do uds <- Get;
+  (Get >>= (fun uds =>
   let (b', uds'') := safe1 uds crs in
   let (b, uds''') := test cr uds'' in
-  let (ok, uds') := (b && b', uds''') in Put uds' >> Ret ok : M _); last first.
+  let (ok, uds') := (b && b', uds''') in Put uds' >> Ret ok) : M _); last first.
   bind_ext => x.
   case: safe1 => // h t.
   rewrite /step1 /=.
   by case: test.
 transitivity
-  (do uds <- Get;
+  (Get >>= (fun uds =>
   let (b', uds'') := safe1 uds crs in
   let (b, uds''') := test cr uds'' in
-  let (ok, uds') := (b && b', uds''') in (Put uds'' >> Put uds' >> Ret ok) : M _); last first.
+  let (ok, uds') := (b && b', uds''') in (Put uds'' >> Put uds' >> Ret ok)) : M _); last first.
   bind_ext => x.
   case: safe1 => // h t.
   case: test => // a b.
   by rewrite putput.
 (* move two of the lets *)
 transitivity
-  (do uds <- Get;
+  (Get >>= (fun uds =>
   let (b', uds'') := safe1 uds crs in
   Put uds'' >>
   let (b, uds''') := test cr uds'' in
-  let (ok, uds') := (b && b', uds''') in Put uds' >> Ret ok : M _); last first.
+  let (ok, uds') := (b && b', uds''') in Put uds' >> Ret ok) : M _); last first.
   bind_ext => x.
   case: safe1 => // h t.
   case: test => // a b.
   by rewrite bindA.
 transitivity
-  (do uds <- Get;
+  (Get >>= (fun uds =>
   let (b', uds'') := safe1 uds crs in
   Put uds'' >>
-  do uds'''' <- Get ;
-  let (b, uds''') := test cr uds'''' in
-  let (ok, uds') := (b && b', uds''') in Put uds' >> Ret ok : M _); last first.
+  (Get >>= (fun uds4  =>
+  let (b, uds''') := test cr uds4 in
+  let (ok, uds') := (b && b', uds''') in Put uds' >> Ret ok))) : M _); last first.
   bind_ext => x.
   case: safe1 => // h t.
   by rewrite -bindA putgetput.
@@ -124,7 +126,7 @@ transitivity
    b' <- (do uds <- Get ; let (ok, uds'') := safe1 uds crs in Put uds'' >> Ret ok) ;
    (do uds'''' <- Get;
    let (b, uds''') := test cr uds'''' in
-   let (ok, uds') := (b && b', uds''') in Put uds' >> Ret ok) : M _); last first.
+   let (ok, uds') := (b && b', uds''') in Put uds' >> Ret ok) : M _)%Do; last first.
   rewrite bindA; bind_ext => x.
   case: safe1 => // h t.
   by rewrite bindA; rewrite_ bindretf.
@@ -151,6 +153,7 @@ End safe_reification.
 
 (* section 7.1 *)
 Section queens_statefully_nondeterministically.
+Local Open Scope do_notation.
 
 Variable M : nondetStateMonad (seq Z)`2.
 
@@ -188,7 +191,7 @@ Arguments queens_state_nondeter {M}.
 
 (* section 6.2 *)
 Section queens_exploratively.
-
+Local Open Scope do_notation.
 Variable M : nondetStateMonad (seq Z)`2.
 
 Definition queens_explor n : M _ :=
@@ -407,6 +410,7 @@ Definition seed_select {M : nondetStateMonad (Z * seq Z * seq Z)%type} :=
   (a b : seq Z) => size a < size b.
 
 Section theorem51.
+Local Open Scope do_notation.
 Variables (M : nondetStateMonad (Z * seq Z * seq Z)%type).
 
 Local Open Scope mprog.
@@ -440,7 +444,7 @@ rewrite(@decr_size_select _ _) /bassert !bindA; bind_ext => -[b a] /=.
 case: assertPn => ay; last by rewrite !bindfailf.
 rewrite !bindretf /= -IH // bind_fmap /kleisli /= join_fmap.
 suff : do x <- unfoldM p select a; op b (foldr op (Ret [::]) x) =
-  op b (do x <- unfoldM p select a; foldr op (Ret [::]) x) by done.
+  op b (do x <- unfoldM p select a; foldr op (Ret [::]) x) by [].
 rewrite {ay}.
 move: a b.
 apply: (well_founded_induction (@well_founded_size _)) => a IH' b.

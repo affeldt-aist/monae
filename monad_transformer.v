@@ -2,11 +2,7 @@ Require Import ssreflect ssrmatching ssrfun ssrbool.
 From mathcomp Require Import eqtype ssrnat seq path div choice fintype tuple.
 From mathcomp Require Import finfun bigop.
 From mathcomp Require boolp.
-From monae Require Import monad.
-
-Set Implicit Arguments.
-Unset Strict Implicit.
-Unset Printing Implicit Defensive.
+Require Import monad.
 
 (* - monad morphism
 
@@ -23,6 +19,12 @@ Unset Printing Implicit Defensive.
 *)
 
 (* modular monad transformer, Jaskelioff ESOP 2009 *)
+
+Set Implicit Arguments.
+Unset Strict Implicit.
+Unset Printing Implicit Defensive.
+
+Local Open Scope monae_scope.
 
 Module monadM.
 Section monadm.
@@ -470,22 +472,16 @@ End Lifting.
 Export Lifting.Exports.
 
 Section lifting_interface.
-Variables (E : functor) (M : monad) (op : operation E M) (N : monad) (e : monadM M N) (L : lifting op e).
+Variables (E : functor) (M : monad) (op : operation E M) (N : monad)
+  (e : monadM M N) (L : lifting op e).
 Lemma liftingP : forall X, e X \o op X = L X \o (E # (e X)).
 Proof. by case: L => ? [? []]. Qed.
 End lifting_interface.
 
 Module LiftingT.
 Section liftingt.
-Variables (E : functor) (M : monad) (op : operation E M).
-Variable (T : monadT).
+Variables (E : functor) (M : monad) (op : operation E M) (T : monadT).
 Definition t := Lifting.t op (LiftT T M).
-Program Definition mk H : t := Lifting.Pack (Lifting.Class
-  (Natural.class H)
-  (@Lifting.Mixin _ _ op (T M) (LiftT T M) _ _)).
-Next Obligation.
-Admitted.
-
 End liftingt.
 End LiftingT.
 

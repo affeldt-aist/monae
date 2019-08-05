@@ -1,9 +1,8 @@
 Require Import ssreflect ssrmatching ssrfun ssrbool.
-
 From mathcomp Require Import eqtype ssrnat seq choice fintype tuple.
 From mathcomp Require Import bigop finmap.
 From mathcomp Require Import boolp classical_sets.
-From monae Require Import monad state_monad trace_monad model.
+Require Import monad state_monad trace_monad model.
 
 (* Contents: sample models for the monads in monad.v, state_monad.v, trace_monad.v
    - Module ModelMonad
@@ -305,6 +304,7 @@ Fixpoint fib (n : nat) : nat :=
     | 1 => 1
     | (m.+1 as sm).+1 => fib sm + fib m
   end.
+Local Open Scope monae_scope.
 Fixpoint fib_cps {M : monad} (n : nat) : M nat :=
   match n with
     | 0 => Ret 1
@@ -338,9 +338,10 @@ End continuation_examples.
 
 (* Work In Progress *)
 Module ModelShiftReset.
+Local Open Scope monae_scope.
 (* Local Obligation Tactic := idtac. *)
 Definition shift r : forall A, ((A -> ModelCont.cm r r) -> ModelCont.cm r r) -> ModelCont.cm r A :=
- fun A h => fun c => h (fun v => Ret (c v)) ssrfun.id. 
+ fun A h => fun c => h (fun v => Ret (c v)) ssrfun.id.
 
 Definition reset r : ModelCont.cm r r -> ModelCont.cm r r :=
   fun m => fun c => c (m ssrfun.id).
@@ -382,6 +383,7 @@ End ModelShiftReset.
 (* Work In Progress *)
 Module ModelStateLoop.
 Section modelstateloop.
+Local Open Scope monae_scope.
 Variable S : Type.
 Local Notation M := (@ModelMonad.state S).
 Fixpoint mforeach (it min : nat) (body : nat -> M unit) : M unit :=
@@ -475,7 +477,7 @@ apply/fsetP => /= x; apply/bigfcupP'/bigfcupP'; case => /= CS  /imfsetP[/=].
   exists (g bs.1 bs.2) => //; apply/imfsetP => /=; exists bs => //.
   apply/bigfcupP' => /=; exists (f sa.1 sa.2) => //; by apply/imfsetP => /=; exists sa.
 Qed.
-
+Local Open Scope monae_scope.
 Lemma BindE (A B : Type) m (f : A -> _monad B) :
   m >>= f = fun s => \bigcup_(i <- (fun x : [choiceType of choice_of_Type A * choice_of_Type S] => f x.1 x.2) @` (m s)) i.
 Proof.

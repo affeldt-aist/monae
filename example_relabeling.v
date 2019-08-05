@@ -8,6 +8,8 @@ Set Implicit Arguments.
 Unset Strict Implicit.
 Unset Printing Implicit Defensive.
 
+Local Open Scope monae_scope.
+
 (* see Sect. 9 of gibbons2011icfp *)
 
 Section Tree.
@@ -69,8 +71,8 @@ Definition dlabels {N : failMonad} : Tree Symbol -> N (seq Symbol) :=
   foldt (Ret \o wrap) drBin.
 
 Lemma dlabelsC t u (m : _ -> _ -> M (seq Symbol * seq Symbol)%type) :
-  do x <- dlabels t; do x0 <- relabel u; m x0 x =
-  do x0 <- relabel u; do x <- dlabels t; m x0 x.
+  (do x <- dlabels t; do x0 <- relabel u; m x0 x =
+   do x0 <- relabel u; do x <- dlabels t; m x0 x)%Do.
 Proof.
 elim: t u m => [a u /= m|t1 H1 t2 H2 u m].
   rewrite /dlabels /= bindretf; bind_ext => u'.
@@ -81,7 +83,7 @@ transitivity (do x0 <- relabel u;
   (do x <- dlabels t1;
    do x <- (do x1 <- (do y <- dlabels t2; Ret (x, y));
             (do x <- assert q x1; (Ret \o ucat) x));
-   m x0 x)); last first.
+   m x0 x))%Do; last first.
   bind_ext => u'; rewrite bind_fmap bindA; bind_ext => sS.
   rewrite 4!bindA; bind_ext => x; rewrite 2!bindretf !bindA.
   by rewrite_ bindretf.
@@ -92,14 +94,14 @@ rewrite !bindA.
 transitivity (do x0 <- relabel u;
   (do x <- dlabels t2; (do x <-
     (do x1 <- Ret (s, x); (do x3 <- assert q x1; Ret (ucat x3)));
-    m x0 x))); last by bind_ext => y2; rewrite bindA.
+    m x0 x)))%Do; last by bind_ext => y2; rewrite bindA.
 rewrite -H2.
 bind_ext => s'.
 rewrite !bindretf.
 rewrite assertE.
 rewrite bindA.
 transitivity (guard (q (s, s')) >>
-  (do x1 <- (Ret \o ucat) (s, s'); do x3 <- relabel u; m x3 x1)).
+  (do x1 <- (Ret \o ucat) (s, s'); relabel u >>= (m^~ x1)))%Do.
   bind_ext; case; by rewrite 2!bindretf.
 rewrite guardsC; last exact: failfresh_bindmfail.
 rewrite !bindA !bindretf !bindA.

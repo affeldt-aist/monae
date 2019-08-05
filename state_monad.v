@@ -3,11 +3,13 @@ Require Import ZArith ssreflect ssrmatching ssrfun ssrbool.
 From mathcomp Require Import eqtype ssrnat seq choice fintype tuple.
 From mathcomp Require Import boolp.
 From infotheo Require Import ssrZ.
-From monae Require Import monad.
+Require Import monad.
 
 Set Implicit Arguments.
 Unset Strict Implicit.
 Unset Printing Implicit Defensive.
+
+Local Open Scope monae_scope.
 
 (* Contents:
 - Module MonadState.
@@ -184,13 +186,13 @@ End Exports.
 End MonadContStateLoop.
 Export MonadContStateLoop.Exports.
 
-  
+
 Module MonadRun.
 Record mixin_of S (M : monad) : Type := Mixin {
   run : forall A, M A -> S -> A * S ;
   _ : forall A (a : A) s, run (Ret a) s = (a, s) ;
   _ : forall A B (m : M A) (f : A -> M B) s,
-      run (do a <- m ; f a) s =
+      run (m >>= f) s =
       let: (a', s') := run m s in run (f a') s'
 }.
 Record class_of S (m : Type -> Type) := Class {
@@ -217,7 +219,7 @@ Variables (S : Type) (M : runMonad S).
 Lemma runret : forall A (a : A) s, Run (Ret a : M _) s = (a, s).
 Proof. by case: M => m [? []]. Qed.
 Lemma runbind : forall A B (ma : M A) (f : A -> M B) s,
-  Run (do a <- ma ; f a) s = let: (a', s') := Run ma s in Run (f a') s'.
+  Run (ma >>= f) s = let: (a', s') := Run ma s in Run (f a') s'.
 Proof. by case: M => m [? []]. Qed.
 End run_lemmas.
 
@@ -287,7 +289,7 @@ Proof. by case: M => m [? ? []]. Qed.
 End nondetstate_lemmas.
 
 Lemma getput_prepend S (M : nondetStateMonad S) A (m : M A) :
-  m = do x <- Get; (Put x >> m).
+  m = Get >>= (fun x => Put x >> m).
 Proof. by rewrite -{2}(bindskipf m) -bindA getputskip 2!bindskipf. Qed.
 
 Section state_commute.
@@ -295,8 +297,7 @@ Section state_commute.
 Variables (S : Type) (M : nondetStateMonad S).
 
 Lemma puttselectC (x : S) A (s : seq A) B (f : _ -> M B) :
-  Put x >> (do rs <- tselect s; f rs) =
-  do rs <- tselect s; Put x >> f rs.
+  Put x >> (tselect s >>= f) = tselect s >>= (fun rs => Put x >> f rs).
 Proof.
 elim: s f => [|h t IH] f.
   by rewrite tselect_nil 2!bindfailf bindmfail.
@@ -309,7 +310,7 @@ rewrite 2!bindA IH; bind_ext => y; by rewrite !bindretf.
 Qed.
 
 Lemma putselectC (x : S) A (s : seq A) B (f : A * (seq A) -> M B) :
-  Put x >> (do rs <- select s; f rs) = do rs <- select s; Put x >> f rs.
+  Put x >> (select s >>= f) = select s >>= (fun rs => Put x >> f rs).
 Proof.
 rewrite selectE {1}fmapE.
 rewrite_ bindA.
@@ -318,8 +319,8 @@ bind_ext => x0; by rewrite 2!bindretf.
 Qed.
 
 Lemma gettselectC A (s : seq A) B (f : _ -> _ -> M B) :
-  do ini <- Get; do rs <- tselect s; f rs ini =
-  do rs <- tselect s; do ini <- Get; f rs ini.
+  (do ini <- Get; do rs <- tselect s; f rs ini =
+   do rs <- tselect s; do ini <- Get; f rs ini)%Do.
 Proof.
 elim: s f => [|h t IH] f.
   rewrite tselect_nil bindfailf; rewrite_ bindfailf; by rewrite bindmfail.
@@ -332,9 +333,8 @@ rewrite [in RHS]alt_bindDl alt_bindDr.
 congr (_ [~] _).
   rewrite bindretf; bind_ext => ?; by rewrite bindretf.
 rewrite -lock.
-transitivity (
-  do x0 <- tselect (h' :: t);
-  do x <- Get; f (x0.1, Tuple (monad.tselect_cons_statement_obligation_2 h H x0)) x).
+transitivity (do x0 <- tselect (h' :: t); do x <- Get;
+   f (x0.1, Tuple (monad.tselect_cons_statement_obligation_2 h H x0)) x)%Do.
  rewrite -IH; bind_ext => x.
  rewrite bindA;by rewrite_ bindretf.
 rewrite bindA; bind_ext => y; by rewrite bindretf.
@@ -342,8 +342,7 @@ Qed.
 
 (* perms is independent of the state and so commutes with put *)
 Lemma putpermsC (x : S) A (s : seq A) B (f : _ -> M B) :
-  Put x >> (do rs <- perms s; f rs) =
-  do rs <- perms s; Put x >> f rs.
+  Put x >> (perms s >>= f) = perms s >>= (fun rs => Put x >> f rs).
 Proof.
 move Hn : (size s) => n.
 elim: n s Hn x f => [|n IH] s Hn x f.
@@ -357,8 +356,8 @@ by do 2! rewrite_ bindretf.
 Qed.
 
 Lemma getpermsC A (s : seq A) B (f : _ -> _ -> M B) :
-  do ini <- Get; (do rs <- perms s; f rs ini) =
-  do rs <- perms s; do ini <- Get; f rs ini.
+  (Get >>= (fun ini => perms s >>=  f^~ ini) =
+   perms s >>= (fun rs => Get >>= f rs))%Do.
 Proof.
 move Hn : (size s) => n.
 elim: n s Hn f => [|n IH] s Hn f.
@@ -367,7 +366,7 @@ elim: n s Hn f => [|n IH] s Hn f.
 case: s Hn => // h t [Hn].
 rewrite tpermsE bindA.
 transitivity (do x <- tselect (h :: t); do ini <- Get; do rs <- perms x.2;
-  f (x.1 :: rs) ini); last first.
+  f (x.1 :: rs) ini)%Do; last first.
   bind_ext => x.
   rewrite IH ?size_tuple // bindA.
   by rewrite_ bindretf.
@@ -436,20 +435,19 @@ elim: x m n f => [{A}A a m n f <-| B0 {A}A n0 H0 n1 H1 m n2 f <- |
 - rewrite /commute bindretf.
   by rewrite_ bindretf.
 - rewrite /commute /= !bindA.
-  transitivity (do x <- ndDenote n0; do y <- n2; do x0 <- ndDenote (n1 x);
-    f x0 y).
+  transitivity (do x <- ndDenote n0; do y <- n2; ndDenote (n1 x) >>= f^~ y)%Do.
     bind_ext => s.
     by rewrite (H1 s).
   rewrite H0 //.
   bind_ext => b.
   by rewrite bindA.
 - rewrite /commute /= bindfailf.
-  transitivity (do y <- n; Fail : M C); first by rewrite bindmfail.
+  transitivity (n >> Fail : M C); first by rewrite bindmfail.
   bind_ext => b.
   by rewrite bindfailf.
 - rewrite /commute /= alt_bindDl.
-  transitivity (do y <- n2; (do x <- ndDenote n0 ; f x y) [~]
-                           (do x <- ndDenote n1; f x y)); last first.
+  transitivity (do y <- n2; ndDenote n0 >>= f^~ y [~]
+                           ndDenote n1 >>= f^~ y)%Do; last first.
     bind_ext => a.
     by rewrite alt_bindDl.
   by rewrite alt_bindDr H0 // H1.
@@ -471,8 +469,8 @@ Proof. by []. Qed.
 
 Let scanlM_of_scanl_helper s
   (ms : M S) (mu mu' : M unit) (m : M (seq S)) (f : S -> M unit) :
-  do x <- ms; mu >> (do xs <- fmap (cons s) (mu' >> m); f x >> Ret xs) =
-  fmap (cons s) (do x <- ms; mu >> mu' >> (do xs <- m; f x >> Ret xs)).
+  (do x <- ms; mu >> (do xs <- fmap (cons s) (mu' >> m); f x >> Ret xs) =
+   fmap (cons s) (do x <- ms; mu >> mu' >> (do xs <- m; f x >> Ret xs)))%Do.
 Proof.
 rewrite [in RHS]fmapE !bindA.
 rewrite_ bindA.
@@ -494,13 +492,13 @@ Inf rewrite !bindA.
 (* TODO(rei): tactic for nested function bodies? *)
 transitivity (do y <- Get; (Put s >> Get) >>= fun z =>
   do a <- fmap (cons (op z x)) (Put (op z x) >> foldr mul (Ret [::]) xs);
-  Put y >> Ret a); last by Inf rewrite !bindA.
+  Put y >> Ret a)%Do; last by Inf rewrite !bindA.
 rewrite_ putget.
 rewrite_ bindA.
 rewrite_ bindretf.
 rewrite scanlM_of_scanl_helper.
 transitivity (fmap (cons (op s x)) (do y <- Get; Put (op s x) >>
-  (do a <- foldr mul (Ret [::]) xs; Put y >> Ret a))); last first.
+  (do a <- foldr mul (Ret [::]) xs; Put y >> Ret a)))%Do; last first.
   congr (fmap _ _); by rewrite_ putput.
 transitivity (fmap (cons (op s x)) (protect (scanlM (op s x) xs))); last first.
   congr (fmap _ _); by Inf rewrite -bindA.
@@ -538,9 +536,9 @@ Local Open Scope mprog.
 
 Lemma put_foldr st x xs :
   Put (op st x) >> (do x1 <- foldr (opmul op) (Ret [::]) xs;
-    guard (all ok x1) >> guard (ok (op st x))) =
+    guard (all ok x1) >> guard (ok (op st x)))%Do =
   guard (ok (op st x)) >> (Put (op st x) >>
-    (do ys <- foldr (opmul op) (Ret [::]) xs; guard (all ok ys))) :> M _.
+    (do ys <- foldr (opmul op) (Ret [::]) xs; guard (all ok ys))%Do) :> M _.
 Proof.
 elim: xs x => [x|h t _ x].
   rewrite /= bindretf /= guardT /= bindskipf /= bindretf.
@@ -552,7 +550,7 @@ rewrite /= !bindA.
 transitivity (Put (op st x) >>
   (do x0 <- Get; do x1 <- let st' := op x0 h in
     fmap (cons st') (Put st' >> foldr (opmul op) (Ret [::]) t);
-    guard (ok (op st x)) >> guard (all ok x1)) : M _).
+    guard (ok (op st x)) >> guard (all ok x1))%Do : M _).
   bind_ext; case.
   bind_ext => st'.
   bind_ext => s.
@@ -581,14 +579,14 @@ elim: xs => [|x xs IH]; first by rewrite /= bindretf /= guardT bindskipf.
 rewrite [in LHS]/=.
 rewrite {1}/opmul.
 rewrite {1}bindA.
-transitivity (do x0 <- Get;
+transitivity (Get >>= (fun x0 =>
   Put (op x0 x) >> foldr (opmul op) (Ret [::]) xs >>= (fun ys =>
-  guard (all ok (op x0 x :: ys))) >> Ret (x :: xs) : M _).
+  guard (all ok (op x0 x :: ys))) >> Ret (x :: xs)) : M _).
   bind_ext => st.
   by rewrite bind_fmap !bindA.
-transitivity (do x0 <- Get;
+transitivity (Get >>= (fun x0 =>
   Put (op x0 x) >> foldr (opmul op) (Ret [::]) xs >>= (fun ys =>
-  guard (all ok ys) >> guard (ok (op x0 x))) >> Ret (x :: xs) : M _).
+  guard (all ok ys) >> guard (ok (op x0 x))) >> Ret (x :: xs)) : M _).
   bind_ext => st.
   rewrite !bindA.
   bind_ext; case.
@@ -596,18 +594,18 @@ transitivity (do x0 <- Get;
   rewrite -guard_and.
   congr (guard _ >> _).
   by rewrite -cat1s all_cat andbC all_seq1.
-transitivity (do st <- Get; guard (ok (op st x)) >>
+transitivity (Get >>= (fun st => guard (ok (op st x)) >>
   Put (op st x) >> foldr (opmul op) (Ret [::]) xs >>= (fun ys =>
-   guard (all ok ys)) >> Ret (x :: xs) : M _).
+   guard (all ok ys)) >> Ret (x :: xs)) : M _).
   bind_ext => st.
   rewrite -!bindA.
   congr (_ >> _).
   rewrite !bindA.
   by rewrite put_foldr.
-transitivity (do st <- Get; guard (ok (op st x)) >>
+transitivity (Get >>= (fun st => guard (ok (op st x)) >>
   Put (op st x) >>
     fmap (cons x) (foldr (opmul op) (Ret [::]) xs >>= (fun ys =>
-   guard (all ok ys)) >> Ret xs) : M _).
+   guard (all ok ys)) >> Ret xs)) : M _).
   bind_ext => st.
   rewrite !bindA.
   bind_ext; case.
@@ -829,7 +827,7 @@ Lemma Symbols0 : Symbols 0 = Ret [::] :> M _.
 Proof. by rewrite SymbolsE. Qed.
 
 Lemma SymbolsS n : Symbols n.+1 =
-  do x <- Fresh ; do xs <- Symbols n : M _; Ret (x :: xs).
+  (do x <- Fresh ; do xs <- Symbols n : M _; Ret (x :: xs))%Do.
 Proof. by rewrite SymbolsE. Qed.
 
 Lemma Symbols_prop1 :
@@ -938,6 +936,7 @@ Proof. by case: M i j u A k => ? [? []]. Qed.
 End monadarray_lemmas.
 
 Section monadarray_example.
+Local Open Scope do_notation.
 
 Variables (M : arrayMonad nat bool_eqType).
 

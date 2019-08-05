@@ -20,6 +20,8 @@ Let M := @ModelStateTraceRun.mk.
 
 Eval unfold denote, p_nonce in denote (M nat nat) nat p_nonce.
 
+Local Open Scope do_notation.
+
 Definition nonce : M nat nat nat :=
   do n : nat <- stGet;
   do _ : unit <- stPut (S n);
@@ -90,7 +92,11 @@ Compute run_ss (p_countdown 100) 5.
 
 Remark denote_countdown fuel :
   denote (M nat bool) unit (p_countdown fuel) = countdown fuel.
-Proof. by elim: fuel => //= n ->. Qed.
+Proof.
+elim: fuel => // n.
+rewrite [countdown (S n)]/=.
+by move <-.
+Qed.
 
 Example p_multiply (a b : nat) : program (T := unit) unit :=
   p_do _ <- p_put 0 ;

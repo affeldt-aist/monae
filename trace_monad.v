@@ -4,10 +4,6 @@ From mathcomp Require Import eqtype ssrnat seq choice fintype tuple.
 From infotheo Require Import ssrZ.
 Require Import monad state_monad.
 
-Set Implicit Arguments.
-Unset Strict Implicit.
-Unset Printing Implicit Defensive.
-
 (*
 Contents:
 - Module MonadTrace.
@@ -16,6 +12,12 @@ Contents:
 - Module MonadStateTraceRun.
 - wip
 *)
+
+Set Implicit Arguments.
+Unset Strict Implicit.
+Unset Printing Implicit Defensive.
+
+Local Open Scope monae_scope.
 
 Module MonadTrace.
 Record mixin_of T (m : Type -> Type) : Type := Mixin {
@@ -127,7 +129,7 @@ End statetrace_lemmas.
 Local Open Scope zarith_ext_scope.
 
 Section statetrace_program_equivalence_example.
-
+Local Open Scope do_notation.
 Variable M : stateTraceMonad Z nat.
 
 Let st_none1 : M Z :=
@@ -155,6 +157,7 @@ Qed.
 End statetrace_program_equivalence_example.
 
 Section statetrace_example.
+Local Open Scope do_notation.
 Variables (T : Type) (M : stateTraceMonad Z T).
 Variables (log0 log1 : T).
 
@@ -263,6 +266,7 @@ End Tracer.
 Coercion Tracer.mv : Tracer.t >-> MonadTrans.t.
 
 Section tracer_example.
+Local Open Scope do_notation.
 Variable (M : Tracer.t).
 Let v : traceMonad unit := Tracer.v M.
 Let m : monad := Tracer.m M.

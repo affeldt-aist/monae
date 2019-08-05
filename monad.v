@@ -48,8 +48,9 @@ Unset Printing Implicit Defensive.
 Reserved Notation "A `2" (format "A `2", at level 3).
 Reserved Notation "f ^`2" (format "f ^`2", at level 3).
 Reserved Notation "l \\ p" (at level 50).
-Reserved Notation "m >>= f" (at level 50).
-Reserved Notation "f =<< m" (at level 50).
+Reserved Notation "m >>= f" (at level 49).
+Reserved Notation "m >> f" (at level 49).
+(*Reserved Notation "f =<< m" (at level 49).*)
 Reserved Notation "'do' x <- m ; e"
   (at level 60, x ident, m at level 200, e at level 60).
 Reserved Notation "'do' x : T <- m ; e"
@@ -300,23 +301,23 @@ End fcomp.
 Notation "f (o) g" := (fcomp f g) : mprog.
 Arguments fcomp : simpl never.
 
-Definition naturality (M N : functor) (m : M ~~> N) :=
-  forall A B (h : A -> B), (N # h) \o m A = m B \o (M # h).
-Arguments naturality : clear implicits.
-
 (* natural transformation *)
 Module Natural.
 Section natural.
 Variables (M N : functor).
-Record class_of (m : M ~~> N) := Class { _ : naturality M N m }.
+Definition P (m : M ~~> N) :=
+  forall A B (h : A -> B), (N # h) \o m A = m B \o (M # h).
+Record class_of (m : M ~~> N) := Class { _ : P m }.
 Structure t := Pack { m : M ~~> N ; class : class_of m }.
 End natural.
 Module Exports.
 Coercion m : t >-> Funclass.
+Arguments P : clear implicits.
+Notation naturality := P.
+Notation "f ~> g" := (t f g).
 End Exports.
 End Natural.
 Export Natural.Exports.
-Notation "f ~> g" := (Natural.t f g).
 
 Section natrans_lemmas.
 Variables (M N : functor) (phi : M ~> N).
@@ -672,11 +673,15 @@ Proof. by rewrite compA joinMret. Qed.*)
 Proof. by rewrite compA joinA. Qed.*)
 End monad_lemmas.
 Arguments Bind {M A B} : simpl never.
-Notation "m >>= f" := (Bind m f).
 
-Notation "'do' x <- m ; e" := (m >>= (fun x => e)).
-Notation "'do' x : T <- m ; e" := (m >>= (fun x : T => e)) (only parsing).
-Notation "m >> f" := (m >>= fun _ => f) (at level 50).
+Notation "'do' x <- m ; e" := (Bind m (fun x => e)) : do_notation.
+Notation "'do' x : T <- m ; e" := (Bind m (fun x : T => e)) (only parsing) : do_notation.
+Delimit Scope do_notation with Do.
+Notation "m >>= f" := (Bind m f) : monae_scope.
+Notation "m >> f" := (Bind m (fun _ => f)) : monae_scope.
+Delimit Scope monae_scope with monae.
+Local Open Scope monae_scope.
+
 Definition skip M := @Ret M _ tt.
 Arguments skip {M} : simpl never.
 
@@ -720,14 +725,14 @@ Lemma bindskipf (M : monad) A (m : M A) : skip >> m = m.
 Proof. exact: bindretf. Qed.
 
 Fixpoint sequence (M : monad) A (s : seq (M A)) : M (seq A) :=
-  if s isn't h :: t then Ret [::] else
-  do v <- h; do vs <- sequence t; Ret (v :: vs).
+  (if s isn't h :: t then Ret [::] else
+  do v <- h; do vs <- sequence t; Ret (v :: vs))%Do.
 
 Lemma sequence_nil (M : monad) A : sequence [::] = Ret [::] :> M (seq A).
 Proof. by []. Qed.
 
 Lemma sequence_cons (M : monad) A h (t : seq (M A)) :
-  sequence (h :: t) = do x <- h ; do vs <- sequence t ; Ret (x :: vs).
+  (sequence (h :: t) = do x <- h ; do vs <- sequence t ; Ret (x :: vs))%Do.
 Proof. by []. Qed.
 
 Module Monad_of_ret_bind.
@@ -817,6 +822,8 @@ Local Notation "m >=> n" := (kleisli n m).
 
 Lemma bind_kleisli A B C m (f : A -> M B) (g : B -> M C) :
   m >>= (f >=> g) = (m >>= f) >>= g.
+Close Scope monae_scope.
+
 Proof. by rewrite bindA; bind_ext => a; rewrite /kleisli !compE join_fmap. Qed.
 
 Lemma ret_kleisli A B (k : A -> M B) : Ret >=> k = k.
@@ -836,8 +843,8 @@ Proof. by rewrite /kleisli fcomp_def functor_o 2!compA. Qed.
 Local Close Scope mprog.
 
 End kleisli.
-Notation "m <=< n" := (kleisli m n).
-Notation "m >=> n" := (kleisli n m).
+Notation "m <=< n" := (kleisli m n) : monae_scope.
+Notation "m >=> n" := (kleisli n m) : monae_scope.
 
 Section fmap_and_join.
 Variable M : monad.
@@ -1314,11 +1321,11 @@ Fixpoint SUBS (s : seq A) : Functor.m (Monad.baseType (MonadAlt.baseType M)) _ :
 Goal subs = SUBS. by []. Abort.
 
 Lemma subs_cons x (xs : seq A) :
-  subs (x :: xs) = let t' := subs xs in (fmap (cons x) t') [~] t'.
+  subs (x :: xs) = let t' := subs xs in fmap (cons x) t' [~] t'.
 Proof. by []. Qed.
 
 Lemma subs_cat (xs ys : seq A) :
-  subs (xs ++ ys) = do us <- subs xs; do vs <- subs ys; Ret (us ++ vs).
+  (subs (xs ++ ys) = do us <- subs xs; do vs <- subs ys; Ret (us ++ vs))%Do.
 Proof.
 elim: xs ys => [ys |x xs IH ys].
   by rewrite cat0s /= bindretf bindmret.
@@ -1327,7 +1334,7 @@ Open (X in subs xs >>= X).
   rewrite bindretf.
   rewrite_ cat_cons.
   reflexivity.
-rewrite [X in _ = X [~] _](_ : _ = fmap (cons x) (do x0 <- subs xs; do x1 <- subs ys; Ret (x0 ++ x1))); last first.
+rewrite [X in _ = X [~] _](_ : _ = fmap (cons x) (do x0 <- subs xs; do x1 <- subs ys; Ret (x0 ++ x1)))%Do; last first.
   rewrite fmapE bindA.
   bind_ext => x0.
   rewrite bindA.
@@ -1607,14 +1614,14 @@ Implicit Types s : seq A.
 
 Fixpoint select s : M (A * seq A)%type :=
   if s isn't h :: t then Fail else
-  (Ret (h, t) [~] do x <- select t; Ret (x.1, h :: x.2)).
+  (Ret (h, t) [~] select t >>= (fun x => Ret (x.1, h :: x.2))).
 
 Local Obligation Tactic := idtac.
 (* variant of select that keeps track of the length, useful to write perms *)
 Program Fixpoint tselect s : M (A * (size s).-1.-tuple A)%type :=
   if s isn't h :: t then Fail else
-  (Ret (h, @Tuple (size t) A t _) [~]
-  do x <- tselect t; Ret (x.1, @Tuple (size t) A _ _ (* h :: x.2 *))).
+  Ret (h, @Tuple (size t) A t _) [~]
+  tselect t >>= (fun x => Ret (x.1, @Tuple (size t) A _ _ (* h :: x.2 *))).
 Next Obligation. by []. Defined.
 Next Obligation.
 move=> s h [|h' t] hts [x1 x2]; [exact: [::] | exact: (h :: x2)].
@@ -1634,7 +1641,7 @@ Qed.
 
 Program Definition tselect_cons_statement a t (_ : t <> nil) :=
   tselect (a :: t) = Ret (a, @Tuple _ _ t _) [~]
-                    do x <- tselect t; Ret (x.1, @Tuple _ _ (a :: x.2) _).
+                    tselect t >>= (fun x => Ret (x.1, @Tuple _ _ (a :: x.2) _)).
 Next Obligation. by []. Defined.
 Next Obligation.
 move=> a t t0 [x1 x2].
@@ -1679,8 +1686,8 @@ Implicit Types s : seq A.
 Local Obligation Tactic := idtac.
 Program Definition perms' s
   (f : forall s', size s' < size s -> M (seq A)) : M (seq A) :=
-  if s isn't h :: t then Ret [::] else
-    do x <- tselect (h :: t); do y <- f x.2 _; Ret (x.1 :: y).
+  (if s isn't h :: t then Ret [::] else
+    do x <- tselect (h :: t); do y <- f x.2 _; Ret (x.1 :: y))%Do.
 Next Obligation.
 move=> s H h t hts [y ys]; by rewrite size_tuple -hts ltnS leqnn.
 Qed.
@@ -1689,15 +1696,15 @@ Next Obligation. by []. Qed.
 Definition perms : seq A -> M (seq A) :=
   Fix (@well_founded_size _) (fun _ => M _) perms'.
 
-Lemma tpermsE s : perms s = if s isn't h :: t then Ret [::] else
-  do x <- tselect (h :: t); do y <- perms x.2; Ret (x.1 :: y).
+Lemma tpermsE s : (perms s = if s isn't h :: t then Ret [::] else
+  do x <- tselect (h :: t); do y <- perms x.2; Ret (x.1 :: y))%Do.
 Proof.
 rewrite {1}/perms Fix_eq //; [by case: s|move=> s' f g H].
 by rewrite /perms'; destruct s' => //; bind_ext=> x; rewrite H.
 Qed.
 
-Lemma permsE s : perms s = if s isn't h :: t then Ret [::] else
-  do x <- select (h :: t); do y <- perms x.2; Ret (x.1 :: y).
+Lemma permsE s : (perms s = if s isn't h :: t then Ret [::] else
+  do x <- select (h :: t); do y <- perms x.2; Ret (x.1 :: y))%Do.
 Proof.
 rewrite tpermsE; case: s => // h t.
 by rewrite selectE bind_fmap.
@@ -1713,8 +1720,8 @@ Variables (A : Type) (M : nondetMonad).
 Definition mu_perm : seq A -> M (seq A) :=
   unfoldM (@well_founded_size _) (@nilp _) select.
 
-Lemma mu_permE s : mu_perm s = if s isn't h :: t then Ret [::]
-  else do a <- select (h :: t) ; do b <- mu_perm a.2; Ret (a.1 :: b).
+Lemma mu_permE s : (mu_perm s = if s isn't h :: t then Ret [::]
+  else do a <- select (h :: t) ; do b <- mu_perm a.2; Ret (a.1 :: b))%Do.
 Proof.
 rewrite /mu_perm unfoldME; last exact: decr_size_select.
 case: s => // h t; rewrite (_ : nilp _ = false) //.
@@ -1886,8 +1893,8 @@ Proof. by case: M A B g k => m [? []]. Qed. (* NB Schrijvers *)
 Lemma callcc1 A B p : Callcc (fun _ : B -> M A => p) = p.
 Proof. by case: M A B p => m [? []]. Qed. (* NB Wadler callcc_elim *)
 Lemma callcc2 A B C (m : M A) x (k : A -> B -> M C) :
-  Callcc (fun f : _ -> M _ => do a <- m; do b <- f x; k a b) =
-  Callcc (fun f : _ -> M _ => m >> f x).
+  (Callcc (fun f : _ -> M _ => do a <- m; do b <- f x; k a b) =
+   Callcc (fun f : _ -> M _ => m >> f x))%Do.
 Proof. by case: M A B C m x k => m [? []]. Qed.
 Lemma callcc3 A B (m : M A) b :
   Callcc (fun f : B -> M B => m >> f b) = Callcc (fun _ : B -> M B => m >> Ret b).
@@ -1921,12 +1928,12 @@ Record mixin_of (M : contMonad) U : Type := Mixin {
   _ : forall A B (h : (A -> M B) -> M A),
     Callcc h = shift (fun k' => h (fun x => shift (fun k'' => k' x)) >>= k') (* NB Wadler *) ;
   _ : forall A (c : A) (c': U) (k : A -> U -> _),
-    reset (do x <- Ret c; do y <- shift (fun _ => Ret c'); k x y) = Ret c >> Ret c';
+    (reset (do x <- Ret c; do y <- shift (fun _ => Ret c'); k x y) = Ret c >> Ret c')%Do ;
   _ : forall (c c' : U) (k : U -> U -> _),
-    reset (do x <- Ret c; do y <- shift (fun f => do v <- f c'; f v); Ret (k x y)) =
-    reset (do x <- Ret c; do y <- shift (fun f => f c'); Ret (k x (k x y)));
+    (reset (do x <- Ret c; do y <- shift (fun f => do v <- f c'; f v); Ret (k x y)) =
+     reset (do x <- Ret c; do y <- shift (fun f => f c'); Ret (k x (k x y))))%Do ;
   _ : forall (c : U) k,
-    reset (do y <- shift (@^~ c); Ret (k y)) = Ret (k c)
+    (reset (do y <- shift (@^~ c); Ret (k y)) = Ret (k c))%Do
 }.
 Record class_of (m : Type -> Type) B := Class {
   base : MonadContinuation.class_of m ; mixin : mixin_of (MonadContinuation.Pack base) B }.
@@ -1952,14 +1959,14 @@ Lemma shiftreset1 A B (h : (A -> M B) -> M A) :
   Callcc h = Shift (fun k' => h (fun x => Shift (fun k'' => k' x)) >>= k').
 Proof. by case: M A B h => m [? []]. Qed.
 Lemma shiftreset2 A c c' (k : A -> U -> _):
-  Reset (do x <- Ret c; do y <- (Shift (fun _ => @Ret M U c') : M U); k x y) = (Ret c >> Ret c') :> M _ .
+  Reset (do x <- Ret c; do y <- (Shift (fun _ => @Ret M U c') : M U); k x y)%Do = (Ret c >> Ret c') :> M _ .
 Proof. by case: M c c' k => m [? []]. Qed.
 Lemma shiftreset3 c c' (k : U -> U -> _) :
-  Reset (do x <- Ret c; do y <- (Shift (fun f : U -> M U => do v <- f c'; f v) : M U); Ret (k x y)) =
-  Reset (do x <- Ret c; do y <- (Shift (fun f : U -> M U => f c') : M U); Ret (k x (k x y))).
+  (Reset (do x <- Ret c; do y <- (Shift (fun f : U -> M U => do v <- f c'; f v) : M U); Ret (k x y)) =
+  Reset (do x <- Ret c; do y <- (Shift (fun f : U -> M U => f c') : M U); Ret (k x (k x y))))%Do.
 Proof. by case: M c c' k => m [? []]. Qed.
 Lemma shiftreset4 c k:
-  Reset (do y <- (Shift (@^~ c) : M U); Ret (k y)) = Ret (k c) :> M U.
+  Reset ((Shift (@^~ c) : M U) >>= (fun y => Ret (k y))) = Ret (k c) :> M U.
 Proof. by case: M c => m [? []]. Qed.
 End shiftreset_lemmas.
 
@@ -1986,9 +1993,9 @@ rewrite /addM.
 rewrite bindretf.
 transitivity ((Ret (10 + (10 + 100))) >>= (fun y => Ret (1 + y)) : M _); last first.
   by rewrite bindretf.
-congr (Bind _ _). 
+congr (Bind _ _).
 rewrite shiftreset3.
-rewrite (_ : do x <- Ret 10; _ = do y <- Shift (@^~ 100) : M _; Ret (10 + (10 + y))); last first.
+rewrite (_ : do x <- Ret 10; _ = do y <- Shift (@^~ 100) : M _; Ret (10 + (10 + y)))%Do; last first.
   by rewrite bindretf.
 by rewrite shiftreset4.
 Qed.
