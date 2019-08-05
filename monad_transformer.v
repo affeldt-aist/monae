@@ -11,9 +11,6 @@ Require Import monad.
      - exception monad transformer
      - continuation monad transformer
 
-    - sigma operations
-     - state sigma operation (get)
-
     - examples
        - usage of continuation monad transformer
 *)
@@ -218,19 +215,19 @@ Qed.
 
 End continuation_monad_tranformer.
 
-Definition continuationmonad_transformer R : monadT :=
-  MonadT.Pack (@MonadT.Class (econtMonadM R) (@retC R) (@bindC R) (@contMonadM R)).
+Definition continuationmonad_transformer r : monadT :=
+  MonadT.Pack (@MonadT.Class (econtMonadM r) (@retC r) (@bindC r) (@contMonadM r)).
 
-Definition callcc R (M : monad) A B
-  (f : (A -> continuationmonad_transformer R M B) -> continuationmonad_transformer R M A) :
-  continuationmonad_transformer R M A :=
-  fun cont => f (fun x _ => cont x) cont. (*NB(rei): similar def in monad_model.*)
+Require Import state_monad.
+
+Definition callcc r (M : monad) A B
+  (f : (A -> continuationmonad_transformer r M B) -> continuationmonad_transformer r M A) :
+  continuationmonad_transformer r M A :=
+  fun k : A -> M r => f (fun x _ => k x) k.
 
 Definition abort R r (M : monad) A :
   continuationmonad_transformer R M A := fun (k : A -> M R) => Ret r.
 Arguments abort {R} _ {M} {A}.
-
-Require Import state_monad.
 
 Section examples_continuation_monad_transformer.
 
@@ -368,91 +365,6 @@ Compute calcul.
 
 End calcul.
 
-Definition operation (E : functor) (M : monad) := (E \O M) ~> M.
-
-Section sigma_operations.
-(* TODO: rewrite ModelState.get,put,callcc with get_op, etc.? *)
-
-Section get_functor.
-Variable S : Type.
-Definition get_act_obj X := S -> X.
-Definition get_act_mor X Y (f : X -> Y) (t : get_act_obj X) : get_act_obj Y := fun s => f (t s).
-Program Definition get_fun := Functor.Pack (@Functor.Class get_act_obj get_act_mor _ _ ).
-Next Obligation. by move=> A; rewrite /get_act_mor boolp.funeqE. Qed.
-Next Obligation. by move=> A B C g h; rewrite /get_act_mor boolp.funeqE. Qed.
-End get_functor.
-
-Definition get_op S A (k : S -> ModelMonad.acto S A) : ModelMonad.acto S A := fun s => k s s.
-
-Program Definition get_operation S : operation (get_fun S) (ModelMonad.state S) :=
-  Natural.Pack (@Natural.Class _ _ (@get_op S) _).
-Next Obligation.
-move=> A B h; rewrite boolp.funeqE => /= m /=.
-rewrite boolp.funeqE => s.
-by rewrite FCompE Monad_of_ret_bind.MapE.
-Qed.
-Arguments get_operation {S}.
-
-Lemma getE S : @ModelState.get S = get_operation _ Ret.
-Proof. by []. Qed.
-
-Section put_functor.
-Variable S : Type.
-Definition put_act_obj X := (S * X)%type.
-Definition put_act_mor X Y (f : X -> Y) (sx : put_act_obj X) : put_act_obj Y := (sx.1, f sx.2).
-Program Definition put_fun := Functor.Pack (@Functor.Class put_act_obj put_act_mor _ _ ).
-Next Obligation. by move=> A; rewrite /put_act_mor boolp.funeqE; case. Qed.
-Next Obligation. by move=> A B C g h; rewrite /put_act_mor boolp.funeqE. Qed.
-End put_functor.
-
-Definition put_op S A (s : S) (m : ModelMonad.acto S A) : ModelMonad.acto S A :=
-  fun _ => m s.
-
-Program Definition put_operation S : operation (put_fun S) (ModelMonad.state S) :=
-  Natural.Pack (@Natural.Class _ _ (fun A => uncurry (@put_op S A)) _).
-Next Obligation.
-move=> A B h.
-rewrite boolp.funeqE => /=; case => s m /=.
-rewrite boolp.funeqE => s'.
-by rewrite 2!Monad_of_ret_bind.MapE.
-Qed.
-
-Lemma putE S : @ModelState.put S = fun s => put_op s (@Ret (ModelMonad.state S) _ tt).
-Proof. by []. Qed.
-
-Section callcc.
-
-Let C r := ModelCont.contM r.
-
-Section callcc_functor.
-Definition callcc_act_obj r A := (A -> r) -> A.
-Definition callcc_act_mor r X Y (f : X -> Y) (t : callcc_act_obj r X) : callcc_act_obj r Y :=
-  fun (g : Y -> r) => f (t (fun x => g (f x))).
-Program Definition callcc_fun r := Functor.Pack (@Functor.Class (callcc_act_obj r) (@callcc_act_mor r) _ _ ).
-Next Obligation. by move=> A; rewrite /callcc_act_mor boolp.funeqE. Qed.
-Next Obligation. by move=> A B D g h; rewrite /callcc_act_mor boolp.funeqE. Qed.
-End callcc_functor.
-
-Definition callcc_op r A (f : (C r A -> r) -> C r A) : C r A :=
-  fun k => f (fun m => m k) k.
-
-Program Definition callcc_operation r : operation (callcc_fun r) (ModelCont.contM r) :=
-  Natural.Pack (@Natural.Class _ _ (@callcc_op r) _).
-Next Obligation.
-move=> A B h.
-rewrite boolp.funeqE => /= m /=.
-rewrite boolp.funeqE => g.
-by rewrite Monad_of_ret_bind.MapE.
-Qed.
-
-Lemma callccE r A B (f : (A -> C r B) -> C r A) :
-  ModelCont.callcc f = callcc_operation _ _ (fun k => f (fun x _ => k (Ret x))).
-Proof. by []. Qed.
-
-End callcc.
-
-End sigma_operations.
-
 Module Lifting.
 Section lifting.
 Variables (E : functor) (M : monad) (op : operation E M) (N : monad) (e : monadM M N).
@@ -512,7 +424,7 @@ Arguments m {E} {M}.
 Notation aoperation := t.
 Coercion baseType : aoperation >-> Natural.t.
 Canonical baseType.
-Notation algebraic_def := P.
+Notation algebraicity := P.
 End Exports.
 End AOperation.
 Export AOperation.Exports.
@@ -528,6 +440,23 @@ Lemma algebraic : forall A B (f : A -> M B) (t : E (M A)),
    (op A t >>= f) = op B ((E # (fun m => m >>= f)) t).
 Proof. by case: op => ? [? []]. Qed.
 End algebraic_operation_interface.
+
+Lemma algebraic_get S : algebraicity (@StateOps.get_op S).
+Proof. by []. Qed.
+
+Program Definition get_aop S : aoperation (StateOps.get_fun S) (ModelMonad.State.t S) :=
+  AOperation.Pack (AOperation.Class _ (AOperation.Mixin (@algebraic_get S))).
+Next Obligation. by []. Qed.
+
+Lemma algebraic_put S : algebraicity (@StateOps.put_op S).
+Proof. by move=> ? ? ? []. Qed.
+
+Lemma algebraicity_callcc r : algebraicity (ContOps.callcc_op r).
+Proof. by []. Qed.
+
+Program Definition callcc_aop r : aoperation (ContOps.callcc_fun r) (ModelMonad.Cont.t r) :=
+  AOperation.Pack (AOperation.Class _ (AOperation.Mixin (@algebraicity_callcc r))).
+Next Obligation. by []. Qed.
 
 Section proposition17.
 Section psi.
@@ -550,7 +479,7 @@ Qed.
 Definition psi (op' : E ~> M) : operation E M :=
   Natural.Pack (@Natural.Class _ _ _ (natural_psi op')).
 
-Lemma algebraic_psi (op' : E ~> M) : algebraic_def (psi op').
+Lemma algebraic_psi (op' : E ~> M) : algebraicity (psi op').
 Proof.
 move=> A B g t.
 rewrite bindE /Bind.
@@ -614,28 +543,9 @@ rewrite compidf.
 rewrite -(compfid Ret).
 by rewrite joinretM functor_id compfid.
 Qed.
+
 End bijection.
 End proposition17.
-
-Lemma Hget_aop S : algebraic_def (get_operation S).
-Proof.
-move=> A B /= f t.
-by rewrite /get_op /= boolp.funeqE.
-Qed.
-
-Program Definition get_aop S : aoperation (get_fun S) (ModelMonad.state S) :=
-  AOperation.Pack (AOperation.Class _ (AOperation.Mixin (@Hget_aop S))).
-Next Obligation. by []. Qed.
-
-Lemma Hcallcc_aop R : algebraic_def (callcc_operation R).
-Proof.
-move=> A B /= f t.
-by rewrite /callcc_op /= boolp.funeqE.
-Qed.
-
-Program Definition callcc_aop R : aoperation (callcc_fun R) (ModelCont.cm R) :=
-  AOperation.Pack (AOperation.Class _ (AOperation.Mixin (@Hcallcc_aop R))).
-Next Obligation. by []. Qed.
 
 Definition mk_natural_monadM (M N : monad) (f : monadM M N) : M ~> N :=
   Natural.Pack (@Natural.Class _ _ _ (natural_monadM f)).
@@ -666,7 +576,7 @@ by rewrite FCompE -functor_o -(functor_o E) ret_naturality FIdf.
 *)
 Qed.
 
-Lemma theorem19a : algebraic_def alifting.
+Lemma theorem19a : algebraicity alifting.
 Proof. by move=> ? ? ? ?; rewrite aliftingE algebraic_psi. Qed.
 
 Lemma theorem19b : lifting_def op e alifting.
@@ -719,7 +629,7 @@ Let XM : monad := X M.
 
 (* Let xm : XM S := (MonadT.liftT X) _ _ m. *)
 
-Let lift_getX : ((get_fun S) \O XM) ~~> XM :=
+Let lift_getX : (StateOps.get_fun S) \O XM ~~> XM :=
   alifting (get_aop S) (LiftT X M).
 
 Goal forall X, forall k : S -> XM X, lift_getX k = (fun s => k s s).
@@ -736,12 +646,12 @@ End theorem19_example_X.
 
 Section theorem19_example_C.
 Variable (S : Type).
-Let C R : monad := ModelCont.cm R.
+Let C R : monad := ModelCont.t R.
 Let ST : monadT := statemonad_transformer S.
 Let STC R : monad := ST (C R).
 (* STC : S -> ((A * S) -> R) -> R *)
 
-Let lift_callccS R : ((callcc_fun R) \O (STC R)) ~~> (STC R) :=
+Let lift_callccS R : ((ContOps.callcc_fun R) \O (STC R)) ~~> (STC R) :=
   alifting (callcc_aop R) (LiftT ST (C R)).
 
 Goal forall A R (f : ((STC R) A -> R) -> (STC R) A) , lift_callccS f = (fun s k => f (fun m => m s k) s k) :> (STC R) A.

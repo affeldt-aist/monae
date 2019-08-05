@@ -11,6 +11,7 @@ Require Import monad state_monad trace_monad model.
        option monad
        set monad (using classical sets)
        state monad
+       continuation monad.
    - Module ModelFail
        using ModelMonad.option
        using ModelMonad.list
@@ -139,17 +140,34 @@ Next Obligation. move=> ? ?; exact: bigsetU1. Qed.
 Next Obligation. move=> ? ? ? ? ? ?; exact: bigsetUA. Qed.
 End set.
 
+Module State.
 Section state.
 Variables S : Type.
 Definition acto := fun A => S -> A * S.
 Local Notation M := acto.
 Definition bind := fun A B (m : M A) (f : A -> M B) => fun s => uncurry f (m s).
 Definition ret : FId ~~> M := fun A a => fun s => (a, s).
-Program Definition state := @Monad_of_ret_bind M ret bind _ _ _.
+Program Definition t : monad := @Monad_of_ret_bind M ret bind _ _ _.
 Next Obligation. by []. Qed.
 Next Obligation. by move=> A f; rewrite /bind funeqE => ?; case: f. Qed.
 Next Obligation. by move=> A B C a b c; rewrite /bind funeqE => ?; case: a. Qed.
 End state.
+End State.
+
+Module Cont.
+Section cont.
+(* https://qiita.com/suharahiromichi/items/f07f932103c28f36dd0e *)
+Variable r : Type.
+Definition acto := fun A => (A -> r) -> r.
+Local Notation M := acto.
+Program Definition t : monad := (@Monad_of_ret_bind M
+  (fun A a => fun k => k a)
+  (fun A B ma f => fun k => ma (fun a => f a k)) _ _ _).
+Next Obligation. by []. Qed.
+Next Obligation. by []. Qed.
+Next Obligation. by []. Qed.
+End cont.
+End Cont.
 
 End ModelMonad.
 
@@ -182,14 +200,62 @@ End set.
 
 End ModelFail.
 
+Module StateOps.
+Section get_functor.
+Variable S : Type.
+Definition get_acto X := S -> X.
+Definition get_actm X Y (f : X -> Y) (t : get_acto X) : get_acto Y := fun s => f (t s).
+Program Definition get_fun := Functor.Pack (@Functor.Class get_acto get_actm _ _ ).
+Next Obligation. by move=> A; rewrite /get_actm boolp.funeqE. Qed.
+Next Obligation. by move=> A B C g h; rewrite /get_actm boolp.funeqE. Qed.
+End get_functor.
+
+Definition get S A (k : S -> ModelMonad.State.acto S A) : ModelMonad.State.acto S A :=
+  fun s => k s s.
+
+Program Definition get_op S : operation (get_fun S) (ModelMonad.State.t S) :=
+  Natural.Pack (@Natural.Class _ _ (@get S) _).
+Next Obligation.
+move=> A B h; rewrite boolp.funeqE => /= m /=.
+rewrite boolp.funeqE => s.
+by rewrite FCompE Monad_of_ret_bind.MapE.
+Qed.
+Arguments get_op {S}.
+
+Section put_functor.
+Variable S : Type.
+Definition put_acto X := (S * X)%type.
+Definition put_actm X Y (f : X -> Y) (sx : put_acto X) : put_acto Y := (sx.1, f sx.2).
+Program Definition put_fun := Functor.Pack (@Functor.Class put_acto put_actm _ _ ).
+Next Obligation. by move=> A; rewrite /put_actm boolp.funeqE; case. Qed.
+Next Obligation. by move=> A B C g h; rewrite /put_actm boolp.funeqE. Qed.
+End put_functor.
+
+Definition put S A (s : S) (m : ModelMonad.State.acto S A) : ModelMonad.State.acto S A :=
+  fun _ => m s.
+
+Program Definition put_op S : operation (put_fun S) (ModelMonad.State.t S) :=
+  Natural.Pack (@Natural.Class _ _ (fun A => uncurry (@put S A)) _).
+Next Obligation.
+move=> A B h.
+rewrite boolp.funeqE => /=; case => s m /=.
+rewrite boolp.funeqE => s'.
+by rewrite 2!Monad_of_ret_bind.MapE.
+Qed.
+Arguments put_op {S}.
+End StateOps.
+
 Module ModelState.
 Section modelstate.
 Variable S : Type.
-Local Notation M := (ModelMonad.acto S).
-Definition get : M S := fun s => (s, s).
-Definition put : S -> M unit := fun s' _ => (tt, s').
-Program Definition state := MonadState.Pack (MonadState.Class
-  (@MonadState.Mixin _ (ModelMonad.state S) get put _ _ _ _)).
+Local Notation M := (ModelMonad.State.t S).
+Definition get : M S := StateOps.get_op _ Ret.
+Lemma getE : get = fun s => (s, s). Proof. by []. Qed.
+Definition put : S -> M unit := fun s => StateOps.put_op _ (s, @Ret _ _ tt).
+Lemma putE : put = fun s' _ => (tt, s').
+Proof. by []. Qed.
+Program Definition state : stateMonad S := MonadState.Pack (MonadState.Class
+  (@MonadState.Mixin _ (ModelMonad.State.t S) get put _ _ _ _)).
 End modelstate.
 End ModelState.
 
@@ -264,7 +330,7 @@ Section st.
 Variables (S T : Type).
 Local Obligation Tactic := idtac.
 Program Definition mk : stateTraceMonad S T :=
-let m := Monad.class (@ModelMonad.state (S * list T)) in
+let m := Monad.class (@ModelMonad.State.t (S * list T)) in
 let stm := @MonadStateTrace.Class S T _ m
 (@MonadStateTrace.Mixin _ _ (Monad.Pack m)
  (fun s => (s.1, s)) (* st_get *)
@@ -281,20 +347,37 @@ Next Obligation. by []. Qed.
 End st.
 End ModelStateTrace.
 
-(* Work In Progress *)
+Module ContOps.
+Section callcc_functor.
+Definition callcc_acto r := fun A => (A -> r) -> A.
+Local Notation M := callcc_acto.
+Definition callcc_actm r X Y (f : X -> Y) (t : M r X) : M r Y :=
+  fun (g : Y -> r) => f (t (fun x => g (f x))).
+Program Definition callcc_fun r := Functor.Pack (@Functor.Class _ (@callcc_actm r) _ _ ).
+Next Obligation. by move=> A; rewrite /callcc_actm boolp.funeqE. Qed.
+Next Obligation. by move=> A B D g h; rewrite /callcc_actm boolp.funeqE. Qed.
+End callcc_functor.
+
+Definition callcc r A (f : (ModelMonad.Cont.t r A -> r) -> ModelMonad.Cont.t r A) : ModelMonad.Cont.t r A :=
+  fun k => f (fun m => m k) k.
+
+Program Definition callcc_op r : operation (callcc_fun r) (ModelMonad.Cont.t r) :=
+  Natural.Pack (@Natural.Class _ _ (@callcc r) _).
+Next Obligation. by []. Qed.
+End ContOps.
+
 Module ModelCont.
-(* https://qiita.com/suharahiromichi/items/f07f932103c28f36dd0e *)
-Definition cont r := fun A => (A -> r) -> r.
-Program Definition contM r : monad := (@Monad_of_ret_bind (cont r)
- (fun A a => fun cont => cont a)
- (fun A B ma f => fun cont => ma (fun a => f a cont)) _ _ _).
-Next Obligation. by []. Qed.
-Next Obligation. by []. Qed.
-Next Obligation. by []. Qed.
-Definition callcc r := fun A B (f : (A -> contM r B) -> contM r A) =>
-  (fun k : A -> r => f (fun a _ => k a) k). (*NB(rei): similar def in monad_transformer.v*)
-Program Definition cm r := MonadContinuation.Pack (MonadContinuation.Class
-  (@MonadContinuation.Mixin (contM r) (@callcc r) _ _ _ _)).
+Section modelcont.
+Variable r : Type.
+Local Notation M := (ModelMonad.Cont.t r).
+Definition callcc A B (f : (A -> M B) -> M A) : M A :=
+  ContOps.callcc_op _ _ (fun k => f (fun x _ => k (Ret x))).
+Lemma callccE A B (f : (A -> M B) -> M A) :
+  callcc f = (fun k : A -> r => f (fun a _ => k a) k).
+Proof. by []. Qed.
+Program Definition t : contMonad := MonadContinuation.Pack (MonadContinuation.Class
+  (@MonadContinuation.Mixin (ModelMonad.Cont.t r) callcc _ _ _ _)).
+End modelcont.
 End ModelCont.
 
 Section continuation_examples.
@@ -314,6 +397,7 @@ Fixpoint fib_cps {M : monad} (n : nat) : M nat :=
       fun a => fib_cps m >>=
       fun b => Ret (a + b)
   end.
+Local Close Scope monae_scope.
 
 Definition sum_until_none (m : monad) (acc : nat) (x : option nat) : m nat :=
   if x is Some x then Ret (x + acc) else Ret acc.
@@ -323,14 +407,13 @@ Definition sum_just (m : monad) (xs : seq (option nat)) :=
 Definition sum_until_break (m : monad) (break : nat -> m nat) (acc : nat) (x : option nat) : m nat :=
   if x is Some x then Ret (x + acc) else break acc.
 
-Let M : monad := ModelCont.contM nat.
+Let M : contMonad := ModelCont.t nat.
 
 Definition sum_break (xs : seq (option nat)) : M nat :=
-  ModelCont.callcc
-    (fun break : nat -> ModelCont.contM nat nat => foldM (sum_until_break break) 0 xs).
+  Callcc (fun break : nat -> M nat => foldM (sum_until_break break) 0 xs).
 Compute (sum_break [:: Some 2; Some 6; None; Some 4]).
 
-Goal Ret 1 +m (ModelCont.callcc (fun f => Ret 10 +m (f 100)) : M _) =
+Goal Ret 1 +m (Callcc (fun f => Ret 10 +m (f 100)) : M _) =
      Ret (1 + 100).
 Proof. by rewrite /addM bindretf funeqE. Abort.
 
@@ -340,14 +423,14 @@ End continuation_examples.
 Module ModelShiftReset.
 Local Open Scope monae_scope.
 (* Local Obligation Tactic := idtac. *)
-Definition shift r : forall A, ((A -> ModelCont.cm r r) -> ModelCont.cm r r) -> ModelCont.cm r A :=
+Definition shift r : forall A, ((A -> ModelCont.t r r) -> ModelCont.t r r) -> ModelCont.t r A :=
  fun A h => fun c => h (fun v => Ret (c v)) ssrfun.id.
 
-Definition reset r : ModelCont.cm r r -> ModelCont.cm r r :=
+Definition reset r : ModelCont.t r r -> ModelCont.t r r :=
   fun m => fun c => c (m ssrfun.id).
 
 Program Definition shiftresetM r : monad :=
-  let M : contMonad := ModelCont.cm r in
+  let M : contMonad := ModelCont.t r in
   @MonadShiftReset.Pack _ _ (@MonadShiftReset.Class _ r (MonadContinuation.class M)
  (@MonadShiftReset.Mixin _ _
  (@shift r)
@@ -385,7 +468,7 @@ Module ModelStateLoop.
 Section modelstateloop.
 Local Open Scope monae_scope.
 Variable S : Type.
-Local Notation M := (@ModelMonad.state S).
+Local Notation M := (@ModelMonad.State.t S).
 Fixpoint mforeach (it min : nat) (body : nat -> M unit) : M unit :=
   if it <= min then Ret tt
   else if it is it'.+1 then
@@ -404,7 +487,7 @@ End ModelStateLoop.
 Module ModelRun.
 
 Definition mk {S T} : runMonad (S * seq T).
-set m := @ModelMonad.state (S * seq T).
+set m := @ModelMonad.State.t (S * seq T).
 refine (@MonadRun.Pack _ _ (@MonadRun.Class _ _ (Monad.class m)
   (@MonadRun.Mixin _ m
   (fun A m (s : S * seq T) => m s) (* run *) _ _))).
@@ -412,7 +495,7 @@ by [].
 move=> A B m0 f s.
 rewrite !bindE /=.
 rewrite Monad_of_ret_bind.MapE /= /Join /= /Monad_of_ret_bind.join /=.
-rewrite /ModelMonad.bind /=.
+rewrite /ModelMonad.State.bind /=.
 by destruct (m0 s).
 Defined.
 

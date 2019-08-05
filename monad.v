@@ -674,6 +674,9 @@ Proof. by rewrite compA joinA. Qed.*)
 End monad_lemmas.
 Arguments Bind {M A B} : simpl never.
 
+(* sigma operation, jaskelioff ESOP 2009 *)
+Definition operation (E : functor) (M : monad) := (E \O M) ~> M.
+
 Notation "'do' x <- m ; e" := (Bind m (fun x => e)) : do_notation.
 Notation "'do' x : T <- m ; e" := (Bind m (fun x : T => e)) (only parsing) : do_notation.
 Delimit Scope do_notation with Do.
