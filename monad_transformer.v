@@ -30,7 +30,7 @@ Module monadM.
 Section monadm.
 Variables (M N : monad).
 Record class_of (e : M ~~> N) := Class {
-  _ : forall A (a : A), Ret a = e _ (Ret a) ;
+  _ : forall A, @Ret _ A = e _ \o Ret;
   _ : forall A B (m : M A) (f : A -> M B),
     e _ (m >>= f) = e _ m >>= (fun a => e _ (f a)) }.
 Structure t := Pack { e : M ~~> N ; class : class_of e }.
@@ -44,7 +44,7 @@ Export monadM.Exports.
 
 Section monadM_interface.
 Variables (M N : monad) (f : monadM M N).
-Lemma monadMret A (a : A) : Ret a = f _ (Ret a).
+Lemma monadMret : forall A, @Ret _ A = f _ \o Ret.
 Proof. by case: f => ? []. Qed.
 Lemma monadMbind A B (m : M A) (h : A -> M B) :
   f _ (m >>= h) = f _ m >>= (fun a => f _ (h a)).
@@ -60,7 +60,7 @@ have <- : Join ((M # (Ret \o h)) m) = (M # h) m.
   by rewrite functor_o [LHS](_ : _ = (Join \o M # Ret) ((M # h) m)) // joinMret.
 move: (@monadMbind M N f A B m (Ret \o h)); rewrite 2!bindE => ->.
 rewrite (_ : (fun a => f _ ((Ret \o h) a)) = Ret \o h); last first.
-  by rewrite boolp.funeqE => y; rewrite -monadMret.
+  by rewrite [in RHS](monadMret f).
 rewrite [RHS](_ : _ = (Join \o (N # Ret \o N # h)) (f _ m)); last first.
   by rewrite compE functor_o.
 by rewrite compA joinMret.
@@ -122,7 +122,9 @@ Definition liftS A (m : M A) : estateMonadM A :=
 Program Definition stateMonadM : monadM M estateMonadM :=
   monadM.Pack (@monadM.Class _ _ liftS _ _).
 Next Obligation.
-by move=> A a; rewrite /liftS boolp.funeqE => s; rewrite bindretf.
+move=> A.
+rewrite /liftS boolp.funeqE => a /=; rewrite boolp.funeqE => s /=.
+by rewrite bindretf.
 Qed.
 Next Obligation.
 move=> A B m f; rewrite /liftS boolp.funeqE => s.
@@ -163,7 +165,9 @@ Definition liftX X (m : M X) : eexceptionMonadM X := @Bind M _ _ m (fun x => @Re
 
 Program Definition exceptionMonadM : monadM M eexceptionMonadM :=
   monadM.Pack (@monadM.Class _ _ liftX _ _).
-Next Obligation. by move=> A a; rewrite /liftX bindretf. Qed.
+Next Obligation.
+by move=> A; rewrite boolp.funeqE => a; rewrite /liftX /= bindretf.
+Qed.
 Next Obligation.
 move=> A B m f; rewrite /liftX [in RHS]/Bind [in RHS]/Join /=.
 rewrite  /Monad_of_ret_bind.join /= /bindX !bindA.
@@ -201,9 +205,10 @@ Definition liftC A (x : M A) : econtMonadM A :=
 Program Definition contMonadM : monadM M econtMonadM  :=
   monadM.Pack (@monadM.Class _ _ liftC  _ _).
 Next Obligation.
-move => A a.
-rewrite /liftC boolp.funeqE => cont.
-by rewrite !bindretf.
+move => A.
+rewrite /liftC boolp.funeqE => a /=.
+rewrite boolp.funeqE => s.
+by rewrite bindretf.
 Qed.
 Next Obligation.
 move => A B m f.
@@ -490,8 +495,8 @@ Module AOperation.
 Section aoperation.
 Variables (E : functor) (M : monad).
 Definition P (op : E \O M ~~> M) :=
- forall A B (f : A -> M B) (t : E (M A)),
-   (op A t >>= f) = op B ((E # (fun m => m >>= f)) t).
+  forall A B (f : A -> M B) (t : E (M A)),
+    (op A t >>= f) = op B ((E # (fun m => m >>= f)) t).
 Record mixin_of (op : E \O M ~~> M) := Mixin {
   _ : P op }.
 Record class_of (op : E \O M ~~> M) := Class {
@@ -503,6 +508,7 @@ Structure t := Pack {
 Definition baseType (M : t) := Natural.Pack (base (class M)).
 End aoperation.
 Module Exports.
+Arguments m {E} {M}.
 Notation aoperation := t.
 Coercion baseType : aoperation >-> Natural.t.
 Canonical baseType.
@@ -661,16 +667,45 @@ by rewrite FCompE -functor_o -(functor_o E) ret_naturality FIdf.
 Qed.
 
 Lemma theorem19a : algebraic_def alifting.
-Proof.
-move=> A B /= f t.
-rewrite aliftingE.
-rewrite {1}/Bind.
-Abort.
+Proof. by move=> ? ? ? ?; rewrite aliftingE algebraic_psi. Qed.
 
 Lemma theorem19b : lifting_def op e alifting.
 Proof.
-move=> A /=.
-Abort.
+move=> X /=.
+rewrite aliftingE.
+rewrite boolp.funeqE.
+move=> Y.
+rewrite /=.
+rewrite /psi_g /=.
+rewrite /ntcomp /=.
+rewrite /phi_g /=.
+rewrite (_ : (E # Ret) ((E # e X) Y) = (E # (M # e X)) ((E # Ret) Y)); last first.
+  rewrite -(compE (E # Ret)).
+  rewrite -functor_o.
+  rewrite -(compE (E # (_ # _))).
+  rewrite -functor_o.
+  congr (_ Y).
+  congr (E # _).
+  rewrite ret_naturality.
+  by rewrite FIdf.
+rewrite (_ : AOperation.m op (Monad.m N X) ((E # (M # e X)) ((E # Ret) Y)) =
+             (M # e X) (AOperation.m op (Monad.m M X) ((E # Ret) Y))); last first.
+  rewrite -(compE (M # e X)).
+  by rewrite (natural op).
+set tmp := (op _ _ in RHS).
+transitivity (e X (Join tmp)); last first.
+  rewrite joinE monadMbind.
+  rewrite bindE.
+  rewrite -(compE _ (M # e X)).
+  by rewrite -(natural_monadM e).
+rewrite {}/tmp.
+congr (e X _).
+rewrite -[in LHS](phiK op).
+rewrite -(compE Join).
+rewrite -/(psi_g op _).
+transitivity ((@psi _ _ op) _ ((E # Ret) Y)); last by [].
+by [].
+Qed.
 
 End theorem19.
 
