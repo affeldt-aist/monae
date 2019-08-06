@@ -20,7 +20,8 @@ Other references:
 ** Files
 
 - [[monad.v][monad.v]]: basics of monadic equational reasoning
-- [[state_monad.v][state_monad.v]]: about the state monad
+- [[fail_monad.v][fail_monad.v]]: fail monad and related monads
+- [[state_monad.v][state_monad.v]]: state-related monads
 - [[trace_monad.v][trace_monad.v]]: about the state-trace monad
 - [[proba_monad.v][proba_monad.v]]: about the probability monad
 - [[monad_composition.v][monad_composition.v]]: composing monads
@@ -64,7 +65,7 @@ The [[file:installation_windows.org][installation instructions]] are less simple
 
 - [[https://coq.inria.fr][Coq]] 8.9.1
 - [[https://github.com/math-comp/math-comp][Mathematical Components library]] 1.9.0
-- [[https://github.com/affeldt-aist/infotheo][infotheo]] 0.1.1
+- [[https://github.com/affeldt-aist/infotheo][infotheo]] 0.0.3
   + with requires [[https://github.com/math-comp/analysis][MathComp-Analysis]] 0.2.2
     * which requires
       - [[https://github.com/math-comp/bigenough/][bigenough]] first release

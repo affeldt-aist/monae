@@ -1,9 +1,8 @@
 Require Import ZArith ssreflect ssrmatching ssrfun ssrbool.
-
 From mathcomp Require Import eqtype ssrnat seq choice fintype tuple.
-From mathcomp Require Import boolp.
+From mathcomp Require boolp.
 From infotheo Require Import ssrZ.
-Require Import monad.
+Require Import monad fail_monad.
 
 Set Implicit Arguments.
 Unset Strict Implicit.
@@ -129,7 +128,6 @@ End stateloop_lemmas.
 Section stateloop_examples.
 Variable (M : loopStateMonad nat).
 Let example min max : M unit := Foreach max min (fun i : nat => (Get >> Ret tt : M _)).
-Print example.
 Let sum n : M unit := Foreach n O
   (fun i : nat => (Get >>= (fun z => Put (z + i)) : M _)).
 
@@ -334,7 +332,7 @@ congr (_ [~] _).
   rewrite bindretf; bind_ext => ?; by rewrite bindretf.
 rewrite -lock.
 transitivity (do x0 <- tselect (h' :: t); do x <- Get;
-   f (x0.1, Tuple (monad.tselect_cons_statement_obligation_2 h H x0)) x)%Do.
+   f (x0.1, Tuple (fail_monad.tselect_cons_statement_obligation_2 h H x0)) x)%Do.
  rewrite -IH; bind_ext => x.
  rewrite bindA;by rewrite_ bindretf.
 rewrite bindA; bind_ext => y; by rewrite bindretf.
@@ -395,11 +393,11 @@ Lemma unfoldM_is_nondetState S (M : nondetStateMonad S) A B
   forall s, nondetState_sub (unfoldM (@well_founded_size B) (@nilp _) f s).
 Proof.
 move=> Hf size_f s.
-apply/constructive_indefinite_description.
+apply/boolp.constructive_indefinite_description.
 move: s; apply: (well_founded_induction (@well_founded_size _)) => s IH.
 have {IH}IH : forall x, size x < size s ->
   { m | ndDenote m = unfoldM (@well_founded_size B) (@nilp _) f x}.
-  move=> x xs; exact/constructive_indefinite_description/IH.
+  move=> x xs; exact/boolp.constructive_indefinite_description/IH.
 case: s IH => [|h t] IH.
   rewrite unfoldME //=; by exists (ndRet [::]).
 rewrite unfoldME //.
@@ -685,7 +683,7 @@ Lemma promote_assert_sufficient_condition (M : failMonad) A :
   promote_assert M p q.
 Proof.
 move=> right_z p q promotable_pq.
-rewrite /promote_assert funeqE => -[x1 x2].
+rewrite /promote_assert boolp.funeqE => -[x1 x2].
 rewrite 3![in RHS]compE [in RHS]fmapE.
 rewrite 2![in LHS]compE {1}/bassert [in LHS]bind_fmap !bindA.
 bind_ext => s.
@@ -833,7 +831,7 @@ Proof. by rewrite SymbolsE. Qed.
 Lemma Symbols_prop1 :
   Symbols \o const 1 = (M # wrap) \o const Fresh :> (A -> M _).
 Proof.
-rewrite funeqE => n.
+rewrite boolp.funeqE => n.
 transitivity (@Symbols _ M 1) => //.
 rewrite SymbolsE sequence_cons sequence_nil.
 rewrite_ bindretf.
@@ -845,7 +843,7 @@ Local Open Scope mprog.
 Lemma Symbols_prop2 :
   Symbols \o uaddn = (fmap ucat) \o mpair \o (Symbols : _ -> M _)^`2.
 Proof.
-rewrite funeqE => -[n1 n2].
+rewrite boolp.funeqE => -[n1 n2].
 elim: n1 => [|n1 IH].
   rewrite [in LHS]compE uaddnE add0n.
   rewrite compE [in X in _ = _ X]/= squaringE Symbols0.
@@ -859,7 +857,7 @@ rewrite [in RHS]compE [in X in _ = _ X]/= squaringE SymbolsS.
 rewrite [in RHS]compE -/(fmap _ _) fmap_bind bindA; bind_ext => a.
 rewrite 2![in LHS]compE [in LHS]fmap_bind [in LHS]bindA [in RHS]bindA.
 (* TODO(rei): bind_ext? *)
-congr Bind; rewrite funeqE => s.
+congr Bind; rewrite boolp.funeqE => s.
 rewrite [in RHS]bindretf [in RHS]fcompE [in RHS]fmap_bind.
 rewrite [in LHS]fcompE [in LHS]bind_fmap [in LHS]bindA.
 rewrite_ bindretf.

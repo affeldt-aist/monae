@@ -1,6 +1,6 @@
 Require Import ssreflect ssrmatching ssrfun ssrbool.
 From mathcomp Require Import eqtype ssrnat seq choice fintype tuple.
-From mathcomp Require Import boolp classical_sets.
+From mathcomp Require boolp.
 From infotheo Require Import Reals_ext ssr_ext dist.
 Require Import monad proba_monad model.
 
@@ -32,7 +32,7 @@ Lemma BindE (A B : choiceType) m (f : A -> monad B) :
 Proof.
 rewrite /Bind /Join /= /Monad_of_ret_bind.join /Fun /=.
 rewrite /Monad_of_ret_bind.Map /_bind DistBindA; congr DistBind.d.
-by rewrite funeqE => a; rewrite /= DistBind1f.
+by rewrite boolp.funeqE => a; rewrite /= DistBind1f.
 Qed.
 
 Program Definition prob_mixin : MonadProb.mixin_of monad :=

@@ -2,7 +2,7 @@ Require Import ssreflect ssrmatching ssrfun ssrbool.
 From mathcomp Require Import eqtype ssrnat seq path div choice fintype tuple.
 From mathcomp Require Import finfun bigop.
 From mathcomp Require boolp.
-Require Import monad.
+Require Import monad fail_monad.
 
 (* - monad morphism
 
@@ -215,31 +215,28 @@ Qed.
 
 End continuation_monad_tranformer.
 
-Definition continuationmonad_transformer r : monadT :=
+Definition contMonadT r : monadT :=
   MonadT.Pack (@MonadT.Class (econtMonadM r) (@retC r) (@bindC r) (@contMonadM r)).
+
+Definition callcc r (M : monad) A B (f : (A -> contMonadT r M B) -> contMonadT r M A)
+  : contMonadT r M A :=
+  fun k : A -> M r => f (fun x _ => k x) k.
+
+Definition abort r X (M : monad) A : contMonadT r M A :=
+  fun k : A -> M r => Ret X.
+Arguments abort {r} _ {M} {A}.
 
 Require Import state_monad.
 
-Definition callcc r (M : monad) A B
-  (f : (A -> continuationmonad_transformer r M B) -> continuationmonad_transformer r M A) :
-  continuationmonad_transformer r M A :=
-  fun k : A -> M r => f (fun x _ => k x) k.
-
-Definition abort R r (M : monad) A :
-  continuationmonad_transformer R M A := fun (k : A -> M R) => Ret r.
-Arguments abort {R} _ {M} {A}.
-
 Section examples_continuation_monad_transformer.
 
-Local Notation CMT := (@continuationmonad_transformer).
-
-Definition foreach (m : monad) (items : list nat) (body : nat -> CMT unit m unit) : m unit :=
+Definition foreach (m : monad) (items : list nat) (body : nat -> contMonadT unit m unit) : m unit :=
   foldr
     (fun x next => (body x) (fun _ => next))
     (Ret tt)
     items.
 
-Fixpoint for_loop (m : monad) (it min : nat) (body : nat -> CMT unit m unit) : m unit :=
+Fixpoint for_loop (m : monad) (it min : nat) (body : nat -> contMonadT unit m unit) : m unit :=
   if it <= min then Ret tt
   else if it is it'.+1 then
       (body it') (fun _ => for_loop it' min body)
@@ -247,7 +244,7 @@ Fixpoint for_loop (m : monad) (it min : nat) (body : nat -> CMT unit m unit) : m
 
 Section for_loop_lemmas.
 Variable m : monad.
-Implicit Types body : nat -> (continuationmonad_transformer unit) m unit.
+Implicit Types body : nat  -> contMonadT unit m unit.
 
 Lemma loop0 : forall i body, for_loop i i body = Ret tt.
 Proof.
@@ -256,14 +253,14 @@ by case i => //= n; rewrite ltnS leqnn.
 Qed.
 
 Lemma loop1 : forall i j body, for_loop (i.+1 + j) i body =
-     (body (i + j)) (fun _ => for_loop (i + j) i body).
+  (body (i + j)) (fun _ => for_loop (i + j) i body).
 Proof.
 move => i j body /=.
 by case : ifPn ; rewrite ltnNge leq_addr.
 Qed.
 
-Lemma loop2 : forall i j body ,
-    body (i + j) = abort tt -> for_loop (i + j).+1 i body = Ret tt.
+Lemma loop2 : forall i j body,
+  body (i + j) = abort tt -> for_loop (i + j).+1 i body = Ret tt.
 Proof.
 move => i j body Hbody /=.
 case : ifPn => Hcond.
@@ -301,8 +298,9 @@ Qed.
 End for_loop_lemmas.
 (* TODO : instantiate with RunStateMonad *)
 
+Section sum_example.
+
 Variables ms : stateMonad nat.
-(*Let ms : stateMonad nat := ModelState.state nat.*)
 
 Let sum n : ms unit := for_loop n O
   (fun i : nat => liftC (Get >>= (fun z => Put (z + i)) ) ).
@@ -336,30 +334,34 @@ Example sum_from_0_to_10 : ms unit :=
                           else
                             liftC (Get >>= (fun z => Put (z + i)))).
 
+End sum_example.
+
 End examples_continuation_monad_transformer.
 
 Require Import monad_model.
 
 Section calcul.
 
-Let CM := @continuationmonad_transformer^~ ModelMonad.identity.
+Let contMonadT_i := @contMonadT^~ ModelMonad.identity.
 Let callcc_i := @callcc^~ ModelMonad.identity.
-Goal forall R, @ModelCont.callcc R = @callcc_i R.
-by []. Qed.
+Goal forall r, @ModelCont.callcc r = @callcc_i r.
+by [].
+Abort.
 
 Definition break_if_none (m : monad) (break : _) (acc : nat) (x : option nat) : m nat :=
   if x is Some x then Ret (x + acc) else break acc.
 
-Definition sum_until_none (xs : seq (option nat)) : CM nat nat :=
-  callcc (fun break : nat -> CM nat nat => foldM (break_if_none break) 0 xs).
+Definition sum_until_none (xs : seq (option nat)) : contMonadT_i nat nat :=
+  callcc (fun break : nat -> contMonadT_i nat nat => foldM (break_if_none break) 0 xs).
 
 Compute (sum_until_none [:: Some 2; Some 6; None; Some 4]).
 
 (* Definition liftM A B {m : monad} (f: A -> B) (ma: m A): m B := *)
 (*  ma >>= (fun a => Ret (f a)). *)
 
-Definition calcul : CM nat nat :=
-  (CM _ # (fun x => 8 + x)) (callcc_i (fun k : (_ -> CM nat _) => (k 5) >>= (fun y => Ret (y + 4)))).
+Definition calcul : contMonadT_i nat nat :=
+  (contMonadT_i _ # (fun x => 8 + x))
+  (callcc_i (fun k : _ -> contMonadT_i nat _ => (k 5) >>= (fun y => Ret (y + 4)))).
 
 Compute calcul.
 
@@ -625,10 +627,6 @@ Let M : monad := ModelState.state S.
 Let X : monadT := exceptionmonad_transformer Z.
 Let XM : monad := X M.
 
-(* Let m : M S := Get. *)
-
-(* Let xm : XM S := (MonadT.liftT X) _ _ m. *)
-
 Let lift_getX : (StateOps.get_fun S) \O XM ~~> XM :=
   alifting (get_aop S) (LiftT X M).
 
@@ -646,25 +644,26 @@ End theorem19_example_X.
 
 Section theorem19_example_C.
 Variable (S : Type).
-Let C R : monad := ModelCont.t R.
+Let C r : monad := ModelCont.t r.
 Let ST : monadT := statemonad_transformer S.
-Let STC R : monad := ST (C R).
+Let STC r : monad := ST (C r).
 (* STC : S -> ((A * S) -> R) -> R *)
 
-Let lift_callccS R : ((ContOps.callcc_fun R) \O (STC R)) ~~> (STC R) :=
-  alifting (callcc_aop R) (LiftT ST (C R)).
+Let lift_callccS r : (ContOps.callcc_fun r) \O (STC r) ~~> (STC r) :=
+  alifting (callcc_aop r) (LiftT ST (C r)).
 
-Goal forall A R (f : ((STC R) A -> R) -> (STC R) A) , lift_callccS f = (fun s k => f (fun m => m s k) s k) :> (STC R) A.
+Goal forall A r (f : ((STC r) A -> r) -> (STC r) A),
+  lift_callccS f = (fun s k => f (fun m => m s k) s k) :> (STC r) A.
 Proof.
 move=> A f.
 by rewrite /lift_callccS aliftingE.
 Abort.
 
-Definition callccS_ A B R (f : (A -> (STC R) B) -> (STC _) A) : (STC _) A := fun s k => f (fun x s' _ => k (x, s)) s k.
+Definition callccS_ r A B (f : (A -> (STC r) B) -> (STC _) A) : (STC _) A :=
+  fun s k => f (fun x s' _ => k (x, s)) s k.
 
-Lemma callccS_E A B R f :
-  @callccS_ A B R f =
-  @lift_callccS _ _ (fun (k : STC R A -> R) => f (fun a => (fun (_ : S) (_ : B * S -> R) => k (fun s' x => x (a, s'))) : STC R B)).
+Lemma callccS_E r A B f : callccS_ f =
+  @lift_callccS _ _ (fun k : STC r A -> r => f (fun a => (fun (_ : S) (_ : B * S -> r) => k (fun s' x => x (a, s'))) : STC r B)).
 Proof. by rewrite /lift_callccS aliftingE. Qed.
 
 End theorem19_example_C.

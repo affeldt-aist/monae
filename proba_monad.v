@@ -1,8 +1,8 @@
 Require Import Reals Lra ssreflect ssrmatching ssrfun ssrbool.
 From mathcomp Require Import eqtype ssrnat seq choice fintype tuple.
-From mathcomp Require Import boolp.
-Require Import monad.
+From mathcomp Require boolp.
 From infotheo Require Import ssrR Reals_ext proba.
+Require Import monad fail_monad.
 
 Set Implicit Arguments.
 Unset Strict Implicit.
@@ -334,11 +334,11 @@ Definition coinarb p : M bool :=
 
 Lemma Ret_eqb_addL b :
   (fun c => Ret (b == c)) = (fun c => Ret (~~ b (+) c)) :> (bool -> M bool).
-Proof. case: b; rewrite funeqE; by case. Qed.
+Proof. case: b; rewrite boolp.funeqE; by case. Qed.
 
 Lemma Ret_eqb_addR b :
   (fun c => Ret (c == b)) = (fun c => Ret (~~ b (+) c)) :> (bool -> M bool).
-Proof. case: b; rewrite funeqE; by case. Qed.
+Proof. case: b; rewrite boolp.funeqE; by case. Qed.
 
 Definition Ret_eqb_add := (Ret_eqb_addL, Ret_eqb_addR).
 

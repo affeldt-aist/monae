@@ -1,8 +1,9 @@
 Require Import ssreflect ssrmatching ssrfun ssrbool.
 From mathcomp Require Import eqtype ssrnat seq choice fintype tuple.
 From mathcomp Require Import bigop finmap.
-From mathcomp Require Import boolp classical_sets.
-Require Import monad state_monad trace_monad model.
+From mathcomp Require boolp.
+From mathcomp Require Import classical_sets.
+Require Import monad fail_monad state_monad trace_monad model.
 
 (* Contents: sample models for the monads in monad.v, state_monad.v, trace_monad.v
    - Module ModelMonad
@@ -49,18 +50,18 @@ Local Open Scope classical_set_scope.
 
 Lemma bigset1U A B a (f : A -> set B) : bigsetU [set a] f = f a.
 Proof.
-rewrite funeqE => b; rewrite propeqE; split => [[a' <-] //| ?]; by exists a.
+rewrite boolp.funeqE => b; rewrite boolp.propeqE; split => [[a' <-] //| ?]; by exists a.
 Qed.
 Lemma bigsetU1 A (s : set A) : bigsetU s (@set1 A) = s.
 Proof.
-rewrite funeqE => b; rewrite propeqE; split.
+rewrite boolp.funeqE => b; rewrite boolp.propeqE; split.
 - by move=> -[a ?]; rewrite /set1 => ->.
 - by move=> ?; rewrite /bigsetU; exists b.
 Qed.
 Lemma bigsetUA A B C (s : set A) (f : A -> set B) (g : B -> set C) :
   bigsetU (bigsetU s f) g = bigsetU s (fun x => bigsetU (f x) g).
 Proof.
-rewrite funeqE => c; rewrite propeqE.
+rewrite boolp.funeqE => c; rewrite boolp.propeqE.
 split => [[b [a' aa' ?] ?]|[a' aa' [b ? ?]]].
 by exists a' => //; exists b.
 by exists b => //; exists a'.
@@ -68,7 +69,7 @@ Qed.
 
 Lemma setUDl : BindLaws.left_distributive (fun I A => @bigsetU A I) (@setU).
 Proof.
-move=> A B /= p q r; rewrite funeqE => b; rewrite propeqE; split.
+move=> A B /= p q r; rewrite boolp.funeqE => b; rewrite boolp.propeqE; split.
 move=> -[a [?|?] ?]; by [left; exists a | right; exists a].
 rewrite /setU => -[[a ? ?]|[a ? ?]]; exists a; tauto.
 Qed.
@@ -149,8 +150,8 @@ Definition bind := fun A B (m : M A) (f : A -> M B) => fun s => uncurry f (m s).
 Definition ret : FId ~~> M := fun A a => fun s => (a, s).
 Program Definition t : monad := @Monad_of_ret_bind M ret bind _ _ _.
 Next Obligation. by []. Qed.
-Next Obligation. by move=> A f; rewrite /bind funeqE => ?; case: f. Qed.
-Next Obligation. by move=> A B C a b c; rewrite /bind funeqE => ?; case: a. Qed.
+Next Obligation. by move=> A f; rewrite /bind boolp.funeqE => ?; case: f. Qed.
+Next Obligation. by move=> A B C a b c; rewrite /bind boolp.funeqE => ?; case: a. Qed.
 End state.
 End State.
 
@@ -192,7 +193,7 @@ Local Obligation Tactic := idtac.
 Program Definition set_class := @MonadFail.Class _ _
   (@MonadFail.Mixin ModelMonad.set (@set0) _).
 Next Obligation.
-move=> A B f /=; rewrite funeqE => b; rewrite propeqE.
+move=> A B f /=; rewrite boolp.funeqE => b; rewrite boolp.propeqE.
 by split=> // -[a []].
 Qed.
 Definition set := MonadFail.Pack set_class.
@@ -316,8 +317,8 @@ Local Obligation Tactic := idtac.
 Program Definition set_class := @MonadNondet.Class _
   ModelFail.set_class (MonadAlt.mixin ModelAlt.set_class) _.
 Next Obligation.
-apply: MonadNondet.Mixin => //= A p; rewrite funeqE => a;
-  rewrite propeqE; rewrite /Fail /= /set0 /setU; split; tauto.
+apply: MonadNondet.Mixin => //= A p; rewrite boolp.funeqE => a;
+  rewrite boolp.propeqE; rewrite /Fail /= /set0 /setU; split; tauto.
 Qed.
 Definition set := MonadNondet.Pack list_class.
 End set.
@@ -340,7 +341,7 @@ let stm := @MonadStateTrace.Class S T _ m
 @MonadStateTrace.Pack S T _ stm.
 Next Obligation. by []. Qed.
 Next Obligation. by []. Qed.
-Next Obligation. move=> *; by rewrite funeqE; case. Qed.
+Next Obligation. move=> *; by rewrite boolp.funeqE; case. Qed.
 Next Obligation. by []. Qed.
 Next Obligation. by []. Qed.
 Next Obligation. by []. Qed.
@@ -415,7 +416,7 @@ Compute (sum_break [:: Some 2; Some 6; None; Some 4]).
 
 Goal Ret 1 +m (Callcc (fun f => Ret 10 +m (f 100)) : M _) =
      Ret (1 + 100).
-Proof. by rewrite /addM bindretf funeqE. Abort.
+Proof. by rewrite /addM bindretf boolp.funeqE. Abort.
 
 End continuation_examples.
 
@@ -436,16 +437,17 @@ Program Definition shiftresetM r : monad :=
  (@shift r)
  (@reset r) _ _ _ _ _)).
 
+Section examples.
 Let M : monad := shiftresetM nat.
 Goal Ret 1 +m (Reset (Ret 10 +m (Shift (fun f : _ -> M nat => f (100) >>= f) : M _)) : M _) =
      Ret (1 + (10 + (10 + 100))).
-Proof. by rewrite /addM bindretf funeqE. Abort.
+Proof. by rewrite /addM bindretf boolp.funeqE. Abort.
 Goal Ret 1 +m (Reset (Ret 10 +m (Shift (fun f : _ -> M nat => Ret 100) : M _)) : M _) =
      Ret (1 + 100).
-Proof. by rewrite /addM bindretf funeqE. Abort.
+Proof. by rewrite /addM bindretf boolp.funeqE. Abort.
 Goal Ret 1 +m (Reset (Ret 10 +m (Shift (fun f : _ -> M nat => f 100 +m f 1000) : M _)) : M _) =
      Ret (1 + ((10 + 100) + (10 + 1000))).
-Proof. by rewrite /addM bindretf funeqE. Abort.
+Proof. by rewrite /addM bindretf boolp.funeqE. Abort.
 
 Let N : monad := shiftresetM (seq nat).
 Fixpoint perverse (l : seq nat) : N (seq nat) :=
@@ -460,7 +462,7 @@ Definition stranger :=
   let g b := Reset ((Shift (fun f : _ -> shiftresetM _ _ => f b) >>= (fun x => if x then Ret 2 else Ret 3)) : shiftresetM _ _) in
   g true +m g false.
 Goal stranger = Ret 5. by []. Abort.
-
+End examples.
 End ModelShiftReset.
 
 (* Work In Progress *)
@@ -535,10 +537,10 @@ Program Definition _monad : monad := @Monad_of_ret_bind _m
   fun s => \bigcup_(i <- (fun x : [choiceType of choice_of_Type A * choice_of_Type S] => f x.1 x.2) @` (m s)) i)
 _ _ _.
 Next Obligation.
-move=> A B /= m f; rewrite funeqE => s; by rewrite imfset_set1 /= big_seq_fset1.
+move=> A B /= m f; rewrite boolp.funeqE => s; by rewrite imfset_set1 /= big_seq_fset1.
 Qed.
 Next Obligation.
-move=> A B /=; rewrite funeqE => s.
+move=> A B /=; rewrite boolp.funeqE => s.
 apply/fsetP => /= x; apply/bigfcupP'; case: ifPn => xBs.
   set x' := (x : [choiceType of choice_of_Type A * choice_of_Type S]).
   exists [fset x']; last by rewrite inE.
@@ -548,7 +550,7 @@ case => /= SA /imfsetP[] /= sa saBs ->{SA} /fset1P => Hx.
 move: xBs; rewrite Hx; apply/negP; rewrite negbK; by case: sa saBs Hx.
 Qed.
 Next Obligation.
-move=> A B C /= m f g; rewrite funeqE => s.
+move=> A B C /= m f g; rewrite boolp.funeqE => s.
 have @g' : choice_of_Type B -> choice_of_Type S -> {fset choice_of_Type C * choice_of_Type S}.
   move=> b' s'; exact: (g b' s').
 apply/fsetP => /= x; apply/bigfcupP'/bigfcupP'; case => /= CS  /imfsetP[/=].
@@ -564,7 +566,7 @@ Local Open Scope monae_scope.
 Lemma BindE (A B : Type) m (f : A -> _monad B) :
   m >>= f = fun s => \bigcup_(i <- (fun x : [choiceType of choice_of_Type A * choice_of_Type S] => f x.1 x.2) @` (m s)) i.
 Proof.
-rewrite funeqE => s.
+rewrite boolp.funeqE => s.
 rewrite /Bind /Join /= /Monad_of_ret_bind.join /=.
 set lhs := [fset _ _ | _ in _]. set rhs := [fset _ _ | _ in _].
 rewrite (_ : lhs = rhs) //; apply/fsetP => x; rewrite {}/lhs {}/rhs.
@@ -598,7 +600,7 @@ Program Definition _state : stateMonad S :=
 ((fun s => (fun _ => [fset (tt : choice_of_Type unit, s : choice_of_Type S)])) : S -> (_monad S unit)) (* put *)
 _ _ _ _))).
 Next Obligation.
-move=> s s'; rewrite funeqE => s''.
+move=> s s'; rewrite boolp.funeqE => s''.
 rewrite BindE; apply/fsetP => /= x; apply/bigfcupP'/fset1P.
 - by case => /= x0 /imfsetP[/= x1] /fset1P _ -> /fset1P.
 - move=> -> /=.
@@ -607,7 +609,7 @@ rewrite BindE; apply/fsetP => /= x; apply/bigfcupP'/fset1P.
   apply/imfsetP => /=; exists (tt, s) => //; exact/fset1P.
 Qed.
 Next Obligation.
-move=> s; rewrite funeqE => s'.
+move=> s; rewrite boolp.funeqE => s'.
 rewrite 2!BindE /=; apply/fsetP => /= x; apply/bigfcupP'/bigfcupP'.
 - case => /= x0 /imfsetP[/= x1] /fset1P -> -> /fset1P ->.
   exists [fset ((s, s) : [choiceType of choice_of_Type S * choice_of_Type S])]; last first.
@@ -619,7 +621,7 @@ rewrite 2!BindE /=; apply/fsetP => /= x; apply/bigfcupP'/bigfcupP'.
   apply/imfsetP => /=; exists (tt, s) => //; exact/fset1P.
 Qed.
 Next Obligation.
-rewrite funeqE => s.
+rewrite boolp.funeqE => s.
 rewrite BindE /skip /= /Ret; apply/fsetP => /= x; apply/bigfcupP'/idP.
 - case => /= x0 /imfsetP[/= x1] /fset1P -> -> /fset1P ->; exact/fset1P.
 - move/fset1P => ->; exists [fset ((tt, s) : [choiceType of choice_of_Type unit * choice_of_Type S])]; last first.
@@ -627,7 +629,7 @@ rewrite BindE /skip /= /Ret; apply/fsetP => /= x; apply/bigfcupP'/idP.
   apply/imfsetP; exists (s, s) => //; by rewrite inE.
 Qed.
 Next Obligation.
-move=> A k; rewrite funeqE => s.
+move=> A k; rewrite boolp.funeqE => s.
 rewrite 2!BindE; apply/fsetP => x; apply/bigfcupP'/bigfcupP'.
 - case => /= x0 /imfsetP[/= x1] /fset1P -> ->.
   rewrite BindE => /bigfcupP'[/= x2] /imfsetP[/= x3] /fset1P -> -> xkss.
@@ -648,7 +650,7 @@ Program Definition _fail : failMonad := @MonadFail.Pack _
   (@MonadFail.Class _ (Monad.class (_monad S))
     (@MonadFail.Mixin _ (fun (A : Type) (_ : S) => fset0) _)).
 Next Obligation.
-move=> A B g; rewrite funeqE => s; apply/fsetP => x; rewrite inE BindE; apply/negbTE.
+move=> A B g; rewrite boolp.funeqE => s; apply/fsetP => x; rewrite inE BindE; apply/negbTE.
 apply/bigfcupP'; case => /= x0 /imfsetP[/= sa].
 by rewrite (@in_fset0 [choiceType of choice_of_Type A * choice_of_Type S]).
 Qed.
@@ -663,9 +665,9 @@ Program Definition _alt : altMonad := @MonadAlt.Pack _
   (@MonadAlt.Class _ (@Monad.class (_monad S))
     (@MonadAlt.Mixin (_monad S)
       (fun (A : Type) (a b : S -> {fset [choiceType of choice_of_Type A * choice_of_Type S]}) (s : S) => a s `|` b s) _ _)).
-Next Obligation. by move=> A a b c; rewrite funeqE => s; rewrite fsetUA. Qed.
+Next Obligation. by move=> A a b c; rewrite boolp.funeqE => s; rewrite fsetUA. Qed.
 Next Obligation.
-move=> A B /= m1 m2 k; rewrite funeqE => s; rewrite !BindE /=.
+move=> A B /= m1 m2 k; rewrite boolp.funeqE => s; rewrite !BindE /=.
 apply/fsetP => /= bs; apply/bigfcupP'/fsetUP.
 - case => /= BS /imfsetP[/= sa] /fsetUP[sam1s ->{BS} Hbs|sam2s ->{BS} Hbs].
   + left; apply/bigfcupP' => /=; exists (k sa.1 sa.2) => //; apply/imfsetP; by exists sa.
@@ -684,8 +686,8 @@ Local Obligation Tactic := try by [].
 Program Definition nondetbase : nondetMonad :=
   @MonadNondet.Pack _ (@MonadNondet.Class _ (@MonadFail.class (_fail S))
     (@MonadAlt.mixin (_alt S) _) (@MonadNondet.Mixin _ _ _ _)).
-Next Obligation. move=> A /= m; rewrite funeqE => s; by rewrite fset0U. Qed.
-Next Obligation. move=> A /= m; rewrite funeqE => s; by rewrite fsetU0. Qed.
+Next Obligation. move=> A /= m; rewrite boolp.funeqE => s; by rewrite fset0U. Qed.
+Next Obligation. move=> A /= m; rewrite boolp.funeqE => s; by rewrite fsetU0. Qed.
 End nondet.
 
 Section nondetstate.
@@ -697,13 +699,13 @@ Program Definition nondetstate : nondetStateMonad S :=
     (@MonadNondetState.Class _ _ (MonadNondet.class (nondetbase S))
       (MonadState.mixin (MonadState.class (_state S))) (@MonadNondetState.Mixin _ _ _)).
 Next Obligation.
-move=> A B /= g; rewrite !BindE /=; rewrite funeqE => s; apply/fsetP => /= sa.
+move=> A B /= g; rewrite !BindE /=; rewrite boolp.funeqE => s; apply/fsetP => /= sa.
 apply/idP/idP/bigfcupP'.
 case => /= SA /imfsetP[/= bs bsgs ->{SA}].
 by rewrite (@in_fset0 [choiceType of choice_of_Type A * choice_of_Type S]).
 Qed.
 Next Obligation.
-move=> A B /= m k1 k2; rewrite funeqE => s; rewrite !BindE /=; apply/fsetP => /= bs.
+move=> A B /= m k1 k2; rewrite boolp.funeqE => s; rewrite !BindE /=; apply/fsetP => /= bs.
 apply/bigfcupP'/idP.
 - case => /= BS /imfsetP[/= sa sams ->{BS}] /fsetUP[bsk1|bsk2].
   + apply/fsetUP; left; apply/bigfcupP'; exists (k1 sa.1 sa.2) => //.

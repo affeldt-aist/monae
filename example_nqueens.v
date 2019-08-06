@@ -1,8 +1,8 @@
 Require Import ZArith ssreflect ssrmatching ssrfun ssrbool.
 From mathcomp Require Import eqtype ssrnat seq choice fintype tuple.
-From mathcomp Require Import boolp.
+From mathcomp Require boolp.
 From infotheo Require Import ssrZ.
-Require Import monad state_monad.
+Require Import monad fail_monad state_monad.
 
 Local Open Scope monae_scope.
 
@@ -514,7 +514,7 @@ Variables (M : nondetStateMonad (Z * seq Z * seq Z)%type).
 Lemma queensBodyE : queensBody M =
   hyloM (@opdot_queens M) [::] (@nilp _) select seed_select (@well_founded_size _).
 Proof.
-rewrite /queensBody funeqE => -[|h t].
+rewrite /queensBody boolp.funeqE => -[|h t].
 - rewrite /= permsE /= hyloME ?bindretf //; exact: decr_size_select.
 - by rewrite [h :: t]lock -theorem51 /kleisli /= join_fmap perms_mu_perm.
 Qed.

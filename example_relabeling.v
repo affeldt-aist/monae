@@ -1,8 +1,8 @@
 Require Import ZArith ssreflect ssrmatching ssrfun ssrbool.
 From mathcomp Require Import eqtype ssrnat seq choice fintype tuple.
-From mathcomp Require Import boolp.
+From mathcomp Require boolp.
 From infotheo Require Import ssrZ.
-Require Import monad state_monad.
+Require Import monad fail_monad state_monad.
 
 Set Implicit Arguments.
 Unset Strict Implicit.
@@ -23,13 +23,14 @@ Fixpoint foldt B (f : A -> B) (g : B * B -> B) (t : Tree) : B :=
   | Bin t u => g (foldt f g t, foldt f g u)
   end.
 
+(* TODO: move? *)
 Section foldt_universal.
 Variables (B : Type) (h : Tree -> B) (f : A -> B) (g : B * B -> B).
 Hypothesis H1 : h \o Tip = f.
 Hypothesis H2 : h \o uncurry Bin = g \o (fun x => (h x.1, h x.2)).
 Lemma foldt_universal : h = foldt f g.
 Proof.
-rewrite funeqE; elim => [a|]; first by rewrite -H1.
+rewrite boolp.funeqE; elim => [a|]; first by rewrite -H1.
 by move=> t1 IH1 t2 IH2 /=; rewrite -IH1 -IH2 -(uncurryE Bin) -compE H2.
 Qed.
 End foldt_universal.
@@ -38,7 +39,7 @@ Definition size_Tree (t : Tree) := foldt (const 1) uaddn t.
 
 Lemma size_Tree_Bin :
   size_Tree \o uncurry Bin = uaddn \o size_Tree^`2.
-Proof. by rewrite funeqE; case. Qed.
+Proof. by rewrite boolp.funeqE; case. Qed.
 
 Fixpoint labels (t : Tree) : seq A :=
   match t with
@@ -115,7 +116,7 @@ Lemma join_and_pairs :
   (Join \o (fmap mpair) \o mpair) \o ((fmap dlabels) \o relabel)^`2 =
   (mpair \o Join^`2) \o            ((fmap dlabels) \o relabel)^`2.
 Proof.
-rewrite funeqE => -[x1 x2].
+rewrite boolp.funeqE => -[x1 x2].
 rewrite 3!compE.
 rewrite joinE.
 rewrite fmapE.
@@ -153,10 +154,10 @@ apply foldt_universal.
 (* relabel >=> dlabels \o Bin = drBin \o _ *)
 rewrite /kleisli (* TODO(rei): don't unfold *) -[in LHS](compA (Join \o _)) -[in LHS](compA Join).
 rewrite (_ : _ \o _ Bin = (fmap (uncurry Bin)) \o (mpair \o relabel^`2)); last first.
-  by rewrite funeqE; case.
+  by rewrite boolp.funeqE; case.
 rewrite (compA (fmap dlabels)) -functor_o.
 rewrite (_ : _ \o _ Bin = (fmap ucat) \o bassert q \o mpair \o dlabels^`2); last first.
-  by rewrite funeqE; case.
+  by rewrite boolp.funeqE; case.
 transitivity ((fmap ucat) \o Join \o (fmap (bassert q \o mpair)) \o mpair \o
     (fmap dlabels \o relabel)^`2).
   rewrite -2![in LHS](compA (fmap ucat)) [in LHS]functor_o.
