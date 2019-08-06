@@ -1,5 +1,4 @@
 opam-version: "2.0"
-name: "coq-monae"
 maintainer: "reynald.affeldt@aist.go.jp"
 homepage: "https://github.com/affeldt-aist/monae"
 bug-reports: "https://github.com/affeldt-aist/monae/issues"
@@ -9,6 +8,8 @@ authors: [
   "Reynald Affeldt"
   "David Nowak"
   "Takafumi Saikawa"
+  "Jacques Garrigue"
+  "Celestine Sauvage"
 ]
 build: [
   ["coq_makefile" "-f" "_CoqProject" "-o" "Makefile"]
@@ -18,8 +19,8 @@ install: [
   [make "install"]
 ]
 depends: [
-  "coq" { (>= "8.9.1" & < "8.10.0~") }
-  "coq-infotheo" { (>= "0.0.1") }
+  "coq" { >= "8.9.1" & < "8.10~" }
+  "coq-infotheo" { >= "0.0.3" }
 ]
 synopsis: "Monae"
 description: """

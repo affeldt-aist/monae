@@ -48,7 +48,7 @@ Reserved Notation "f ~> g" (at level 51).
 Reserved Notation "F # g" (at level 11).
 Reserved Notation "'fmap' f" (at level 4).
 Reserved Notation "f \O g" (at level 50, format "f  \O  g").
-Reserved Notation "f -| n , e -| g" (at level 51, n, e, g at next level).
+Reserved Notation "f -| g :: n , e" (at level 51, g, n, e at next level).
 
 Notation "l \\ p" := ([seq x <- l | x \notin p]).
 Notation "f ~~> g" := (forall A, f A -> g A) (at level 51).
@@ -361,7 +361,7 @@ Definition psi A B eps (h : A -> g B) : f A -> B := eps B \o (f # h).
 End adjoint_functors.
 Arguments adjunction : clear implicits.
 
-Notation "f -| n , e -| g" := (adjunction f g n e).
+Notation "f -| g :: n , e" := (adjunction f g n e).
 
 Section adjoint_example.
 Variable (X : Type).
@@ -369,7 +369,7 @@ Definition curry_eps : eps_type (curry_F X) (uncurry_F X) :=
   fun A (af : X * (X -> A)) => af.2 af.1.
 Definition curry_eta : eta_type (curry_F X) (uncurry_F X) :=
   fun A (a : A) => fun x : X => (x, a).
-Lemma adjoint_currry : curry_F X -| curry_eta, curry_eps -| uncurry_F X.
+Lemma adjoint_currry : curry_F X -| uncurry_F X :: curry_eta, curry_eps.
 Proof.
 split.
   split => A B h /=.
@@ -432,7 +432,7 @@ Definition bind A B (m : M A) (f : A -> M B) : M B := mu ((M # f) m).
 End def.
 Section prop.
 Variables (f g : functor) (eps : eps_type f g) (eta : eta_type f g).
-Hypothesis Had : f -| eta, eps -| g.
+Hypothesis Had : f -| g :: eta, eps.
 Section mu_eps_natural.
 Notation M := (M f g).
 Notation mu := (mu eps).
@@ -504,14 +504,14 @@ End monad_of_adjoint.
 
 Section composite_adjoint.
 Variables (F0 U0 : functor) (eta0 : eta_type F0 U0) (eps0 : eps_type F0 U0).
-Hypothesis H0 : F0 -| eta0, eps0 -| U0.
+Hypothesis H0 : F0 -| U0 :: eta0, eps0.
 Variables (F U : functor) (eta : eta_type F U) (eps : eps_type F U).
-Hypothesis H : F -| eta, eps -| U.
+Hypothesis H : F -| U :: eta, eps.
 
 Let uni : @eta_type (F \O F0) (U0 \O U) := fun A => U0 # (@eta (F0 A)) \o (@eta0 A).
 Let couni : @eps_type (F \O F0) (U0 \O U) := fun A => (@eps _) \o F # (@eps0 (U A)).
 
-Lemma composite_adjoint : F \O F0 -| uni, couni -| U0 \O U.
+Lemma composite_adjoint : F \O F0 -| U0 \O U :: uni, couni.
 Proof.
 case: H0; rewrite /natural => [[H01 H02] [Ht01 Ht02]].
 case: H; rewrite /natural => [[H1 H2] [Ht1 Ht2]].
