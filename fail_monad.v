@@ -998,9 +998,9 @@ Record mixin_of ref (M : monad) : Type := Mixin {
    _ : forall A B k x, sub (fun r => @jump A B r x) k = k x;
    _ : forall A B p k, @sub A B (fun _ => p) k = p;
    _ : forall A B p r', sub p (@jump A B r') = p r';
-   _ : forall A B (p : ref A -> ref A -> M B) (k1 : A -> M B) k2  ,
-       sub (fun r1 : ref A => sub (fun r2 => p r1 r2) (fun _ => k2 r1)) k1 =
-       sub (fun r2 : ref A => sub (fun r1 => p r1 r2) k1) (fun _ => sub k2 k1);
+   _ : forall A B (p : ref A -> ref B -> M B) (k1 : A -> M B) k2,
+       sub (fun r1 : ref A => sub (fun r2 => p r1 r2) (k2 r1)) k1 =
+       sub (fun r2 : ref B => sub (fun r1 => p r1 r2) k1) (fun x => sub (k2^~x) k1);
    _ : forall A B r x k, (@jump A B r x) >>= k = @jump A B r x;
    _ : forall A B p q k, @sub A B p q >>= k = @sub A B (p >=> k) (q >=> k)
 }.

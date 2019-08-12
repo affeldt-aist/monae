@@ -184,11 +184,9 @@ Variables (r : Type)  (M : monad).
 
 Definition MC : Type -> Type := fun A => (A -> M r) -> M r %type.
 
-Definition retC A (a : A) : MC A :=
-  fun cont => cont a.
+Definition retC A (a : A) : MC A := fun k => k a.
 
-Definition bindC A B (m : MC A) f : MC B :=
-  fun cont => m (f^~ cont).
+Definition bindC A B (m : MC A) f : MC B := fun k => m (f^~ k).
 
 Program Definition econtMonadM : monad :=
   @Monad_of_ret_bind MC retC bindC _ _ _.
@@ -196,8 +194,7 @@ Next Obligation. by []. Qed.
 Next Obligation. by []. Qed.
 Next Obligation. by []. Qed.
 
-Definition liftC A (x : M A) : econtMonadM A :=
-  fun cont => x >>= cont.
+Definition liftC A (x : M A) : econtMonadM A := fun k => x >>= k.
 
 Program Definition contMonadM : monadM M econtMonadM  :=
   monadM.Pack (@monadM.Class _ _ liftC  _ _).
@@ -663,7 +660,9 @@ Definition callccS_ r A B (f : (A -> (STC r) B) -> (STC _) A) : (STC _) A :=
   fun s k => f (fun x s' _ => k (x, s)) s k.
 
 Lemma callccS_E r A B f : callccS_ f =
-  @lift_callccS _ _ (fun k : STC r A -> r => f (fun a => (fun (_ : S) (_ : B * S -> r) => k (fun s' x => x (a, s'))) : STC r B)).
+  @lift_callccS _ _
+    (fun k : STC r A -> r =>
+       f (fun x => (fun (_ : S) (_ : B * S -> r) => k (fun s' y => curry y x s')) : STC r B)).
 Proof. by rewrite /lift_callccS aliftingE. Qed.
 
 End theorem19_example_C.

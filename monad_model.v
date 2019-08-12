@@ -201,6 +201,19 @@ End set.
 
 End ModelFail.
 
+Module ModelExcept.
+Section except.
+Program Definition except_class := @MonadExcept.Class _
+  ModelFail.option_class (@MonadExcept.Mixin _
+    (fun A m m' => if m is Some x then m else m') _ _ _ _).
+Next Obligation. by case. Qed.
+Next Obligation. by case. Qed.
+Next Obligation. by move=> [a|] [b|] [c|]. Qed.
+Next Obligation. by case. Qed.
+Definition t := MonadExcept.Pack except_class.
+End except.
+End ModelExcept.
+
 Module StateOps.
 Section get_functor.
 Variable S : Type.
@@ -398,25 +411,51 @@ Fixpoint fib_cps {M : monad} (n : nat) : M nat :=
       fun a => fib_cps m >>=
       fun b => Ret (a + b)
   end.
+Lemma fib_cpsE (M : monad) n :
+  fib_cps n.+2 = (fib_cps n.+1 >>= fun a => fib_cps n >>= fun b => Ret (a + b)) :> M _.
+Proof. by []. Qed.
+Let nat_ind2 (P : nat -> Prop) (P0 : P O) (P1 : P 1) :
+  (forall m, P m -> P m.+1 -> P m.+2) -> forall m, P m.
+Proof.
+move=> H n; suff : P n /\ P n.+1 by case.
+elim: n => // n [] H1 H2; split => //; exact: H.
+Qed.
+Goal forall (M : monad) n, fib_cps n = Ret (fib n) :> M nat.
+Proof.
+move=> M; apply nat_ind2 => // n ih1 ih2.
+by rewrite fib_cpsE ih2 bindretf ih1 bindretf.
+Qed.
 Local Close Scope monae_scope.
 
-Definition sum_until_none (m : monad) (acc : nat) (x : option nat) : m nat :=
+Definition oaddn (M : monad) (acc : nat) (x : option nat) : M nat :=
   if x is Some x then Ret (x + acc) else Ret acc.
-Definition sum_just (m : monad) (xs : seq (option nat)) :=
-  foldM (sum_until_none m) 0 xs.
+Definition sum_just M (xs : seq (option nat)) := foldM (oaddn M) 0 xs.
 
-Definition sum_until_break (m : monad) (break : nat -> m nat) (acc : nat) (x : option nat) : m nat :=
+Definition oaddn_break (M : monad) (break : nat -> M nat) (acc : nat) (x : option nat) : M nat :=
   if x is Some x then Ret (x + acc) else break acc.
-
 Let M : contMonad := ModelCont.t nat.
-
 Definition sum_break (xs : seq (option nat)) : M nat :=
-  Callcc (fun break : nat -> M nat => foldM (sum_until_break break) 0 xs).
+  Callcc (fun break : nat -> M nat => foldM (oaddn_break break) 0 xs).
 Compute (sum_break [:: Some 2; Some 6; None; Some 4]).
 
 Goal Ret 1 +m (Callcc (fun f => Ret 10 +m (f 100)) : M _) =
      Ret (1 + 100).
 Proof. by rewrite /addM bindretf boolp.funeqE. Abort.
+
+(* https://xavierleroy.org/mpri/2-4/transformations.pdf *)
+Local Open Scope monae_scope.
+
+Fixpoint list_iter (M : monad) A (f : A -> M unit) (s : seq A) : M unit :=
+  if s is h :: t then f h >> list_iter f t else Ret tt.
+Compute (@list_iter ModelMonad.identity nat (fun a => Ret tt) [:: O; 1; 2]).
+
+Definition list_find (M : contMonad) A (p : pred A) (s : seq A) : M _ :=
+  Callcc (fun k => list_iter (fun x => if p x then (*Throw*) k (Some x) else Ret tt) s >> Ret None).
+
+(* returns None if no such element exists *)
+Compute (@list_find (@ModelCont.t bool) nat [pred x | odd x] [:: 2; 4; 6]).
+(* returns the first element such that *)
+Compute (@list_find (@ModelCont.t bool) nat [pred x | odd x] [:: 2; 4; 3; 6]).
 
 End continuation_examples.
 
