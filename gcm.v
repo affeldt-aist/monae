@@ -521,7 +521,26 @@ have Hdxy : x \o Yx0 = dxy by admit.
 rewrite (eq_bigr (fun i => scalept (dxy i) (S1 (fsval i)))); last first.
   by move=> i; rewrite -Hdxy.
 rewrite -S1_Convn_indexed_over_finType; congr S1.
+apply Dist_ext => a /=.
+rewrite /Convn_indexed_over_finType convn_convdist /=.
+rewrite ConvDist.dE fsfunE /=.
+case: ifPn => Ha.
+- rewrite /Convn_indexed_over_finType.dist /=.
+  rewrite /Convn_indexed_over_finType.d_enum -Hdxy /=.
+  rewrite -(Distfmap_inj (g:=Dist1.d (A:=c))); first last.
+  + rewrite mem_finsupp. admit.
+  + move=> ?; apply Dist1_inj.
+  rewrite /Distfmap.
+  rewrite DistBind.dE /DistBind.f fsfunE /=.
+  rewrite ifT.
+  rewrite (reindex_onto enum_rank enum_val) /=.
+  set tmp := BIG_F.
 
+Print Convn_indexed_over_finType.
+apply S1_inj.
+rewrite S1_Convn_indexed_over_finType.
+Check dist_of_Dist.
+rewrite H.
 
 have -> : \ssum_i scalept (x (Yx0 i)) (S1 (fsval i)) =
           \ssum_(j <- D) scalept (x j) (S1 (fsval (x0Y j))) by admit.
