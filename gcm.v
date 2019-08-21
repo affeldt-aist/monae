@@ -374,6 +374,25 @@ move/eqP => ab; apply/eqP; apply: contraTT ab => ab.
 apply/eqP => /(congr1 (fun x : Dist.t _ => x a)).
 rewrite !Dist1.dE /Dist1.f !fsfunE !inE eqxx (negbTE ab); lra.
 Qed.
+Lemma set1_inj (C : choiceType) (a b : C) : set1 a = set1 b -> a = b.
+Proof. by rewrite /set1 => /(congr1 (fun f => f a)) <-. Qed.
+Lemma Distfmap_inj (A : choiceType) (g : A -> Dist A)
+  (x : Dist.t A) a : injective g -> a \in finsupp x ->
+  (Distfmap g x) (g a) = x a.
+Proof.
+move=> Hg xa.
+rewrite /Distfmap DistBind.dE /DistBind.f fsfunE imfset_id ifT; last first.
+  apply/bigfcupP; exists (Dist1.d (g a)) => //.
+    by rewrite andbT; apply/imfsetP => /=; exists a.
+  rewrite mem_finsupp Dist1.dE /Dist1.f fsfunE inE eqxx; apply/eqP; lra.
+rewrite (big_fsetID _ (xpred1 a)) /= [Y in (_ + Y)%R](_ : _ = 0)%R ?addR0; last first.
+  rewrite -(big_fset_condE _ (finsupp x)) big1 // => a0 a0a.
+  rewrite Dist1.dE /Dist1.f fsfunE inE ifF // ?mulR0 //.
+  by apply: contraNF a0a => /eqP [] /Hg ->.
+rewrite -(big_fset_condE _ (finsupp x)) -big_filter filter_pred1_uniq //.
+by rewrite big_seq1 Dist1.dE /Dist1.f fsfunE inE eqxx ?mulR1.
+Qed.
+
 Import homcomp_notation.
 Import ScaledConvex.
 Local Open Scope fset_scope.
