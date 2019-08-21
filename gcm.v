@@ -367,6 +367,13 @@ Proof. by rewrite /eta0; unlock. Qed.
 Lemma eta0E (T : choiceType) : eta0 T = (@Dist1.d _) :> (_ -> _).
 Proof. by rewrite /eta0; unlock. Qed.
 
+Require Import Lra.
+Lemma Dist1_inj (C : choiceType) (a b : C) : Dist1.d a = Dist1.d b -> a = b.
+Proof.
+move/eqP => ab; apply/eqP; apply: contraTT ab => ab.
+apply/eqP => /(congr1 (fun x : Dist.t _ => x a)).
+rewrite !Dist1.dE /Dist1.f !fsfunE !inE eqxx (negbTE ab); lra.
+Qed.
 Import homcomp_notation.
 Import ScaledConvex.
 Local Open Scope fset_scope.
@@ -461,7 +468,13 @@ rewrite (eq_bigr F); last first.
     by rewrite in_imfset.
 rewrite /F.
 have H : finsupp (Distfmap (Dist1.d (A:=c)) x) =
-         (@Dist1.d _) @` (finsupp x) by admit.
+         (@Dist1.d _) @` (finsupp x).
+  rewrite /Distfmap DistBind.supp big_imfset /=; last by move=> c0 c1 ? ? /Dist1_inj/Dist1_inj.
+  rewrite (eq_bigr (fun i => fset1 (Dist1.d i))); last by move=> ? _; rewrite Dist1.supp.
+  (* TODO: extract lemma *)
+  rewrite big_imfset //=; apply/fsetP => d; apply/bigfcupP/imfsetP.
+  - by move=> -[c0]; rewrite andbT => c0x; rewrite inE => /eqP ->; exists c0.
+  - by move=> -[c0] /= x0 ->; exists c0 => //; [rewrite andbT | rewrite inE].
 have H' : forall i, Dist1.d (Yx0 i) = fsval i by admit.
 have H'' : forall x0 : FId c, Dist1.d x0 \in finsupp (Distfmap (@Dist1.d c) x)
     by admit.
