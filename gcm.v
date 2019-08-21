@@ -456,9 +456,9 @@ rewrite (eq_bigr F); last first.
     * apply eq_bigl=> i0.
       apply/eqP; case: ifP; first by move/eqP ->.
       by move=> H /eq_Dist1 /eqP; rewrite H.
-    have-> : \sum_(i0 <- finsupp x | a' == i0) x i0 =
-             \sum_(i0 <- [:: a']) x i0 by admit.
-    rewrite big_seq1.
+    suff <- : x a' = x x0.
+      rewrite (eq_bigl _ _ (eq_sym _)) -big_filter filter_pred1_uniq //.
+      by rewrite big_seq1.
     move: ia; rewrite ax0; rewrite Dist1.supp => /imfsetP [] x1 /=.
     rewrite inE => /eqP x1x0 ix1.
     by move: x1x0; rewrite -ix1 ia' => /eq_Dist1 ->.
@@ -475,17 +475,35 @@ have H : finsupp (Distfmap (Dist1.d (A:=c)) x) =
   rewrite big_imfset //=; apply/fsetP => d; apply/bigfcupP/imfsetP.
   - by move=> -[c0]; rewrite andbT => c0x; rewrite inE => /eqP ->; exists c0.
   - by move=> -[c0] /= x0 ->; exists c0 => //; [rewrite andbT | rewrite inE].
-have H' : forall i, Dist1.d (Yx0 i) = fsval i by admit.
+have H' : forall i, Dist1.d (Yx0 i) = fsval i.
+  move=> i.
+  rewrite /Yx0.
+  case: (cid (Y i)) => -[dd xc] /= [Hxc [->{dd}]].
+  rewrite Dist1.supp /=.
+  by rewrite inE => /eqP.
+(*
 have H'' : forall x0 : FId c, Dist1.d x0 \in finsupp (Distfmap (@Dist1.d c) x)
     by admit.
 set x0Y := fun x0 : FId c => FSetSub (H'' x0). 
 have H''' : forall x0 : FId c, Yx0 (x0Y x0) = x0 by admit.
+*)
 set D := Yx0 @` (dist_of_Dist.D (Distfmap (Dist1.d (A:=c)) x)).
 Check D.
 Check fun j : D => j.
+(*
 Check \ssum_(j <- D) scalept (x j) (S1 (fsval (x0Y j))).
 Check \ssum_(j : D) scalept (x (fsval j)) (S1 (fsval (x0Y (fsval j)))).
+*)
 Check (@fsval ((@FId choiceType_category) c) D).
+Check S1_Convn_indexed_over_finType.
+Check (S1_Convn_indexed_over_finType _ (fun i : [finType of finsupp (Distfmap (Dist1.d (A:=c)) x)] => fsval i)).
+evar (dxy : dist [finType of finsupp (Distfmap (Dist1.d (A:=c)) x)]).
+have Hdxy : x \o Yx0 = dxy by admit.
+rewrite (eq_bigr (fun i => scalept (dxy i) (S1 (fsval i)))); last first.
+  by move=> i; rewrite -Hdxy.
+rewrite -S1_Convn_indexed_over_finType; congr S1.
+
+
 have -> : \ssum_i scalept (x (Yx0 i)) (S1 (fsval i)) =
           \ssum_(j <- D) scalept (x j) (S1 (fsval (x0Y j))) by admit.
 Fail rewrite -S1_Convn_indexed_over_finType.
