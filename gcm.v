@@ -409,6 +409,13 @@ have Y : forall (i : finsupp (Distfmap (Dist1.d (A:=c)) x)),
   by exists (Dist1.d (Dist1.d c0), c0) => /=; rewrite Dist1.supp inE.
 set Ya := fun i => match cid (Y i) with exist a_x0 _ => a_x0.1 end.
 set Yx0 := fun i => match cid (Y i) with exist a_x0 _ => a_x0.2 end.
+have HYx0 (i : [finType of finsupp (Distfmap (Dist1.d (A:=c)) x)]) :
+  Yx0 i \in finsupp x.
+  case: i => x0 Hx0.
+  rewrite /Yx0.
+  by case: cid => -[dd x1] /= [].
+set Yx0' := fun i : [finType of finsupp (Distfmap (Dist1.d (A:=c)) x)] =>
+    (FSetSub (HYx0 i)).
 set F := fun (i : finsupp (Distfmap (Dist1.d (A:=c)) x)) =>
            scalept (x (Yx0 i)) (S1 (fsval i)).
 (*set F := fun (i0 : Dist_convType c) => scalept (x XX) (S1 i0).*)
@@ -489,24 +496,41 @@ Check \ssum_(j <- D) scalept (x j) (S1 (fsval (x0Y j))).
 Check \ssum_(j : D) scalept (x (fsval j)) (S1 (fsval (x0Y (fsval j)))).
 Check (@fsval ((@FId choiceType_category) c) D).
 *)
-set fxy := finfun (x \o Yx0).
-have pmfxy : [forall a, 0 <b= fxy a].
-  apply/forallP => a; apply/leRP.
-  rewrite /fxy ffunE /= /Yx0.
-  case: cid => -[ddx x0] /= _.
-  exact: Dist.ge0.
-have pmf1xy : \sum_(a in [finType of finsupp (Distfmap (Dist1.d (A:=c)) x)])
-               (mkPosFfun pmfxy) a == 1 :> R.
-  apply/eqP => /=.
-  rewrite /fxy.
-  rewrite (eq_bigr (fun j => x (Yx0 j))); last by move=> i _; rewrite ffunE.
-  admit.
-set dxy := mkDist pmf1xy.
-have Hdxy : x \o Yx0 =1 dxy by move=> x0; rewrite ffunE.
-clearbody dxy => {fxy pmfxy pmf1xy}.
-rewrite (eq_bigr (fun i => scalept (dxy i) (S1 (fsval i)))); last first.
-  by move=> i; rewrite -Hdxy.
-rewrite -S1_Convn_indexed_over_finType; congr S1.
+have H'' (i : finsupp x) :
+  Dist1.d (fsval i) \in finsupp (Distfmap (@Dist1.d c) x).
+  by rewrite supp_Distfmap_Dist1; apply/imfsetP => /=; exists (fsval i).
+set x0Y := fun x0 => FSetSub (H'' x0).
+have x0YK : cancel x0Y Yx0'.
+  rewrite /Yx0' /x0Y => i.
+  apply val_inj => /=.
+  rewrite /Yx0.
+  case: cid => -[dd j] /= [Hj [->]].
+  by rewrite Dist1.supp inE => /eqP /Dist1_inj.
+set dxy : Dist.t [finType of finsupp (Distfmap (Dist1.d (A:=c)) x)] :=
+  Dist_lift_supp.d (Dist_crop0.d x) x0YK.
+have Hdxy' : x \o Yx0 =1 dxy.
+  rewrite /dxy /Dist_lift_supp.d => i /=.
+  rewrite fsfunE.
+  rewrite /Dist_lift_supp.D.
+  case: imfsetP.
+  - case=> /= j Hj ->.
+    by rewrite fsfunE ffunE ifT // inE.
+  - case /boolP: (x (Yx0 i) == 0) => Hxi.
+      by rewrite (eqP Hxi).
+    elim.
+    exists (Yx0' i).
+      rewrite mem_finsupp.
+      by rewrite fsfunE ffunE ifT // inE.
+    rewrite /x0Y /Yx0'.
+    by apply val_inj => /=.
+clearbody dxy.
+set dxy' := dist_of_finDist.d dxy.
+have Hdxy : x \o Yx0 =1 dxy'.
+  move=> i; rewrite /dxy' /dist_of_finDist /=. unlock.
+  by rewrite /= ffunE -Hdxy'.
+rewrite (eq_bigr (fun i => scalept (dxy' i) (S1 (fsval i)))); last first.
+  move=> i; by rewrite /= -Hdxy.
+rewrite -S1_Convn_indexed_over_finType. congr S1.
 apply Dist_ext => a /=.
 rewrite /Convn_indexed_over_finType convn_convdist /=.
 rewrite ConvDist.dE fsfunE /=.
@@ -543,13 +567,6 @@ case: ifPn => Ha.
     by rewrite ffunE -Hdxy enum_rankK.
   + move=> i.
     by rewrite enum_rankK eqxx.
-  have HYx0 (i : [finType of finsupp (Distfmap (Dist1.d (A:=c)) x)]) :
-    Yx0 i \in finsupp x.
-    case: i => x0 Hx0.
-    rewrite /Yx0.
-    by case: cid => -[dd x1] /= [].
-  set f := fun i : [finType of finsupp (Distfmap (Dist1.d (A:=c)) x)] =>
-    (FSetSub (HYx0 i)).
   symmetry.
 Import tuple.
   rewrite big_tnth.
@@ -564,7 +581,7 @@ Import tuple.
   rewrite (eq_bigl xpredT); last first.
     move=> i.
     by rewrite cast_ordK enum_rankK eqxx.
-  rewrite (@reindex _ _ _ _ _ f) //=.
+  rewrite (@reindex _ _ _ _ _ Yx0') //=.
   apply eq_bigr => i _.
   rewrite -H' !Dist1.dE !inE.
   set b := tnth _ _.
@@ -574,10 +591,6 @@ Import tuple.
   + case: ifPn => // /eqP ->.
     by rewrite eqxx.
   red.
-  have H'' (i : finsupp x) :
-    Dist1.d (fsval i) \in finsupp (Distfmap (@Dist1.d c) x).
-    by rewrite supp_Distfmap_Dist1; apply/imfsetP => /=; exists (fsval i).
-  set x0Y := fun x0 => FSetSub (H'' x0). 
   exists x0Y.
   + move=> i _ /=.
     apply val_inj => /=.
