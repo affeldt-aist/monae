@@ -739,9 +739,7 @@ apply funext => x.
 rewrite functor_o !homfunK funcompE funcomp_homE homcompE homcompA -homcompE homcomp_hom -homcompA.
 set A := [fun of (eps A1) (F c)].
 set B := [fun of F # (eta A0) c].
-rewrite (_: [homcomp F1 # _, _]
-            = F1 # [hom of [homcomp (eps A0) ((G1 \O F1) (F0 c)), (F0 \O G0) # ((eta A1) (F0 c))]]);
- last by rewrite homfunK funcomp_homE !functor_o.
+rewrite /F FCompE -(functor_o_fun F1).
 set C := [fun of F1 # _].
 have->: A ((C \o B) x) = (A \o C \o B) x by [].
 have<-: (A \o [fun of F1 # [hom of [homcomp (eta A1) (F0 c), (eps A0) (FId (F0 c))]]] \o B) x = (A \o C \o B) x.
@@ -766,9 +764,7 @@ apply funext => x.
 rewrite functor_o !homfunK funcompE funcomp_homE homcompE homcompA -homcompE homcomp_hom -homcompA.
 set A := [fun of G # (eps A1) d].
 set B := [fun of (eta A0) (G d)].
-rewrite (_: [homcomp G0 # _, _]
-            = G0 # [hom of [homcomp G1 # (F1 # (eps A0) (G1 d)), (eta A1) (F0 ((G0 \O G1) d))]]);
- last by rewrite homfunK funcomp_homE !functor_o.
+rewrite -(functor_o_fun G0).
 set C := [fun of G0 # _].
 have->: A ((C \o B) x) = (A \o C \o B) x by [].
 have<-: (A \o [fun of G0 # [hom of [homcomp (eta A1) (FId (G1 d)), (eps A0) (G1 d)]]] \o B) x = (A \o C \o B) x.
@@ -776,8 +772,7 @@ have<-: (A \o [fun of G0 # [hom of [homcomp (eta A1) (FId (G1 d)), (eps A0) (G1 
  by rewrite !homcomp_hom (natural (eta A1) _ _ ((eps A0) (G1 d))).
 rewrite functor_o homfunK -!homcompA.
 rewrite (_ : [homcomp _, G0 # (eta _) _] = G0 # [hom of idfun]); last first.
- rewrite (_ : [homcomp _, _] = G0 # [hom of [homcomp G1 # (eps A1) d, (eta A1) (G1 d)]]); last first.
-  by rewrite !functor_o homfunK.
+ rewrite -(functor_o_fun G0).
  congr [fun of G0 # _].
  apply/hom_ext /(triangular_right A1 d).
 rewrite functor_id funcompidf.
