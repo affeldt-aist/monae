@@ -485,7 +485,7 @@ rewrite (eq_bigr F); last first.
     rewrite inE=> /eqP x1x0 ix1.
     rewrite ix1 x1x0 /=.
     by rewrite in_imfset.
-rewrite /F.
+rewrite {}/F.
 have H : finsupp (Distfmap (Dist1.d (A:=c)) x) =
          (@Dist1.d _) @` (finsupp x).
   rewrite /Distfmap DistBind.supp big_imfset /=; last by move=> c0 c1 ? ? /Dist1_inj/Dist1_inj.
@@ -502,19 +502,28 @@ have H' : forall i, Dist1.d (Yx0 i) = fsval i.
   by rewrite inE => /eqP.
 (*
 have H''' : forall x0 : FId c, Yx0 (x0Y x0) = x0 by admit.
-*)
 set D := Yx0 @` (dist_of_Dist.D (Distfmap (Dist1.d (A:=c)) x)).
 Check D.
 Check fun j : D => j.
-(*
 Check \ssum_(j <- D) scalept (x j) (S1 (fsval (x0Y j))).
 Check \ssum_(j : D) scalept (x (fsval j)) (S1 (fsval (x0Y (fsval j)))).
-*)
 Check (@fsval ((@FId choiceType_category) c) D).
-Check S1_Convn_indexed_over_finType.
-Check (S1_Convn_indexed_over_finType _ (fun i : [finType of finsupp (Distfmap (Dist1.d (A:=c)) x)] => fsval i)).
-evar (dxy : dist [finType of finsupp (Distfmap (Dist1.d (A:=c)) x)]).
-have Hdxy : x \o Yx0 = dxy by admit.
+*)
+set fxy := finfun (x \o Yx0).
+have pmfxy : [forall a, 0 <b= fxy a].
+  apply/forallP => a; apply/leRP.
+  rewrite /fxy ffunE /= /Yx0.
+  case: cid => -[ddx x0] /= _.
+  exact: Dist.ge0.
+have pmf1xy : \sum_(a in [finType of finsupp (Distfmap (Dist1.d (A:=c)) x)])
+               (mkPosFfun pmfxy) a == 1 :> R.
+  apply/eqP => /=.
+  rewrite /fxy.
+  rewrite (eq_bigr (fun j => x (Yx0 j))); last by move=> i _; rewrite ffunE.
+  admit.
+set dxy := mkDist pmf1xy.
+clearbody dxy => {fxy pmfxy pmf1xy}.
+have Hdxy : x \o Yx0 =1 dxy by move=> x0; rewrite ffunE.
 rewrite (eq_bigr (fun i => scalept (dxy i) (S1 (fsval i)))); last first.
   by move=> i; rewrite -Hdxy.
 rewrite -S1_Convn_indexed_over_finType; congr S1.
@@ -539,6 +548,7 @@ case: ifPn => Ha.
       move: Ha.
       rewrite /ConvDist.D.
       move/bigfcupP => [i] /=.
+      case/andP => _.
       admit.
     rewrite mem_finsupp.
     rewrite Dist1.dE /Dist1.f fsfunE inE eqxx.
@@ -588,7 +598,14 @@ Import tuple.
     Dist1.d (fsval i) \in finsupp (Distfmap (@Dist1.d c) x).
     rewrite mem_finsupp.
     rewrite /Distfmap DistBind.dE /DistBind.f fsfunE ifT.
-      admit.
+      rewrite (bigD1_seq (fsval i)) ?fsvalP //=.
+      rewrite Dist1.dE /Dist1.f fsfunE inE eqxx mulR1.
+      apply/eqP/Rgt_not_eq/addR_gt0wl.
+        apply/ltRP.
+        rewrite lt0R -mem_finsupp fsvalP.
+        apply/leRP/Dist.ge0.
+      apply rsumr_ge0 => ? _.
+      by apply mulR_ge0; apply Dist.ge0.
     apply/bigfcupP.
     exists (Dist1.d (Dist1.d (fsval i))).
       rewrite andbT.
@@ -611,6 +628,7 @@ Import tuple.
     case: cid => -[dd x1] /= [H1 [->]].
     by rewrite Dist1.supp inE => /eqP /Dist1_inj.
 -
+
 
 Admitted.
 
