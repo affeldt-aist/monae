@@ -568,38 +568,23 @@ case: ifPn => Ha.
   + move=> i.
     by rewrite enum_rankK eqxx.
   symmetry.
-Import tuple.
-  rewrite big_tnth.
-  have Hsz : #|[finType of finsupp x]| = #|` finsupp x|.
-    by rewrite cardfE.
-  rewrite (@reindex_onto _ _ _
-            [finType of 'I_#|` finsupp x|] [finType of finsupp x]
-         (cast_ord Hsz \o enum_rank) (enum_val \o (cast_ord (esym Hsz)))) /=;
-    last first.
-    move=> i _.
-    by rewrite enum_valK cast_ordKV.
-  rewrite (eq_bigl xpredT); last first.
-    move=> i.
-    by rewrite cast_ordK enum_rankK eqxx.
-  rewrite (@reindex _ _ _ _ _ Yx0') //=.
-  apply eq_bigr => i _.
-  rewrite -H' !Dist1.dE !inE.
-  set b := tnth _ _.
-  have -> : b = Yx0 i by admit.
-  case: ifPn => [/eqP /Dist1_inj ->|].
-  + by rewrite eqxx.
-  + case: ifPn => // /eqP ->.
-    by rewrite eqxx.
-  red.
-  exists x0Y.
-  + move=> i _ /=.
+  rewrite big_seq_fsetE /=.
+  rewrite (@reindex _ _ _ _ _ x0Y) /=; last first.
+    exists Yx0' => i _.
+      by rewrite x0YK.
+    rewrite /x0Y /Yx0' /Yx0.
     apply val_inj => /=.
-    by rewrite -H'.
-  + move=> i _ /=.
-    apply val_inj => /=.
-    rewrite /Yx0 /x0Y.
-    case: cid => -[dd x1] /= [H1 [->]].
-    by rewrite Dist1.supp inE => /eqP /Dist1_inj.
+    case: cid => -[dd j] /= [Hj [->]].
+    by rewrite Dist1.supp inE => /eqP.
+  apply eq_bigr => i _ /=.
+  congr (_ * _).
+    have -> : Yx0 (x0Y i) = fsval (Yx0' (x0Y i)) by [].
+    by rewrite x0YK.
+  rewrite Dist1.dE [LHS]Dist1.dE !inE /=.
+  case/boolP: (a == fsval i) => Hai.
+    by rewrite (eqP Hai) eqxx.
+  case: eqP => // /Dist1_inj /eqP Hai'.
+  by rewrite Hai' in Hai.
 -
 
 
