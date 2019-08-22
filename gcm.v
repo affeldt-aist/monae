@@ -298,9 +298,7 @@ rewrite S1_Convn_indexed_over_finType.
 evar (Y : dist_of_Dist.D ((Distfmap f) d) -> scaled_pt D).
 transitivity (\ssum_i Y i); last first.
 - apply eq_bigr => i _ /=.
-  rewrite dist_of_DistE /=.
-  rewrite DistBind.dE /DistBind.f imfset_id /=.
-  rewrite fsfunE.
+  rewrite dist_of_DistE /= DistBind.dE imfset_id /=.
   have -> : fsval i \in (\bigcup_(d0 <- [fset Dist1.d (f a) | a in finsupp d]) finsupp d0)
     by case: i => v; rewrite DistBind.supp imfset_id.
   have H : scalept R0 (S1 (fsval i)) = Zero D by rewrite scalept0.
@@ -381,7 +379,7 @@ Lemma Distfmap_inj (A : choiceType) (g : A -> Dist A)
   (Distfmap g x) (g a) = x a.
 Proof.
 move=> Hg xa.
-rewrite /Distfmap DistBind.dE /DistBind.f fsfunE imfset_id ifT; last first.
+rewrite /Distfmap DistBind.dE imfset_id ifT; last first.
   apply/bigfcupP; exists (Dist1.d (g a)) => //.
     by rewrite andbT; apply/imfsetP => /=; exists a.
   rewrite mem_finsupp Dist1.dE /Dist1.f fsfunE inE eqxx; apply/eqP; lra.
@@ -440,8 +438,8 @@ rewrite (eq_bigr F); last first.
     by apply eq_imfset => //; move=> y/= ; rewrite inE /=.
   case/imfsetP=> x0 /= x0x ax0 _ ia _.
 *)
-  suff -> : (DistBind.d x (fun a0 : c => Dist1.d (Dist1.d a0))) i = x x0 by done.
-  rewrite DistBind.dE /DistBind.f fsfunE.
+  suff -> : (DistBind.d x (fun a0 : c => Dist1.d (Dist1.d a0))) i = x x0 by [].
+  rewrite DistBind.dE.
   have-> : [fset Dist1.d (Dist1.d a) | a in [fset a | a in finsupp x]] =
            [fset Dist1.d (Dist1.d a) | a in finsupp x]
     by apply eq_imfset => //; move=> y/= ; rewrite inE /=.
@@ -540,8 +538,7 @@ case: ifPn => Ha.
     case: cid => -[x01 x02] /= [x02x [ ->{x01}]].
     by rewrite Dist1.supp inE => /eqP -> _; rewrite Dist1.supp inE => /eqP ->.
   + move=> ?; apply Dist1_inj.
-  rewrite /Distfmap.
-  rewrite DistBind.dE /DistBind.f fsfunE /=.
+  rewrite /Distfmap DistBind.dE.
   rewrite ifT; last first.
     apply/bigfcupP.
     exists (Dist1.d (Dist1.d a)).
@@ -601,7 +598,7 @@ Import tuple.
   have H'' (i : finsupp x) :
     Dist1.d (fsval i) \in finsupp (Distfmap (@Dist1.d c) x).
     rewrite mem_finsupp.
-    rewrite /Distfmap DistBind.dE /DistBind.f fsfunE ifT.
+    rewrite /Distfmap DistBind.dE ifT.
       rewrite (bigD1_seq (fsval i)) ?fsvalP //=.
       rewrite Dist1.dE /Dist1.f fsfunE inE eqxx mulR1.
       apply/eqP/Rgt_not_eq/addR_gt0wl.
@@ -658,8 +655,7 @@ rewrite /join0 -DistBindA DistBindp1; apply Dist_ext => c.
 rewrite -[LHS]Scaled1RK /eps0''.
 rewrite (@S1_proj_Convn_indexed_over_finType _ _ (fun D : Dist C => D c));
   last exact: Dist_eval_affine.
-rewrite big_scaleR.
-rewrite DistBind.dE /DistBind.f fsfunE.
+rewrite big_scaleR DistBind.dE.
 case: ifP => [_ | ].
 - transitivity (\sum_(i : dist_of_Dist.D d | true) d (fsval i) * (fsval i) c).
   + apply eq_bigr => -[v vP] _.
