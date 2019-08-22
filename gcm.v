@@ -525,15 +525,15 @@ case: ifPn => Ha.
     apply/bigfcupP.
     exists (Dist1.d (Dist1.d a)).
       rewrite andbT.
+      rewrite imfset_id.
       apply/imfsetP.
-      exists a => //.
-      rewrite inE /=.
-      move: Ha.
-      rewrite /ConvDist.D.
-      move/bigfcupP => [i] /=.
-      case/andP => _.
-      admit.
-    rewrite mem_finsupp Dist1.dE inE eqxx; apply/eqP; lra.
+      exists a => //=.
+      move/bigfcupP : Ha => [/= i /andP[/=]].
+      rewrite /index_enum -enumT mem_enum /= => Hi.
+      rewrite /Convn_indexed_over_finType.d_enum ffunE -Hdxy /= /Yx0.
+      case: cid => -[x01 x02] /= [x02x [ ->{x01}]].
+      by rewrite Dist1.supp inE => /eqP -> _; rewrite Dist1.supp inE => /eqP ->.
+   rewrite mem_finsupp Dist1.dE inE eqxx; apply/eqP; lra.
   rewrite (reindex_onto enum_rank enum_val) /=;
     last by move=> i _; exact: enum_valK.
   rewrite -(@eq_big _ _ _ _ _ xpredT _
