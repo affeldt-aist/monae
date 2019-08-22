@@ -172,8 +172,7 @@ exists (Dist1.d (f (fsval x))).
 - rewrite andbT.
   apply (in_imfset _ (fun x => Dist1.d (f x))) => /=.
   by move:x; case:d.
-- rewrite mem_finsupp Dist1.dE /Dist1.f /= fsfunE inE eqxx.
-  by apply/eqP/R1_neq_R0.
+- rewrite mem_finsupp Dist1.dE inE eqxx; exact/eqP/R1_neq_R0.
 Defined.
 Global Arguments Dist_mor_supp [A B] f d.
 Lemma fsval_Dist_mor_supp (A B : choiceType) (f : {hom A , B}) d i :
@@ -309,7 +308,7 @@ transitivity (\ssum_i Y i); last first.
   have -> : \ssum_(i0 <- finsupp d | fsval i != f i0)
              scalept (d i0 * (Dist1.d (f i0)) (fsval i)) (S1 (fsval i)) =
            Zero _
-    by rewrite big1 // => c /negbTE Hc; rewrite Dist1.dE /Dist1.f fsfunE inE Hc mulR0 scalept0.
+    by rewrite big1 // => c /negbTE Hc; rewrite Dist1.dE inE Hc mulR0 scalept0.
   rewrite addpt0.
   rewrite big_seq_fsetE /=.
   exact: erefl.
@@ -323,9 +322,7 @@ transitivity (\ssum_(i0 | Dist_mor_supp f d i0 == [` Hi])
                scalept (d (fsval i0) * (Dist1.d (f (fsval i0))) i) (S1 i)).
 - apply eq_bigr => i0 /eqP.
   move/(congr1 (@fsval _ _)); rewrite fsval_Dist_mor_supp /= => Hi0.
-  rewrite dist_of_DistE Dist1.dE /Dist1.f fsfunE /=.
-  have -> : i \in [fset f (fsval i0)] by rewrite -Hi0 inE.
-  by rewrite -Hi0 mulR1.
+  by rewrite dist_of_DistE Dist1.dE -Hi0 inE eqxx mulR1.
 apply eq_bigl => i0.
 apply/eqP/eqP; first by move/(congr1 (@fsval _ _)) => /= <-.
 move=> H.
@@ -365,15 +362,13 @@ Proof. by rewrite /eta0; unlock. Qed.
 Lemma eta0E (T : choiceType) : eta0 T = (@Dist1.d _) :> (_ -> _).
 Proof. by rewrite /eta0; unlock. Qed.
 
-Require Import Lra.
-Lemma Dist1_inj (C : choiceType) (a b : C) : Dist1.d a = Dist1.d b -> a = b.
-Proof.
-move/eqP => ab; apply/eqP; apply: contraTT ab => ab.
-apply/eqP => /(congr1 (fun x : Dist.t _ => x a)).
-rewrite !Dist1.dE /Dist1.f !fsfunE !inE eqxx (negbTE ab); lra.
-Qed.
+(* TODO: move *)
 Lemma set1_inj (C : choiceType) (a b : C) : set1 a = set1 b -> a = b.
 Proof. by rewrite /set1 => /(congr1 (fun f => f a)) <-. Qed.
+
+Require Import Lra.
+
+(* TODO: move? *)
 Lemma Distfmap_inj (A : choiceType) (g : A -> Dist A)
   (x : Dist.t A) a : injective g -> a \in finsupp x ->
   (Distfmap g x) (g a) = x a.
@@ -382,13 +377,12 @@ move=> Hg xa.
 rewrite /Distfmap DistBind.dE imfset_id ifT; last first.
   apply/bigfcupP; exists (Dist1.d (g a)) => //.
     by rewrite andbT; apply/imfsetP => /=; exists a.
-  rewrite mem_finsupp Dist1.dE /Dist1.f fsfunE inE eqxx; apply/eqP; lra.
+  rewrite mem_finsupp Dist1.dE inE eqxx; apply/eqP; lra.
 rewrite (big_fsetID _ (xpred1 a)) /= [Y in (_ + Y)%R](_ : _ = 0)%R ?addR0; last first.
   rewrite -(big_fset_condE _ (finsupp x)) big1 // => a0 a0a.
-  rewrite Dist1.dE /Dist1.f fsfunE inE ifF // ?mulR0 //.
-  by apply: contraNF a0a => /eqP [] /Hg ->.
+  by rewrite Dist1.dE inE ifF // ?mulR0 //; apply: contraNF a0a => /eqP [] /Hg ->.
 rewrite -(big_fset_condE _ (finsupp x)) -big_filter filter_pred1_uniq //.
-by rewrite big_seq1 Dist1.dE /Dist1.f fsfunE inE eqxx ?mulR1.
+by rewrite big_seq1 Dist1.dE inE eqxx mulR1.
 Qed.
 
 Import homcomp_notation.
@@ -445,7 +439,7 @@ rewrite (eq_bigr F); last first.
     by apply eq_imfset => //; move=> y/= ; rewrite inE /=.
   have-> : \sum_(a0 <- finsupp x) x a0 * (Dist1.d (Dist1.d a0)) i =
            \sum_(a0 <- finsupp x) x a0 * (if i == Dist1.d a0 then 1 else 0)
-    by apply eq_bigr=> a0 _; rewrite Dist1.dE /Dist1.f fsfunE inE.
+    by apply eq_bigr=> a0 _; rewrite Dist1.dE inE.
   rewrite (bigID (fun a0 => i == Dist1.d a0)) /=.
   have-> : \sum_(i0 <- finsupp x | i != Dist1.d i0)
             x i0 * (if i == Dist1.d i0 then 1 else 0) = 0
@@ -472,13 +466,13 @@ rewrite (eq_bigr F); last first.
              \sum_(i0 <- finsupp x | a' == i0) x i0.
     * apply eq_bigl=> i0.
       apply/eqP; case: ifP; first by move/eqP ->.
-      by move=> H /eq_Dist1 /eqP; rewrite H.
+      by move=> H /Dist1_inj /eqP; rewrite H.
     suff <- : x a' = x x0.
       rewrite (eq_bigl _ _ (eq_sym _)) -big_filter filter_pred1_uniq //.
       by rewrite big_seq1.
     move: ia; rewrite ax0; rewrite Dist1.supp => /imfsetP [] x1 /=.
     rewrite inE => /eqP x1x0 ix1.
-    by move: x1x0; rewrite -ix1 ia' => /eq_Dist1 ->.
+    by move: x1x0; rewrite -ix1 ia' => /Dist1_inj ->.
   + move: ia; rewrite ax0 Dist1.supp=> /imfsetP [] x1 /=.
     rewrite inE=> /eqP x1x0 ix1.
     rewrite ix1 x1x0 /=.
@@ -551,9 +545,7 @@ case: ifPn => Ha.
       move/bigfcupP => [i] /=.
       case/andP => _.
       admit.
-    rewrite mem_finsupp.
-    rewrite Dist1.dE /Dist1.f fsfunE inE eqxx.
-    apply/eqP; lra.
+    rewrite mem_finsupp Dist1.dE inE eqxx; apply/eqP; lra.
   rewrite (reindex_onto enum_rank enum_val) /=;
     last by move=> i _; exact: enum_valK.
   rewrite -(@eq_big _ _ _ _ _ xpredT _
@@ -586,8 +578,7 @@ Import tuple.
     by rewrite cast_ordK enum_rankK eqxx.
   rewrite (@reindex _ _ _ _ _ f) //=.
   apply eq_bigr => i _.
-  rewrite -H'.
-  rewrite !Dist1.dE /Dist1.f !fsfunE !inE.
+  rewrite -H' !Dist1.dE !inE.
   set b := tnth _ _.
   have -> : b = Yx0 i by admit.
   case: ifPn => [/eqP /Dist1_inj ->|].
@@ -600,7 +591,7 @@ Import tuple.
     rewrite mem_finsupp.
     rewrite /Distfmap DistBind.dE ifT.
       rewrite (bigD1_seq (fsval i)) ?fsvalP //=.
-      rewrite Dist1.dE /Dist1.f fsfunE inE eqxx mulR1.
+      rewrite Dist1.dE inE eqxx mulR1.
       apply/eqP/Rgt_not_eq/addR_gt0wl.
         apply/ltRP.
         rewrite lt0R -mem_finsupp fsvalP.
@@ -615,9 +606,7 @@ Import tuple.
         rewrite inE /=.
         by apply/fsvalP.
       done.
-    rewrite mem_finsupp.
-    rewrite Dist1.dE /Dist1.f fsfunE inE eqxx.
-    apply/eqP; lra.
+    rewrite mem_finsupp Dist1.dE inE eqxx; apply/eqP; lra.
   set x0Y := fun x0 => FSetSub (H'' x0). 
   exists x0Y.
   + move=> i _ /=.
@@ -967,7 +956,7 @@ Proof.
 rewrite eps0E; apply: (@ScaledConvex.S1_inj _ _ d).
 rewrite S1_Convn_indexed_over_finType /=.
 rewrite (eq_bigr (fun=> ScaledConvex.S1 d)); last first.
-  move=> i _; rewrite dist_of_DistE Dist1.dE /Dist1.f fsfunE /= -(Dist1.supp d).
+  move=> i _; rewrite dist_of_DistE Dist1.dE /= -(Dist1.supp d).
   rewrite fsvalP ScaledConvex.scalept1 /=; congr (ScaledConvex.S1 _).
   case: i => i Hi /=; rewrite Dist1.supp inE in Hi; exact/eqP.
 by rewrite big_const (_ : #| _ | = 1) // -cardfE Dist1.supp cardfs1.
