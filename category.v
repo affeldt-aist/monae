@@ -690,7 +690,6 @@ Module Adj := AdjointFunctor.
 Notation "F -| G" := (Adj.adjunction F G).
 
 
-(*
 (* adjunctions compose into an adjunction *)
 Module AdjComp.
 Section composition_of_adjoint_functors.
@@ -710,7 +709,12 @@ Definition Eta : FId ~> G \O F :=
     \v [NId G0 \O F0 , G0 \O FId \O F0]
     \v (eta A0).
 Lemma EtaE : forall a, Eta a = G0 # (eta A1 (F0 a)) \o (eta A0 a) :> (_ -> _).
-Proof. by move=> a; cbn; rewrite functor_id 2!funcompidf 2!funcompfid. Qed.
+Proof.
+  move=> a; cbn.
+  rewrite ?(VCompE, HCompE, NIdE, homfunK, funcompfid, FIdf).
+  congr [homcomp _, (eta A0) a]; apply hom_ext.
+  by rewrite functor_id idfun_homE /= !funcompidf funcompfid.
+Qed.
 
 Definition Eps : F \O G ~> FId :=
   (eps A1)
@@ -718,65 +722,76 @@ Definition Eps : F \O G ~> FId :=
     \v ((NId F1) \h (eps A0) \h (NId G1))
     \v [NId F \O G , (F1 \O (F0 \O G0)) \O G1].
 Lemma EpsE : forall a, Eps a = (eps A1 _) \o F1 # (eps A0 (G1 a)) :> (_ -> _).
-Proof. by move=> a; cbn; rewrite functor_id 3!funcompfid funcompidf. Qed.
+Proof.
+  move=> a; cbn.
+  rewrite ?(VCompE, HCompE, NIdE, homfunK, funcompidf, FIdf).
+  congr [homcomp (eps A1) a, _]; apply hom_ext.
+  by rewrite functor_id idfun_homE /= funcompidf funcompfid.
+Qed.
 
 Lemma triL c : [homcomp Eps (F c), F # Eta c] = idfun.
 Proof.
-rewrite /Eps /Eta.
-rewrite VCompE homcomp_hom.
-rewrite VCompE homcomp_hom.
-rewrite VCompE homcomp_hom.
-rewrite !funcompfid.
-
-rewrite functor_o homcomp_hom.
-rewrite functor_o homcomp_hom.
-rewrite functor_o homcomp_hom.
-rewrite functor_o homcomp_hom.
-rewrite functor_o homcomp_hom.
-rewrite !functor_id !funcompidf !funcompfid.
-rewrite (triangular_left A1).
-
-         triangular_left : forall c : C,
-                           [homcomp eps (F c), F # eta c] = idfun;
-         triangular_right : forall d : D,
-                            [homcomp G # eps d, eta (G d)] = idfun }
-
-
-Lemma composite_adjoint : F \O F0 -| U0 \O U :: uni, couni.
-Proof.
-case: H0; rewrite /natural => [[H01 H02] [Ht01 Ht02]].
-case: H; rewrite /natural => [[H1 H2] [Ht1 Ht2]].
-split.
-  split => A B h; rewrite FIdf.
-  - rewrite {1}/couni [in LHS]compA {}H1 -compA.
-    rewrite {1}/couni -[in RHS]compA; congr (_ \o _).
-    rewrite [in LHS]FCompE -[in LHS](functor_o F) [in LHS]H01.
-    by rewrite -[in RHS](functor_o F).
-  - rewrite /uni -[in RHS]compA -[in RHS]H02 compA [in RHS]compA.
-    congr (_ \o _).
-    rewrite (FCompE U0 F0).
-    rewrite -[in RHS](functor_o U0).
-    rewrite -[in LHS](functor_o U0).
-    congr (_ # _).
-    by rewrite -H2.
-split.
-- rewrite /triangular_law1 => A.
-  rewrite /couni /uni /=.
-  rewrite FCompE -compA -functor_o.
-  rewrite (_ : @eps0 _ \o F0 # _ = @eta (F0 A)); first exact: Ht1.
-  rewrite functor_o compA -FCompE.
-  by rewrite -H01 /= FIdf -compA Ht01 compfid.
-- rewrite /triangular_law2 => A.
-  rewrite /couni /uni /=.
-  rewrite compA -[RHS](Ht02 (U A)); congr (_ \o _).
-  rewrite FCompE -functor_o; congr (_ # _).
-  rewrite functor_o -compA -FCompE.
-  by rewrite H2 FIdf compA Ht2 compidf.
+(* This proof does NOT follow the manner of 2-category, for now. *)
+rewrite EpsE.
+have->: [fun of F # Eta c] = [fun of F # [hom of [homcomp G0 # (eta A1) (F0 c), (eta A0) c]]].
+ congr [fun of F # _]; apply hom_ext; by rewrite EtaE.
+apply funext => x.
+rewrite functor_o !homfunK funcompE funcomp_homE homcompE homcompA -homcompE homcomp_hom -homcompA.
+set A := [fun of (eps A1) (F c)].
+set B := [fun of F # (eta A0) c].
+rewrite (_: [homcomp F1 # _, _]
+            = F1 # [hom of [homcomp (eps A0) ((G1 \O F1) (F0 c)), (F0 \O G0) # ((eta A1) (F0 c))]]);
+ last by rewrite homfunK funcomp_homE !functor_o.
+set C := [fun of F1 # _].
+have->: A ((C \o B) x) = (A \o C \o B) x by [].
+have<-: (A \o [fun of F1 # [hom of [homcomp (eta A1) (F0 c), (eps A0) (FId (F0 c))]]] \o B) x = (A \o C \o B) x.
+ congr ((A \o [fun of F1 # _] \o B) x); apply hom_ext.
+ by rewrite !homcomp_hom (natural (eps A0) _ _ ((eta A1) (F0 c))).
+rewrite functor_o homfunK -!homcompA (triangular_left A1 (F0 c)) funcompidf.
+congr (_ x).
+apply hom_ext.
+rewrite FCompE funcomp_homE -(functor_o F1).
+have->: idfun_hom (F (FId c)) = F1 # [hom of idfun].
+ rewrite functor_id; by apply hom_ext.
+congr (F1 # _).
+by apply/hom_ext /(triangular_left A0 c).
 Qed.
+
+Lemma triR d : [homcomp (G # Eps d), (Eta (G d))] = idfun.
+Proof.
+rewrite EtaE.
+have->: [fun of G # Eps d] = [fun of G # [hom of [homcomp (eps A1) d, F1 # (eps A0) (G1 d)]]].
+ congr [fun of G # _]; apply hom_ext; by rewrite EpsE.
+apply funext => x.
+rewrite functor_o !homfunK funcompE funcomp_homE homcompE homcompA -homcompE homcomp_hom -homcompA.
+set A := [fun of G # (eps A1) d].
+set B := [fun of (eta A0) (G d)].
+rewrite (_: [homcomp G0 # _, _]
+            = G0 # [hom of [homcomp G1 # (F1 # (eps A0) (G1 d)), (eta A1) (F0 ((G0 \O G1) d))]]);
+ last by rewrite homfunK funcomp_homE !functor_o.
+set C := [fun of G0 # _].
+have->: A ((C \o B) x) = (A \o C \o B) x by [].
+have<-: (A \o [fun of G0 # [hom of [homcomp (eta A1) (FId (G1 d)), (eps A0) (G1 d)]]] \o B) x = (A \o C \o B) x.
+ congr ((A \o [fun of G0 # _] \o B) x); apply hom_ext.
+ by rewrite !homcomp_hom (natural (eta A1) _ _ ((eps A0) (G1 d))).
+rewrite functor_o homfunK -!homcompA.
+rewrite (_ : [homcomp _, G0 # (eta _) _] = G0 # [hom of idfun]); last first.
+ rewrite (_ : [homcomp _, _] = G0 # [hom of [homcomp G1 # (eps A1) d, (eta A1) (G1 d)]]); last first.
+  by rewrite !functor_o homfunK.
+ congr [fun of G0 # _].
+ apply/hom_ext /(triangular_right A1 d).
+rewrite functor_id funcompidf.
+congr (_ x).
+apply hom_ext.
+rewrite funcomp_homE -functor_o.
+have->: idfun_hom (FId (G d)) = FId # [hom of idfun].
+ rewrite functor_id; by apply hom_ext.
+congr (FId # _).
+by apply/hom_ext /(triangular_right A0 (G1 d)).
+Qed.
+Definition adj_comp := mk triL triR.
 End composition_of_adjoint_functors.
 End AdjComp.
-*)
-
 
 (* monad *)
 Module JoinLaws.
