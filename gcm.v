@@ -3,7 +3,7 @@ From mathcomp Require Import ssreflect ssrfun ssrbool eqtype ssrnat seq.
 From mathcomp Require Import choice fintype finfun bigop.
 From infotheo Require Import Reals_ext Rbigop ssrR proba dist convex_choice.
 From mathcomp Require Import boolp classical_sets.
-From mathcomp Require Import finmap set.
+From mathcomp Require Import finmap.
 From infotheo Require Import gcm.
 Require category.
 
@@ -394,99 +394,58 @@ Local Notation F := Dist_functor.
 Local Notation G := forget_convType.
 Lemma triL0 c : (eps0 (F c)) \o (F # eta0 c) = idfun.
 Proof.
-apply funext=> x /=.
+apply funext => x /=.
 rewrite eps0E eta0E; apply: (@S1_inj _ _ x).
 rewrite S1_Convn_indexed_over_finType /=.
 pose cast (y : finsupp x) : FId c := let: FSetSub a _ := y in a.
-have Y0 : forall (i : finsupp (Distfmap (@Dist1.d c) x)),
+have Y0 : forall (i : finsupp (Distfmap (@Dist1.d _) x)),
   {a : finsupp x | fsval i = Dist1.d (cast a)}.
   case=> i /= Hi; apply cid; move: Hi.
-  rewrite supp_Distfmap_Dist1 => /imfsetP[c0 /= c0x Hi].
-  by exists (FSetSub c0x).
+  by rewrite supp_Distfmap_Dist1 => /imfsetP[c0 /= c0x Hi]; exists (FSetSub c0x).
 pose Y i := projT1 (Y0 i).
-set F := fun (i : finsupp (Distfmap (Dist1.d (A:=c)) x)) =>
-           scalept (x (cast (Y i))) (S1 (fsval i)).
-rewrite (eq_bigr F); last first.
-  move=> i _.
-  rewrite dist_of_DistE /= /F /Y.
-  case: (Y0 _)=> a /= ia /=.
-  suff -> : (Distfmap (@Dist1.d c) x) (fsval i) = x (cast a) by [].
-  rewrite ia Distfmap_inj //.
-  exact: Dist1_inj.
-  exact/fsvalP.
-rewrite {}/F.
+rewrite (eq_bigr (fun i => scalept (x (cast (Y i))) (S1 (fsval i)))); last first.
+  move=> i _; rewrite dist_of_DistE /F /Y; case: (Y0 _)=> a /= ia /=.
+  rewrite {1}ia Distfmap_inj //; [exact: Dist1_inj | exact/fsvalP].
 have HY' (i : finsupp x) :
   Dist1.d (fsval i) \in finsupp (Distfmap (@Dist1.d c) x).
   by rewrite supp_Distfmap_Dist1; apply/imfsetP => /=; exists (fsval i).
 set Y' := fun x0 => FSetSub (HY' x0).
 have Y'K : cancel Y' Y.
-  by move=> i; apply val_inj => /=; rewrite /Y; case: (Y0 _) => dd /= /Dist1_inj.
-have YK : cancel Y Y'.
-  by move=> i; apply val_inj => /=; rewrite /Y; case: (Y0 _).
-set dxy : Dist.t [finType of finsupp (Distfmap (@Dist1.d c) x)] :=
-  Dist_lift_supp.d (Dist_crop0.d x) Y'K.
-have Hdxy' : x \o cast \o Y =1 dxy.
-  rewrite /dxy /Dist_lift_supp.d => i /=.
-  rewrite fsfunE /Dist_lift_supp.D.
-  case: imfsetP.
-  - case=> /= j Hj ->.
-    by rewrite fsfunE ffunE ifT // inE.
-  - case /boolP: (x (cast (Y i)) == 0) => Hxi.
-      by rewrite (eqP Hxi).
-    elim.
-    exists (Y i) => /=.
-      by rewrite mem_finsupp fsfunE ffunE ifT // inE.
-    by rewrite YK.
+  by move=> i; apply val_inj => /=; rewrite /Y; case: (Y0 _) => ? /= /Dist1_inj.
+have YK : cancel Y Y' by move=> i; apply val_inj; rewrite /= /Y; case: (Y0 _).
+set dxy := dist_of_finDist.d (Dist_lift_supp.d (Dist_crop0.d x) Y'K).
+have Hdxy : x \o cast \o Y =1 dxy.
+  move=> i; rewrite dist_of_finDist.dE /= Dist_lift_supp.dE /=.
+  apply/eqP; case: ifPn.
+    by move/imfsetP => -[j Hj ->]; rewrite fsfunE ffunE ifT // inE.
+  apply/contraNT => x0; apply/imfsetP; exists (Y i) => //=.
+  by rewrite mem_finsupp fsfunE ffunE ifT // inE.
 clearbody dxy.
-set dxy' := dist_of_finDist.d dxy.
-have Hdxy : x \o cast \o Y =1 dxy'.
-  move=> i; rewrite /dxy' /dist_of_finDist /=. unlock.
-  by rewrite /= ffunE -Hdxy'.
-rewrite (eq_bigr (fun i => scalept (dxy' i) (S1 (fsval i)))); last first.
+rewrite (eq_bigr (fun i => scalept (dxy i) (S1 (fsval i)))); last first.
   move=> i; by rewrite /= -Hdxy.
-rewrite -S1_Convn_indexed_over_finType. congr S1.
+rewrite -S1_Convn_indexed_over_finType; congr S1.
 apply Dist_ext => a /=.
-rewrite /Convn_indexed_over_finType convn_convdist /=.
-rewrite ConvDist.dE fsfunE /=.
+rewrite /Convn_indexed_over_finType convn_convdist /= ConvDist.dE fsfunE /=.
 case: ifPn => Ha.
-- rewrite /Convn_indexed_over_finType.dist /=.
-  rewrite /Convn_indexed_over_finType.d_enum /=.
-  rewrite -(@Distfmap_inj _ (@Dist1.d c)); first last.
-  + move/bigfcupP : Ha => [/= i /andP[/=]].
-    rewrite /index_enum -enumT mem_enum /= => Hi.
-    rewrite /Convn_indexed_over_finType.d_enum ffunE -Hdxy /= /Y.
-    case: (Y0 _) => -x0 /= -> _.
-    rewrite Dist1.supp inE => /eqP ->; exact/fsvalP.
-  + exact: Dist1_inj.
-  rewrite /Distfmap DistBind.dE.
-  rewrite ifT; last first.
-    apply/bigfcupP.
-    exists (Dist1.d (Dist1.d a)).
-      rewrite andbT imfset_id.
-      apply/imfsetP; exists a => //=.
-      move/bigfcupP : Ha => [/= i /andP[/=]].
-      rewrite /index_enum -enumT mem_enum /= => Hi.
-      rewrite /Convn_indexed_over_finType.d_enum ffunE -Hdxy /= /Y.
-      case: (Y0 _) => x0 /= -> _.
-      rewrite Dist1.supp inE => /eqP ->; exact/fsvalP.
-    rewrite mem_finsupp Dist1.dE inE eqxx; apply/eqP; lra.
-  rewrite (reindex_onto enum_rank enum_val) /=; last by move=> i _; exact: enum_valK.
-  rewrite -(@eq_big _ _ _ _ _ xpredT _
-       (fun j : [finType of finsupp (Distfmap (Dist1.d (A:=c)) x)] =>
-          x (cast (Y j)) * fsval j a)); last first.
-  + move=> i _.
-    by rewrite ffunE -Hdxy enum_rankK.
-  + move=> i.
-    by rewrite enum_rankK eqxx.
+- rewrite /Convn_indexed_over_finType.d_enum /=.
+  have ax : a \in finsupp x.
+    case/bigfcupP : Ha => i /andP[/= _].
+    rewrite /Convn_indexed_over_finType.d_enum ffunE -Hdxy /Y /=.
+    case: (Y0 _) => -x0 /= -> _; rewrite Dist1.supp inE => /eqP ->; exact/fsvalP.
+  rewrite -(Distfmap_inj (@Dist1_inj c) ax) /Distfmap DistBind.dE ifT; last first.
+    apply/bigfcupP; exists (Dist1.d (Dist1.d a)).
+      rewrite andbT imfset_id; apply/imfsetP; exists a => //=.
+      by rewrite Dist1.supp inE.
+  rewrite (reindex_onto enum_rank enum_val) /=; last by move=> *; exact: enum_valK.
+  rewrite -(@eq_big _ _ _ _ _ xpredT _ (fun j => x (cast (Y j)) * fsval j a)); last first.
+  + by move=> i _; rewrite ffunE -Hdxy enum_rankK.
+  + by move=> i; rewrite enum_rankK eqxx.
   symmetry.
   rewrite big_seq_fsetE /= (reindex Y') /=; last first.
-    exists Y => i _.
-      by rewrite Y'K.
-    by rewrite YK.
+    by exists Y => i _; [rewrite Y'K | rewrite YK].
   apply eq_bigr => i _ /=.
   rewrite !Dist1.dE !inE Y'K inj_eq //; exact: Dist1_inj.
 -
-
 
 
 Admitted.
