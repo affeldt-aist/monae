@@ -534,7 +534,11 @@ case: ifPn => Ha.
 - rewrite /Convn_indexed_over_finType.dist /=.
   rewrite /Convn_indexed_over_finType.d_enum -Hdxy /=.
   rewrite -(Distfmap_inj (g:=Dist1.d (A:=c))); first last.
-  + rewrite mem_finsupp. admit.
+  + move/bigfcupP : Ha => [/= i /andP[/=]].
+    rewrite /index_enum -enumT mem_enum /= => Hi.
+    rewrite /Convn_indexed_over_finType.d_enum ffunE -Hdxy /= /Yx0.
+    case: cid => -[x01 x02] /= [x02x [ ->{x01}]].
+    by rewrite Dist1.supp inE => /eqP -> _; rewrite Dist1.supp inE => /eqP ->.
   + move=> ?; apply Dist1_inj.
   rewrite /Distfmap.
   rewrite DistBind.dE /DistBind.f fsfunE /=.
