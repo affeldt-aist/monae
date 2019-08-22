@@ -501,6 +501,8 @@ by apply nattrans_ext=> a; apply/hom_ext.
 Qed.
 Lemma VCompE : g \v f = (fun a => [hom of g a \o f a]) :> (_ ~~> _).
 Proof. reflexivity. Qed.
+Lemma VCompE_fun a : (g \v f) a = g a \o f a :> (_ -> _).
+Proof. reflexivity. Qed.
 End vcomp_lemmas.
 
 (* horizontal composition, or Godement product *)

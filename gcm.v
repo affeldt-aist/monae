@@ -1057,7 +1057,45 @@ by rewrite epsCE eps0_Dist1.
 Qed.
 Lemma join_right_unit : JoinLaws.join_right_unit ret join.
 Proof.
-Admitted.
+rewrite /JoinLaws.join_right_unit => a.
+rewrite joinE.
+(* NB: maybe worth factoring out? *)
+have -> :
+  forall x y (f : {hom x, y}) , P_delta # f = P_delta_left # f :> (_ -> _)
+    by move=> x y f; apply funext.
+move: (AdjComp.triL triL0 triL1) => triL01.
+move: (AdjComp.triL triLC triL01 a) <-.
+congr funcomp.
+- rewrite epsE' /AdjComp.Eps /AdjComp.F /=.
+  rewrite 4!funcompfid.
+  congr funcomp.
+  by rewrite /AdjComp.G 2!NIdO_HComp !HCompA /= !funcompfid !funcompidf //.
+- rewrite retE' /P_delta_left /AdjComp.Eta /AdjComp.G /AdjComp.F.
+  congr Fun.
+  rewrite /P_delta /P_delta_right /P_delta_left.
+  apply hom_ext.
+  (* LHS *)
+  rewrite [in LHS]VCompE [in LHS]homcomp_hom [in RHS]VCompE [in RHS]homcomp_hom.
+  congr funcomp.
+  rewrite [in LHS]VCompE [in LHS]homcomp_hom [in RHS]VCompE [in RHS]homcomp_hom.
+  congr funcomp.
+  rewrite [in LHS]VCompE [in LHS]homcomp_hom [in RHS]VCompE [in RHS]homcomp_hom.
+  rewrite 2!homcompA.
+  congr funcomp.
+  rewrite -homcompA /= funcompfid.
+  rewrite HCompE homcomp_hom NIdE functor_id funcompfid.
+  rewrite (HCompE (NId FC)) homcomp_hom NIdE functor_id funcompfid.
+  rewrite ![in LHS]HCompA /= !funcompidf !funcompfid.
+  rewrite HCompE homcomp_hom NIdE funcompidf.
+  rewrite (HCompE _ (NId UC)) homcomp_hom NIdE funcompidf /= /id_f.
+  rewrite HCompE homcomp_hom NIdE funcompidf /= /id_f.
+  rewrite HCompE homcomp_hom NIdE functor_id funcompfid.
+  (* RHS *)
+  rewrite HCompE homcomp_hom NIdE functor_id funcompfid.
+  rewrite HCompE homcomp_hom NIdE /= /id_f !funcompidf funcompfid.
+  rewrite HCompE homcomp_hom NIdE functor_id funcompfid.
+  by rewrite HCompE homcomp_hom funcompidf /= /id_f.
+Qed.
 
 Lemma joinA : JoinLaws.join_associativity join.
 Proof.
