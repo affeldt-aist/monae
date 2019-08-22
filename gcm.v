@@ -400,20 +400,19 @@ rewrite eps0E eta0E; apply: (@S1_inj _ _ x).
 rewrite S1_Convn_indexed_over_finType /=.
 
 have Y : forall (i : finsupp (Distfmap (Dist1.d (A:=c)) x)),
-    exists a_x0 : prod (Dist (Dist c)) (FId c),
+    {a_x0 : prod (Dist (Dist c)) (FId c) |
         a_x0.2 \in finsupp x /\
-               a_x0.1 = Dist1.d (Dist1.d a_x0.2) /\
-               fsval i \in finsupp a_x0.1.
-- case=> i /=.
+        fsval i \in finsupp (Dist1.d (Dist1.d a_x0.2))}.
+- case=> i /= Hi; apply cid; move: Hi.
   rewrite supp_Distfmap_Dist1 => /imfsetP[c0 /= c0x ->{i}].
   by exists (Dist1.d (Dist1.d c0), c0) => /=; rewrite Dist1.supp inE.
-set Ya := fun i => match cid (Y i) with exist a_x0 _ => a_x0.1 end.
-set Yx0 := fun i => match cid (Y i) with exist a_x0 _ => a_x0.2 end.
+set Ya := fun i => match Y i with exist a_x0 _ => a_x0.1 end.
+set Yx0 := fun i => match Y i with exist a_x0 _ => a_x0.2 end.
 have HYx0 (i : [finType of finsupp (Distfmap (Dist1.d (A:=c)) x)]) :
   Yx0 i \in finsupp x.
   case: i => x0 Hx0.
   rewrite /Yx0.
-  by case: cid => -[dd x1] /= [].
+  case: (Y.[Hx0])%fmap; tauto.
 set Yx0' := fun i : [finType of finsupp (Distfmap (Dist1.d (A:=c)) x)] =>
     (FSetSub (HYx0 i)).
 set F := fun (i : finsupp (Distfmap (Dist1.d (A:=c)) x)) =>
@@ -425,8 +424,8 @@ rewrite (eq_bigr F); last first.
   rewrite dist_of_DistE(* /Distfmap*) /=.
   rewrite /F /Yx0.
   case: i => i /= iP.
-  case: (cid (Y.[iP])%fmap).
-  case => a x0 /= [] x0x [] ax0 [] ia /=.
+  case: (Y.[iP])%fmap.
+  case => a x0 /= [] x0x [] ia /=.
 (*
   case=> i /= iP; rewrite dist_of_DistE /Distfmap /=.
   move: iP; rewrite /Distfmap DistBind.supp=> /bigfcupP [] a /andP [].
@@ -470,10 +469,10 @@ rewrite (eq_bigr F); last first.
     suff <- : x a' = x x0.
       rewrite (eq_bigl _ _ (eq_sym _)) -big_filter filter_pred1_uniq //.
       by rewrite big_seq1.
-    move: ia; rewrite ax0; rewrite Dist1.supp => /imfsetP [] x1 /=.
+    move: ia; rewrite Dist1.supp => /imfsetP [] x1 /=.
     rewrite inE => /eqP x1x0 ix1.
     by move: x1x0; rewrite -ix1 ia' => /Dist1_inj ->.
-  + move: ia; rewrite ax0 Dist1.supp=> /imfsetP [] x1 /=.
+  + move: ia; rewrite Dist1.supp=> /imfsetP [] x1 /=.
     rewrite inE=> /eqP x1x0 ix1.
     rewrite ix1 x1x0 /=.
     by rewrite in_imfset.
@@ -484,7 +483,7 @@ have H : finsupp (Distfmap (Dist1.d (A:=c)) x) =
 have H' : forall i, Dist1.d (Yx0 i) = fsval i.
   move=> i.
   rewrite /Yx0.
-  case: (cid (Y i)) => -[dd xc] /= [Hxc [->{dd}]].
+  case: (Y i) => -[dd xc] /= [Hxc].
   rewrite Dist1.supp /=.
   by rewrite inE => /eqP.
 (*
@@ -504,7 +503,7 @@ have x0YK : cancel x0Y Yx0'.
   rewrite /Yx0' /x0Y => i.
   apply val_inj => /=.
   rewrite /Yx0.
-  case: cid => -[dd j] /= [Hj [->]].
+  case: (Y.[H'' i])%fmap => -[dd j] /= [Hj].
   by rewrite Dist1.supp inE => /eqP /Dist1_inj.
 set dxy : Dist.t [finType of finsupp (Distfmap (Dist1.d (A:=c)) x)] :=
   Dist_lift_supp.d (Dist_crop0.d x) x0YK.
@@ -541,7 +540,7 @@ case: ifPn => Ha.
   + move/bigfcupP : Ha => [/= i /andP[/=]].
     rewrite /index_enum -enumT mem_enum /= => Hi.
     rewrite /Convn_indexed_over_finType.d_enum ffunE -Hdxy /= /Yx0.
-    case: cid => -[x01 x02] /= [x02x [ ->{x01}]].
+    case: (Y _) => -[x01 x02] /= [x02x].
     by rewrite Dist1.supp inE => /eqP -> _; rewrite Dist1.supp inE => /eqP ->.
   + move=> ?; apply Dist1_inj.
   rewrite /Distfmap DistBind.dE.
@@ -555,7 +554,7 @@ case: ifPn => Ha.
       move/bigfcupP : Ha => [/= i /andP[/=]].
       rewrite /index_enum -enumT mem_enum /= => Hi.
       rewrite /Convn_indexed_over_finType.d_enum ffunE -Hdxy /= /Yx0.
-      case: cid => -[x01 x02] /= [x02x [ ->{x01}]].
+      case: (Y _) => -[x01 x02] /= [x02x].
       by rewrite Dist1.supp inE => /eqP -> _; rewrite Dist1.supp inE => /eqP ->.
    rewrite mem_finsupp Dist1.dE inE eqxx; apply/eqP; lra.
   rewrite (reindex_onto enum_rank enum_val) /=;
@@ -598,7 +597,7 @@ Import tuple.
   + move=> i _ /=.
     apply val_inj => /=.
     rewrite /Yx0 /x0Y.
-    case: cid => -[dd x1] /= [H1 [->]].
+    case: (Y.[H'' i])%fmap => -[dd x1] /= [H1].
     by rewrite Dist1.supp inE => /eqP /Dist1_inj.
 -
 
