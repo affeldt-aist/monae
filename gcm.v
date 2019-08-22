@@ -522,8 +522,8 @@ have pmf1xy : \sum_(a in [finType of finsupp (Distfmap (Dist1.d (A:=c)) x)])
   rewrite (eq_bigr (fun j => x (Yx0 j))); last by move=> i _; rewrite ffunE.
   admit.
 set dxy := mkDist pmf1xy.
-clearbody dxy => {fxy pmfxy pmf1xy}.
 have Hdxy : x \o Yx0 =1 dxy by move=> x0; rewrite ffunE.
+clearbody dxy => {fxy pmfxy pmf1xy}.
 rewrite (eq_bigr (fun i => scalept (dxy i) (S1 (fsval i)))); last first.
   by move=> i; rewrite -Hdxy.
 rewrite -S1_Convn_indexed_over_finType; congr S1.
@@ -532,7 +532,7 @@ rewrite /Convn_indexed_over_finType convn_convdist /=.
 rewrite ConvDist.dE fsfunE /=.
 case: ifPn => Ha.
 - rewrite /Convn_indexed_over_finType.dist /=.
-  rewrite /Convn_indexed_over_finType.d_enum -Hdxy /=.
+  rewrite /Convn_indexed_over_finType.d_enum /=.
   rewrite -(Distfmap_inj (g:=Dist1.d (A:=c))); first last.
   + move/bigfcupP : Ha => [/= i /andP[/=]].
     rewrite /index_enum -enumT mem_enum /= => Hi.
@@ -563,7 +563,7 @@ case: ifPn => Ha.
        (fun j : [finType of finsupp (Distfmap (Dist1.d (A:=c)) x)] =>
           x (Yx0 j) * fsval j a)); last first.
   + move=> i _.
-    by rewrite ffunE enum_rankK.
+    by rewrite ffunE -Hdxy enum_rankK.
   + move=> i.
     by rewrite enum_rankK eqxx.
   have HYx0 (i : [finType of finsupp (Distfmap (Dist1.d (A:=c)) x)]) :
