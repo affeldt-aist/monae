@@ -18,6 +18,6 @@ smallstep.v
 smallstep_monad.v
 smallstep_examples.v
 category.v
-gcm.v
+gcm_model.v
 altprob_model.v
 -R . monae
