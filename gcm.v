@@ -105,7 +105,7 @@ Local Notation G := forget_choiceType.
 Lemma triLC c : (epsC (F c)) \o (F # etaC c) = idfun.
 Proof. by rewrite etaCE epsCE. Qed.
 Lemma triRC d : (G # epsC d) \o (etaC (G d)) = idfun.
-Admitted.
+Abort.
 End epsC_etaC.
 
 (* convType as a category *)
@@ -474,7 +474,7 @@ case: ifPn => Ha.
 Qed.
 
 Lemma triR0 d : (G # eps0 d) \o (eta0 (G d)) = idfun.
-Admitted.
+Abort.
 
 End eps0_eta0.
 
@@ -754,7 +754,7 @@ apply/eqEsubset=> a /=.
   by exists a.
 Qed.
 Lemma triR1 d : (G # eps1 d) \o (eta1 (G d)) = idfun.
-Admitted.
+Abort.
 
 End eps1_eta1.
 
