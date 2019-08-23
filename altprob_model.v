@@ -1,10 +1,10 @@
 Require Import Reals.
 From mathcomp Require Import ssreflect ssrfun ssrbool eqtype ssrnat seq.
 From mathcomp Require Import choice fintype finfun bigop.
-From infotheo Require Import Reals_ext Rbigop ssrR proba dist convex_choice.
 From mathcomp Require Import boolp classical_sets.
 From mathcomp Require Import finmap.
-From infotheo Require Import gcm.
+From infotheo Require Import Reals_ext Rbigop ssrR proba dist convex_choice.
+From infotheo Require Import necset.
 Require category.
 
 Set Implicit Arguments.
