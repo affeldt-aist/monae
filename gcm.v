@@ -376,10 +376,6 @@ Proof. by rewrite /eta0; unlock. Qed.
 Lemma eta0E (T : choiceType) : eta0 T = (@Dist1.d _) :> (_ -> _).
 Proof. by rewrite /eta0; unlock. Qed.
 
-(* TODO: move *)
-Lemma set1_inj (C : choiceType) (a b : C) : set1 a = set1 b -> a = b.
-Proof. by rewrite /set1 => /(congr1 (fun f => f a)) <-. Qed.
-
 Require Import Lra.
 
 (* TODO: move? *)
