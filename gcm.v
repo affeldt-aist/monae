@@ -11,6 +11,19 @@ Set Implicit Arguments.
 Unset Strict Implicit.
 Unset Printing Implicit Defensive.
 
+Section TODO_move_to_other_file.
+Section misc_classical_sets.
+Local Open Scope classical_set_scope.
+Lemma bigcup_image (A I J : Type) (P : set I) (f : I -> J) (X : J -> set A) :
+  \bigcup_(x in f @` P) X x = \bigcup_(x in P) X (f x).
+Proof.
+apply eqEsubset=> x.
+- by case=> j [] i pi <- Xfix; exists i.
+- by case=> i Pi Xfix; exists (f i); first by  exists i.
+Qed.
+End misc_classical_sets.
+End TODO_move_to_other_file.
+
 (* choiceType as a category *)
 (* Type as a category *)
 Section choiceType_category.
@@ -716,12 +729,26 @@ Lemma eta1E': eta1 = Natural eta1'_natural.
 Proof. by rewrite /eta1; unlock. Qed.
 Lemma eta1E (C : convType) : eta1 C = (@necset1 _) :> (_ -> _).
 Proof. by rewrite /eta1; unlock. Qed.
+Lemma eta1E'' (C : convType) (x : C) : eta1 C x = necset1 x.
+Proof. by rewrite /eta1; unlock. Qed.
 
 Import homcomp_notation.
 Local Notation F := necset_functor.
 Local Notation G := forget_semiCompSemiLattConvType.
+Lemma necset1E (T : convType) (t : T) : necset1 t = [set t] :> set T.
+Proof. done. Qed.
 Lemma triL1 c : (eps1 (F c)) \o (F # eta1 c) = idfun.
-Admitted.
+Proof.
+apply funext=> x /=; apply/necset_ext=> /=.
+rewrite eps1E eta1E' /= necset_morE' /= /eta1'' /=.
+rewrite -[in RHS](hull_cset x); congr hull.
+apply/eqEsubset=> a /=.
+- case=> y [] b xb <-.
+  by rewrite necset1E => ->.
+- move=> xa.
+  exists (necset1 a); last by rewrite necset1E.
+  by exists a.
+Qed.
 Lemma triR1 d : (G # eps1 d) \o (eta1 (G d)) = idfun.
 Admitted.
 
