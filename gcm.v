@@ -435,19 +435,25 @@ case: ifPn => Ha.
   rewrite -(Distfmap_inj (@Dist1_inj c) ax) /Distfmap DistBind.dE ifT; last first.
     apply/bigfcupP; exists (Dist1.d (Dist1.d a)).
       rewrite andbT imfset_id; apply/imfsetP; exists a => //=.
-      by rewrite Dist1.supp inE.
+    by rewrite Dist1.supp inE.
   rewrite (reindex_onto enum_rank enum_val) /=; last by move=> *; exact: enum_valK.
-  rewrite -(@eq_big _ _ _ _ _ xpredT _ (fun j => x (cast (Y j)) * fsval j a)); last first.
-  + by move=> i _; rewrite ffunE -Hdxy enum_rankK.
-  + by move=> i; rewrite enum_rankK eqxx.
-  symmetry.
-  rewrite big_seq_fsetE /= (reindex Y') /=; last first.
+  rewrite -(@eq_big _ _ _ _ _ xpredT _ (fun j => x (cast (Y j)) * fsval j a)); last 2 first.
+    by move=> i; rewrite enum_rankK eqxx.
+    by move=> i _; rewrite ffunE -Hdxy enum_rankK.
+  rewrite [in RHS]big_seq_fsetE /= (reindex Y') /=; last first.
     by exists Y => i _; [rewrite Y'K | rewrite YK].
   apply eq_bigr => i _ /=.
   rewrite !Dist1.dE !inE Y'K inj_eq //; exact: Dist1_inj.
--
-
-
+- apply/eqP; apply: contraNT Ha => xa0.
+  have [x' x'a] : exists x' : finsupp (Distfmap (@Dist1.d c) x), fsval x' = x.
+    admit.
+  apply/bigfcupP; exists (enum_rank x').
+    rewrite /index_enum -enumT mem_enum /= /Convn_indexed_over_finType.d_enum ffunE -Hdxy /=.
+    rewrite enum_rankK /Y /=.
+    case: (Y0 _) => //= x0 Hx0.
+    rewrite -x'a Hx0 Dist1.dE inE eqxx; exact/ltRP.
+  rewrite mem_finsupp /= enum_rankK.
+  by apply: contra xa0; rewrite x'a eq_sym.
 Admitted.
 
 Lemma triR0 d : (G # eps0 d) \o (eta0 (G d)) = idfun.
