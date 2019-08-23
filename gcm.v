@@ -376,8 +376,6 @@ Proof. by rewrite /eta0; unlock. Qed.
 Lemma eta0E (T : choiceType) : eta0 T = (@Dist1.d _) :> (_ -> _).
 Proof. by rewrite /eta0; unlock. Qed.
 
-Require Import Lra.
-
 (* TODO: move? *)
 Lemma Distfmap_inj (A : choiceType) (g : A -> Dist A)
   (x : Dist.t A) a : injective g -> a \in finsupp x ->
@@ -387,7 +385,7 @@ move=> Hg xa.
 rewrite /Distfmap DistBind.dE imfset_id ifT; last first.
   apply/bigfcupP; exists (Dist1.d (g a)) => //.
     by rewrite andbT; apply/imfsetP => /=; exists a.
-  rewrite mem_finsupp Dist1.dE inE eqxx; apply/eqP; lra.
+  rewrite mem_finsupp Dist1.dE inE eqxx; exact/eqP/R1_neq_R0.
 rewrite (big_fsetID _ (xpred1 a)) /= [Y in (_ + Y)%R](_ : _ = 0)%R ?addR0; last first.
   rewrite -(big_fset_condE _ (finsupp x)) big1 // => a0 a0a.
   by rewrite Dist1.dE inE ifF // ?mulR0 //; apply: contraNF a0a => /eqP /Hg ->.
@@ -465,8 +463,7 @@ case: ifPn => Ha.
     case: (Y0 _) => //= x0 /Dist1_inj <-.
     by apply/ltRP/Dist.gt0.
   rewrite mem_finsupp /= enum_rankK.
-  rewrite /= Dist1.dE inE eqxx.
-  apply/eqP; lra.
+  rewrite /= Dist1.dE inE eqxx; exact/eqP/R1_neq_R0.
 Qed.
 
 Lemma triR0 d : (G # eps0 d) \o (eta0 (G d)) = idfun.
