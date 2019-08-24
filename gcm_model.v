@@ -886,11 +886,8 @@ Lemma epsE (L : semiCompSemiLattConvType) :
 Proof.
 rewrite epsE''; cbn.
 congr funcomp; congr funcomp.
-- rewrite 2!HCompE 2!homcomp_hom homcompA -functor_o_fun.
-  rewrite !NIdE funcompidf functor_id.
-  by congr [fun of necset_mor _]; rewrite hom_ext /= funcompfid.
-- do 2 rewrite HCompE homcomp_hom NIdE functor_id funcompfid.
-  by rewrite HCompE homcomp_hom -NIdO_HComp NIdE funcompidf.
+- by rewrite HCompId HIdComp.
+- by rewrite 2!HCompId -NIdFComp HIdComp.
 Qed.
 
 Lemma retE'' (T : Type) :
@@ -922,10 +919,7 @@ Lemma joinE (T : Type) :
   join T = @eps (P_delta_left T) :> (_ -> _).
 Proof.
 rewrite /join.
-do ! rewrite VCompE homcomp_hom.
-rewrite funcompfid funcompidf.
-rewrite HCompE homcomp_hom NIdE functor_id funcompfid.
-by rewrite HCompE homcomp_hom NIdE funcompidf.
+by rewrite !VCompE HCompId HIdComp funcompfid.
 Qed.
 
 Lemma ret_natural : JoinLaws.ret_naturality ret.
@@ -954,35 +948,15 @@ have -> :
 move: (AdjComp.triL triL0 triL1) => triL01.
 move: (AdjComp.triL triLC triL01 a) <-.
 congr funcomp.
-- rewrite epsE' /AdjComp.Eps /AdjComp.F /=.
+- rewrite epsE' /AdjComp.Eps /AdjComp.F; cbn.
   rewrite 4!funcompfid.
   congr funcomp.
-  by rewrite /AdjComp.G 2!NIdO_HComp !HCompA /= !funcompfid !funcompidf //.
+  by rewrite -NIdFComp !HCompId !HIdComp.
 - rewrite retE' /P_delta_left /AdjComp.Eta /AdjComp.G /AdjComp.F.
   congr Fun.
-  rewrite /P_delta /P_delta_right /P_delta_left.
-  apply hom_ext.
-  (* LHS *)
-  rewrite [in LHS]VCompE [in LHS]homcomp_hom [in RHS]VCompE [in RHS]homcomp_hom.
-  congr funcomp.
-  rewrite [in LHS]VCompE [in LHS]homcomp_hom [in RHS]VCompE [in RHS]homcomp_hom.
-  congr funcomp.
-  rewrite [in LHS]VCompE [in LHS]homcomp_hom [in RHS]VCompE [in RHS]homcomp_hom.
-  rewrite 2!homcompA.
-  congr funcomp.
-  rewrite -homcompA /= funcompfid.
-  rewrite HCompE homcomp_hom NIdE functor_id funcompfid.
-  rewrite (HCompE (NId FC)) homcomp_hom NIdE functor_id funcompfid.
-  rewrite ![in LHS]HCompA /= !funcompidf !funcompfid.
-  rewrite HCompE homcomp_hom NIdE funcompidf.
-  rewrite (HCompE _ (NId UC)) homcomp_hom NIdE funcompidf /= /id_f.
-  rewrite HCompE homcomp_hom NIdE funcompidf /= /id_f.
-  rewrite HCompE homcomp_hom NIdE functor_id funcompfid.
-  (* RHS *)
-  rewrite HCompE homcomp_hom NIdE functor_id funcompfid.
-  rewrite HCompE homcomp_hom NIdE /= /id_f !funcompidf funcompfid.
-  rewrite HCompE homcomp_hom NIdE functor_id funcompfid.
-  by rewrite HCompE homcomp_hom funcompidf /= /id_f.
+  rewrite /P_delta /P_delta_right /P_delta_left hom_ext.
+  rewrite !VCompE ![in RHS]HCompE !VCompE !funcompfid !funcompidf.
+  by rewrite -!NIdFComp !HCompId !HIdComp.
 Qed.
 
 Lemma joinA : JoinLaws.join_associativity join.
