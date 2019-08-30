@@ -38,7 +38,7 @@ This library has been applied to other formalizations:
 - [[smallstep_monad.v][smallstep_monad.v]]: equivalence operational semantics/denotation
 - [[smallstep_examples.v][smallstep_examples.v]]: sample imperative programs
 - [[category.v][category.v]]: formalization of categories (generalization of ~monad.v~)
-- [[gcm_model.s][gcm_model.v]]: model of the geometrically convex monad
+- [[gcm_model.v][gcm_model.v]]: model of the geometrically convex monad
 - [[altprob_model.v][altprob_model.v]]: wip
 
 ** License
