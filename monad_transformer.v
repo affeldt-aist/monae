@@ -4,18 +4,29 @@ From mathcomp Require Import finfun bigop.
 From mathcomp Require boolp.
 Require Import monad fail_monad.
 
-(* - monad morphism
+(* main: reference modular monad transformer, Jaskelioff ESOP 2009 *)
 
-   - monad transformer
+(* - Module monadM
+     monad morphism
+   - Module monadT.
+     monad transformer
+   - examples of monad transformers
      - state monad transformer
      - exception monad transformer
      - continuation monad transformer
-
-    - examples
-       - usage of continuation monad transformer
+       continuation_monad_transformer_examples
+   - Section instantiations_with_the_identity_monad
+   - Section calcul.
+     example using the model of callcc
+   - Module Lifting
+     Definition 14
+   - Module AOperation
+     Definition 15
+   - Section proposition17.
+   - Section theorem19.
+     algebraic lifting
+   - Section examples_of_lifting.
 *)
-
-(* modular monad transformer, Jaskelioff ESOP 2009 *)
 
 Set Implicit Arguments.
 Unset Strict Implicit.
@@ -63,6 +74,9 @@ rewrite [RHS](_ : _ = (Join \o (N # Ret \o N # h)) (f _ m)); last first.
 by rewrite compA joinMret.
 Qed.
 End monadM_lemmas.
+
+Definition natural_of_monadM (M N : monad) (f : monadM M N) : M ~> N :=
+  Natural.Pack (@Natural.Class _ _ _ (natural_monadM f)).
 
 Module MonadT.
 Record class_of (T : monad -> monad) := Class {
@@ -131,7 +145,7 @@ Qed.
 
 End state_monad_transformer.
 
-Definition statemonad_transformer S : monadT :=
+Definition stateT S : monadT :=
   MonadT.Pack (@MonadT.Class (estateMonadM S) (@retS S) (@bindS S) (@stateMonadM S)).
 
 Section exception_monad_transformer.
@@ -173,7 +187,7 @@ Qed.
 
 End exception_monad_transformer.
 
-Definition exceptionmonad_transformer Z : monadT :=
+Definition errorT Z : monadT :=
   MonadT.Pack (@MonadT.Class (eexceptionMonadM Z) (@retX Z) (@bindX Z) (@exceptionMonadM Z)).
 
 Section continuation_monad_tranformer.
@@ -212,58 +226,55 @@ Qed.
 
 End continuation_monad_tranformer.
 
-Definition contMonadT r : monadT :=
+Definition contT r : monadT :=
   MonadT.Pack (@MonadT.Class (econtMonadM r) (@retC r) (@bindC r) (@contMonadM r)).
 
-Definition callcc r (M : monad) A B (f : (A -> contMonadT r M B) -> contMonadT r M A)
-  : contMonadT r M A :=
-  fun k : A -> M r => f (fun x _ => k x) k.
-
-Definition abort r X (M : monad) A : contMonadT r M A :=
-  fun k : A -> M r => Ret X.
-Arguments abort {r} _ {M} {A}.
+Definition abortT r X (M : monad) A : contT r M A := fun _ : A -> M r => Ret X.
+Arguments abortT {r} _ {M} {A}.
 
 Require Import state_monad.
 
-Section examples_continuation_monad_transformer.
+Section continuation_monad_transformer_examples.
 
-Definition foreach (m : monad) (items : list nat) (body : nat -> contMonadT unit m unit) : m unit :=
-  foldr
-    (fun x next => (body x) (fun _ => next))
-    (Ret tt)
-    items.
-
-Fixpoint for_loop (m : monad) (it min : nat) (body : nat -> contMonadT unit m unit) : m unit :=
+Fixpoint for_loop (M : monad) (it min : nat) (body : nat -> contT unit M unit) : M unit :=
   if it <= min then Ret tt
   else if it is it'.+1 then
       (body it') (fun _ => for_loop it' min body)
       else Ret tt.
 
 Section for_loop_lemmas.
-Variable m : monad.
-Implicit Types body : nat  -> contMonadT unit m unit.
+Variable M : monad.
+Implicit Types body : nat  -> contT unit M unit.
 
-Lemma loop0 : forall i body, for_loop i i body = Ret tt.
+Lemma loop0 i body : for_loop i i body = Ret tt.
 Proof.
-move => i body /=.
 by case i => //= n; rewrite ltnS leqnn.
 Qed.
 
-Lemma loop1 : forall i j body, for_loop (i.+1 + j) i body =
+Lemma loop1 i j body : for_loop (i.+1 + j) i body =
   (body (i + j)) (fun _ => for_loop (i + j) i body).
 Proof.
-move => i j body /=.
+rewrite /=.
 by case : ifPn ; rewrite ltnNge leq_addr.
 Qed.
 
-Lemma loop2 : forall i j body,
-  body (i + j) = abort tt -> for_loop (i + j).+1 i body = Ret tt.
+Lemma loop2 i j body :
+  body (i + j) = abortT tt -> for_loop (i + j).+1 i body = Ret tt.
 Proof.
-move => i j body Hbody /=.
+move=> Hbody /=.
 case : ifPn => Hcond.
-reflexivity.
-by rewrite Hbody /= /abort.
+- reflexivity.
+- by rewrite Hbody /= /abortT.
 Qed.
+
+End for_loop_lemmas.
+(* TODO : instantiate with RunStateMonad *)
+
+Definition foreach (M : monad) (items : list nat) (body : nat -> contT unit M unit) : M unit :=
+  foldr
+    (fun x next => (body x) (fun _ => next))
+    (Ret tt)
+    items.
 
 (* Lemma loop3 : forall i j body, *)
 (*      foreach (i + j).+1 i body = Ret tt -> body (i + j) = @abort_tt m unit. *)
@@ -292,14 +303,10 @@ Qed.
 (* move => bl. *)
 (* Qed *)
 
-End for_loop_lemmas.
-(* TODO : instantiate with RunStateMonad *)
+Section sum.
+Variables M : stateMonad nat.
 
-Section sum_example.
-
-Variables ms : stateMonad nat.
-
-Let sum n : ms unit := for_loop n O
+Let sum n : M unit := for_loop n O
   (fun i : nat => liftC (Get >>= (fun z => Put (z + i)) ) ).
 
 Lemma sum_test n :
@@ -325,42 +332,56 @@ rewrite iota_add /= sumn_cat /=.
 by rewrite add0n addn0 /= addnAC addnA.
 Qed.
 
-Example sum_from_0_to_10 : ms unit :=
+Example sum_from_0_to_10 : M unit :=
   foreach (iota 100 0) (fun i => if i > 90 then
-                            abort tt
+                            abortT tt
                           else
                             liftC (Get >>= (fun z => Put (z + i)))).
 
-End sum_example.
+End sum.
 
-End examples_continuation_monad_transformer.
+End continuation_monad_transformer_examples.
 
 Require Import monad_model.
 
+Section instantiations_with_the_identity_monad.
+
+Lemma state_monad_stateT S :
+  stateT S ModelMonad.identity = ModelMonad.State.t S.
+Proof. congr (Monad_of_ret_bind _ _ _); exact/boolp.Prop_irrelevance. Qed.
+
+Lemma error_monad_errorT Z :
+  errorT Z ModelMonad.identity = ModelMonad.error Z.
+Proof. congr (Monad_of_ret_bind _ _ _); exact/boolp.Prop_irrelevance. Qed.
+
+Lemma cont_monad_contT r :
+  contT r ModelMonad.identity = ModelMonad.Cont.t r.
+Proof. congr Monad_of_ret_bind; exact/boolp.Prop_irrelevance. Qed.
+
+End instantiations_with_the_identity_monad.
+
 Section calcul.
 
-Let contMonadT_i := @contMonadT^~ ModelMonad.identity.
-Let callcc_i := @callcc^~ ModelMonad.identity.
-Goal forall r, @ModelCont.callcc r = @callcc_i r.
-by [].
-Abort.
+Let contTi := @contT^~ ModelMonad.identity.
+Let callcci := ModelCont.callcc.
 
 Definition break_if_none (m : monad) (break : _) (acc : nat) (x : option nat) : m nat :=
   if x is Some x then Ret (x + acc) else break acc.
 
-Definition sum_until_none (xs : seq (option nat)) : contMonadT_i nat nat :=
-  callcc (fun break : nat -> contMonadT_i nat nat => foldM (break_if_none break) 0 xs).
+Definition sum_until_none (xs : seq (option nat)) : contTi nat nat :=
+  callcci (fun break : nat -> contTi nat nat => foldM (break_if_none break) 0 xs).
 
-Compute (sum_until_none [:: Some 2; Some 6; None; Some 4]).
+Goal sum_until_none [:: Some 2; Some 6; None; Some 4] = @^~ 8.
+by cbv.
+Abort.
 
-(* Definition liftM A B {m : monad} (f: A -> B) (ma: m A): m B := *)
-(*  ma >>= (fun a => Ret (f a)). *)
+Definition calcul : contTi nat nat :=
+  (contTi _ # (fun x => 8 + x))
+  (callcci (fun k : _ -> contTi nat _ => (k 5) >>= (fun y => Ret (y + 4)))).
 
-Definition calcul : contMonadT_i nat nat :=
-  (contMonadT_i _ # (fun x => 8 + x))
-  (callcc_i (fun k : _ -> contMonadT_i nat _ => (k 5) >>= (fun y => Ret (y + 4)))).
-
-Compute calcul.
+Goal calcul = @^~ 13.
+by cbv.
+Abort.
 
 End calcul.
 
@@ -401,7 +422,7 @@ Definition t := Lifting.t op (LiftT T M).
 End liftingt.
 End LiftingT.
 
-(* Algebraic operation, mauro jaskelioff, modular monad transformers, esop 2009 *)
+(* Algebraic operation *)
 Module AOperation.
 Section aoperation.
 Variables (E : functor) (M : monad).
@@ -427,11 +448,6 @@ Notation algebraicity := P.
 End Exports.
 End AOperation.
 Export AOperation.Exports.
-(*Lemma val_injP E M (h g : t E M) : op h = op g <-> h = g.
-Proof.
-split; move: h g => [h Hh] [g Hg] /= hg; last by case: hg.
-rewrite hg in Hh Hg *; congr mk; exact: Prop_irrelevance.
-Qed.*)
 
 Section algebraic_operation_interface.
 Variables (E : functor) (M : monad) (op : aoperation E M).
@@ -450,10 +466,10 @@ Next Obligation. by []. Qed.
 Lemma algebraic_put S : algebraicity (@StateOps.put_op S).
 Proof. by move=> ? ? ? []. Qed.
 
-Lemma algebraicity_callcc r : algebraicity (ContOps.callcc_op r).
+Lemma algebraicity_callcc r : algebraicity (ContOps.acallcc_op r).
 Proof. by []. Qed.
 
-Program Definition callcc_aop r : aoperation (ContOps.callcc_fun r) (ModelMonad.Cont.t r) :=
+Program Definition callcc_aop r : aoperation (ContOps.acallcc_fun r) (ModelMonad.Cont.t r) :=
   AOperation.Pack (AOperation.Class _ (AOperation.Mixin (@algebraicity_callcc r))).
 Next Obligation. by []. Qed.
 
@@ -546,9 +562,6 @@ Qed.
 End bijection.
 End proposition17.
 
-Definition mk_natural_monadM (M N : monad) (f : monadM M N) : M ~> N :=
-  Natural.Pack (@Natural.Class _ _ _ (natural_monadM f)).
-
 Section theorem19.
 Variables (E : functor) (M : monad) (op : aoperation E M).
 Variables (N : monad) (e : monadM M N).
@@ -556,24 +569,11 @@ Variables (N : monad) (e : monadM M N).
 Definition alifting : E \O N ~~> N := fun X =>
   locked (Join \o e (N X) \o phi op (N X)).
 
-Lemma aliftingE : alifting = psi (VComp (mk_natural_monadM e) (phi op)).
+Lemma aliftingE : alifting = psi (natural_of_monadM e \v phi op).
 Proof. rewrite /alifting; unlock; by []. Qed.
 
 Lemma natural_alifting : @naturality (E \O N) N alifting.
-Proof. rewrite aliftingE; exact: natural_psi.
-(* direct proof:
-move=> A B h; rewrite /alifting.
-unlock.
-rewrite -(compA Join) -compA (compA _ Join) join_naturality.
-rewrite -2![in RHS]compA -(compA Join) -[in RHS](compA Join).
-congr (_ \o _).
-rewrite FCompE 2!(compA (N # (N # h))) (natural_monad_morphism e).
-rewrite -(compA (e (N B))) (NatTrans.H (AOperation.op op)).
-rewrite -2!compA -[in RHS]compA -(compA _ (E # Ret)).
-congr (_ \o (_ \o _)).
-by rewrite FCompE -functor_o -(functor_o E) ret_naturality FIdf.
-*)
-Qed.
+Proof. rewrite aliftingE; exact: natural_psi. Qed.
 
 Lemma theorem19a : algebraicity alifting.
 Proof. by move=> ? ? ? ?; rewrite aliftingE algebraic_psi. Qed.
@@ -618,62 +618,51 @@ Qed.
 
 End theorem19.
 
-Section theorem19_example_X.
+Section examples_of_lifting.
+
+Section state_errorT.
 Variable (S Z : Type).
 Let M : monad := ModelState.state S.
-Let X : monadT := exceptionmonad_transformer Z.
-Let XM : monad := X M.
+Let erZ : monadT := errorT Z.
 
-Let lift_getX : (StateOps.get_fun S) \O XM ~~> XM :=
-  alifting (get_aop S) (LiftT X M).
+Let lift_getX : (StateOps.get_fun S) \O (erZ M) ~~> (erZ M) :=
+  alifting (get_aop S) (LiftT erZ M).
 
-Goal forall X, forall k : S -> XM X, lift_getX k = (fun s => k s s).
+Goal forall X (k : S -> erZ M X), lift_getX k = StateOps.get k :> erZ M X.
 move=> X0 k.
 by rewrite /lift_getX aliftingE.
 Abort.
 
-Goal lift_getX Ret = @liftX  _ M _ (@ModelState.get S).
+Goal lift_getX Ret = @liftX  _ _ _ (@ModelState.get S).
 Proof.
 by rewrite /lift_getX aliftingE.
 Abort.
 
-End theorem19_example_X.
+End state_errorT.
 
-Section theorem19_example_C.
-Variable (S : Type).
-Let C r : monad := ModelCont.t r.
-Let ST : monadT := statemonad_transformer S.
-Let STC r : monad := ST (C r).
-(* STC : S -> ((A * S) -> R) -> R *)
+Section continuation_stateT.
+Variable (r S : Type).
+Let M : monad := ModelCont.t r.
+Let stS : monadT := stateT S.
 
-Let lift_callccS r : (ContOps.callcc_fun r) \O (STC r) ~~> (STC r) :=
-  alifting (callcc_aop r) (LiftT ST (C r)).
+Let lift_acallccS : (ContOps.acallcc_fun r) \O (stS M) ~~> (stS M) :=
+  alifting (callcc_aop r) (LiftT stS M).
 
-Goal forall A r (f : ((STC r) A -> r) -> (STC r) A),
-  lift_callccS f = (fun s k => f (fun m => m s k) s k) :> (STC r) A.
-Proof.
+Goal forall A (f : (stS M A -> r) -> stS M A),
+  lift_acallccS f = (fun s k => f (fun m => uncurry m (s, k)) s k) :> stS M A.
 move=> A f.
-by rewrite /lift_callccS aliftingE.
+by rewrite /lift_acallccS aliftingE.
 Abort.
 
-Definition callccS_ r A B (f : (A -> (STC r) B) -> (STC _) A) : (STC _) A :=
-  fun s k => f (fun x s' _ => k (x, s)) s k.
+Definition usual_callccS A B (f : (A -> stS M B) -> stS M A) : stS M A :=
+  fun s k => f (fun x _ _ => k (x, s)) s k.
 
-Lemma callccS_E r A B f : callccS_ f =
-  @lift_callccS _ _
-    (fun k : STC r A -> r =>
-       f (fun x => (fun (_ : S) (_ : B * S -> r) => k (fun s' y => curry y x s')) : STC r B)).
-Proof. by rewrite /lift_callccS aliftingE. Qed.
+Lemma callccS_E A B f : lift_acallccS
+    (fun k : stS M A -> r =>
+       f (fun x => (fun (_ : S) (_ : B * S -> r) => k (@Ret (stS M) A x)) : stS M B)) =
+  usual_callccS f.
+Proof. by rewrite /lift_acallccS aliftingE. Qed.
 
-End theorem19_example_C.
+End continuation_stateT.
 
-(* Variable R : Type.
-Let C : monadT := continuationmonad_transformer R.
-Let CM : monad := C M.
-
-Let lift_getC : ((get_fun S) \O CM) ~> CM :=
-  alifting (get_aop S) (MonadT.liftT C M).
-
-(* Goal forall A, forall f : S -> CM A, lift_getC k = fun k s => . *)
-
-End theorem19_example. *)
+End examples_of_lifting.

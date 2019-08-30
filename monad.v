@@ -49,6 +49,8 @@ Reserved Notation "F # g" (at level 11).
 Reserved Notation "'fmap' f" (at level 4).
 Reserved Notation "f \O g" (at level 50, format "f  \O  g").
 Reserved Notation "f -| g :: n , e" (at level 51, g, n, e at next level).
+Reserved Notation "f \v g" (at level 50, format "'[v' f '/' \v  g ']'",
+  left associativity).
 
 Notation "l \\ p" := ([seq x <- l | x \notin p]).
 Notation "f ~~> g" := (forall A, f A -> g A) (at level 51).
@@ -326,6 +328,8 @@ Definition natural_vcomp : naturality _ _ ntcomp.
 Proof. by move=> A B h; rewrite compA (natural g) -compA (natural f). Qed.
 Definition VComp : C ~> E := Natural.Pack (Natural.Class natural_vcomp).
 End vertical_composition.
+
+Notation "f \v g" := (VComp f g).
 
 Section horizontal_composition.
 Variables (F G F' G' : functor) (s : F ~> G) (t : F' ~> G').

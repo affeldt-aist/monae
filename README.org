@@ -1,21 +1,22 @@
 * Monadic equational reasoning in Coq
 
 This repository contains a formalization of monads including several
-models, examples of monadic equational reasoning, and an application
-to program semantics.
-
-Formalized papers:
+models and examples of monadic equational reasoning. This corresponds
+roughly to the formalization of the following papers:
 - [Gibbons and Hinze, Just do It: Simple Monadic Equational Reasoning, ICFP 2011] (except Sect. 10.2)
 - [Gibbons, Unifying Theories of Programming with Monads, UTP 2012] (up to Sect. 7.2)
 - [Mu, Equational Reasoning for Non-determinism Monad: A Case study of Spark Aggregation, TR-IIS-19-002, Academia Sinica]
 - [Mu, Calculating a Backtracking Algorithm: An exercise in Monadic Program Derivation, TR-IIS-29-003, Academia Sinica]
-- [Jones and Duponcheel, Composing Monads, Yale RR 1993] (Sections 2 and 3)
-
-Other references:
-- [Cheung, Distributive Interaction of Algebraic Effects, PhD Thesis, U. Oxford, 2017]
 - [Mu, Functional Pearls: Reasoning and Derivation of Monadic Programs, A case study of non-determinism and state, 2017]
   + This is a draft paper. In the first release, we formalized this draft up to Sect. 5.
     The contents have been since superseded by [mu2019tr2] and [mu2019tr3].
+
+This library has been applied to other formalizations:
+- application to program semantics (see files ~smallstep*.v~)
+- formalization of monad composition [Jones and Duponcheel, Composing Monads, Yale RR 1993] (Sections 2 and 3)
+- formalization of monad transformers [Jaskelioff, Modular Monad Transformers, ESOP 2009] (up to Sect. 4)
+- formalization of the geometrically convex monad (main reference:
+  [Cheung, Distributive Interaction of Algebraic Effects, PhD Thesis, U. Oxford, 2017])
 
 ** Files
 
@@ -36,6 +37,9 @@ Other references:
 - [[smallstep.v][smallstep.v]]: semantics for an imperative language
 - [[smallstep_monad.v][smallstep_monad.v]]: equivalence operational semantics/denotation
 - [[smallstep_examples.v][smallstep_examples.v]]: sample imperative programs
+- [[category.v][category.v]]: formalization of categories (generalization of ~monad.v~)
+- [[gcm_model.s][gcm_model.v]]: model of the geometrically convex monad
+- [[altprob_model.v][altprob_model.v]]: wip
 
 ** License
 
@@ -72,3 +76,5 @@ The [[file:installation_windows.org][installation instructions]] are less simple
       - [[https://github.com/math-comp/finmap][finmap]] 1.2.1
 
 All versions available from opam.
+** Reference
+   [[https://staff.aist.go.jp/reynald.affeldt/bib/bib_en.html#affeldt2019mpc][MPC 2019 paper]]

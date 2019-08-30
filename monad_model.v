@@ -9,7 +9,8 @@ Require Import monad fail_monad state_monad trace_monad model.
    - Module ModelMonad
        identity monad
        list monad
-       option monad
+       error monad
+         option monad as a special case of the error monad
        set monad (using classical sets)
        state monad
        continuation monad.
@@ -123,15 +124,18 @@ move=> A B C; elim=> // h t IH f g /=; by rewrite map_cat flatten_cat IH.
 Qed.
 End list.
 
-Section option.
+Section error.
+Variable Z : Type.
 Local Obligation Tactic := idtac.
-Program Definition option := @Monad_of_ret_bind option (@Some)
-  (fun A B (a : option A) (f : A -> option B) => if a isn't Some x then None else f x) _ _ _.
-Next Obligation. by []. Qed.
-Next Obligation. by []. Qed.
-Next Obligation. move=> ?; by case. Qed.
-Next Obligation. move=> ? ? ?; by case. Qed.
-End option.
+Let p := fun A B (a : (Z + A)%type) (f : A -> (Z + B)%type) =>
+     match a with inl z => inl z | inr b => f b end.
+Let H1 : BindLaws.left_neutral p (@inr Z). Proof. by []. Qed.
+Let H2 : BindLaws.right_neutral p (@inr Z). Proof. by move=> ? []. Qed.
+Let H3 : BindLaws.associative p. Proof. by move=> ? ? ? []. Qed.
+Definition error := @Monad_of_ret_bind (fun X => (Z + X)%type) (@inr Z) p H1 H2 H3.
+End error.
+
+Definition option := error unit.
 
 Section set.
 Local Obligation Tactic := idtac.
@@ -177,7 +181,7 @@ Module ModelFail.
 Section option.
 Local Obligation Tactic := by [].
 Program Definition option_class := @MonadFail.Class _ _
-  (@MonadFail.Mixin ModelMonad.option (@None) _).
+  (@MonadFail.Mixin ModelMonad.option (fun B => @inl _ B tt) _).
 Definition option := MonadFail.Pack option_class.
 End option.
 
@@ -205,10 +209,10 @@ Module ModelExcept.
 Section except.
 Program Definition except_class := @MonadExcept.Class _
   ModelFail.option_class (@MonadExcept.Mixin _
-    (fun A m m' => if m is Some x then m else m') _ _ _ _).
+    (fun A m m' => if m is inr x then m else m') _ _ _ _).
+Next Obligation. by case => //; case. Qed.
 Next Obligation. by case. Qed.
 Next Obligation. by case. Qed.
-Next Obligation. by move=> [a|] [b|] [c|]. Qed.
 Next Obligation. by case. Qed.
 Definition t := MonadExcept.Pack except_class.
 End except.
@@ -362,32 +366,35 @@ End st.
 End ModelStateTrace.
 
 Module ContOps.
-Section callcc_functor.
-Definition callcc_acto r := fun A => (A -> r) -> A.
-Local Notation M := callcc_acto.
-Definition callcc_actm r X Y (f : X -> Y) (t : M r X) : M r Y :=
+Section acallcc_functor.
+Definition acallcc_acto r := fun A => (A -> r) -> A.
+Local Notation M := acallcc_acto.
+Definition acallcc_actm r X Y (f : X -> Y) (t : M r X) : M r Y :=
   fun (g : Y -> r) => f (t (fun x => g (f x))).
-Program Definition callcc_fun r := Functor.Pack (@Functor.Class _ (@callcc_actm r) _ _ ).
-Next Obligation. by move=> A; rewrite /callcc_actm boolp.funeqE. Qed.
-Next Obligation. by move=> A B D g h; rewrite /callcc_actm boolp.funeqE. Qed.
-End callcc_functor.
+Program Definition acallcc_fun r := Functor.Pack (@Functor.Class _ (@acallcc_actm r) _ _ ).
+Next Obligation. by move=> A; rewrite /acallcc_actm boolp.funeqE. Qed.
+Next Obligation. by move=> A B D g h; rewrite /acallcc_actm boolp.funeqE. Qed.
+End acallcc_functor.
 
-Definition callcc r A (f : (ModelMonad.Cont.t r A -> r) -> ModelMonad.Cont.t r A) : ModelMonad.Cont.t r A :=
+(* alebgraic call/cc *)
+Definition acallcc r A (f : (ModelMonad.Cont.acto r A -> r) -> ModelMonad.Cont.acto r A) : ModelMonad.Cont.acto r A :=
   fun k => f (fun m => m k) k.
 
-Program Definition callcc_op r : operation (callcc_fun r) (ModelMonad.Cont.t r) :=
-  Natural.Pack (@Natural.Class _ _ (@callcc r) _).
+Program Definition acallcc_op r : operation (acallcc_fun r) (ModelMonad.Cont.t r) :=
+  Natural.Pack (@Natural.Class _ _ (@acallcc r) _).
 Next Obligation. by []. Qed.
 End ContOps.
+
+Definition usual_callcc r (M := fun C => (C -> r) -> r) A B (f : (A -> M B) -> M A) : M A :=
+  fun k : A -> r => f (fun a _ => k a) k.
 
 Module ModelCont.
 Section modelcont.
 Variable r : Type.
 Local Notation M := (ModelMonad.Cont.t r).
 Definition callcc A B (f : (A -> M B) -> M A) : M A :=
-  ContOps.callcc_op _ _ (fun k => f (fun x _ => k (Ret x))).
-Lemma callccE A B (f : (A -> M B) -> M A) :
-  callcc f = (fun k : A -> r => f (fun a _ => k a) k).
+  ContOps.acallcc_op _ _ (fun k => f (fun x _ => k (Ret x))).
+Lemma callccE A B (f : (A -> M B) -> M A) : callcc f = usual_callcc f.
 Proof. by []. Qed.
 Program Definition t : contMonad := MonadContinuation.Pack (MonadContinuation.Class
   (@MonadContinuation.Mixin (ModelMonad.Cont.t r) callcc _ _ _ _)).
@@ -411,6 +418,7 @@ Fixpoint fib_cps {M : monad} (n : nat) : M nat :=
       fun a => fib_cps m >>=
       fun b => Ret (a + b)
   end.
+
 Lemma fib_cpsE (M : monad) n :
   fib_cps n.+2 = (fib_cps n.+1 >>= fun a => fib_cps n >>= fun b => Ret (a + b)) :> M _.
 Proof. by []. Qed.
