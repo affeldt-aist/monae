@@ -382,15 +382,10 @@ Lemma Distfmap_inj (A : choiceType) (g : A -> Dist A)
   (Distfmap g x) (g a) = x a.
 Proof.
 move=> Hg xa.
-rewrite /Distfmap DistBind.dE imfset_id ifT; last first.
-  apply/bigfcupP; exists (Dist1.d (g a)) => //.
-    by rewrite andbT; apply/imfsetP => /=; exists a.
-  rewrite mem_finsupp Dist1.dE inE eqxx; exact/eqP/R1_neq_R0.
-rewrite (big_fsetID _ (xpred1 a)) /= [Y in (_ + Y)%R](_ : _ = 0)%R ?addR0; last first.
-  rewrite -(big_fset_condE _ (finsupp x)) big1 // => a0 a0a.
-  by rewrite Dist1.dE inE ifF // ?mulR0 //; apply: contraNF a0a => /eqP /Hg ->.
-rewrite -(big_fset_condE _ (finsupp x)) -big_filter filter_pred1_uniq //.
-by rewrite big_seq1 Dist1.dE inE eqxx mulR1.
+rewrite DistfmapE big_fset_condE.
+rewrite (@eq_fbigl _ _ _ _ _ (fset1 a)) ?big_seq_fset1 // => a0.
+rewrite !inE /=; apply/idP/idP => [/andP[_ /eqP/Hg -> //] | ].
+by move/eqP => ->; rewrite eqxx andbT.
 Qed.
 
 Import homcomp_notation.
@@ -471,47 +466,19 @@ Abort.
 
 End eps0_eta0.
 
-Section join0.
-Import category.
-(* join operator for Dist *)
-Definition join0 (C : choiceType) (d : Dist (Dist C)) : Dist C :=
-  DistBind.d d (Dist_mor [hom of idfun]).
-
-(* join0 is ((coercion) \o eps0) *)
+(* the join operator for Dist is ((coercion) \o eps0) *)
 Section eps0_correct.
 Import ScaledConvex.
 Local Open Scope R_scope.
 
-Lemma eps0_correct (C : choiceType) (d : Dist (Dist C)) : eps0'' d = join0 d.
+Lemma eps0_correct (A : choiceType) (D : Dist (Dist A)) : eps0'' D = Distjoin D.
 Proof.
-rewrite /join0 -DistBindA DistBindp1; apply Dist_ext => c.
-rewrite -[LHS]Scaled1RK /eps0''.
-rewrite (@S1_proj_Convn_indexed_over_finType _ _ (fun D : Dist C => D c));
-  last exact: Dist_eval_affine.
-rewrite big_scaleR DistBind.dE.
-case: ifP => [_ | ].
-- transitivity (\sum_(i : dist_of_Dist.D d | true) d (fsval i) * (fsval i) c).
-  + apply eq_bigr => -[v vP] _.
-    move/scaleR_scalept:(dist_ge0 (dist_of_Dist d) [` vP]%fset) ->.
-    by rewrite Scaled1RK dist_of_DistE.
-  suff -> : finsupp d = [seq fsval i | i in [finType of finsupp d]] :> seq _
-    by rewrite big_image; apply eq_bigl => a; rewrite inE.
-  by rewrite enum_fsetE.
-- rewrite !imfset_id.
-  move/bigfcupP => H.
-  have H' : forall i : Dist C, i \in finsupp d -> c \notin finsupp i
-      by move=> i Hi; apply/negP => Hx; apply H; exists i => //; rewrite andbT.
-  have H0 : 0 = \sum_(i | true) 0 by move=> t; rewrite big1.
-  rewrite [in RHS](H0 (dist_of_Dist.D d)).
-  apply eq_bigr => -[v vP] _.
-  move/scaleR_scalept:(dist_ge0 (dist_of_Dist d) [`vP]%fset) ->.
-  rewrite dist_of_DistE /= mul1R.
-  suff -> : v c = 0 by rewrite mulR0.
-  rewrite fsfun_dflt //.
-  exact: H'.
+apply Dist_ext => a; rewrite DistjoinE -[LHS]Scaled1RK /eps0''.
+rewrite (S1_proj_Convn_indexed_over_finType (Dist_eval_affine a)).
+rewrite big_scaleR big_seq_fsetE; apply eq_bigr => -[d dD] _.
+by rewrite (scaleR_scalept _ (dist_ge0 _ _)) dist_of_DistE Scaled1RK.
 Qed.
 End eps0_correct.
-End join0.
 
 Section necset_functor.
 Import category.
@@ -902,7 +869,7 @@ Lemma retE (T : Type) :
   ret T = (@necset1 _) \o (@Dist1.d (gen_choiceType T)) :> (_ -> _).
 Proof.
 rewrite funeqE => x; apply necset_ext.
-by rewrite /ret; unlock; rewrite /= etaCE eta0E eta1E /Distfmap /= DistBind1f.
+by rewrite /ret; unlock; rewrite /= etaCE eta0E eta1E Distfmap_id.
 Qed.
 
 Definition join : P_delta \O P_delta ~> P_delta :=
