@@ -270,7 +270,7 @@ have -> : \ssum_i scalept (dist_of_Dist y i) (S1 (fsval i)) =
   by rewrite big_seq_fsetE /=; apply eq_bigr => i _; rewrite dist_of_DistE.
 have -> : \ssum_(i <- finsupp x) scalept (x i) (S1 i) =
          \ssum_(i <- finsupp (x <|p|> y)) scalept (x i) (S1 i).
-- rewrite [in RHS](bigID (fun i => i \in (finsupp x))) /=.
+- rewrite [in RHS](bigID (fun i => i \in finsupp x)) /=.
   have -> : (\ssum_(i <- finsupp (x <|p|> y) | i \notin finsupp x) scalept (x i) (S1 i)) = Zero C
     by rewrite big1 //= => i Hi; rewrite fsfun_dflt // scalept0.
   rewrite addpt0 [in RHS]big_fset_condE /=.
@@ -286,7 +286,7 @@ have -> : \ssum_(i <- finsupp x) scalept (x i) (S1 i) =
     by rewrite !inE Hi Hi'.
 suff -> : \ssum_(i <- finsupp y) scalept (y i) (S1 i) =
          \ssum_(i <- finsupp (x <|p|> y)) scalept (y i) (S1 i) by [].
-rewrite [in RHS](bigID (fun i => i \in (finsupp y))) /=.
+rewrite [in RHS](bigID (fun i => i \in finsupp y)) /=.
 have -> : (\ssum_(i <- finsupp (x <|p|> y) | i \notin finsupp y) scalept (y i) (S1 i)) = Zero C
   by rewrite big1 //= => i Hi; rewrite fsfun_dflt // scalept0.
 rewrite addpt0 [in RHS]big_fset_condE /=.
@@ -365,8 +365,7 @@ Definition eta0' : FId ~~> forget_convType \O Dist_functor :=
   fun C => @Hom.Pack choiceType_category _ _ _ (fun x : C => Dist1.d x) I.
 Lemma eta0'_natural : naturality _ _ eta0'.
 Proof.
-move=> a b h; rewrite funeqE=> x.
-by rewrite FIdf /eta0' /= /Distfmap /= DistBind1f.
+by move=> a b h; rewrite funeqE=> x; rewrite FIdf /eta0' /= Distfmap1.
 Qed.
 
 Definition eta0 : FId ~> forget_convType \O Dist_functor :=
@@ -376,17 +375,19 @@ Proof. by rewrite /eta0; unlock. Qed.
 Lemma eta0E (T : choiceType) : eta0 T = (@Dist1.d _) :> (_ -> _).
 Proof. by rewrite /eta0; unlock. Qed.
 
-(* TODO: move? *)
-Lemma Distfmap_inj (A : choiceType) (g : A -> Dist A)
-  (x : Dist.t A) a : injective g -> a \in finsupp x ->
-  (Distfmap g x) (g a) = x a.
+(* TODO: move *)
+Section fbig_pred1_inj.
+Variables (R : Type) (idx : R) (op : Monoid.com_law idx).
+Lemma fbig_pred1_inj (A C : choiceType) h (k : A -> C) (d : {fset _}) a :
+  a \in d -> injective k -> \big[op/idx]_(a0 <- d | k a0 == k a) h a0 = h a.
 Proof.
-move=> Hg xa.
-rewrite DistfmapE big_fset_condE.
-rewrite (@eq_fbigl _ _ _ _ _ (fset1 a)) ?big_seq_fset1 // => a0.
-rewrite !inE /=; apply/idP/idP => [/andP[_ /eqP/Hg -> //] | ].
-by move/eqP => ->; rewrite eqxx andbT.
+move=> ad inj_k.
+rewrite big_fset_condE -(big_seq_fset1 op); apply eq_fbig => // a0.
+rewrite !inE /=; apply/idP/idP => [|/eqP ->]; last by rewrite eqxx andbT.
+by case/andP => _ /eqP/inj_k ->.
 Qed.
+End fbig_pred1_inj.
+Arguments fbig_pred1_inj [R] [idx] [op] [A] [C] [h] [k].
 
 Import homcomp_notation.
 Import ScaledConvex.
@@ -403,14 +404,14 @@ pose cast (y : finsupp x) : FId c := let: FSetSub a _ := y in a.
 have Y0 : forall (i : finsupp (Distfmap (@Dist1.d _) x)),
   {a : finsupp x | fsval i = Dist1.d (cast a)}.
   case=> i /= Hi; apply cid; move: Hi.
-  by rewrite supp_Distfmap_Dist1 => /imfsetP[c0 /= c0x Hi]; exists (FSetSub c0x).
+  by rewrite supp_Distfmap => /imfsetP[c0 /= c0x Hi]; exists (FSetSub c0x).
 pose Y i := projT1 (Y0 i).
 rewrite (eq_bigr (fun i => scalept (x (cast (Y i))) (S1 (fsval i)))); last first.
   move=> i _; rewrite dist_of_DistE /F /Y; case: (Y0 _)=> a /= ia /=.
-  rewrite {1}ia Distfmap_inj //; [exact: Dist1_inj | exact/fsvalP].
+  rewrite {1}ia DistfmapE (fbig_pred1_inj _ _ _ (@Dist1_inj _)) //; exact/fsvalP.
 have HY' (i : finsupp x) :
   Dist1.d (fsval i) \in finsupp (Distfmap (@Dist1.d c) x).
-  by rewrite supp_Distfmap_Dist1; apply/imfsetP => /=; exists (fsval i).
+  by rewrite supp_Distfmap; apply/imfsetP => /=; exists (fsval i).
 set Y' := fun x0 => FSetSub (HY' x0).
 have Y'K : cancel Y' Y.
   by move=> i; apply val_inj => /=; rewrite /Y; case: (Y0 _) => ? /= /Dist1_inj.
@@ -434,10 +435,12 @@ case: ifPn => Ha.
     case/bigfcupP : Ha => i /andP[/= _].
     rewrite /Convn_indexed_over_finType.d_enum ffunE -Hdxy /Y /=.
     case: (Y0 _) => -x0 /= -> _; rewrite Dist1.supp inE => /eqP ->; exact/fsvalP.
-  rewrite -(Distfmap_inj (@Dist1_inj c) ax) /Distfmap DistBind.dE ifT; last first.
-    apply/bigfcupP; exists (Dist1.d (Dist1.d a)).
-      rewrite andbT imfset_id; apply/imfsetP; exists a => //=.
-    by rewrite Dist1.supp inE.
+  transitivity (\sum_(a0 <- finsupp x) x a0 * (Dist1.d (Dist1.d a0)) (Dist1.d a)); last first.
+    rewrite (big_fsetID _ (xpred1 a)) /=.
+    rewrite -2!big_fset_condE [in X in _ + X = _]big1 ?addR0; last first.
+      move=> c0 /negbTE c0a.
+      by rewrite Dist1.dE inE (inj_eq (@Dist1_inj _)) eq_sym c0a mulR0.
+    by rewrite fbig_pred1_inj // Dist1.dE inE eqxx mulR1.
   rewrite (reindex_onto enum_rank enum_val) /=; last by move=> *; exact: enum_valK.
   rewrite -(@eq_big _ _ _ _ _ xpredT _ (fun j => x (cast (Y j)) * fsval j a)); last 2 first.
     by move=> i; rewrite enum_rankK eqxx.
@@ -473,9 +476,9 @@ Local Open Scope R_scope.
 
 Lemma eps0_correct (A : choiceType) (D : Dist (Dist A)) : eps0'' D = Distjoin D.
 Proof.
-apply Dist_ext => a; rewrite DistjoinE -[LHS]Scaled1RK /eps0''.
-rewrite (S1_proj_Convn_indexed_over_finType (Dist_eval_affine a)).
-rewrite big_scaleR big_seq_fsetE; apply eq_bigr => -[d dD] _.
+apply Dist_ext => a; rewrite -[LHS]Scaled1RK /eps0''.
+rewrite (S1_proj_Convn_indexed_over_finType (Dist_eval_affine a)) big_scaleR.
+rewrite DistjoinE big_seq_fsetE; apply eq_bigr => -[d dD] _.
 by rewrite (scaleR_scalept _ (dist_ge0 _ _)) dist_of_DistE Scaled1RK.
 Qed.
 End eps0_correct.
@@ -901,7 +904,7 @@ rewrite -homcompE joinE retE.
 rewrite epsE funcompE -homcompE eps1E.
 rewrite -[in RHS](Joet1 d); congr (Joet `NE _).
 rewrite 2!necset_morE; apply/neset_ext => /=.
-rewrite 2!image_set1 /Distfmap DistBind1f /=.
+rewrite 2!image_set1 Distfmap1.
 by rewrite epsCE eps0_Dist1.
 Qed.
 Lemma join_right_unit : JoinLaws.join_right_unit ret join.
