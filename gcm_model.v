@@ -3,7 +3,7 @@ From mathcomp Require Import ssreflect ssrfun ssrbool eqtype ssrnat seq.
 From mathcomp Require Import choice fintype finfun bigop.
 From mathcomp Require Import boolp classical_sets.
 From mathcomp Require Import finmap.
-From infotheo Require Import Reals_ext Rbigop ssrR proba dist convex_choice.
+From infotheo Require Import Reals_ext Rbigop ssrR proba fsdist convex_choice.
 From infotheo Require Import necset.
 Require category.
 
@@ -166,47 +166,47 @@ Defined.
 *)
 
 (* morphism part of Dist *)
-Definition Dist_mor (A B : choiceType) (f : {hom A , B}) :
-  {hom Dist_convType A , Dist B}.
-refine (@Hom.Pack convType_category _ _ _ (Distfmap f) _).
+Definition FSDist_mor (A B : choiceType) (f : {hom A , B}) :
+  {hom (FSDist_convType A) , {dist B}}.
+refine (@Hom.Pack convType_category _ _ _ (FSDistfmap f) _).
 move=> x y t.
-by apply: Conv2Dist.bind_left_distr.
+exact: Conv2FSDist.bind_left_distr.
 Defined.
 
-(* Dist_mor induces maps between supports *)
-Definition Dist_mor_supp (A B : choiceType) (f : A -> B(*{hom A , B}*)) (d : Dist A) :
-  [finType of finsupp d] -> [finType of finsupp ((Dist_mor (hom_choiceType f)) d)].
+(* FSDist_mor induces maps between supports *)
+Definition FSDist_mor_supp (A B : choiceType) (f : A -> B(*{hom A , B}*)) (d : {dist A}) :
+  [finType of finsupp d] -> [finType of finsupp ((FSDist_mor (hom_choiceType f)) d)].
 Proof.
 move=> x.
 apply (@FSetSub _ _ (f (fsval x))).
-rewrite /= DistBind.supp imfset_id.
+rewrite /= FSDistBind.supp imfset_id.
 apply/bigfcupP.
-exists (Dist1.d (f (fsval x))).
+exists (FSDist1.d (f (fsval x))).
 - rewrite andbT.
-  apply (in_imfset _ (fun x => Dist1.d (f x))) => /=.
+  apply (in_imfset _ (fun x => FSDist1.d (f x))) => /=.
   by move:x; case:d.
-- rewrite mem_finsupp Dist1.dE inE eqxx; exact/eqP/R1_neq_R0.
+- rewrite mem_finsupp FSDist1.dE inE eqxx; exact/eqP/R1_neq_R0.
 Defined.
-Global Arguments Dist_mor_supp [A B] f d.
-Lemma fsval_Dist_mor_supp (A B : choiceType) (f : {hom A , B}) d i :
-  fsval ((Dist_mor_supp f d) i) = f (fsval i).
+Global Arguments FSDist_mor_supp [A B] f d.
+Lemma fsval_FSDist_mor_supp (A B : choiceType) (f : {hom A , B}) d i :
+  fsval ((FSDist_mor_supp f d) i) = f (fsval i).
 Proof. by case: i. Qed.
 
-Lemma Dist_mor_id : FunctorLaws.id Dist_mor.
+Lemma FSDist_mor_id : FunctorLaws.id FSDist_mor.
 Proof.
-by move=> a; rewrite hom_ext funeqE=> x /=; rewrite/idfun Distfmap_id.
+by move=> a; rewrite hom_ext funeqE=> x /=; rewrite/idfun FSDistfmap_id.
 Qed.
-Lemma Dist_mor_comp : FunctorLaws.comp Dist_mor.
-Proof. by move=> a b c g h; rewrite hom_ext /= Distfmap_comp. Qed.
+Lemma FSDist_mor_comp : FunctorLaws.comp FSDist_mor.
+Proof. by move=> a b c g h; rewrite hom_ext /= FSDistfmap_comp. Qed.
 
-Definition Dist_functor :=
-  Functor.Pack (Functor.Class Dist_mor_id Dist_mor_comp).
+Definition FSDist_functor :=
+  Functor.Pack (Functor.Class FSDist_mor_id FSDist_mor_comp).
 
-Lemma Dist_mor_comp_fun (a b c : choiceType) (g : {hom b, c})
+Lemma FSDist_mor_comp_fun (a b c : choiceType) (g : {hom b, c})
       (h : {hom a, b}):
-  [fun of Dist_mor [hom of [fun of g] \o [fun of h]]] =
-  [fun of Dist_mor g] \o [fun of Dist_mor h].
-Proof. by rewrite Dist_mor_comp. Qed.
+  [fun of FSDist_mor [hom of [fun of g] \o [fun of h]]] =
+  [fun of FSDist_mor g] \o [fun of FSDist_mor h].
+Proof. by rewrite FSDist_mor_comp. Qed.
 
 Local Notation CV := convType_category.
 Local Notation CC := choiceType_category.
@@ -215,7 +215,7 @@ set (m := [eta FId] : CV -> CC).
 set (h := fun (a b : CV) (f : {hom CV; a, b}) =>
              @Hom.Pack CC a b _ (FId # f) I : {hom CC; m a , m b}).
 refine (@Functor.Pack CV CC m _).
-refine (@Functor.Class _ _  m h  _ _); by move=> *; apply hom_ext. 
+refine (@Functor.Class _ _  m h  _ _); by move=> *; apply hom_ext.
 Defined.
 
 Lemma forget_convTypeE :
@@ -235,7 +235,7 @@ Local Open Scope fset_scope.
 Local Open Scope R_scope.
 Local Open Scope convex_scope.
 
-Definition eps0'' {C : convType} (d : Dist C) : C :=
+Definition eps0'' {C : convType} (d : {dist C}) : C :=
   Convn_indexed_over_finType (fdist_of_Dist d) (fun x : finsupp d => fsval x).
 
 Lemma eps0''_affine (C : convType) : affine_function (@eps0'' C).
@@ -250,24 +250,24 @@ move: (pn1) => /onem_neq0 opn0.
 apply S1_inj.
 rewrite S1_conv.
 rewrite !S1_Convn_indexed_over_finType.
-transitivity (\ssum_(i : fdist_of_Dist.D (x <|p|> y))
+transitivity (\ssum_(i : fdist_of_FSDist.D (x <|p|> y))
               scalept ((x <|p|> y) (fsval i)) (S1 (fsval i)));
-  first by apply eq_bigr => i; rewrite fdist_of_DistE.
+  first by apply eq_bigr => i; rewrite fdist_of_FSDistE.
 rewrite -(@big_seq_fsetE
             _ _ _ _ _ xpredT
             (fun i => scalept ((x <|p|> y) i) (S1 i))
          ) /=.
 transitivity (\ssum_(i <- finsupp (x <|p|> y))
-  ((scalept (x i) (S1 i) : Scaled_convType C) <|p|> scalept (y i) (S1 i))); first by apply eq_bigr => i _; rewrite Dist_scalept_conv.
+  ((scalept (x i) (S1 i) : Scaled_convType C) <|p|> scalept (y i) (S1 i))); first by apply eq_bigr => i _; rewrite FSDist_scalept_conv.
 rewrite big_seq_fsetE big_scalept_conv_split /=.
 rewrite -(@big_seq_fsetE _ _ _ _ _ xpredT (fun i => scalept (x i) (S1 i))).
 rewrite -(@big_seq_fsetE _ _ _ _ _ xpredT (fun i => scalept (y i) (S1 i))) /=.
 have -> : \ssum_i scalept (fdist_of_Dist x i) (S1 (fsval i)) =
          \ssum_(i <- finsupp x) scalept (x i) (S1 i)
-  by rewrite big_seq_fsetE /=; apply eq_bigr => i _; rewrite fdist_of_DistE.
+  by rewrite big_seq_fsetE /=; apply eq_bigr => i _; rewrite fdist_of_FSDistE.
 have -> : \ssum_i scalept (fdist_of_Dist y i) (S1 (fsval i)) =
          \ssum_(i <- finsupp y) scalept (y i) (S1 i)
-  by rewrite big_seq_fsetE /=; apply eq_bigr => i _; rewrite fdist_of_DistE.
+  by rewrite big_seq_fsetE /=; apply eq_bigr => i _; rewrite fdist_of_FSDistE.
 have -> : \ssum_(i <- finsupp x) scalept (x i) (S1 i) =
          \ssum_(i <- finsupp (x <|p|> y)) scalept (x i) (S1 i).
 - rewrite [in RHS](bigID (fun i => i \in finsupp x)) /=.
@@ -281,7 +281,7 @@ have -> : \ssum_(i <- finsupp x) scalept (x i) (S1 i) =
       by apply eq_imfset => //; move => i /=; rewrite !inE andbC.
     apply/eqP; rewrite eqEfsubset; apply/andP; split; last by apply fset_sub.
     apply/fsubsetP => i Hi.
-    move/fsubsetP: (Conv2Dist.incl_finsupp_conv2dist x y pn0).
+    move/fsubsetP: (Conv2FSDist.incl_finsupp_conv2fsdist x y pn0).
     move/(_ i Hi) => Hi'.
     by rewrite !inE Hi Hi'.
 suff -> : \ssum_(i <- finsupp y) scalept (y i) (S1 i) =
@@ -301,58 +301,58 @@ suff H : finsupp y = [fset i | i in finsupp (x <|p|> y) & i \in finsupp y]
 Qed.
 
 Lemma eps0''_natural (C D : convType) (f : {hom C, D}) :
-  f \o eps0'' = eps0'' \o (Dist_functor \O forget_convType) # f.
+  f \o eps0'' = eps0'' \o (FSDist_functor \O forget_convType) # f.
 Proof.
 rewrite FCompE /= /id_f.
 apply funext => d; apply S1_inj => /=.
 rewrite S1_proj_Convn_indexed_over_finType; last by case: f.
 rewrite S1_Convn_indexed_over_finType.
-evar (Y : fdist_of_Dist.D ((Distfmap f) d) -> scaled_pt D).
+evar (Y : fdist_of_FSDist.D ((FSDistfmap f) d) -> scaled_pt D).
 transitivity (\ssum_i Y i); last first.
 - apply eq_bigr => i _ /=.
-  rewrite fdist_of_DistE /= DistBind.dE imfset_id /=.
-  have -> : fsval i \in (\bigcup_(d0 <- [fset Dist1.d (f a) | a in finsupp d]) finsupp d0)
-    by case: i => v; rewrite DistBind.supp imfset_id.
+  rewrite fdist_of_FSDistE /= FSDistBind.dE imfset_id /=.
+  have -> : fsval i \in (\bigcup_(d0 <- [fset FSDist1.d (f a) | a in finsupp d]) finsupp d0)
+    by case: i => v; rewrite FSDistBind.supp imfset_id.
   have H : scalept R0 (S1 (fsval i)) = Zero D by rewrite scalept0.
-  have H0 : forall a : C, 0 <= d a * (Dist1.d (f a)) (fsval i)
-      by move=> a; apply mulR_ge0; apply Dist.ge0.
+  have H0 : forall a : C, 0 <= d a * (FSDist1.d (f a)) (fsval i)
+      by move=> a; apply mulR_ge0.
   rewrite big_scaleptl'; [| done | done] => {H} {H0}.
   rewrite (bigID (fun i0 => fsval i == f i0)) /=.
   have -> : \ssum_(i0 <- finsupp d | fsval i != f i0)
-             scalept (d i0 * (Dist1.d (f i0)) (fsval i)) (S1 (fsval i)) =
+             scalept (d i0 * (FSDist1.d (f i0)) (fsval i)) (S1 (fsval i)) =
            Zero _
-    by rewrite big1 // => c /negbTE Hc; rewrite Dist1.dE inE Hc mulR0 scalept0.
+    by rewrite big1 // => c /negbTE Hc; rewrite FSDist1.dE inE Hc mulR0 scalept0.
   rewrite addpt0.
   rewrite big_seq_fsetE /=.
   exact: erefl.
 rewrite /Y => {Y}.
-set f' := (Dist_mor_supp f d).
-transitivity (\ssum_i scalept (fdist_of_Dist d i) (S1 (fsval (f' i)))); first by apply eq_bigr => *; rewrite fsval_Dist_mor_supp.
+set f' := FSDist_mor_supp f d.
+transitivity (\ssum_i scalept (fdist_of_Dist d i) (S1 (fsval (f' i)))); first by apply eq_bigr => *; rewrite fsval_FSDist_mor_supp.
 rewrite (@partition_big
-           _ _ _ _ (fdist_of_Dist.D ((Distfmap f) d)) _ f' xpredT) /f' //=.
+           _ _ _ _ (fdist_of_FSDist.D ((FSDistfmap f) d)) _ f' xpredT) /f' //=.
 apply eq_bigr => -[i Hi] _ /=.
-transitivity (\ssum_(i0 | Dist_mor_supp f d i0 == [` Hi])
-               scalept (d (fsval i0) * (Dist1.d (f (fsval i0))) i) (S1 i)).
+transitivity (\ssum_(i0 | FSDist_mor_supp f d i0 == [` Hi])
+               scalept (d (fsval i0) * (FSDist1.d (f (fsval i0))) i) (S1 i)).
 - apply eq_bigr => i0 /eqP.
-  move/(congr1 (@fsval _ _)); rewrite fsval_Dist_mor_supp /= => Hi0.
-  by rewrite fdist_of_DistE Dist1.dE -Hi0 inE eqxx mulR1.
+  move/(congr1 (@fsval _ _)); rewrite fsval_FSDist_mor_supp /= => Hi0.
+  by rewrite fdist_of_FSDistE FSDist1.dE -Hi0 inE eqxx mulR1.
 apply eq_bigl => i0.
 apply/eqP/eqP; first by move/(congr1 (@fsval _ _)) => /= <-.
 move=> H.
 exact/val_inj.
 Qed.
 
-Definition eps0' : Dist_functor \O forget_convType ~~> FId :=
+Definition eps0' : FSDist_functor \O forget_convType ~~> FId :=
 fun a => @Hom.Pack convType_category _ _ _ eps0'' (eps0''_affine (C:=FId a)).
 
-Lemma eps0'E (C : convType) (d : Dist C) :
+Lemma eps0'E (C : convType) (d : {dist C}) :
   eps0' C d = Convn_indexed_over_finType (fdist_of_Dist d) (fun x : finsupp d => (fsval x)).
 Proof. reflexivity. Qed.
 
 Lemma eps0'_natural : naturality _ _ eps0'.
 Proof. by move=> C D f; rewrite eps0''_natural. Qed.
 
-Definition eps0 : Dist_functor \O forget_convType ~> FId :=
+Definition eps0 : FSDist_functor \O forget_convType ~> FId :=
   locked (Natural.Pack (Natural.Class eps0'_natural)).
 
 Lemma eps0E' : eps0 = Natural eps0'_natural.
@@ -361,18 +361,18 @@ Lemma eps0E (C : convType) :
   eps0 C = (fun d => Convn_indexed_over_finType (fdist_of_Dist d) (fun x : finsupp d => (fsval x))) :> (_ -> _).
 Proof. by rewrite /eps0; unlock. Qed.
 
-Definition eta0' : FId ~~> forget_convType \O Dist_functor :=
-  fun C => @Hom.Pack choiceType_category _ _ _ (fun x : C => Dist1.d x) I.
+Definition eta0' : FId ~~> forget_convType \O FSDist_functor :=
+  fun C => @Hom.Pack choiceType_category _ _ _ (fun x : C => FSDist1.d x) I.
 Lemma eta0'_natural : naturality _ _ eta0'.
 Proof.
-by move=> a b h; rewrite funeqE=> x; rewrite FIdf /eta0' /= Distfmap1.
+by move=> a b h; rewrite funeqE=> x; rewrite FIdf /eta0' /= FSDistfmap1.
 Qed.
 
-Definition eta0 : FId ~> forget_convType \O Dist_functor :=
+Definition eta0 : FId ~> forget_convType \O FSDist_functor :=
   locked (Natural.Pack (Natural.Class eta0'_natural)).
 Lemma eta0E' : eta0 = Natural eta0'_natural.
 Proof. by rewrite /eta0; unlock. Qed.
-Lemma eta0E (T : choiceType) : eta0 T = (@Dist1.d _) :> (_ -> _).
+Lemma eta0E (T : choiceType) : eta0 T = (@FSDist1.d _) :> (_ -> _).
 Proof. by rewrite /eta0; unlock. Qed.
 
 (* TODO: move *)
@@ -393,7 +393,7 @@ Import homcomp_notation.
 Import ScaledConvex.
 Local Open Scope fset_scope.
 Local Open Scope R_scope.
-Local Notation F := Dist_functor.
+Local Notation F := FSDist_functor.
 Local Notation G := forget_convType.
 Lemma triL0 c : (eps0 (F c)) \o (F # eta0 c) = idfun.
 Proof.
@@ -401,24 +401,24 @@ apply funext => x /=.
 rewrite eps0E eta0E; apply: (@S1_inj _ _ x).
 rewrite S1_Convn_indexed_over_finType /=.
 pose cast (y : finsupp x) : FId c := let: FSetSub a _ := y in a.
-have Y0 : forall (i : finsupp (Distfmap (@Dist1.d _) x)),
-  {a : finsupp x | fsval i = Dist1.d (cast a)}.
+have Y0 : forall (i : finsupp (FSDistfmap (@FSDist1.d _) x)),
+  {a : finsupp x | fsval i = FSDist1.d (cast a)}.
   case=> i /= Hi; apply cid; move: Hi.
-  by rewrite supp_Distfmap => /imfsetP[c0 /= c0x Hi]; exists (FSetSub c0x).
+  by rewrite supp_FSDistfmap => /imfsetP[c0 /= c0x Hi]; exists (FSetSub c0x).
 pose Y i := projT1 (Y0 i).
 rewrite (eq_bigr (fun i => scalept (x (cast (Y i))) (S1 (fsval i)))); last first.
-  move=> i _; rewrite fdist_of_DistE /F /Y; case: (Y0 _)=> a /= ia /=.
-  rewrite {1}ia DistfmapE (fbig_pred1_inj _ _ _ (@Dist1_inj _)) //; exact/fsvalP.
+  move=> i _; rewrite fdist_of_FSDistE /F /Y; case: (Y0 _)=> a /= ia /=.
+  rewrite {1}ia FSDistfmapE (fbig_pred1_inj _ _ _ (@FSDist1_inj _)) //; exact/fsvalP.
 have HY' (i : finsupp x) :
-  Dist1.d (fsval i) \in finsupp (Distfmap (@Dist1.d c) x).
-  by rewrite supp_Distfmap; apply/imfsetP => /=; exists (fsval i).
+  FSDist1.d (fsval i) \in finsupp (FSDistfmap (@FSDist1.d c) x).
+  by rewrite supp_FSDistfmap; apply/imfsetP => /=; exists (fsval i).
 set Y' := fun x0 => FSetSub (HY' x0).
 have Y'K : cancel Y' Y.
-  by move=> i; apply val_inj => /=; rewrite /Y; case: (Y0 _) => ? /= /Dist1_inj.
+  by move=> i; apply val_inj => /=; rewrite /Y; case: (Y0 _) => ? /= /FSDist1_inj.
 have YK : cancel Y Y' by move=> i; apply val_inj; rewrite /= /Y; case: (Y0 _).
-set dxy := fdist_of_finDist.d (Dist_lift_supp.d (Dist_crop0.d x) Y'K).
+set dxy := fdist_of_finDist.d (FSDist_lift_supp.d (FSDist_crop0.d x) Y'K).
 have Hdxy : x \o cast \o Y =1 dxy.
-  move=> i; rewrite fdist_of_finDist.dE /= Dist_lift_supp.dE /=.
+  move=> i; rewrite fdist_of_finDist.dE /= FSDist_lift_supp.dE /=.
   apply/eqP; case: ifPn.
     by move/imfsetP => -[j Hj ->]; rewrite fsfunE ffunE ifT // inE.
   apply/contraNT => x0; apply/imfsetP; exists (Y i) => //=.
@@ -427,20 +427,20 @@ clearbody dxy.
 rewrite (eq_bigr (fun i => scalept (dxy i) (S1 (fsval i)))); last first.
   move=> i; by rewrite /= -Hdxy.
 rewrite -S1_Convn_indexed_over_finType; congr S1.
-apply Dist_ext => a /=.
-rewrite /Convn_indexed_over_finType convn_convdist /= ConvDist.dE fsfunE /=.
+apply FSDist_ext => a /=.
+rewrite /Convn_indexed_over_finType convn_convfsdist /= ConvFSDist.dE fsfunE /=.
 case: ifPn => Ha.
 - rewrite /Convn_indexed_over_finType.d_enum /=.
   have ax : a \in finsupp x.
     case/bigfcupP : Ha => i /andP[/= _].
     rewrite /Convn_indexed_over_finType.d_enum ffunE -Hdxy /Y /=.
-    case: (Y0 _) => -x0 /= -> _; rewrite Dist1.supp inE => /eqP ->; exact/fsvalP.
-  transitivity (\sum_(a0 <- finsupp x) x a0 * (Dist1.d (Dist1.d a0)) (Dist1.d a)); last first.
+    case: (Y0 _) => -x0 /= -> _; rewrite FSDist1.supp inE => /eqP ->; exact/fsvalP.
+  transitivity (\sum_(a0 <- finsupp x) x a0 * (FSDist1.d (FSDist1.d a0)) (FSDist1.d a)); last first.
     rewrite (big_fsetID _ (xpred1 a)) /=.
     rewrite -2!big_fset_condE [in X in _ + X = _]big1 ?addR0; last first.
       move=> c0 /negbTE c0a.
-      by rewrite Dist1.dE inE (inj_eq (@Dist1_inj _)) eq_sym c0a mulR0.
-    by rewrite fbig_pred1_inj // Dist1.dE inE eqxx mulR1.
+      by rewrite FSDist1.dE inE (inj_eq (@FSDist1_inj _)) eq_sym c0a mulR0.
+    by rewrite fbig_pred1_inj // FSDist1.dE inE eqxx mulR1.
   rewrite (reindex_onto enum_rank enum_val) /=; last by move=> *; exact: enum_valK.
   rewrite -(@eq_big _ _ _ _ _ xpredT _ (fun j => x (cast (Y j)) * fsval j a)); last 2 first.
     by move=> i; rewrite enum_rankK eqxx.
@@ -448,20 +448,20 @@ case: ifPn => Ha.
   rewrite [in RHS]big_seq_fsetE /= (reindex Y') /=; last first.
     by exists Y => i _; [rewrite Y'K | rewrite YK].
   apply eq_bigr => i _ /=.
-  rewrite !Dist1.dE !inE Y'K inj_eq //; exact: Dist1_inj.
+  rewrite !FSDist1.dE !inE Y'K inj_eq //; exact: FSDist1_inj.
 - apply/esym/eqP; apply: contraNT Ha => xa0.
   rewrite -mem_finsupp in xa0.
   pose x' := Y' (FSetSub xa0).
   have x'a : finsupp (fsval x') `<=` finsupp x.
     apply/fsubsetP => i /=.
-    by rewrite Dist1.supp inE => /eqP ->.
+    by rewrite FSDist1.supp inE => /eqP ->.
   apply/bigfcupP; exists (enum_rank x').
     rewrite /index_enum -enumT mem_enum /= /Convn_indexed_over_finType.d_enum ffunE -Hdxy /=.
     rewrite enum_rankK /Y /=.
-    case: (Y0 _) => //= x0 /Dist1_inj <-.
-    by apply/ltRP/Dist.gt0.
+    case: (Y0 _) => //= x0 /FSDist1_inj <-.
+    by apply/ltRP/FSDist.gt0.
   rewrite mem_finsupp /= enum_rankK.
-  rewrite /= Dist1.dE inE eqxx; exact/eqP/R1_neq_R0.
+  rewrite /= FSDist1.dE inE eqxx; exact/eqP/R1_neq_R0.
 Qed.
 
 Lemma triR0 d : (G # eps0 d) \o (eta0 (G d)) = idfun.
@@ -474,12 +474,12 @@ Section eps0_correct.
 Import ScaledConvex.
 Local Open Scope R_scope.
 
-Lemma eps0_correct (A : choiceType) (D : Dist (Dist A)) : eps0'' D = Distjoin D.
+Lemma eps0_correct (A : choiceType) (D : {dist (FSDist_convType A)}) : eps0'' D = FSDistjoin D.
 Proof.
-apply Dist_ext => a; rewrite -[LHS]Scaled1RK /eps0''.
-rewrite (S1_proj_Convn_indexed_over_finType (Dist_eval_affine a)) big_scaleR.
-rewrite DistjoinE big_seq_fsetE; apply eq_bigr => -[d dD] _.
-by rewrite (scaleR_scalept _ (fdist_ge0 _ _)) fdist_of_DistE Scaled1RK.
+apply FSDist_ext => a; rewrite -[LHS]Scaled1RK /eps0''.
+rewrite (S1_proj_Convn_indexed_over_finType (FSDist_eval_affine a)) big_scaleR.
+rewrite FSDistjoinE big_seq_fsetE; apply eq_bigr => -[d dD] _.
+by rewrite (scaleR_scalept _ (FDist.ge0 _ _)) fdist_of_FSDistE Scaled1RK.
 Qed.
 End eps0_correct.
 
@@ -766,7 +766,7 @@ Import category.
    - necset is the convex powerset functor. *)
 
 Definition P_delta_left :=
-  necset_functor \O Dist_functor \O gen_choiceType_functor.
+  necset_functor \O FSDist_functor \O gen_choiceType_functor.
 
 Definition P_delta_right :=
   forget_choiceType
@@ -779,15 +779,15 @@ Definition P_delta_acto (T : Type) : Type := P_delta_left T.
 Definition P_delta : functor Type_category Type_category :=
   P_delta_right \O P_delta_left.
 
-Lemma eps0_Dist1 (A : Type) (d : P_delta_acto A) : eps0 _ (Dist1.d d) = d.
+Lemma eps0_Dist1 (A : Type) (d : P_delta_acto A) : eps0 _ (FSDist1.d d) = d.
 Proof.
 rewrite eps0E; apply: (@ScaledConvex.S1_inj _ _ d).
 rewrite S1_Convn_indexed_over_finType /=.
 rewrite (eq_bigr (fun=> ScaledConvex.S1 d)); last first.
-  move=> i _; rewrite fdist_of_DistE Dist1.dE /= -(Dist1.supp d).
+  move=> i _; rewrite fdist_of_FSDistE FSDist1.dE /= -(FSDist1.supp d).
   rewrite fsvalP ScaledConvex.scalept1 /=; congr (ScaledConvex.S1 _).
-  case: i => i Hi /=; rewrite Dist1.supp inE in Hi; exact/eqP.
-by rewrite big_const (_ : #| _ | = 1) // -cardfE Dist1.supp cardfs1.
+  case: i => i Hi /=; rewrite FSDist1.supp inE in Hi; exact/eqP.
+by rewrite big_const (_ : #| _ | = 1) // -cardfE FSDist1.supp cardfs1.
 Qed.
 End P_delta_functor.
 
@@ -795,7 +795,7 @@ Section P_delta_category_monad.
 Import category.
 
 Local Notation F1 := necset_functor.
-Local Notation F0 := Dist_functor.
+Local Notation F0 := FSDist_functor.
 Local Notation FC := gen_choiceType_functor.
 Local Notation UC := forget_choiceType.
 Local Notation U0 := forget_convType.
@@ -841,7 +841,7 @@ Lemma retE' :
      \v etaC.
 Proof. by rewrite /ret; unlock. Qed.
 
-Lemma epsE'' (L : semiCompSemiLattConvType) : 
+Lemma epsE'' (L : semiCompSemiLattConvType) :
   eps L =
   [homcomp
      eps1 L
@@ -851,7 +851,7 @@ Proof. by rewrite epsE'. Qed.
 
 Lemma epsE (L : semiCompSemiLattConvType) :
   eps L =
-  ((eps1 _) \o (necset_mor (eps0 _)) \o (necset_mor (Dist_mor (epsC _))))
+  ((eps1 _) \o (necset_mor (eps0 _)) \o (necset_mor (FSDist_mor (epsC _))))
     :> (_ -> _).
 Proof.
 rewrite epsE''; cbn.
@@ -869,10 +869,10 @@ Lemma retE'' (T : Type) :
 Proof. by rewrite retE'. Qed.
 
 Lemma retE (T : Type) :
-  ret T = (@necset1 _) \o (@Dist1.d (gen_choiceType T)) :> (_ -> _).
+  ret T = (@necset1 _) \o (@FSDist1.d (gen_choiceType T)) :> (_ -> _).
 Proof.
 rewrite funeqE => x; apply necset_ext.
-by rewrite /ret; unlock; rewrite /= etaCE eta0E eta1E Distfmap_id.
+by rewrite /ret; unlock; rewrite /= etaCE eta0E eta1E FSDistfmap_id.
 Qed.
 
 Definition join : P_delta \O P_delta ~> P_delta :=
@@ -904,7 +904,7 @@ rewrite -homcompE joinE retE.
 rewrite epsE funcompE -homcompE eps1E.
 rewrite -[in RHS](Joet1 d); congr (Joet `NE _).
 rewrite 2!necset_morE; apply/neset_ext => /=.
-rewrite 2!image_set1 Distfmap1.
+rewrite 2!image_set1 FSDistfmap1.
 by rewrite epsCE eps0_Dist1.
 Qed.
 Lemma join_right_unit : JoinLaws.join_right_unit ret join.
