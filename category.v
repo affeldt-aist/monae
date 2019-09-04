@@ -623,17 +623,27 @@ rewrite functor_o.
 by rewrite (natural_head t).
 Qed.
 End hcomp_lemmas.
-  
+
 (*** adjoint functor ***)
 (* We define adjointness F -| G in terms of its unit and counit. *)
+
+Module TriangularLaws.
+Section triangularlaws.
+Variables (C D : category) (F : functor C D) (G : functor D C).
+Variables (eta : FId ~> G \O F) (eps : F \O G ~> FId).
+Definition left := forall c, [fun of eps (F c)] \o [fun of F # eta c] = idfun.
+Definition right := forall d, [fun of G # eps d] \o [fun of eta (G d)] = idfun.
+End triangularlaws.
+End TriangularLaws.
+
 Module AdjointFunctor.
 Section def.
 Variables (C D : category) (F : functor C D) (G : functor D C).
 Record adjunction := mk {
   eta : FId ~> G \O F ;
   eps : F \O G ~> FId ;
-  triangular_left : forall c, (eps (F c)) \o (F # eta c) = idfun ;
-  triangular_right : forall d, (G # eps d) \o (eta (G d)) = idfun ;
+  triangular_left : TriangularLaws.left eta eps ;
+  triangular_right : TriangularLaws.right eta eps
 }.
 End def.
 Section lemmas.
@@ -713,10 +723,10 @@ Variables (F1 : functor C1 C2) (G1 : functor C2 C1).
 Variables
   (eta0 : FId ~> G0 \O F0) (eta1 : FId ~> G1 \O F1)
   (eps0 : F0 \O G0 ~> FId) (eps1 : F1 \O G1 ~> FId)
-  (triL0 : forall c : C0, [homcomp (eps0) (F0 c), F0 # (eta0) c] = idfun)
-  (triL1 : forall c : C1, [homcomp (eps1) (F1 c), F1 # (eta1) c] = idfun)
-  (triR0 : forall d : C1, [homcomp G0 # (eps0) d, (eta0) (G0 d)] = idfun)
-  (triR1 : forall d : C2, [homcomp G1 # (eps1) d, (eta1) (G1 d)] = idfun).
+  (triL0 : TriangularLaws.left eta0 eps0)
+  (triL1 : TriangularLaws.left eta1 eps1)
+  (triR0 : TriangularLaws.right eta0 eps0)
+  (triR1 : TriangularLaws.right eta1 eps1).
 
 Definition F := (F1 \O F0).
 Definition G := (G0 \O G1).
@@ -741,10 +751,10 @@ Proof. by move=> a; cbn; rewrite HCompId HIdComp. Qed.
 Lemma EpsE_hom : forall a, Eps a = [hom of (eps1 _) \o F1 # (eps0 (G1 a))].
 Proof. by move=> a; rewrite hom_ext EpsE. Qed.
 
-Lemma triL c : [homcomp Eps (F c), F # Eta c] = idfun.
+Lemma triL : TriangularLaws.left Eta Eps.
 Proof.
 (* This proof does NOT follow the manner of 2-category, for now. *)
-rewrite EpsE EtaE_hom homcompA (functor_o F) /F -(functor_o_head F1).
+move=> c; rewrite EpsE EtaE_hom homcompA (functor_o F) /F -(functor_o_head F1).
 set X:= [hom of [homcomp _, _]].
 evar (TY : Type).
 evar (Y : TY).
@@ -756,9 +766,9 @@ rewrite -[in RHS](functor_id F1) -(functor_o F1); congr (F1 # _).
 by rewrite hom_ext /= triL0.
 Qed.
 
-Lemma triR d : [homcomp (G # Eps d), (Eta (G d))] = idfun.
+Lemma triR : TriangularLaws.right Eta Eps.
 Proof.
-rewrite EpsE_hom EtaE (functor_o_head G) -(functor_o_head G0 (eta0 _)); cbn.
+move=> c; rewrite EpsE_hom EtaE (functor_o_head G) -(functor_o_head G0 (eta0 _)); cbn.
 set X:= [hom of [homcomp _, _]].
 evar (TY : Type).
 evar (Y : TY).
