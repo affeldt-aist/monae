@@ -3,26 +3,13 @@ From mathcomp Require Import ssreflect ssrfun ssrbool eqtype ssrnat seq.
 From mathcomp Require Import choice fintype finfun bigop.
 From mathcomp Require Import boolp classical_sets.
 From mathcomp Require Import finmap.
-From infotheo Require Import Reals_ext Rbigop ssrR proba fsdist convex_choice.
+From infotheo Require Import Reals_ext classical_sets_ext Rbigop ssrR proba fsdist convex_choice.
 From infotheo Require Import necset.
 Require category.
 
 Set Implicit Arguments.
 Unset Strict Implicit.
 Unset Printing Implicit Defensive.
-
-Section TODO_move_to_other_file.
-Section misc_classical_sets.
-Local Open Scope classical_set_scope.
-Lemma bigcup_image (A I J : Type) (P : set I) (f : I -> J) (X : J -> set A) :
-  \bigcup_(x in f @` P) X x = \bigcup_(x in P) X (f x).
-Proof.
-apply eqEsubset=> x.
-- by case=> j [] i pi <- Xfix; exists i.
-- by case=> i Pi Xfix; exists (f i); first by  exists i.
-Qed.
-End misc_classical_sets.
-End TODO_move_to_other_file.
 
 (* choiceType as a category *)
 (* Type as a category *)
@@ -167,10 +154,9 @@ Defined.
 
 (* morphism part of Dist *)
 Definition FSDist_mor (A B : choiceType) (f : {hom A , B}) :
-  {hom (FSDist_convType A) , {dist B}}.
+  {hom (FSDist_convType A) , FSDist_choiceType B}.
 refine (@Hom.Pack convType_category _ _ _ (FSDistfmap f) _).
-move=> x y t.
-exact: Conv2FSDist.bind_left_distr.
+move=> x y t; exact: ConvFSDist.bind_left_distr.
 Defined.
 
 (* FSDist_mor induces maps between supports *)
@@ -281,7 +267,7 @@ have -> : \ssum_(i <- finsupp x) scalept (x i) (S1 i) =
       by apply eq_imfset => //; move => i /=; rewrite !inE andbC.
     apply/eqP; rewrite eqEfsubset; apply/andP; split; last by apply fset_sub.
     apply/fsubsetP => i Hi.
-    move/fsubsetP: (Conv2FSDist.incl_finsupp_conv2fsdist x y pn0).
+    move/fsubsetP: (ConvFSDist.incl_finsupp_conv2fsdist x y pn0).
     move/(_ i Hi) => Hi'.
     by rewrite !inE Hi Hi'.
 suff -> : \ssum_(i <- finsupp y) scalept (y i) (S1 i) =
@@ -297,7 +283,7 @@ suff H : finsupp y = [fset i | i in finsupp (x <|p|> y) & i \in finsupp y]
     by apply eq_imfset => //; move => i /=; rewrite !inE andbC.
   apply/eqP; rewrite eqEfsubset; apply/andP; split; last by apply fset_sub.
   apply/fsubsetP => i Hi.
-  by rewrite !inE /= Hi finsupp_Conv2 // inE Hi orbT.
+  by rewrite !inE /= Hi finsupp_Conv // inE Hi orbT.
 Qed.
 
 Lemma eps0''_natural (C D : convType) (f : {hom C, D}) :
@@ -416,9 +402,9 @@ set Y' := fun x0 => FSetSub (HY' x0).
 have Y'K : cancel Y' Y.
   by move=> i; apply val_inj => /=; rewrite /Y; case: (Y0 _) => ? /= /FSDist1_inj.
 have YK : cancel Y Y' by move=> i; apply val_inj; rewrite /= /Y; case: (Y0 _).
-set dxy := fdist_of_finDist.d (FSDist_lift_supp.d (FSDist_crop0.d x) Y'K).
+set dxy := fdist_of_finFSDist.d (FSDist_lift_supp.d (FSDist_crop0.d x) Y'K).
 have Hdxy : x \o cast \o Y =1 dxy.
-  move=> i; rewrite fdist_of_finDist.dE /= FSDist_lift_supp.dE /=.
+  move=> i; rewrite fdist_of_finFSDist.dE /= FSDist_lift_supp.dE /=.
   apply/eqP; case: ifPn.
     by move/imfsetP => -[j Hj ->]; rewrite fsfunE ffunE ifT // inE.
   apply/contraNT => x0; apply/imfsetP; exists (Y i) => //=.
@@ -428,7 +414,7 @@ rewrite (eq_bigr (fun i => scalept (dxy i) (S1 (fsval i)))); last first.
   move=> i; by rewrite /= -Hdxy.
 rewrite -S1_Convn_indexed_over_finType; congr S1.
 apply FSDist_ext => a /=.
-rewrite /Convn_indexed_over_finType convn_convfsdist /= ConvFSDist.dE fsfunE /=.
+rewrite /Convn_indexed_over_finType convn_convnfsdist /= ConvnFSDist.dE fsfunE /=.
 case: ifPn => Ha.
 - rewrite /Convn_indexed_over_finType.d_enum /=.
   have ax : a \in finsupp x.
@@ -943,12 +929,7 @@ by rewrite hom_ext joinE funeqE.
 Qed.
 
 Definition P_delta_monadMixin : Monad.mixin_of P_delta :=
-  Monad.Mixin
-    ret_natural
-    join_natural
-    join_left_unit
-    join_right_unit
-    joinA.
-Definition m := Monad_of_category_monad
-                  (Monad.Pack (Monad.Class P_delta_monadMixin)).
+  Monad.Mixin ret_natural join_natural join_left_unit join_right_unit joinA.
+Definition m :=
+  Monad_of_category_monad (Monad.Pack (Monad.Class P_delta_monadMixin)).
 End P_delta_category_monad.

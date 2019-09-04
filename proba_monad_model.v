@@ -36,17 +36,16 @@ by rewrite boolp.funeqE => a; rewrite /= FSDistBind1f.
 Qed.
 
 Program Definition prob_mixin : MonadProb.mixin_of monad :=
-  @MonadProb.Mixin monad (fun p (A : Type) (m1 m2 : {dist (choice_of_Type A)}) =>
-    (@Conv2FSDist.d (choice_of_Type A) m1 m2 p)) _ _ _ _ _ _.
-Next Obligation. move=> ? ? ?; exact: Conv2FSDist.conv0. Qed.
-Next Obligation. move=> ? ? ?; exact: Conv2FSDist.conv1. Qed.
-Next Obligation. move=> ? ? ?; exact: Conv2FSDist.convC. Qed.
-Next Obligation. move=> ? ? ?; exact: Conv2FSDist.convmm. Qed.
-Next Obligation. move=> ? ? ? ? ? ? ? ? [? ?] /=; exact: Conv2FSDist.convA. Qed.
+  @MonadProb.Mixin monad (fun p A => @ConvFSDist.d (choice_of_Type A) p) _ _ _ _ _ _.
+Next Obligation. move=> ? ? ?; exact: ConvFSDist.conv0. Qed.
+Next Obligation. move=> ? ? ?; exact: ConvFSDist.conv1. Qed.
+Next Obligation. move=> ? ? ?; exact: ConvFSDist.convC. Qed.
+Next Obligation. move=> ? ? ?; exact: ConvFSDist.convmm. Qed.
+Next Obligation. move=> ? ? ? ? ? ? ? ? ? /=; exact: ConvFSDist.convA. Qed.
 Next Obligation.
 move=> p A B m1 m2 k.
 rewrite !(@BindE (choice_of_Type A) (choice_of_Type B)).
-by rewrite Conv2FSDist.bind_left_distr.
+by rewrite ConvFSDist.bind_left_distr.
 Qed.
 
 Definition prob_class : MonadProb.class_of (fun A : Type => {dist (choice_of_Type A)}) :=
