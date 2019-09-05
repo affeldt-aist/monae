@@ -1,12 +1,12 @@
 -arg -w -arg -notation-overridden
 
+monae_lib.v
 monad.v
 fail_monad.v
 state_monad.v
 trace_monad.v
 proba_monad.v
 monad_composition.v
-model.v
 monad_model.v
 proba_monad_model.v
 monad_transformer.v

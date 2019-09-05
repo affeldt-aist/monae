@@ -1,7 +1,7 @@
-Require Import Reals Lra ssreflect ssrmatching ssrfun ssrbool.
-From mathcomp Require Import eqtype ssrnat seq choice fintype tuple.
+Require Import Reals Lra.
+From mathcomp Require Import all_ssreflect.
 From infotheo Require Import ssrR Reals_ext proba.
-Require Import monad fail_monad proba_monad.
+Require Import monae_lib monad fail_monad proba_monad.
 
 (* from gibbons2011icfp and gibbonsUTP2012
 

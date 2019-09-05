@@ -1,14 +1,11 @@
-Require Import ssreflect ssrmatching ssrfun ssrbool.
-From mathcomp Require Import eqtype ssrnat seq path div choice fintype tuple.
-From mathcomp Require Import finfun bigop.
+From mathcomp Require Import all_ssreflect.
+Require Import monae_lib monad.
+
+(* jones and duponcheel, composing monads, sect 2, 3 *)
 
 Set Implicit Arguments.
 Unset Strict Implicit.
 Unset Printing Implicit Defensive.
-
-(* jones and duponcheel, composing monads, sect 2, 3 *)
-
-Require Import monad.
 
 Module Comp.
 Section comp.
@@ -248,4 +245,3 @@ Proof. by move=> A; rewrite !JOINE -!/prod (Prod.JOIN_fmap_JOIN prod4). Qed.
 
 End swap.
 End Swap.
-

@@ -1,8 +1,7 @@
-Require Import ssreflect ssrmatching ssrfun ssrbool.
-From mathcomp Require Import eqtype ssrnat seq choice fintype tuple.
+From mathcomp Require Import all_ssreflect.
 From mathcomp Require boolp.
 From infotheo Require Import Reals_ext ssr_ext fsdist.
-Require Import monad proba_monad model.
+Require Import monae_lib monad proba_monad.
 
 (*
   This file provides a model for the probability monad.

@@ -1,9 +1,8 @@
-Require Import ssreflect ssrmatching ssrfun ssrbool.
-From mathcomp Require Import eqtype ssrnat seq choice fintype tuple.
-From mathcomp Require Import bigop finmap.
+From mathcomp Require Import all_ssreflect.
+From mathcomp Require Import finmap.
 From mathcomp Require boolp.
 From mathcomp Require Import classical_sets.
-Require Import monad fail_monad state_monad trace_monad model.
+Require Import monae_lib monad fail_monad state_monad trace_monad.
 
 (* Contents: sample models for the monads in monad.v, state_monad.v, trace_monad.v
    - Module ModelMonad

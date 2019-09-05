@@ -20,6 +20,7 @@ This library has been applied to other formalizations:
 
 ** Files
 
+- [[monae_lib.v][monae_lib.v]]: simple additions to base libraries
 - [[monad.v][monad.v]]: basics of monadic equational reasoning
 - [[fail_monad.v][fail_monad.v]]: fail monad and related monads
 - [[state_monad.v][state_monad.v]]: state-related monads
@@ -27,7 +28,6 @@ This library has been applied to other formalizations:
 - [[proba_monad.v][proba_monad.v]]: about the probability monad
 - [[monad_composition.v][monad_composition.v]]: composing monads
 - [[monad_transformer.v][monad_transformer.v]]: monad transformers
-- [[model.v][model.v]]: definition common to ~*_model.v~ files
 - [[monad_model.v][monad_model.v]]: concrete models of monads (corresponding to ~{,state_,trace_}monad.v~)
 - [[proba_monad_model.v][proba_monad_model.v]]: concrete model of the probability monad
 - [[example_spark.v][example_spark.v]]: example of Spark aggregation

@@ -1,8 +1,6 @@
-Require Import ssreflect ssrmatching ssrfun ssrbool.
-From mathcomp Require Import eqtype ssrnat seq path div choice fintype tuple.
-From mathcomp Require Import finfun bigop.
+From mathcomp Require Import all_ssreflect.
 From mathcomp Require boolp.
-Require Import monad fail_monad.
+Require Import monae_lib monad fail_monad.
 
 Set Implicit Arguments.
 Unset Strict Implicit.

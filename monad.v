@@ -1,23 +1,30 @@
 Ltac typeof X := type of X.
 
-Require Import ssreflect ssrmatching ssrfun ssrbool.
-From mathcomp Require Import eqtype ssrnat seq path div choice fintype tuple.
-From mathcomp Require Import finfun bigop.
+Require Import ssrmatching.
+From mathcomp Require Import all_ssreflect.
 From mathcomp Require boolp.
+Require Import monae_lib.
+
+(* This file defines monads in the special case of functors from the
+   category Type to the cateory Type. The file category.v generalizes
+   this with a proper notion of category (see Monad_of_category_monad.m
+    in category.v) *)
 
 Set Implicit Arguments.
 Unset Strict Implicit.
 Unset Printing Implicit Defensive.
 
 (* Contents:
-- generic Haskell-like functions and notations
 - Module FunctorLaws/Module Functor
+- various sections about functors
 - Section fcomp
-- Section natural_transformation.
-- Section adjoint_functors.
+- Module natural
+    natural transformations
+- Module AdjointFunctor
 - Module BindLaws.
     definition of algebraic laws to be used with monads
 - Section monad_of_adjoint.
+- Section composite_adjoint.
 - Module JoinLaws.
 - Module Monad.
     with ret and join
@@ -27,115 +34,18 @@ Unset Printing Implicit Defensive.
 - Section fmap_and_join
 - Section rep.
     simple effect of counting
+- Section MonadCount.
 *)
 
 Reserved Notation "A `2" (format "A `2", at level 3).
 Reserved Notation "f ^`2" (format "f ^`2", at level 3).
-Reserved Notation "l \\ p" (at level 50).
-Reserved Notation "m >>= f" (at level 49).
 Reserved Notation "m >> f" (at level 49).
-(*Reserved Notation "f =<< m" (at level 49).*)
-Reserved Notation "'do' x <- m ; e"
-  (at level 60, x ident, m at level 200, e at level 60).
-Reserved Notation "'do' x : T <- m ; e"
-  (at level 60, x ident, m at level 200, e at level 60).
-Reserved Notation "m >=> n" (at level 50).
-Reserved Notation "n <=< m" (at level 50).
 Reserved Notation "x '[~]' y" (at level 50).
 Reserved Notation "'[~p]'".
 Reserved Notation "f (o) g" (at level 11).
-Reserved Notation "f ~> g" (at level 51).
-Reserved Notation "F # g" (at level 11).
 Reserved Notation "'fmap' f" (at level 4).
-Reserved Notation "f \O g" (at level 50, format "f  \O  g").
-Reserved Notation "f -| g :: n , e" (at level 51, g, n, e at next level).
-Reserved Notation "f \v g" (at level 50, format "'[v' f '/' \v  g ']'",
-  left associativity).
 
-Notation "l \\ p" := ([seq x <- l | x \notin p]).
 Notation "f ~~> g" := (forall A, f A -> g A) (at level 51).
-
-(* some Haskell-like functions *)
-Definition foldr1 (A : Type) (def : A) (f : A -> A -> A) (s : seq A) :=
-  match s with
-    | [::] => def
-    | [:: h] => h
-    | h :: h' :: t => foldr f h [:: h' & t]
-  end.
-
-Definition cp {A B} (x : seq A) (y : seq B) := [seq (x', y') | x' <- x, y' <- y].
-
-Lemma cp1 A B (a : A) (s : seq B) : cp [:: a] s = map (fun b => (a, b)) s.
-Proof. by  elim: s => // h t /= <-. Qed.
-
-Definition zipWith {A B C} (op : A -> B -> C) a b : seq C :=
-  map (fun x => op x.1 x.2) (zip a b).
-
-Section fold.
-Variables (T R : Type) (f : T -> R -> R) (r : R).
-
-Section universal.
-Variable (g : seq T -> R).
-Hypothesis H1 : g nil = r.
-Hypothesis H2 : forall h t, g (h :: t) = f h (g t).
-Lemma foldr_universal : g = foldr f r.
-Proof. rewrite boolp.funeqE; elim => // h t ih /=; by rewrite H2 ih. Qed.
-Lemma foldr_universal_ext x : g x = foldr f r x.
-Proof. by rewrite -(foldr_universal). Qed.
-End universal.
-
-Section fusion_law.
-Variables (U : Type) (h : U -> R) (w : U) (g : T -> U -> U).
-Hypothesis H1 : h w = r.
-Hypothesis H2 : forall x y, h (g x y) = f x (h y).
-Lemma foldr_fusion : h \o foldr g w = foldr f r.
-Proof. rewrite boolp.funeqE; elim => // a b /= ih; by rewrite H2 ih. Qed.
-Lemma foldr_fusion_ext x : (h \o foldr g w) x = foldr f r x.
-Proof. by rewrite -foldr_fusion. Qed.
-End fusion_law.
-
-End fold.
-
-Section curry.
-Variables A B C : Type.
-Implicit Types f : A -> B -> C.
-
-Definition uncurry f := prod_curry f.
-
-Lemma uncurryE f a b : (uncurry f) (a, b) = f a b. Proof. by []. Qed.
-
-Definition curry (g : A * B -> C) : A -> B -> C := fun a b => g (a, b).
-
-Lemma curryK : cancel curry uncurry.
-Proof. by move=> f; rewrite boolp.funeqE; case. Qed.
-
-Lemma uncurryK f : cancel uncurry curry.
-Proof. by []. Qed.
-End curry.
-
-Definition ucat {A} := uncurry (@cat A).
-
-Definition uaddn := uncurry addn.
-
-Lemma uaddnE n m : uaddn (n, m) = n + m. Proof. by rewrite /uaddn uncurryE. Qed.
-
-Definition const A B (b : B) := fun _ : A => b.
-
-Definition wrap {A} (a : A) := [:: a].
-
-Fixpoint scanl A B (op : B -> A -> B) (b : B) (s : seq A) : seq B :=
-  if s isn't x :: xs then [::] else (op b x) :: scanl op (op b x) xs.
-
-Lemma compA {A B C D} (f : C -> D) (g : B -> C) (h : A -> B) : f \o (g \o h) = (f \o g) \o h.
-Proof. by []. Qed.
-
-Lemma compfid A B (f : A -> B) : f \o id = f. Proof. by []. Qed.
-
-Lemma compidf A B (f : A -> B) : id \o f = f. Proof. by []. Qed.
-
-Lemma compE A B C (g : B -> C) (f : A -> B) a : (g \o f) a = g (f a).
-Proof. by []. Qed.
-
 (* map laws of a functor *)
 Module FunctorLaws.
 Section def.
@@ -349,23 +259,37 @@ Lemma fork_natural : naturality _ _ fork'. Proof. by []. Qed.
 Definition fork : FId ~> squaring := Natural.Pack (Natural.Class fork_natural).
 End natural_transformation_example.
 
-Section adjoint_functors.
-Variables f g : functor.
-Definition eta_type := FId ~~> g \O f.
-Definition eps_type := f \O g ~~> FId.
-Definition triangular_law1 (eps : eps_type) (eta : eta_type) :=
-  forall A, eps (f A) \o (f # eta A) = @id (f A).
-Definition triangular_law2 (eps : eps_type) (eta : eta_type) :=
-  forall A, (g # eps A) \o eta (g A) = @id (g A).
-Definition adjunction eta eps :=
-  (naturality _ _ eps /\ naturality _ _ eta) /\
-  (triangular_law1 eps eta /\ triangular_law2 eps eta).
-Definition phi A B eta (h : f A -> B) : A -> g B := (g # h) \o eta A.
-Definition psi A B eps (h : A -> g B) : f A -> B := eps B \o (f # h).
-End adjoint_functors.
-Arguments adjunction : clear implicits.
+Definition eta_type (f g : functor) := FId ~~> g \O f.
+Definition eps_type (f g : functor) := f \O g ~~> FId.
+Module TriangularLaws.
+Section triangularlaws.
+Variables (F G : functor).
+Variables (eps : eps_type F G) (eta : eta_type F G).
+Definition left := forall A, @eps (F A) \o (F # @eta A) = @id (F A).
+Definition right := forall A, (G # @eps A) \o @eta (G A) = @id (G A).
+End triangularlaws.
+End TriangularLaws.
 
-Notation "f -| g :: n , e" := (adjunction f g n e).
+Module AdjointFunctor.
+Section adjointfunctor.
+Variables F G : functor.
+Record t := mk {
+  eta : eta_type F G ;
+  nat_eta : naturality _ _ eta ;
+  eps : eps_type F G ;
+  nat_eps : naturality _ _ eps ;
+  tri_left : TriangularLaws.left eps eta ;
+  tri_right : TriangularLaws.right eps eta}.
+End adjointfunctor.
+Section lemmas.
+Variables (F G : functor) (H : t F G).
+Definition hom_iso A B (h : F A -> B) : A -> G B := (G # h) \o @eta _ _ H A.
+Definition hom_inv A B (h : A -> G B) : F A -> B := @eps _ _ H B \o (F # h).
+End lemmas.
+End AdjointFunctor.
+Arguments AdjointFunctor.t : clear implicits.
+
+Notation "F -| G" := (AdjointFunctor.t F G).
 
 Section adjoint_example.
 Variable (X : Type).
@@ -373,16 +297,15 @@ Definition curry_eps : eps_type (curry_F X) (uncurry_F X) :=
   fun A (af : X * (X -> A)) => af.2 af.1.
 Definition curry_eta : eta_type (curry_F X) (uncurry_F X) :=
   fun A (a : A) => fun x : X => (x, a).
-Lemma adjoint_currry : curry_F X -| uncurry_F X :: curry_eta, curry_eps.
+Lemma adjoint_currry : curry_F X -| uncurry_F X.
 Proof.
-split.
-  split => A B h /=.
-  - by rewrite /id_f /curry_eps /curry_f /= /uncurry_M /uncurry_f /= boolp.funeqE; case.
-  - rewrite /uncurry_f /curry_f /curry_eta /id_f /= boolp.funeqE => a /=.
-    by rewrite boolp.funeqE.
-split.
-  by move=> A; rewrite /triangular_law1 boolp.funeqE; case.
-move=> A; rewrite /triangular_law2 /uncurry_F /curry_eps /curry_eta /uncurry_M.
+apply: (@AdjointFunctor.mk _ _ curry_eta _ curry_eps).
+move=> A B h /=.
+by rewrite /uncurry_f /curry_f /curry_eta /id_f /= boolp.funeqE => a /=; rewrite boolp.funeqE.
+move=> A B h /=.
+by rewrite /id_f /curry_eps /curry_f /= /uncurry_M /uncurry_f /= boolp.funeqE; case.
+by move=> A; rewrite /TriangularLaws.left boolp.funeqE; case.
+move=> A; rewrite /TriangularLaws.right /uncurry_F /curry_eps /curry_eta /uncurry_M.
 by rewrite /= /uncurry_f /= /comp /= boolp.funeqE => f; rewrite boolp.funeqE.
 Qed.
 End adjoint_example.
@@ -435,64 +358,49 @@ Definition mu : M \O M ~~> M := fun A => G # (@eps (F A)).
 Definition bind A B (m : M A) (f : A -> M B) : M B := mu ((M # f) m).
 End def.
 Section prop.
-Variables (f g : functor) (eps : eps_type f g) (eta : eta_type f g).
-Hypothesis Had : f -| g :: eta, eps.
+Variables (f g : functor).
+Hypothesis Had : f -| g.
+Let eps : eps_type f g := AdjointFunctor.eps Had.
+Let eta : eta_type f g := AdjointFunctor.eta Had.
 Section mu_eps_natural.
 Notation M := (M f g).
 Notation mu := (mu eps).
 Lemma muM_natural : naturality _ _ mu.
-Proof.
-move: Had => [[Heps _] _]; move: Heps; rewrite /natural => Heps.
-move => A B h.
+Proof.  move => A B h.
 rewrite (_ : (M \O M) # h = g # ((f \O g) # (f # h))) //.
 rewrite (_ : _ \o g # ((f \O g) # (f # h)) =
   g # (@eps (f B) \o ((f \O g) # (f # h)))); last by rewrite -functor_o.
-rewrite -Heps.
-rewrite FIdf.
-rewrite FCompE.
-by rewrite functor_o.
+by rewrite -AdjointFunctor.nat_eps FIdf FCompE functor_o.
 Qed.
-Lemma epsC A :
-  @eps _ \o @eps _ = @eps _ \o f # (g # (@eps _)) :> ((f \o g) ((f \o g) A) -> A).
-Proof. by move : Had => [[Heps _] _]; rewrite -(Heps _ _ (@eps A)). Qed.
+Lemma epsC A : @eps _ \o @eps _ = @eps _ \o f # (g # (@eps _)) :> ((f \o g) ((f \o g) A) -> A).
+Proof. by rewrite -AdjointFunctor.nat_eps. Qed.
 Lemma muMA A : @mu A \o @mu (M A) = @mu A \o (M # @mu A).
 Proof.
 have -> : g # @eps (f A) \o g # @eps (f (M A)) =
-         g # (@eps (f A) \o @eps (f (M A))) by rewrite functor_o.
+  g # (@eps (f A) \o @eps (f (M A))) by rewrite functor_o.
 by rewrite epsC functor_o.
 Qed.
 End mu_eps_natural.
 Lemma bindetaf : BindLaws.left_neutral (bind eps) eta.
 Proof.
 rewrite /BindLaws.left_neutral => A B a h.
-case: Had => [[_ Had2] [_ Ht2]]; move: Had2 => /(_ _ _ h) Had2.
 rewrite /bind /mu.
-rewrite -(compE ((g \O f) # h)).
-rewrite Had2.
-move: Ht2; rewrite /triangular_law2 => Ht2'.
-rewrite -(compE (g # _)) compA.
-by rewrite Ht2'.
+rewrite -(compE ((g \O f) # h)) AdjointFunctor.nat_eta -(compE (g # _)) compA.
+by rewrite AdjointFunctor.tri_right.
 Qed.
 Lemma bindmeta : BindLaws.right_neutral (bind eps) eta.
 Proof.
 rewrite /BindLaws.right_neutral => A m.
-rewrite /bind /mu.
-rewrite -(compE (g # _)).
-rewrite -functor_o.
-case: Had => [_ [Ht1 _]].
-by rewrite Ht1 functor_id.
+rewrite /bind /mu -(compE (g # _)).
+by rewrite -functor_o AdjointFunctor.tri_left functor_id.
 Qed.
 Lemma law3 : BindLaws.associative (bind eps).
 Proof.
 rewrite /BindLaws.associative => A B C x ab bc.
 rewrite /bind.
-set N := M f g.
-set j := mu eps.
-rewrite [X in _ = j C X](_ : _ =
-  (N # (j C)) ((N # (N # bc)) ((N # ab) x))); last first.
-  rewrite functor_o /funcomp.
-  congr (N # j C).
-  by rewrite functor_o /funcomp.
+set N := M f g.  set j := mu eps.
+rewrite [X in _ = j C X](_ : _ = (N # (j C)) ((N # (N # bc)) ((N # ab) x))); last first.
+  rewrite functor_o /funcomp.  congr (N # j C).  by rewrite functor_o /funcomp.
 move: muMA (muM_natural bc).
 rewrite -/N -/j.
 move=> muMA.
@@ -507,44 +415,43 @@ End prop.
 End monad_of_adjoint.
 
 Section composite_adjoint.
-Variables (F0 U0 : functor) (eta0 : eta_type F0 U0) (eps0 : eps_type F0 U0).
-Hypothesis H0 : F0 -| U0 :: eta0, eps0.
-Variables (F U : functor) (eta : eta_type F U) (eps : eps_type F U).
-Hypothesis H : F -| U :: eta, eps.
+Variables (F0 U0 : functor).
+Hypothesis H0 : F0 -| U0.
+Let eta0 : eta_type F0 U0 := AdjointFunctor.eta H0.
+Let eps0 : eps_type F0 U0 := AdjointFunctor.eps H0.
+Variables (F U : functor).
+Hypothesis H : F -| U.
+Let eta : eta_type F U := AdjointFunctor.eta H.
+Let eps : eps_type F U := AdjointFunctor.eps H.
 
 Let uni : @eta_type (F \O F0) (U0 \O U) := fun A => U0 # (@eta (F0 A)) \o (@eta0 A).
 Let couni : @eps_type (F \O F0) (U0 \O U) := fun A => (@eps _) \o F # (@eps0 (U A)).
 
-Lemma composite_adjoint : F \O F0 -| U0 \O U :: uni, couni.
+Lemma composite_adjoint : F \O F0 -| U0 \O U.
 Proof.
-case: H0; rewrite /natural => [[H01 H02] [Ht01 Ht02]].
-case: H; rewrite /natural => [[H1 H2] [Ht1 Ht2]].
-split.
-  split => A B h; rewrite FIdf.
-  - rewrite {1}/couni [in LHS]compA {}H1 -compA.
-    rewrite {1}/couni -[in RHS]compA; congr (_ \o _).
-    rewrite [in LHS]FCompE -[in LHS](functor_o F) [in LHS]H01.
-    by rewrite -[in RHS](functor_o F).
-  - rewrite /uni -[in RHS]compA -[in RHS]H02 compA [in RHS]compA.
-    congr (_ \o _).
-    rewrite (FCompE U0 F0).
-    rewrite -[in RHS](functor_o U0).
-    rewrite -[in LHS](functor_o U0).
-    congr (_ # _).
-    by rewrite -H2.
-split.
-- rewrite /triangular_law1 => A.
-  rewrite /couni /uni /=.
-  rewrite FCompE -compA -functor_o.
-  rewrite (_ : @eps0 _ \o F0 # _ = @eta (F0 A)); first exact: Ht1.
-  rewrite functor_o compA -FCompE.
-  by rewrite -H01 /= FIdf -compA Ht01 compfid.
-- rewrite /triangular_law2 => A.
-  rewrite /couni /uni /=.
-  rewrite compA -[RHS](Ht02 (U A)); congr (_ \o _).
-  rewrite FCompE -functor_o; congr (_ # _).
-  rewrite functor_o -compA -FCompE.
-  by rewrite H2 FIdf compA Ht2 compidf.
+apply: (@AdjointFunctor.mk _ _ uni _ couni).  move=> A B h; rewrite FIdf.
+rewrite /uni -[in RHS]compA -[in RHS](AdjointFunctor.nat_eta H0) compA [in RHS]compA.
+congr (_ \o _).
+rewrite (FCompE U0 F0).  rewrite -[in RHS](functor_o U0).
+rewrite -[in LHS](functor_o U0).
+congr (_ # _).
+by rewrite -(AdjointFunctor.nat_eta H).  move=> A B h; rewrite FIdf.
+rewrite {1}/couni [in LHS]compA {}(AdjointFunctor.nat_eps H) -compA.
+rewrite {1}/couni -[in RHS]compA; congr (_ \o _).
+rewrite [in LHS]FCompE -[in LHS](functor_o F) [in LHS](AdjointFunctor.nat_eps H0).
+by rewrite -[in RHS](functor_o F).
+rewrite /TriangularLaws.left => A.
+rewrite /couni /uni /=.
+rewrite FCompE -compA -functor_o.
+rewrite (_ : @eps0 _ \o F0 # _ = @eta (F0 A)); first exact: (AdjointFunctor.tri_left H).
+rewrite functor_o compA -FCompE.
+by rewrite -(AdjointFunctor.nat_eps H0) /= FIdf -compA (AdjointFunctor.tri_left H0) compfid.
+rewrite /TriangularLaws.right => A.
+rewrite /couni /uni /=.
+rewrite compA -[RHS](AdjointFunctor.tri_right H0 (U A)); congr (_ \o _).
+rewrite FCompE -functor_o; congr (_ # _).
+rewrite functor_o -compA -FCompE.
+by rewrite (AdjointFunctor.nat_eta H) FIdf compA (AdjointFunctor.tri_right H) compidf.
 Qed.
 
 End composite_adjoint.
@@ -876,6 +783,7 @@ apply functional_extensionality.
 by elim=> // h t /= IH; rewrite !rev_cons IH map_rcons.
 Qed.*)
 
+(* TODO: move? *)
 Lemma foldl_revE (T R : Type) (f : R -> T -> R) (z : R) :
   foldl f z \o rev = foldr (fun x : T => f^~ x) z.
 Proof. by rewrite boolp.funeqE => s; rewrite -foldl_rev. Qed.

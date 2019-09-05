@@ -1,8 +1,8 @@
-Require Import ZArith ssreflect ssrmatching ssrfun ssrbool.
-From mathcomp Require Import eqtype ssrnat seq choice fintype tuple.
+Require Import ZArith.
+From mathcomp Require Import all_ssreflect.
 From mathcomp Require boolp.
 From infotheo Require Import ssrZ.
-Require Import monad fail_monad.
+Require Import monae_lib monad fail_monad.
 
 Set Implicit Arguments.
 Unset Strict Implicit.

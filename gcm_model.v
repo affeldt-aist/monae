@@ -4,6 +4,7 @@ From mathcomp Require Import boolp classical_sets.
 From mathcomp Require Import finmap.
 From infotheo Require Import Reals_ext classical_sets_ext Rbigop ssrR proba.
 From infotheo Require Import fsdist convex_choice necset.
+Require Import monae_lib.
 Require category.
 
 Set Implicit Arguments.
@@ -126,7 +127,7 @@ Section convType_as_a_category.
 Import category.
 Lemma affine_function_comp_proof' (A B C : convType) (f : A -> B) (g : B -> C) :
   affine_function f -> affine_function g -> affine_function (g \o f).
-Proof. by move=> Hf Hg a b t; rewrite /affine_function_at funcompE Hf Hg. Qed.
+Proof. by move=> Hf Hg a b t; rewrite /affine_function_at compE Hf Hg. Qed.
 Definition convType_category_class : Category.class_of convType :=
   Category.Class affine_function_id_proof affine_function_comp_proof'.
 Canonical convType_category := Category.Pack convType_category_class.
@@ -879,29 +880,26 @@ Proof. reflexivity. Qed.
 
 Lemma joinE (T : Type) :
   join T = @eps (P_delta_left T) :> (_ -> _).
-Proof.
-rewrite /join.
-by rewrite !VCompE HCompId HIdComp funcompfid.
-Qed.
+Proof. by rewrite /join !VCompE HCompId HIdComp compfid. Qed.
 
 Lemma ret_natural : JoinLaws.ret_naturality ret.
 Proof. exact: natural. Qed.
 Lemma join_natural : JoinLaws.join_naturality join.
 Proof. exact: natural. Qed.
-Lemma join_left_unit : JoinLaws.join_left_unit ret join.
+Lemma join_left_unit : JoinLaws.left_unit ret join.
 Proof.
-rewrite /JoinLaws.join_left_unit => a.
+rewrite /JoinLaws.left_unit => a.
 rewrite funeqE=> d.
 rewrite -homcompE joinE retE.
-rewrite epsE funcompE -homcompE eps1E.
+rewrite epsE compE -homcompE eps1E.
 rewrite -[in RHS](Joet1 d); congr (Joet `NE _).
 rewrite 2!necset_morE; apply/neset_ext => /=.
 rewrite 2!image_set1 FSDistfmap1.
 by rewrite epsCE eps0_Dist1.
 Qed.
-Lemma join_right_unit : JoinLaws.join_right_unit ret join.
+Lemma join_right_unit : JoinLaws.right_unit ret join.
 Proof.
-rewrite /JoinLaws.join_right_unit => a.
+rewrite /JoinLaws.right_unit => a.
 rewrite joinE.
 (* NB: maybe worth factoring out? *)
 have -> :
@@ -911,19 +909,19 @@ move: (AdjComp.triL triL0 triL1) => triL01.
 move: (AdjComp.triL triLC triL01 a) <-.
 congr funcomp.
 - rewrite epsE' /AdjComp.Eps /AdjComp.F; cbn.
-  rewrite 4!funcompfid.
+  rewrite 4!compfid.
   congr funcomp.
   by rewrite -NIdFComp !HCompId !HIdComp.
 - rewrite retE' /P_delta_left /AdjComp.Eta /AdjComp.G /AdjComp.F.
   congr Fun.
   rewrite /P_delta /P_delta_right /P_delta_left hom_ext.
-  rewrite !VCompE ![in RHS]HCompE !VCompE !funcompfid !funcompidf.
+  rewrite !VCompE ![in RHS]HCompE !VCompE !compfid !compidf.
   by rewrite -!NIdFComp !HCompId !HIdComp.
 Qed.
 
-Lemma joinA : JoinLaws.join_associativity join.
+Lemma joinA : JoinLaws.associativity join.
 Proof.
-rewrite /JoinLaws.join_associativity=> a.
+rewrite /JoinLaws.associativity=> a.
 rewrite 2![in RHS]joinE (natural eps _ _ (eps (P_delta_left a))).
 rewrite joinE FCompE.
 (* NB: maybe worth factoring out? *)

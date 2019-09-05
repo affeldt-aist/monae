@@ -1,6 +1,5 @@
 Require Import Reals.
-From mathcomp Require Import ssreflect ssrfun ssrbool eqtype ssrnat seq.
-From mathcomp Require Import choice fintype finfun bigop.
+From mathcomp Require Import all_ssreflect.
 From mathcomp Require Import boolp classical_sets.
 From mathcomp Require Import finmap.
 From infotheo Require Import Reals_ext Rbigop ssrR proba fsdist convex_choice.
