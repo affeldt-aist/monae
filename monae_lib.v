@@ -19,22 +19,7 @@ Reserved Notation "f ~> g" (at level 51).
 Reserved Notation "f \O g" (at level 50, format "f  \O  g").
 Reserved Notation "F -| G" (at level 51, G at next level).
 Reserved Notation "f \v g" (at level 50, format "'[v' f '/' \v  g ']'", left associativity).
-
-(* definition common to *_model.v files *)
-
 Reserved Notation "l \\ p" (at level 50).
-
-Section choice_cast.
-
-Definition equality_mixin_of_Type (T : Type) : Equality.mixin_of T :=
-  EqMixin (fun x y : T => boolp.asboolP (x = y)).
-
-Definition choice_of_Type (T : Type) : choiceType :=
-  Choice.Pack (Choice.Class (equality_mixin_of_Type T) boolp.gen_choiceMixin).
-
-Definition choice_of_Object {T} (t : T) : choice_of_Type T := t.
-
-End choice_cast.
 
 (* generic Haskell-like functions and notations *)
 

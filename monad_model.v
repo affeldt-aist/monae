@@ -2,6 +2,7 @@ From mathcomp Require Import all_ssreflect.
 From mathcomp Require Import finmap.
 From mathcomp Require boolp.
 From mathcomp Require Import classical_sets.
+From infotheo Require convex_choice.
 Require Import monae_lib monad fail_monad state_monad trace_monad.
 
 (* Contents: sample models for the monads in monad.v, state_monad.v, trace_monad.v
@@ -114,7 +115,7 @@ End identity.
 
 Section list.
 Local Obligation Tactic := idtac.
-Program Definition list := @Monad_of_ret_bind _ (fun A (a : A) => [:: a])
+Program Definition list := @Monad_of_ret_bind seq (fun A (a : A) => [:: a])
   (fun A B (a : seq A) (f : A -> seq B) => flatten (map f a)) _ _ _.
 Next Obligation. move=> ? ? ? ? /=; by rewrite cats0. Qed.
 Next Obligation. move=> ? ?; by rewrite flatten_seq1. Qed.
@@ -575,12 +576,12 @@ Variable S : Type.
 Local Obligation Tactic := try by [].
 
 Definition _m : Type -> Type :=
-  fun A => S -> {fset (choice_of_Type A * choice_of_Type S)}.
+  fun A => S -> {fset (convex_choice.choice_of_Type A * convex_choice.choice_of_Type S)}.
 
 Program Definition _monad : monad := @Monad_of_ret_bind _m
-(fun A (a : A) s => [fset (a : choice_of_Type A, s : choice_of_Type S)])
-(fun A B m (f : A -> S -> {fset (choice_of_Type B * choice_of_Type S)}) =>
-  fun s => \bigcup_(i <- (fun x : [choiceType of choice_of_Type A * choice_of_Type S] => f x.1 x.2) @` (m s)) i)
+(fun A (a : A) s => [fset (a : convex_choice.choice_of_Type A, s : convex_choice.choice_of_Type S)])
+(fun A B m (f : A -> S -> {fset (convex_choice.choice_of_Type B * convex_choice.choice_of_Type S)}) =>
+  fun s => \bigcup_(i <- (fun x : [choiceType of convex_choice.choice_of_Type A * convex_choice.choice_of_Type S] => f x.1 x.2) @` (m s)) i)
 _ _ _.
 Next Obligation.
 move=> A B /= m f; rewrite boolp.funeqE => s; by rewrite imfset_set1 /= big_seq_fset1.
@@ -588,7 +589,7 @@ Qed.
 Next Obligation.
 move=> A B /=; rewrite boolp.funeqE => s.
 apply/fsetP => /= x; apply/bigfcupP'; case: ifPn => xBs.
-  set x' := (x : [choiceType of choice_of_Type A * choice_of_Type S]).
+  set x' := (x : [choiceType of convex_choice.choice_of_Type A * convex_choice.choice_of_Type S]).
   exists [fset x']; last by rewrite inE.
     apply/imfsetP; exists x' => //=.
   by case: x'.
@@ -597,7 +598,7 @@ move: xBs; rewrite Hx; apply/negP; rewrite negbK; by case: sa saBs Hx.
 Qed.
 Next Obligation.
 move=> A B C /= m f g; rewrite boolp.funeqE => s.
-have @g' : choice_of_Type B -> choice_of_Type S -> {fset choice_of_Type C * choice_of_Type S}.
+have @g' : convex_choice.choice_of_Type B -> convex_choice.choice_of_Type S -> {fset convex_choice.choice_of_Type C * convex_choice.choice_of_Type S}.
   move=> b' s'; exact: (g b' s').
 apply/fsetP => /= x; apply/bigfcupP'/bigfcupP'; case => /= CS  /imfsetP[/=].
 - move=> bs /bigfcupP'[/= BS]  /imfsetP[/= sa] sams ->{BS} bsfsa ->{CS} xgbs.
@@ -610,7 +611,7 @@ apply/fsetP => /= x; apply/bigfcupP'/bigfcupP'; case => /= CS  /imfsetP[/=].
 Qed.
 Local Open Scope monae_scope.
 Lemma BindE (A B : Type) m (f : A -> _monad B) :
-  m >>= f = fun s => \bigcup_(i <- (fun x : [choiceType of choice_of_Type A * choice_of_Type S] => f x.1 x.2) @` (m s)) i.
+  m >>= f = fun s => \bigcup_(i <- (fun x : [choiceType of convex_choice.choice_of_Type A * convex_choice.choice_of_Type S] => f x.1 x.2) @` (m s)) i.
 Proof.
 rewrite boolp.funeqE => s.
 rewrite /Bind /Join /= /Monad_of_ret_bind.join /=.
@@ -642,15 +643,15 @@ Local Obligation Tactic := try by [].
 Program Definition _state : stateMonad S :=
 (@MonadState.Pack S (_m S)
   (@MonadState.Class S (_m S) (Monad.class (_monad S)) (@MonadState.Mixin S (_monad S)
-((fun s => [fset (s : choice_of_Type S , s : choice_of_Type S)]) : (_monad S S)) (* get *)
-((fun s => (fun _ => [fset (tt : choice_of_Type unit, s : choice_of_Type S)])) : S -> (_monad S unit)) (* put *)
+((fun s => [fset (s : convex_choice.choice_of_Type S , s : convex_choice.choice_of_Type S)]) : (_monad S S)) (* get *)
+((fun s => (fun _ => [fset (tt : convex_choice.choice_of_Type unit, s : convex_choice.choice_of_Type S)])) : S -> (_monad S unit)) (* put *)
 _ _ _ _))).
 Next Obligation.
 move=> s s'; rewrite boolp.funeqE => s''.
 rewrite BindE; apply/fsetP => /= x; apply/bigfcupP'/fset1P.
 - by case => /= x0 /imfsetP[/= x1] /fset1P _ -> /fset1P.
 - move=> -> /=.
-  exists [fset ((tt, s') : [choiceType of choice_of_Type unit * choice_of_Type S])] => /=; last first.
+  exists [fset ((tt, s') : [choiceType of convex_choice.choice_of_Type unit * convex_choice.choice_of_Type S])] => /=; last first.
     exact/fset1P.
   apply/imfsetP => /=; exists (tt, s) => //; exact/fset1P.
 Qed.
@@ -658,11 +659,11 @@ Next Obligation.
 move=> s; rewrite boolp.funeqE => s'.
 rewrite 2!BindE /=; apply/fsetP => /= x; apply/bigfcupP'/bigfcupP'.
 - case => /= x0 /imfsetP[/= x1] /fset1P -> -> /fset1P ->.
-  exists [fset ((s, s) : [choiceType of choice_of_Type S * choice_of_Type S])]; last first.
+  exists [fset ((s, s) : [choiceType of convex_choice.choice_of_Type S * convex_choice.choice_of_Type S])]; last first.
     exact/fset1P.
   apply/imfsetP => /=; exists (tt, s) => //; exact/fset1P.
 - case => /= x0 /imfsetP[/= x1] /fset1P -> -> /fset1P ->.
-  exists [fset ((s ,s) : [choiceType of choice_of_Type S * choice_of_Type S])]; last first.
+  exists [fset ((s ,s) : [choiceType of convex_choice.choice_of_Type S * convex_choice.choice_of_Type S])]; last first.
     exact/fset1P.
   apply/imfsetP => /=; exists (tt, s) => //; exact/fset1P.
 Qed.
@@ -670,7 +671,7 @@ Next Obligation.
 rewrite boolp.funeqE => s.
 rewrite BindE /skip /= /Ret; apply/fsetP => /= x; apply/bigfcupP'/idP.
 - case => /= x0 /imfsetP[/= x1] /fset1P -> -> /fset1P ->; exact/fset1P.
-- move/fset1P => ->; exists [fset ((tt, s) : [choiceType of choice_of_Type unit * choice_of_Type S])]; last first.
+- move/fset1P => ->; exists [fset ((tt, s) : [choiceType of convex_choice.choice_of_Type unit * convex_choice.choice_of_Type S])]; last first.
     exact/fset1P.
   apply/imfsetP; exists (s, s) => //; by rewrite inE.
 Qed.
@@ -681,9 +682,9 @@ rewrite 2!BindE; apply/fsetP => x; apply/bigfcupP'/bigfcupP'.
   rewrite BindE => /bigfcupP'[/= x2] /imfsetP[/= x3] /fset1P -> -> xkss.
   exists (k s s s) => //; apply/imfsetP; exists (s, s) => //; by rewrite inE.
 - case => /= x0 /imfsetP[/= x1] /fset1P -> -> /= xksss.
-  have @k' : choice_of_Type S -> choice_of_Type S -> (choice_of_Type S -> {fset choice_of_Type A * choice_of_Type S}).
+  have @k' : convex_choice.choice_of_Type S -> convex_choice.choice_of_Type S -> (convex_choice.choice_of_Type S -> {fset convex_choice.choice_of_Type A * convex_choice.choice_of_Type S}).
     move=> a b s'; exact: (k a b s').
-  exists (\bigcup_(i <- [fset k' (s, s).1 x2.1 x2.2 | x2 in [fset (((s, s).2, (s, s).2) : [choiceType of choice_of_Type S * choice_of_Type S])]]) i).
+  exists (\bigcup_(i <- [fset k' (s, s).1 x2.1 x2.2 | x2 in [fset (((s, s).2, (s, s).2) : [choiceType of convex_choice.choice_of_Type S * convex_choice.choice_of_Type S])]]) i).
     apply/imfsetP ; exists (s, s); by [rewrite inE | rewrite BindE].
   apply/bigfcupP'; exists (k s s s) => //;   apply/imfsetP; exists (s, s) => //=; exact/fset1P.
 Qed.
@@ -698,7 +699,7 @@ Program Definition _fail : failMonad := @MonadFail.Pack _
 Next Obligation.
 move=> A B g; rewrite boolp.funeqE => s; apply/fsetP => x; rewrite inE BindE; apply/negbTE.
 apply/bigfcupP'; case => /= x0 /imfsetP[/= sa].
-by rewrite (@in_fset0 [choiceType of choice_of_Type A * choice_of_Type S]).
+by rewrite (@in_fset0 [choiceType of convex_choice.choice_of_Type A * convex_choice.choice_of_Type S]).
 Qed.
 
 End fail.
@@ -710,7 +711,7 @@ Local Obligation Tactic := try by [].
 Program Definition _alt : altMonad := @MonadAlt.Pack _
   (@MonadAlt.Class _ (@Monad.class (_monad S))
     (@MonadAlt.Mixin (_monad S)
-      (fun (A : Type) (a b : S -> {fset [choiceType of choice_of_Type A * choice_of_Type S]}) (s : S) => a s `|` b s) _ _)).
+      (fun (A : Type) (a b : S -> {fset [choiceType of convex_choice.choice_of_Type A * convex_choice.choice_of_Type S]}) (s : S) => a s `|` b s) _ _)).
 Next Obligation. by move=> A a b c; rewrite boolp.funeqE => s; rewrite fsetUA. Qed.
 Next Obligation.
 move=> A B /= m1 m2 k; rewrite boolp.funeqE => s; rewrite !BindE /=.
@@ -748,7 +749,7 @@ Next Obligation.
 move=> A B /= g; rewrite !BindE /=; rewrite boolp.funeqE => s; apply/fsetP => /= sa.
 apply/idP/idP/bigfcupP'.
 case => /= SA /imfsetP[/= bs bsgs ->{SA}].
-by rewrite (@in_fset0 [choiceType of choice_of_Type A * choice_of_Type S]).
+by rewrite (@in_fset0 [choiceType of convex_choice.choice_of_Type A * convex_choice.choice_of_Type S]).
 Qed.
 Next Obligation.
 move=> A B /= m k1 k2; rewrite boolp.funeqE => s; rewrite !BindE /=; apply/fsetP => /= bs.

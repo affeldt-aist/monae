@@ -721,7 +721,7 @@ Local Open Scope convex_scope.
 Local Open Scope classical_set_scope.
 
 Definition join1' (C : convType) (s : necset (necset_convType C)) : {convex_set C} :=
-  CSet.Pack (CSet.Class (convex_hull (classical_sets.bigsetU s (fun x => if x \in s then (x : set _) else cset0 _)))).
+  CSet.Pack (CSet.Class (hull_is_convex (classical_sets.bigsetU s (fun x => if x \in s then (x : set _) else cset0 _)))).
 
 Lemma join1'_neq0 (C : convType) (s : necset (necset_convType C)) : join1' s != set0 :> set _.
 Proof.
@@ -734,7 +734,8 @@ by rewrite sy.
 Qed.
 
 Definition join1 (C : convType) (s : necset (necset_convType C)) : necset C :=
-  NECSet.Pack (NECSet.Class (CSet.Class (convex_hull _)) (NESet.Class (join1'_neq0 s))).
+  NECSet.Pack (NECSet.Class (CSet.Class (hull_is_convex _))
+                            (NESet.Class (join1'_neq0 s))).
 
 Lemma eps1_correct (C : convType) (s : necset (necset_convType C)) :
   eps1'' s = join1 s.

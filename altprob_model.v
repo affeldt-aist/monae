@@ -12,7 +12,7 @@ Unset Printing Implicit Defensive.
 
 (* work in progress *)
 
-Require Import monad fail_monad proba_monad gcm_model.
+Require Import monad fail_monad proba_monad monad_model gcm_model.
 
 Section P_delta_monad.
 End P_delta_monad.
