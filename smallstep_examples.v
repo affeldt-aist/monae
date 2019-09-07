@@ -26,7 +26,7 @@ Definition nonce : M nat nat nat :=
   do n : nat <- stGet;
   do _ : unit <- stPut (S n);
   do _ : unit <- stMark n;
-  Ret n.
+  Ret _ n.
 
 Compute nonce (0, []).
 Compute (denote (M nat nat) nat p_nonce) (0, []).
@@ -46,14 +46,14 @@ Program Example p_nonce_twice : program bool :=
   p_ret (x =? y).
 
 Example nonce_twice : M _ _ _ :=
-  do nonce <- Ret (
+  do nonce <- Ret _ (
     do n : nat <- stGet;
     do _ : unit <- stPut (S n);
     do _ : unit <- stMark n;
-    Ret n ) ;
+    Ret _ n ) ;
   do x <- nonce ;
   do y <- nonce ;
-  Ret (Nat.eqb x y).
+  Ret _ (Nat.eqb x y).
 
 Compute nonce_twice (0, []).
 Compute (denote (M nat nat) bool p_nonce_twice) (0, []).
@@ -65,7 +65,7 @@ Proof. by []. Qed.
 
 Fixpoint countdown (fuel : nat) : M nat bool unit :=
   match fuel with
-  | O => Ret tt
+  | O => Ret _ tt
   | S fuel' =>
     do n <- stGet ;
     if (n =? 0) then

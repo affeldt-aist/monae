@@ -80,19 +80,19 @@ move: a b => -[|] b /=; by [rewrite guardT bindskipf | rewrite guardF bindfailf]
 Qed.
 
 Definition assert {A} (p : pred A) (a : A) : M A :=
-  locked (guard (p a) >> Ret a).
+  locked (guard (p a) >> Ret _ a).
 
-Lemma assertE {A} (p : pred A) (a : A) : assert p a = guard (p a) >> Ret a.
+Lemma assertE {A} (p : pred A) (a : A) : assert p a = guard (p a) >> Ret _ a.
 Proof. by rewrite /assert; unlock. Qed.
 
-Lemma assertT {A} (a : A) : assert xpredT a = Ret a :> M _.
+Lemma assertT {A} (a : A) : assert xpredT a = Ret _ a :> M _.
 Proof. by rewrite assertE guardT bindskipf. Qed.
 
 Lemma assertF {A} (a : A) : assert xpred0 a = Fail :> M _.
 Proof. by rewrite assertE guardF bindfailf. Qed.
 
 Lemma assertPn {A} (p : pred A) (a : A) :
-  if_spec (p a) (Ret a) Fail (~~ (p a)) (p a) (assert p a).
+  if_spec (p a) (Ret _ a) Fail (~~ (p a)) (p a) (assert p a).
 Proof.
 rewrite assertE; case: guardPn => pa;
   by [rewrite bindskipf; constructor | rewrite bindfailf; constructor].
@@ -138,7 +138,7 @@ Definition bassert_size {M : failMonad} A B
 
 Section foldM.
 Variables (M : monad) (T R : Type) (f : R -> T -> M R).
-Fixpoint foldM z s : M _ := if s is x :: s' then f z x >>= (fun y => foldM y s') else (Ret z).
+Fixpoint foldM z s : M _ := if s is x :: s' then f z x >>= (fun y => foldM y s') else (Ret _ z).
 End foldM.
 
 Section unfoldM.
@@ -152,10 +152,10 @@ Hypothesis wfr : well_founded r.
 Variables (p : pred B) (f : B -> M (A * B)%type).
 
 Definition unfoldM' (y : B) (g : forall y' : B, r y' y -> M (seq A)) : M (seq A) :=
-  if p y then Ret [::] else f y >>=
+  if p y then Ret _ [::] else f y >>=
     (fun xz => match Bool.bool_dec (r xz.2 y) true with
             | left H => fmap (cons xz.1) (g xz.2 H)
-            | right H => Ret [::]
+            | right H => Ret _ [::]
             end).
 (* superfluous match to define the "recursive" call,
    to be removed by unfoldME under hypo. *)
@@ -173,7 +173,7 @@ Variables (p : pred B) (f : B -> M (A * B)%type).
 Hypothesis decr_size : bassert_size f.
 
 Lemma unfoldME y : unfoldM p f y =
-  if p y then Ret [::]
+  if p y then Ret _ [::]
   else f y >>= (fun xz => fmap (cons xz.1) (unfoldM p f xz.2)).
 Proof.
 rewrite /unfoldM Fix_eq; last first.
@@ -198,10 +198,10 @@ Variables (op : A -> M C -> M C) (e : C) (p : pred B) (f : B -> M (A * B)%type).
 Variable seed : forall (p : pred B) (f : B -> M (A * B)%type), B -> B -> bool.
 
 Definition hyloM' (y : B) (g : forall y', seed p f y' y -> M C) : M C :=
-  if p y then Ret e else f y >>=
+  if p y then Ret _ e else f y >>=
     (fun xz => match Bool.bool_dec (seed p f xz.2 y) true with
             | left H => op xz.1 (g xz.2 H)
-            | right H => Ret e
+            | right H => Ret _ e
             end).
 
 Hypothesis well_founded_seed : well_founded (seed p f).
@@ -211,7 +211,7 @@ Definition hyloM := Fix well_founded_seed (fun _ => M _) hyloM'.
 Hypothesis Hdecr_seed : bassert_hylo f p seed.
 
 Lemma hyloME y : hyloM y = if p y then
-                             Ret e
+                             Ret _ e
                            else
                              f y >>= (fun xz => op xz.1 (hyloM xz.2)).
 Proof.
@@ -280,7 +280,7 @@ Section arbitrary.
 Variables (M : altMonad) (A : Type) (def : A).
 
 Definition arbitrary : seq A -> M A :=
-  foldr1 (Ret def) (fun x y => x [~] y) \o map Ret.
+  foldr1 (Ret _ def) (fun x y => x [~] y) \o map (@Ret M _).
 
 End arbitrary.
 Arguments arbitrary {M} {A}.
@@ -292,7 +292,7 @@ Local Open Scope mprog.
 Variables (M : altMonad) (A : Type).
 
 Fixpoint subs (s : seq A) : M (seq A) :=
-  if s isn't h :: t then Ret [::] else
+  if s isn't h :: t then Ret _ [::] else
   let t' := subs t in
   fmap (cons h) t' [~] t'.
 
@@ -308,7 +308,7 @@ Lemma subs_cons x (xs : seq A) :
 Proof. by []. Qed.
 
 Lemma subs_cat (xs ys : seq A) :
-  (subs (xs ++ ys) = do us <- subs xs; do vs <- subs ys; Ret (us ++ vs))%Do.
+  (subs (xs ++ ys) = do us <- subs xs; do vs <- subs ys; Ret _ (us ++ vs))%Do.
 Proof.
 elim: xs ys => [ys |x xs IH ys].
   by rewrite cat0s /= bindretf bindmret.
@@ -317,7 +317,7 @@ Open (X in subs xs >>= X).
   rewrite bindretf.
   rewrite_ cat_cons.
   reflexivity.
-rewrite [X in _ = X [~] _](_ : _ = fmap (cons x) (do x0 <- subs xs; do x1 <- subs ys; Ret (x0 ++ x1)))%Do; last first.
+rewrite [X in _ = X [~] _](_ : _ = fmap (cons x) (do x0 <- subs xs; do x1 <- subs ys; Ret _ (x0 ++ x1)))%Do; last first.
   rewrite fmapE bindA.
   bind_ext => x0.
   rewrite bindA.
@@ -333,28 +333,28 @@ Variable M : altMonad.
 Local Open Scope mprog.
 
 Fixpoint insert {A} (a : A) (s : seq A) : M (seq A) :=
-  if s isn't h :: t then Ret [:: a] else
-  Ret (a :: h :: t) [~] fmap (cons h) (insert a t).
+  if s isn't h :: t then Ret _ [:: a] else
+  Ret _ (a :: h :: t) [~] fmap (cons h) (insert a t).
 Arguments insert : simpl never.
 
 Lemma insertE A (a : A) s :
-  insert a s = if s isn't h :: t then Ret [:: a] else
-  Ret (a :: h :: t) [~] fmap (cons h) (insert a t).
+  insert a s = if s isn't h :: t then Ret _ [:: a] else
+  Ret _ (a :: h :: t) [~] fmap (cons h) (insert a t).
 Proof. by case: s. Qed.
 
 Fixpoint perm {A} (s : seq A) : M (seq A) :=
-  if s isn't h :: t then Ret [::] else perm t >>= insert h.
+  if s isn't h :: t then Ret _ [::] else perm t >>= insert h.
 
 (* see also netys2017 *)
 Lemma insert_map A B (f : A -> B) (a : A) :
   insert (f a) \o map f = map f (o) insert a :> (_ -> M _).
 Proof.
 rewrite boolp.funeqE; elim => [|y xs IH].
-  by rewrite fcompE insertE -(compE (fmap (map f))) ret_naturality compE insertE.
+  by rewrite fcompE insertE -(compE (fmap (map f))) (natural Ret) compE insertE.
 apply/esym.
 rewrite fcompE insertE alt_fmapDl.
 (* first branch *)
-rewrite -(compE (fmap (map f))) ret_naturality FIdf [ in X in X [~] _ ]/=.
+rewrite -(compE (fmap (map f))) (natural Ret) FIdf [ in X in X [~] _ ]/=.
 (* second branch *)
 rewrite -fmap_oE (_ : map f \o cons y = cons (f y) \o map f) //.
 by rewrite fmap_oE -(fcompE (map f)) -IH [RHS]/= insertE.
@@ -365,7 +365,7 @@ Lemma perm_o_map A B (f : A -> B) :
   perm \o map f = map f (o) perm :> (seq A -> M (seq B)).
 Proof.
 rewrite boolp.funeqE; elim => [/=|x xs IH].
-  by rewrite fcompE [perm _]/= -[in RHS]compE ret_naturality.
+  by rewrite fcompE [perm _]/= -[in RHS]compE (natural Ret).
 by rewrite fcompE [in perm _]/= fmap_bind -insert_map -bind_fmap -fcompE -IH.
 Qed.
 
@@ -382,12 +382,12 @@ Local Open Scope mprog.
 Variables (A : Type) (p : pred A).
 
 Lemma filter_insertN a : ~~ p a ->
-  forall s, (filter p (o) insert a) s = Ret (filter p s) :> M _.
+  forall s, (filter p (o) insert a) s = Ret _ (filter p s) :> M _.
 Proof.
 move=> pa; elim => [|h t IH].
-  by rewrite fcompE insertE -(compE (fmap _)) ret_naturality FIdf /= (negbTE pa).
+  by rewrite fcompE insertE -(compE (fmap _)) (natural Ret) FIdf /= (negbTE pa).
 rewrite fcompE insertE alt_fmapDl.
-rewrite -(compE (fmap _)) ret_naturality FIdf [in X in X [~] _]/= (negbTE pa).
+rewrite -(compE (fmap _)) (natural Ret) FIdf [in X in X [~] _]/= (negbTE pa).
 case: ifPn => ph.
 - rewrite -fmap_oE (_ : filter p \o cons h = cons h \o filter p); last first.
     rewrite boolp.funeqE => x /=; by rewrite ph.
@@ -476,7 +476,7 @@ Local Open Scope mprog.
 
 Lemma insert_rcons a' s :
   insert a (rcons s a') =
-    Ret (s ++ [:: a'; a]) [~] fmap (rcons^~ a') (insert a s) :> M _.
+    Ret _ (s ++ [:: a'; a]) [~] fmap (rcons^~ a') (insert a s) :> M _.
 Proof.
 elim: s a' => [a'|s1 s2 IH a'].
   rewrite cat0s fmapE bindretf insertE altC; congr (_ [~] _).
@@ -502,8 +502,8 @@ End altci_insert.
 
 Module MonadNondet.
 Record mixin_of (M : failMonad) (a : forall A, M A -> M A -> M A) : Type :=
-  Mixin { _ : BindLaws.left_id (@Fail M) a ;
-          _ : BindLaws.right_id (@Fail M) a
+  Mixin { _ : @BindLaws.left_id M (@Fail M) a ;
+          _ : @BindLaws.right_id M (@Fail M) a
 }.
 Record class_of (m : Type -> Type) : Type := Class {
   base : MonadFail.class_of m ;
@@ -525,9 +525,9 @@ Export MonadNondet.Exports.
 
 Section nondet_lemmas.
 Variable (M : nondetMonad).
-Lemma altmfail : BindLaws.right_id (@Fail M) [~p].
+Lemma altmfail : @BindLaws.right_id M (@Fail M) [~p].
 Proof. by case: M => m [[? ?] [? ? ?] [? ?]]. Qed.
-Lemma altfailm : BindLaws.left_id (@Fail M) [~p]. (* NB: not used? *)
+Lemma altfailm : @BindLaws.left_id M (@Fail M) [~p]. (* NB: not used? *)
 Proof. by case: M => m [[? ?] [? ? ?] [? ?]]. Qed.
 End nondet_lemmas.
 
@@ -543,13 +543,13 @@ Section nondet_insert.
 Variables (M : nondetMonad) (A : Type).
 Implicit Types s : seq A.
 
-Lemma insert_Ret a s : exists m, insert a s = Ret (a :: s) [~] m :> M _.
+Lemma insert_Ret a s : exists m, insert a s = Ret _ (a :: s) [~] m :> M _.
 Proof.
 elim: s => [|h t [m ih]] /=; last by eexists; rewrite insertE; reflexivity.
 by rewrite insertE; exists Fail; rewrite altmfail.
 Qed.
 
-Lemma perm_is_alt_ret s : exists m, perm s = Ret s [~] m :> M _.
+Lemma perm_is_alt_ret s : exists m, perm s = Ret _ s [~] m :> M _.
 Proof.
 elim: s => [|h t [m ih] /=]; first by exists Fail; rewrite altmfail.
 case: (insert_Ret h t) => n Hn.
@@ -597,14 +597,14 @@ Implicit Types s : seq A.
 
 Fixpoint select s : M (A * seq A)%type :=
   if s isn't h :: t then Fail else
-  (Ret (h, t) [~] select t >>= (fun x => Ret (x.1, h :: x.2))).
+  (Ret _ (h, t) [~] select t >>= (fun x => Ret _ (x.1, h :: x.2))).
 
 Local Obligation Tactic := idtac.
 (* variant of select that keeps track of the length, useful to write perms *)
 Program Fixpoint tselect s : M (A * (size s).-1.-tuple A)%type :=
   if s isn't h :: t then Fail else
-  Ret (h, @Tuple (size t) A t _) [~]
-  tselect t >>= (fun x => Ret (x.1, @Tuple (size t) A _ _ (* h :: x.2 *))).
+  Ret _ (h, @Tuple (size t) A t _) [~]
+  tselect t >>= (fun x => Ret _ (x.1, @Tuple (size t) A _ _ (* h :: x.2 *))).
 Next Obligation. by []. Defined.
 Next Obligation.
 move=> s h [|h' t] hts [x1 x2]; [exact: [::] | exact: (h :: x2)].
@@ -616,15 +616,15 @@ Next Obligation. by []. Defined.
 
 Lemma tselect_nil : tselect [::] = Fail. Proof. by []. Qed.
 
-Lemma tselect1 a : tselect [:: a] = Ret (a, [tuple]).
+Lemma tselect1 a : tselect [:: a] = Ret _ (a, [tuple]).
 Proof.
 rewrite /= bindfailf altmfail /tselect_obligation_1 /= tupleE /nil_tuple.
 by do 3 f_equal; apply eq_irrelevance.
 Qed.
 
 Program Definition tselect_cons_statement a t (_ : t <> nil) :=
-  tselect (a :: t) = Ret (a, @Tuple _ _ t _) [~]
-                    tselect t >>= (fun x => Ret (x.1, @Tuple _ _ (a :: x.2) _)).
+  tselect (a :: t) = Ret _ (a, @Tuple _ _ t _) [~]
+                    tselect t >>= (fun x => Ret _ (x.1, @Tuple _ _ (a :: x.2) _)).
 Next Obligation. by []. Defined.
 Next Obligation.
 move=> a t t0 [x1 x2].
@@ -669,8 +669,8 @@ Implicit Types s : seq A.
 Local Obligation Tactic := idtac.
 Program Definition perms' s
   (f : forall s', size s' < size s -> M (seq A)) : M (seq A) :=
-  (if s isn't h :: t then Ret [::] else
-    do x <- tselect (h :: t); do y <- f x.2 _; Ret (x.1 :: y))%Do.
+  (if s isn't h :: t then Ret _ [::] else
+    do x <- tselect (h :: t); do y <- f x.2 _; Ret _ (x.1 :: y))%Do.
 Next Obligation.
 move=> s H h t hts [y ys]; by rewrite size_tuple -hts ltnS leqnn.
 Qed.
@@ -679,15 +679,15 @@ Next Obligation. by []. Qed.
 Definition perms : seq A -> M (seq A) :=
   Fix (@well_founded_size _) (fun _ => M _) perms'.
 
-Lemma tpermsE s : (perms s = if s isn't h :: t then Ret [::] else
-  do x <- tselect (h :: t); do y <- perms x.2; Ret (x.1 :: y))%Do.
+Lemma tpermsE s : (perms s = if s isn't h :: t then Ret _ [::] else
+  do x <- tselect (h :: t); do y <- perms x.2; Ret _ (x.1 :: y))%Do.
 Proof.
 rewrite {1}/perms Fix_eq //; [by case: s|move=> s' f g H].
 by rewrite /perms'; destruct s' => //; bind_ext=> x; rewrite H.
 Qed.
 
-Lemma permsE s : (perms s = if s isn't h :: t then Ret [::] else
-  do x <- select (h :: t); do y <- perms x.2; Ret (x.1 :: y))%Do.
+Lemma permsE s : (perms s = if s isn't h :: t then Ret _ [::] else
+  do x <- select (h :: t); do y <- perms x.2; Ret _ (x.1 :: y))%Do.
 Proof.
 rewrite tpermsE; case: s => // h t.
 by rewrite selectE bind_fmap.
@@ -703,8 +703,8 @@ Variables (A : Type) (M : nondetMonad).
 Definition mu_perm : seq A -> M (seq A) :=
   unfoldM (@well_founded_size _) (@nilp _) select.
 
-Lemma mu_permE s : (mu_perm s = if s isn't h :: t then Ret [::]
-  else do a <- select (h :: t) ; do b <- mu_perm a.2; Ret (a.1 :: b))%Do.
+Lemma mu_permE s : (mu_perm s = if s isn't h :: t then Ret _ [::]
+  else do a <- select (h :: t) ; do b <- mu_perm a.2; Ret _ (a.1 :: b))%Do.
 Proof.
 rewrite /mu_perm unfoldME; last exact: decr_size_select.
 case: s => // h t; rewrite (_ : nilp _ = false) //.
@@ -733,7 +733,7 @@ Inductive t : Type -> Type :=
 
 Fixpoint denote {M : nondetMonad} {A} (m : t A) : M A :=
   match m with
-  | ret A a => Ret a
+  | ret A a => Ret _ a
   | bind A B m f => denote m >>= (fun x => denote (f x))
   | fail A => Fail
   | alt A m1 m2 => denote m1 [~] denote m2
@@ -758,7 +758,7 @@ Record mixin_of (M : failMonad) : Type := Mixin {
   _ : forall A, left_id Fail (@catch A) ;
   _ : forall A, associative (@catch A) ;
   (* unexceptional bodies need no handler *)
-  _ : forall A x, left_zero (Ret x) (@catch A)
+  _ : forall A x, @left_zero (M A) (M A) (@Ret _ _ x) (@catch A)
   (* NB: left-zero of sequential composition inherited from failMonad *)
 }.
 Record class_of (m : Type -> Type) := Class {
@@ -787,7 +787,7 @@ Lemma catchfailm : forall A, left_id Fail (@Catch M A).
 Proof. by case: M => m [? []]. Qed.
 Lemma catchmfail : forall A, right_id Fail (@Catch M A). (* NB: not used? *)
 Proof. by case: M => m [? []]. Qed.
-Lemma catchret : forall A x, left_zero (Ret x) (@Catch M A).
+Lemma catchret : forall A x, left_zero (Ret _ x) (@Catch M A).
 Proof. by case: M => m [? []]. Qed.
 Lemma catchA : forall A, associative (@Catch M A). (* NB: not used? *)
 Proof. by case: M => m [? []]. Qed.
@@ -808,7 +808,7 @@ Variable M : failMonad.
 Local Open Scope mprog.
 
 Definition work s : M nat :=
-  if O \in s then Fail else Ret (product s).
+  if O \in s then Fail else Ret _ (product s).
 
 Let Work s := if O \in s then @Fail M nat
               else @Ret (MonadFail.baseType M) nat (product s).
@@ -816,7 +816,7 @@ Let Work s := if O \in s then @Fail M nat
 (* work refined to eliminate multiple traversals *)
 Lemma workE :
   let next := fun n (mx : M _) => if n == 0 then Fail else fmap (muln n) mx in
-  work = foldr next (Ret 1).
+  work = foldr next (Ret _ 1).
 Proof.
 apply foldr_universal => // h t; case: ifPn => [/eqP -> //| h0].
 by rewrite /work inE eq_sym (negbTE h0) [_ || _]/= fmap_if fmap_fail.
@@ -827,13 +827,13 @@ Arguments work {M}.
 
 Variable M : exceptMonad.
 
-Definition fastprod s : M _ := Catch (work s) (Ret O).
+Definition fastprod s : M _ := Catch (work s) (Ret _ O).
 
 Let Fastprod s := @Catch M nat (@work (MonadExcept.baseType M) s)
                     (@Ret (MonadExcept.monadType M) nat O).
 
 (* fastprod is pure, never throwing an unhandled exception *)
-Lemma fastprodE s : fastprod s = Ret (product s).
+Lemma fastprodE s : fastprod s = Ret _ (product s).
 Proof.
 rewrite /fastprod /work fun_if if_arg catchfailm.
 by rewrite catchret; case: ifPn => // /product0 <-.
@@ -852,7 +852,7 @@ Record mixin_of (M : monad) : Type := Mixin {
        callcc (fun f : _ -> M _ => m >> f x) ;
    _ : forall A B (m : M A) b,
        callcc (fun f : B -> M B => m >> f b) =
-       callcc (fun _ : B -> M B => m >> Ret b) }.
+       callcc (fun _ : B -> M B => m >> Ret _ b) }.
 Record class_of (m : Type -> Type) := Class {
   base : Monad.class_of m ; mixin : mixin_of (Monad.Pack base) }.
 Structure t : Type := Pack { m : Type -> Type ; class : class_of m }.
@@ -880,22 +880,22 @@ Lemma callcc2 A B C (m : M A) x (k : A -> B -> M C) :
    Callcc (fun f : _ -> M _ => m >> f x))%Do.
 Proof. by case: M A B C m x k => m [? []]. Qed.
 Lemma callcc3 A B (m : M A) b :
-  Callcc (fun f : B -> M B => m >> f b) = Callcc (fun _ : B -> M B => m >> Ret b).
+  Callcc (fun f : B -> M B => m >> f b) = Callcc (fun _ : B -> M B => m >> Ret _ b).
 Proof. by case: M A B m b => m [? []]. Qed.
 End continuation_lemmas.
 
 Definition addM (M : monad) (a b : M nat) : M nat :=
-  a >>= (fun x => b >>= (fun y => Ret (x + y))).
+  a >>= (fun x => b >>= (fun y => Ret _ (x + y))).
 Notation "a +m b" := (addM a b) (at level 50, format "a  +m  b").
 
 Section continuation_example.
 Variable M : contMonad.
-Let wadler_example : Ret 1 +m Callcc (fun f => Ret 10 +m f 100) = Ret (1 + 100) :> M _.
+Let wadler_example : Ret _ 1 +m Callcc (fun f => Ret _ 10 +m f 100) = Ret _ (1 + 100) :> M _.
 Proof.
 rewrite {1}/addM bindretf.
-rewrite (_ : Callcc _ = Ret 100) ?bindretf //.
-transitivity (Callcc (fun _ : nat -> M nat => Ret 100)); last by rewrite callcc1.
-transitivity (Callcc (fun f : nat -> M nat => Ret 10 >>= (fun a => f 100))); first by rewrite callcc2.
+rewrite (_ : Callcc _ = Ret _ 100) ?bindretf //.
+transitivity (Callcc (fun _ : nat -> M nat => Ret _ 100)); last by rewrite callcc1.
+transitivity (Callcc (fun f : nat -> M nat => Ret _ 10 >>= (fun a => f 100))); first by rewrite callcc2.
 rewrite callcc3 //; congr Callcc.
 rewrite boolp.funeqE => g.
 by rewrite bindretf.
@@ -911,12 +911,12 @@ Record mixin_of (M : contMonad) U : Type := Mixin {
   _ : forall A B (h : (A -> M B) -> M A),
     Callcc h = shift (fun k' => h (fun x => shift (fun k'' => k' x)) >>= k') (* NB Wadler *) ;
   _ : forall A (c : A) (c': U) (k : A -> U -> _),
-    (reset (do x <- Ret c; do y <- shift (fun _ => Ret c'); k x y) = Ret c >> Ret c')%Do ;
+    (reset (do x <- Ret _ c; do y <- shift (fun _ => Ret _ c'); k x y) = Ret _ c >> Ret _ c')%Do ;
   _ : forall (c c' : U) (k : U -> U -> _),
-    (reset (do x <- Ret c; do y <- shift (fun f => do v <- f c'; f v); Ret (k x y)) =
-     reset (do x <- Ret c; do y <- shift (fun f => f c'); Ret (k x (k x y))))%Do ;
+    (reset (do x <- Ret _ c; do y <- shift (fun f => do v <- f c'; f v); Ret _ (k x y)) =
+     reset (do x <- Ret _ c; do y <- shift (fun f => f c'); Ret _ (k x (k x y))))%Do ;
   _ : forall (c : U) k,
-    (reset (do y <- shift (@^~ c); Ret (k y)) = Ret (k c))%Do
+    (reset (do y <- shift (@^~ c); Ret _ (k y)) = Ret _ (k c))%Do
 }.
 Record class_of (m : Type -> Type) B := Class {
   base : MonadContinuation.class_of m ; mixin : mixin_of (MonadContinuation.Pack base) B }.
@@ -942,26 +942,26 @@ Lemma shiftreset1 A B (h : (A -> M B) -> M A) :
   Callcc h = Shift (fun k' => h (fun x => Shift (fun k'' => k' x)) >>= k').
 Proof. by case: M A B h => m [? []]. Qed.
 Lemma shiftreset2 A c c' (k : A -> U -> _):
-  Reset (do x <- Ret c; do y <- (Shift (fun _ => @Ret M U c') : M U); k x y)%Do = (Ret c >> Ret c') :> M _ .
+  Reset (do x <- Ret _ c; do y <- (Shift (fun _ => @Ret M U c') : M U); k x y)%Do = (Ret _ c >> Ret _ c') :> M _ .
 Proof. by case: M c c' k => m [? []]. Qed.
 Lemma shiftreset3 c c' (k : U -> U -> _) :
-  (Reset (do x <- Ret c; do y <- (Shift (fun f : U -> M U => do v <- f c'; f v) : M U); Ret (k x y)) =
-  Reset (do x <- Ret c; do y <- (Shift (fun f : U -> M U => f c') : M U); Ret (k x (k x y))))%Do.
+  (Reset (do x <- Ret _ c; do y <- (Shift (fun f : U -> M U => do v <- f c'; f v) : M U); Ret _ (k x y)) =
+  Reset (do x <- Ret _ c; do y <- (Shift (fun f : U -> M U => f c') : M U); Ret _ (k x (k x y))))%Do.
 Proof. by case: M c c' k => m [? []]. Qed.
 Lemma shiftreset4 c k:
-  Reset ((Shift (@^~ c) : M U) >>= (fun y => Ret (k y))) = Ret (k c) :> M U.
+  Reset ((Shift (@^~ c) : M U) >>= (fun y => Ret _ (k y))) = Ret _ (k c) :> M U.
 Proof. by case: M c => m [? []]. Qed.
 End shiftreset_lemmas.
 
 Section shiftreset_examples.
 Variable (M : shiftresetMonad nat).
 Let wadler_example2 :
-  Ret 1 +m (Reset (Ret 10 +m (Shift (fun f : _ -> M nat => Ret 100 : M _) : M _)) : M _) =
-  Ret (1 + 100).
+  Ret _ 1 +m (Reset (Ret _ 10 +m (Shift (fun f : _ -> M nat => Ret _ 100 : M _) : M _)) : M _) =
+  Ret _ (1 + 100).
 Proof.
 rewrite /addM.
 rewrite bindretf.
-transitivity (Ret (100) >>= (fun y => Ret (1 + y)) : M _); last first.
+transitivity (Ret _ (100) >>= (fun y => Ret _ (1 + y)) : M _); last first.
   by rewrite bindretf.
 congr (Bind _ _). (* TODO : bind_ext casse *)
 rewrite (shiftreset2 _ _).
@@ -969,16 +969,16 @@ by rewrite bindretf.
 Qed.
 
 Let wadler_example1 :
-  Ret 1 +m (Reset (Ret 10 +m (Shift (fun f : _ -> M nat => f (100) >>= f) : M _)) : M _) =
-  Ret (1 + (10 + (10 + 100))).
+  Ret _ 1 +m (Reset (Ret _ 10 +m (Shift (fun f : _ -> M nat => f (100) >>= f) : M _)) : M _) =
+  Ret _ (1 + (10 + (10 + 100))).
 Proof.
 rewrite /addM.
 rewrite bindretf.
-transitivity ((Ret (10 + (10 + 100))) >>= (fun y => Ret (1 + y)) : M _); last first.
+transitivity ((Ret _ (10 + (10 + 100))) >>= (fun y => Ret _ (1 + y)) : M _); last first.
   by rewrite bindretf.
 congr (Bind _ _).
 rewrite shiftreset3.
-rewrite (_ : do x <- Ret 10; _ = do y <- Shift (@^~ 100) : M _; Ret (10 + (10 + y)))%Do; last first.
+rewrite (_ : do x <- Ret _ 10; _ = do y <- Shift (@^~ 100) : M _; Ret _ (10 + (10 + y)))%Do; last first.
   by rewrite bindretf.
 by rewrite shiftreset4.
 Qed.

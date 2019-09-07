@@ -1188,6 +1188,7 @@ Proof.
 move=> A B h; apply funext=> x; rewrite /ret /Fun /= /f.
 by rewrite -[in LHS]compE (ret_naturality).
 Qed.
+Definition _ret_nat : monad.Natural.t monad.FId m' := monad.Natural.Pack (monad.Natural.Class ret_nat).
 Lemma join_nat : monad.Natural.P (monad.FComp m' m') m' join.
 Proof.
 move=> A B h; apply funext=> x; rewrite /ret /Fun /= /f.
@@ -1198,8 +1199,10 @@ suff-> : [fun of M # (M # hom_Type h)] x = [fun of M # hom_Type (Fun m' h)] x
 congr [fun of M # _].
 by apply/hom_ext/funext.
 Qed.
-Lemma joinretM (A : Type) : @join _ \o @ret _ = id :> (m' A -> m' A).
+Definition _join_nat := monad.Natural.Pack (monad.Natural.Class join_nat).
+Lemma joinretM : monad.JoinLaws.left_unit _ret_nat _join_nat(*@join _ \o @ret _ = id :> (m' A -> m' A)*).
 Proof.
+move=> A; 
 by apply funext=> x; rewrite /join /ret /= -[in LHS]compE joinretM.
 Qed.
 Lemma joinMret (A : Type) : @join _ \o (Fun m' (@ret _)) = id :> (m' A -> m' A).
@@ -1229,7 +1232,7 @@ Qed.
 Definition m : monad.Monad.t :=
   monad.Monad.Pack
     (monad.Monad.Class
-       (monad.Monad.Mixin ret_nat join_nat joinretM joinMret joinA)).
+       (monad.Monad.Mixin (*ret_nat join_nat*) joinretM joinMret joinA)).
 End def.
 Module Exports.
 Notation Monad_of_category_monad := m.
