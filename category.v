@@ -22,7 +22,7 @@ Unset Printing Implicit Defensive.
 - Module FunctorLaws./Module Functor.
 - various sections about functors
 - Module Natural
-- Module NIdEq.
+- Module NEq.
 - Section vertical_composition.
 - Section horizontal_composition.
 - Module TriangularLaws./Module AdjointFunctor.
@@ -223,14 +223,15 @@ Definition transport_hom
   eq_rect b (fun y => {hom a', y})
           (eq_rect a (fun x => {hom x, b}) f a' pa)
           b' pb.
-Definition eq_hom (a b : C) (p : a = b) : {hom a, b} :=
+Definition hom_of_eq (a b : C) (p : a = b) : {hom a, b} :=
   transport_codom p (idfun_hom a).
 
-Lemma transport_dom_eq_hom (a a' b : C) (p : a = a') (f : {hom a, b}) :
-  transport_dom p f = [hom of f \o eq_hom (esym p)].
+(* F for factorization *)
+Lemma transport_domF (a a' b : C) (p : a = a') (f : {hom a, b}) :
+  transport_dom p f = [hom of f \o hom_of_eq (esym p)].
 Proof. apply hom_ext; by subst a'. Qed.
-Lemma transport_codom_eq_hom (a b b' : C) (p : b = b') (f : {hom a, b}) :
-  transport_codom p f = [hom of eq_hom p \o f].
+Lemma transport_codomF (a b b' : C) (p : b = b') (f : {hom a, b}) :
+  transport_codom p f = [hom of hom_of_eq p \o f].
 Proof. apply hom_ext; by subst b'. Qed.
 End transport_lemmas.
 
@@ -437,7 +438,7 @@ Lemma NIdE : NId  = (fun a => idfun_hom (F a)) :> (_ ~~> _).
 Proof. by []. Qed.
 End id_natural_transformation.
 
-Module NIdEq.
+Module NEq.
 Section def.
 Import homcomp_notation.
 Variables (C D : category) (F G : functor C D).
@@ -449,22 +450,23 @@ Definition f : F ~~> G := fun (a : C) => tc (idfun_hom (F a)).
 Definition n : F ~> G.
 apply (Natural.Pack (apply:= f)).
 apply Natural.Class=> a b h.
-rewrite /f !transport_codom_eq_hom 2!homcomp_hom !compfid.
-have/hom_ext-> : [hom of [homcomp eq_hom (Iobj b), F # h]] = [hom of tc (F # h)]
-  by rewrite transport_codom_eq_hom.
-by rewrite homfunK Imor transport_dom_eq_hom homfunK /= esymK.
+rewrite /f !transport_codomF 2!homcomp_hom !compfid.
+have/hom_ext-> : [hom of [homcomp hom_of_eq (Iobj b), F # h]] =
+                 [hom of tc (F # h)]
+  by rewrite transport_codomF.
+by rewrite homfunK Imor transport_domF homfunK /= esymK.
 Defined.
 End def.
 Module Exports.
 Arguments n [C D] : simpl never.
-Notation NIdEq := n.
-Lemma NIdEqE C D F G Iobj Imor :
-  @NIdEq C D F G Iobj Imor =
+Notation NEq := n.
+Lemma NEqE C D F G Iobj Imor :
+  @NEq C D F G Iobj Imor =
   (fun a => transport_codom (Iobj _) (idfun_hom (F a))) :> (_ ~~> _).
 Proof. by []. Qed.
 End Exports.
-End NIdEq.
-Export NIdEq.Exports.
+End NEq.
+Export NEq.Exports.
 
 (*
 Notation "[ 'NId' F , G ]" :=
@@ -475,9 +477,9 @@ Notation "[ 'NId' F , G ]" :=
     (at level 0, format "[ 'NId'  F ,  G ]") : category_scope.
 *)
 
-Notation "[ 'NId' F , G ]" :=
-  (NIdEq F G (fun a => erefl) (fun a b f => erefl))
-    (at level 0, format "[ 'NId'  F ,  G ]") : category_scope.
+Notation "[ 'NEq' F , G ]" :=
+  (NEq F G (fun a => erefl) (fun a b f => erefl))
+    (at level 0, format "[ 'NEq'  F ,  G ]") : category_scope.
 
 Section vertical_composition.
 Variables (C D : category) (F G H : functor C D).
@@ -572,9 +574,9 @@ Lemma HIdComp c : (NId G' \h s) c = G' # (s c).
 Proof. by rewrite hom_ext HCompE NIdE compidf. Qed.
 
 Lemma HCompA_nat : (u \h t) \h s =
-               [NId G'' \O (G' \O G) , (G'' \O G') \O G]
+               [NEq G'' \O (G' \O G) , (G'' \O G') \O G]
                  \v (u \h (t \h s))
-                 \v [NId (F'' \O F') \O F , F'' \O (F' \O F)].
+                 \v [NEq (F'' \O F') \O F , F'' \O (F' \O F)].
 Proof.
 unlock; apply nattrans_ext=> a; cbn.
 by rewrite !compidf !compfid homcompA functor_o homcomp_hom.
@@ -709,9 +711,9 @@ Definition F := F1 \O F0.
 Definition G := G0 \O G1.
 
 Definition Eta : FId ~> G \O F :=
-  [NId G0 \O (G1 \O F1) \O F0 , G \O F]
+  [NEq G0 \O (G1 \O F1) \O F0 , G \O F]
     \v ((NId G0) \h (eta1) \h (NId F0))
-    \v [NId G0 \O F0 , G0 \O FId \O F0]
+    \v [NEq G0 \O F0 , G0 \O FId \O F0]
     \v (eta0).
 Lemma EtaE a : Eta a = G0 # (eta1 (F0 a)) \o (eta0 a) :> (_ -> _).
 Proof. by cbn; rewrite HCompId HIdComp. Qed.
@@ -720,9 +722,9 @@ Proof. by rewrite hom_ext EtaE. Qed.
 
 Definition Eps : F \O G ~> FId :=
   (eps1)
-    \v [NId F1 \O FId \O G1 , F1 \O G1]
+    \v [NEq F1 \O FId \O G1 , F1 \O G1]
     \v ((NId F1) \h (eps0) \h (NId G1))
-    \v [NId F \O G , (F1 \O (F0 \O G0)) \O G1].
+    \v [NEq F \O G , (F1 \O (F0 \O G0)) \O G1].
 Lemma EpsE a : Eps a = (eps1 _) \o F1 # (eps0 (G1 a)) :> (_ -> _).
 Proof. by cbn; rewrite HCompId HIdComp. Qed.
 Lemma EpsE_hom a : Eps a = [hom of (eps1 _) \o F1 # (eps0 (G1 a))].
@@ -730,7 +732,7 @@ Proof. by rewrite hom_ext EpsE. Qed.
 
 Lemma triL : TriangularLaws.left Eta Eps.
 Proof.
-(* This proof does NOT follow the manner of 2-category, for now. *)
+(* NB(tanaka): This proof does NOT follow the manner of 2-category, for now. *)
 move=> c; rewrite EpsE EtaE_hom homcompA (functor_o F) /F -(functor_o_head F1).
 set X:= [hom of [homcomp _, _]].
 evar (TY : Type).
