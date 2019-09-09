@@ -2,15 +2,14 @@ Require Import Reals.
 From mathcomp Require Import all_ssreflect.
 From mathcomp Require Import boolp classical_sets.
 From mathcomp Require Import finmap.
-From infotheo Require Import Reals_ext classical_sets_ext Rbigop ssrR proba.
-From infotheo Require Import fsdist convex_choice necset.
+From infotheo Require Import Reals_ext classical_sets_ext Rbigop ssrR ssr_ext.
+From infotheo Require Import proba fsdist convex_choice necset.
 Require Import monae_lib.
 Require category.
 
 Set Implicit Arguments.
 Unset Strict Implicit.
 Unset Printing Implicit Defensive.
-
 (* This file defines the functor P_delta and shows that it is a monad
 
 P_delta =def= P_delta_right \O P_delta_left
@@ -40,6 +39,47 @@ eta0/eps0 : unit/counit of F0 -| U0
 eta1/eps1 : unit/counit of F1 -| U1
 
 *)
+Section TODO_move_to_other_file.
+Section misc_convex.
+Local Open Scope proba_scope.
+Local Open Scope convex_scope.
+Variables (A : convType).
+
+Lemma eq_dep_convn n (g : 'I_n -> A) (d : {fdist 'I_n})
+      n0 (g0 : 'I_n0 -> A) (d0 : {fdist 'I_n0}) (Hn : n = n0)
+      (Hg : eq_rect n (fun m => 'I_m -> A) g n0 Hn = g0)
+      (Hd : eq_rect n (fun m => {fdist 'I_m}) d n0 Hn = d0) :
+  \Conv_d g = \Conv_d0 g0.
+Proof.
+refine (match Hd with erefl => _ end).
+refine (match Hg with erefl => _ end).
+refine (match Hn with erefl => _ end).
+reflexivity.
+Qed.
+
+Lemma convn1Eq' n (g : 'I_n -> A) (d : {fdist 'I_n}) (Hn1 : n = 1) :
+  \Conv_d g = eq_rect n (fun n => 'I_n -> A) g 1 Hn1 ord0.
+Proof.
+set d' := eq_rect n (fun n0 => {fdist 'I_n0}) d 1 Hn1.
+set g' := eq_rect n (fun n0 => 'I_n0 -> A) g 1 Hn1.
+suff -> : \Conv_d g = \Conv_d' g' by rewrite convn1E.
+by eapply eq_dep_convn.
+Qed.
+
+Lemma convn1Eq n (g : 'I_n -> A) (d : {fdist 'I_n})
+      (Hn1 : n = 1) (i : 'I_n) : \Conv_d g = g i.
+Proof.
+rewrite convn1Eq'.
+have-> /= : eq_rect n (fun n0 : nat => 'I_n0 -> A) g 1 Hn1 =
+            g \o eq_rect 1 (fun n0 => 'I_1 -> 'I_n0) idfun n (esym Hn1)
+  by subst n.
+have /(_ i) I_n_contr : forall a b : 'I_n, a = b 
+    by rewrite Hn1=> a b; rewrite (ord1 a) (ord1 b).
+by rewrite -(I_n_contr ((eq_rect 1 (fun n0 : nat => 'I_1 -> 'I_n0) idfun n (esym Hn1) ord0))).
+Qed.
+Global Arguments convn1Eq [n g d Hn1].
+End misc_convex.
+End TODO_move_to_other_file.
 
 Section choiceType_as_a_category.
 Import category.
@@ -120,7 +160,7 @@ Local Notation UC := forget_choiceType.
 Lemma triLC : TriangularLaws.left etaC epsC.
 Proof. by move=> c; rewrite etaCE epsCE. Qed.
 Lemma triRC : TriangularLaws.right etaC epsC.
-Abort.
+Proof. by move=> c; rewrite etaCE epsCE. Qed.
 End epsC_etaC.
 
 Section convType_as_a_category.
@@ -459,8 +499,51 @@ case: ifPn => Ha.
 Qed.
 
 Lemma triR0 : TriangularLaws.right eta0 eps0.
-Abort.
-
+Proof.
+move=> c.
+rewrite eps0E eta0E funeqE => /= a /=.
+have supp1 : #|fdist_of_FSDist.D (FSDist1.d a)| = 1%N
+  by rewrite fdist_of_FSDistDE FSDist1.supp /= -cardfE cardfs1.
+have suppE : fdist_of_FSDist.D (FSDist1.d a) = [finType of [fset a]]
+  by rewrite fdist_of_FSDistDE FSDist1.supp /=.
+have suppE' : finsupp (@FSDist1.d c a) = [fset a] by rewrite FSDist1.supp.
+set i := eq_rect _ (fun n => 'I_n) ord0 _ (esym supp1).
+rewrite /Convn_indexed_over_finType (convn1Eq i) //=.
+have aP : a \in finsupp (FSDist1.d a) by rewrite FSDist1.supp inE.
+change a with (fsval (FSetSub aP)).
+congr fsval.
+rewrite (enum_val_nth (FSetSub aP)).
+move: i; rewrite supp1 => i.
+rewrite (ord1 i) /=.
+Fail case: (enum xpredT).
+case: (@enum_mem
+        (@fset_sub_finType (ConvexSpace.car c)
+           (@FinSupp.fs (ConvexSpace.car c) R_eqType
+              (fun _ : Choice.sort (ConvexSpace.car c) => IZR Z0)
+              (@FSDist.f (ConvexSpace.car c)
+                 (@FSDist1.d (ConvexSpace.car c) a))))
+        (@mem
+           (@fset_sub_type (ConvexSpace.car c)
+              (@FinSupp.fs (ConvexSpace.car c) R_eqType
+                 (fun _ : Choice.sort (ConvexSpace.car c) => IZR Z0)
+                 (@FSDist.f (ConvexSpace.car c)
+                    (@FSDist1.d (ConvexSpace.car c) a))))
+           (predPredType
+              (@fset_sub_type (ConvexSpace.car c)
+                 (@FinSupp.fs (ConvexSpace.car c) R_eqType
+                    (fun _ : Choice.sort (ConvexSpace.car c) => IZR Z0)
+                    (@FSDist.f (ConvexSpace.car c)
+                       (@FSDist1.d (ConvexSpace.car c) a)))))
+           (fun
+              _ : @fset_sub_type (ConvexSpace.car c)
+                    (@FinSupp.fs (ConvexSpace.car c) R_eqType
+                       (fun _ : Choice.sort (ConvexSpace.car c) => IZR Z0)
+                       (@FSDist.f (ConvexSpace.car c)
+                          (@FSDist1.d (ConvexSpace.car c) a))) => true))) => //=.
+move: aP; rewrite suppE' => aP a' _.
+apply val_inj=> /=.
+by case: a' => a' /=; rewrite inE=> /eqP.
+Qed.
 End eps0_eta0.
 
 (* the join operator for Dist is ((coercion) \o eps0) *)
@@ -712,8 +795,9 @@ apply/eqEsubset=> a /=.
   by exists a.
 Qed.
 Lemma triR1 : TriangularLaws.right eta1 eps1.
-Abort.
-
+move=> c; apply funext=> /= x.
+by rewrite eps1E eta1E /= Joet1.
+Qed.
 End eps1_eta1.
 
 Section join1.
@@ -798,19 +882,19 @@ Local Notation U1 := forget_semiCompSemiLattConvType.
 Definition eps : P_delta_left \O P_delta_right ~> FId :=
   locked
   (eps1
-     \v [NId F1 \O FId \O U1 , F1 \O U1]
+     \v [NEq F1 \O FId \O U1 , F1 \O U1]
      \v ((NId F1) \h eps0 \h (NId U1))
-     \v [NId F1 \O F0 \O FId \O U0 \O U1 , F1 \O (F0 \O U0) \O U1 ]
+     \v [NEq F1 \O F0 \O FId \O U0 \O U1 , F1 \O (F0 \O U0) \O U1 ]
      \v ((NId F1) \h (NId F0)\h epsC \h (NId U0) \h (NId U1))
-     \v [NId P_delta_left \O P_delta_right , F1 \O F0 \O (FC \O UC) \O U0 \O U1]
+     \v [NEq P_delta_left \O P_delta_right , F1 \O F0 \O (FC \O UC) \O U0 \O U1]
   ).
 Definition ret : FId ~> P_delta :=
   locked
-  ([NId UC \O U0 \O (U1 \O F1) \O F0 \O FC , P_delta]
+  ([NEq UC \O U0 \O (U1 \O F1) \O F0 \O FC , P_delta]
      \v ((NId UC) \h (NId U0) \h eta1 \h (NId F0) \h (NId FC))
-     \v [NId UC \O (U0 \O F0) \O FC , UC \O U0 \O FId \O F0 \O FC]
+     \v [NEq UC \O (U0 \O F0) \O FC , UC \O U0 \O FId \O F0 \O FC]
      \v ((NId UC) \h eta0 \h (NId FC))
-     \v [NId UC \O FC , UC \O FId \O FC]
+     \v [NEq UC \O FC , UC \O FId \O FC]
      \v etaC
   ).
 
@@ -819,19 +903,19 @@ Import homcomp_notation.
 Lemma epsE' :
   eps =
   eps1
-    \v [NId F1 \O FId \O U1 , F1 \O U1]
+    \v [NEq F1 \O FId \O U1 , F1 \O U1]
     \v ((NId F1) \h eps0 \h (NId U1))
-    \v [NId F1 \O F0 \O FId \O U0 \O U1 , F1 \O (F0 \O U0) \O U1 ]
+    \v [NEq F1 \O F0 \O FId \O U0 \O U1 , F1 \O (F0 \O U0) \O U1 ]
     \v ((NId F1) \h (NId F0) \h epsC \h (NId U0) \h (NId U1))
-    \v [NId P_delta_left \O P_delta_right , F1 \O F0 \O (FC \O UC) \O U0 \O U1].
+    \v [NEq P_delta_left \O P_delta_right , F1 \O F0 \O (FC \O UC) \O U0 \O U1].
 Proof. by rewrite /eps; unlock. Qed.
 Lemma retE' :
   ret =
-  [NId UC \O U0 \O (U1 \O F1) \O F0 \O FC , P_delta]
+  [NEq UC \O U0 \O (U1 \O F1) \O F0 \O FC , P_delta]
      \v ((NId UC) \h (NId U0) \h eta1 \h (NId F0) \h (NId FC))
-     \v [NId UC \O (U0 \O F0) \O FC , UC \O U0 \O FId \O F0 \O FC]
+     \v [NEq UC \O (U0 \O F0) \O FC , UC \O U0 \O FId \O F0 \O FC]
      \v ((NId UC) \h eta0 \h (NId FC))
-     \v [NId UC \O FC , UC \O FId \O FC]
+     \v [NEq UC \O FC , UC \O FId \O FC]
      \v etaC.
 Proof. by rewrite /ret; unlock. Qed.
 
@@ -870,9 +954,9 @@ by rewrite /ret; unlock; rewrite /= etaCE eta0E eta1E FSDistfmap_id.
 Qed.
 
 Definition join : P_delta \O P_delta ~> P_delta :=
-  [NId P_delta_right \O FId \O P_delta_left, P_delta]
+  [NEq P_delta_right \O FId \O P_delta_left, P_delta]
     \v ((NId P_delta_right) \h eps \h (NId P_delta_left))
-    \v [NId P_delta \O P_delta ,
+    \v [NEq P_delta \O P_delta ,
         (P_delta_right \O (P_delta_left \O P_delta_right)) \O P_delta_left].
 
 Lemma joinE' (T : Type) :
