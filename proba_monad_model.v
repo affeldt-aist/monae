@@ -32,7 +32,7 @@ Defined.
 
 Definition rET : FId ~> functor.
 apply: (@Natural.Pack FId functor _ret _).
-apply: Natural.Class.
+(*apply: Natural.Class.*)
 move=> A B h.
 rewrite boolp.funeqE => a /=.
 rewrite /Fun /= /_ret.

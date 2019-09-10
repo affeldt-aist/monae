@@ -104,7 +104,7 @@ Section identity.
 Local Obligation Tactic := by [].
 Let identity_functor : FId ~> FId.
 apply: (@Natural.Pack FId FId (fun A (a : A) => a) _).
-by apply: Natural.Class.
+(*by apply: Natural.Class.:*) done.
 Defined.
 
 Program Definition identity := @Monad_of_ret_bind _ identity_functor
@@ -124,7 +124,7 @@ by rewrite map_comp.
 Defined.
 
 Let seq_ret : FId ~> seq_functor.
-apply: (@Natural.Pack FId seq_functor (fun A (a : A) => [:: a]) (Natural.Class _)).
+apply: (@Natural.Pack FId seq_functor (fun A (a : A) => [:: a]) ((*Natural.Class*) _)).
 move=> A B h.
 by rewrite boolp.funeqE.
 Defined.
@@ -151,7 +151,7 @@ by move=> *; rewrite boolp.funeqE; case.
 by move=> *; rewrite boolp.funeqE; case.
 Defined.
 Let sum_ret : FId ~> sum_functor.
-apply: (@Natural.Pack FId sum_functor (@inr Z) (Natural.Class _)).
+apply: (@Natural.Pack FId sum_functor (@inr Z) ((*Natural.Class*) _)).
 move=> A B h.
 by rewrite boolp.funeqE.
 Defined.
@@ -174,7 +174,7 @@ rewrite boolp.funeqE => x /=.
 by rewrite classical_sets_ext.imageA.
 Defined.
 Let set_ret : FId ~> set_functor.
-apply: (@Natural.Pack FId set_functor (@set1) (Natural.Class _)).
+apply: (@Natural.Pack FId set_functor (@set1) ((*Natural.Class*) _)).
 move=> A B h.
 rewrite boolp.funeqE => a /=.
 rewrite boolp.funeqE => b /=.
@@ -218,7 +218,7 @@ Defined.
 
 Let state_ret : FId ~> state_functor.
 Proof.
-apply: (@Natural.Pack FId state_functor ret (Natural.Class _)).
+apply: (@Natural.Pack FId state_functor ret ((*Natural.Class*) _)).
 move=> A B h.
 rewrite boolp.funeqE => a /=.
 by rewrite boolp.funeqE => s /=.
@@ -229,9 +229,9 @@ Next Obligation.
 move=> A B a f.
 rewrite boolp.funeqE => s.
 by rewrite /bind /state_ret /=.
-Qed.
-Next Obligation. by move=> A f; rewrite /bind boolp.funeqE => ?; case: f. Qed.
-Next Obligation. by move=> A B C a b c; rewrite /bind boolp.funeqE => ?; case: a. Qed.
+Defined.
+Next Obligation. by move=> A f; rewrite /bind boolp.funeqE => ?; case: f. Defined.
+Next Obligation. by move=> A B C a b c; rewrite /bind boolp.funeqE => ?; case: a. Defined.
 End state.
 End State.
 
@@ -259,7 +259,7 @@ rewrite boolp.funeqE => m.
 by rewrite boolp.funeqE => Cr.
 Defined.
 Let cont_ret : FId ~> cont_functor.
-apply: (@Natural.Pack FId cont_functor (fun A a => fun k => k a) (Natural.Class _)).
+apply: (@Natural.Pack FId cont_functor (fun A a => fun k => k a) ((*Natural.Class*) _)).
 move=> A B f.
 rewrite boolp.funeqE => a /=.
 by rewrite boolp.funeqE => Br /=.
@@ -334,7 +334,7 @@ Definition get S A (k : S -> ModelMonad.State.acto S A) : ModelMonad.State.acto 
   fun s => k s s.
 
 Program Definition get_op S : operation (get_fun S) (ModelMonad.State.t S) :=
-  Natural.Pack (@Natural.Class _ _ (@get S) _).
+  @Natural.Pack (*@Natural.Class*) _ _ (@get S) _.
 Next Obligation.
 move=> A B h; rewrite boolp.funeqE => /= m /=.
 rewrite boolp.funeqE => s.
@@ -356,7 +356,7 @@ Definition put S A (s : S) (m : ModelMonad.State.acto S A) : ModelMonad.State.ac
   fun _ => m s.
 
 Program Definition put_op S : operation (put_fun S) (ModelMonad.State.t S) :=
-  Natural.Pack (@Natural.Class _ _ (fun A => uncurry (@put S A)) _).
+  (@Natural.Pack (*(@Natural.Class*) _ _ (fun A => uncurry (@put S A)) _).
 Next Obligation.
 move=> A B h.
 rewrite boolp.funeqE => /=; case => s m /=.
@@ -500,7 +500,7 @@ Definition acallcc r A (f : (ModelMonad.Cont.acto r A -> r) -> ModelMonad.Cont.a
   fun k => f (fun m => m k) k.
 
 Program Definition acallcc_op r : operation (acallcc_fun r) (ModelMonad.Cont.t r) :=
-  Natural.Pack (@Natural.Class _ _ (@acallcc r) _).
+  (@Natural.Pack (*(@Natural.Class*) _ _ (@acallcc r) _).
 Next Obligation. by []. Qed.
 End ContOps.
 
@@ -783,7 +783,7 @@ by rewrite big_seq_fset1.
 Qed.
 
 Definition rET_nat : FId ~> state_functor :=
-  @Natural.Pack FId state_functor rET (Natural.Class K3).
+  @Natural.Pack FId state_functor rET ((*Natural.Class*) K3).
 
 Program Definition _monad : monad := @Monad_of_ret_bind state_functor
 rET_nat

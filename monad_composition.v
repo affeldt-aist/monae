@@ -12,7 +12,7 @@ Section comp.
 Variables (M N : monad).
 Definition ret : FId ~> M \O N.
 apply: (@Natural.Pack FId (M \O N) (HComp Ret Ret) _).
-apply: Natural.Class.
+(*apply: Natural.Class.*)
 move=> A B h.
 by rewrite -(natural (HComp Ret Ret)).
 Defined.
@@ -58,7 +58,7 @@ by rewrite -compA.
 Qed.
 
 Definition JOIN' : (M \O N) \O (M \O N) ~> M \O N :=
-  @Natural.Pack _ _ _ (Natural.Class JOIN_naturality).
+  @Natural.Pack _ _ _ ((*Natural.Class*) JOIN_naturality).
 
 Lemma JOIN_ret : JoinLaws.left_unit (@CRet M N) (@JOIN').
 Proof.
@@ -128,7 +128,7 @@ rewrite -natural.
 by rewrite functor_o.
 Qed.
 
-Definition JOIN' := Natural.Pack (Natural.Class join_naturality).
+Definition JOIN' := Natural.Pack ((*Natural.Class*) join_naturality).
 
 Lemma JOIN_ret : JoinLaws.left_unit (@CRet M N) (@JOIN').
 Proof.
@@ -264,7 +264,7 @@ Qed.
 Lemma JOIN_naturality : @Natural.P _ _ (JOIN).
 Proof. by move=> ?? g; rewrite JOINE -/prod (Prod.JOIN_naturality prod1 g) JOINE. Qed.
 
-Definition JOIN' := Natural.Pack (Natural.Class JOIN_naturality).
+Definition JOIN' := Natural.Pack ((*Natural.Class*) JOIN_naturality).
 
 Lemma JOIN_ret : JoinLaws.left_unit (@CRet M N) (@JOIN').
 Proof.

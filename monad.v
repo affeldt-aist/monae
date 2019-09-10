@@ -45,7 +45,7 @@ Reserved Notation "'[~p]'".
 Reserved Notation "f (o) g" (at level 11).
 Reserved Notation "'fmap' f" (at level 4).
 
-Notation "f ~~> g" := (forall A, f A -> g A) (at level 51).
+Notation "f ~~> g" := (forall A, f A -> g A) (at level 51, only parsing).
 (* map laws of a functor *)
 Module FunctorLaws.
 Section def.
@@ -206,8 +206,8 @@ Section natural.
 Variables (M N : functor).
 Definition P (m : M ~~> N) :=
   forall A B (h : A -> B), (N # h) \o m A = m B \o (M # h).
-Record class_of (m : M ~~> N) := Class { _ : P m }.
-Structure t := Pack { m : M ~~> N ; class : class_of m }.
+(*Record class_of (m : M ~~> N) := Class { _ : P m }.*)
+Structure t := Pack { m : M ~~> N ; class : P(*class_of*) m }.
 End natural.
 Module Exports.
 Coercion m : t >-> Funclass.
@@ -221,13 +221,13 @@ Export Natural.Exports.
 Section natrans_lemmas.
 Variables (M N : functor) (phi : M ~> N).
 Lemma natural A B (h : A -> B) : (N # h) \o phi A = phi B \o (M # h).
-Proof. by case: phi => ? []. Qed.
+Proof. by case: phi => ? (*[]*). Qed.
 End natrans_lemmas.
 
 Section id_natural_transformation.
 Variables C : functor.
 Definition natural_id : naturality _ _ (fun A => @id (C A)). Proof. by []. Qed.
-Definition NId : C ~> C := Natural.Pack (Natural.Class natural_id).
+Definition NId : C ~> C := Natural.Pack ((*Natural.Class*) natural_id).
 End id_natural_transformation.
 
 Section vertical_composition.
@@ -236,7 +236,7 @@ Variables (g : D ~> E) (f : C ~> D).
 Definition ntcomp := fun A => g A \o f A.
 Definition natural_vcomp : naturality _ _ ntcomp.
 Proof. by move=> A B h; rewrite compA (natural g) -compA (natural f). Qed.
-Definition VComp : C ~> E := Natural.Pack (Natural.Class natural_vcomp).
+Definition VComp : C ~> E := Natural.Pack ((*Natural.Class*) natural_vcomp).
 End vertical_composition.
 
 Notation "f \v g" := (VComp f g).
@@ -250,13 +250,13 @@ move=> A B h; rewrite compA (natural t) -compA -[in RHS]compA.
 by congr (_ \o _); rewrite FCompE -2!functor_o (natural s).
 Qed.
 Definition HComp : (F' \O F) ~> (G' \O G) :=
-  Natural.Pack (Natural.Class natural_hcomp).
+  Natural.Pack ((*Natural.Class*) natural_hcomp).
 End horizontal_composition.
 
 Section natural_transformation_example.
 Definition fork' : FId ~~> squaring := fun A (a : A) => (a, a).
 Lemma fork_natural : naturality _ _ fork'. Proof. by []. Qed.
-Definition fork : FId ~> squaring := Natural.Pack (Natural.Class fork_natural).
+Definition fork : FId ~> squaring := Natural.Pack ((*Natural.Class*) fork_natural).
 End natural_transformation_example.
 
 Definition eta_type (f g : functor) := FId ~> g \O f.
@@ -295,11 +295,11 @@ Section adjoint_example.
 Variable (X : Type).
 Definition curry_eps : eps_type (curry_F X) (uncurry_F X).
 apply (@Natural.Pack ((curry_F X) \O (uncurry_F X)) FId (fun A (af : X * (X -> A)) => af.2 af.1)).
-exact: Natural.Class.
+(*exact: Natural.Class.*) done.
 Defined.
 Definition curry_eta : eta_type (curry_F X) (uncurry_F X).
 apply (@Natural.Pack FId ((uncurry_F X) \O (curry_F X)) (fun A (a : A) => fun x : X => (x, a))).
-exact: Natural.Class.
+(*exact: Natural.Class.*) done.
 Defined.
 Lemma adjoint_currry : curry_F X -| uncurry_F X.
 Proof.
@@ -430,7 +430,7 @@ Let eps : eps_type F U := AdjointFunctor.eps H.
 
 Let uni : @eta_type (F \O F0) (U0 \O U).
 apply: (@Natural.Pack _ ((U0 \O U) \O (F \O F0)) (fun A => U0 # (@eta (F0 A)) \o (@eta0 A))).
-apply: Natural.Class.
+(*apply: Natural.Class.*)
 move=> A B h; rewrite FIdf.
 rewrite -[in RHS]compA -[in RHS](natural (AdjointFunctor.eta H0)) compA [in RHS]compA.
 congr (_ \o _).
@@ -441,7 +441,7 @@ by rewrite -(natural (AdjointFunctor.eta H)).
 Defined.
 Let couni : @eps_type (F \O F0) (U0 \O U).
 apply: (@Natural.Pack ((F \O F0) \O (U0 \O U)) _ (fun A => (@eps _) \o F # (@eps0 (U A)))).
-apply: Natural.Class.
+(*apply: Natural.Class.*)
 move=> A B h.
 rewrite [in LHS]compA {}(natural (AdjointFunctor.eps H)) -compA.
 rewrite -[in RHS]compA; congr (_ \o _).
@@ -678,7 +678,7 @@ Lemma MapE A B (f : A -> B) m : (M' # f) m = bind m (ret B \o f).
 Proof. by []. Qed.
 
 Let ret' : FId ~> M'.
-apply: (@Natural.Pack FId M' ret (Natural.Class _)).
+apply: (@Natural.Pack FId M' ret ((*Natural.Class*) _)).
 move=> A B h; rewrite FIdf boolp.funeqE => ?.
 by rewrite compE /= /Map MapE /= bindretf.
 Defined.
@@ -690,7 +690,7 @@ rewrite /Map bindA; congr bind; by rewrite boolp.funeqE => ?; rewrite bindretf.
 Qed.
 
 Definition join : M' \O M' ~> M'.
-apply: (@Natural.Pack (M' \O M') M' (fun A (pp : (M \O M) A) => bind pp id) (Natural.Class _)).
+apply: (@Natural.Pack (M' \O M') M' (fun A (pp : (M \O M) A) => bind pp id) ((*Natural.Class*) _)).
 move=> A B h; rewrite boolp.funeqE => mma.
 by rewrite /Fun 2!compE /Map bind_Map [in LHS] bindA.
 Defined.

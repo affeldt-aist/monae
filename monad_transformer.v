@@ -74,7 +74,7 @@ Qed.
 End monadM_lemmas.
 
 Definition natural_of_monadM (M N : monad) (f : monadM M N) : M ~> N :=
-  Natural.Pack (@Natural.Class _ _ _ (natural_monadM f)).
+  (@Natural.Pack (*(@Natural.Class*) _ _ _ (natural_monadM f)).
 
 Module MonadT.
 Record class_of (T : monad -> monad) := Class {
@@ -138,7 +138,7 @@ by rewrite -functor_o /=.
 Defined.
 
 Definition retS_natural : FId ~> MS_functor.
-apply: (@Natural.Pack FId MS_functor retS (Natural.Class _)).
+apply: (@Natural.Pack FId MS_functor retS ((*Natural.Class*) _)).
 move=> A B h.
 rewrite /Fun /=.
 rewrite boolp.funeqE => a /=.
@@ -216,7 +216,7 @@ by rewrite boolp.funeqE; case.
 Defined.
 
 Definition retX_nat : FId ~> exceptionT_functor.
-apply: (@Natural.Pack FId exceptionT_functor retX (Natural.Class _)).
+apply: (@Natural.Pack FId exceptionT_functor retX ((*Natural.Class*) _)).
 move=> A B h.
 rewrite /retX boolp.funeqE /= => a.
 rewrite /Fun /= /MX_map.
@@ -277,7 +277,7 @@ by [].
 Defined.
 
 Definition retC_nat : FId ~> MC_functor.
-apply: (@Natural.Pack FId MC_functor retC (Natural.Class _)).
+apply: (@Natural.Pack FId MC_functor retC ((*Natural.Class*) _)).
 by [].
 Defined.
 
@@ -423,7 +423,7 @@ End continuation_monad_transformer_examples.
 
 Require Import monad_model.
 
-Section instantiations_with_the_identity_monad.
+Require Import Program.
 
 Lemma functor_ext (F G : functor) :
   forall (H : Functor.m F = Functor.m G),
@@ -433,89 +433,171 @@ Lemma functor_ext (F G : functor) :
 Proof.
 move: F G => [F [HF1 HF2 HF3]] [G [HG1 HG2 HG3]] /= H; subst G => /= ?; subst HG1.
 congr (Functor.Pack (Functor.Class _ _)); exact/boolp.Prop_irrelevance.
-Qed.
+Defined.
 
-Lemma natural_ext (F G G' : functor) (t : F ~> G) (t' : F ~> G') (H : G' = G):
-  Natural.m t' = eq_rect _ (fun A => _) (Natural.m t) _ (esym H) ->
-  t = eq_rect _ _ t' _ H.
+Lemma natural_ext (F G G' : functor) (t : F ~> G) (t' : F ~> G') :
+  forall (H : G = G'),
+  forall (K : forall X (x : F X), Natural.m t' x = eq_rect _ (fun m : functor => m X) (Natural.m t x) _ H),
+  t' = eq_rect _ (fun m => F ~> m) t _ H.
 Proof.
-move=> K.
-destruct F.
-destruct G.
-destruct G'.
-simpl in *.
-destruct class.
-destruct class0.
-destruct class1.
-destruct H.
-destruct t.
-destruct t'.
-simpl in *.
-subst m3.
+move : t t' => [t t1] [t' t'1] /= H; subst G' => H /=.
+have ? : t = t'.
+  apply FunctionalExtensionality.functional_extensionality_dep => A.
+  apply FunctionalExtensionality.functional_extensionality => x.
+  rewrite H.
+  by rewrite -[in RHS]Classical_Prop.Eq_rect_eq.eq_rect_eq.
+subst t'.
 congr Natural.Pack.
-apply/boolp.Prop_irrelevance.
+exact/boolp.Prop_irrelevance.
 Qed.
 
-Lemma Monad_of_ret_bind_ext (M M' : functor) (ret : FId ~> M) (ret' : FId ~> M')
-  (bind : forall A B : Type, M A -> (A -> M B) -> M B)
-  (bind' : forall A B : Type, M' A -> (A -> M' B) -> M' B)
-  (H1 : BindLaws.left_neutral bind ret)
-  (H2 : BindLaws.right_neutral bind ret)
-  (H3 : BindLaws.associative bind)
-  (H1' : BindLaws.left_neutral bind' ret')
-  (H2' : BindLaws.right_neutral bind' ret')
-  (H3' : BindLaws.associative bind') :
-forall (MM' : M' = M),
-ret = eq_rect _ _ ret' _ (MM') ->
-bind = @eq_rect _ _ (fun M : functor => forall A B : Type, M A -> (A -> M B) -> M B) bind' _ (MM') ->
-Monad_of_ret_bind H1 H2 H3
-=
-Monad_of_ret_bind H1' H2' H3'.
+Lemma natural_ext2 (F F' : functor) (t : F \O F ~> F) (t' : F' \O F' ~> F') :
+  forall (K : F = F'),
+  forall L : (forall X (x : (F' \O F') X),
+    Natural.m t' x = eq_rect _ (fun m : functor => m X)
+      (Natural.m t (eq_rect _ (fun m : functor => (m \O m) X) x _ (esym K)))
+      _ K),
+  t' = eq_rect _ (fun m => m \O m ~> m) t _ K.
 Proof.
-move=> ?; subst M'.
-rewrite -Classical_Prop.Eq_rect_eq.eq_rect_eq => ?.
-subst ret'.
-rewrite -Classical_Prop.Eq_rect_eq.eq_rect_eq => ?.
-subst bind'.
-congr Monad_of_ret_bind.
-exact/boolp.Prop_irrelevance.
-exact/boolp.Prop_irrelevance.
+move: t t' => [t t1] [t' t'1] /= H L; subst F.
+rewrite -[in RHS]Classical_Prop.Eq_rect_eq.eq_rect_eq /=.
+have ? : t = t'.
+  apply FunctionalExtensionality.functional_extensionality_dep => A.
+  apply FunctionalExtensionality.functional_extensionality => x.
+  rewrite L.
+  by rewrite -[in RHS]Classical_Prop.Eq_rect_eq.eq_rect_eq.
+subst t'.
+congr Natural.Pack.
 exact/boolp.Prop_irrelevance.
 Qed.
 
-Lemma state_monad_stateT S :
+Lemma monad_of_ret_bind_ext (F G : functor) (RET1 : FId ~> F) (RET2 : FId ~> G)
+  (bind1 : forall A B : Type, F A -> (A -> F B) -> F B)
+  (bind2 : forall A B : Type, G A -> (A -> G B) -> G B) :
+  forall (FG : F = G),
+  RET1 = eq_rect _ (fun m => FId ~> m) RET2 _ ((*beuh*) (esym FG)) ->
+  bind1 = eq_rect _ (fun m : functor => forall A B : Type, m A -> (A -> m B) -> m B) bind2 _ (esym FG) ->
+  forall H1 K1 H2 K2 H3 K3,
+  @Monad_of_ret_bind F RET1 bind1 H1 H2 H3 =
+  @Monad_of_ret_bind G RET2 bind2 K1 K2 K3.
+Proof.
+move=> FG; subst G; move=> HRET; subst RET1; move=> HBIND; subst bind1 => H1 K1 H2 K2 H3 K3.
+rewrite /Monad_of_ret_bind; congr Monad.Pack; simpl in *.
+have <- : H1 = K1 by exact/boolp.Prop_irrelevance.
+have <- : H2 = K2 by exact/boolp.Prop_irrelevance.
+have <- : H3 = K3 by exact/boolp.Prop_irrelevance.
+by [].
+Qed.
+
+Section todo.
+(* result of a discussion with Maxime and Enrico on 2019-09-12 *)
+
+Lemma todo0
+  (X : Type)
+  (U := functor : Type)
+  (p : U)
+  (Q := (fun z => Functor.m z X) : U -> Type)
+  (p' : U)
+  (K : Q p' = Q p)
+  (x : Q p')
+  (h : p = p') :
+  x = eq_rect p Q (eq_rect _ (fun x => x) x _ (K)) p' h.
+Proof.
+rewrite /eq_rect.
+destruct h.
+rewrite (_ : K = erefl) //.
+by rewrite -UIP_refl.
+Qed.
+
+Lemma todo
+  (S : Type)
+  (X : Type)
+  (U := functor : Type)
+  (p := ModelMonad.State.state_functor S : U)
+  (Q := (fun z => Functor.m z X) : U -> Type)
+  (p' := MS_functor S ModelMonad.identity : U)
+  (x : Q p')
+  (h : p = p') :
+  x = eq_rect p Q x p' h.
+Proof.
+have K : Q p' = Q p by [].
+rewrite {2}(_ : x = eq_rect _ (fun x => x) x _ K) //.
+apply todo0.
+rewrite /eq_rect.
+rewrite (_ : K = erefl) //.
+by rewrite -UIP_refl.
+Qed.
+
+End todo.
+
+Section instantiations_with_the_identity_monad.
+
+
+Lemma todo02
+  (U := functor : Type)
+  (p : U)
+  (Q := ((fun z : functor => forall A B : Type, Functor.m z A -> (A -> Functor.m z B) -> Functor.m z B)) : U -> Type)
+  (p' : U)
+  (K : Q p' = Q p)
+  (x : Q p')
+  (h : p = p') :
+  x = eq_rect p Q (eq_rect _ (fun x => x) x _ (K)) p' h.
+Proof.
+rewrite /eq_rect.
+destruct h.
+rewrite (_ : K = erefl) //.
+by rewrite -UIP_refl.
+Qed.
+
+Lemma todo2
+  (S : Type)
+  (U := functor : Type)
+  (p := ModelMonad.State.state_functor S : U)
+  (Q := ((fun z : functor => forall A B : Type, Functor.m z A -> (A -> Functor.m z B) -> Functor.m z B)) : U -> Type)
+  (p' := MS_functor S ModelMonad.identity : U)
+  (x : Q p')
+  (h : p = p') :
+ x = eq_rect p Q x p' h.
+Proof.
+have K : Q p' = Q p by [].
+rewrite {2}(_ : x = eq_rect _ (fun x => x) x _ K) //.
+apply todo02.
+rewrite /eq_rect.
+rewrite (_ : K = erefl) //.
+by rewrite -UIP_refl.
+Qed.
+
+Lemma state_monad_stateT1 S :
   stateT S ModelMonad.identity = ModelMonad.State.t S.
 Proof.
-rewrite /=.
-rewrite /estateMonadM /=.
-rewrite /ModelMonad.State.t /=.
-have MM' : ModelMonad.State.state_functor S = MS_functor S ModelMonad.identity.
+(* NB:
+ise to be as simple as this
+congr (Monad_of_ret_bind _ _ _); exact/boolp.Prop_irrelevance
+*)
+rewrite /= /estateMonadM /ModelMonad.State.t.
+have FG : MS_functor S ModelMonad.identity = ModelMonad.State.state_functor S.
   apply: functor_ext => /=.
-  rewrite /ModelMonad.State.state_map /MS_fmap.
   apply FunctionalExtensionality.functional_extensionality_dep => A.
   apply FunctionalExtensionality.functional_extensionality_dep => B.
-  rewrite boolp.funeqE => x.
-  rewrite boolp.funeqE => y.
-  rewrite boolp.funeqE => s.
-  rewrite /Fun /=.
-  rewrite /Monad_of_ret_bind.Map /=.
-  by case: (y s).
-apply (@Monad_of_ret_bind_ext _ _ _ _ _ _ _ _ _ _ _ _ MM') => //.
-apply natural_ext => /=.
-apply FunctionalExtensionality.functional_extensionality_dep => A.
-apply FunctionalExtensionality.functional_extensionality_dep => B.
-rewrite boolp.funeqE => s /=.
-move: MM'.
-rewrite /=.
-admit.
-rewrite /bindS.
-apply FunctionalExtensionality.functional_extensionality_dep => A.
-apply FunctionalExtensionality.functional_extensionality_dep => B.
-rewrite boolp.funeqE => x.
-rewrite boolp.funeqE => y.
-rewrite boolp.funeqE => s.
-rewrite /eq_rect.
-Abort.
+  rewrite boolp.funeqE => f. rewrite boolp.funeqE => m. rewrite boolp.funeqE => s.
+  by rewrite /MS_fmap /Fun /= /ModelMonad.State.state_map; destruct (m s).
+apply (@monad_of_ret_bind_ext _ _ _ _ _ _ FG) => /=.
+  apply/natural_ext => A a /=.
+  set U := functor.
+  set p : U := ModelMonad.State.state_functor S.
+  set Q : U -> Type := fun x => Functor.m x A.
+  set x : Q p := retS ModelMonad.identity a.
+  set x' : Q p := ModelMonad.State.ret a.
+  set p' : U := MS_functor S ModelMonad.identity.
+  have xx' : x = x' by [].
+  move: (@todo S A x (esym FG)).
+  exact.
+set x := @bindS _ _.
+set x' := (ModelMonad.State.bind (S:=S)).
+have xx' : x = x' by [].
+rewrite <-xx'.
+by move: (@todo2 S x (esym FG)).
+Qed.
 
 Lemma error_monad_errorT Z :
   errorT Z ModelMonad.identity = ModelMonad.error Z.
@@ -558,18 +640,18 @@ Variables (E : functor) (M : monad) (op : operation E M) (N : monad) (e : monadM
 Definition P (f : E \O N ~~> N) := forall X, e X \o op X = @f X \o (E # (e X)).
 Record mixin_of (f : E \O N ~~> N) := Mixin {
   _ : P f }.
-Record class_of (f : E \O N ~~> N) := Class {
+(*Record class_of (f : E \O N ~~> N) := Class {
   base : Natural.class_of f ;
-  mixin : mixin_of f }.
+  mixin : mixin_of f }.*)
 Structure t := Pack {
-  m : E \O N ~~> N ;
-  class : class_of m }.
-Definition baseType (M : t) := Natural.Pack (base (class M)).
+  m : E \O N ~> N ;
+  class : mixin_of m }.
+(*Definition baseType (M : t) := Natural.Pack ((*base*) ((*class*) M)).*)
 End lifting.
 Module Exports.
 Notation lifting := t.
-Coercion baseType : lifting >-> Natural.t.
-Canonical baseType.
+Coercion m : lifting >-> Natural.t.
+(*Canonical baseType.*)
 Notation lifting_def := P.
 End Exports.
 End Lifting.
@@ -579,7 +661,7 @@ Section lifting_interface.
 Variables (E : functor) (M : monad) (op : operation E M) (N : monad)
   (e : monadM M N) (L : lifting op e).
 Lemma liftingP : forall X, e X \o op X = L X \o (E # (e X)).
-Proof. by case: L => ? [? []]. Qed.
+Proof. by case: L => ? [? ]. Qed.
 End lifting_interface.
 
 Module LiftingT.
@@ -598,19 +680,19 @@ Definition P (op : E \O M ~~> M) :=
     (op A t >>= f) = op B ((E # (fun m => m >>= f)) t).
 Record mixin_of (op : E \O M ~~> M) := Mixin {
   _ : P op }.
-Record class_of (op : E \O M ~~> M) := Class {
+(*Record class_of (op : E \O M ~~> M) := Class {
   base : Natural.class_of op ;
-  mixin : mixin_of op }.
+  mixin : mixin_of op }.*)
 Structure t := Pack {
-  m : E \O M ~~> M ;
-  class : class_of m }.
-Definition baseType (M : t) := Natural.Pack (base (class M)).
+  m : E \O M ~> M ;
+  class : mixin_of m }.
+(*Definition baseType (M : t) := Natural.Pack (base (class M)).*)
 End aoperation.
 Module Exports.
 Arguments m {E} {M}.
 Notation aoperation := t.
-Coercion baseType : aoperation >-> Natural.t.
-Canonical baseType.
+Coercion m : aoperation >-> Natural.t.
+(*Canonical baseType.*)
 Notation algebraicity := P.
 End Exports.
 End AOperation.
@@ -620,15 +702,15 @@ Section algebraic_operation_interface.
 Variables (E : functor) (M : monad) (op : aoperation E M).
 Lemma algebraic : forall A B (f : A -> M B) (t : E (M A)),
    (op A t >>= f) = op B ((E # (fun m => m >>= f)) t).
-Proof. by case: op => ? [? []]. Qed.
+Proof. by case: op => ? [? ]. Qed.
 End algebraic_operation_interface.
 
 Lemma algebraic_get S : algebraicity (@StateOps.get_op S).
 Proof. by []. Qed.
 
 Program Definition get_aop S : aoperation (StateOps.get_fun S) (ModelMonad.State.t S) :=
-  AOperation.Pack (AOperation.Class _ (AOperation.Mixin (@algebraic_get S))).
-Next Obligation. by []. Qed.
+  AOperation.Pack ((*AOperation.Class _*) (AOperation.Mixin (@algebraic_get S))).
+(*Next Obligation. by []. Qed.*)
 
 Lemma algebraic_put S : algebraicity (@StateOps.put_op S).
 Proof. by move=> ? ? ? []. Qed.
@@ -637,8 +719,8 @@ Lemma algebraicity_callcc r : algebraicity (ContOps.acallcc_op r).
 Proof. by []. Qed.
 
 Program Definition callcc_aop r : aoperation (ContOps.acallcc_fun r) (ModelMonad.Cont.t r) :=
-  AOperation.Pack (AOperation.Class _ (AOperation.Mixin (@algebraicity_callcc r))).
-Next Obligation. by []. Qed.
+  AOperation.Pack ((*AOperation.Class _*) (AOperation.Mixin (@algebraicity_callcc r))).
+(*Next Obligation. by []. Qed.*)
 
 Section proposition17.
 Section psi.
@@ -659,7 +741,7 @@ by rewrite (natural op').
 Qed.
 
 Definition psi (op' : E ~> M) : operation E M :=
-  Natural.Pack (@Natural.Class _ _ _ (natural_psi op')).
+  Natural.Pack ((*@Natural.Class _ _ _*) (natural_psi op')).
 
 Lemma algebraic_psi (op' : E ~> M) : algebraicity (psi op').
 Proof.
@@ -700,7 +782,7 @@ by rewrite FIdf.
 Qed.
 
 Definition phi (op : operation E M) : E ~> M :=
-  Natural.Pack (@Natural.Class _ _ _ (natural_phi op)).
+  Natural.Pack ((*@Natural.Class _ _ _*) (natural_phi op)).
 End phi.
 Section bijection.
 Variables (E : functor) (M : monad).
