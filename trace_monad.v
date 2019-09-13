@@ -77,7 +77,7 @@ Record mixin_of S T (M : monad) : Type := Mixin {
   st_put : S -> M unit ;
   st_mark : T -> M unit ;
   _ : forall s s', st_put s >> st_put s' = st_put s' ;
-  _ : forall s, st_put s >> st_get = st_put s >> Ret _ s ;
+  _ : forall s, st_put s >> st_get = st_put s >> Ret s ;
   _ : st_get >>= st_put = skip ;
   _ : forall k : S -> S -> M S,
       st_get >>= (fun s => st_get >>= k s) = st_get >>= fun s => k s s ;
@@ -112,7 +112,7 @@ Section statetrace_lemmas.
 Variables (S T : Type) (M : stateTraceMonad S T).
 Lemma st_putput s s' : stPut s >> stPut s' = stPut s' :> M _.
 Proof. by case: M => m [? []]. Qed.
-Lemma st_putget s : stPut s >> stGet = stPut s >> Ret _ s :> M _.
+Lemma st_putget s : stPut s >> stGet = stPut s >> Ret s :> M _.
 Proof. by case: M => m [? []]. Qed.
 Lemma st_getputskip : stGet >>= stPut = skip :> M _.
 Proof. by case: M => m [? []]. Qed.
@@ -137,14 +137,14 @@ Let st_none1 : M Z :=
   do n <- stGet;
   do _ <- stPut (n + 1)%Z;
   do _ <- stMark '|n|;
-  Ret _ n.
+  Ret n.
 
 Let st_none2 : M Z :=
   do n <- stGet;
   do _ <- stMark '|0|;
   do _ <- stMark '|n|;
   do _ <- stPut (n + 1)%Z;
-  Ret _ n.
+  Ret n.
 
 Goal st_none1 = st_none2.
 Proof.
@@ -168,7 +168,7 @@ Definition monadtrace_example (m0 m1 m2 : M nat) : M nat :=
         stMark log0 >>
           do z <- m2;
             stMark log1 >>
-            Ret _ (x + Z.abs_nat y + z).
+            Ret (x + Z.abs_nat y + z).
 
 End statetrace_example.
 
@@ -249,13 +249,14 @@ Notation "'Drop'" := MonadTrans.drop.
 
 Module Tracer.
 Record class m (v : traceMonad unit) (mv : MonadTrans.t m v) : Type := Class {
-  lift_ret : forall A (a : A), Lift mv (Ret _ a) = Ret _ a :> v A ;
+  (* NB: see also monad_transformer.v *)
+  lift_ret : forall A (a : A), Lift mv (Ret a) = Ret a :> v A ;
   lift_bind : forall A B (m0 : m A) (f : A -> m B),
     Lift mv (m0 >>= f) = Lift mv m0 >>= (@MonadTrans.lift _ _ mv _ \o f) :> v B ;
-  drop_ret : forall A (a : A), Drop mv (Ret _ a) = Ret _ a :> m A ;
+  drop_ret : forall A (a : A), Drop mv (Ret a) = Ret a :> m A ;
   drop_bind : forall A B (m0 : v B) (f : B -> v A),
     Drop mv (m0 >>= f) = Drop mv m0 >>= (@MonadTrans.drop _ _ mv _ \o f) :> m A ;
-  drop_mark : Drop mv (Mark tt) = Ret _ tt
+  drop_mark : Drop mv (Mark tt) = Ret tt
 }.
 (* the monad v is a tracer of the monad m *)
 Structure t := Pack { m : monad ;
@@ -276,6 +277,6 @@ Definition tracer_example (m0 m1 m2 : m nat) : v _ :=
   do y <- Lift M m1;
   Mark tt >>
   do z <- Lift M m2;
-  Ret _ (x + y + z).
+  Ret (x + y + z).
 
 End tracer_example.

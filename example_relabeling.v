@@ -69,7 +69,7 @@ Let drBin {N : failMonad} : (N _ * N _ -> N _) :=
 
 (* extracting the distinct symbol list *)
 Definition dlabels {N : failMonad} : Tree Symbol -> N (seq Symbol) :=
-  foldt (Ret _ \o wrap) drBin.
+  foldt (Ret \o wrap) drBin.
 
 Lemma dlabelsC t u (m : _ -> _ -> M (seq Symbol * seq Symbol)%type) :
   (do x <- dlabels t; do x0 <- relabel u; m x0 x =
@@ -82,8 +82,8 @@ rewrite (_ : dlabels _ = drBin (dlabels t1, dlabels t2)) //.
 rewrite [in RHS]/drBin [in RHS]/bassert 2!compE ![in RHS]bindA.
 transitivity (do x0 <- relabel u;
   (do x <- dlabels t1;
-   do x <- (do x1 <- (do y <- dlabels t2; Ret _ (x, y));
-            (do x <- assert q x1; (Ret _ \o ucat) x));
+   do x <- (do x1 <- (do y <- dlabels t2; Ret (x, y));
+            (do x <- assert q x1; (Ret \o ucat) x));
    m x0 x))%Do; last first.
   bind_ext => u'; rewrite bind_fmap bindA; bind_ext => sS.
   rewrite 4!bindA; bind_ext => x; rewrite 2!bindretf !bindA.
@@ -94,7 +94,7 @@ bind_ext => s.
 rewrite !bindA.
 transitivity (do x0 <- relabel u;
   (do x <- dlabels t2; (do x <-
-    (do x1 <- Ret _ (s, x); (do x3 <- assert q x1; Ret _ (ucat x3)));
+    (do x1 <- Ret (s, x); (do x3 <- assert q x1; Ret (ucat x3)));
     m x0 x)))%Do; last by bind_ext => y2; rewrite bindA.
 rewrite -H2.
 bind_ext => s'.
@@ -102,7 +102,7 @@ rewrite !bindretf.
 rewrite assertE.
 rewrite bindA.
 transitivity (guard (q (s, s')) >>
-  (do x1 <- (Ret _ \o ucat) (s, s'); relabel u >>= (m^~ x1)))%Do.
+  (do x1 <- (Ret \o ucat) (s, s'); relabel u >>= (m^~ x1)))%Do.
   bind_ext; case; by rewrite 2!bindretf.
 rewrite guardsC; last exact: failfresh_bindmfail.
 rewrite !bindA !bindretf !bindA.
@@ -149,7 +149,7 @@ apply foldt_universal.
   (* relabel >=> dlabels \o Tip = drTip *)
   rewrite /kleisli (* TODO(rei): don't unfold *) -(compA (Join \o _)) -(compA Join).
   rewrite (_ : _ \o Tip = (M # Tip) \o const Fresh) //.
-  rewrite (compA (fmap dlabels)) -functor_o (_ : dlabels \o _ = Ret _ \o wrap) //.
+  rewrite (compA (fmap dlabels)) -functor_o (_ : dlabels \o _ = Ret \o wrap) //.
   by rewrite functor_o 2!compA joinMret.
 (* relabel >=> dlabels \o Bin = drBin \o _ *)
 rewrite /kleisli (* TODO(rei): don't unfold *) -[in LHS](compA (Join \o _)) -[in LHS](compA Join).

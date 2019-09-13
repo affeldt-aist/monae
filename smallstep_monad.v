@@ -25,16 +25,16 @@ Variable M : stateTraceMonad S T.
 
 Fixpoint denote {A} (p : program A) : M A :=
   match p with
-  | p_ret _ v => Ret _ v
+  | p_ret _ v => Ret v
   | p_bind _ _ m f => denote m >>= (denote \o f)
   | p_cond _ b p1 p2 => if b then denote p1 else denote p2
   | p_repeat n p => (fix loop m : M unit :=
-    if m is m'.+1 then denote p >> loop m' else Ret _ tt) n
+    if m is m'.+1 then denote p >> loop m' else Ret tt) n
   | p_while fuel c p => (fix loop m : M unit :=
     if m is m'.+1 then
       (stGet >>= (fun s =>
-      if c s then denote p >> loop m' else Ret _ tt))
-    else Ret _ tt) fuel
+      if c s then denote p >> loop m' else Ret tt))
+    else Ret tt) fuel
   | p_get => stGet
   | p_put s' => stPut s'
   | p_mark t => stMark t
@@ -58,7 +58,7 @@ Notation "'While' fuel @ c {{ p }}" := (
 
 Fixpoint denote_continuation (k : continuation) : M (@continuation T S) :=
   match k with
-  | stop A a => Ret _ (stop A a)
+  | stop A a => Ret (stop A a)
   | p `; f => denote p >>= (denote_continuation \o f)
   end.
 

@@ -15,10 +15,13 @@ Local Open Scope monae_scope.
 Module MonadProbModel.
 Local Obligation Tactic := idtac.
 
-Definition _ret : forall A : Type, A -> {dist (convex_choice.choice_of_Type A)} :=
+Definition ret' : forall A, A -> {dist (convex_choice.choice_of_Type A)} :=
   fun A a => FSDist1.d (a : convex_choice.choice_of_Type A).
 
-Definition _bind : forall A B : Type, {dist (convex_choice.choice_of_Type A)} -> (A -> {dist (convex_choice.choice_of_Type B)}) -> {dist (convex_choice.choice_of_Type B)} :=
+Definition bind : forall A B,
+  {dist (convex_choice.choice_of_Type A)} ->
+  (A -> {dist (convex_choice.choice_of_Type B)}) ->
+  {dist (convex_choice.choice_of_Type B)} :=
   fun A B m f => FSDistBind.d m f.
 
 Definition functor : functor.
@@ -30,17 +33,16 @@ move=> A B C g h.
 exact: (@FSDistfmap_comp (convex_choice.choice_of_Type A) (convex_choice.choice_of_Type B) (convex_choice.choice_of_Type C)).
 Defined.
 
-Definition rET : FId ~> functor.
-apply: (@Natural.Pack FId functor _ret _).
-(*apply: Natural.Class.*)
+Lemma naturality_ret' : naturality FId functor ret'.
+Proof.
 move=> A B h.
-rewrite boolp.funeqE => a /=.
-rewrite /Fun /= /_ret.
-by rewrite FSDistfmap1.
-Defined.
+by rewrite boolp.funeqE => a /=; rewrite /Fun /= /ret' FSDistfmap1.
+Qed.
+
+Definition ret : FId ~> functor := Natural.Pack naturality_ret'.
 
 Program Definition monad : Monad.t :=
-  @Monad_of_ret_bind _ rET _bind _ _ _.
+  @Monad_of_ret_bind _ ret bind _ _ _.
 Next Obligation. move=> ? ? ? ?; exact: FSDistBind1f. Qed.
 Next Obligation. move=> ? ?; exact: FSDistBindp1. Qed.
 Next Obligation. move=> A B C m f g; exact: FSDistBindA. Qed.
@@ -49,7 +51,7 @@ Lemma BindE (A B : choiceType) m (f : A -> monad B) :
   (m >>= f) = FSDistBind.d m f.
 Proof.
 rewrite /Bind /Join /= /Monad_of_ret_bind.join /Fun /=.
-rewrite /Monad_of_ret_bind.Map /_bind FSDistBindA; congr FSDistBind.d.
+rewrite /Monad_of_ret_bind.Map /bind FSDistBindA; congr FSDistBind.d.
 by rewrite boolp.funeqE => a; rewrite /= FSDistBind1f.
 Qed.
 

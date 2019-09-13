@@ -87,13 +87,13 @@ Arguments choiceC {M} {A} _ {mx} {my}.
 
 Fixpoint uniform {M : probMonad} {A} (def(*NB: Coq functions are total*) : A) (s : seq A) : M A :=
   match s with
-    | [::] => Ret _ def
-    | [:: x] => Ret _ x
-    | x :: xs => Ret _ x <| `Pr / IZR (Z_of_nat (size (x :: xs))) |> uniform def xs
+    | [::] => Ret def
+    | [:: x] => Ret x
+    | x :: xs => Ret x <| `Pr / IZR (Z_of_nat (size (x :: xs))) |> uniform def xs
   end.
 
 Lemma uniform_nil (M : probMonad) A (def : A) :
-  uniform def [::] = Ret _ def :> M A.
+  uniform def [::] = Ret def :> M A.
 Proof. by []. Qed.
 
 Lemma choice_ext (q p : prob) (M : probMonad) A (m1 m2 : M A) :
@@ -101,7 +101,7 @@ Lemma choice_ext (q p : prob) (M : probMonad) A (m1 m2 : M A) :
 Proof. by move/prob_ext => ->. Qed.
 
 Lemma uniform_cons (M : probMonad) A (def : A) h s :
-  uniform def (h :: s) = Ret _ h <| `Pr / IZR (Z_of_nat (size (h :: s))) |> uniform def s :> M A.
+  uniform def (h :: s) = Ret h <| `Pr / IZR (Z_of_nat (size (h :: s))) |> uniform def s :> M A.
 Proof.
 case: s => //.
 rewrite (@choice_ext (`Pr 1)) // ?choice1 //.
@@ -109,14 +109,14 @@ by rewrite /= Rinv_1.
 Qed.
 
 Lemma uniform_singl (M : probMonad) A (def : A) h : size h = 1%nat ->
-  uniform def h = Ret _ (head def h) :> M A.
+  uniform def h = Ret (head def h) :> M A.
 Proof.
 case: h => // h [|//] _.
 by rewrite uniform_cons uniform_nil (@choice_ext (`Pr 1)) ?choice1 //= invR1.
 Qed.
 
 Lemma uniform_nseq (M : probMonad) A (def : A) h n :
-  uniform def (nseq n.+1 h) = Ret _ h :> M A.
+  uniform def (nseq n.+1 h) = Ret h :> M A.
 Proof.
 elim: n => // n IH.
 by rewrite (_ : nseq _ _ = h :: nseq n.+1 h) // uniform_cons IH choicemm.
@@ -222,9 +222,9 @@ Lemma mpair_uniform_base_case (M : probMonad) A a x (y : seq A) :
   uniform (a, a) (cp [:: x] y) = mpair (uniform a [:: x], uniform a y) :> M _.
 Proof.
 move=> y0; rewrite cp1.
-transitivity (@uniform M _ a y >>= (fun y' => Ret _ (x, y'))).
+transitivity (@uniform M _ a y >>= (fun y' => Ret (x, y'))).
   by rewrite -(compE (uniform _)) (uniform_naturality a) // compE fmapE.
-transitivity (do z <- Ret _ x; do y' <- uniform a y; Ret _ (z, y') : M _)%Do.
+transitivity (do z <- Ret x; do y' <- uniform a y; Ret (z, y') : M _)%Do.
   by rewrite bindretf.
 by [].
 Qed.
@@ -317,27 +317,27 @@ End convexity_property.
 
 (* biased coin *)
 Definition bcoin {M : probMonad} (p : prob) : M bool :=
-  Ret _ true <| p |> Ret _ false.
+  Ret true <| p |> Ret false.
 Arguments bcoin : simpl never.
 
 (* arbitrary nondeterministic choice between booleans *)
-Definition arb {M : altMonad} : M bool := Ret _ true [~] Ret _ false.
+Definition arb {M : altMonad} : M bool := Ret true [~] Ret false.
 
 Section mixing_choices.
 
 Variable M : altProbMonad.
 
 Definition arbcoin p : M bool :=
-  (do a <- arb ; (do c <- bcoin p; Ret _ (a == c) : M _))%Do.
+  (do a <- arb ; (do c <- bcoin p; Ret (a == c) : M _))%Do.
 Definition coinarb p : M bool :=
-  (do c <- bcoin p ; (do a <- arb; Ret _ (a == c) : M _))%Do.
+  (do c <- bcoin p ; (do a <- arb; Ret (a == c) : M _))%Do.
 
 Lemma Ret_eqb_addL b :
-  (fun c => Ret _ (b == c)) = (fun c => Ret _ (~~ b (+) c)) :> (bool -> M bool).
+  (fun c => Ret (b == c)) = (fun c => Ret (~~ b (+) c)) :> (bool -> M bool).
 Proof. case: b; rewrite boolp.funeqE; by case. Qed.
 
 Lemma Ret_eqb_addR b :
-  (fun c => Ret _ (c == b)) = (fun c => Ret _ (~~ b (+) c)) :> (bool -> M bool).
+  (fun c => Ret (c == b)) = (fun c => Ret (~~ b (+) c)) :> (bool -> M bool).
 Proof. case: b; rewrite boolp.funeqE; by case. Qed.
 
 Definition Ret_eqb_add := (Ret_eqb_addL, Ret_eqb_addR).
@@ -348,7 +348,7 @@ Proof.
 rewrite /arbcoin /arb.
 rewrite alt_bindDl.
 rewrite 2!bindretf.
-rewrite 2!Ret_eqb_add ![fun _ => Ret _ _]/=.
+rewrite 2!Ret_eqb_add ![fun _ => Ret _]/=.
 rewrite bindmret; congr (_ [~] _).
 rewrite [in RHS]/bcoin choiceC.
 rewrite [in RHS](@choice_ext p); last by rewrite /= onemK.
@@ -360,18 +360,18 @@ Proof.
 rewrite [in LHS]/coinarb [in LHS]/bcoin.
 rewrite prob_bindDl.
 rewrite 2!bindretf.
-rewrite 2!Ret_eqb_add [fun _ => Ret _ _]/= [in X in _ <| _ |> X = _]/=.
+rewrite 2!Ret_eqb_add [fun _ => Ret _]/= [in X in _ <| _ |> X = _]/=.
 rewrite bindmret.
-rewrite {2}/arb alt_bindDl !bindretf [Ret _ _]/= [Ret _ (~~ _)]/=.
+rewrite {2}/arb alt_bindDl !bindretf [Ret _]/= [Ret (~~ _)]/=.
 rewrite {1}/arb.
 by rewrite altC choicemm altC.
 Qed.
 
 Lemma coinarb_spec_convexity p w : coinarb p =
-  (bcoin w : M _) [~] (Ret _ false : M _) [~] (Ret _ true  : M _) [~] bcoin (`Pr w.~).
+  (bcoin w : M _) [~] (Ret false : M _) [~] (Ret true : M _) [~] bcoin (`Pr w.~).
 Proof.
 rewrite coinarb_spec [in LHS]/arb [in LHS](convexity _ _ w) 2!choicemm.
-rewrite [in LHS]altC -(altA _ (Ret _ false)) altCA -2![in RHS]altA; congr (_ [~] _).
+rewrite [in LHS]altC -(altA _ (Ret false)) altCA -2![in RHS]altA; congr (_ [~] _).
 rewrite -altA altCA; congr (_ [~] _).
 by rewrite /bcoin choiceC altC.
 Qed.
@@ -402,7 +402,7 @@ End MonadExceptProb.
 Export MonadExceptProb.Exports.
 
 Definition coins23 {M : exceptProbMonad} : M bool :=
-  Ret _ true <| `Pr / 2 |> (Ret _ false <| `Pr / 2 |> (Fail : M _)).
+  Ret true <| `Pr / 2 |> (Ret false <| `Pr / 2 |> (Fail : M _)).
 
 Lemma H23 : (0 <= 2/3 <= 1)%R. Proof. split; lra. Qed.
 
