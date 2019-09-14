@@ -19,6 +19,7 @@ Reserved Notation "f ~> g" (at level 51).
 Reserved Notation "f \O g" (at level 50, format "f  \O  g").
 Reserved Notation "F -| G" (at level 51, G at next level).
 Reserved Notation "f \v g" (at level 50, format "'[v' f '/' \v  g ']'", left associativity).
+Reserved Notation "f \h g" (at level 50, format "f  \h  g").
 Reserved Notation "l \\ p" (at level 50).
 
 (* generic Haskell-like functions and notations *)

@@ -10,8 +10,8 @@ Unset Printing Implicit Defensive.
 Module Comp.
 Section comp.
 Variables (M N : monad).
-Lemma naturality_ret : naturality FId (M \O N) (HComp (@RET N) (@RET M)).
-Proof. by move=> A B h; rewrite -(natural (HComp (@RET N) (@RET M))). Qed.
+Lemma naturality_ret : naturality FId (M \O N) ((@RET M) \h (@RET N)).
+Proof. by move=> A B h; rewrite -(natural ((@RET M) \h (@RET N))). Qed.
 Definition ret : FId ~> M \O N := Natural.Pack naturality_ret.
 End comp.
 End Comp.
@@ -280,3 +280,39 @@ Qed.
 
 End swap.
 End Swap.
+
+(* wip *)
+
+Section nattrans_cast_lemmas.
+Variables (F G : functor).
+Lemma IV : FId \O G ~> F -> G ~> F.
+Proof. case=> m H; apply: (@Natural.Pack G F m H). Qed.
+Lemma VI : G \O FId ~> F -> G ~> F.
+Proof. case=> m H; apply: (@Natural.Pack G F m H). Qed.
+Variable K J : functor.
+Lemma AV : G \O K \O J ~> F -> G \O (K \O J) ~> F.
+Proof. case=> m H; apply: (@Natural.Pack (G \O (K \O J)) F m H). Qed.
+Lemma AV' : G \O (K \O J) ~> F -> G \O K \O J ~> F.
+Proof. case=> m H; apply: (@Natural.Pack (G \O K \O J) F m H). Qed.
+Lemma VA : F ~> G \O K \O J -> F ~> G \O (K \O J).
+Proof. case=> m H; apply: (@Natural.Pack F (G \O (K \O J)) m H). Qed.
+Lemma VA' : F ~> G \O (K \O J) -> F ~> G \O K \O J.
+Proof. case=> m H; apply: (@Natural.Pack F (G \O K \O J) m H). Qed.
+End nattrans_cast_lemmas.
+
+Module DistributiveLaw.
+Section distributivelaw.
+Variables S T : monad.
+Record t := mk {
+  f : S \O T ~> T \O S ;
+  unit1 : IV (f \v (@RET S \h NId T)) = VI (NId T \h @RET S) ;
+  unit2 : VI (f \v (NId S \h @RET T)) = IV (@RET T \h NId S) ;
+  multiplication1 :
+    AV (f \v (@JOIN S \h NId T)) =
+    (NId T \h @JOIN S) \v VA ((f \h NId S) \v VA' (NId S \h f)) ;
+  multiplication2 :
+    AV' (f \v (NId S \h @JOIN T)) =
+    (@JOIN T \h NId S) \v VA' ((NId T \h f) \v VA (f \h NId T))
+}.
+End distributivelaw.
+End DistributiveLaw.

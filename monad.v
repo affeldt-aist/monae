@@ -1,6 +1,7 @@
 Ltac typeof X := type of X.
 
 Require Import ssrmatching.
+Require FunctionalExtensionality.
 From mathcomp Require Import all_ssreflect.
 From mathcomp Require boolp.
 Require Import monae_lib.
@@ -221,6 +222,13 @@ Section natrans_lemmas.
 Variables (M N : functor) (phi : M ~> N).
 Lemma natural A B (h : A -> B) : (N # h) \o phi A = phi B \o (M # h).
 Proof. by case: phi => ?. Qed.
+Lemma nattrans_ext (f g : M ~> N) :
+  f = g <-> forall a, (f a = g a :> (_ -> _)).
+Proof.
+split => [ -> // |]; move: f g => [f Hf] [g Hg] /= fg.
+have ? : f = g by exact: FunctionalExtensionality.functional_extensionality_dep.
+subst g; congr (Natural.Pack _); exact/boolp.Prop_irrelevance.
+Qed.
 End natrans_lemmas.
 
 Section id_natural_transformation.
@@ -250,6 +258,8 @@ by congr (_ \o _); rewrite FCompE -2!functor_o (natural s).
 Qed.
 Definition HComp : (F' \O F) ~> (G' \O G) := Natural.Pack natural_hcomp.
 End horizontal_composition.
+
+Notation "f \h g" := (HComp g f).
 
 Section natural_transformation_example.
 Definition fork' : FId ~~> squaring := fun A (a : A) => (a, a).

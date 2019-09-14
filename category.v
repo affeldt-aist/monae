@@ -38,7 +38,6 @@ Unset Printing Implicit Defensive.
     interface to monad.v
 *)
 
-Reserved Notation "f \h g" (at level 50, format "f  \h  g").
 Reserved Notation "f \\h g" (at level 50, format "f  \\h  g").
 Reserved Notation "F ~~> G" (at level 51).
 
