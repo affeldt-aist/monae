@@ -22,6 +22,7 @@ This library has been applied to other formalizations:
 
 - [[monae_lib.v][monae_lib.v]]: simple additions to base libraries
 - [[monad.v][monad.v]]: basics of monadic equational reasoning
+- [[category.v][category.v]]: formalization of categories (generalization of ~monad.v~)
 - [[fail_monad.v][fail_monad.v]]: fail monad and related monads
 - [[state_monad.v][state_monad.v]]: state-related monads
 - [[trace_monad.v][trace_monad.v]]: about the state-trace monad
@@ -30,6 +31,8 @@ This library has been applied to other formalizations:
 - [[monad_transformer.v][monad_transformer.v]]: monad transformers
 - [[monad_model.v][monad_model.v]]: concrete models of monads (corresponding to ~{,state_,trace_}monad.v~)
 - [[proba_monad_model.v][proba_monad_model.v]]: concrete model of the probability monad
+- [[gcm_model.v][gcm_model.v]]: model of the geometrically convex monad
+- [[altprob_model.v][altprob_model.v]]: wip
 - [[example_spark.v][example_spark.v]]: example of Spark aggregation
 - [[example_nqueens.v][example_nqueens.v]]: example of the n-queens puzzle
 - [[example_relabeling.v][example_relabeling.v]]: example of tree relabeling
@@ -37,9 +40,6 @@ This library has been applied to other formalizations:
 - [[smallstep.v][smallstep.v]]: semantics for an imperative language
 - [[smallstep_monad.v][smallstep_monad.v]]: equivalence operational semantics/denotation
 - [[smallstep_examples.v][smallstep_examples.v]]: sample imperative programs
-- [[category.v][category.v]]: formalization of categories (generalization of ~monad.v~)
-- [[gcm_model.v][gcm_model.v]]: model of the geometrically convex monad
-- [[altprob_model.v][altprob_model.v]]: wip
 
 ** License
 
@@ -69,8 +69,8 @@ The [[file:installation_windows.org][installation instructions]] are less simple
 
 - [[https://coq.inria.fr][Coq]] 8.9.1
 - [[https://github.com/math-comp/math-comp][Mathematical Components library]] 1.9.0
-- [[https://github.com/affeldt-aist/infotheo][infotheo]] 0.0.3
-  + with requires [[https://github.com/math-comp/analysis][MathComp-Analysis]] 0.2.2
+- [[https://github.com/affeldt-aist/infotheo][infotheo]] 0.0.4
+  + which requires [[https://github.com/math-comp/analysis][MathComp-Analysis]] 0.2.2
     * which requires
       - [[https://github.com/math-comp/bigenough/][bigenough]] first release
       - [[https://github.com/math-comp/finmap][finmap]] 1.2.1
