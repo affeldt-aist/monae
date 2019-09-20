@@ -130,7 +130,7 @@ rewrite 3!bindA.
 rewrite -H.
 rewrite !fmapE.
 rewrite 3!bindA.
-bind_ext => {x1}x1.
+bind_ext => {}x1.
 rewrite 2!bindretf 2!bindA.
 do 3 rewrite_ bindretf.
 rewrite -dlabelsC.

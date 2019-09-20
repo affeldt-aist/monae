@@ -2,10 +2,6 @@ From mathcomp Require Import all_ssreflect.
 From mathcomp Require Import boolp.
 Require Import monae_lib.
 
-Set Implicit Arguments.
-Unset Strict Implicit.
-Unset Printing Implicit Defensive.
-
 (* This file provides a proper notation of categories on top of which
    functors and monads are defined. It is a generalization of monad.v
    (which is bound to be superseded). In particular it ends with the
@@ -40,6 +36,12 @@ Unset Printing Implicit Defensive.
 
 Reserved Notation "f \\h g" (at level 50, format "f  \\h  g").
 Reserved Notation "F ~~> G" (at level 51).
+
+Declare Scope category_scope.
+
+Set Implicit Arguments.
+Unset Strict Implicit.
+Unset Printing Implicit Defensive.
 
 (* Our `category' is always concrete; morphisms are just functions. *)
 Module Category.
@@ -329,7 +331,7 @@ Definition FId : functor _ _ := Functor.Pack (Functor.Class id_id id_comp).
 Lemma FIdf (A B : C) (f : {hom A,B}) : FId # f = f.
 Proof. by []. Qed.
 End functorid.
-Arguments FId [C].
+Arguments FId {C}.
 
 Section functorcomposition.
 Variables (C0 C1 C2 : category) (F : functor C1 C2) (G : functor C0 C1).

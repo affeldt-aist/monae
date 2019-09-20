@@ -67,7 +67,7 @@ Proof.
 apply/esym; rewrite /safe2.
 set f := fun x => Get >>= (fun uds => let (ok, uds') := safe1 uds x in Put uds' >> Ret ok) : M _.
 rewrite -(@foldr_universal_ext _ _ _ _ f) //;
-  [apply/esym|move=> cr {crs}crs; apply/esym].
+  [apply/esym|move=> cr {}crs; apply/esym].
   by rewrite /start2 /f /= -bindA getputskip bindskipf.
 (* definition of safe1 *)
 transitivity

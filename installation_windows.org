@@ -26,15 +26,15 @@ to compile the desired libraries one after the other using ~make~.
     among the System Tray icons
   + Right-clicking the Cygwin-X11 icon gives access to ~xterm~
     * You can launch ~emacs~ from the command line
-* Step 2 (alternative 1): Install MathComp using Coq Binaries
-** Step 2a: Install Coq
+* Step 2(alternative 1): Install MathComp using Coq Binaries
+** Step 2(alternative 1)a: Install Coq
 - Download and execute ~coq-8.9.1-installer-windows-x86_64.exe~ from
   the [[https://github.com/coq/coq/releases/latest][release page]]
   + This will add the Coq distribution as the ~C:\Coq~ directory
 - Add ~/cygdrive/c/coq/bin~ to ~PATH~
   + By appending ~export PATH=${PATH}:/cygdrive/c/coq/bin/~ to
     ~.bashrc~ for example
-** Step 2b: Install MathComp
+** Step 2(alternative 1)b: Install MathComp
 - The MathComp library that comes with the Coq binaries is maybe not
   up-to-date
   + ~rm /cygdrive/c/coq/lib/user_contrib/mathcomp~
@@ -43,12 +43,12 @@ to compile the desired libraries one after the other using ~make~.
   + Installation amounts to: unzip, untar, cd, make, make install
   + As a result the MathComp libraries populate the ~user-contrib~
     directory of the Coq installation
-* Step 2 (alternative 2): Install MathComp using opam
+* Step 2(alternative 2): Install MathComp using opam
 The following results in a more comfortable working environment but
 the process is slow and may fail. Still, at least, it should leave you
 with a working OCaml compiler to compile Coq from the source and go on
-installing MathComp as in *Step 2b*.
-** Step 2(bis)a: Install opam
+installing MathComp as in *Step 2(alternative 1)b*.
+** Step 2(alternative 2)a: Install opam
 - For opam to work, add a few more useful programs by re-running the
   cygwin installer
   + ~rsync~, ~curl~, ~m4~, ~perl~, ~mingw64-x86_64-gcc-core~
@@ -60,7 +60,7 @@ installing MathComp as in *Step 2b*.
 - ~eval $(opam config env)~
 - ~opam switch create 4.07.1+mingw64c~
   + if for some reason the right OCaml compiler is still not here
-** Step 2(bis)b: Install Coq
+** Step 2(alternative 2)b: Install Coq
 - ~opam install camlp5~ ([2019-07-12 Fri]'s version: 7.06)
 - ~opam install ocamlfind~ ([2019-07-12 Fri]'s version: 1.8.0)
 - ~opam install depext~ ([2019-07-12 Fri]'s version: transition)
@@ -75,7 +75,7 @@ installing MathComp as in *Step 2b*.
 - ~opam install num~ ([2019-07-12 Fri]'s version: 1.2)
 - ~opam repo add coq-released https://coq.inria.fr/opam/released~
 - ~opam install coq.8.9.1~
-** Step 2(bis)c: Install MathComp
+** Step 2(alternative 2)c: Install MathComp
 - ~export CAML=/home/username/.opam/4.07.1+mingw64c/bin/~
 - ~export COQBIN=/home/username/.opam/4.07.1+mingw64c/bin/~
 - ~opam install coq-mathcomp-ssreflect~ ([2019-07-12 Fri]'s version: 1.9.0)
@@ -87,7 +87,7 @@ installing MathComp as in *Step 2b*.
 - Add this point, you can already use Coq and /some version/ of
   MathComp almost as if you were on a Linux-based system
 * Step 4: Install the Required Libraries on Top of MathComp and Then monae
-** In case you chose Step 2:
+** In case you chose Step 2(alternative 1):
 - Install MathComp-Analysis using unzip, untar, cd, make, make install
   1. Install bigenough 1.0.0 ([[https://github.com/math-comp/bigenough][download]]) 
   2. Install finmap 1.2.1 ([[https://github.com/math-comp/finmap][download]])
@@ -99,7 +99,7 @@ installing MathComp as in *Step 2b*.
   + ~coq_makefile -o Makefile -f _CoqProject~
   + ~make~
   + optionally, ~make install~
-** In case you chose Step 2(bis) (and succeeded):
+** In case you chose Step 2(alternative 2) (and succeeded):
 - ~opam install coq-mathcomp-bigenough~ (1.0.0)
 - ~opam install coq-mathcomp-finmap.1.2.1~
 - ~opam install coq-mathcomp-analysis.0.2.2~

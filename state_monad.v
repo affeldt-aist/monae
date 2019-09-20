@@ -395,7 +395,7 @@ Proof.
 move=> Hf size_f s.
 apply/boolp.constructive_indefinite_description.
 move: s; apply: (well_founded_induction (@well_founded_size _)) => s IH.
-have {IH}IH : forall x, size x < size s ->
+have {}IH : forall x, size x < size s ->
   { m | ndDenote m = unfoldM (@well_founded_size B) (@nilp _) f x}.
   move=> x xs; exact/boolp.constructive_indefinite_description/IH.
 case: s IH => [|h t] IH.
@@ -428,7 +428,7 @@ Lemma commute_nondetState S (M : nondetStateMonad S)
   nondetState_sub m -> commute m n f.
 Proof.
 case => x.
-elim: x m n f => [{A}A a m n f <-| B0 {A}A n0 H0 n1 H1 m n2 f <- |
+elim: x m n f => [{}A a m n f <-| B0 {}A n0 H0 n1 H1 m n2 f <- |
   A0 m n f <- | A0 n0 H0 n1 H1 m n2 f <-].
 - rewrite /commute bindretf.
   by rewrite_ bindretf.

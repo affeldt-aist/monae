@@ -4,10 +4,6 @@ From mathcomp Require boolp.
 From infotheo Require Import ssrR Reals_ext proba.
 Require Import monae_lib monad fail_monad.
 
-Set Implicit Arguments.
-Unset Strict Implicit.
-Unset Printing Implicit Defensive.
-
 (*
 Contents:
 - Definition of probabilities
@@ -25,6 +21,12 @@ Contents:
 *)
 
 Reserved Notation "mx <| p |> my" (format "mx  <| p |>  my", at level 50).
+
+Declare Scope proba_monad_scope.
+
+Set Implicit Arguments.
+Unset Strict Implicit.
+Unset Printing Implicit Defensive.
 
 Local Open Scope monae_scope.
 Local Open Scope reals_ext_scope.

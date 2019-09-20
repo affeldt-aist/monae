@@ -47,27 +47,21 @@ GNU GPLv3
 
 ** Installation
 
-- ~git clone git@github.com:affeldt-aist/monae.git~
-- ~cd monae~
-
-If opam is installed, do:
+   The preferred way to install monae is with opam because it takes
+   care of the dependencies with other libraries. If not already done,
+   add the repository for Coq libraries to opam and update:
 
 1. ~opam repo add coq-released https://coq.inria.fr/opam/released~
-2. ~opam install .~
+2. ~opam update~
 
-opam takes care of the dependencies.
+*** Last stable version:
 
-If opam is not installed but if the Requirements (see below) are met, do:
+Version 0.0.2:
+3. ~opam install coq-monae~
 
-1. ~coq_makefile -f _CoqProject -o Makefile~
-2. ~make~
-3. ~make install~
+*** Requirements
 
-The [[file:installation_windows.org][installation instructions]] are less simple for Windows 10.
-
-** Requirements
-
-- [[https://coq.inria.fr][Coq]] 8.9.1
+- [[https://coq.inria.fr][Coq]] 8.10
 - [[https://github.com/math-comp/math-comp][Mathematical Components library]] 1.9.0
 - [[https://github.com/affeldt-aist/infotheo][infotheo]] 0.0.4
   + which requires [[https://github.com/math-comp/analysis][MathComp-Analysis]] 0.2.2
@@ -76,5 +70,29 @@ The [[file:installation_windows.org][installation instructions]] are less simple
       - [[https://github.com/math-comp/finmap][finmap]] 1.2.1
 
 All versions available from opam.
+
+*** Development version (git master):
+
+Same requirements as above except that you may need the development version of infotheo.
+
+3. ~git clone git@github.com:affeldt-aist/monae.git~
+4. ~cd monae~
+
+If opam is installed, do:
+
+5. ~opam install .~
+
+opam takes care of the dependencies.
+
+If opam is not installed but if the Requirements are met, do:
+
+1. ~coq_makefile -f _CoqProject -o Makefile~
+2. ~make~
+3. ~make install~
+
+*** About Windows 10
+
+The [[file:installation_windows.org][installation instructions]] are less simple for Windows 10.
+
 ** Reference
    [[https://staff.aist.go.jp/reynald.affeldt/bib/bib_en.html#affeldt2019mpc][MPC 2019 paper]]

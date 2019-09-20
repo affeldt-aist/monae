@@ -11,10 +11,6 @@ Require Import monae_lib.
    this with a proper notion of category (see Monad_of_category_monad.m
     in category.v) *)
 
-Set Implicit Arguments.
-Unset Strict Implicit.
-Unset Printing Implicit Defensive.
-
 (* Contents:
 - Module FunctorLaws/Module Functor
 - various sections about functors
@@ -46,7 +42,16 @@ Reserved Notation "'[~p]'".
 Reserved Notation "f (o) g" (at level 11).
 Reserved Notation "'fmap' f" (at level 4).
 
+Declare Scope mprog.
+Declare Scope do_notation.
+Declare Scope monae_scope.
+
+Set Implicit Arguments.
+Unset Strict Implicit.
+Unset Printing Implicit Defensive.
+
 Notation "f ~~> g" := (forall A, f A -> g A) (at level 51, only parsing).
+
 (* map laws of a functor *)
 Module FunctorLaws.
 Section def.
@@ -408,7 +413,9 @@ rewrite /BindLaws.associative => A B C x ab bc.
 rewrite /bind.
 set N := M f g.  set j := mu eps.
 rewrite [X in _ = j C X](_ : _ = (N # (j C)) ((N # (N # bc)) ((N # ab) x))); last first.
-  rewrite functor_o /funcomp.  congr (N # j C).  by rewrite functor_o /funcomp.
+  rewrite functor_o /comp.
+  congr (N # j C).
+  by rewrite functor_o.
 move: muMA (muM_natural bc).
 rewrite -/N -/j.
 move=> muMA.
