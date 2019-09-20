@@ -59,9 +59,9 @@ GNU GPLv3
 Version 0.0.2:
 3. ~opam install coq-monae~
 
-*** Requirements
+**** Requirements
 
-- [[https://coq.inria.fr][Coq]] 8.10
+- [[https://coq.inria.fr][Coq]] 8.9.1
 - [[https://github.com/math-comp/math-comp][Mathematical Components library]] 1.9.0
 - [[https://github.com/affeldt-aist/infotheo][infotheo]] 0.0.4
   + which requires [[https://github.com/math-comp/analysis][MathComp-Analysis]] 0.2.2
@@ -73,7 +73,7 @@ All versions available from opam.
 
 *** Development version (git master):
 
-Same requirements as above except that you may need the development version of infotheo.
+With Coq 8.10 and the development version of infotheo.
 
 3. ~git clone git@github.com:affeldt-aist/monae.git~
 4. ~cd monae~
@@ -84,7 +84,7 @@ If opam is installed, do:
 
 opam takes care of the dependencies.
 
-If opam is not installed but if the Requirements are met, do:
+If opam is not installed but if the requirements are met, do:
 
 1. ~coq_makefile -f _CoqProject -o Makefile~
 2. ~make~
