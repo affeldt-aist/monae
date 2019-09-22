@@ -41,10 +41,6 @@ This library has been applied to other formalizations:
 - [[smallstep_monad.v][smallstep_monad.v]]: equivalence operational semantics/denotation
 - [[smallstep_examples.v][smallstep_examples.v]]: sample imperative programs
 
-** License
-
-GNU GPLv3
-
 ** Installation
 
    The preferred way to install monae is with opam because it takes
@@ -92,7 +88,20 @@ If opam is not installed but if the requirements are met, do:
 
 *** About Windows 10
 
-The [[file:installation_windows.org][installation instructions]] are less simple for Windows 10.
+Installation of monae on Windows is less simple.
+First install infotheo following the [[https://github.com/affeldt-aist/infotheo][instructions for Windows 10]].
+Once infotheo is installed:
+1. If opam is available, do
+   + ~opam install coq-monae~ or ~git clone git@github.com:affeldt-aist/monae.git; opam install .~
+2. If opam is not available (i.e., installation of MathComp using unzip, untar, cd, make, make install),
+   do:
+   + ~git clone git@github.com:affeldt-aist/monae.git~
+   + ~coq_makefile -o Makefile -f _CoqProject~
+   + ~make~
+
+** License
+
+GNU GPLv3
 
 ** Reference
    [[https://staff.aist.go.jp/reynald.affeldt/bib/bib_en.html#affeldt2019mpc][MPC 2019 paper]]
