@@ -316,3 +316,21 @@ Record t := mk {
 }.
 End distributivelaw.
 End DistributiveLaw.
+Coercion DistributiveLaw.f : DistributiveLaw.t >-> Natural.t.
+
+Definition beck (S T : monad) (f : DistributiveLaw.t S T) : monad.
+have @join : (T \O S) \O (T \O S) ~> T \O S.
+  apply: (VComp ((@JOIN T) \h (@JOIN S)) _).
+  apply VA.
+  apply AV.
+  apply HComp.
+  exact: NId.
+  apply VA'.
+  apply AV'.
+  apply HComp.
+  exact: f.
+  exact: NId.
+apply: (Monad.Pack (@Monad.Class _ _ (@Monad.Mixin _ (Comp.ret T S) join _ _ _))).
+move=> A.
+rewrite /join.
+Abort.
