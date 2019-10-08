@@ -4,10 +4,6 @@ From mathcomp Require boolp.
 From infotheo Require Import ssrR Reals_ext proba.
 Require Import monae_lib monad fail_monad.
 
-Set Implicit Arguments.
-Unset Strict Implicit.
-Unset Printing Implicit Defensive.
-
 (*
 Contents:
 - Definition of probabilities
@@ -25,6 +21,12 @@ Contents:
 *)
 
 Reserved Notation "mx <| p |> my" (format "mx  <| p |>  my", at level 50).
+
+Declare Scope proba_monad_scope.
+
+Set Implicit Arguments.
+Unset Strict Implicit.
+Unset Printing Implicit Defensive.
 
 Local Open Scope monae_scope.
 Local Open Scope reals_ext_scope.
@@ -368,7 +370,7 @@ by rewrite altC choicemm altC.
 Qed.
 
 Lemma coinarb_spec_convexity p w : coinarb p =
-  (bcoin w : M _) [~] (Ret false : M _) [~] (Ret true  : M _) [~] bcoin (`Pr w.~).
+  (bcoin w : M _) [~] (Ret false : M _) [~] (Ret true : M _) [~] bcoin (`Pr w.~).
 Proof.
 rewrite coinarb_spec [in LHS]/arb [in LHS](convexity _ _ w) 2!choicemm.
 rewrite [in LHS]altC -(altA _ (Ret false)) altCA -2![in RHS]altA; congr (_ [~] _).

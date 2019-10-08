@@ -2,10 +2,6 @@ From mathcomp Require Import all_ssreflect.
 From mathcomp Require Import boolp.
 Require Import monae_lib.
 
-Set Implicit Arguments.
-Unset Strict Implicit.
-Unset Printing Implicit Defensive.
-
 (* This file provides a proper notation of categories on top of which
    functors and monads are defined. It is a generalization of monad.v
    (which is bound to be superseded). In particular it ends with the
@@ -38,9 +34,14 @@ Unset Printing Implicit Defensive.
     interface to monad.v
 *)
 
-Reserved Notation "f \h g" (at level 50, format "f  \h  g").
 Reserved Notation "f \\h g" (at level 50, format "f  \\h  g").
 Reserved Notation "F ~~> G" (at level 51).
+
+Declare Scope category_scope.
+
+Set Implicit Arguments.
+Unset Strict Implicit.
+Unset Printing Implicit Defensive.
 
 (* Our `category' is always concrete; morphisms are just functions. *)
 Module Category.
@@ -330,7 +331,7 @@ Definition FId : functor _ _ := Functor.Pack (Functor.Class id_id id_comp).
 Lemma FIdf (A B : C) (f : {hom A,B}) : FId # f = f.
 Proof. by []. Qed.
 End functorid.
-Arguments FId [C].
+Arguments FId {C}.
 
 Section functorcomposition.
 Variables (C0 C1 C2 : category) (F : functor C1 C2) (G : functor C0 C1).
@@ -1190,6 +1191,7 @@ Proof.
 move=> A B h; apply funext=> x; rewrite /ret /Fun /= /f.
 by rewrite -[in LHS]compE (ret_naturality).
 Qed.
+Definition _ret_nat : monad.Natural.t monad.FId m' := monad.Natural.Pack ret_nat.
 Lemma join_nat : monad.Natural.P (monad.FComp m' m') m' join.
 Proof.
 move=> A B h; apply funext=> x; rewrite /ret /Fun /= /f.
@@ -1200,9 +1202,10 @@ suff-> : [fun of M # (M # hom_Type h)] x = [fun of M # hom_Type (Fun m' h)] x
 congr [fun of M # _].
 by apply/hom_ext/funext.
 Qed.
-Lemma joinretM (A : Type) : @join _ \o @ret _ = id :> (m' A -> m' A).
+Definition _join_nat := monad.Natural.Pack join_nat.
+Lemma joinretM : monad.JoinLaws.left_unit _ret_nat _join_nat.
 Proof.
-by apply funext=> x; rewrite /join /ret /= -[in LHS]compE joinretM.
+by move=> A; apply funext=> x; rewrite /join /ret /= -[in LHS]compE joinretM.
 Qed.
 Lemma joinMret (A : Type) : @join _ \o (Fun m' (@ret _)) = id :> (m' A -> m' A).
 Proof.
@@ -1228,10 +1231,8 @@ suff-> : (@hom_Type (@Monad.m Type_category M (@Monad.m Type_category M A))
 by apply hom_ext.
 Qed.
 
-Definition m : monad.Monad.t :=
-  monad.Monad.Pack
-    (monad.Monad.Class
-       (monad.Monad.Mixin ret_nat join_nat joinretM joinMret joinA)).
+Definition m : monad.Monad.t := monad.Monad.Pack
+ (monad.Monad.Class (monad.Monad.Mixin joinretM joinMret joinA)).
 End def.
 Module Exports.
 Notation Monad_of_category_monad := m.

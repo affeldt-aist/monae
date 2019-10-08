@@ -132,7 +132,7 @@ Variables (A B : Type) (b : B) (mul : B -> A -> B) (add : B -> B -> B).
 
 (* TODO(rei): integrate this into a (new?) monad *)
 Hypothesis idempotent_converse :
-  forall C m1 m2 x, m1 [~] m2 = Ret x :> M C -> m1 = Ret x /\ m2 = Ret x.
+  forall C m1 m2 x, m1 [~] m2 = Ret x :> M C -> m1 = @RET M _ x /\ m2 = @RET M _ x.
 Hypothesis injective_return : forall C x1 x2,
   Ret x1 = Ret x2 :> M C -> x1 = x2.
 
@@ -178,7 +178,7 @@ Variable M : nondetMonad.
 Variables (A B : Type) (b : B) (mul : B -> A -> B) (add : B -> B -> B).
 
 Hypothesis idempotent_converse :
-  forall C m1 m2 x, m1 [~] m2 = Ret x :> M C -> m1 = Ret x /\ m2 = Ret x.
+  forall C m1 m2 x, m1 [~] m2 = Ret x :> M C -> m1 = @RET M _ x /\ m2 = @RET M _ x.
 Hypothesis injective_return : forall C x1 x2,
   Ret x1 = Ret x2 :> M C -> x1 = x2.
 
@@ -218,7 +218,7 @@ Variable M : nondetCIMonad.
 Variables (A B : Type) (b : B) (mul : B -> A -> B) (add : B -> B -> B).
 
 Hypothesis idempotent_converse :
-  forall C m1 m2 x, m1 [~] m2 = Ret x :> M C -> m1 = Ret x /\ m2 = Ret x.
+  forall C m1 m2 x, m1 [~] m2 = Ret x :> M C -> m1 = @RET M _ x /\ m2 = @RET M _ x.
 Hypothesis injective_return : forall C x1 x2,
   Ret x1 = Ret x2 :> M C -> x1 = x2.
 
@@ -259,7 +259,7 @@ Variable M : nondetCIMonad.
 Variables (A B : Type) (b : B) (mul : B -> A -> B) (add : B -> B -> B).
 
 Hypothesis idempotent_converse :
-  forall C m1 m2 x, m1 [~] m2 = Ret x :> M C -> m1 = Ret x /\ m2 = Ret x.
+  forall C m1 m2 x, m1 [~] m2 = Ret x :> M C -> m1 = @RET M _ x /\ m2 = @RET M _ x.
 Hypothesis injective_return : forall C x1 x2,
   Ret x1 = Ret x2 :> M C -> x1 = x2.
 

@@ -249,6 +249,7 @@ Notation "'Drop'" := MonadTrans.drop.
 
 Module Tracer.
 Record class m (v : traceMonad unit) (mv : MonadTrans.t m v) : Type := Class {
+  (* NB: see also monad_transformer.v *)
   lift_ret : forall A (a : A), Lift mv (Ret a) = Ret a :> v A ;
   lift_bind : forall A B (m0 : m A) (f : A -> m B),
     Lift mv (m0 >>= f) = Lift mv m0 >>= (@MonadTrans.lift _ _ mv _ \o f) :> v B ;

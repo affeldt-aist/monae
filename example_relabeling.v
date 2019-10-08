@@ -113,7 +113,7 @@ Qed.
 
 (* see gibbons2011icfp Sect. 9.3 *)
 Lemma join_and_pairs :
-  (Join \o (fmap mpair) \o mpair) \o ((fmap dlabels) \o relabel)^`2 =
+  (Join \o (M #(*TODO: fmap*) mpair) \o mpair) \o ((fmap dlabels) \o relabel)^`2 =
   (mpair \o Join^`2) \o            ((fmap dlabels) \o relabel)^`2.
 Proof.
 rewrite boolp.funeqE => -[x1 x2].
@@ -130,7 +130,7 @@ rewrite 3!bindA.
 rewrite -H.
 rewrite !fmapE.
 rewrite 3!bindA.
-bind_ext => {x1}x1.
+bind_ext => {}x1.
 rewrite 2!bindretf 2!bindA.
 do 3 rewrite_ bindretf.
 rewrite -dlabelsC.
@@ -162,7 +162,7 @@ transitivity ((fmap ucat) \o Join \o (fmap (bassert q \o mpair)) \o mpair \o
     (fmap dlabels \o relabel)^`2).
   rewrite -2![in LHS](compA (fmap ucat)) [in LHS]functor_o.
   rewrite -[in LHS](compA (fmap _)) [in LHS](compA (Join \o _) (fmap _)).
-  rewrite compfid join_naturality -2![in RHS]compA; congr (_ \o _).
+  rewrite compfid natural -2![in RHS]compA; congr (_ \o _).
   by rewrite [in LHS]functor_o -[in LHS]compA naturality_mpair.
 rewrite functor_o (compA _ (fmap (bassert q))) -(compA _ _ (fmap (bassert q))).
 rewrite commutativity_of_assertions. (* first non-trivial step *)

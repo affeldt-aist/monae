@@ -468,7 +468,7 @@ rewrite_ uniform_inde.
 Open (X in _ >>= X).
   transitivity (if x.1 == x.2
     then Ret true
-    else ((Fail : M _) <| `Pr /2 |> Ret (head def (doors \\ [:: x.1; x.2]))) >> Ret false).
+    else ((Fail : M _) <| `Pr /2 |> @RET M _ (head def (doors \\ [:: x.1; x.2]))) >> Ret false).
     case: ifPn => [/eqP <-|hp]; first by rewrite eqxx.
     by rewrite eq_sym (negbTE hp).
   reflexivity.
@@ -496,7 +496,7 @@ Open (X in _ >>= X).
 transitivity (if x.1 == x.2
   then unif_door (doors \\ [:: x.1]) >> Ret false
   else
-   ((Fail : M _) <| `Pr /2 |> Ret (head def (doors \\ [:: x.1; x.2]))) >>= (fun x0 =>
+   ((Fail : M _) <| `Pr /2 |> @RET M _ (head def (doors \\ [:: x.1; x.2]))) >>= (fun x0 =>
    Ret (head A (doors \\ [:: x.2; x0]) == x.1))).
   case: x => h p; rewrite [_.1]/= [_.2]/=; case: ifPn => // /eqP <-.
   transitivity (unif_door (doors \\ [:: h]) >>= (fun x0 =>
@@ -512,7 +512,7 @@ transitivity (uniform (A, A) (cp doors doors) >>= (fun x =>
   else
    (Fail : M _)
    <| `Pr /2 |>
-   (Ret (head A (doors \\ [:: x.2; head def (doors \\ [:: x.1; x.2])]) == x.1)) : M _)).
+   (@RET M _ (head A (doors \\ [:: x.2; head def (doors \\ [:: x.1; x.2])]) == x.1)) : M _)).
   bind_ext => -[h p]; rewrite [_.1]/= [_.2]/=.
   case: ifPn => [?| hp]; first by rewrite uniform_inde.
   by rewrite prob_bindDl (@bindfailf M) bindretf.

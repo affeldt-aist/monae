@@ -1,6 +1,7 @@
 Ltac typeof X := type of X.
 
 Require Import ssrmatching.
+Require FunctionalExtensionality.
 From mathcomp Require Import all_ssreflect.
 From mathcomp Require boolp.
 Require Import monae_lib.
@@ -9,10 +10,6 @@ Require Import monae_lib.
    category Type to the cateory Type. The file category.v generalizes
    this with a proper notion of category (see Monad_of_category_monad.m
     in category.v) *)
-
-Set Implicit Arguments.
-Unset Strict Implicit.
-Unset Printing Implicit Defensive.
 
 (* Contents:
 - Module FunctorLaws/Module Functor
@@ -45,7 +42,16 @@ Reserved Notation "'[~p]'".
 Reserved Notation "f (o) g" (at level 11).
 Reserved Notation "'fmap' f" (at level 4).
 
-Notation "f ~~> g" := (forall A, f A -> g A) (at level 51).
+Declare Scope mprog.
+Declare Scope do_notation.
+Declare Scope monae_scope.
+
+Set Implicit Arguments.
+Unset Strict Implicit.
+Unset Printing Implicit Defensive.
+
+Notation "f ~~> g" := (forall A, f A -> g A) (at level 51, only parsing).
+
 (* map laws of a functor *)
 Module FunctorLaws.
 Section def.
@@ -206,8 +212,7 @@ Section natural.
 Variables (M N : functor).
 Definition P (m : M ~~> N) :=
   forall A B (h : A -> B), (N # h) \o m A = m B \o (M # h).
-Record class_of (m : M ~~> N) := Class { _ : P m }.
-Structure t := Pack { m : M ~~> N ; class : class_of m }.
+Structure t := Pack { m : M ~~> N ; class : P m }.
 End natural.
 Module Exports.
 Coercion m : t >-> Funclass.
@@ -221,13 +226,20 @@ Export Natural.Exports.
 Section natrans_lemmas.
 Variables (M N : functor) (phi : M ~> N).
 Lemma natural A B (h : A -> B) : (N # h) \o phi A = phi B \o (M # h).
-Proof. by case: phi => ? []. Qed.
+Proof. by case: phi => ?. Qed.
+Lemma nattrans_ext (f g : M ~> N) :
+  f = g <-> forall a, (f a = g a :> (_ -> _)).
+Proof.
+split => [ -> // |]; move: f g => [f Hf] [g Hg] /= fg.
+have ? : f = g by exact: FunctionalExtensionality.functional_extensionality_dep.
+subst g; congr (Natural.Pack _); exact/boolp.Prop_irrelevance.
+Qed.
 End natrans_lemmas.
 
 Section id_natural_transformation.
 Variables C : functor.
 Definition natural_id : naturality _ _ (fun A => @id (C A)). Proof. by []. Qed.
-Definition NId : C ~> C := Natural.Pack (Natural.Class natural_id).
+Definition NId : C ~> C := Natural.Pack natural_id.
 End id_natural_transformation.
 
 Section vertical_composition.
@@ -236,7 +248,7 @@ Variables (g : D ~> E) (f : C ~> D).
 Definition ntcomp := fun A => g A \o f A.
 Definition natural_vcomp : naturality _ _ ntcomp.
 Proof. by move=> A B h; rewrite compA (natural g) -compA (natural f). Qed.
-Definition VComp : C ~> E := Natural.Pack (Natural.Class natural_vcomp).
+Definition VComp : C ~> E := Natural.Pack natural_vcomp.
 End vertical_composition.
 
 Notation "f \v g" := (VComp f g).
@@ -249,18 +261,19 @@ Proof.
 move=> A B h; rewrite compA (natural t) -compA -[in RHS]compA.
 by congr (_ \o _); rewrite FCompE -2!functor_o (natural s).
 Qed.
-Definition HComp : (F' \O F) ~> (G' \O G) :=
-  Natural.Pack (Natural.Class natural_hcomp).
+Definition HComp : (F' \O F) ~> (G' \O G) := Natural.Pack natural_hcomp.
 End horizontal_composition.
+
+Notation "f \h g" := (HComp g f).
 
 Section natural_transformation_example.
 Definition fork' : FId ~~> squaring := fun A (a : A) => (a, a).
 Lemma fork_natural : naturality _ _ fork'. Proof. by []. Qed.
-Definition fork : FId ~> squaring := Natural.Pack (Natural.Class fork_natural).
+Definition fork : FId ~> squaring := Natural.Pack fork_natural.
 End natural_transformation_example.
 
-Definition eta_type (f g : functor) := FId ~~> g \O f.
-Definition eps_type (f g : functor) := f \O g ~~> FId.
+Definition eta_type (f g : functor) := FId ~> g \O f.
+Definition eps_type (f g : functor) := f \O g ~> FId.
 Module TriangularLaws.
 Section triangularlaws.
 Variables (F G : functor).
@@ -275,9 +288,9 @@ Section adjointfunctor.
 Variables F G : functor.
 Record t := mk {
   eta : eta_type F G ;
-  nat_eta : naturality _ _ eta ;
+(*  nat_eta : naturality _ _ eta ;*)
   eps : eps_type F G ;
-  nat_eps : naturality _ _ eps ;
+(*  nat_eps : naturality _ _ eps ;*)
   tri_left : TriangularLaws.left eps eta ;
   tri_right : TriangularLaws.right eps eta}.
 End adjointfunctor.
@@ -293,17 +306,17 @@ Notation "F -| G" := (AdjointFunctor.t F G).
 
 Section adjoint_example.
 Variable (X : Type).
-Definition curry_eps : eps_type (curry_F X) (uncurry_F X) :=
-  fun A (af : X * (X -> A)) => af.2 af.1.
-Definition curry_eta : eta_type (curry_F X) (uncurry_F X) :=
-  fun A (a : A) => fun x : X => (x, a).
+Lemma curry_naturality :
+  naturality (curry_F X \O uncurry_F X) FId (fun A (af : X * (X -> A)) => af.2 af.1).
+Proof. by []. Qed.
+Definition curry_eps : eps_type (curry_F X) (uncurry_F X) := Natural.Pack curry_naturality.
+Lemma curry_naturality2 :
+  naturality FId (uncurry_F X \O curry_F X) (fun (A : Type) (a : A) => pair^~ a).
+Proof. by []. Qed.
+Definition curry_eta : eta_type (curry_F X) (uncurry_F X) := Natural.Pack curry_naturality2.
 Lemma adjoint_currry : curry_F X -| uncurry_F X.
 Proof.
-apply: (@AdjointFunctor.mk _ _ curry_eta _ curry_eps).
-move=> A B h /=.
-by rewrite /uncurry_f /curry_f /curry_eta /id_f /= boolp.funeqE => a /=; rewrite boolp.funeqE.
-move=> A B h /=.
-by rewrite /id_f /curry_eps /curry_f /= /uncurry_M /uncurry_f /= boolp.funeqE; case.
+apply: (@AdjointFunctor.mk _ _ curry_eta curry_eps).
 by move=> A; rewrite /TriangularLaws.left boolp.funeqE; case.
 move=> A; rewrite /TriangularLaws.right /uncurry_F /curry_eps /curry_eta /uncurry_M.
 by rewrite /= /uncurry_f /= /comp /= boolp.funeqE => f; rewrite boolp.funeqE.
@@ -312,7 +325,7 @@ End adjoint_example.
 
 Module BindLaws.
 Section bindlaws.
-Variable M : Type -> Type.
+Variable M : functor.
 
 Variable b : forall A B, M A -> (A -> M B) -> M B.
 
@@ -335,7 +348,7 @@ Definition left_zero (f : forall A, M A) :=
 Definition right_zero (f : forall A, M A) :=
   forall A B (g : M B), g >>= (fun _ => f A) = f A.
 
-Definition left_neutral (r : forall A, A -> M A) :=
+Definition left_neutral (r : FId ~> M) :=
   forall A B (a : A) (f : A -> M B), r _ a >>= f = f a.
 
 Definition right_neutral (r : forall A, A -> M A) :=
@@ -370,10 +383,10 @@ Proof.  move => A B h.
 rewrite (_ : (M \O M) # h = g # ((f \O g) # (f # h))) //.
 rewrite (_ : _ \o g # ((f \O g) # (f # h)) =
   g # (@eps (f B) \o ((f \O g) # (f # h)))); last by rewrite -functor_o.
-by rewrite -AdjointFunctor.nat_eps FIdf FCompE functor_o.
+by rewrite -natural FIdf FCompE functor_o.
 Qed.
 Lemma epsC A : @eps _ \o @eps _ = @eps _ \o f # (g # (@eps _)) :> ((f \o g) ((f \o g) A) -> A).
-Proof. by rewrite -AdjointFunctor.nat_eps. Qed.
+Proof. by rewrite -natural. Qed.
 Lemma muMA A : @mu A \o @mu (M A) = @mu A \o (M # @mu A).
 Proof.
 have -> : g # @eps (f A) \o g # @eps (f (M A)) =
@@ -385,7 +398,7 @@ Lemma bindetaf : BindLaws.left_neutral (bind eps) eta.
 Proof.
 rewrite /BindLaws.left_neutral => A B a h.
 rewrite /bind /mu.
-rewrite -(compE ((g \O f) # h)) AdjointFunctor.nat_eta -(compE (g # _)) compA.
+rewrite -(compE ((g \O f) # h)) (natural eta) -(compE (g # _)) compA.
 by rewrite AdjointFunctor.tri_right.
 Qed.
 Lemma bindmeta : BindLaws.right_neutral (bind eps) eta.
@@ -400,7 +413,9 @@ rewrite /BindLaws.associative => A B C x ab bc.
 rewrite /bind.
 set N := M f g.  set j := mu eps.
 rewrite [X in _ = j C X](_ : _ = (N # (j C)) ((N # (N # bc)) ((N # ab) x))); last first.
-  rewrite functor_o /funcomp.  congr (N # j C).  by rewrite functor_o /funcomp.
+  rewrite functor_o /comp.
+  congr (N # j C).
+  by rewrite functor_o.
 move: muMA (muM_natural bc).
 rewrite -/N -/j.
 move=> muMA.
@@ -424,34 +439,47 @@ Hypothesis H : F -| U.
 Let eta : eta_type F U := AdjointFunctor.eta H.
 Let eps : eps_type F U := AdjointFunctor.eps H.
 
-Let uni : @eta_type (F \O F0) (U0 \O U) := fun A => U0 # (@eta (F0 A)) \o (@eta0 A).
-Let couni : @eps_type (F \O F0) (U0 \O U) := fun A => (@eps _) \o F # (@eps0 (U A)).
-
-Lemma composite_adjoint : F \O F0 -| U0 \O U.
+Lemma uni_naturality :
+  naturality FId ((U0 \O U) \O (F \O F0)) (fun A : Type => U0 # eta (F0 A) \o eta0 A).
 Proof.
-apply: (@AdjointFunctor.mk _ _ uni _ couni).  move=> A B h; rewrite FIdf.
-rewrite /uni -[in RHS]compA -[in RHS](AdjointFunctor.nat_eta H0) compA [in RHS]compA.
+move=> A B h; rewrite FIdf.
+rewrite -[in RHS]compA -[in RHS](natural (AdjointFunctor.eta H0)) compA [in RHS]compA.
 congr (_ \o _).
 rewrite (FCompE U0 F0).  rewrite -[in RHS](functor_o U0).
 rewrite -[in LHS](functor_o U0).
 congr (_ # _).
-by rewrite -(AdjointFunctor.nat_eta H).  move=> A B h; rewrite FIdf.
-rewrite {1}/couni [in LHS]compA {}(AdjointFunctor.nat_eps H) -compA.
-rewrite {1}/couni -[in RHS]compA; congr (_ \o _).
-rewrite [in LHS]FCompE -[in LHS](functor_o F) [in LHS](AdjointFunctor.nat_eps H0).
+by rewrite -(natural (AdjointFunctor.eta H)).
+Qed.
+
+Let uni : @eta_type (F \O F0) (U0 \O U) := Natural.Pack uni_naturality.
+
+Lemma couni_naturality :
+  naturality ((F \O F0) \O (U0 \O U)) FId (fun A : Type => eps A \o F # eps0 (U A)).
+Proof.
+move=> A B h.
+rewrite [in LHS]compA {}(natural (AdjointFunctor.eps H)) -compA.
+rewrite -[in RHS]compA; congr (_ \o _).
+rewrite [in LHS]FCompE -[in LHS](functor_o F) [in LHS](natural (AdjointFunctor.eps H0)).
 by rewrite -[in RHS](functor_o F).
+Qed.
+
+Let couni : @eps_type (F \O F0) (U0 \O U) := Natural.Pack couni_naturality.
+
+Lemma composite_adjoint : F \O F0 -| U0 \O U.
+Proof.
+apply: (@AdjointFunctor.mk _ _ uni couni).
 rewrite /TriangularLaws.left => A.
 rewrite /couni /uni /=.
 rewrite FCompE -compA -functor_o.
 rewrite (_ : @eps0 _ \o F0 # _ = @eta (F0 A)); first exact: (AdjointFunctor.tri_left H).
 rewrite functor_o compA -FCompE.
-by rewrite -(AdjointFunctor.nat_eps H0) /= FIdf -compA (AdjointFunctor.tri_left H0) compfid.
+by rewrite -(natural (AdjointFunctor.eps H0)) /= FIdf -compA (AdjointFunctor.tri_left H0) compfid.
 rewrite /TriangularLaws.right => A.
 rewrite /couni /uni /=.
 rewrite compA -[RHS](AdjointFunctor.tri_right H0 (U A)); congr (_ \o _).
 rewrite FCompE -functor_o; congr (_ # _).
 rewrite functor_o -compA -FCompE.
-by rewrite (AdjointFunctor.nat_eta H) FIdf compA (AdjointFunctor.tri_right H) compidf.
+by rewrite (natural (AdjointFunctor.eta H)) FIdf compA (AdjointFunctor.tri_right H) compidf.
 Qed.
 
 End composite_adjoint.
@@ -459,11 +487,7 @@ End composite_adjoint.
 Module JoinLaws.
 Section join_laws.
 Context {M : functor}.
-Variables (ret : FId ~~> M) (join : M \O M ~~> M).
-
-Definition ret_naturality := naturality FId M ret.
-
-Definition join_naturality := naturality (M \O M) M join.
+Variables (ret : FId ~> M) (join : M \O M ~> M).
 
 Definition left_unit := forall A, @join _ \o @ret _ = id :> (M A -> M A).
 
@@ -477,20 +501,18 @@ End JoinLaws.
 
 Section from_join_laws_to_bind_laws.
 Variable F : functor.
-Variable (ret : FId ~~> F) (join : F \O F ~~> F).
+Variable (ret : FId ~> F) (join : F \O F ~> F).
 
-Hypothesis ret_naturality : JoinLaws.ret_naturality ret.
-Hypothesis join_naturality : JoinLaws.join_naturality join.
 Hypothesis joinretM : JoinLaws.left_unit ret join.
 Hypothesis joinMret : JoinLaws.right_unit ret join.
 Hypothesis joinA : JoinLaws.associativity join.
 
-Let bind (A B : Type) (m : F A) (f : A -> F B) : F B := join ((F # f) m).
+Let bind (A B : Type) (m : F A) (f : A -> F B) : F B := join _ ((F # f) m).
 
 Lemma bindretf_derived : BindLaws.left_neutral bind ret.
 Proof.
 move=> A B a f; rewrite /bind -(compE (@join _)) -(compE _ (@ret _)) -compA.
-by rewrite ret_naturality compA joinretM compidf.
+by rewrite (natural ret) compA joinretM compidf.
 Qed.
 
 Lemma bindmret_derived : BindLaws.right_neutral bind ret.
@@ -500,7 +522,7 @@ Lemma bindA_derived : BindLaws.associative bind.
 Proof.
 move=> A B C m f g; rewrite /bind.
 rewrite [LHS](_ : _ = ((@join _ \o (F # g \o @join _) \o F # f) m)) //.
-rewrite join_naturality (compA (@join C)) -joinA -(compE (@join _)).
+rewrite (natural join) (compA (@join C)) -joinA -(compE (@join _)).
 transitivity ((@join _ \o F # (@join _ \o (F # g \o f))) m) => //.
 by rewrite -2!compA functor_o FCompE -[in LHS](functor_o F).
 Qed.
@@ -509,10 +531,8 @@ End from_join_laws_to_bind_laws.
 
 Module Monad.
 Record mixin_of (M : functor) : Type := Mixin {
-  ret : FId ~~> M ;
-  join : M \O M ~~> M ;
-  _ : JoinLaws.ret_naturality ret ;
-  _ : JoinLaws.join_naturality join ;
+  ret : FId ~> M ;
+  join : M \O M ~> M ;
   _ : JoinLaws.left_unit ret join ;
   _ : JoinLaws.right_unit ret join ;
   _ : JoinLaws.associativity join
@@ -522,12 +542,12 @@ Record class_of (M : Type -> Type) := Class {
 Structure t : Type := Pack { m : Type -> Type ; class : class_of m }.
 Definition baseType (M : t) := Functor.Pack (base (class M)).
 Module Exports.
-Definition Ret (M : t) : forall A, A -> m M A :=
-  let: Pack _ (Class _ (Mixin ret _ _ _ _ _ _) ) := M return forall A, A -> m M A in ret.
-Arguments Ret {M A} : simpl never.
-Definition Join (M : t) A : m M (m M A) -> m M A :=
-  let: Pack _ (Class _ (Mixin _ join _ _ _ _ _)) := M in join A.
-Arguments Join {M A} : simpl never.
+Definition RET (M : t) : FId ~> baseType M :=
+  let: Pack _ (Class _ (Mixin ret _ _ _ _) ) := M return FId ~> baseType M in ret.
+Arguments RET {M} : simpl never.
+Definition JOIN (M : t) : baseType M \O baseType M ~> baseType M :=
+  let: Pack _ (Class _ (Mixin _ join _ _ _)) := M in join.
+Arguments JOIN {M} : simpl never.
 Notation monad := t.
 Coercion baseType : monad >-> functor.
 Canonical baseType.
@@ -535,17 +555,16 @@ End Exports.
 End Monad.
 Export Monad.Exports.
 
+Notation Ret := (@RET _ _).
+Notation Join := (@JOIN _ _).
+
 Section monad_interface.
 Variable M : monad.
-Lemma ret_naturality : JoinLaws.ret_naturality (@Ret M).
+Lemma joinretM : JoinLaws.left_unit (@RET M) (@JOIN M).
 Proof. by case: M => ? [? []]. Qed.
-Lemma join_naturality : JoinLaws.join_naturality (@Join M).
+Lemma joinMret : JoinLaws.right_unit (@RET M) (@JOIN M).
 Proof. by case: M => ? [? []]. Qed.
-Lemma joinretM : JoinLaws.left_unit (@Ret M) (@Join M).
-Proof. by case: M => ? [? []]. Qed.
-Lemma joinMret : JoinLaws.right_unit (@Ret M) (@Join M).
-Proof. by case: M => ? [? []]. Qed.
-Lemma joinA : JoinLaws.associativity (@Join M).
+Lemma joinA : JoinLaws.associativity (@JOIN M).
 Proof. by case: M => ? [? []]. Qed.
 End monad_interface.
 
@@ -557,12 +576,12 @@ Arguments Bind {A B} : simpl never.
 Local Notation "m >>= f" := (Bind m f).
 Lemma bindE A B : forall x (f : A -> M B), x >>= f = Join ((M # f) x).
 Proof. by []. Qed.
-Lemma bindretf : BindLaws.left_neutral (@Bind) (@Ret _).
-Proof. apply: bindretf_derived; [exact: ret_naturality | exact: joinretM]. Qed.
-Lemma bindmret : BindLaws.right_neutral (@Bind) (@Ret _).
+Lemma bindretf : BindLaws.left_neutral (@Bind) (@RET _).
+Proof. apply: bindretf_derived; exact: joinretM. Qed.
+Lemma bindmret : BindLaws.right_neutral (@Bind) (@RET _).
 Proof. apply: bindmret_derived; exact: joinMret. Qed.
 Lemma bindA : BindLaws.associative (@Bind).
-Proof. apply bindA_derived; [exact: join_naturality | exact: joinA]. Qed.
+Proof. apply bindA_derived; exact: joinA. Qed.
 
 (*Lemma bindE' (A B : Type) : Bind = fun x (f : A -> M B) => Join ((M # f) x).
 Proof. by []. Qed.*)
@@ -586,7 +605,7 @@ Notation "m >> f" := (Bind m (fun _ => f)) : monae_scope.
 Delimit Scope monae_scope with monae.
 Local Open Scope monae_scope.
 
-Definition skip M := @Ret M _ tt.
+Definition skip M := @RET M _ tt.
 Arguments skip {M} : simpl never.
 
 Ltac bind_ext :=
@@ -641,8 +660,8 @@ Proof. by []. Qed.
 
 Module Monad_of_ret_bind.
 Section monad_of_ret_bind.
-Variable M : Type -> Type.
-Variable ret : forall A, A -> M A.
+Variable M : functor.
+Variable ret : FId ~> M.
 Variable bind : forall (A B : Type), M A -> (A -> M B) -> M B.
 Hypothesis bindretf : BindLaws.left_neutral bind ret.
 Hypothesis bindmret : BindLaws.right_neutral bind ret.
@@ -660,11 +679,16 @@ Qed.
 Definition functor_mixin := Functor.Class Map_id Map_o.
 Let M' := Functor.Pack functor_mixin.
 
-Lemma MapE A B (f : A -> B) m : (M' # f) m = bind m (ret (A:=B) \o f).
+Lemma MapE A B (f : A -> B) m : (M' # f) m = bind m (ret B \o f).
 Proof. by []. Qed.
 
-Let ret' : FId ~~> M' := ret.
-Definition join A (pp : M' (M' A)) := bind pp id.
+Lemma naturality_ret : naturality FId M' ret.
+Proof.
+move=> A B h; rewrite FIdf boolp.funeqE => ?.
+by rewrite compE /= /Map MapE /= bindretf.
+Qed.
+
+Let ret' : FId ~> M' := Natural.Pack naturality_ret.
 
 Let bind_Map A B C (f : A -> B) (m : M A) (g : B -> M C) :
   bind (Map f m) g = bind m (g \o f).
@@ -672,42 +696,35 @@ Proof.
 rewrite /Map bindA; congr bind; by rewrite boolp.funeqE => ?; rewrite bindretf.
 Qed.
 
-Lemma ret_naturality : naturality FId M' ret.
-Proof.
-move=> A B h; rewrite FIdf boolp.funeqE => ?.
-by rewrite compE /= /Map MapE /= bindretf.
-Qed.
-
-Let bindE A B m (f : A -> M' B) : bind m f = join ((M' # f) m).
-Proof. by rewrite /join bind_Map. Qed.
-
-Let Map_bind A B C (f : A -> B) m (g : C -> M A) :
-  (Map f) (bind m g) = bind m (Map f \o g).
-Proof. by rewrite /Map bindA bindE. Qed.
-
-Lemma join_naturality : naturality (M' \O M') M' join.
+Lemma naturality_join : naturality (M' \O M') M' (fun A : Type => (bind (B:=A))^~ id).
 Proof.
 move=> A B h; rewrite boolp.funeqE => mma.
-by rewrite /Fun 2!compE /Map [in RHS]/join bind_Map [in LHS]/join bindA.
+by rewrite /Fun 2!compE /Map bind_Map [in LHS] bindA.
 Qed.
 
+Definition join : M' \O M' ~> M' := Natural.Pack naturality_join.
+
+Let bindE A B m (f : A -> M' B) : bind m f = join _ ((M' # f) m).
+Proof. by rewrite /join /= bind_Map. Qed.
+
 Lemma joinretM : JoinLaws.left_unit ret' join.
-Proof. by rewrite /join => A; rewrite boolp.funeqE => ma; rewrite compE bindretf. Qed.
+Proof.
+rewrite /join => A; rewrite boolp.funeqE => ma /=.
+by rewrite bindretf. Qed.
 
 Lemma joinMret : JoinLaws.right_unit ret' join.
 Proof.
-rewrite /join => A; rewrite boolp.funeqE => ma;
-by rewrite compE bind_Map compidf bindmret.
+rewrite /join => A; rewrite boolp.funeqE => ma /=.
+by rewrite bind_Map compidf bindmret.
 Qed.
 
 Lemma joinA : JoinLaws.associativity join.
 Proof.
 move=> A; rewrite boolp.funeqE => mmma.
-by rewrite /join !compE bind_Map compidf bindA.
+by rewrite /join /= bind_Map compidf bindA.
 Qed.
 
-Definition monad_mixin := Monad.Mixin
-  ret_naturality join_naturality joinretM joinMret joinA.
+Definition monad_mixin := Monad.Mixin joinretM joinMret joinA.
 End monad_of_ret_bind.
 Module Exports.
 Definition Monad_of_ret_bind M ret bind a b c :=
@@ -726,19 +743,16 @@ Local Notation "m >=> n" := (kleisli n m).
 
 Lemma bind_kleisli A B C m (f : A -> M B) (g : B -> M C) :
   m >>= (f >=> g) = (m >>= f) >>= g.
-Close Scope monae_scope.
-
 Proof. by rewrite bindA; bind_ext => a; rewrite /kleisli !compE join_fmap. Qed.
 
 Lemma ret_kleisli A B (k : A -> M B) : Ret >=> k = k.
-Proof. by rewrite /kleisli -compA ret_naturality FIdf compA joinretM. Qed.
+Proof. by rewrite /kleisli -compA (natural RET) FIdf compA joinretM. Qed.
 
 Local Open Scope mprog.
 Lemma fcomp_kleisli A B C D (f : A -> B) (g : C -> M A) (h : D -> M C) :
   f (o) (g <=< h) = (f (o) g) <=< h.
 Proof.
-rewrite /kleisli 2!fcomp_def 2!(compA (fmap f)).
-by rewrite join_naturality functor_o compA.
+by rewrite /kleisli 2!fcomp_def 2!(compA (fmap f)) (natural JOIN) functor_o compA.
 Qed.
 
 Lemma kleisli_fcomp A B C (f : A -> M B) (g : B -> A) (h : C -> M B) :
@@ -798,7 +812,7 @@ Qed.
 Lemma joinE A (pp : M (M A)) : Join pp = pp >>= id.
 Proof. rewrite bindE; congr Join; by rewrite functor_id. Qed.
 
-Lemma join_fmap A B (f : A -> M B) m : Join (fmap f m) = m >>= f.
+Lemma join_fmap A B (f : A -> M B) (m : M A) : Join (fmap f m) = m >>= f.
 Proof. by rewrite bindE. Qed.
 
 End fmap_and_join.
@@ -847,7 +861,7 @@ rewrite boolp.funeqE => -[a0 a1].
 rewrite compE fmap_bind.
 rewrite compE mpairE compE bind_fmap; bind_ext => a2.
 rewrite fcompE fmap_bind 2!compE bind_fmap; bind_ext => a3.
-by rewrite fcompE -(compE (M # f^`2)) ret_naturality FIdf.
+by rewrite fcompE -(compE (M # f^`2)) (natural RET) FIdf.
 Qed.
 
 (*Local Notation "[ \o f , .. , g , h ]" := (f \o .. (g \o h) ..)

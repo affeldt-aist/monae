@@ -694,6 +694,7 @@ End necset_functor.
 Section eps1_eta1.
 Import category.
 Local Open Scope classical_set_scope.
+Local Open Scope convex_scope.
 
 Definition eps1'' {L : semiCompSemiLattConvType}
            (X : necset_semiCompSemiLattConvType L) : L := Joet `NE X.
@@ -716,14 +717,14 @@ Lemma eps1''_affine L : affine_function (@eps1'' L).
 Proof.
 move=> X Y p.
 rewrite /affine_function_at /eps1''.
-transitivity (Joet `NE (conv_set p X Y)); last by rewrite Joet_conv_setD.
+transitivity (Joet `NE (X :<| p |>: Y)); last by rewrite Joet_conv_setD.
 congr (Joet `NE _); apply/neset_ext => /=.
 rewrite conv_setE necset_convType.convE.
 apply eqEsubset=> u.
 - case=> x [] y [] xX [] yY ->.
   exists x; first by rewrite -in_setE.
-  by exists y; first by rewrite -in_setE.
-- case=> x Xx [] y Yy <-.
+  by rewrite conv_pt_setE; exists y; first by rewrite -in_setE.
+- case=> x Xx; rewrite conv_pt_setE => -[] y Yy <-.
   by exists x, y; rewrite !in_setE.
 Qed.
 
@@ -933,7 +934,7 @@ Lemma epsE (L : semiCompSemiLattConvType) :
     :> (_ -> _).
 Proof.
 rewrite epsE''; cbn.
-congr funcomp; congr funcomp.
+congr comp; congr comp.
 - by rewrite HCompId HIdComp.
 - by rewrite 2!HCompId -NIdFComp HIdComp.
 Qed.
@@ -992,10 +993,10 @@ have -> :
     by move=> x y f; apply funext.
 move: (AdjComp.triL triL0 triL1) => triL01.
 move: (AdjComp.triL triLC triL01 a) <-.
-congr funcomp.
+congr comp.
 - rewrite epsE' /AdjComp.Eps /AdjComp.F; cbn.
   rewrite 4!compfid.
-  congr funcomp.
+  congr comp.
   by rewrite -NIdFComp !HCompId !HIdComp.
 - rewrite retE' /P_delta_left /AdjComp.Eta /AdjComp.G /AdjComp.F.
   congr Fun.
@@ -1013,7 +1014,7 @@ rewrite joinE FCompE.
 have-> :
   forall x y (f : {hom x, y}) , P_delta # f = P_delta_left # f :> (_ -> _)
     by move=> x y f; apply funext.
-congr funcomp; congr [fun of P_delta_left # _].
+congr comp; congr [fun of P_delta_left # _].
 by rewrite hom_ext joinE funeqE.
 Qed.
 

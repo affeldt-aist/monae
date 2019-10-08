@@ -2,7 +2,7 @@ From mathcomp Require Import all_ssreflect.
 From mathcomp Require Import finmap.
 From mathcomp Require boolp.
 From mathcomp Require Import classical_sets.
-From infotheo Require convex_choice.
+From infotheo Require convex_choice classical_sets_ext.
 Require Import monae_lib monad fail_monad state_monad trace_monad.
 
 (* Contents: sample models for the monads in monad.v, state_monad.v, trace_monad.v
@@ -68,13 +68,6 @@ by exists a' => //; exists b.
 by exists b => //; exists a'.
 Qed.
 
-Lemma setUDl : BindLaws.left_distributive (fun I A => @bigsetU A I) (@setU).
-Proof.
-move=> A B /= p q r; rewrite boolp.funeqE => b; rewrite boolp.propeqE; split.
-move=> -[a [?|?] ?]; by [left; exists a | right; exists a].
-rewrite /setU => -[[a ? ?]|[a ? ?]]; exists a; tauto.
-Qed.
-
 End classical_sets_extra.
 
 Section PR.
@@ -109,13 +102,29 @@ Module ModelMonad.
 
 Section identity.
 Local Obligation Tactic := by [].
-Program Definition identity := @Monad_of_ret_bind _ (fun A (a : A) => a)
+Definition identity_functor : FId ~> FId := Natural.Pack (@natural_id FId).
+Program Definition identity := @Monad_of_ret_bind _ identity_functor
   (fun A B (a : id A) (f : A -> id B) => f a) _ _ _.
 End identity.
 
+Module List.
 Section list.
 Local Obligation Tactic := idtac.
-Program Definition list := @Monad_of_ret_bind seq (fun A (a : A) => [:: a])
+Lemma map_id : @FunctorLaws.id seq (@map).
+Proof.
+by rewrite /FunctorLaws.id => A; rewrite boolp.funeqE => x; rewrite map_id.
+Qed.
+Lemma map_comp : @FunctorLaws.comp seq (@map).
+Proof. by move=> A B C g h; rewrite boolp.funeqE => x; rewrite map_comp. Qed.
+
+Definition functor := Functor.Pack (Functor.Class map_id map_comp).
+
+Lemma seq_naturality : naturality FId functor (fun A => cons^~ [::]).
+Proof. by move=> A B h; rewrite boolp.funeqE. Qed.
+
+Let ret : FId ~> functor := Natural.Pack seq_naturality.
+
+Program Definition t := @Monad_of_ret_bind functor ret
   (fun A B (a : seq A) (f : A -> seq B) => flatten (map f a)) _ _ _.
 Next Obligation. move=> ? ? ? ? /=; by rewrite cats0. Qed.
 Next Obligation. move=> ? ?; by rewrite flatten_seq1. Qed.
@@ -123,26 +132,61 @@ Next Obligation.
 move=> A B C; elim=> // h t IH f g /=; by rewrite map_cat flatten_cat IH.
 Qed.
 End list.
+End List.
 
+Module Error.
 Section error.
-Variable Z : Type.
+Variable E : Type.
 Local Obligation Tactic := idtac.
-Let p := fun A B (a : (Z + A)%type) (f : A -> (Z + B)%type) =>
-     match a with inl z => inl z | inr b => f b end.
-Let H1 : BindLaws.left_neutral p (@inr Z). Proof. by []. Qed.
-Let H2 : BindLaws.right_neutral p (@inr Z). Proof. by move=> ? []. Qed.
-Let H3 : BindLaws.associative p. Proof. by move=> ? ? ? []. Qed.
-Definition error := @Monad_of_ret_bind (fun X => (Z + X)%type) (@inr Z) p H1 H2 H3.
+Definition bind := fun A B (a : E + A) (f : A -> E + B) =>
+  match a with inl z => inl z | inr b => f b end.
+Definition map := fun A B (f : A -> B) (a : @sum E A) =>
+  match a with inl z => inl z | inr b => inr (f b) end.
+Lemma map_id : FunctorLaws.id map.
+Proof. by move=> *; rewrite boolp.funeqE; case. Qed.
+Lemma map_comp : FunctorLaws.comp map.
+Proof. by move=> *; rewrite boolp.funeqE; case. Qed.
+Definition functor := Functor.Pack (Functor.Class map_id map_comp).
+Lemma natural : naturality FId functor (@inr E).
+Proof. by move=> A B h; rewrite boolp.funeqE. Qed.
+Definition sum_ret : FId ~> functor := Natural.Pack natural.
+Lemma left_neutral : @BindLaws.left_neutral functor bind sum_ret.
+Proof. by []. Qed.
+Lemma right_neutral : @BindLaws.right_neutral functor bind (*TODO: shouldn't be a nat trans?*)(@inr E).
+Proof. by move=> ? []. Qed.
+Lemma associative : @BindLaws.associative functor bind.
+Proof. by move=> ? ? ? []. Qed.
+Definition t := Monad_of_ret_bind left_neutral right_neutral associative.
 End error.
+End Error.
 
-Definition option := error unit.
+Definition option := Error.t unit.
 
+Module set.
 Section set.
 Local Obligation Tactic := idtac.
-Program Definition set := @Monad_of_ret_bind _ (@set1) (fun I A => @bigsetU A I) _ _ _.
+Lemma image_id : FunctorLaws.id (@image).
+Proof.
+by move=> x; rewrite boolp.funeqE => y; rewrite classical_sets_ext.image_idfun.
+Qed.
+Lemma image_comp : FunctorLaws.comp (@image).
+Proof.
+by move=> A B C g h; rewrite boolp.funeqE => x /=; rewrite classical_sets_ext.imageA.
+Qed.
+Definition functor := Functor.Pack (Functor.Class image_id image_comp).
+Lemma naturality_ret : naturality FId functor (@set1).
+Proof.
+move=> A B h; rewrite boolp.funeqE => a /=; rewrite boolp.funeqE => b /=.
+rewrite boolp.propeqE; split.
+  by case => a0; rewrite /set1 => ->{a0} <-{b}.
+by rewrite /set1 => ->{b} /=; rewrite /Fun /=; exists a.
+Qed.
+Let ret : FId ~> functor := Natural.Pack naturality_ret.
+Program Definition t := @Monad_of_ret_bind functor (@ret) (fun I A => @bigsetU A I) _ _ _.
 Next Obligation. move=> ? ? ? ?; exact: bigset1U. Qed.
 Next Obligation. move=> ? ?; exact: bigsetU1. Qed.
 Next Obligation. move=> ? ? ? ? ? ?; exact: bigsetUA. Qed.
+End set.
 End set.
 
 Module State.
@@ -152,10 +196,31 @@ Definition acto := fun A => S -> A * S.
 Local Notation M := acto.
 Definition bind := fun A B (m : M A) (f : A -> M B) => fun s => uncurry f (m s).
 Definition ret : FId ~~> M := fun A a => fun s => (a, s).
-Program Definition t : monad := @Monad_of_ret_bind M ret bind _ _ _.
-Next Obligation. by []. Qed.
-Next Obligation. by move=> A f; rewrite /bind boolp.funeqE => ?; case: f. Qed.
-Next Obligation. by move=> A B C a b c; rewrite /bind boolp.funeqE => ?; case: a. Qed.
+Definition state_map (A B : Type) (f : A -> B) (m : M A) : M B :=
+ fun (s : S) => let (x1, x2) := m s in (f x1, x2).
+Lemma state_map_id : FunctorLaws.id state_map.
+Proof.
+move=> x; rewrite boolp.funeqE => y.
+by rewrite boolp.funeqE => z /=; rewrite /state_map; case: (y z).
+Qed.
+Lemma state_map_comp : FunctorLaws.comp state_map.
+Proof.
+move=> A B C g h.
+rewrite boolp.funeqE => m; rewrite boolp.funeqE => s.
+by rewrite /state_map /=; case: (m s).
+Qed.
+Definition functor := Functor.Pack (Functor.Class state_map_id state_map_comp).
+Lemma naturality_ret : naturality FId functor ret.
+Proof. by move=> A B h; rewrite boolp.funeqE => a /=; rewrite boolp.funeqE. Qed.
+Definition state_ret : FId ~> functor := Natural.Pack naturality_ret.
+Program Definition t : monad := @Monad_of_ret_bind functor state_ret bind _ _ _.
+Next Obligation.
+move=> A B a f.
+rewrite boolp.funeqE => s.
+by rewrite /bind /state_ret /=.
+Defined.
+Next Obligation. by move=> A f; rewrite /bind boolp.funeqE => ?; case: f. Defined.
+Next Obligation. by move=> A B C a b c; rewrite /bind boolp.funeqE => ?; case: a. Defined.
 End state.
 End State.
 
@@ -165,12 +230,24 @@ Section cont.
 Variable r : Type.
 Definition acto := fun A => (A -> r) -> r.
 Local Notation M := acto.
-Program Definition t : monad := (@Monad_of_ret_bind M
-  (fun A a => fun k => k a)
-  (fun A B ma f => fun k => ma (fun a => f a k)) _ _ _).
-Next Obligation. by []. Qed.
-Next Obligation. by []. Qed.
-Next Obligation. by []. Qed.
+Definition map (A B : Type) (f : A -> B) (m : M A) : M B :=
+  fun Br : B -> r => m (fun a : A => Br (f a)).
+Lemma map_id : FunctorLaws.id map.
+Proof. by move=> A; rewrite boolp.funeqE => m; rewrite boolp.funeqE. Qed.
+Lemma map_comp : FunctorLaws.comp map.
+Proof. by move=> *; rewrite boolp.funeqE => m; rewrite boolp.funeqE. Qed.
+Definition functor := Functor.Pack (Functor.Class map_id map_comp).
+Lemma natural : naturality FId functor (fun A a => fun k => k a).
+Proof. by move=> A B f; rewrite boolp.funeqE => a /=; rewrite boolp.funeqE. Qed.
+Definition ret : FId ~> functor := Natural.Pack natural.
+Definition bind := fun A B (ma : M A) (f : A -> M B) => fun k => ma (fun a => f a k).
+Lemma left_neutral : @BindLaws.left_neutral functor bind ret.
+Proof. by move=> A B a f; rewrite boolp.funeqE => Br. Qed.
+Lemma right_neutral : @BindLaws.right_neutral functor bind ret.
+Proof. by []. Qed.
+Lemma associative : @BindLaws.associative functor bind.
+Proof. by []. Qed.
+Definition t : monad := Monad_of_ret_bind left_neutral right_neutral associative.
 End cont.
 End Cont.
 
@@ -188,14 +265,14 @@ End option.
 Section list.
 Local Obligation Tactic := by [].
 Program Definition list_class := @MonadFail.Class _ _
-  (@MonadFail.Mixin ModelMonad.list (@nil) _).
+  (@MonadFail.Mixin ModelMonad.List.t (@nil) _).
 Definition list := MonadFail.Pack list_class.
 End list.
 
 Section set.
 Local Obligation Tactic := idtac.
 Program Definition set_class := @MonadFail.Class _ _
-  (@MonadFail.Mixin ModelMonad.set (@set0) _).
+  (@MonadFail.Mixin ModelMonad.set.t (@set0) _).
 Next Obligation.
 move=> A B f /=; rewrite boolp.funeqE => b; rewrite boolp.propeqE.
 by split=> // -[a []].
@@ -231,13 +308,15 @@ End get_functor.
 Definition get S A (k : S -> ModelMonad.State.acto S A) : ModelMonad.State.acto S A :=
   fun s => k s s.
 
-Program Definition get_op S : operation (get_fun S) (ModelMonad.State.t S) :=
-  Natural.Pack (@Natural.Class _ _ (@get S) _).
-Next Obligation.
+Lemma naturality_get S : naturality
+  (get_fun S \O ModelMonad.State.t S) (ModelMonad.State.t S) (get (S:=S)).
+Proof.
 move=> A B h; rewrite boolp.funeqE => /= m /=.
-rewrite boolp.funeqE => s.
-by rewrite FCompE Monad_of_ret_bind.MapE.
+by rewrite boolp.funeqE => s; rewrite FCompE.
 Qed.
+
+Definition get_op S : operation (get_fun S) (ModelMonad.State.t S) :=
+  Natural.Pack (@naturality_get S).
 Arguments get_op {S}.
 
 Section put_functor.
@@ -252,14 +331,15 @@ End put_functor.
 Definition put S A (s : S) (m : ModelMonad.State.acto S A) : ModelMonad.State.acto S A :=
   fun _ => m s.
 
-Program Definition put_op S : operation (put_fun S) (ModelMonad.State.t S) :=
-  Natural.Pack (@Natural.Class _ _ (fun A => uncurry (@put S A)) _).
-Next Obligation.
+Lemma naturality_put S : naturality (put_fun S \O ModelMonad.State.t S) (ModelMonad.State.t S)
+    (fun A => uncurry (put (A:=A))).
+Proof.
 move=> A B h.
-rewrite boolp.funeqE => /=; case => s m /=.
-rewrite boolp.funeqE => s'.
-by rewrite 2!Monad_of_ret_bind.MapE.
+by rewrite boolp.funeqE => /=; case => s m /=; rewrite boolp.funeqE => s'.
 Qed.
+
+Definition put_op S : operation (put_fun S) (ModelMonad.State.t S) :=
+  Natural.Pack (@naturality_put S).
 Arguments put_op {S}.
 End StateOps.
 
@@ -269,7 +349,7 @@ Variable S : Type.
 Local Notation M := (ModelMonad.State.t S).
 Definition get : M S := StateOps.get_op _ Ret.
 Lemma getE : get = fun s => (s, s). Proof. by []. Qed.
-Definition put : S -> M unit := fun s => StateOps.put_op _ (s, @Ret _ _ tt).
+Definition put : S -> M unit := fun s => StateOps.put_op _ (s, Ret tt).
 Lemma putE : put = fun s' _ => (tt, s').
 Proof. by []. Qed.
 Program Definition state : stateMonad S := MonadState.Pack (MonadState.Class
@@ -282,23 +362,39 @@ Module ModelAlt.
 Section list.
 Local Obligation Tactic := idtac.
 Program Definition list_class := @MonadAlt.Class _ _
-  (@MonadAlt.Mixin ModelMonad.list (@cat) catA _).
+  (@MonadAlt.Mixin ModelMonad.List.t (@cat) catA _).
 Next Obligation.
 move=> A B /= s1 s2 k.
 rewrite !bindE /Join /= /Monad_of_ret_bind.join /=.
-by rewrite Monad_of_ret_bind.MapE map_cat flatten_cat map_cat flatten_cat.
+rewrite (_ : (ModelMonad.List.t # k) (s1 ++ s2) =
+  ((ModelMonad.List.t # k) s1)
+  ++
+  ((ModelMonad.List.t # k) s2)
+  ); last first.
+  rewrite !(@Monad_of_ret_bind.MapE ModelMonad.List.functor) /=.
+  by rewrite map_cat flatten_cat.
+by rewrite map_cat flatten_cat.
 Qed.
 Definition list := MonadAlt.Pack list_class.
 End list.
 
+(* NB: was at the top of the file *)
+Lemma setUDl : @BindLaws.left_distributive ModelMonad.set.functor (fun I A => @bigsetU A I) (@setU).
+Proof.
+move=> A B /= p q r; rewrite boolp.funeqE => b; rewrite boolp.propeqE; split.
+move=> -[a [?|?] ?]; by [left; exists a | right; exists a].
+rewrite /setU => -[[a ? ?]|[a ? ?]]; exists a; tauto.
+Qed.
+
 Section set.
 Local Obligation Tactic := idtac.
 Program Definition set_class := @MonadAlt.Class _ _
-  (@MonadAlt.Mixin ModelMonad.set (@setU) _ _).
+  (@MonadAlt.Mixin ModelMonad.set.t (@setU) _ _).
 Next Obligation. exact: setUA. Qed.
 Next Obligation.
 rewrite /BindLaws.left_distributive /= => A B m1 m2 k.
-rewrite !bindE /Join /= /Monad_of_ret_bind.join /= Monad_of_ret_bind.MapE /=.
+rewrite !bindE /Join /= /Monad_of_ret_bind.join /=.
+rewrite !(@Monad_of_ret_bind.MapE ModelMonad.set.functor) /=.
 by rewrite setUDl // setUDl.
 Qed.
 Definition set := MonadAlt.Pack set_class.
@@ -380,9 +476,11 @@ End acallcc_functor.
 Definition acallcc r A (f : (ModelMonad.Cont.acto r A -> r) -> ModelMonad.Cont.acto r A) : ModelMonad.Cont.acto r A :=
   fun k => f (fun m => m k) k.
 
+Lemma naturality_acallcc r : naturality (acallcc_fun r \O ModelMonad.Cont.t r) (ModelMonad.Cont.t r) (acallcc (r:=r)).
+Proof. by []. Qed.
+
 Program Definition acallcc_op r : operation (acallcc_fun r) (ModelMonad.Cont.t r) :=
-  Natural.Pack (@Natural.Class _ _ (@acallcc r) _).
-Next Obligation. by []. Qed.
+  Natural.Pack (naturality_acallcc r).
 End ContOps.
 
 Definition usual_callcc r (M := fun C => (C -> r) -> r) A B (f : (A -> M B) -> M A) : M A :=
@@ -489,7 +587,7 @@ Let M : monad := shiftresetM nat.
 Goal Ret 1 +m (Reset (Ret 10 +m (Shift (fun f : _ -> M nat => f (100) >>= f) : M _)) : M _) =
      Ret (1 + (10 + (10 + 100))).
 Proof. by rewrite /addM bindretf boolp.funeqE. Abort.
-Goal Ret 1 +m (Reset (Ret 10 +m (Shift (fun f : _ -> M nat => Ret 100) : M _)) : M _) =
+Goal Ret 1 +m (Reset (Ret 10 +m (Shift (fun f : _ -> M nat => @RET M _ 100) : M _)) : M _) =
      Ret (1 + 100).
 Proof. by rewrite /addM bindretf boolp.funeqE. Abort.
 Goal Ret 1 +m (Reset (Ret 10 +m (Shift (fun f : _ -> M nat => f 100 +m f 1000) : M _)) : M _) =
@@ -499,7 +597,7 @@ Proof. by rewrite /addM bindretf boolp.funeqE. Abort.
 Let N : monad := shiftresetM (seq nat).
 Fixpoint perverse (l : seq nat) : N (seq nat) :=
   if l is h :: t then
-    Shift (fun f : _ -> N _ => Ret h >>= (fun x => perverse t >>= f >>= (fun y => Ret (x :: y))))
+    Shift (fun f : _ -> N _ => Ret h >>= (fun x => perverse t >>= f >>= (fun y => @RET N _ (x :: y))))
   else Ret [::].
 Goal Reset (perverse [:: 1; 2; 3]) = Ret [:: 3; 2; 1] :> shiftresetM _ (seq nat).
 by [].
@@ -543,8 +641,11 @@ refine (@MonadRun.Pack _ _ (@MonadRun.Class _ _ (Monad.class m)
 by [].
 move=> A B m0 f s.
 rewrite !bindE /=.
-rewrite Monad_of_ret_bind.MapE /= /Join /= /Monad_of_ret_bind.join /=.
 rewrite /ModelMonad.State.bind /=.
+rewrite /Fun /=.
+rewrite /Monad_of_ret_bind.Map /=.
+rewrite /ModelMonad.State.bind /=.
+rewrite /ModelMonad.State.ret /=.
 by destruct (m0 s).
 Defined.
 
@@ -578,13 +679,85 @@ Local Obligation Tactic := try by [].
 Definition _m : Type -> Type :=
   fun A => S -> {fset (convex_choice.choice_of_Type A * convex_choice.choice_of_Type S)}.
 
-Program Definition _monad : monad := @Monad_of_ret_bind _m
-(fun A (a : A) s => [fset (a : convex_choice.choice_of_Type A, s : convex_choice.choice_of_Type S)])
-(fun A B m (f : A -> S -> {fset (convex_choice.choice_of_Type B * convex_choice.choice_of_Type S)}) =>
-  fun s => \bigcup_(i <- (fun x : [choiceType of convex_choice.choice_of_Type A * convex_choice.choice_of_Type S] => f x.1 x.2) @` (m s)) i)
-_ _ _.
+Let ret' := fun A (a : A) s =>
+  [fset (a : convex_choice.choice_of_Type A, s : convex_choice.choice_of_Type S)].
+
+Let bind := fun A B (m : _m A)
+  (f : A -> S -> {fset (convex_choice.choice_of_Type B * convex_choice.choice_of_Type S)}) =>
+  fun s => \bigcup_(i <- (fun x : [choiceType of convex_choice.choice_of_Type A *
+                                           convex_choice.choice_of_Type S] => f x.1 x.2) @` (m s))
+                 i.
+
+Definition map A B (f : A -> B) (m : _m A) : _m B :=
+  bind m (@ret' _ \o f).
+
+Lemma map_id : FunctorLaws.id map.
+Proof.
+move=> A; rewrite /map boolp.funeqE => m.
+rewrite /bind boolp.funeqE => s.
+rewrite compfid big_imfset /=; last first.
+  by move=> [a0 s0] [a1 s1] /= _ _ /fset1_inj.
+rewrite /ret'; apply/fsetP => /= -[a0 s0].
+apply/idP/idP.
+  case/(@bigfcupP _ _ (m s)) => /= -[a1 s1].
+  rewrite andbT => H1 /=.
+  by move/fset1P => ->.
+move=> H0.
+apply/(@bigfcupP _ _ (m s)).
+exists (a0, s0) => //.
+by rewrite andbT.
+by apply/fset1P.
+Qed.
+
+Lemma map_comp : FunctorLaws.comp map.
+move=> A B C g h.
+rewrite /map /bind boolp.funeqE => m.
+rewrite boolp.funeqE => s /=.
+apply/fsetP => /= -[c0 s0].
+apply/idP/idP.
+  case/bigfcupP => /= x.
+  rewrite andbT => /imfsetP /= -[[a1 s1] H1] ->{x} /=.
+  rewrite /ret' => /fset1P [->{c0} ->{s0}].
+  apply/bigfcupP => /=.
+  eexists; last exact/fset1P.
+  rewrite andbT.
+  apply/imfsetP => /=.
+  exists ((h a1), s1).
+  apply/bigfcupP => /=.
+  eexists; last exact/fset1P.
+  rewrite andbT.
+  apply/imfsetP => //=.
+  eexists.
+  exact: H1.
+  by [].
+  by [].
+case/bigfcupP => /= x.
+rewrite andbT.
+case/imfsetP => /= -[b1 s1].
+move/bigfcupP => /= -[bs].
+rewrite andbT.
+move/imfsetP => /= [[a2 s2]] H2 ->{bs} /= /fset1P -[->{b1} ->{s1}] ->{x}.
+move/fset1P => [->{c0} ->{s0}].
+apply/bigfcupP => /=.
+eexists; last exact/fset1P.
+rewrite andbT.
+by apply/imfsetP; exists (a2, s2).
+Qed.
+
+Definition functor := Functor.Pack (Functor.Class map_id map_comp).
+
+Lemma naturality_ret' : naturality FId functor ret'.
+Proof.
+move=> A B h; rewrite /ret' boolp.funeqE => a; rewrite boolp.funeqE => s.
+by rewrite /functor /Fun /map /bind /= imfset_set1 /= big_seq_fset1.
+Qed.
+
+Definition ret : FId ~> functor := Natural.Pack naturality_ret'.
+
+Program Definition t := @Monad_of_ret_bind functor ret bind _ _ _.
 Next Obligation.
-move=> A B /= m f; rewrite boolp.funeqE => s; by rewrite imfset_set1 /= big_seq_fset1.
+move=> A B /= m f; rewrite boolp.funeqE => s.
+by rewrite /bind /ret imfset_set1 /= big_seq_fset1.
 Qed.
 Next Obligation.
 move=> A B /=; rewrite boolp.funeqE => s.
@@ -610,16 +783,19 @@ apply/fsetP => /= x; apply/bigfcupP'/bigfcupP'; case => /= CS  /imfsetP[/=].
   apply/bigfcupP' => /=; exists (f sa.1 sa.2) => //; by apply/imfsetP => /=; exists sa.
 Qed.
 Local Open Scope monae_scope.
-Lemma BindE (A B : Type) m (f : A -> _monad B) :
+Lemma BindE (A B : Type) m (f : A -> t B) :
   m >>= f = fun s => \bigcup_(i <- (fun x : [choiceType of convex_choice.choice_of_Type A * convex_choice.choice_of_Type S] => f x.1 x.2) @` (m s)) i.
 Proof.
 rewrite boolp.funeqE => s.
 rewrite /Bind /Join /= /Monad_of_ret_bind.join /=.
-set lhs := [fset _ _ | _ in _]. set rhs := [fset _ _ | _ in _].
+rewrite /bind.
+set lhs := [fset _ _ | _ in _].
+set rhs := [fset _ _ | _ in _].
 rewrite (_ : lhs = rhs) //; apply/fsetP => x; rewrite {}/lhs {}/rhs.
 apply/idP/imfsetP => /=.
 - case/imfsetP => -[a1 a2] /=.
-  rewrite /Fun /= /Monad_of_ret_bind.Map /=.
+  rewrite /Fun /=.
+  rewrite /Monad_of_ret_bind.Map /=.
   case/bigfcupP' => /= b.
   by case/imfsetP => -[b1 b2] /= Hb ->{b} /fset1P[-> -> ->{x a1 a2}]; exists (b1, b2).
 - case=> -[a1 s1] Ha /= ->{x}.
@@ -638,14 +814,14 @@ End monad.
 
 Section state.
 Variable S : Type.
-Local Obligation Tactic := try by [].
+Local Obligation Tactic := idtac.
 
 Program Definition _state : stateMonad S :=
-(@MonadState.Pack S (_m S)
-  (@MonadState.Class S (_m S) (Monad.class (_monad S)) (@MonadState.Mixin S (_monad S)
-((fun s => [fset (s : convex_choice.choice_of_Type S , s : convex_choice.choice_of_Type S)]) : (_monad S S)) (* get *)
-((fun s => (fun _ => [fset (tt : convex_choice.choice_of_Type unit, s : convex_choice.choice_of_Type S)])) : S -> (_monad S unit)) (* put *)
-_ _ _ _))).
+  @MonadState.Pack S (_m S)
+  (@MonadState.Class S (_m S) (Monad.class (t S)) (@MonadState.Mixin S (t S)
+((fun s => [fset (s : convex_choice.choice_of_Type S , s : convex_choice.choice_of_Type S)]) : (t S S)) (* get *)
+((fun s => (fun _ => [fset (tt : convex_choice.choice_of_Type unit, s : convex_choice.choice_of_Type S)])) : S -> (t S unit)) (* put *)
+_ _ _ _)).
 Next Obligation.
 move=> s s'; rewrite boolp.funeqE => s''.
 rewrite BindE; apply/fsetP => /= x; apply/bigfcupP'/fset1P.
@@ -694,7 +870,7 @@ End state.
 Section fail.
 Variable S : choiceType.
 Program Definition _fail : failMonad := @MonadFail.Pack _
-  (@MonadFail.Class _ (Monad.class (_monad S))
+  (@MonadFail.Class _ (Monad.class (t S))
     (@MonadFail.Mixin _ (fun (A : Type) (_ : S) => fset0) _)).
 Next Obligation.
 move=> A B g; rewrite boolp.funeqE => s; apply/fsetP => x; rewrite inE BindE; apply/negbTE.
@@ -709,8 +885,8 @@ Section alt.
 Variable S : choiceType.
 Local Obligation Tactic := try by [].
 Program Definition _alt : altMonad := @MonadAlt.Pack _
-  (@MonadAlt.Class _ (@Monad.class (_monad S))
-    (@MonadAlt.Mixin (_monad S)
+  (@MonadAlt.Class _ (@Monad.class (t S))
+    (@MonadAlt.Mixin (t S)
       (fun (A : Type) (a b : S -> {fset [choiceType of convex_choice.choice_of_Type A * convex_choice.choice_of_Type S]}) (s : S) => a s `|` b s) _ _)).
 Next Obligation. by move=> A a b c; rewrite boolp.funeqE => s; rewrite fsetUA. Qed.
 Next Obligation.

@@ -297,7 +297,7 @@ Fixpoint subs (s : seq A) : M (seq A) :=
   fmap (cons h) t' [~] t'.
 
 Fixpoint SUBS (s : seq A) : Functor.m (Monad.baseType (MonadAlt.baseType M)) _ :=
-  if s isn't h :: t then @Ret (MonadAlt.baseType M) _ [::] else
+  if s isn't h :: t then Ret [::] else
   let t' : Functor.m (Monad.baseType (MonadAlt.baseType M)) _ := SUBS t in
   Alt (((MonadAlt.baseType M) # (cons h)) t') t'.
 
@@ -350,11 +350,11 @@ Lemma insert_map A B (f : A -> B) (a : A) :
   insert (f a) \o map f = map f (o) insert a :> (_ -> M _).
 Proof.
 rewrite boolp.funeqE; elim => [|y xs IH].
-  by rewrite fcompE insertE -(compE (fmap (map f))) ret_naturality compE insertE.
+  by rewrite fcompE insertE -(compE (fmap (map f))) (natural RET) compE insertE.
 apply/esym.
 rewrite fcompE insertE alt_fmapDl.
 (* first branch *)
-rewrite -(compE (fmap (map f))) ret_naturality FIdf [ in X in X [~] _ ]/=.
+rewrite -(compE (fmap (map f))) (natural RET) FIdf [ in X in X [~] _ ]/=.
 (* second branch *)
 rewrite -fmap_oE (_ : map f \o cons y = cons (f y) \o map f) //.
 by rewrite fmap_oE -(fcompE (map f)) -IH [RHS]/= insertE.
@@ -365,7 +365,7 @@ Lemma perm_o_map A B (f : A -> B) :
   perm \o map f = map f (o) perm :> (seq A -> M (seq B)).
 Proof.
 rewrite boolp.funeqE; elim => [/=|x xs IH].
-  by rewrite fcompE [perm _]/= -[in RHS]compE ret_naturality.
+  by rewrite fcompE [perm _]/= -[in RHS]compE (natural RET).
 by rewrite fcompE [in perm _]/= fmap_bind -insert_map -bind_fmap -fcompE -IH.
 Qed.
 
@@ -385,9 +385,9 @@ Lemma filter_insertN a : ~~ p a ->
   forall s, (filter p (o) insert a) s = Ret (filter p s) :> M _.
 Proof.
 move=> pa; elim => [|h t IH].
-  by rewrite fcompE insertE -(compE (fmap _)) ret_naturality FIdf /= (negbTE pa).
+  by rewrite fcompE insertE -(compE (fmap _)) (natural RET) FIdf /= (negbTE pa).
 rewrite fcompE insertE alt_fmapDl.
-rewrite -(compE (fmap _)) ret_naturality FIdf [in X in X [~] _]/= (negbTE pa).
+rewrite -(compE (fmap _)) (natural RET) FIdf [in X in X [~] _]/= (negbTE pa).
 case: ifPn => ph.
 - rewrite -fmap_oE (_ : filter p \o cons h = cons h \o filter p); last first.
     rewrite boolp.funeqE => x /=; by rewrite ph.
@@ -502,8 +502,8 @@ End altci_insert.
 
 Module MonadNondet.
 Record mixin_of (M : failMonad) (a : forall A, M A -> M A -> M A) : Type :=
-  Mixin { _ : BindLaws.left_id (@Fail M) a ;
-          _ : BindLaws.right_id (@Fail M) a
+  Mixin { _ : @BindLaws.left_id M (@Fail M) a ;
+          _ : @BindLaws.right_id M (@Fail M) a
 }.
 Record class_of (m : Type -> Type) : Type := Class {
   base : MonadFail.class_of m ;
@@ -525,9 +525,9 @@ Export MonadNondet.Exports.
 
 Section nondet_lemmas.
 Variable (M : nondetMonad).
-Lemma altmfail : BindLaws.right_id (@Fail M) [~p].
+Lemma altmfail : @BindLaws.right_id M (@Fail M) [~p].
 Proof. by case: M => m [[? ?] [? ? ?] [? ?]]. Qed.
-Lemma altfailm : BindLaws.left_id (@Fail M) [~p]. (* NB: not used? *)
+Lemma altfailm : @BindLaws.left_id M (@Fail M) [~p]. (* NB: not used? *)
 Proof. by case: M => m [[? ?] [? ? ?] [? ?]]. Qed.
 End nondet_lemmas.
 
@@ -758,7 +758,7 @@ Record mixin_of (M : failMonad) : Type := Mixin {
   _ : forall A, left_id Fail (@catch A) ;
   _ : forall A, associative (@catch A) ;
   (* unexceptional bodies need no handler *)
-  _ : forall A x, left_zero (Ret x) (@catch A)
+  _ : forall A x, @left_zero (M A) (M A) (Ret x) (@catch A)
   (* NB: left-zero of sequential composition inherited from failMonad *)
 }.
 Record class_of (m : Type -> Type) := Class {
@@ -811,7 +811,7 @@ Definition work s : M nat :=
   if O \in s then Fail else Ret (product s).
 
 Let Work s := if O \in s then @Fail M nat
-              else @Ret (MonadFail.baseType M) nat (product s).
+              else Ret (product s).
 
 (* work refined to eliminate multiple traversals *)
 Lemma workE :
@@ -829,8 +829,7 @@ Variable M : exceptMonad.
 
 Definition fastprod s : M _ := Catch (work s) (Ret O).
 
-Let Fastprod s := @Catch M nat (@work (MonadExcept.baseType M) s)
-                    (@Ret (MonadExcept.monadType M) nat O).
+Let Fastprod s := @Catch M nat (@work (MonadExcept.baseType M) s) (Ret O).
 
 (* fastprod is pure, never throwing an unhandled exception *)
 Lemma fastprodE s : fastprod s = Ret (product s).
@@ -942,7 +941,7 @@ Lemma shiftreset1 A B (h : (A -> M B) -> M A) :
   Callcc h = Shift (fun k' => h (fun x => Shift (fun k'' => k' x)) >>= k').
 Proof. by case: M A B h => m [? []]. Qed.
 Lemma shiftreset2 A c c' (k : A -> U -> _):
-  Reset (do x <- Ret c; do y <- (Shift (fun _ => @Ret M U c') : M U); k x y)%Do = (Ret c >> Ret c') :> M _ .
+  Reset (do x <- Ret c; do y <- (Shift (fun _ => @RET M U c') : M U); k x y)%Do = (Ret c >> Ret c') :> M _ .
 Proof. by case: M c c' k => m [? []]. Qed.
 Lemma shiftreset3 c c' (k : U -> U -> _) :
   (Reset (do x <- Ret c; do y <- (Shift (fun f : U -> M U => do v <- f c'; f v) : M U); Ret (k x y)) =
@@ -961,7 +960,7 @@ Let wadler_example2 :
 Proof.
 rewrite /addM.
 rewrite bindretf.
-transitivity (Ret (100) >>= (fun y => Ret (1 + y)) : M _); last first.
+transitivity (Ret 100 >>= (fun y => Ret (1 + y)) : M _); last first.
   by rewrite bindretf.
 congr (Bind _ _). (* TODO : bind_ext casse *)
 rewrite (shiftreset2 _ _).
