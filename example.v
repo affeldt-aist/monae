@@ -3,7 +3,7 @@ From mathcomp Require Import finmap.
 From mathcomp Require boolp.
 From mathcomp Require Import classical_sets.
 From infotheo Require convex_choice classical_sets_ext.
-Require Import monae_lib monad fail_monad state_monad trace_monad monad_transformer.
+Require Import monae_lib monad fail_monad state_monad trace_monad monad_transformer monad_model.
 
 Set Implicit Arguments.
 Unset Strict Implicit.
@@ -23,7 +23,6 @@ End identity. *)
 Section maybe_monad_transformer.
 
 Local Obligation Tactic := idtac.
-
 
 Inductive option (A : Type) :=
 | Some : A -> option A
@@ -124,8 +123,62 @@ Next Obligation.
 by [].
 Defined.
 Definition mfail := MonadFail.Pack fail_class.
+
 End MonadFail.
 
+Section MonadStateT.
 
+Variable M : monad.
+Variable S : Type.
 
+Definition get : stateT S M S :=
+  fun s => Ret (s,s).
 
+Definition put (s' : S) : stateT S M unit :=
+  fun _ => Ret (tt, s').
+
+Definition modify (f : S -> S) : stateT S M unit :=
+  get >>= (fun s => put (f s)).
+
+End MonadStateT.
+
+Section Test.
+
+Variable M : monad.
+
+Definition incr : stateT nat M unit :=
+  @modify M nat (fun s => s + 1).
+
+End Test.
+
+Section Test.
+
+Definition prog : stateT nat mfail unit :=
+  @incr mfail >> (@liftS nat mfail unit (@fail unit)) >> @incr mfail.
+
+Check prog 0.
+
+End Test.
+
+Section MonadFail2.
+(* Local Obligation Tactic := by []. *)
+
+Variable S : Type.
+
+Definition optionT2 := eexceptionMonadMx (stateT S monad_model.ModelMonad.identity).
+
+Program Definition fail_class2 := @MonadFail.Class _ _ 
+  (@MonadFail.Mixin optionT (fun B => @Ret (@None B)) _).
+Next Obligation.
+by [].
+Defined.
+Definition mfail2 := MonadFail.Pack fail_class2.
+
+End MonadFail2.
+
+Section Test.
+
+About mfail2.
+
+Definition prog : mfail2 nat unit :=
+  @incr mfail >> (@liftS nat mfail unit (@fail unit)) >> @incr mfail.
