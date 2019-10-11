@@ -11,7 +11,7 @@ Contents:
     probabilistic choice
     example of the function that perfoms a uniform choice
 - Module MonadProbDr.
-    probabilistic choice + bind left-distributes other choice
+    probabilistic choice + bind right-distributes other choice
 - Module MonadAltProb.
     Module MonadAltProb + non-deterministic choice
 - Section mixing_choices.
@@ -270,7 +270,7 @@ Qed.
 Module MonadAltProb.
 Record mixin_of (M : altCIMonad) (a : prob -> forall A, M A -> M A -> M A) := Mixin {
   _ : forall A (p : prob),
-    right_distributive (fun x y : M A => a p _ x y) (fun x y => Alt x y)
+    right_distributive (fun x y : M A => a p _ x y) Alt
 }.
 Record class_of (m : Type -> Type) := Class {
   base : MonadAltCI.class_of m ;

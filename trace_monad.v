@@ -2,7 +2,7 @@ Ltac typeof X := type of X.
 Require Import ZArith.
 From mathcomp Require Import all_ssreflect.
 From infotheo Require Import ssrZ.
-Require Import monad state_monad.
+Require Import monad state_monad (*for the run monad*).
 
 (*
 Contents:

@@ -694,6 +694,7 @@ End necset_functor.
 Section eps1_eta1.
 Import category.
 Local Open Scope classical_set_scope.
+Local Open Scope convex_scope.
 
 Definition eps1'' {L : semiCompSemiLattConvType}
            (X : necset_semiCompSemiLattConvType L) : L := Joet `NE X.
@@ -716,14 +717,14 @@ Lemma eps1''_affine L : affine_function (@eps1'' L).
 Proof.
 move=> X Y p.
 rewrite /affine_function_at /eps1''.
-transitivity (Joet `NE (conv_set p X Y)); last by rewrite Joet_conv_setD.
+transitivity (Joet `NE (X :<| p |>: Y)); last by rewrite Joet_conv_setD.
 congr (Joet `NE _); apply/neset_ext => /=.
 rewrite conv_setE necset_convType.convE.
 apply eqEsubset=> u.
 - case=> x [] y [] xX [] yY ->.
   exists x; first by rewrite -in_setE.
-  by exists y; first by rewrite -in_setE.
-- case=> x Xx [] y Yy <-.
+  by rewrite conv_pt_setE; exists y; first by rewrite -in_setE.
+- case=> x Xx; rewrite conv_pt_setE => -[] y Yy <-.
   by exists x, y; rewrite !in_setE.
 Qed.
 

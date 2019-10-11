@@ -829,7 +829,8 @@ Variable M : exceptMonad.
 
 Definition fastprod s : M _ := Catch (work s) (Ret O).
 
-Let Fastprod s := @Catch M nat (@work (MonadExcept.baseType M) s) (Ret O).
+Let Fastprod (s : seq nat) :=
+  @Catch M nat (@work (MonadExcept.baseType M) s) (Ret O).
 
 (* fastprod is pure, never throwing an unhandled exception *)
 Lemma fastprodE s : fastprod s = Ret (product s).
