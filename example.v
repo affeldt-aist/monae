@@ -11,6 +11,34 @@ Unset Printing Implicit Defensive.
 
 Local Open Scope monae_scope.
 
+Local Notation "f ∘ g" := (fun x => f (g x)) (at level 40, left associativity).
+
+Module MonadStateInt.
+  Record mixin_of (M : stateMonad nat) : Type := Mixin {
+   incr : M unit ;
+}.
+Record class_of (m : Type -> Type) := Class {
+  base : MonadState.class_of nat m ;
+  mixin : mixin_of (MonadState.Pack base)}.
+Structure t : Type := Pack { m : Type -> Type ; class : class_of m }.
+Definition baseType (M : t) : stateMonad nat := MonadState.Pack (base (class M)).
+Module Exports.
+Notation stateMonadInt := t.
+Definition Incr (M : t) : m M unit :=
+  let: Pack _ (Class _ (Mixin x)) :=
+    M return m M unit in x.
+Coercion baseType : stateMonadInt >-> stateMonad.
+Canonical baseType.
+End Exports.
+End MonadStateInt.
+Export MonadStateLoop.Exports.
+
+(* Module MonadFailState.
+Record mixin_of (M : stateInt nat) : Type := Mixin {
+   incr : M unit ;
+}.
+
+ *)
 (* monade identité : ModelMonad.identity *)
 
 (* Section identity.
@@ -156,20 +184,47 @@ Section Test.
 Definition prog : stateT nat mfail unit :=
   @incr mfail >> (@liftS nat mfail unit (@fail unit)) >> @incr mfail.
 
+(* Definition prog : stateT nat mfail unit :=
+  incr >> liftS fail >> incr. *)
+
 Check prog 0.
 
 End Test.
 
 Section MonadFail2.
+
+Local Notation M := monad_model.ModelMonad.identity.
+Variable S : Type.
+
+Definition opTState := eexceptionMonadMx (stateT S M).
+
+Lemma stateMonad_of_stateT : MonadState.class_of S (stateT S M).
+Proof.
+Check retS.
+refine (@MonadState.Class _ _ _ (@MonadState.Mixin _ (stateT S M) (fun s => Ret (s, s)) (fun s' _ => Ret (tt, s')) _ _ _ _)).
+Admitted.
+
+Definition getOpt : opTState S :=
+  liftMx (@get _ _).
+
+Definition putOpt(x : S) : opTState unit :=
+  liftMx (put M x).
+
+End MonadFail2.
+
 (* Local Obligation Tactic := by []. *)
 
 Variable S : Type.
+Variable M: monad.
 
-Definition optionT2 := eexceptionMonadMx (stateT S monad_model.ModelMonad.identity).
+Definition optionT2 := eexceptionMonadMx (stateT S M).
 
 Program Definition fail_class2 := @MonadFail.Class _ _ 
-  (@MonadFail.Mixin optionT (fun B => @Ret (@None B)) _).
+  (@MonadFail.Mixin optionT2 (fun B => @Ret (@None B)) _).
 Next Obligation.
+rewrite /BindLaws.left_zero.
+move => A B g.
+rewrite /retS /=.
 by [].
 Defined.
 Definition mfail2 := MonadFail.Pack fail_class2.
@@ -178,7 +233,7 @@ End MonadFail2.
 
 Section Test.
 
-About mfail2.
+Check mfail2.
 
-Definition prog : mfail2 nat unit :=
+Definition prog : mfail2 unit :=
   @incr mfail >> (@liftS nat mfail unit (@fail unit)) >> @incr mfail.
