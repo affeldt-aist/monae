@@ -822,7 +822,6 @@ rewrite boolp.funeqE.
 move=> Y.
 rewrite /=.
 rewrite /psi_g /=.
-rewrite /ntcomp /=.
 rewrite /phi_g /=.
 rewrite (_ : (E # Ret) ((E # e X) Y) = (E # (M # e X)) ((E # Ret) Y)); last first.
   rewrite -(compE (E # Ret)).
@@ -833,17 +832,15 @@ rewrite (_ : (E # Ret) ((E # e X) Y) = (E # (M # e X)) ((E # Ret) Y)); last firs
   congr (E # _).
   rewrite (natural RET).
   by rewrite FIdf.
-rewrite (_ : AOperation.m op (Monad.m N X) ((E # (M # e X)) ((E # Ret) Y)) =
-             (M # e X) (AOperation.m op (Monad.m M X) ((E # Ret) Y))); last first.
+rewrite (_ : op (N X) ((E # (M # e X)) ((E # Ret) Y)) =
+             (M # e X) (op (M X) ((E # Ret) Y))); last first.
   rewrite -(compE (M # e X)).
   by rewrite (natural op).
-set tmp := (op _ _ in RHS).
-transitivity (e X (Join tmp)); last first.
+transitivity (e X (Join (op (M X) ((E # Ret) Y) : M (M X)))); last first.
   rewrite joinE monadMbind.
   rewrite bindE.
   rewrite -(compE _ (M # e X)).
   by rewrite -(natural_monadM e).
-rewrite {}/tmp.
 congr (e X _).
 rewrite -[in LHS](phiK op).
 rewrite -(compE Join).
@@ -902,3 +899,45 @@ Proof. by rewrite /lift_acallccS aliftingE. Qed.
 End continuation_stateT.
 
 End examples_of_lifting.
+
+Section examples_of_programs.
+
+Lemma stateMonad_of_stateT S (M : monad) : MonadState.class_of S (stateT S M).
+Proof.
+Check retS.
+refine (@MonadState.Class _ _ _ (@MonadState.Mixin _ (stateT S M) (fun s => Ret (s, s)) (fun s' _ => Ret (tt, s')) _ _ _ _)).
+move=> s s'.
+rewrite boolp.funeqE => s0.
+case: M => m [[f fi fo] [/= r j a b c]].
+rewrite /Bind /Join /JOIN /estateMonadM /Monad_of_ret_bind /bindS /Fun /=.
+rewrite /Monad_of_ret_bind.Map bindretf /=.
+by rewrite /retS bindretf.
+move=> s.
+rewrite boolp.funeqE => s0.
+case: M => m [[f fi fo] [/= r j a b c]].
+rewrite /retS /Ret /RET /Bind /estateMonadM /Monad_of_ret_bind /Fun /bindS /=.
+rewrite /Monad_of_ret_bind.Map.
+by rewrite 4!bindretf /=.
+rewrite boolp.funeqE => s.
+case: M => m [[f fi fo] [/= r j a b c]].
+rewrite /Bind /Join /JOIN /=.
+rewrite /estateMonadM /Monad_of_ret_bind /bindS /Fun /=.
+rewrite /Monad_of_ret_bind.Map bindretf /=.
+by rewrite /retS bindretf.
+case: M => m [[f fi fo] [/= r j a b c]].
+move=> A k.
+rewrite boolp.funeqE => s.
+rewrite /Bind /Join /JOIN /= /bindS /estateMonadM /=.
+rewrite /Monad_of_ret_bind /Fun /Monad_of_ret_bind.Map /=.
+rewrite /Monad_of_ret_bind.Map /= /bindS /=.
+by rewrite !bindretf /= !bindretf.
+Qed.
+
+Canonical stateMonad_of_stateT' S M := MonadState.Pack (stateMonad_of_stateT S M).
+
+Variable M : failMonad.
+Let N := stateT nat M.
+Let incr : N unit := Get >>= (Put \o (fun i => i.+1)).
+Let prog := incr >> (liftS Fail : N nat) >> incr.
+
+End examples_of_programs.

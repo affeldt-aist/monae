@@ -183,8 +183,8 @@ Hypothesis injective_return : forall C x1 x2,
   Ret x1 = Ret x2 :> M C -> x1 = x2.
 
 Lemma theorem46lid z zs : z = foldl mul b zs ->
- aggregate b mul add = Ret \o foldl mul b \o flatten :> (_ -> M _) ->
-z = add b z.
+  aggregate b mul add = Ret \o foldl mul b \o flatten :> (_ -> M _) ->
+  z = add b z.
 Proof.
 move=> zzs H.
 transitivity (foldl mul b (flatten [:: zs])).
@@ -197,8 +197,8 @@ by rewrite /= -zzs.
 Qed.
 
 Lemma theorem46rid z zs : z = foldl mul b zs ->
- aggregate b mul add = Ret \o foldl mul b \o flatten :> (_ -> M _) ->
- z = add z b.
+  aggregate b mul add = Ret \o foldl mul b \o flatten :> (_ -> M _) ->
+  z = add z b.
 Proof.
 move=> zzs H.
 transitivity (foldl mul b (flatten [:: zs; [::]])).
