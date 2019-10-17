@@ -16,9 +16,9 @@ P_delta =def= P_delta_right \O P_delta_left
 
 where P_delta_right and P_delta_left are the following compositions:
 
-             | FC = gen_choiceType_functor
-P_delta_left:| F0 = FSDist_functor
-             | F1 = necset_functor
+             | FC = free_choiceType (= choice_of_Type)
+P_delta_left:| F0 = free_convType (= FSDist)
+             | F1 = free_semiCompSemiLattConvType (= necset)
 
               | UC = forget_choiceType
 P_delta_right:| U0 = forget_convType
@@ -93,26 +93,23 @@ End choiceType_as_a_category.
 Section free_choiceType_functor.
 Import category.
 
-Definition gen_choiceType (T : Type) : choiceType :=
-  Choice.Pack (Choice.Class (@gen_eqMixin T) (@gen_choiceMixin T)).
-
-Local Notation m := gen_choiceType.
+Local Notation m := choice_of_Type.
 Local Notation CC := choiceType_category.
 
-Definition gen_choiceType_mor (T U : Type_category) (f : {hom T, U}) :
+Definition free_choiceType_mor (T U : Type_category) (f : {hom T, U}) :
   {hom m T, m U} := hom_choiceType (f : m T -> m U).
-Lemma gen_choiceType_mor_id : FunctorLaws.id gen_choiceType_mor.
+Lemma free_choiceType_mor_id : FunctorLaws.id free_choiceType_mor.
 Proof. by move=> a; rewrite hom_ext. Qed.
-Lemma gen_choiceType_mor_comp : FunctorLaws.comp gen_choiceType_mor.
+Lemma free_choiceType_mor_comp : FunctorLaws.comp free_choiceType_mor.
 Proof. by move=> a b c g h; rewrite hom_ext. Qed.
-Definition gen_choiceType_functor : functor Type_category CC :=
-  Functor.Pack (Functor.Class gen_choiceType_mor_id gen_choiceType_mor_comp).
+Definition free_choiceType : functor Type_category CC :=
+  Functor.Pack (Functor.Class free_choiceType_mor_id free_choiceType_mor_comp).
 
-Lemma gen_choiceType_mor_comp_fun (a b c : Type) (g : {hom b, c})
+Lemma free_choiceType_mor_comp_fun (a b c : Type) (g : {hom b, c})
       (h : {hom a, b}):
-  [fun of gen_choiceType_mor [hom of [fun of g] \o [fun of h]]] =
-  [fun of gen_choiceType_mor g] \o [fun of gen_choiceType_mor h].
-Proof. by rewrite gen_choiceType_mor_comp. Qed.
+  [fun of free_choiceType_mor [hom of [fun of g] \o [fun of h]]] =
+  [fun of free_choiceType_mor g] \o [fun of free_choiceType_mor h].
+Proof. by rewrite free_choiceType_mor_comp. Qed.
 
 Local Notation CT := Type_category.
 Let m := Choice.sort.
@@ -130,32 +127,27 @@ End free_choiceType_functor.
 
 Section epsC_etaC.
 Import category.
-(*Definition epsC (C : choiceType) : gen_choiceType (forget_choiceType C) -> C.*)
-Definition epsC'' {C : choiceType} : gen_choiceType C -> C := idfun.
-Definition epsC' : gen_choiceType_functor \O forget_choiceType ~~> FId :=
+Definition epsC'' {C : choiceType} : free_choiceType C -> C := idfun.
+Definition epsC' : free_choiceType \O forget_choiceType ~~> FId :=
   fun T => @Hom.Pack choiceType_category _ _ _ (@epsC'' T) I.
 Lemma epsC'_natural : naturality _ _ epsC'.
 Proof. by []. Qed.
-Definition epsC : gen_choiceType_functor \O forget_choiceType ~> FId :=
+Definition epsC : free_choiceType \O forget_choiceType ~> FId :=
   locked (Natural.Pack (Natural.Class epsC'_natural)).
-(*Lemma epsCE' : epsC = Natural epsC'_natural.
-Proof. by rewrite /epsC; unlock. Qed.*)
 Lemma epsCE (T : choiceType) : epsC T = idfun :> (_ -> _).
 Proof. by rewrite /epsC; unlock. Qed.
 
-Definition etaC': FId ~~> forget_choiceType \O gen_choiceType_functor :=
+Definition etaC': FId ~~> forget_choiceType \O free_choiceType :=
   fun _ => @Hom.Pack Type_category _ _ _ idfun I.
 Lemma etaC'_natural : naturality _ _ etaC'.
 Proof. by []. Qed.
-Definition etaC: FId ~> forget_choiceType \O gen_choiceType_functor :=
+Definition etaC: FId ~> forget_choiceType \O free_choiceType :=
   locked (Natural.Pack (Natural.Class etaC'_natural)).
-(*Lemma etaCE' : etaC = Natural etaC'_natural.
-Proof. by rewrite /etaC; unlock. Qed.*)
 Lemma etaCE (T : Type) : etaC T = idfun :> (_ -> _).
 Proof. by rewrite /etaC; unlock. Qed.
 
 Import homcomp_notation.
-Local Notation FC := gen_choiceType_functor.
+Local Notation FC := free_choiceType.
 Local Notation UC := forget_choiceType.
 Lemma triLC : TriangularLaws.left etaC epsC.
 Proof. by move=> c; rewrite etaCE epsCE. Qed.
@@ -841,13 +833,9 @@ Qed.
 
 Section P_delta_functor.
 Import category.
-(* P_delta = (forget) \o necset \o FSDist \o gen_choiceType, where
-   - gen_choiceType is the free choiceType functor,
-   - FSDist is the free convex space functor, and
-   - necset is the convex powerset functor. *)
 
 Definition P_delta_left :=
-  necset_functor \O FSDist_functor \O gen_choiceType_functor.
+  necset_functor \O FSDist_functor \O free_choiceType.
 
 Definition P_delta_right :=
   forget_choiceType \O forget_convType \O forget_semiCompSemiLattConvType.
@@ -875,7 +863,7 @@ Import category.
 
 Local Notation F1 := necset_functor.
 Local Notation F0 := FSDist_functor.
-Local Notation FC := gen_choiceType_functor.
+Local Notation FC := free_choiceType.
 Local Notation UC := forget_choiceType.
 Local Notation U0 := forget_convType.
 Local Notation U1 := forget_semiCompSemiLattConvType.
@@ -948,7 +936,7 @@ Lemma retE'' (T : Type) :
 Proof. by rewrite retE'. Qed.
 
 Lemma retE (T : Type) :
-  ret T = (@necset1 _) \o (@FSDist1.d (gen_choiceType T)) :> (_ -> _).
+  ret T = (@necset1 _) \o (@FSDist1.d (choice_of_Type T)) :> (_ -> _).
 Proof.
 rewrite funeqE => x; apply necset_ext.
 by rewrite /ret; unlock; rewrite /= etaCE eta0E eta1E FSDistfmap_id.
