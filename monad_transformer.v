@@ -24,6 +24,7 @@ Require Import monae_lib monad fail_monad.
    - Section theorem19.
      algebraic lifting
    - Section examples_of_lifting.
+   - Section examples_of_programs.
 *)
 
 Set Implicit Arguments.
@@ -698,6 +699,10 @@ Program Definition get_aop S : aoperation (StateOps.get_fun S) (ModelMonad.State
 Lemma algebraic_put S : algebraicity (@StateOps.put_op S).
 Proof. by move=> ? ? ? []. Qed.
 
+Program Definition put_aop S : aoperation (StateOps.put_fun S) (ModelMonad.State.t S) :=
+  AOperation.Pack ((*AOperation.Class _*) (AOperation.Mixin (@algebraic_put S))).
+(*Next Obligation. by []. Qed.*)
+
 Lemma algebraicity_callcc r : algebraicity (ContOps.acallcc_op r).
 Proof. by []. Qed.
 
@@ -898,7 +903,6 @@ Section examples_of_programs.
 
 Lemma stateMonad_of_stateT S (M : monad) : MonadState.class_of S (stateT S M).
 Proof.
-Check retS.
 refine (@MonadState.Class _ _ _ (@MonadState.Mixin _ (stateT S M) (fun s => Ret (s, s)) (fun s' _ => Ret (tt, s')) _ _ _ _)).
 move=> s s'.
 rewrite boolp.funeqE => s0.
@@ -935,3 +939,40 @@ Let incr : N unit := Get >>= (Put \o (fun i => i.+1)).
 Let prog := incr >> (liftS Fail : N nat) >> incr.
 
 End examples_of_programs.
+
+Section examples_of_programs2.
+
+Let M := ModelState.state nat.
+Definition optionT := errorT unit M.
+Definition liftOpt := liftX unit.
+
+Lemma failMonad_of_ : MonadFail.class_of optionT.
+Proof.
+refine (@MonadFail.Class _ _ (@MonadFail.Mixin optionT (fun B => Ret (@inl _ B tt))  _ )).
+by [].
+Qed.
+
+Canonical failMonad_of_' := MonadFail.Pack failMonad_of_.
+
+Definition GetO := liftOpt (@Get nat M).
+Definition PutO := (fun s => liftOpt (@Put nat M s)).
+Let incr := GetO >>= (fun i => PutO (i.+1)).
+Let prog := incr >> (Fail : optionT nat) >> incr.
+
+End examples_of_programs2.
+
+Section lifting_uniform.
+
+Let M S: monad := ModelState.state S.
+Let optT : monadT := errorT unit.
+
+Definition lift_getX S : (StateOps.get_fun S) \O (optT (M S)) ~~> (optT (M S)) :=
+  alifting (get_aop S) (LiftT optT (M S)).
+
+Let lift_putX S : (StateOps.put_fun S) \O (optT (M S)) ~~> (optT (M S)) :=
+  alifting (put_aop S) (LiftT optT (M S)).
+
+Let incr : optT (M nat) unit := (lift_getX Ret) >>= (fun i => lift_putX (i.+1, Ret tt)).
+Let prog : optT (M nat) unit:= incr >> (Fail : optT (M nat) unit) >> incr. 
+
+End lifting_uniform.
