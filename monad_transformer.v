@@ -36,9 +36,9 @@ Module monadM.
 Section monadm.
 Variables (M N : monad).
 Record class_of (e : M ~~> N) := Class {
-  _ : forall A, @RET _ A = e _ \o Ret;
+  _ : forall A, Ret = e A \o Ret;
   _ : forall A B (m : M A) (f : A -> M B),
-    e _ (m >>= f) = e _ m >>= (fun a => e _ (f a)) }.
+    e B (m >>= f) = e A m >>= (e B \o f) }.
 Structure t := Pack { e : M ~~> N ; class : class_of e }.
 End monadm.
 Module Exports.
@@ -53,7 +53,7 @@ Variables (M N : monad) (f : monadM M N).
 Lemma monadMret : forall A, @RET _ A = f _ \o Ret.
 Proof. by case: f => ? []. Qed.
 Lemma monadMbind A B (m : M A) (h : A -> M B) :
-  f _ (m >>= h) = f _ m >>= (fun a => f _ (h a)).
+  f _ (m >>= h) = f _ m >>= (f _ \o h).
 Proof. by case: f => ? []. Qed.
 End monadM_interface.
 
@@ -65,7 +65,7 @@ move=> A B h; rewrite boolp.funeqE => m /=.
 have <- : Join ((M # (Ret \o h)) m) = (M # h) m.
   by rewrite functor_o [LHS](_ : _ = (Join \o M # Ret) ((M # h) m)) // joinMret.
 move: (@monadMbind M N f A B m (Ret \o h)); rewrite 2!bindE => ->.
-rewrite (_ : (fun a => f _ ((Ret \o h) a)) = Ret \o h); last first.
+rewrite (_ : (f _ \o (Ret \o h)) = Ret \o h); last first.
   by rewrite [in RHS](monadMret f).
 rewrite [RHS](_ : _ = (Join \o (N # Ret \o N # h)) (f _ m)); last first.
   by rewrite compE functor_o.
@@ -111,14 +111,8 @@ Definition retS A (a : A) : MS A :=
 
 Definition bindS A B (m : MS A) f := (fun s => m s >>= uncurry f) : MS B.
 
-Definition MS_fmap A B (f : A -> B) (m : MS A) : MS B.
-move=> s.
-rewrite /MS in m.
-move: (m s) => m'.
-Local Open Scope mprog.
-exact: (fmap (fun x => (f x.1, x.2)) m').
-Local Close Scope mprog.
-Defined.
+Definition MS_fmap A B (f : A -> B) (m : MS A) : MS B :=
+  fun s => (M # (fun x => (f x.1, x.2))) (m s).
 
 Definition MS_functor : functor.
 apply: (Functor.Pack (@Functor.Class MS MS_fmap _ _)).
@@ -162,7 +156,7 @@ by rewrite bindA; bind_ext; case.
 Defined.
 
 Definition liftS A (m : M A) : estateMonadM A :=
-  fun s => @Bind M _ _ m (fun x => Ret (x, s)).
+  fun s => m >>= (fun x => Ret (x, s)).
 
 Program Definition stateMonadM : monadM M estateMonadM :=
   monadM.Pack (@monadM.Class _ _ liftS _ _).
