@@ -227,7 +227,8 @@ move=> A B C m f g; rewrite /bindX bindA; bind_ext; case => //.
 by move=> z; rewrite bindretf.
 Qed.
 
-Definition liftX X (m : M X) : eexceptionMonadM X := @Bind M _ _ m (fun x => @RET eexceptionMonadM _ x).
+Definition liftX X (m : M X) : eexceptionMonadM X :=
+  m >>= (fun x => @RET eexceptionMonadM _ x).
 
 Program Definition exceptionMonadM : monadM M eexceptionMonadM :=
   monadM.Pack (@monadM.Class _ _ liftX _ _).
@@ -823,12 +824,8 @@ rewrite /=.
 rewrite /psi_g /=.
 rewrite /phi_g /=.
 rewrite (_ : (E # Ret) ((E # e X) Y) = (E # (M # e X)) ((E # Ret) Y)); last first.
-  rewrite -(compE (E # Ret)).
-  rewrite -functor_o.
-  rewrite -(compE (E # (_ # _))).
-  rewrite -functor_o.
-  congr (_ Y).
-  congr (E # _).
+  rewrite -[in LHS]compE -functor_o.
+  rewrite -[in RHS]compE -functor_o.
   rewrite (natural RET).
   by rewrite FIdf.
 rewrite (_ : op (N X) ((E # (M # e X)) ((E # Ret) Y)) =
