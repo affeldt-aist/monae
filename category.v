@@ -1186,6 +1186,10 @@ Import monad.Functor.Exports.
 
 Definition ret (A : Type) (x : A) : m' A := (@Ret _ M A x).
 Definition join (A : Type) (x : m' (m' A)) := (@Join _ M A x).
+
+Lemma joinE A (x : m' (m' A)) : join x = @Join _ M A x.
+Proof. done. Qed.
+
 Lemma ret_nat : monad.Natural.P monad.FId m' ret.
 Proof.
 move=> A B h; apply funext=> x; rewrite /ret /Fun /= /f.
