@@ -538,15 +538,22 @@ End eps0_eta0.
 
 (* the join operator for Dist is ((coercion) \o eps0) *)
 Section eps0_correct.
+Import category.
 Import ScaledConvex.
 Local Open Scope R_scope.
 
-Lemma eps0_correct (A : choiceType) (D : {dist (FSDist_convType A)}) : eps0'' D = FSDistjoin D.
+Lemma eps0''_correct (A : choiceType) (D : {dist (FSDist_convType A)}) : eps0'' D = FSDistjoin D.
 Proof.
 apply FSDist_ext => a; rewrite -[LHS]Scaled1RK /eps0''.
 rewrite (S1_proj_Convn_indexed_over_finType (FSDist_eval_affine a)) big_scaleR.
 rewrite FSDistjoinE big_seq_fsetE; apply eq_bigr => -[d dD] _.
 by rewrite (scaleR_scalept _ (FDist.ge0 _ _)) fdist_of_FSDistE Scaled1RK.
+Qed.
+
+Lemma eps0_correct  (A : choiceType) (D : {dist (FSDist_convType A)}) : eps0 _ D = FSDistjoin D.
+Proof.
+rewrite /eps0; unlock=> /=.
+exact: eps0''_correct.
 Qed.
 End eps0_correct.
 
@@ -787,6 +794,7 @@ Qed.
 End eps1_eta1.
 
 Section join1.
+Import category.
 Local Open Scope convex_scope.
 Local Open Scope classical_set_scope.
 
@@ -807,13 +815,20 @@ Definition join1 (C : convType) (s : necset (necset_convType C)) : necset C :=
   NECSet.Pack (NECSet.Class (CSet.Class (hull_is_convex _))
                             (NESet.Class (join1'_neq0 s))).
 
-Lemma eps1_correct (C : convType) (s : necset (necset_convType C)) :
+Lemma eps1''_correct (C : convType) (s : necset (necset_convType C)) :
   eps1'' s = join1 s.
 Proof.
 rewrite /eps1'' /join1 /=; apply/necset_ext => /=; congr (hull _).
 rewrite /bigsetU; rewrite funeqE => c; rewrite propeqE; split.
 - by case=> X sX Xc; exists X => //; rewrite -in_setE in sX; rewrite sX.
 - by case=> X sX; rewrite -in_setE in sX; rewrite sX => Xc; exists X => //; rewrite -in_setE.
+Qed.
+
+Lemma eps1_correct (C : convType) (s : necset (necset_convType C)) :
+  eps1 _ s = join1 s.
+Proof.
+rewrite /eps1; unlock=> /=.
+exact: eps1''_correct.
 Qed.
 End join1.
 
