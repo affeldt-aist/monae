@@ -55,10 +55,6 @@ have-> : (F1 \O F0) # epsC (U0 (U1 (P_delta_left T))) = idfun :> (_ -> _).
             [NEq _, _] _ by rewrite hom_ext /= epsCE.
   by rewrite functor_id.
 rewrite compfid.
-rewrite compE.
-have-> : (F1 # eps0 (U1 (P_delta_left T))) (u [+] v) = 
-         (F1 # eps0 (U1 (P_delta_left T))) u [+]
-         (F1 # eps0 (U1 (P_delta_left T))) v.
 Admitted.
 End bindaltDl.
 
