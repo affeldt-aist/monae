@@ -14,9 +14,6 @@ Unset Printing Implicit Defensive.
 
 Require Import monae_lib monad fail_monad proba_monad monad_model gcm_model.
 
-Section P_delta_monad.
-End P_delta_monad.
-
 Section P_delta_altProbMonad.
 Local Open Scope R_scope.
 Local Open Scope reals_ext_scope.
@@ -31,14 +28,38 @@ Definition choice p A (x y : m A) : m A := x <|p|> y.
 Lemma altA A : associative (@alt A).
 Proof. by move=> x y z; rewrite /alt joetA. Qed.
 
+Lemma image_FSDistfmap A B (x : m A) (k : choice_of_Type A -> m B) :
+  FSDistfmap k @` x = (m # k) x.
+Proof.
+rewrite /Fun /= /category.Monad_of_category_monad.f /= /category.id_f /=.
+by rewrite/free_semiCompSemiLattConvType_mor /=; unlock.
+Qed.
+
+Lemma FunaltDr (A B : Type) (x y : m A) (k : A -> m B) :
+  (m # k) (x [+] y) = (m # k) x [+] (m # k) y.
+Proof.
+apply necset_ext => /=.
+transitivity (FSDistfmap (k : choice_of_Type A -> _) @` hull (\bigcup_(x0 in [set x; y]) x0)).
+  have -> : hull (\bigcup_(x0 in [set x; y]) x0) = x [+] y by [].
+  by rewrite image_FSDistfmap.
+transitivity (hull (FSDistfmap (k : choice_of_Type A -> _) @` (\bigcup_(x0 in [set x; y]) x0))).
+  rewrite image_preserves_convex_hull' //= => a b t.
+  by rewrite /affine_function_at /f /FSDistfmap ConvFSDist.bind_left_distr.
+congr hull; rewrite funeqE => /= d; rewrite propeqE; split.
+- case => d' [x0] -[->{x0} xd' <-{d}|->{x0} xd' <-{d}].
+  + exists ((m # k) x); [by left | rewrite -image_FSDistfmap; by exists d'].
+  + exists ((m # k) y); [by right | rewrite -image_FSDistfmap; by exists d'].
+- case => /= D -[->{D}|->{D}]; rewrite -image_FSDistfmap.
+  + case=> d' xd' <-{d}; exists d' => //; exists x => //; by left.
+  + case=> d' xd' <-{d}; exists d' => //; exists y => //; by right.
+Qed.
+
 Section bindaltDl.
 Lemma bindaltDl : BindLaws.left_distributive (@Bind m) alt.
 Proof.
 move=> A B x y k.
-rewrite !bindE /alt.
-suff-> : (m # k) (x [+] y) = (m # k) x [+] (m # k) y.
-suff-> : forall T (u v : m (m T)), Join (u [+] v : m (m T)) = Join u [+] Join v
-    by done.
+rewrite !bindE /alt FunaltDr.
+suff -> : forall T (u v : m (m T)), Join (u [+] v : m (m T)) = Join u [+] Join v by [].
 move=> T u v.
 Import category.
 Import homcomp_notation.
