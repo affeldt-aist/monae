@@ -10,7 +10,7 @@ Set Implicit Arguments.
 Unset Strict Implicit.
 Unset Printing Implicit Defensive.
 
-(* work in progress *)
+(* work in progress, this file contains admitted proofs *)
 
 Require Import monae_lib monad fail_monad proba_monad monad_model gcm_model.
 
@@ -54,6 +54,27 @@ congr hull; rewrite funeqE => /= d; rewrite propeqE; split.
   + case=> d' xd' <-{d}; exists d' => //; exists y => //; by right.
 Qed.
 
+Lemma FunpchoiceDr (A B : Type) (x y : m A) (k : A -> m B) p :
+  (m # k) (x <|p|> y) = (m # k) x <|p|> (m # k) y.
+Proof.
+apply necset_ext => /=.
+rewrite -[in LHS]image_FSDistfmap funeqE => d; rewrite propeqE; split.
+- move=> -[d'].
+  rewrite necset_convType.convE => -[x0 [y0 [x0x [y0y ->{d'}]]]] <-{d}.
+  rewrite necset_convType.convE /=.
+  exists (FSDistfmap (k : choice_of_Type _ -> _ ) x0),
+     (FSDistfmap (k : choice_of_Type _ -> _ ) y0); split.
+  by rewrite in_setE -image_FSDistfmap; exists x0 => //; rewrite -in_setE.
+  split; last exact: ConvFSDist.bind_left_distr.
+  by rewrite in_setE -image_FSDistfmap; exists y0 => //; rewrite -in_setE.
+- rewrite necset_convType.convE => -[/= d1 [d2]].
+  rewrite in_setE -image_FSDistfmap => -[] [z1 xz1 <-{d1}].
+  rewrite in_setE -image_FSDistfmap => -[] [z2 xz2 <-{d2}].
+  move=> ->{d}; exists (z1 <|p|> z2); last exact: ConvFSDist.bind_left_distr.
+  rewrite -in_setE necset_convType.convE inE; apply/asboolP; exists z1, z2.
+  by rewrite !in_setE.
+Qed.
+
 Section bindaltDl.
 Lemma bindaltDl : BindLaws.left_distributive (@Bind m) alt.
 Proof.
@@ -76,6 +97,7 @@ have-> : (F1 \O F0) # epsC (U0 (U1 (P_delta_left T))) = idfun :> (_ -> _).
             [NEq _, _] _ by rewrite hom_ext /= epsCE.
   by rewrite functor_id.
 rewrite compfid.
+admit.
 Admitted.
 End bindaltDl.
 
@@ -122,10 +144,8 @@ Qed.
 Section bindchoiceDl.
 Lemma bindchoiceDl p : BindLaws.left_distributive (@Bind m) (@choice p).
 move=> A B x y k.
-rewrite !bindE /choice.
-suff-> : (m # k) (x <|p|> y) = (m # k) x <|p|> (m # k) y.
-suff-> : forall T (u v : m (m T)), Join (u <|p|> v : m (m T)) = Join u <|p|> Join v
-    by done.
+rewrite !bindE /choice FunpchoiceDr.
+suff -> : forall T (u v : m (m T)), Join (u <|p|> v : m (m T)) = Join u <|p|> Join v by [].
 move=> T u v.
 Import category.
 Import homcomp_notation.
@@ -142,6 +162,7 @@ have-> : (F1 \O F0) # epsC (U0 (U1 (P_delta_left T))) = idfun :> (_ -> _).
             [NEq _, _] _ by rewrite hom_ext /= epsCE.
   by rewrite functor_id.
 rewrite compfid.
+admit.
 Admitted.
 End bindchoiceDl.
 

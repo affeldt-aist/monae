@@ -318,6 +318,7 @@ End distributivelaw.
 End DistributiveLaw.
 Coercion DistributiveLaw.f : DistributiveLaw.t >-> Natural.t.
 
+(* TODO *)
 Definition beck (S T : monad) (f : DistributiveLaw.t S T) : monad.
 have @join : (T \O S) \O (T \O S) ~> T \O S.
   apply: (VComp ((@JOIN T) \h (@JOIN S)) _).
