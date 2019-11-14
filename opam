@@ -27,3 +27,11 @@ This repository contains a formalization of monads including several
 models, examples of monadic equational reasoning, and an application
 to program semantics.
 """
+tags: [
+  "category:Computer Science/Semantics"
+  "keyword: monad"
+  "keyword: effect"
+  "keyword: probability"
+  "logpath:monae"
+  "date:2019-11-09"
+]
