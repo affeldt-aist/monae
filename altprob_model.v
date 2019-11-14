@@ -5,14 +5,13 @@ From mathcomp Require Import finmap.
 From infotheo Require Import Reals_ext Rbigop ssrR proba fsdist convex_choice.
 From infotheo Require Import necset.
 Require category.
+Require Import monae_lib monad fail_monad proba_monad monad_model gcm_model.
+
+(* model of the monad that mixes non-deterministic choice and probability *)
 
 Set Implicit Arguments.
 Unset Strict Implicit.
 Unset Printing Implicit Defensive.
-
-(* work in progress, this file contains admitted proofs *)
-
-Require Import monae_lib monad fail_monad proba_monad monad_model gcm_model.
 
 Section P_delta_altProbMonad.
 Local Open Scope R_scope.
@@ -85,7 +84,7 @@ Local Notation UC := forget_choiceType.
 Local Notation U0 := forget_convType.
 Local Notation U1 := forget_semiCompSemiLattConvType.
 
-Lemma affine_F1e0U1PD T (u v : m (m T)) :
+Lemma affine_F1e0U1PD_alt T (u v : m (m T)) :
   [fun of F1 # eps0 (U1 (P_delta_left T))] (u [+] v) =
   [fun of F1 # eps0 (U1 (P_delta_left T))] u [+] [fun of F1 # eps0 (U1 (P_delta_left T))] v.
 Proof.
@@ -98,7 +97,7 @@ have @UV : necset_semiCompSemiLattConvType (F1 ((F0 \O U0) (U1 (P_delta_left T))
 transitivity (Joet `NE ([fun of F1 # eps0 (U1 (P_delta_left T))] @` UV)).
   rewrite -(apply_affine (F1 # eps0 (U1 (P_delta_left T))) UV).
   congr ([fun of _] _); congr Joet; exact/neset_ext.
-rewrite [in RHS]/joet.
+  rewrite [in RHS]/joet.
 transitivity (Joet `NE (hull ([fun of F1 # eps0 (U1 (P_delta_left T))] @` [set u; v]))).
   congr (Joet `NE _); apply/neset_ext => /=.
   have /image_preserves_convex_hull' : affine_function [fun of F1 # eps0 (U1 (P_delta_left T))].
@@ -136,7 +135,7 @@ rewrite funeqE => /= X; rewrite propeqE; split.
 - case=> -> /=; by [exists u => //; left | exists v => //; right].
 Qed.
 
-Lemma affine_e1PD T (x y : El (F1 (FId (U1 (P_delta_left T))))) :
+Lemma affine_e1PD_alt T (x y : El (F1 (FId (U1 (P_delta_left T))))) :
   [fun of eps1 (P_delta_left T)] (x [+] y) =
   [fun of eps1 (P_delta_left T)] x [+] [fun of eps1 (P_delta_left T)] y.
 Proof.
@@ -162,7 +161,7 @@ have-> : (F1 \O F0) # epsC (U0 (U1 (P_delta_left T))) = idfun :> (_ -> _).
   have -> : epsC (U0 (U1 (P_delta_left T))) =
             [NEq _, _] _ by rewrite hom_ext /= epsCE.
   by rewrite functor_id.
-by rewrite compfid compE affine_F1e0U1PD 2!compE affine_e1PD.
+by rewrite compfid compE affine_F1e0U1PD_alt 2!compE affine_e1PD_alt.
 Qed.
 End bindaltDl.
 
@@ -207,11 +206,6 @@ by apply/prob_ext; rewrite s_of_pqE -H2 onemK.
 Qed.
 
 Section bindchoiceDl.
-Lemma bindchoiceDl p : BindLaws.left_distributive (@Bind m) (@choice p).
-move=> A B x y k.
-rewrite !bindE /choice FunpchoiceDr.
-suff -> : forall T (u v : m (m T)), Join (u <|p|> v : m (m T)) = Join u <|p|> Join v by [].
-move=> T u v.
 Import category.
 Import homcomp_notation.
 Local Notation F1 := free_semiCompSemiLattConvType.
@@ -220,15 +214,53 @@ Local Notation FC := free_choiceType.
 Local Notation UC := forget_choiceType.
 Local Notation U0 := forget_convType.
 Local Notation U1 := forget_semiCompSemiLattConvType.
+
+Lemma affine_F1e0U1PD_conv T (u v : m (m T)) p :
+  [fun of F1 # eps0 (U1 (P_delta_left T))] (u <|p|> v) =
+  [fun of F1 # eps0 (U1 (P_delta_left T))] u <|p|> [fun of F1 # eps0 (U1 (P_delta_left T))] v.
+Proof.
+rewrite /Conv /= /free_semiCompSemiLattConvType_mor /=; unlock.
+rewrite /free_semiCompSemiLattConvType_mor' /=; apply/necset_ext => /=.
+rewrite funeqE => /= X; rewrite propeqE; split.
+  case => /= d0.
+  rewrite necset_convType.convE => -[/= d1 [d2 [d1u [d2v ->{d0}]]]] <-{X}.
+  rewrite necset_convType.convE; exists (eps0'' d1), (eps0'' d2); split.
+    rewrite in_setE /=; exists d1; by [rewrite -in_setE | rewrite eps0E].
+  split.
+    rewrite in_setE /=; exists d2; by [rewrite -in_setE | rewrite eps0E].
+  rewrite !eps0E.
+  transitivity (eps0'' (ConvFSDist.d p d1 d2)) => //.
+  by rewrite eps0''_affine.
+rewrite necset_convType.convE => -[/= d1 [d2 []]].
+rewrite in_setE /= => -[x1 ux1 <-{d1}] -[].
+rewrite in_setE /= => -[x2 ux2 <-{d2}] ->{X}.
+exists (x1 <|p|> x2); first by rewrite necset_convType.convE; exists x1, x2; rewrite 2!in_setE.
+rewrite !eps0E.
+transitivity (eps0'' (ConvFSDist.d p x1 x2)) => //.
+by rewrite eps0''_affine.
+Qed.
+
+Lemma affine_e1PD_conv T (x y : El (F1 (FId (U1 (P_delta_left T))))) p :
+  [fun of eps1 (P_delta_left T)] (x <|p|> y) =
+  [fun of eps1 (P_delta_left T)] x <|p|> [fun of eps1 (P_delta_left T)] y.
+Proof.
+rewrite eps1E -Joet_conv_setD; congr Joet; apply/neset_ext => /=.
+by rewrite -necset_convType.conv_conv_set.
+Qed.
+
+Lemma bindchoiceDl p : BindLaws.left_distributive (@monad.Bind m) (@choice p).
+move=> A B x y k.
+rewrite !monad.bindE /choice FunpchoiceDr.
+suff -> : forall T (u v : m (m T)), monad.Join (u <|p|> v : m (m T)) = monad.Join u <|p|> monad.Join v by [].
+move=> T u v.
 rewrite /= /Monad_of_category_monad.join /=.
 rewrite HCompId HIdComp epsE'' !HCompId -!NIdFComp !HIdComp.
 have-> : (F1 \O F0) # epsC (U0 (U1 (P_delta_left T))) = idfun :> (_ -> _).
   have -> : epsC (U0 (U1 (P_delta_left T))) =
             [NEq _, _] _ by rewrite hom_ext /= epsCE.
   by rewrite functor_id.
-rewrite compfid.
-admit.
-Admitted.
+by rewrite compfid compE affine_F1e0U1PD_conv 2!compE affine_e1PD_conv.
+Qed.
 End bindchoiceDl.
 
 Definition P_delta_monadProbMixin : MonadProb.mixin_of m :=

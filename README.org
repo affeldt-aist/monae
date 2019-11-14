@@ -1,8 +1,10 @@
 * Monadic equational reasoning in Coq
 
-This repository contains a formalization of monads including several
-models and examples of monadic equational reasoning. This corresponds
-roughly to the formalization of the following papers:
+This repository contains a formalization of monads including examples
+of monadic equational reasoning and several models (in particular, a
+model for a monad that mixes non-deterministic choice and
+probabilistic choice). This corresponds roughly to the formalization
+of the following papers:
 - [Gibbons and Hinze, Just do It: Simple Monadic Equational Reasoning, ICFP 2011] (except Sect. 10.2)
 - [Gibbons, Unifying Theories of Programming with Monads, UTP 2012] (up to Sect. 7.2)
 - [Mu, Equational Reasoning for Non-determinism Monad: A Case study of Spark Aggregation, TR-IIS-19-002, Academia Sinica]
@@ -18,6 +20,9 @@ This library has been applied to other formalizations:
 - formalization of the geometrically convex monad (main reference:
   [Cheung, Distributive Interaction of Algebraic Effects, PhD Thesis, U. Oxford, 2017])
 
+** Available monads
+    [[hier.png]]
+
 ** Files
 
 - [[monae_lib.v][monae_lib.v]]: simple additions to base libraries
@@ -32,7 +37,7 @@ This library has been applied to other formalizations:
 - [[monad_model.v][monad_model.v]]: concrete models of monads (corresponding to ~{,state_,trace_}monad.v~)
 - [[proba_monad_model.v][proba_monad_model.v]]: concrete model of the probability monad
 - [[gcm_model.v][gcm_model.v]]: model of the geometrically convex monad
-- [[altprob_model.v][altprob_model.v]]: wip
+- [[altprob_model.v][altprob_model.v]]: model of a monad that mixes non-deterministic choice and probabilistic choice
 - [[example_spark.v][example_spark.v]]: example of Spark aggregation
 - [[example_nqueens.v][example_nqueens.v]]: example of the n-queens puzzle
 - [[example_relabeling.v][example_relabeling.v]]: example of tree relabeling
@@ -104,3 +109,4 @@ GNU GPLv3
 
 ** Reference
    [[https://staff.aist.go.jp/reynald.affeldt/bib/bib_en.html#affeldt2019mpc][MPC 2019 paper]]
+
