@@ -57,7 +57,7 @@ This library has been applied to other formalizations:
 
 *** Last stable version:
 
-Version 0.0.2:
+Version 0.0.3:
 3. ~opam install coq-monae~
 
 **** Requirements
