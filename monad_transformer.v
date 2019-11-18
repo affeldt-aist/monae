@@ -79,25 +79,31 @@ Definition natural_of_monadM (M N : monad) (f : monadM M N) : M ~> N :=
 
 Module MonadT.
 Record class_of (T : monad -> monad) := Class {
-  retT : forall M : monad, FId ~~> T M;
-  bindT : forall (M : monad) A B, (T M) A -> (A -> (T M) B) -> (T M) B ;
+(*  retT : forall M : monad, FId ~~> T M;
+  bindT : forall (M : monad) A B, (T M) A -> (A -> (T M) B) -> (T M) B ;*)
   liftT : forall M : monad, monadM M (T M) }.
 Record t := Pack {m : monad -> monad ; class : class_of m}.
 Module Exports.
 Notation monadT := t.
 Coercion m : monadT >-> Funclass.
-Definition RetT (T : t) : forall M : monad, FId ~~> m T M :=
+(*Definition RetT (T : t) : forall M : monad, FId ~~> m T M :=
   let: Pack _ (Class f _ _) := T return forall M : monad, FId ~~> m T M in f.
-Arguments RetT _ _ [A] : simpl never.
+Arguments RetT _ _ : simpl never.
 Definition BindT (T : t) : forall (M : monad) A B, (m T M) A -> (A -> (m T M) B) -> (m T M) B :=
   let: Pack _ (Class _ f _) := T return forall (M : monad) A B, (m T M) A -> (A -> (m T M) B) -> (m T M) B in f.
-Arguments BindT _ _ [A] [B] : simpl never.
+Arguments BindT _ _ [A] [B] : simpl never.*)
 Definition LiftT (T : t) : forall M : monad, monadM M (m T M) :=
-  let: Pack _ (Class _ _ f) := T return forall M : monad, monadM M (m T M) in f.
+  let: Pack _ (Class (*_ _*) f) := T return forall M : monad, monadM M (m T M) in f.
 Arguments LiftT _ _ : simpl never.
 End Exports.
 End MonadT.
 Export MonadT.Exports.
+
+(*Lemma test (T : monadT) : forall M, RetT T M = @RET (T M) :> (_ ~> _).
+Proof.
+move=> M; apply/nattrans_ext => A.
+rewrite boolp.funeqE => F.
+Abort.*)
 
 Section state_monad_transformer.
 
@@ -175,7 +181,7 @@ Qed.
 End state_monad_transformer.
 
 Definition stateT S : monadT :=
-  MonadT.Pack (@MonadT.Class (estateMonadM S) (@retS S) (@bindS S) (@stateMonadM S)).
+  MonadT.Pack (@MonadT.Class (estateMonadM S) (*(@retS S) (@bindS S)*) (@stateMonadM S)).
 
 Section exception_monad_transformer.
 
@@ -244,7 +250,7 @@ Qed.
 End exception_monad_transformer.
 
 Definition errorT Z : monadT :=
-  MonadT.Pack (@MonadT.Class (eexceptionMonadM Z) (@retX Z) (@bindX Z) (@exceptionMonadM Z)).
+  MonadT.Pack (@MonadT.Class (eexceptionMonadM Z) (*(@retX Z) (@bindX Z)*) (@exceptionMonadM Z)).
 
 Section continuation_monad_tranformer.
 
@@ -299,7 +305,7 @@ Qed.
 End continuation_monad_tranformer.
 
 Definition contT r : monadT :=
-  MonadT.Pack (@MonadT.Class (econtMonadM r) (@retC r) (@bindC r) (@contMonadM r)).
+  MonadT.Pack (@MonadT.Class (econtMonadM r) (*(@retC r) (@bindC r)*) (@contMonadM r)).
 
 Definition abortT r X (M : monad) A : contT r M A := fun _ : A -> M r => Ret X.
 Arguments abortT {r} _ {M} {A}.
@@ -960,7 +966,7 @@ End examples_of_programs2.
 
 Section lifting_uniform.
 
-Let M S: monad := ModelState.state S.
+Let M S : monad := ModelState.state S.
 Let optT : monadT := errorT unit.
 
 Definition lift_getX S : (StateOps.get_fun S) \O (optT (M S)) ~~> (optT (M S)) :=
@@ -970,6 +976,6 @@ Let lift_putX S : (StateOps.put_fun S) \O (optT (M S)) ~~> (optT (M S)) :=
   alifting (put_aop S) (LiftT optT (M S)).
 
 Let incr : optT (M nat) unit := (lift_getX Ret) >>= (fun i => lift_putX (i.+1, Ret tt)).
-Let prog : optT (M nat) unit:= incr >> (Fail : optT (M nat) unit) >> incr. 
+Let prog : optT (M nat) unit := incr >> (Fail : optT (M nat) unit) >> incr.
 
 End lifting_uniform.
