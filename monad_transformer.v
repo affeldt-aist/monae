@@ -36,10 +36,12 @@ Local Open Scope monae_scope.
 Module monadM.
 Section monadm.
 Variables (M N : monad).
+Definition Pret (e : M ~~> N) := forall A, Ret = e A \o Ret.
+Definition Pbind (e : M ~~> N) := forall A B (m : M A) (f : A -> M B),
+    e B (m >>= f) = e A m >>= (e B \o f).
 Record class_of (e : M ~~> N) := Class {
-  _ : forall A, Ret = e A \o Ret;
-  _ : forall A B (m : M A) (f : A -> M B),
-    e B (m >>= f) = e A m >>= (e B \o f) }.
+  _ : Pret e ;
+  _ : Pbind e }.
 Structure t := Pack { e : M ~~> N ; class : class_of e }.
 End monadm.
 Module Exports.
@@ -74,7 +76,8 @@ by rewrite compA joinMret.
 Qed.
 End monadM_lemmas.
 
-Definition natural_of_monadM (M N : monad) (f : monadM M N) : M ~> N :=
+(* TODO: canonical? *)
+Canonical natural_of_monadM (M N : monad) (f : monadM M N) : M ~> N :=
   Natural.Pack (natural_monadM f).
 
 Module MonadT.
@@ -166,7 +169,7 @@ Definition liftS A (m : M A) : estateMonadM A :=
   fun s => m >>= (fun x => Ret (x, s)).
 
 Program Definition stateMonadM : monadM M estateMonadM :=
-  monadM.Pack (@monadM.Class _ _ liftS _ _).
+  locked (monadM.Pack (@monadM.Class _ _ liftS _ _)).
 Next Obligation.
 move=> A.
 rewrite /liftS boolp.funeqE => a /=; rewrite boolp.funeqE => s /=.
@@ -201,17 +204,27 @@ Definition MX_map A B (f : A -> B) (m : MX A) : MX B :=
   fmap (fun x => match x with inl y => inl y | inr y => inr (f y) end) m.
 Local Close Scope mprog.
 
-Definition exceptionT_functor : functor.
-apply: (Functor.Pack (@Functor.Class MX MX_map _ _)).
+Lemma MX_map_i : FunctorLaws.id MX_map.
+Proof.
 move=> A; rewrite boolp.funeqE => x.
 rewrite /MX in x *.
 rewrite /MX_map.
 by rewrite (_ : (fun _ => _) = id) ?functor_id // boolp.funeqE; case.
+Qed.
+
+Lemma MX_map_o : FunctorLaws.comp MX_map.
+Proof.
 rewrite /MX_map /=.
 move=> A B C g h /=.
 rewrite boolp.funeqE => x /=.
 rewrite -[RHS]compE -functor_o /=; congr (_ # _).
 by rewrite boolp.funeqE; case.
+Qed.
+
+Definition exceptionT_functor : functor.
+apply: (Functor.Pack (@Functor.Class MX MX_map _ _)).
+exact: MX_map_i.
+exact: MX_map_o.
 Defined.
 
 Lemma naturality_retX : naturality FId exceptionT_functor retX.
@@ -886,7 +899,8 @@ Let lift_acallccS : (ContOps.acallcc_fun r) \O (stS M) ~~> (stS M) :=
 Goal forall A (f : (stS M A -> r) -> stS M A),
   lift_acallccS f = (fun s k => f (fun m => uncurry m (s, k)) s k) :> stS M A.
 move=> A f.
-by rewrite /lift_acallccS aliftingE.
+rewrite /lift_acallccS aliftingE.
+by rewrite /stS /= /stateT /= /stateMonadM /=; unlock => /=.
 Abort.
 
 Definition usual_callccS A B (f : (A -> stS M B) -> stS M A) : stS M A :=
@@ -896,7 +910,10 @@ Lemma callccS_E A B f : lift_acallccS
     (fun k : stS M A -> r =>
        f (fun x => (fun (_ : S) (_ : B * S -> r) => k (@RET (stS M) A x)) : stS M B)) =
   usual_callccS f.
-Proof. by rewrite /lift_acallccS aliftingE. Qed.
+Proof.
+rewrite /lift_acallccS aliftingE.
+by rewrite /stS /= /stateT /= /stateMonadM /=; unlock => /=.
+Qed.
 
 End continuation_stateT.
 
@@ -979,3 +996,106 @@ Let incr : optT (M nat) unit := (lift_getX Ret) >>= (fun i => lift_putX (i.+1, R
 Let prog : optT (M nat) unit := incr >> (Fail : optT (M nat) unit) >> incr.
 
 End lifting_uniform.
+
+(* wip *)
+Module Fmt.
+Section functorial_monad_transformer.
+Record class_of (T : monadT) := Class {
+  hmap : forall (M N : monad), (M ~> N) -> (T M ~> T N) ;
+(*  _ : forall (M N : monad) (t : M ~> N), Natural.P _ _ (hmap t) ;*)
+  _ : forall (M N : monad) (e : monadM M N), monadM.Pret (hmap (natural_of_monadM e)) ;
+  _ : forall (M N : monad) (e : monadM M N), monadM.Pbind (hmap (natural_of_monadM e)) ;
+  _ : forall (M : monad), hmap (NId M) = NId (T M) ;
+  _ : forall (M N P : monad) (t : M ~> N) (s : N ~> P), hmap s \v hmap t = hmap (s \v t) ;
+  _ : forall (M N : monad) (t : M ~> N), Natural.P _ _ (LiftT T M)
+}.
+Structure t := Pack { T : monadT ; class : class_of T }.
+End functorial_monad_transformer.
+Module Exports.
+Notation FMT := t.
+Coercion T : FMT >-> monadT.
+End Exports.
+End Fmt.
+Export Fmt.Exports.
+
+Section error_FMT.
+Variable X : Type.
+Let T := errorT.
+Definition hmapX (F G : monad) (tau : F ~> G) (A : Type) (t : T X F A) : T X G A :=
+  tau _ t.
+
+Lemma natural_hmapX (F G : monad) (tau : F ~> G) :
+  Natural.P (T X F) (T X G) (hmapX tau).
+Proof.
+move=> A B h.
+rewrite /hmapX -!FunctionalExtensionality.eta_expansion.
+have H : forall G, eexceptionMonadM X G # h = exceptionT_functor X G # h.
+  move=> E.
+  rewrite boolp.funeqE => m.
+  rewrite /Fun /=.
+  rewrite /Monad_of_ret_bind.Map /=.
+  rewrite /bindX /=.
+  rewrite /MX_map /=.
+  rewrite fmapE.
+  rewrite /retX /=.
+  congr (_ >>= _).
+  by rewrite boolp.funeqE; case.
+rewrite !H.
+rewrite {1}/exceptionT_functor /= {1}/Fun /=.
+rewrite /MX_map -!FunctionalExtensionality.eta_expansion.
+by rewrite natural.
+Qed.
+
+Lemma monadMret_hmapX (F G : monad) (xi : monadM F G) :
+  monadM.Pret (hmapX (natural_of_monadM xi)).
+Proof.
+move=> A.
+rewrite boolp.funeqE => /= a.
+rewrite /hmapX /retX /=.
+rewrite -(compE (xi _)).
+by rewrite -(monadMret xi).
+Qed.
+
+Lemma monadMbind_hmapX (F G : monad) (xi : monadM F G) :
+  monadM.Pbind (hmapX (natural_of_monadM xi)).
+Proof.
+Admitted.
+
+Lemma hmapX_NId (M : monad) : hmapX (NId M) = NId (T _ M).
+Proof.
+Admitted.
+
+Lemma hmapX_v (M N P : monad) (t : M ~> N) (s : N ~> P) :
+  Natural.Pack (natural_hmapX s) \v Natural.Pack (natural_hmapX t) =
+  Natural.Pack (natural_hmapX (s \v t)).
+Proof.
+Admitted.
+
+Lemma hmapX_lift (M N : monad) (t : M ~> N) :
+  Natural.P _ _ (LiftT (T X) M).
+Proof.
+Admitted.
+
+Program Definition errorFMT : FMT := @Fmt.Pack (errorT X) (@Fmt.Class _ _ _ _ _ _ _).
+Next Obligation.
+by apply: Natural.Pack; apply: natural_hmapX.
+Defined.
+Next Obligation. exact: monadMret_hmapX. Defined.
+Next Obligation. exact: monadMbind_hmapX. Defined.
+Next Obligation. (* hmapX_NId.*)  Admitted.
+Next Obligation. (* hmapX_v *) Admitted.
+Next Obligation. (* hmapX_lift *) Admitted.
+
+End error_FMT.
+
+Section Fmt_stateT.
+Variable S : Type.
+Definition hmapS (F G : monad) (tau : F ~~> G) (A : Type) (t : stateT S F A) : stateT S G A :=
+  fun s => tau _ (t s).
+
+Lemma natural_hmapS (F G : monad) (tau : F ~~> G) : Natural.P F G tau ->
+  Natural.P (stateT S F) (stateT S G) (hmapS tau).
+Proof.
+Abort.
+
+End Fmt_stateT.
