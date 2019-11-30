@@ -53,10 +53,10 @@ Export monadM.Exports.
 
 Section monadM_interface.
 Variables (M N : monad) (f : monadM M N).
-Lemma monadMret : forall A, @RET _ A = f _ \o Ret.
+Lemma monadMret : forall A, Ret = f A \o Ret.
 Proof. by case: f => ? []. Qed.
 Lemma monadMbind A B (m : M A) (h : A -> M B) :
-  f _ (m >>= h) = f _ m >>= (f _ \o h).
+  f _ (@Bind M _ _ m h) = @Bind N _ _ (f _ m) (f _ \o h).
 Proof. by case: f => ? []. Qed.
 End monadM_interface.
 
@@ -1059,32 +1059,46 @@ Qed.
 Lemma monadMbind_hmapX (F G : monad) (xi : monadM F G) :
   monadM.Pbind (hmapX (natural_of_monadM xi)).
 Proof.
-Admitted.
+move=> A B m f.
+rewrite /hmapX.
+rewrite /=.
+rewrite -!FunctionalExtensionality.eta_expansion.
+rewrite !bindE /= /bindX /=.
+rewrite !monadMbind /=.
+rewrite !bindA /=.
+congr (_ >>= _).
+rewrite boolp.funeqE.
+case.
+  move=> x.
+  rewrite bindretf.
+  rewrite -(compE (xi _)).
+  rewrite -monadMret.
+  rewrite bindretf /=.
+  rewrite -(compE (xi _)).
+  by rewrite -monadMret.
+move=> a.
+rewrite /retX bindretf /=.
+rewrite -(compE (xi _)).
+rewrite -monadMret.
+by rewrite bindretf /=.
+Qed.
 
 Lemma hmapX_NId (M : monad) : hmapX (NId M) = NId (T _ M).
-Proof.
-Admitted.
+Proof. by []. Qed.
 
 Lemma hmapX_v (M N P : monad) (t : M ~> N) (s : N ~> P) :
   Natural.Pack (natural_hmapX s) \v Natural.Pack (natural_hmapX t) =
   Natural.Pack (natural_hmapX (s \v t)).
-Proof.
-Admitted.
+Proof. exact/nattrans_ext. Qed.
 
 Lemma hmapX_lift (M N : monad) (t : M ~> N) :
   Natural.P _ _ (LiftT (T X) M).
-Proof.
-Admitted.
+Proof. move=> A B h; by rewrite natural_monadM. Qed.
 
-Program Definition errorFMT : FMT := @Fmt.Pack (errorT X) (@Fmt.Class _ _ _ _ _ _ _).
-Next Obligation.
-by apply: Natural.Pack; apply: natural_hmapX.
-Defined.
-Next Obligation. exact: monadMret_hmapX. Defined.
-Next Obligation. exact: monadMbind_hmapX. Defined.
-Next Obligation. (* hmapX_NId.*)  Admitted.
-Next Obligation. (* hmapX_v *) Admitted.
-Next Obligation. (* hmapX_lift *) Admitted.
+Program Definition errorFMT : FMT := @Fmt.Pack (errorT X)
+  (@Fmt.Class _ (fun M N nt => Natural.Pack (natural_hmapX nt)) monadMret_hmapX
+    monadMbind_hmapX _ hmapX_v hmapX_lift).
+Next Obligation. by apply/nattrans_ext. Defined.
 
 End error_FMT.
 
