@@ -134,13 +134,13 @@ Qed.
 End list.
 End List.
 
-Module Error.
-Section error.
+Module Except.
+Section except.
 Variable E : Type.
+Definition acto := fun A => (E + A)%type.
+Local Notation M := acto.
 Local Obligation Tactic := idtac.
-Definition bind := fun A B (a : E + A) (f : A -> E + B) =>
-  match a with inl z => inl z | inr b => f b end.
-Definition map := fun A B (f : A -> B) (a : @sum E A) =>
+Definition map := fun A B (f : A -> B) (a : M A) =>
   match a with inl z => inl z | inr b => inr (f b) end.
 Lemma map_id : FunctorLaws.id map.
 Proof. by move=> *; rewrite boolp.funeqE; case. Qed.
@@ -150,6 +150,8 @@ Definition functor := Functor.Pack (Functor.Class map_id map_comp).
 Lemma natural : naturality FId functor (@inr E).
 Proof. by move=> A B h; rewrite boolp.funeqE. Qed.
 Definition sum_ret : FId ~> functor := Natural.Pack natural.
+Definition bind := fun A B (a : M A) (f : A -> M B) =>
+  match a with inl z => inl z | inr b => f b end.
 Lemma left_neutral : @BindLaws.left_neutral functor bind sum_ret.
 Proof. by []. Qed.
 Lemma right_neutral : @BindLaws.right_neutral functor bind (*TODO: shouldn't be a nat trans?*)(@inr E).
@@ -157,10 +159,10 @@ Proof. by move=> ? []. Qed.
 Lemma associative : @BindLaws.associative functor bind.
 Proof. by move=> ? ? ? []. Qed.
 Definition t := Monad_of_ret_bind left_neutral right_neutral associative.
-End error.
-End Error.
+End except.
+End Except.
 
-Definition option := Error.t unit.
+Definition monae_option := Except.t unit.
 
 Module set.
 Section set.
@@ -194,8 +196,6 @@ Section state.
 Variables S : Type.
 Definition acto := fun A => S -> A * S.
 Local Notation M := acto.
-Definition bind := fun A B (m : M A) (f : A -> M B) => fun s => uncurry f (m s).
-Definition ret : FId ~~> M := fun A a => fun s => (a, s).
 Definition state_map (A B : Type) (f : A -> B) (m : M A) : M B :=
  fun (s : S) => let (x1, x2) := m s in (f x1, x2).
 Lemma state_map_id : FunctorLaws.id state_map.
@@ -210,17 +210,18 @@ rewrite boolp.funeqE => m; rewrite boolp.funeqE => s.
 by rewrite /state_map /=; case: (m s).
 Qed.
 Definition functor := Functor.Pack (Functor.Class state_map_id state_map_comp).
+Definition ret : FId ~~> M := fun A a => fun s => (a, s).
 Lemma naturality_ret : naturality FId functor ret.
 Proof. by move=> A B h; rewrite boolp.funeqE => a /=; rewrite boolp.funeqE. Qed.
 Definition state_ret : FId ~> functor := Natural.Pack naturality_ret.
-Program Definition t : monad := @Monad_of_ret_bind functor state_ret bind _ _ _.
-Next Obligation.
-move=> A B a f.
-rewrite boolp.funeqE => s.
-by rewrite /bind /state_ret /=.
-Defined.
-Next Obligation. by move=> A f; rewrite /bind boolp.funeqE => ?; case: f. Defined.
-Next Obligation. by move=> A B C a b c; rewrite /bind boolp.funeqE => ?; case: a. Defined.
+Definition bind := fun A B (m : M A) (f : A -> M B) => fun s => uncurry f (m s).
+Lemma left_neutral : @BindLaws.left_neutral functor bind state_ret.
+Proof. by move=> A B a f; rewrite boolp.funeqE => Br. Qed.
+Lemma right_neutral : @BindLaws.right_neutral functor bind state_ret.
+Proof. by move=> A f; rewrite /bind boolp.funeqE => ?; case: f. Qed.
+Lemma associative : @BindLaws.associative functor bind.
+Proof. by move=> A B C a b c; rewrite /bind boolp.funeqE => ?; case: a. Qed.
+Definition t : monad := @Monad_of_ret_bind functor state_ret bind left_neutral right_neutral associative.
 End state.
 End State.
 
@@ -253,12 +254,51 @@ End Cont.
 
 End ModelMonad.
 
+Module ExceptOps.
+Section exceptops.
+Variable Z : Type.
+
+Section throw_functor.
+Definition throw_acto (X : Type) := Z.
+Definition throw_actm X Y (f : X -> Y) (t : throw_acto X) : throw_acto Y := t.
+Program Definition throw_fun := Functor.Pack (@Functor.Class throw_acto throw_actm _ _).
+Next Obligation. by []. Qed.
+Next Obligation. by []. Qed.
+End throw_functor.
+
+Section handle_functor.
+Definition handle_acto (X : Type) := (X * (Z -> X))%type.
+Definition handle_actm X Y (f : X -> Y) (t : handle_acto X) : handle_acto Y :=
+  let: (x, h) := t in (f x, fun z => f (h z)).
+Program Definition handle_fun := Functor.Pack (@Functor.Class handle_acto handle_actm _ _).
+Next Obligation. by move=> A; rewrite boolp.funeqE; case. Qed.
+Next Obligation. by move=> A B C g h; rewrite boolp.funeqE; case. Qed.
+End handle_functor.
+
+Local Notation M := (ModelMonad.Except.t Z).
+
+Definition throw A : Z -> M A := fun z => inl z.
+Lemma naturality_throw : naturality (throw_fun \O M) M throw.
+Proof. by []. Qed.
+Definition throw_op : operation throw_fun M := Natural.Pack naturality_throw.
+
+Definition handle A (m : M A) (h : Z -> M A) : M A :=
+  match m with inl z => h z | inr x => inr x end.
+Lemma naturality_handle : naturality (handle_fun \O M) M (fun A => uncurry (@handle A)).
+Proof. by move=> A B h; rewrite boolp.funeqE; case; case. Qed.
+Definition handle_op : operation handle_fun M := Natural.Pack naturality_handle.
+End exceptops.
+End ExceptOps.
+
+Arguments ExceptOps.throw_op {Z}.
+Arguments ExceptOps.handle_op {Z}.
+
 Module ModelFail.
 
 Section option.
 Local Obligation Tactic := by [].
 Program Definition option_class := @MonadFail.Class _ _
-  (@MonadFail.Mixin ModelMonad.option (fun B => @inl _ B tt) _).
+  (@MonadFail.Mixin ModelMonad.monae_option (fun A => @ExceptOps.throw unit A tt) _).
 Definition option := MonadFail.Pack option_class.
 End option.
 
@@ -266,7 +306,7 @@ Section list.
 Local Obligation Tactic := by [].
 Program Definition list_class := @MonadFail.Class _ _
   (@MonadFail.Mixin ModelMonad.List.t (@nil) _).
-Definition list := MonadFail.Pack list_class.
+Definition monae_list := MonadFail.Pack list_class.
 End list.
 
 Section set.
@@ -277,16 +317,23 @@ Next Obligation.
 move=> A B f /=; rewrite boolp.funeqE => b; rewrite boolp.propeqE.
 by split=> // -[a []].
 Qed.
-Definition set := MonadFail.Pack set_class.
+Definition monae_set := MonadFail.Pack set_class.
 End set.
 
 End ModelFail.
 
 Module ModelExcept.
 Section except.
+Local Notation M := ModelMonad.monae_option.
+Definition handle : forall A, M A -> M A -> M A :=
+  fun A m1 m2 => @ExceptOps.handle_op unit _ (m1, (fun _ => m2)).
+Lemma handleE : handle = (fun A m m' => if m is inr x then m else m').
+Proof.
+apply FunctionalExtensionality.functional_extensionality_dep => A.
+rewrite boolp.funeqE; by case.
+Qed.
 Program Definition except_class := @MonadExcept.Class _
-  ModelFail.option_class (@MonadExcept.Mixin _
-    (fun A m m' => if m is inr x then m else m') _ _ _ _).
+  ModelFail.option_class (@MonadExcept.Mixin _ handle _ _ _ _).
 Next Obligation. by case => //; case. Qed.
 Next Obligation. by case. Qed.
 Next Obligation. by case. Qed.
@@ -296,52 +343,48 @@ End except.
 End ModelExcept.
 
 Module StateOps.
-Section get_functor.
+Section stateops.
 Variable S : Type.
+
+Section get_functor.
 Definition get_acto X := S -> X.
 Definition get_actm X Y (f : X -> Y) (t : get_acto X) : get_acto Y := fun s => f (t s).
-Program Definition get_fun := Functor.Pack (@Functor.Class get_acto get_actm _ _ ).
+Program Definition get_fun := Functor.Pack (@Functor.Class get_acto get_actm _ _).
 Next Obligation. by move=> A; rewrite /get_actm boolp.funeqE. Qed.
 Next Obligation. by move=> A B C g h; rewrite /get_actm boolp.funeqE. Qed.
 End get_functor.
 
-Definition get S A (k : S -> ModelMonad.State.acto S A) : ModelMonad.State.acto S A :=
-  fun s => k s s.
-
-Lemma naturality_get S : naturality
-  (get_fun S \O ModelMonad.State.t S) (ModelMonad.State.t S) (get (S:=S)).
-Proof.
-move=> A B h; rewrite boolp.funeqE => /= m /=.
-by rewrite boolp.funeqE => s; rewrite FCompE.
-Qed.
-
-Definition get_op S : operation (get_fun S) (ModelMonad.State.t S) :=
-  Natural.Pack (@naturality_get S).
-Arguments get_op {S}.
-
 Section put_functor.
-Variable S : Type.
 Definition put_acto X := (S * X)%type.
 Definition put_actm X Y (f : X -> Y) (sx : put_acto X) : put_acto Y := (sx.1, f sx.2).
-Program Definition put_fun := Functor.Pack (@Functor.Class put_acto put_actm _ _ ).
+Program Definition put_fun := Functor.Pack (@Functor.Class put_acto put_actm _ _).
 Next Obligation. by move=> A; rewrite /put_actm boolp.funeqE; case. Qed.
 Next Obligation. by move=> A B C g h; rewrite /put_actm boolp.funeqE. Qed.
 End put_functor.
 
-Definition put S A (s : S) (m : ModelMonad.State.acto S A) : ModelMonad.State.acto S A :=
-  fun _ => m s.
+Local Notation M := (ModelMonad.State.t S).
 
-Lemma naturality_put S : naturality (put_fun S \O ModelMonad.State.t S) (ModelMonad.State.t S)
-    (fun A => uncurry (put (A:=A))).
+Definition get A (k : S -> M A) : M A := fun s => k s s.
+Lemma naturality_get : naturality (get_fun \O M) M get.
+Proof.
+move=> A B h; rewrite boolp.funeqE => /= m /=.
+by rewrite boolp.funeqE => s; rewrite FCompE.
+Qed.
+Definition get_op : operation get_fun M := Natural.Pack naturality_get.
+
+Definition put A (s : S) (m : M A) : M A := fun _ => m s.
+Lemma naturality_put : naturality (put_fun \O M) M (fun A => uncurry (put (A:=A))).
 Proof.
 move=> A B h.
 by rewrite boolp.funeqE => /=; case => s m /=; rewrite boolp.funeqE => s'.
 Qed.
+Definition put_op : operation put_fun M := Natural.Pack naturality_put.
 
-Definition put_op S : operation (put_fun S) (ModelMonad.State.t S) :=
-  Natural.Pack (@naturality_put S).
-Arguments put_op {S}.
+End stateops.
 End StateOps.
+
+Arguments StateOps.get_op {S}.
+Arguments StateOps.put_op {S}.
 
 Module ModelState.
 Section modelstate.
@@ -353,7 +396,7 @@ Definition put : S -> M unit := fun s => StateOps.put_op _ (s, Ret tt).
 Lemma putE : put = fun s' _ => (tt, s').
 Proof. by []. Qed.
 Program Definition state : stateMonad S := MonadState.Pack (MonadState.Class
-  (@MonadState.Mixin _ (ModelMonad.State.t S) get put _ _ _ _)).
+  (@MonadState.Mixin _ _ get put _ _ _ _)).
 End modelstate.
 End ModelState.
 

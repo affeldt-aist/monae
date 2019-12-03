@@ -518,7 +518,7 @@ rewrite {2}(_ : x = eq_rect _ (fun x => x) x _ K) //; first exact: eq_rect_ret.
 by rewrite /eq_rect (_ : K = erefl) // -Classical_Prop.EqdepTheory.UIP_refl.
 Qed.
 
-Lemma eq_rect_error_ret E (p : U := ModelMonad.Error.functor E)
+Lemma eq_rect_error_ret (E : Type) (p : U := ModelMonad.Except.functor E)
   (p' : U := exceptionT_functor E ModelMonad.identity)
   (x : Q p') (h : p = p') : x = eq_rect p Q x p' h.
 Proof.
@@ -557,7 +557,7 @@ rewrite {2}(_ : x = eq_rect _ id x _ K); first exact: eq_rect_bind.
 by rewrite /eq_rect (_ : K = erefl) // -Classical_Prop.EqdepTheory.UIP_refl.
 Qed.
 
-Lemma eq_rect_bind_error E (p : U := ModelMonad.Error.functor E)
+Lemma eq_rect_bind_error E (p : U := ModelMonad.Except.functor E)
   (p' : U := exceptionT_functor E ModelMonad.identity)
   (x : Q p') (h : p = p') : x = eq_rect p Q x p' h.
 Proof.
@@ -598,16 +598,16 @@ apply (@monad_of_ret_bind_ext _ _ _ _ _ _ FG) => /=.
 set x := @bindS _ _; exact: (@eq_rect_bind_state S x (esym FG)).
 Qed.
 
-Lemma error_monad_errorT Z :
-  errorT Z ModelMonad.identity = ModelMonad.Error.t Z.
+Lemma error_monad_errorT (Z : Type) :
+  errorT Z ModelMonad.identity = ModelMonad.Except.t Z.
 Proof.
-rewrite /= /eexceptionMonadM /ModelMonad.Error.t.
-have FG : exceptionT_functor Z ModelMonad.identity = ModelMonad.Error.functor Z.
+rewrite /= /eexceptionMonadM /ModelMonad.Except.t.
+have FG : exceptionT_functor Z ModelMonad.identity = ModelMonad.Except.functor Z.
   apply: functor_ext => /=.
   apply FunctionalExtensionality.functional_extensionality_dep => A.
   apply FunctionalExtensionality.functional_extensionality_dep => B.
   rewrite boolp.funeqE => f; rewrite boolp.funeqE => m.
-  by rewrite /MX_map /Fun /= /ModelMonad.Error.map; destruct m.
+  by rewrite /MX_map /Fun /= /ModelMonad.Except.map; destruct m.
 apply (@monad_of_ret_bind_ext _ _ _ _ _ _ FG) => /=.
   apply/natural_ext => A a /=; exact: (eq_rect_error_ret _ (esym FG)).
 set x := @bindX _ _; exact: (@eq_rect_bind_error Z x (esym FG)).
