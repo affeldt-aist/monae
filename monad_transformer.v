@@ -709,26 +709,83 @@ Lemma algebraic : forall A B (f : A -> M B) (t : E (M A)),
 Proof. by case: op => ? [? ]. Qed.
 End algebraic_operation_interface.
 
+Section algebraic_operation_examples.
+
+Lemma algebraic_throw Z : algebraicity (@ExceptOps.throw_op Z).
+Proof. by []. Qed.
+
+Definition throw_aop Z : aoperation (ExceptOps.throw_fun Z) (ModelMonad.Except.t Z) :=
+  AOperation.Pack (AOperation.Mixin (@algebraic_throw Z)).
+
+(* NB: handle is not algebraic *)
+Lemma algebraic_handle Z : algebraicity (@ExceptOps.handle_op Z).
+Proof.
+move=> A B f t.
+rewrite /ExceptOps.handle_op /=.
+rewrite /ExceptOps.handle /=.
+rewrite /uncurry /prod_curry.
+case: t => -[z//|a] g /=.
+rewrite bindE /=.
+case: (f a) => // z.
+rewrite bindE /=.
+rewrite /ModelMonad.Except.bind /=.
+rewrite /Fun /=.
+rewrite /Monad_of_ret_bind.Map /=.
+rewrite /ModelMonad.Except.bind /=.
+case: (g z) => [z0|a0].
+Abort.
+
+Lemma algebraic_ask E : algebraicity (@EnvironmentOps.ask_op E).
+Proof. by []. Qed.
+
+(* NB: local is not algebraic *)
+Lemma algebraic_local E : algebraicity (@EnvironmentOps.local_op E).
+Proof.
+move=> A B f t.
+rewrite /EnvironmentOps.local_op /=.
+rewrite /EnvironmentOps.local /=.
+rewrite boolp.funeqE => e /=.
+rewrite bindE /=.
+rewrite /ModelMonad.Environment.bind /=.
+rewrite /Fun /=.
+rewrite /Monad_of_ret_bind.Map /=.
+rewrite /ModelMonad.Environment.bind /=.
+rewrite /ModelMonad.Environment.ret /=.
+rewrite /EnvironmentOps.local_actm /=.
+case: t => /= ee m.
+rewrite bindE /=.
+rewrite /ModelMonad.Environment.bind /=.
+rewrite /Fun /=.
+rewrite /Monad_of_ret_bind.Map /=.
+rewrite /ModelMonad.Environment.bind /=.
+rewrite /ModelMonad.Environment.ret /=.
+Abort.
+
 Lemma algebraic_get S : algebraicity (@StateOps.get_op S).
 Proof. by []. Qed.
 
-Program Definition get_aop S : aoperation (StateOps.get_fun S) (ModelMonad.State.t S) :=
-  AOperation.Pack ((*AOperation.Class _*) (AOperation.Mixin (@algebraic_get S))).
-(*Next Obligation. by []. Qed.*)
+Definition get_aop S : aoperation (StateOps.get_fun S) (ModelMonad.State.t S) :=
+  AOperation.Pack (AOperation.Mixin (@algebraic_get S)).
 
 Lemma algebraic_put S : algebraicity (@StateOps.put_op S).
 Proof. by move=> ? ? ? []. Qed.
 
-Program Definition put_aop S : aoperation (StateOps.put_fun S) (ModelMonad.State.t S) :=
-  AOperation.Pack ((*AOperation.Class _*) (AOperation.Mixin (@algebraic_put S))).
-(*Next Obligation. by []. Qed.*)
+Definition put_aop S : aoperation (StateOps.put_fun S) (ModelMonad.State.t S) :=
+  AOperation.Pack (AOperation.Mixin (@algebraic_put S)).
+
+Lemma algebraicity_abort r : algebraicity (ContOps.abort_op r).
+Proof. by []. Qed.
+
+Definition abort_aop r : aoperation (ContOps.abort_fun r) (ModelMonad.Cont.t r) :=
+  AOperation.Pack (AOperation.Mixin (@algebraicity_abort r)).
 
 Lemma algebraicity_callcc r : algebraicity (ContOps.acallcc_op r).
 Proof. by []. Qed.
 
-Program Definition callcc_aop r : aoperation (ContOps.acallcc_fun r) (ModelMonad.Cont.t r) :=
-  AOperation.Pack ((*AOperation.Class _*) (AOperation.Mixin (@algebraicity_callcc r))).
-(*Next Obligation. by []. Qed.*)
+Definition callcc_aop r : aoperation (ContOps.acallcc_fun r) (ModelMonad.Cont.t r) :=
+  AOperation.Pack (AOperation.Mixin (@algebraicity_callcc r)).
+
+End algebraic_operation_examples.
 
 Section proposition17.
 Section psi.

@@ -17,6 +17,7 @@ This library has been applied to other formalizations:
 - application to program semantics (see files ~smallstep*.v~)
 - formalization of monad composition [Jones and Duponcheel, Composing Monads, Yale RR 1993] (Sections 2 and 3)
 - formalization of monad transformers [Jaskelioff, Modular Monad Transformers, ESOP 2009] (up to Sect. 4)
+  + completed with details from [Jaskelioff, Lifting of Operations in Modular Monadic Semantics, PhD 2009]
 - formalization of the geometrically convex monad (main reference:
   [Cheung, Distributive Interaction of Algebraic Effects, PhD Thesis, U. Oxford, 2017])
 
