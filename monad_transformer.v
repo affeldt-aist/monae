@@ -711,6 +711,27 @@ End algebraic_operation_interface.
 
 Section algebraic_operation_examples.
 
+Lemma algebraic_output L : algebraicity (@OutputOps.output_op L).
+Proof.
+move=> A B f [w [x w']].
+rewrite bindE /= /OutputOps.output /= bindE /= !cats0.
+by case: f => x' w''; rewrite catA.
+Qed.
+
+(* NB: flush is not algebraic *)
+Lemma algebraic_flush L : algebraicity (@OutputOps.flush_op L).
+Proof.
+move=> A B f [x w].
+rewrite /OutputOps.flush_op /=.
+rewrite /OutputOps.flush /=.
+rewrite /Fun /=.
+rewrite bindE /=.
+rewrite /OutputOps.flush_actm.
+rewrite bindE /=.
+rewrite cats0.
+case: f => x' w'.
+Abort.
+
 Lemma algebraic_throw Z : algebraicity (@ExceptOps.throw_op Z).
 Proof. by []. Qed.
 

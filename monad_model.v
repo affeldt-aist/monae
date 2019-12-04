@@ -191,6 +191,34 @@ Next Obligation. move=> ? ? ? ? ? ?; exact: bigsetUA. Qed.
 End monaeset.
 End MonaeSet.
 
+Module Output.
+Section output.
+Variable L : Type.
+Definition acto := fun X => (X * seq L)%type.
+Local Notation M := acto.
+Definition output_map A B (f : A -> B) (m : M A) : M B :=
+  let: (a, s) := m in (f a, s).
+Lemma map_id : FunctorLaws.id output_map.
+Proof. by move=> A; rewrite boolp.funeqE; case. Qed.
+Lemma map_comp : FunctorLaws.comp output_map.
+Proof. by move=> A B C g h; rewrite boolp.funeqE; case. Qed.
+Definition functor := Functor.Pack (Functor.Class map_id map_comp).
+Definition ret : FId ~~> M := fun A a => (a, [::]).
+Lemma naturality_ret : naturality FId functor ret.
+Proof. by move=> A B h; rewrite boolp.funeqE. Qed.
+Definition output_ret : FId ~> functor := Natural.Pack naturality_ret.
+Definition bind := fun A B (m : M A) (f : A -> M B) =>
+  let: (x, w) := m in let: (x', w') := f x in (x', w ++ w').
+Lemma left_neutral : @BindLaws.left_neutral functor bind output_ret.
+Proof. by move=> A B a f; rewrite /bind /=; case: f. Qed.
+Lemma right_neutral : @BindLaws.right_neutral functor bind output_ret.
+Proof. by move=> A m; rewrite /bind /=; case: m => x w; rewrite cats0. Qed.
+Lemma associative : @BindLaws.associative functor bind.
+Proof. by move=> A B C m f g; rewrite /bind; case: m => x w; case: f => x' w'; case: g => x'' w''; rewrite catA. Qed.
+Definition t : monad := @Monad_of_ret_bind functor output_ret bind left_neutral right_neutral associative.
+End output.
+End Output.
+
 Module Environment.
 Section environment.
 Variable E : Type.
@@ -278,6 +306,62 @@ End cont.
 End Cont.
 
 End ModelMonad.
+
+Module OutputOps.
+Section outputops.
+Variable L : Type.
+
+Section output_functor.
+Definition output_acto X := (seq L * X)%type.
+Definition output_actm X Y (f : X -> Y) (t : output_acto X) : output_acto Y :=
+  let: (w, x) := t in (w, f x).
+Program Definition output_fun := Functor.Pack (@Functor.Class _ output_actm _ _).
+Next Obligation. by move=> A; rewrite boolp.funeqE; case. Qed.
+Next Obligation. by move=> A B C f g; rewrite boolp.funeqE; case. Qed.
+End output_functor.
+
+Section flush_functor.
+Definition flush_acto (X : Type) := X.
+Definition flush_actm X Y (f : X -> Y) (t : flush_acto X) : flush_acto Y := f t.
+Program Definition flush_fun := Functor.Pack (@Functor.Class _ flush_actm _ _).
+Next Obligation. by []. Qed.
+Next Obligation. by []. Qed.
+End flush_functor.
+
+Local Notation M := (ModelMonad.Output.t L).
+
+Definition output A : (seq L * M A) -> M A := fun m => let: (x, w') := m.2 in (x, m.1 ++ w'). (*NB: w'++m.1 in the esop paper*)
+Lemma naturality_output : naturality (output_fun \O M) M output.
+Proof.
+move=> A B h; rewrite boolp.funeqE; case => w [x w'] /=.
+by rewrite /output /= cats0 /Fun /= /Monad_of_ret_bind.Map /= cats0.
+Qed.
+Definition output_op : operation output_fun M := Natural.Pack naturality_output.
+
+Definition flush A : M A -> M A := fun m => let: (x, _) := m in (x, [::]).
+(* performing a computation in a modified environment *)
+Lemma naturality_flush : naturality (flush_fun \O M) M flush.
+Proof. by move=> A B h; rewrite boolp.funeqE; case. Qed.
+Definition flush_op : operation flush_fun M := Natural.Pack naturality_flush.
+
+End outputops.
+End OutputOps.
+
+(* wip *)
+Module ModelOutput.
+Section modeloutput.
+Variable L : Type.
+Local Notation M := (ModelMonad.Output.t L).
+(* usual output operation *)
+Definition output : seq L -> M unit := fun w => OutputOps.output_op _ _ (w, Ret tt).
+Lemma outputE : output = fun w => (tt, w).
+Proof.
+rewrite boolp.funeqE => w.
+by rewrite /output /OutputOps.output_op /= /OutputOps.output /= cats0.
+Qed.
+(* TODO: complete with an interface for the output monad and instantiate *)
+End modeloutput.
+End ModelOutput.
 
 Module EnvironmentOps.
 Section environmentops.
