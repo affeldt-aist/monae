@@ -109,60 +109,30 @@ End identity.
 
 Module List.
 Section list.
-Local Obligation Tactic := idtac.
+Definition acto := fun A => seq A.
+Local Notation M := acto.
 Lemma map_id : @FunctorLaws.id seq (@map).
-Proof.
-by rewrite /FunctorLaws.id => A; rewrite boolp.funeqE => x; rewrite map_id.
-Qed.
+Proof. by move=> A; rewrite boolp.funeqE => x; rewrite map_id. Qed.
 Lemma map_comp : @FunctorLaws.comp seq (@map).
 Proof. by move=> A B C g h; rewrite boolp.funeqE => x; rewrite map_comp. Qed.
-
 Definition functor := Functor.Pack (Functor.Class map_id map_comp).
-
-Lemma seq_naturality : naturality FId functor (fun A => cons^~ [::]).
+Definition ret := fun A : Type => (@cons A)^~ [::].
+Lemma seq_naturality : naturality FId functor ret.
 Proof. by move=> A B h; rewrite boolp.funeqE. Qed.
-
 Let ret : FId ~> functor := Natural.Pack seq_naturality.
-
-Program Definition t := @Monad_of_ret_bind functor ret
-  (fun A B (a : seq A) (f : A -> seq B) => flatten (map f a)) _ _ _.
-Next Obligation. move=> ? ? ? ? /=; by rewrite cats0. Qed.
-Next Obligation. move=> ? ?; by rewrite flatten_seq1. Qed.
-Next Obligation.
-move=> A B C; elim=> // h t IH f g /=; by rewrite map_cat flatten_cat IH.
+Definition list_ret : FId ~> functor := Natural.Pack seq_naturality.
+Definition bind := fun A B (a : M A) (f : A -> M B) => flatten (map f a).
+Lemma left_neutral : @BindLaws.left_neutral functor bind list_ret.
+Proof. by move=> A B m f; rewrite /bind /list_ret /= cats0. Qed.
+Lemma right_neutral : @BindLaws.right_neutral functor bind list_ret.
+Proof. by move=> A m; rewrite /bind flatten_seq1. Qed.
+Lemma associative : @BindLaws.associative functor bind.
+Proof.
+by move=> A B C; elim => // h t; rewrite /bind => ih f g; rewrite /= map_cat flatten_cat /= ih.
 Qed.
+Definition t := Monad_of_ret_bind left_neutral right_neutral associative.
 End list.
 End List.
-
-Module Except.
-Section except.
-Variable E : Type.
-Definition acto := fun A => (E + A)%type.
-Local Notation M := acto.
-Local Obligation Tactic := idtac.
-Definition map := fun A B (f : A -> B) (a : M A) =>
-  match a with inl z => inl z | inr b => inr (f b) end.
-Lemma map_id : FunctorLaws.id map.
-Proof. by move=> *; rewrite boolp.funeqE; case. Qed.
-Lemma map_comp : FunctorLaws.comp map.
-Proof. by move=> *; rewrite boolp.funeqE; case. Qed.
-Definition functor := Functor.Pack (Functor.Class map_id map_comp).
-Lemma natural : naturality FId functor (@inr E).
-Proof. by move=> A B h; rewrite boolp.funeqE. Qed.
-Definition sum_ret : FId ~> functor := Natural.Pack natural.
-Definition bind := fun A B (a : M A) (f : A -> M B) =>
-  match a with inl z => inl z | inr b => f b end.
-Lemma left_neutral : @BindLaws.left_neutral functor bind sum_ret.
-Proof. by []. Qed.
-Lemma right_neutral : @BindLaws.right_neutral functor bind (*TODO: shouldn't be a nat trans?*)(@inr E).
-Proof. by move=> ? []. Qed.
-Lemma associative : @BindLaws.associative functor bind.
-Proof. by move=> ? ? ? []. Qed.
-Definition t := Monad_of_ret_bind left_neutral right_neutral associative.
-End except.
-End Except.
-
-Definition monae_option := Except.t unit.
 
 Module MonaeSet.
 Section monaeset.
@@ -191,6 +161,36 @@ Next Obligation. move=> ? ? ? ? ? ?; exact: bigsetUA. Qed.
 End monaeset.
 End MonaeSet.
 
+Module Except.
+Section except.
+Variable E : Type.
+Definition acto := fun A => (E + A)%type.
+Local Notation M := acto.
+Definition map := fun A B (f : A -> B) (a : M A) =>
+  match a with inl z => inl z | inr b => inr (f b) end.
+Lemma map_id : FunctorLaws.id map.
+Proof. by move=> *; rewrite boolp.funeqE; case. Qed.
+Lemma map_comp : FunctorLaws.comp map.
+Proof. by move=> *; rewrite boolp.funeqE; case. Qed.
+Definition functor := Functor.Pack (Functor.Class map_id map_comp).
+Definition ret := @inr E.
+Lemma natural : naturality FId functor ret.
+Proof. by move=> A B h; rewrite boolp.funeqE. Qed.
+Definition sum_ret : FId ~> functor := Natural.Pack natural.
+Definition bind := fun A B (a : M A) (f : A -> M B) =>
+  match a with inl z => inl z | inr b => f b end.
+Lemma left_neutral : @BindLaws.left_neutral functor bind sum_ret.
+Proof. by []. Qed.
+Lemma right_neutral : @BindLaws.right_neutral functor bind (*TODO: shouldn't be a nat trans?*)(@inr E).
+Proof. by move=> ? []. Qed.
+Lemma associative : @BindLaws.associative functor bind.
+Proof. by move=> ? ? ? []. Qed.
+Definition t := Monad_of_ret_bind left_neutral right_neutral associative.
+End except.
+End Except.
+
+Definition monae_option := Except.t unit.
+
 Module Output.
 Section output.
 Variable L : Type.
@@ -214,7 +214,9 @@ Proof. by move=> A B a f; rewrite /bind /=; case: f. Qed.
 Lemma right_neutral : @BindLaws.right_neutral functor bind output_ret.
 Proof. by move=> A m; rewrite /bind /=; case: m => x w; rewrite cats0. Qed.
 Lemma associative : @BindLaws.associative functor bind.
-Proof. by move=> A B C m f g; rewrite /bind; case: m => x w; case: f => x' w'; case: g => x'' w''; rewrite catA. Qed.
+Proof.
+by move=> A B C m f g; rewrite /bind; case: m => x w; case: f => x' w'; case: g => x'' w''; rewrite catA.
+Qed.
 Definition t : monad := @Monad_of_ret_bind functor output_ret bind left_neutral right_neutral associative.
 End output.
 End Output.
@@ -278,9 +280,10 @@ Definition t : monad := @Monad_of_ret_bind functor state_ret bind left_neutral r
 End state.
 End State.
 
+(* among other refs:
+https://qiita.com/suharahiromichi/items/f07f932103c28f36dd0e *)
 Module Cont.
 Section cont.
-(* https://qiita.com/suharahiromichi/items/f07f932103c28f36dd0e *)
 Variable r : Type.
 Definition acto := fun A => (A -> r) -> r.
 Local Notation M := acto.
@@ -306,6 +309,46 @@ End cont.
 End Cont.
 
 End ModelMonad.
+
+Module ListOps.
+Section listops.
+
+Section empty_functor.
+Definition empty_acto (X : Type) := unit.
+Definition empty_actm X Y (f : X -> Y) (t : empty_acto X) : empty_acto Y := tt.
+Program Definition empty_fun := Functor.Pack (@Functor.Class _ empty_actm _ _).
+Next Obligation. by move=> A; rewrite boolp.funeqE; case. Qed.
+Next Obligation. by move=> A B C f g; rewrite boolp.funeqE; case. Qed.
+End empty_functor.
+
+Section append_functor.
+Definition append_acto (X : Type) := (X * X)%type.
+Definition append_actm X Y (f : X -> Y) (t : append_acto X) : append_acto Y :=
+  let: (x1, x2) := t in (f x1, f x2).
+Program Definition append_fun := Functor.Pack (@Functor.Class _ append_actm _ _).
+Next Obligation. by move=> A; rewrite boolp.funeqE; case. Qed.
+Next Obligation. by move=> A B C f g; rewrite boolp.funeqE; case. Qed.
+End append_functor.
+
+Local Notation M := ModelMonad.List.t.
+
+Definition empty A : unit -> M A := fun _ => @nil A.
+Lemma naturality_empty : naturality (empty_fun \O M) M empty.
+Proof. by move=> A B h; rewrite boolp.funeqE. Qed.
+Definition empty_op : operation empty_fun M := Natural.Pack naturality_empty.
+
+Definition append A : (M A * M A)%type -> M A := fun x => let: (s1, s2) := x in (s1 ++ s2).
+Lemma naturality_append : naturality (append_fun \O M) M append.
+Proof.
+move=> A B h; rewrite boolp.funeqE; case => s1 s2 /=.
+rewrite /Fun /= /Monad_of_ret_bind.Map /=.
+rewrite /ModelMonad.List.bind /= /ModelMonad.List.ret /=.
+by rewrite map_cat flatten_cat.
+Qed.
+Definition append_op : operation append_fun M := Natural.Pack naturality_append.
+
+End listops.
+End ListOps.
 
 Module OutputOps.
 Section outputops.
@@ -566,15 +609,13 @@ Program Definition list_class := @MonadAlt.Class _ _
   (@MonadAlt.Mixin ModelMonad.List.t (@cat) catA _).
 Next Obligation.
 move=> A B /= s1 s2 k.
-rewrite !bindE /Join /= /Monad_of_ret_bind.join /=.
+rewrite !bindE /Join /= /Monad_of_ret_bind.join /= /ModelMonad.List.bind /=.
 rewrite (_ : (ModelMonad.List.t # k) (s1 ++ s2) =
-  ((ModelMonad.List.t # k) s1)
-  ++
-  ((ModelMonad.List.t # k) s2)
-  ); last first.
+  ((ModelMonad.List.t # k) s1) ++
+  ((ModelMonad.List.t # k) s2)); last first.
   rewrite !(@Monad_of_ret_bind.MapE ModelMonad.List.functor) /=.
-  by rewrite map_cat flatten_cat.
-by rewrite map_cat flatten_cat.
+  by rewrite /ModelMonad.List.bind map_cat flatten_cat.
+by rewrite /ModelMonad.List.bind map_cat flatten_cat.
 Qed.
 Definition list := MonadAlt.Pack list_class.
 End list.

@@ -711,6 +711,18 @@ End algebraic_operation_interface.
 
 Section algebraic_operation_examples.
 
+Lemma algebraic_empty : algebraicity ListOps.empty_op.
+Proof. by []. Qed.
+
+Lemma algebraic_append : algebraicity ListOps.append_op.
+Proof.
+move=> A B f [t1 t2] /=.
+rewrite !bindE /= /ModelMonad.List.bind /= /Fun /=.
+rewrite /Monad_of_ret_bind.Map /=.
+rewrite /ModelMonad.List.bind /= /ModelMonad.List.ret /=.
+by rewrite -flatten_cat -map_cat /= -flatten_cat -map_cat.
+Qed.
+
 Lemma algebraic_output L : algebraicity (@OutputOps.output_op L).
 Proof.
 move=> A B f [w [x w']].
