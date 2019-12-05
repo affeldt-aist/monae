@@ -592,7 +592,7 @@ have FG : MS_functor S ModelMonad.identity = ModelMonad.State.functor S.
   apply FunctionalExtensionality.functional_extensionality_dep => A.
   apply FunctionalExtensionality.functional_extensionality_dep => B.
   rewrite boolp.funeqE => f; rewrite boolp.funeqE => m; rewrite boolp.funeqE => s.
-  by rewrite /MS_fmap /Fun /= /ModelMonad.State.state_map; destruct (m s).
+  by rewrite /MS_fmap /Fun /= /ModelMonad.State.map; destruct (m s).
 apply (@monad_of_ret_bind_ext _ _ _ _ _ _ FG) => /=.
   apply/natural_ext => A a /=; exact: eq_rect_state_ret _ (esym FG).
 set x := @bindS _ _; exact: (@eq_rect_bind_state S x (esym FG)).
@@ -717,9 +717,9 @@ Proof. by []. Qed.
 Lemma algebraic_append : algebraicity ListOps.append_op.
 Proof.
 move=> A B f [t1 t2] /=.
-rewrite !bindE /= /ModelMonad.List.bind /= /Fun /=.
+rewrite !bindE /= /ModelMonad.ListMonad.bind /= /Fun /=.
 rewrite /Monad_of_ret_bind.Map /=.
-rewrite /ModelMonad.List.bind /= /ModelMonad.List.ret /=.
+rewrite /ModelMonad.ListMonad.bind /= /ModelMonad.ListMonad.ret /=.
 by rewrite -flatten_cat -map_cat /= -flatten_cat -map_cat.
 Qed.
 
@@ -738,7 +738,7 @@ rewrite /OutputOps.flush_op /=.
 rewrite /OutputOps.flush /=.
 rewrite /Fun /=.
 rewrite bindE /=.
-rewrite /OutputOps.flush_actm.
+rewrite /OutputOps.Flush.actm.
 rewrite bindE /=.
 rewrite cats0.
 case: f => x' w'.
@@ -747,7 +747,7 @@ Abort.
 Lemma algebraic_throw Z : algebraicity (@ExceptOps.throw_op Z).
 Proof. by []. Qed.
 
-Definition throw_aop Z : aoperation (ExceptOps.throw_fun Z) (ModelMonad.Except.t Z) :=
+Definition throw_aop Z : aoperation (ExceptOps.Throw.func Z) (ModelMonad.Except.t Z) :=
   AOperation.Pack (AOperation.Mixin (@algebraic_throw Z)).
 
 (* NB: handle is not algebraic *)
@@ -784,7 +784,7 @@ rewrite /Fun /=.
 rewrite /Monad_of_ret_bind.Map /=.
 rewrite /ModelMonad.Environment.bind /=.
 rewrite /ModelMonad.Environment.ret /=.
-rewrite /EnvironmentOps.local_actm /=.
+rewrite /EnvironmentOps.Local.actm /=.
 case: t => /= ee m.
 rewrite bindE /=.
 rewrite /ModelMonad.Environment.bind /=.
@@ -797,25 +797,25 @@ Abort.
 Lemma algebraic_get S : algebraicity (@StateOps.get_op S).
 Proof. by []. Qed.
 
-Definition get_aop S : aoperation (StateOps.get_fun S) (ModelMonad.State.t S) :=
+Definition get_aop S : aoperation (StateOps.Get.func S) (ModelMonad.State.t S) :=
   AOperation.Pack (AOperation.Mixin (@algebraic_get S)).
 
 Lemma algebraic_put S : algebraicity (@StateOps.put_op S).
 Proof. by move=> ? ? ? []. Qed.
 
-Definition put_aop S : aoperation (StateOps.put_fun S) (ModelMonad.State.t S) :=
+Definition put_aop S : aoperation (StateOps.Put.func S) (ModelMonad.State.t S) :=
   AOperation.Pack (AOperation.Mixin (@algebraic_put S)).
 
 Lemma algebraicity_abort r : algebraicity (ContOps.abort_op r).
 Proof. by []. Qed.
 
-Definition abort_aop r : aoperation (ContOps.abort_fun r) (ModelMonad.Cont.t r) :=
+Definition abort_aop r : aoperation (ContOps.Abort.func r) (ModelMonad.Cont.t r) :=
   AOperation.Pack (AOperation.Mixin (@algebraicity_abort r)).
 
 Lemma algebraicity_callcc r : algebraicity (ContOps.acallcc_op r).
 Proof. by []. Qed.
 
-Definition callcc_aop r : aoperation (ContOps.acallcc_fun r) (ModelMonad.Cont.t r) :=
+Definition callcc_aop r : aoperation (ContOps.Acallcc.func r) (ModelMonad.Cont.t r) :=
   AOperation.Pack (AOperation.Mixin (@algebraicity_callcc r)).
 
 End algebraic_operation_examples.
@@ -963,7 +963,7 @@ Variable (S Z : Type).
 Let M : monad := ModelState.state S.
 Let erZ : monadT := errorT Z.
 
-Let lift_getX : (StateOps.get_fun S) \O (erZ M) ~~> (erZ M) :=
+Let lift_getX : (StateOps.Get.func S) \O (erZ M) ~~> (erZ M) :=
   alifting (get_aop S) (LiftT erZ M).
 
 Goal forall X (k : S -> erZ M X), lift_getX k = StateOps.get k :> erZ M X.
@@ -983,7 +983,7 @@ Variable (r S : Type).
 Let M : monad := ModelCont.t r.
 Let stS : monadT := stateT S.
 
-Let lift_acallccS : (ContOps.acallcc_fun r) \O (stS M) ~~> (stS M) :=
+Let lift_acallccS : (ContOps.Acallcc.func r) \O (stS M) ~~> (stS M) :=
   alifting (callcc_aop r) (LiftT stS M).
 
 Goal forall A (f : (stS M A -> r) -> stS M A),
@@ -1076,10 +1076,10 @@ Section lifting_uniform.
 Let M S : monad := ModelState.state S.
 Let optT : monadT := errorT unit.
 
-Definition lift_getX S : (StateOps.get_fun S) \O (optT (M S)) ~~> (optT (M S)) :=
+Definition lift_getX S : (StateOps.Get.func S) \O (optT (M S)) ~~> (optT (M S)) :=
   alifting (get_aop S) (LiftT optT (M S)).
 
-Let lift_putX S : (StateOps.put_fun S) \O (optT (M S)) ~~> (optT (M S)) :=
+Let lift_putX S : (StateOps.Put.func S) \O (optT (M S)) ~~> (optT (M S)) :=
   alifting (put_aop S) (LiftT optT (M S)).
 
 Let incr : optT (M nat) unit := (lift_getX Ret) >>= (fun i => lift_putX (i.+1, Ret tt)).
