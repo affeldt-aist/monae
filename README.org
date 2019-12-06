@@ -1,5 +1,7 @@
 * Monadic equational reasoning in Coq
 
+[[https://travis-ci.com/affeldt-aist/monae][file:https://travis-ci.com/affeldt-aist/monae.svg?branch=master]]
+
 This repository contains a formalization of monads including examples
 of monadic equational reasoning and several models (in particular, a
 model for a monad that mixes non-deterministic choice and
@@ -58,18 +60,17 @@ This library has been applied to other formalizations:
 
 *** Last stable version:
 
-Version 0.0.3:
+Version 0.0.4:
 3. ~opam install coq-monae~
 
 **** Requirements
 
 - [[https://coq.inria.fr][Coq]] 8.10
-- [[https://github.com/math-comp/math-comp][Mathematical Components library]] 1.9.0
-- [[https://github.com/affeldt-aist/infotheo][infotheo]] 0.0.5
-  + which requires [[https://github.com/math-comp/analysis][MathComp-Analysis]] 0.2.2
+- [[https://github.com/math-comp/math-comp][Mathematical Components library]] 1.9.0 or greater
+- [[https://github.com/affeldt-aist/infotheo][infotheo]] 0.0.5 or greater
+  + which requires [[https://github.com/math-comp/analysis][MathComp-Analysis]] 0.2.2 or greater
     * which requires
-      - [[https://github.com/math-comp/bigenough/][bigenough]] first release
-      - [[https://github.com/math-comp/finmap][finmap]] 1.2.1
+      - [[https://github.com/math-comp/finmap][finmap]] 1.2.0 or greater
 
 All versions available from opam.
 
