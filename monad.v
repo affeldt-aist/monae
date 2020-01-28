@@ -63,11 +63,11 @@ End def.
 End FunctorLaws.
 
 Module Functor.
-Record class_of (m : Type -> Type) : Type := Class {
+Record mixin_of (m : Type -> Type) : Type := Class {
   f : forall A B, (A -> B) -> m A -> m B ;
   _ : FunctorLaws.id f ;
   _ : FunctorLaws.comp f }.
-Structure t : Type := Pack { m : Type -> Type ; class : class_of m }.
+Structure t : Type := Pack { m : Type -> Type ; class : mixin_of m }.
 Module Exports.
 Definition Fun (F : t) : forall A B, (A -> B) -> m F A -> m F B :=
   let: Pack _ (Class f _ _) := F return forall A B, (A -> B) -> m F A -> m F B in f.
@@ -538,7 +538,7 @@ Record mixin_of (M : functor) : Type := Mixin {
   _ : JoinLaws.associativity join
   }.
 Record class_of (M : Type -> Type) := Class {
-  base : Functor.class_of M ; mixin : mixin_of (Functor.Pack base) }.
+  base : Functor.mixin_of M ; mixin : mixin_of (Functor.Pack base) }.
 Structure t : Type := Pack { m : Type -> Type ; class : class_of m }.
 Definition baseType (M : t) := Functor.Pack (base (class M)).
 Module Exports.

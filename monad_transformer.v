@@ -39,10 +39,10 @@ Variables (M N : monad).
 Definition Pret (e : M ~~> N) := forall A, Ret = e A \o Ret.
 Definition Pbind (e : M ~~> N) := forall A B (m : M A) (f : A -> M B),
     e B (m >>= f) = e A m >>= (e B \o f).
-Record class_of (e : M ~~> N) := Class {
+Record mixin_of (e : M ~~> N) := Class {
   _ : Pret e ;
   _ : Pbind e }.
-Structure t := Pack { e : M ~~> N ; class : class_of e }.
+Structure t := Pack { e : M ~~> N ; class : mixin_of e }.
 End monadm.
 Module Exports.
 Notation monadM := t.
@@ -81,32 +81,18 @@ Canonical natural_of_monadM (M N : monad) (f : monadM M N) : M ~> N :=
   Natural.Pack (natural_monadM f).
 
 Module MonadT.
-Record class_of (T : monad -> monad) := Class {
-(*  retT : forall M : monad, FId ~~> T M;
-  bindT : forall (M : monad) A B, (T M) A -> (A -> (T M) B) -> (T M) B ;*)
+Record mixin_of (T : monad -> monad) := Class {
   liftT : forall M : monad, monadM M (T M) }.
-Record t := Pack {m : monad -> monad ; class : class_of m}.
+Record t := Pack {m : monad -> monad ; class : mixin_of m}.
 Module Exports.
 Notation monadT := t.
 Coercion m : monadT >-> Funclass.
-(*Definition RetT (T : t) : forall M : monad, FId ~~> m T M :=
-  let: Pack _ (Class f _ _) := T return forall M : monad, FId ~~> m T M in f.
-Arguments RetT _ _ : simpl never.
-Definition BindT (T : t) : forall (M : monad) A B, (m T M) A -> (A -> (m T M) B) -> (m T M) B :=
-  let: Pack _ (Class _ f _) := T return forall (M : monad) A B, (m T M) A -> (A -> (m T M) B) -> (m T M) B in f.
-Arguments BindT _ _ [A] [B] : simpl never.*)
 Definition LiftT (T : t) : forall M : monad, monadM M (m T M) :=
-  let: Pack _ (Class (*_ _*) f) := T return forall M : monad, monadM M (m T M) in f.
+  let: Pack _ (Class f) := T return forall M : monad, monadM M (m T M) in f.
 Arguments LiftT _ _ : simpl never.
 End Exports.
 End MonadT.
 Export MonadT.Exports.
-
-(*Lemma test (T : monadT) : forall M, RetT T M = @RET (T M) :> (_ ~> _).
-Proof.
-move=> M; apply/nattrans_ext => A.
-rewrite boolp.funeqE => F.
-Abort.*)
 
 Section state_monad_transformer.
 
@@ -124,22 +110,22 @@ Definition bindS A B (m : MS A) f := (fun s => m s >>= uncurry f) : MS B.
 Definition MS_fmap A B (f : A -> B) (m : MS A) : MS B :=
   fun s => (M # (fun x => (f x.1, x.2))) (m s).
 
-Definition MS_functor : functor.
-apply: (Functor.Pack (@Functor.Class MS MS_fmap _ _)).
-move=> A.
-rewrite boolp.funeqE => m.
-rewrite /MS_fmap /=.
-rewrite boolp.funeqE => s.
+Lemma MS_id : FunctorLaws.id MS_fmap.
+Proof.
+move=> A; rewrite boolp.funeqE => m.
+rewrite /MS_fmap /= boolp.funeqE => s.
 rewrite (_ : (fun x : A * S => (x.1, x.2)) = id) //.
 by rewrite functor_id.
 by rewrite boolp.funeqE; case.
-move=> A B C g h.
-rewrite /MS_fmap.
-rewrite boolp.funeqE => m.
-rewrite boolp.funeqE => s /=.
-rewrite -[RHS]compE.
-by rewrite -functor_o /=.
-Defined.
+Qed.
+
+Lemma MS_comp : FunctorLaws.comp MS_fmap.
+Proof.
+move=> A B C g h; rewrite /MS_fmap boolp.funeqE => m.
+by rewrite boolp.funeqE => s /=; rewrite -[RHS]compE -functor_o /=.
+Qed.
+
+Definition MS_functor := Functor.Pack (Functor.Class MS_id MS_comp).
 
 Lemma naturality_retS : naturality FId MS_functor retS.
 Proof.
@@ -184,7 +170,7 @@ Qed.
 End state_monad_transformer.
 
 Definition stateT S : monadT :=
-  MonadT.Pack (@MonadT.Class (estateMonadM S) (*(@retS S) (@bindS S)*) (@stateMonadM S)).
+  MonadT.Pack (@MonadT.Class (estateMonadM S) (@stateMonadM S)).
 
 Section exception_monad_transformer.
 
@@ -221,11 +207,7 @@ rewrite -[RHS]compE -functor_o /=; congr (_ # _).
 by rewrite boolp.funeqE; case.
 Qed.
 
-Definition exceptionT_functor : functor.
-apply: (Functor.Pack (@Functor.Class MX MX_map _ _)).
-exact: MX_map_i.
-exact: MX_map_o.
-Defined.
+Definition exceptionT_functor := Functor.Pack (Functor.Class MX_map_i MX_map_o).
 
 Lemma naturality_retX : naturality FId exceptionT_functor retX.
 Proof.
@@ -318,7 +300,7 @@ Qed.
 End continuation_monad_tranformer.
 
 Definition contT r : monadT :=
-  MonadT.Pack (@MonadT.Class (econtMonadM r) (*(@retC r) (@bindC r)*) (@contMonadM r)).
+  MonadT.Pack (@MonadT.Class (econtMonadM r) (@contMonadM r)).
 
 Definition abortT r X (M : monad) A : contT r M A := fun _ : A -> M r => Ret X.
 Arguments abortT {r} _ {M} {A}.
@@ -1090,7 +1072,7 @@ End lifting_uniform.
 (* wip *)
 Module Fmt.
 Section functorial_monad_transformer.
-Record class_of (T : monadT) := Class {
+Record mixin_of (T : monadT) := Class {
   hmap : forall (M N : monad), (M ~> N) -> (T M ~> T N) ;
 (*  _ : forall (M N : monad) (t : M ~> N), Natural.P _ _ (hmap t) ;*)
   _ : forall (M N : monad) (e : monadM M N), monadM.Pret (hmap (natural_of_monadM e)) ;
@@ -1099,7 +1081,7 @@ Record class_of (T : monadT) := Class {
   _ : forall (M N P : monad) (t : M ~> N) (s : N ~> P), hmap s \v hmap t = hmap (s \v t) ;
   _ : forall (M N : monad) (t : M ~> N), Natural.P _ _ (LiftT T M)
 }.
-Structure t := Pack { T : monadT ; class : class_of T }.
+Structure t := Pack { T : monadT ; class : mixin_of T }.
 End functorial_monad_transformer.
 Module Exports.
 Notation FMT := t.
