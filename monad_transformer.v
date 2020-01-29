@@ -1257,3 +1257,104 @@ Program Definition stateFMT : FMT := @Fmt.Pack (stateT S)
 Next Obligation. by apply/nattrans_ext. Defined.
 
 End Fmt_stateT.
+
+Section codensity.
+Variable (M : monad).
+
+Definition K_type (A : Type) := forall (B : Type) (_ : A -> M B), M B.
+
+Definition K_ret A (a : A) : K_type A :=
+  fun (B : Type) (k : A -> M B) => k a.
+
+Definition K_bind A B (m : K_type A) f : K_type B :=
+  fun (C : Type) (k : B -> M C) => m C (fun a : A => (f a) C k).
+
+Definition K_fmap A B (f : A -> B) (m : K_type A) : K_type B :=
+  fun (C : Type) (k : B -> M C) => m C (fun a : A => k (f a)).
+
+Lemma K_fmap_id : FunctorLaws.id K_fmap.
+Proof.
+move=> A; rewrite /K_fmap boolp.funeqE => m /=.
+apply FunctionalExtensionality.functional_extensionality_dep => B.
+rewrite boolp.funeqE => k.
+by rewrite -FunctionalExtensionality.eta_expansion.
+Qed.
+
+Lemma K_fmap_comp : FunctorLaws.comp K_fmap.
+Proof. by []. Qed.
+
+Definition K_functor :=
+  Functor.Pack (Functor.Class K_fmap_id K_fmap_comp).
+
+Lemma naturality_K_ret : naturality FId K_functor K_ret.
+Proof.
+move=> A B h.
+rewrite /K_functor /Fun /= /K_fmap /K_ret /=.
+rewrite boolp.funeqE => a /=.
+by apply FunctionalExtensionality.functional_extensionality_dep.
+Qed.
+
+Definition K_ret_natural : FId ~> K_functor := Natural.Pack naturality_K_ret.
+
+Program Definition eK_MonadM : monad :=
+  @Monad_of_ret_bind K_functor K_ret_natural K_bind _ _ _.
+Next Obligation.
+move=> A B a f; rewrite /K_bind /=.
+apply FunctionalExtensionality.functional_extensionality_dep => C.
+by rewrite boolp.funeqE.
+Qed.
+Next Obligation.
+move=> A m.
+rewrite /K_bind /K_ret.
+apply FunctionalExtensionality.functional_extensionality_dep => C.
+by rewrite boolp.funeqE.
+Qed.
+Next Obligation.
+move=> A B C m f g; rewrite /K_bind.
+by apply FunctionalExtensionality.functional_extensionality_dep.
+Qed.
+
+Definition K_lift A (m : M A) : eK_MonadM A :=
+  fun (B : Type) (k : A -> M B) => @Bind M A B m k.
+
+Program Definition K_MonadM : monadM M eK_MonadM :=
+  locked (monadM.Pack (@monadM.Class _ _ K_lift _ _)).
+Next Obligation.
+move=> A; rewrite /K_lift /= /K_ret /=.
+rewrite boolp.funeqE => a.
+apply FunctionalExtensionality.functional_extensionality_dep => B /=.
+by rewrite boolp.funeqE => b; rewrite bindretf.
+Qed.
+Next Obligation.
+move=> A B m f; rewrite /K_lift.
+apply FunctionalExtensionality.functional_extensionality_dep => C /=.
+rewrite boolp.funeqE => g.
+by rewrite bindA.
+Qed.
+
+End codensity.
+
+Section kappa_def.
+Variables (M : monad) (E : functor).
+
+Definition kappa (tau : E \O M ~> M) : E ~~> eK_MonadM M :=
+  fun (A : Type) (s : E A) (B : Type) (k : A -> M B) =>
+    tau B ((E # k) s).
+
+End kappa_def.
+
+Section from_def.
+Variable (M : monad).
+
+Definition from : eK_MonadM M ~~> M :=
+  fun (A : Type) (c : eK_MonadM M A) => c A Ret.
+
+End from_def.
+
+Section k_op.
+Variables (E : functor) (M : monad) (op : (E \O M) ~> M).
+
+Definition K_op : (E \O eK_MonadM M) ~~> eK_MonadM M :=
+  psi_g (kappa op).
+
+End k_op.
