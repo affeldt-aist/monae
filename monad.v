@@ -272,6 +272,18 @@ Lemma fork_natural : naturality _ _ fork'. Proof. by []. Qed.
 Definition fork : FId ~> squaring := Natural.Pack fork_natural.
 End natural_transformation_example.
 
+Section functor_natural_transformation.
+Variables (S F G : functor) (nt : F ~> G).
+Definition fun_app_nt : S \O F ~~> S \O G :=
+  fun (A : Type) => S # (nt A).
+Lemma natural_fun_app_nt : naturality (S \O F) (S \O G) fun_app_nt.
+Proof.
+by move=> *; rewrite /fun_app_nt 2!FCompE -2!(functor_o S) natural.
+Qed.
+Definition functor_app_natural : (S \O F) ~> (S \O G) :=
+  Natural.Pack natural_fun_app_nt.
+End functor_natural_transformation.
+
 Definition eta_type (f g : functor) := FId ~> g \O f.
 Definition eps_type (f g : functor) := f \O g ~> FId.
 Module TriangularLaws.
