@@ -206,18 +206,22 @@ End fcomp.
 Notation "f (o) g" := (fcomp f g) : mprog.
 Arguments fcomp : simpl never.
 
+Polymorphic Definition naturalP (M N : functor) (m : M ~~> N) :=
+  forall A B (h : A -> B), (N # h) \o m A = m B \o (M # h).
+Arguments naturalP : clear implicits.
+
 (* natural transformation *)
 Module Natural.
 Section natural.
 Variables M N : functor.
-Definition P (m : M ~~> N) :=
-  forall A B (h : A -> B), (N # h) \o m A = m B \o (M # h).
-Structure t := Pack { m : M ~~> N ; class : P m }.
+(*Definition P (m : M ~~> N) :=
+  forall A B (h : A -> B), (N # h) \o m A = m B \o (M # h).*)
+Structure t := Pack { m : M ~~> N ; class : naturalP M N m }.
 End natural.
 Module Exports.
 Coercion m : t >-> Funclass.
-Arguments P : clear implicits.
-Notation naturality := P.
+(*Arguments P : clear implicits.*)
+Notation naturality := naturalP.
 Notation "f ~> g" := (t f g).
 End Exports.
 End Natural.

@@ -35,7 +35,7 @@ Hypothesis Hprod2 : prod2.
 Hypothesis Hprod3 : prod3.
 Hypothesis Hprod4 : prod4.
 
-Lemma JOIN_naturality : Natural.P _ _ (@JOIN).
+Lemma JOIN_naturality : naturality _ _ (@JOIN).
 Proof.
 move=> A B g; apply/esym; rewrite {1}/JOIN -[in LHS]compA.
 transitivity (
@@ -107,7 +107,7 @@ Hypothesis Hdorp2 : dorp2.
 Hypothesis Hdorp3 : dorp3.
 Hypothesis Hdorp4 : dorp4.
 
-Lemma join_naturality : Natural.P _ _ (@JOIN).
+Lemma join_naturality : naturality _ _ (@JOIN).
 Proof.
 move=> A B g; apply/esym; rewrite {1}/JOIN -compA Hdorp1.
 rewrite compA.
@@ -250,7 +250,7 @@ rewrite -(functor_o M) -(functor_o M).
 by rewrite compA -/dorp -Hswap4 functor_o compA -JOINE JOIN_dorp.
 Qed.
 
-Lemma JOIN_naturality : @Natural.P _ _ (JOIN).
+Lemma JOIN_naturality : @naturality _ _ (JOIN).
 Proof. by move=> ?? g; rewrite JOINE -/prod (Prod.JOIN_naturality prod1 g) JOINE. Qed.
 
 Definition JOIN' := Natural.Pack JOIN_naturality.

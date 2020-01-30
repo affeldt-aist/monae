@@ -1190,13 +1190,13 @@ Definition join (A : Type) (x : m' (m' A)) := (@Join _ M A x).
 Lemma joinE A (x : m' (m' A)) : join x = @Join _ M A x.
 Proof. done. Qed.
 
-Lemma ret_nat : monad.Natural.P monad.FId m' ret.
+Lemma ret_nat : monad.naturalP monad.FId m' ret.
 Proof.
 move=> A B h; apply funext=> x; rewrite /ret /Fun /= /f.
 by rewrite -[in LHS]compE (ret_naturality).
 Qed.
 Definition _ret_nat : monad.Natural.t monad.FId m' := monad.Natural.Pack ret_nat.
-Lemma join_nat : monad.Natural.P (monad.FComp m' m') m' join.
+Lemma join_nat : monad.naturalP (monad.FComp m' m') m' join.
 Proof.
 move=> A B h; apply funext=> x; rewrite /ret /Fun /= /f.
 rewrite -[in LHS]compE join_naturality.

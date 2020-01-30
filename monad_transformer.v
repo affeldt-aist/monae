@@ -1078,7 +1078,7 @@ Record mixin_of (T : monadT) := Class {
   _ : forall (M N : monad) (e : monadM M N), monadM.Pbind (hmap (natural_of_monadM e)) ;
   _ : forall (M : monad), hmap (NId M) = NId (T M) ;
   _ : forall (M N P : monad) (t : M ~> N) (s : N ~> P), hmap s \v hmap t = hmap (s \v t) ;
-  _ : forall (M N : monad) (t : M ~> N), Natural.P _ _ (LiftT T M)
+  _ : forall (M N : monad) (t : M ~> N), naturality _ _ (LiftT T M)
 }.
 Structure t := Pack { T : monadT ; class : mixin_of T }.
 End functorial_monad_transformer.
@@ -1096,7 +1096,7 @@ Definition hmapX (F G : monad) (tau : F ~> G) (A : Type) (t : T X F A) : T X G A
   tau _ t.
 
 Lemma natural_hmapX (F G : monad) (tau : F ~> G) :
-  Natural.P (T X F) (T X G) (hmapX tau).
+  naturality (T X F) (T X G) (hmapX tau).
 Proof.
 move=> A B h.
 rewrite /hmapX -!FunctionalExtensionality.eta_expansion.
@@ -1163,7 +1163,7 @@ Lemma hmapX_v (M N P : monad) (t : M ~> N) (s : N ~> P) :
 Proof. exact/nattrans_ext. Qed.
 
 Lemma hmapX_lift (M N : monad) (t : M ~> N) :
-  Natural.P _ _ (LiftT (T X) M).
+  naturality _ _ (LiftT (T X) M).
 Proof. move=> A B h; by rewrite natural. Qed.
 
 Program Definition errorFMT : FMT := @Fmt.Pack (errorT X)
@@ -1248,7 +1248,7 @@ Lemma hmapS_v (M N P : monad) (t : M ~> N) (s : N ~> P) :
 Proof. exact/nattrans_ext. Qed.
 
 Lemma hmapS_lift (M N : monad) (t : M ~> N) :
-  Natural.P _ _ (LiftT (stateT S) M).
+  naturality _ _ (LiftT (stateT S) M).
 Proof. move=> A B h; by rewrite natural. Qed.
 
 Program Definition stateFMT : FMT := @Fmt.Pack (stateT S)
@@ -1334,27 +1334,38 @@ Qed.
 
 End codensity.
 
+Definition K_MonadT : monadT :=
+  MonadT.Pack (@MonadT.Class eK_MonadM K_MonadM).
+
 Section kappa_def.
 Variables (M : monad) (E : functor).
 
-Definition kappa (tau : E \O M ~> M) : E ~~> eK_MonadM M :=
+Definition kappa (tau : E \O M ~> M) : E ~~> K_MonadT M :=
   fun (A : Type) (s : E A) (B : Type) (k : A -> M B) =>
     tau B ((E # k) s).
 
 End kappa_def.
 
 Section from_def.
-Variable (M : monad).
 
-Definition from : eK_MonadM M ~~> M :=
-  fun (A : Type) (c : eK_MonadM M A) => c A Ret.
+Definition from (M : monad) : K_MonadT M ~~> M :=
+  fun (A : Type) (c : K_MonadT M A) => c A Ret.
+
+Lemma natural_from (M : monad) : naturality (K_MonadT M) M (@from M).
+Proof.
+move=> A B h; rewrite /from.
+rewrite boolp.funeqE => m.
+rewrite [in LHS]/=.
+rewrite -[in LHS]compE.
+rewrite [RHS](_ : _ = (K_MonadT M # h) m B Ret) //.
+Abort.
 
 End from_def.
 
 Section k_op.
 Variables (E : functor) (M : monad) (op : (E \O M) ~> M).
 
-Definition K_op : (E \O eK_MonadM M) ~~> eK_MonadM M :=
+Definition K_op : (E \O K_MonadT M) ~~> K_MonadT M :=
   psi_g (kappa op).
 
 End k_op.
