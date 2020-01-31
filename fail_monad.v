@@ -232,24 +232,24 @@ Arguments hyloM {M} {A} {B} {C} _ _ _ _ _.
 
 Module MonadAlt.
 Record mixin_of (M : monad) : Type := Mixin {
-  alt : forall A, M A -> M A -> M A ;
-  _ : forall A, associative (@alt A) ;
+  alt : forall T, M T -> M T -> M T
+        where "a [~] b" := (alt a b) (* infix notation *) ;
+  _ : forall T, associative (@alt T) ;
   (* composition distributes leftwards over choice *)
-  _ : BindLaws.left_distributive (@Bind M) alt
-  (* in general, composition does not distribute rightwards over choice *)
-  (* NB: no bindDr to accommodate both angelic and demonic interpretations of nondeterminism *)
-}.
+  _ : BindLaws.left_distributive (@Bind M) alt }.
+(* in general, composition does not distribute rightwards over choice *)
+(* NB: no bindDr to accommodate both angelic and demonic interpretations of nondeterminism *)
 Record class_of (m : Type -> Type) : Type := Class {
   base : Monad.class_of m ; mixin : mixin_of (Monad.Pack base) }.
 Structure t := Pack { m : Type -> Type ; class : class_of m }.
 Definition baseType (M : t) := Monad.Pack (base (class M)).
 Module Exports.
-Definition Alt M : forall A, m M A -> m M A -> m M A :=
+Definition Alt M : forall T, m M T -> m M T -> m M T :=
   let: Pack _ (Class _ (Mixin x _ _)) := M
-  return forall A, m M A -> m M A -> m M A in x.
-Arguments Alt {M A} : simpl never.
+  return forall T, m M T -> m M T -> m M T in x.
+Arguments Alt {M T} : simpl never.
 Notation "'[~p]'" := (@Alt _). (* prefix notation *)
-Notation "x '[~]' y" := (Alt x y). (* infix notation *)
+Notation "x '[~]' y" := (Alt x y).
 Notation altMonad := t.
 Coercion baseType : altMonad >-> monad.
 Canonical baseType.

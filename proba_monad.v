@@ -33,31 +33,30 @@ Local Open Scope reals_ext_scope.
 
 Module MonadProb.
 Record mixin_of (M : monad) : Type := Mixin {
-  choice : forall (p : prob) A, M A -> M A -> M A
-           where "mx <| p |> my" := (choice p mx my) ;
-  (* identity laws *)
-  _ : forall A (mx my : M A), mx <| `Pr 0 |> my = my ;
-  _ : forall A (mx my : M A), mx <| `Pr 1 |> my = mx ;
-  (* skewed commutativity law *)
-  _ : forall A p (mx my : M A), mx <| p |> my = my <| `Pr p.~ |> mx ;
-  _ : forall A p, idempotent (@choice p A) ;
+  choice : forall (p : prob) T, M T -> M T -> M T
+           where "a <| p |> b" := (choice p a b) ;
+  (* identity axioms *)
+  _ : forall T (a b : M T), a <| `Pr 0 |> b = b ;
+  _ : forall T (a b : M T), a <| `Pr 1 |> b = a ;
+  (* skewed commutativity *)
+  _ : forall T p (a b : M T), a <| p |> b = b <| `Pr p.~ |> a ;
+  _ : forall T p, idempotent (@choice p T) ;
   (* quasi associativity *)
-  _ : forall A (p q r s : prob) (mx my mz : M A),
+  _ : forall T (p q r s : prob) (a b c : M T),
     (p = r * s :> R /\ s.~ = p.~ * q.~)%R ->
-    mx <| p |> (my <| q |> mz) = (mx <| r |> my) <| s |> mz ;
+    a <| p |> (b <| q |> c) = (a <| r |> b) <| s |> c ;
   (* composition distributes leftwards over [probabilistic] choice *)
-  _ : forall p, BindLaws.left_distributive (@Bind M) (choice p)
-}.
+  _ : forall p, BindLaws.left_distributive (@Bind M) (choice p) }.
 Record class_of (m : Type -> Type) := Class {
   base : Monad.class_of m ; mixin : mixin_of (Monad.Pack base) }.
 Structure t := Pack { m : Type -> Type ; class : class_of m }.
 Definition baseType (M : t) := Monad.Pack (MonadProb.base (class M)).
 Module Exports.
-Definition Choice (M : t) : forall p A, m M A -> m M A -> m M A :=
+Definition Choice (M : t) : forall p T, m M T -> m M T -> m M T :=
   let: Pack _ (Class _ (Mixin x _ _ _ _ _ _ )) := M return
-    forall p A, m M A -> m M A -> m M A in x.
+    forall p T, m M T -> m M T -> m M T in x.
 Arguments Choice {M} : simpl never.
-Notation "mx <| p |> my" := (Choice p _ mx my) : proba_monad_scope.
+Notation "a <| p |> b" := (Choice p _ a b) : proba_monad_scope.
 Notation probMonad := t.
 Coercion baseType : probMonad >-> monad.
 Canonical baseType.
@@ -268,10 +267,8 @@ by apply prob_ext => /=; rewrite /divRnnm div1R.
 Qed.
 
 Module MonadAltProb.
-Record mixin_of (M : altCIMonad) (a : prob -> forall A, M A -> M A -> M A) := Mixin {
-  _ : forall A (p : prob),
-    right_distributive (fun x y : M A => a p _ x y) Alt
-}.
+Record mixin_of (M : altCIMonad) (f : prob -> forall T, M T -> M T -> M T) := Mixin {
+  _ : forall T p, right_distributive (f p T) (fun a b => a [~] b) }.
 Record class_of (m : Type -> Type) := Class {
   base : MonadAltCI.class_of m ;
   base2 : MonadProb.mixin_of (Monad.Pack (MonadAlt.base (MonadAltCI.base base))) ;

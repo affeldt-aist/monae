@@ -3,7 +3,7 @@ From mathcomp Require Import all_ssreflect.
 From mathcomp Require Import boolp classical_sets.
 From mathcomp Require Import finmap.
 From infotheo Require Import Reals_ext classical_sets_ext Rbigop ssrR ssr_ext.
-From infotheo Require Import proba fsdist convex_choice necset.
+From infotheo Require Import fdist fsdist convex_choice necset.
 Require Import monae_lib.
 Require category.
 
@@ -16,9 +16,9 @@ P_delta =def= P_delta_right \O P_delta_left
 
 where P_delta_right and P_delta_left are the following compositions:
 
-             | FC = free_choiceType (= choice_of_Type)
-P_delta_left:| F0 = free_convType (= FSDist)
              | F1 = free_semiCompSemiLattConvType (= necset)
+P_delta_left:| F0 = free_convType (= FSDist)
+             | FC = free_choiceType (= choice_of_Type)
 
               | UC = forget_choiceType
 P_delta_right:| U0 = forget_convType
@@ -49,7 +49,7 @@ Lemma eq_dep_convn n (g : 'I_n -> A) (d : {fdist 'I_n})
       n0 (g0 : 'I_n0 -> A) (d0 : {fdist 'I_n0}) (Hn : n = n0)
       (Hg : eq_rect n (fun m => 'I_m -> A) g n0 Hn = g0)
       (Hd : eq_rect n (fun m => {fdist 'I_m}) d n0 Hn = d0) :
-  \Conv_d g = \Conv_d0 g0.
+  <|>_d g = <|>_d0 g0.
 Proof.
 refine (match Hd with erefl => _ end).
 refine (match Hg with erefl => _ end).
@@ -58,22 +58,22 @@ reflexivity.
 Qed.
 
 Lemma convn1Eq' n (g : 'I_n -> A) (d : {fdist 'I_n}) (Hn1 : n = 1) :
-  \Conv_d g = eq_rect n (fun n => 'I_n -> A) g 1 Hn1 ord0.
+  <|>_d g = eq_rect n (fun n => 'I_n -> A) g 1 Hn1 ord0.
 Proof.
 set d' := eq_rect n (fun n0 => {fdist 'I_n0}) d 1 Hn1.
 set g' := eq_rect n (fun n0 => 'I_n0 -> A) g 1 Hn1.
-suff -> : \Conv_d g = \Conv_d' g' by rewrite convn1E.
+suff -> : <|>_d g = <|>_d' g' by rewrite convn1E.
 by eapply eq_dep_convn.
 Qed.
 
 Lemma convn1Eq n (g : 'I_n -> A) (d : {fdist 'I_n})
-      (Hn1 : n = 1) (i : 'I_n) : \Conv_d g = g i.
+      (Hn1 : n = 1) (i : 'I_n) : <|>_d g = g i.
 Proof.
 rewrite convn1Eq'.
 have-> /= : eq_rect n (fun n0 : nat => 'I_n0 -> A) g 1 Hn1 =
             g \o eq_rect 1 (fun n0 => 'I_1 -> 'I_n0) idfun n (esym Hn1)
   by subst n.
-have /(_ i) I_n_contr : forall a b : 'I_n, a = b 
+have /(_ i) I_n_contr : forall a b : 'I_n, a = b
     by rewrite Hn1=> a b; rewrite (ord1 a) (ord1 b).
 by rewrite -(I_n_contr ((eq_rect 1 (fun n0 : nat => 'I_1 -> 'I_n0) idfun n (esym Hn1) ord0))).
 Qed.

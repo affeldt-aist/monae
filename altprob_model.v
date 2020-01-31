@@ -2,12 +2,12 @@ Require Import Reals.
 From mathcomp Require Import all_ssreflect.
 From mathcomp Require Import boolp classical_sets.
 From mathcomp Require Import finmap.
-From infotheo Require Import Reals_ext Rbigop ssrR proba fsdist convex_choice.
+From infotheo Require Import Reals_ext Rbigop ssrR fdist fsdist convex_choice.
 From infotheo Require Import necset.
 Require category.
 Require Import monae_lib monad fail_monad proba_monad monad_model gcm_model.
 
-(* model of the monad that mixes non-deterministic choice and probability *)
+(* model of the monad that combines non-deterministic choice and probability *)
 
 Set Implicit Arguments.
 Unset Strict Implicit.
@@ -270,7 +270,7 @@ Definition P_delta_monadProbMixin' : MonadProb.mixin_of (Monad.Pack (MonadAlt.ba
 (*Definition mp : probMonad := MonadProb.Pack (MonadProb.Class P_delta_monadProbMixin).*)
 
 Lemma choicealtDr A (p : prob) :
-  right_distributive (fun x y : mACI A => choice p x y) (fun x y => Alt x y).
+  right_distributive (fun x y : mACI A => choice p x y) Alt.
 Proof. by move=> x y z; rewrite /choice joetDr. Qed.
 
 Definition P_delta_monadAltProbMixin : @MonadAltProb.mixin_of mACI choice :=
