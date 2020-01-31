@@ -2,7 +2,7 @@ Require Import Reals.
 From mathcomp Require Import all_ssreflect.
 From mathcomp Require Import boolp classical_sets.
 From mathcomp Require Import finmap.
-From infotheo Require Import Reals_ext Rbigop ssrR proba fsdist convex_choice.
+From infotheo Require Import Reals_ext Rbigop ssrR fdist fsdist convex_choice.
 From infotheo Require Import necset.
 Require category.
 Require Import monae_lib monad fail_monad proba_monad monad_model gcm_model.
