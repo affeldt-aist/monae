@@ -2,11 +2,15 @@ From mathcomp Require Import all_ssreflect.
 From mathcomp Require Import boolp.
 Require Import monae_lib.
 
-(* This file provides a proper notation of categories on top of which
-   functors and monads are defined. It is a generalization of monad.v
-   (which is bound to be superseded). In particular it ends with the
-   constructor Monad_of_category_monad to construct monad.monad
-   from category.monad *)
+(******************************************************************************)
+(*                      Formalization of category theory                      *)
+(*                                                                            *)
+(* This file provides a notion of category that generalizes the one in        *)
+(* monad.v. Functors and monads are also defined.                             *)
+(*                                                                            *)
+(* Monad_of_category_monad.m == turns a monad over the Type category into     *)
+(*                              a monad in the sense of monad.v               *)
+(******************************************************************************)
 
 (* Contents:
 - Module Category.
@@ -45,7 +49,7 @@ Unset Printing Implicit Defensive.
 
 (* Our `category' is always concrete; morphisms are just functions. *)
 Module Category.
-Record class_of (T : Type) : Type := Class {
+Record mixin_of (T : Type) : Type := Mixin {
   obj : T -> Type ; (* T and obj is like a ``universe a la Tarski'' *)
   hom : forall A B, (obj A -> obj B) -> Prop ; (* subset of morphisms *)
 (*  _ : injective obj ; (* NB: do we need this? *)*)
@@ -53,12 +57,11 @@ Record class_of (T : Type) : Type := Class {
   _ : forall (A B C : T) (f : obj A -> obj B) (g : obj B -> obj C),
       hom f -> hom g -> hom (g \o f) ; (* hom is closed under composition *)
 }.
-Structure t : Type := Pack { car : Type ; class : class_of car }.
+Structure t : Type := Pack { car : Type ; class : mixin_of car }.
 Module Exports.
 Notation category := t.
 Coercion car : category >-> Sortclass.
-Definition El (C : t) : C -> Type :=
-  let: Pack _ (Class x _ _ _) := C in x.
+Definition El (C : t) : C -> Type := let: Pack _ (Mixin x _ _ _) := C in x.
 End Exports.
 End Category.
 Export Category.Exports.
@@ -69,7 +72,7 @@ Variables (C : category) (U V : C).
 Local Notation U' := (El U).
 Local Notation V' := (El V).
 Let hom (X : category) : forall (A B : X), (El A -> El B) -> Prop :=
-  let: Category.Pack _ (Category.Class _ x _ _) := X in x.
+  let: Category.Pack _ (Category.Mixin _ x _ _) := X in x.
 Definition axiom (f : U' -> V') := hom f.
 Structure map (phUV : phant (U' -> V')) := Pack {apply; _ : axiom apply}.
 Local Coercion apply : map >-> Funclass.
@@ -116,7 +119,8 @@ case: C => [car [el hom ? hom_comp]] a b c [f Hf] [g Hg]; exact/hom_comp.
 Qed.
 Canonical funcomp_hom (a b c : C) (f : {hom b, c}) (g : {hom a, b}) :=
   Hom (locked (category_funcomp_proof f g)).
-Lemma funcomp_homE' a b c f g : @funcomp_hom a b c f g = Hom (@category_funcomp_proof a b c f g).
+Lemma funcomp_homE' a b c f g :
+  @funcomp_hom a b c f g = Hom (@category_funcomp_proof a b c f g).
 Proof. by rewrite /funcomp_hom; unlock. Qed.
 End category_interface.
 
@@ -238,8 +242,8 @@ Proof. apply hom_ext; by subst b'. Qed.
 End transport_lemmas.
 
 Section Type_as_a_category.
-Definition Type_category_class : Category.class_of Type :=
-  @Category.Class Type id (fun _ _ _ => True) (fun _ => I) (fun _ _ _ _ _ _ _ => I).
+Definition Type_category_class : Category.mixin_of Type :=
+  @Category.Mixin Type id (fun _ _ _ => True) (fun _ => I) (fun _ _ _ _ _ _ _ => I).
 Canonical Type_category := Category.Pack Type_category_class.
 Definition hom_Type (a b : Type) (f : a -> b) : {hom a,b} := Hom (I : hom (f : El a -> El b)).
 End Type_as_a_category.
