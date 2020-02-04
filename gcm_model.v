@@ -83,11 +83,11 @@ End TODO_move_to_other_file.
 
 Section choiceType_as_a_category.
 Import category.
-Definition choiceType_category_class : Category.class_of choiceType :=
-  @Category.Class choiceType id (fun _ _ _ => True) (fun _ => I) (fun _ _ _ _ _ _ _ => I).
-Canonical choiceType_category := Category.Pack choiceType_category_class.
-Definition hom_choiceType (a b : choiceType) (f : a -> b) : {hom a, b} :=
-  Hom (I : hom (f : El a -> El b)).
+Definition choiceType_category_mixin : Category.mixin_of choiceType :=
+  @Category.Mixin choiceType id (fun _ _ _ => True) (fun _ => I) (fun _ _ _ _ _ _ _ => I).
+Canonical choiceType_category := Category.Pack choiceType_category_mixin.
+Definition hom_choiceType (A B : choiceType) (f : A -> B) : {hom A, B} :=
+  Hom (I : hom (f : El A -> El B)).
 End choiceType_as_a_category.
 
 Section free_choiceType_functor.
@@ -127,7 +127,7 @@ End free_choiceType_functor.
 
 Section epsC_etaC.
 Import category.
-Definition epsC'' {C : choiceType} : free_choiceType C -> C := idfun.
+Definition epsC'' {T : choiceType} : free_choiceType T -> T := idfun.
 Definition epsC' : free_choiceType \O forget_choiceType ~~> FId :=
   fun T => @Hom.Pack choiceType_category _ _ _ (@epsC'' T) I.
 Lemma epsC'_natural : naturality _ _ epsC'.
@@ -160,9 +160,9 @@ Import category.
 Lemma affine_function_comp_proof' (A B C : convType) (f : A -> B) (g : B -> C) :
   affine_function f -> affine_function g -> affine_function (g \o f).
 Proof. by move=> Hf Hg a b t; rewrite /affine_function_at compE Hf Hg. Qed.
-Definition convType_category_class : Category.class_of convType :=
-  Category.Class affine_function_id_proof affine_function_comp_proof'.
-Canonical convType_category := Category.Pack convType_category_class.
+Definition convType_category_mixin : Category.mixin_of convType :=
+  Category.Mixin affine_function_id_proof affine_function_comp_proof'.
+Canonical convType_category := Category.Pack convType_category_mixin.
 End convType_as_a_category.
 
 Section semiCompSemiLattConvType_as_a_category.
@@ -184,17 +184,19 @@ congr Joet; apply neset_ext =>/=.
 by rewrite imageA.
 Qed.
 Definition semiCompSemiLattConvType_category_class :
-  Category.class_of semiCompSemiLattConvType :=
-  Category.Class Joet_affine_id_proof Joet_affine_comp_proof.
+  Category.mixin_of semiCompSemiLattConvType :=
+  Category.Mixin Joet_affine_id_proof Joet_affine_comp_proof.
 Canonical semiCompSemiLattConvType_category :=
   Category.Pack semiCompSemiLattConvType_category_class.
 End semiCompSemiLattConvType_as_a_category.
+
+Local Open Scope classical_set_scope.
 
 Section apply_affine.
 Import category.
 Lemma apply_affine (K L : semiCompSemiLattConvType) (f : {hom K , L})
   (X : necset_semiCompSemiLattConvType K) :
-  f (Joet `NE X) = Joet `NE (f @` X).
+  f (Joet X) = Joet (f @` X)%:ne.
 Proof. by case: f => f [? /= ->]. Qed.
 End apply_affine.
 
@@ -284,8 +286,8 @@ Lemma eps0''_affine (C : convType) : affine_function (@eps0'' C).
 Proof.
 move => x y p.
 rewrite /affine_function_at.
-case/boolP : (p == `Pr 0) => [|pn0]; first by move/eqP ->; rewrite !conv0.
-case/boolP : (p == `Pr 1) => [|pn1]; first by move/eqP ->; rewrite !conv1.
+case/boolP : (p == 0%:pr) => [|pn0]; first by move/eqP ->; rewrite !conv0.
+case/boolP : (p == 1%:pr) => [|pn1]; first by move/eqP ->; rewrite !conv1.
 move: (pn1) => /onem_neq0 opn0.
 apply S1_inj.
 rewrite S1_conv.
@@ -572,7 +574,7 @@ Definition free_semiCompSemiLattConvType_mor' (X : necset_convType A) :
   necset_convType B :=
   NECSet.Pack (NECSet.Class
     (CSet.Class (is_convex_set_image' (hom_affine_function f) X))
-    (NESet.Class (neset_image_neq0 _ _))).
+    (NESet.Mixin (neset_image_neq0 _ _))).
 
 (* the results of free_semiCompSemiLattConvType_mor are
    semiLattConvType-morphisms, i.e., are
@@ -604,7 +606,7 @@ rewrite funeqE => b; rewrite propeqE; split.
   exists (NECSet.Pack
             (NECSet.Class
                (CSet.Class (@is_convex_set_image' _ _ f Hf x))
-               (NESet.Class (neset_image_neq0 f x)))) => /=; last by exists a.
+               (NESet.Mixin (neset_image_neq0 f x)))) => /=; last by exists a.
   by exists x => //=; exact/necset_ext.
 - by case => b0 [a0 Xa0 <-{b0}] [a a0a <-{b}]; exists a => //; exists a0.
 Qed.
@@ -684,18 +686,18 @@ Local Open Scope classical_set_scope.
 Local Open Scope convex_scope.
 
 Definition eps1'' {L : semiCompSemiLattConvType}
-           (X : necset_semiCompSemiLattConvType L) : L := Joet `NE X.
+           (X : necset_semiCompSemiLattConvType L) : L := Joet X.
 
 Lemma eps1''_Joet_morph L : Joet_morph (@eps1'' L).
 Proof.
 move=> F.
 rewrite /eps1''.
-transitivity (Joet `NE (Joet @` ((fun X : necset_semiCompSemiLattType L => `NE X) @` F))); last first.
+transitivity (Joet (Joet @` ((fun X : necset_semiCompSemiLattType L => (X : neset _)) @` F))%:ne); last first.
 - congr Joet.
   apply/neset_ext/eqEsubset => x [] x0 Fx0 <-.
   + by case: Fx0 => x1 Fx1 <-; exists x1.
-  + by exists `NE x0 => // ; exists x0.
-transitivity (Joet `NE (hull (\bigcup_(x in F) x)));
+  + by exists x0 => // ; exists x0.
+transitivity (Joet (hull (\bigcup_(x in F) x))%:ne);
   first by congr Joet; apply neset_ext.
 by rewrite Joet_hull Joet_bigcup.
 Qed.
@@ -704,8 +706,8 @@ Lemma eps1''_affine L : affine_function (@eps1'' L).
 Proof.
 move=> X Y p.
 rewrite /affine_function_at /eps1''.
-transitivity (Joet `NE (X :<| p |>: Y)); last by rewrite Joet_conv_setD.
-congr (Joet `NE _); apply/neset_ext => /=.
+transitivity (Joet (X :<| p |>: Y)%:ne); last by rewrite Joet_conv_setD.
+congr (Joet _%:ne); apply/neset_ext => /=.
 rewrite conv_setE necset_convType.convE.
 apply eqEsubset=> u.
 - case=> x [] y [] xX [] yY ->.
@@ -722,7 +724,7 @@ Lemma eps1''_natural (K L : semiCompSemiLattConvType) (f : {hom K , L}) :
 Proof.
 rewrite FCompE /= /id_f.
 rewrite funeqE => X /=; rewrite apply_affine.
-congr (Joet `NE _); by rewrite free_semiCompSemiLattConvType_morE.
+congr (Joet _); by rewrite free_semiCompSemiLattConvType_morE.
 Qed.
 
 Definition eps1' :
@@ -739,7 +741,7 @@ Definition eps1 :
 Lemma eps1E': eps1 = Natural eps1'_natural.
 Proof. by rewrite /eps1; unlock. Qed.
 Lemma eps1E (L : semiCompSemiLattConvType) :
-  eps1 L = (fun X => Joet `NE X) :> (_ -> _).
+  eps1 L = (fun X => Joet X) :> (_ -> _).
 Proof. by rewrite /eps1; unlock. Qed.
 
 Definition eta1'' (C : convType) (x : C) : necset_convType C := necset1 x.
@@ -813,7 +815,7 @@ Qed.
 
 Definition join1 (C : convType) (s : necset (necset_convType C)) : necset C :=
   NECSet.Pack (NECSet.Class (CSet.Class (hull_is_convex _))
-                            (NESet.Class (join1'_neq0 s))).
+                            (NESet.Mixin (join1'_neq0 s))).
 
 Lemma eps1''_correct (C : convType) (s : necset (necset_convType C)) :
   eps1'' s = join1 s.
@@ -974,7 +976,7 @@ rewrite /JoinLaws.left_unit => a.
 rewrite funeqE=> d.
 rewrite -homcompE joinE retE.
 rewrite epsE compE -homcompE eps1E.
-rewrite -[in RHS](Joet1 d); congr (Joet `NE _).
+rewrite -[in RHS](Joet1 d); congr (Joet _).
 rewrite 2!free_semiCompSemiLattConvType_morE; apply/neset_ext => /=.
 rewrite 2!image_set1 FSDistfmap1.
 by rewrite epsCE eps0_Dist1.

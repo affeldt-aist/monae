@@ -90,16 +90,16 @@ Lemma affine_F1e0U1PD_alt T (u v : m (m T)) :
 Proof.
 rewrite [in LHS]/joet -Joet_hull.
 have huv : NECSet.class_of (hull [set u; v]).
-  apply: (NECSet.Class (CSet.Class (hull_is_convex _)) (NESet.Class _)).
+  apply: (NECSet.Class (CSet.Class (hull_is_convex _)) (NESet.Mixin _)).
   rewrite hull_eq0; apply/eqP => /(congr1 (fun x => x u)).
   by rewrite propeqE => -[X _]; apply X; left.
 have @UV : necset_semiCompSemiLattConvType (F1 ((F0 \O U0) (U1 (P_delta_left T)))) := NECSet.Pack huv.
-transitivity (Joet `NE ([fun of F1 # eps0 (U1 (P_delta_left T))] @` UV)).
+transitivity (Joet ([fun of F1 # eps0 (U1 (P_delta_left T))] @` UV)%:ne).
   rewrite -(apply_affine (F1 # eps0 (U1 (P_delta_left T))) UV).
   congr ([fun of _] _); congr Joet; exact/neset_ext.
   rewrite [in RHS]/joet.
-transitivity (Joet `NE (hull ([fun of F1 # eps0 (U1 (P_delta_left T))] @` [set u; v]))).
-  congr (Joet `NE _); apply/neset_ext => /=.
+transitivity (Joet (hull ([fun of F1 # eps0 (U1 (P_delta_left T))] @` [set u; v]))%:ne).
+  congr (Joet _%:ne); apply/neset_ext => /=.
   have /image_preserves_convex_hull' : affine_function [fun of F1 # eps0 (U1 (P_delta_left T))].
     move=> a b p; rewrite /affine_function_at => /=.
     rewrite /free_semiCompSemiLattConvType_mor /=; unlock; rewrite /free_semiCompSemiLattConvType_mor' /=.
@@ -127,7 +127,7 @@ transitivity (Joet `NE (hull ([fun of F1 # eps0 (U1 (P_delta_left T))] @` [set u
       transitivity (eps0'' (ConvFSDist.d p x1 x2)) => //.
       by rewrite eps0''_affine.
   exact.
-rewrite Joet_hull; congr (Joet `NE _).
+rewrite Joet_hull; congr (Joet _%:ne).
 apply/neset_ext => /=.
 rewrite /free_semiCompSemiLattConvType_mor /=; unlock; rewrite /free_semiCompSemiLattConvType_mor' /=.
 rewrite funeqE => /= X; rewrite propeqE; split.
@@ -140,13 +140,13 @@ Lemma affine_e1PD_alt T (x y : El (F1 (FId (U1 (P_delta_left T))))) :
   [fun of eps1 (P_delta_left T)] x [+] [fun of eps1 (P_delta_left T)] y.
 Proof.
 rewrite /joet eps1E -Joet_setU.
-transitivity (Joet `NE (hull (\bigcup_(x0 in [set x; y]) x0))); last first.
+transitivity (Joet (hull (\bigcup_(x0 in [set x; y]) x0))%:ne); last first.
   rewrite Joet_hull /=; apply/necset_ext => /=; congr hull.
   rewrite [in RHS]setU_bigsetU; apply classical_sets_ext.eq_bigcup => //.
   rewrite /bigsetU /= funeqE => /= X; rewrite propeqE; split.
   - case => /= x0 [] <- x0X; by [exists x0 => //; left | exists x0 => //; right].
   - case => x0 [] -> ?; by [exists x => //; left | exists y => //; right].
-congr (Joet `NE _); exact/neset_ext.
+congr (Joet _%:ne); exact/neset_ext.
 Qed.
 
 Lemma bindaltDl : BindLaws.left_distributive (@monad.Bind m) alt.
@@ -178,12 +178,12 @@ Definition P_delta_monadAltCIMixin : MonadAltCI.class_of mA :=
   MonadAltCI.Class (MonadAltCI.Mixin altxx altC).
 Definition mACI : altCIMonad := MonadAltCI.Pack P_delta_monadAltCIMixin.
 
-Lemma choice0 A (x y : m A) : choice `Pr 0 x y = y.
+Lemma choice0 A (x y : m A) : choice 0%:pr x y = y.
 Proof. by rewrite /choice conv0. Qed.
-Lemma choice1 A (x y : m A) : choice `Pr 1 x y = x.
+Lemma choice1 A (x y : m A) : choice 1%:pr x y = x.
   (* NB(sai): redundant given choice0 and choiceC, isnt' it? NB(rei): yes*)
 Proof. by rewrite /choice conv1. Qed.
-Lemma choiceC A p (x y : m A) : choice p x y = choice `Pr p.~ y x.
+Lemma choiceC A p (x y : m A) : choice p x y = choice p.~%:pr y x.
 Proof. by rewrite /choice convC. Qed.
 Lemma choicemm A p : idempotent (@choice p A).
 Proof. by move=> m; rewrite /choice convmm. Qed.
@@ -192,13 +192,13 @@ Lemma choiceA A (p q r s : prob) (x y z : m A) :
   choice p x (choice q y z) = choice s (choice r x y) z.
 Proof.
 case=> H1 H2.
-case/boolP : (r == `Pr 0) => r0.
-  have p0 : p = `Pr 0 by apply/prob_ext => /=; rewrite H1 (eqP r0) mul0R.
+case/boolP : (r == 0%:pr) => r0.
+  have p0 : p = 0%:pr by apply/prob_ext => /=; rewrite H1 (eqP r0) mul0R.
   rewrite p0 choice0 (eqP r0) choice0 (_ : q = s) //; apply/prob_ext => /=.
   by move: H2; rewrite p0 onem0 mul1R => /(congr1 onem); rewrite !onemK.
-case/boolP : (s == `Pr 0) => s0.
-  have p0 : p = `Pr 0 by apply/prob_ext => /=; rewrite H1 (eqP s0) mulR0.
-  rewrite p0 (eqP s0) 2!choice0 (_ : q = `Pr 0) ?choice0 //; apply/prob_ext.
+case/boolP : (s == 0%:pr) => s0.
+  have p0 : p = 0%:pr by apply/prob_ext => /=; rewrite H1 (eqP s0) mulR0.
+  rewrite p0 (eqP s0) 2!choice0 (_ : q = 0%:pr) ?choice0 //; apply/prob_ext.
   move: H2; rewrite p0 onem0 mul1R (eqP s0) onem0 => /(congr1 onem).
   by rewrite onemK onem1.
 rewrite /choice convA (@r_of_pq_is_r _ _ r s) //; congr ((_ <| _ |> _) <| _ |> _).

@@ -36,10 +36,10 @@ Record mixin_of (M : monad) : Type := Mixin {
   choice : forall (p : prob) T, M T -> M T -> M T
            where "a <| p |> b" := (choice p a b) ;
   (* identity axioms *)
-  _ : forall T (a b : M T), a <| `Pr 0 |> b = b ;
-  _ : forall T (a b : M T), a <| `Pr 1 |> b = a ;
+  _ : forall T (a b : M T), a <| 0%:pr |> b = b ;
+  _ : forall T (a b : M T), a <| 1%:pr |> b = a ;
   (* skewed commutativity *)
-  _ : forall T p (a b : M T), a <| p |> b = b <| `Pr p.~ |> a ;
+  _ : forall T p (a b : M T), a <| p |> b = b <| p.~%:pr |> a ;
   _ : forall T p, idempotent (@choice p T) ;
   (* quasi associativity *)
   _ : forall T (p q r s : prob) (a b c : M T),
@@ -70,15 +70,15 @@ Section prob_lemmas.
 Variable (M : probMonad).
 Lemma choicemm : forall A p, idempotent (@Choice M p A).
 Proof. by case: M => m [? []]. Qed.
-Lemma choice0 : forall A (mx my : M A), mx <| `Pr 0 |> my = my.
+Lemma choice0 : forall A (mx my : M A), mx <| 0%:pr |> my = my.
 Proof. by case: M => m [? []]. Qed.
-Lemma choice1 : forall A (mx my : M A), mx <| `Pr 1 |> my = mx.
+Lemma choice1 : forall A (mx my : M A), mx <| 1%:pr |> my = mx.
 Proof. by case: M => m [? []]. Qed.
 Lemma choiceA A : forall (p q r s : prob) (mx my mz : M A),
     (p = r * s :> R /\ s.~ = p.~ * q.~)%R ->
     mx <| p |> (my <| q |> mz) = (mx <| r |> my) <| s |> mz.
 Proof. by case: M A => m [? []]. Qed.
-Lemma choiceC : forall A (p : prob) (mx my : M A), mx <| p |> my = my <| `Pr p.~ |> mx.
+Lemma choiceC : forall A (p : prob) (mx my : M A), mx <| p |> my = my <| p.~%:pr |> mx.
 Proof. by case: M => m [? []]. Qed.
 Lemma prob_bindDl p : BindLaws.left_distributive (@Bind M) (Choice p).
 Proof. by case: M => m [? []]. Qed.
@@ -90,7 +90,7 @@ Fixpoint uniform {M : probMonad} {A} (def(*NB: Coq functions are total*) : A) (s
   match s with
     | [::] => Ret def
     | [:: x] => Ret x
-    | x :: xs => Ret x <| `Pr / IZR (Z_of_nat (size (x :: xs))) |> uniform def xs
+    | x :: xs => Ret x <| (/ IZR (Z_of_nat (size (x :: xs))))%:pr |> uniform def xs
   end.
 
 Lemma uniform_nil (M : probMonad) A (def : A) :
@@ -102,10 +102,10 @@ Lemma choice_ext (q p : prob) (M : probMonad) A (m1 m2 : M A) :
 Proof. by move/prob_ext => ->. Qed.
 
 Lemma uniform_cons (M : probMonad) A (def : A) h s :
-  uniform def (h :: s) = Ret h <| `Pr / IZR (Z_of_nat (size (h :: s))) |> uniform def s :> M A.
+  uniform def (h :: s) = Ret h <| (/ IZR (Z_of_nat (size (h :: s))))%:pr |> uniform def s :> M A.
 Proof.
 case: s => //.
-rewrite (@choice_ext (`Pr 1)) // ?choice1 //.
+rewrite (@choice_ext 1%:pr) // ?choice1 //.
 by rewrite /= Rinv_1.
 Qed.
 
@@ -113,7 +113,7 @@ Lemma uniform_singl (M : probMonad) A (def : A) h : size h = 1%nat ->
   uniform def h = Ret (head def h) :> M A.
 Proof.
 case: h => // h [|//] _.
-by rewrite uniform_cons uniform_nil (@choice_ext (`Pr 1)) ?choice1 //= invR1.
+by rewrite uniform_cons uniform_nil (@choice_ext 1%:pr) ?choice1 //= invR1.
 Qed.
 
 Lemma uniform_nseq (M : probMonad) A (def : A) h n :
@@ -125,16 +125,16 @@ Qed.
 
 Lemma uniform_cat (M : probMonad) A (a : A) s t :
   let m := size s in let n := size t in
-  uniform a (s ++ t) = uniform a s <| `Pr (divRnnm m n) |> uniform a t :> M _.
+  uniform a (s ++ t) = uniform a s <| (divRnnm m n)%:pr |> uniform a t :> M _.
 Proof.
 elim: s t => [t m n|s1 s2 IH t m n].
-  rewrite cat0s uniform_nil /= [X in _ <| X |> _](_ : _ = `Pr 0) ?choice0 //.
+  rewrite cat0s uniform_nil /= [X in _ <| X |> _](_ : _ = 0%:pr) ?choice0 //.
   by apply prob_ext => /=; rewrite /divRnnm div0R.
 case/boolP : (m.-1 + n == 0)%nat => [{IH}|] m1n0.
   have s20 : s2 = [::] by move: m1n0; rewrite {}/m /=; case: s2.
   have t0 : t = [::] by move: m1n0; rewrite {}/n /= addnC; case: t.
   subst s2 t.
-  rewrite cats0 (_ : Prob.mk _ = `Pr 1) ?choice1 //.
+  rewrite cats0 (_ : Prob.mk _ = 1%:pr) ?choice1 //.
   by apply prob_ext => /=; rewrite /divRnnm div1R invR1.
 rewrite cat_cons uniform_cons uniform_cons.
 set pv := ((/ _)%R).
@@ -404,7 +404,7 @@ Proof. case: b; rewrite boolp.funeqE; by case. Qed.
 Definition Ret_eqb_add := (Ret_eqb_addL, Ret_eqb_addR).
 
 Lemma arbcoin_spec p :
-  arbcoin p = (bcoin p : M _) [~] bcoin (`Pr p.~).
+  arbcoin p = (bcoin p : M _) [~] bcoin p.~%:pr.
 Proof.
 rewrite /arbcoin /arb.
 rewrite alt_bindDl.
@@ -429,7 +429,7 @@ by rewrite altC choicemm altC.
 Qed.
 
 Lemma coinarb_spec_convexity p w : coinarb p =
-  (bcoin w : M _) [~] (Ret false : M _) [~] (Ret true : M _) [~] bcoin (`Pr w.~).
+  (bcoin w : M _) [~] (Ret false : M _) [~] (Ret true : M _) [~] bcoin w.~%:pr.
 Proof.
 rewrite coinarb_spec [in LHS]/arb [in LHS](convexity _ _ w) 2!choicemm.
 rewrite [in LHS]altC -(altA _ (Ret false)) altCA -2![in RHS]altA; congr (_ [~] _).
@@ -463,46 +463,46 @@ End MonadExceptProb.
 Export MonadExceptProb.Exports.
 
 Definition coins23 {M : exceptProbMonad} : M bool :=
-  Ret true <| `Pr / 2 |> (Ret false <| `Pr / 2 |> (Fail : M _)).
+  Ret true <| (/ 2)%:pr |> (Ret false <| (/ 2)%:pr |> (Fail : M _)).
 
 Lemma H23 : (0 <= 2/3 <= 1)%R. Proof. split; lra. Qed.
 
 (* NB: notation for ltac:(split; fourier?)*)
 Lemma choiceA_compute {N : probMonad} (T F : bool) (f : bool -> N bool) :
-  f T <|`Pr / 9|> (f F <|`Pr / 8|> (f F <|`Pr / 7|> (f F <|`Pr / 6|>
- (f T <|`Pr / 5|> (f F <|`Pr / 4|> (f F <|`Pr / 3|> (f F <|`Pr / 2|>
-  f T))))))) = f F <|`Pr / 3|> (f F <|`Pr / 2|> f T) :> N _.
+  f T <|(/ 9)%:pr|> (f F <|(/ 8)%:pr|> (f F <|(/ 7)%:pr|> (f F <|(/ 6)%:pr|>
+ (f T <|(/ 5)%:pr|> (f F <|(/ 4)%:pr|> (f F <|(/ 3)%:pr|> (f F <|(/ 2)%:pr|>
+  f T))))))) = f F <|(/ 3)%:pr|> (f F <|(/ 2)%:pr|> f T) :> N _.
 Proof.
 have H34 : (0 <= 3/4 <= 1)%R by split; lra.
 have H27 : (0 <= 2/7 <= 1)%R by split; lra.
 have H721 : (0 <= 7/21 <= 1)%R by split; lra.
 have H2156 : (0 <= 21/56 <= 1)%R by split; lra.
 have H25 : (0 <= 2/5 <= 1)%R by split; lra.
-rewrite [in RHS](choiceA _ _ (`Pr /2) (@Prob.mk (2/3) H23)); last first.
+rewrite [in RHS](choiceA _ _ (/ 2)%:pr (@Prob.mk (2/3) H23)); last first.
   by rewrite 3!probpK /= /onem; split; field.
 rewrite choicemm.
-rewrite [in LHS](choiceA (`Pr /3) (`Pr /2) (`Pr /2) (@Prob.mk (2/3) H23)); last first.
+rewrite [in LHS](choiceA (/ 3)%:pr (/ 2)%:pr (/ 2)%:pr (@Prob.mk (2/3) H23)); last first.
   by rewrite 3!probpK /= /onem; split; field.
 rewrite choicemm.
-rewrite [in LHS](choiceA (`Pr /4) (@Prob.mk (2/3) H23) (`Pr /3) (@Prob.mk (3/4) H34)); last first.
+rewrite [in LHS](choiceA (/ 4)%:pr (@Prob.mk (2/3) H23) (/ 3)%:pr (@Prob.mk (3/4) H34)); last first.
   by rewrite 4!probpK /= /onem; split; field.
 rewrite choicemm.
-rewrite [in LHS](choiceA (`Pr /7) (`Pr /6) (`Pr /2) (@Prob.mk (2/7) H27)); last first.
+rewrite [in LHS](choiceA (/ 7)%:pr (/ 6)%:pr (/ 2)%:pr (@Prob.mk (2/7) H27)); last first.
   by rewrite 4!probpK /= /onem; split; field.
 rewrite choicemm.
-rewrite [in LHS](choiceA (`Pr /8) (@Prob.mk (2/7) H27) (@Prob.mk (7/21) H721) (@Prob.mk (21/56) H2156)); last first.
+rewrite [in LHS](choiceA (/ 8)%:pr (@Prob.mk (2/7) H27) (@Prob.mk (7/21) H721) (@Prob.mk (21/56) H2156)); last first.
   by rewrite 4!probpK /= /onem; split; field.
 rewrite (choiceC (@Prob.mk (3/4) H34)).
-rewrite [in LHS](choiceA (`Pr /5) (probcplt (@Prob.mk (3/4) H34)) (`Pr /2) (@Prob.mk (2/5) H25)); last first.
+rewrite [in LHS](choiceA (/ 5)%:pr (probcplt (@Prob.mk (3/4) H34)) (/ 2)%:pr (@Prob.mk (2/5) H25)); last first.
   by rewrite 3!probpK /= /onem; split; field.
 rewrite choicemm.
 rewrite choicemm.
 rewrite (choiceC (@Prob.mk (2/5) H25)).
-rewrite [in LHS](choiceA (@Prob.mk (21/56) H2156) (probcplt (Prob.mk H25)) (`Pr /2) (Prob.mk H34)); last first.
+rewrite [in LHS](choiceA (@Prob.mk (21/56) H2156) (probcplt (Prob.mk H25)) (/ 2)%:pr (Prob.mk H34)); last first.
   by rewrite 3!probpK /= /onem; split; field.
 rewrite choicemm.
 rewrite (choiceC (Prob.mk H34)).
-rewrite [in LHS](choiceA (`Pr /9) (probcplt (Prob.mk H34)) (`Pr /3) (`Pr /3)); last first.
+rewrite [in LHS](choiceA (/ 9)%:pr (probcplt (Prob.mk H34)) (/ 3)%:pr (/ 3)%:pr); last first.
   by rewrite 3!probpK /= /onem; split; field.
 rewrite choicemm choiceC.
 rewrite (@choice_ext (Prob.mk H23)) //= /onem; by field.
@@ -511,18 +511,18 @@ Qed.
 Definition uFFT {M : probMonad} : M bool :=
   uniform true [:: false; false; true].
 
-Lemma uFFTE (M : probMonad) : uFFT = bcoin (`Pr /3) :> M _.
+Lemma uFFTE (M : probMonad) : uFFT = bcoin (/ 3)%:pr :> M _.
 Proof.
 rewrite /uFFT /bcoin uniform_cons.
-rewrite (_ : `Pr _ = `Pr /3)%R; last exact/prob_ext.
+rewrite (_ : _%:pr = (/ 3)%:pr)%R; last exact/prob_ext.
 rewrite uniform_cons.
-rewrite [in X in _ <| _ |> X](_ : `Pr _ = `Pr /2)%R; last first.
+rewrite [in X in _ <| _ |> X](_ : _%:pr = (/ 2)%:pr)%R; last first.
   exact/prob_ext.
 rewrite uniform_singl //=.
-rewrite (choiceA _ _ (`Pr /2) (Prob.mk H23)); last first.
+rewrite (choiceA _ _ (/ 2)%:pr (Prob.mk H23)); last first.
   rewrite /= /onem; split; field.
 rewrite choicemm choiceC.
-rewrite (_ : (`Pr / 3)%R = probcplt (Prob.mk H23)) //.
+rewrite (_ : (/ 3)%:pr = probcplt (Prob.mk H23)) //.
 apply prob_ext => /=; rewrite /onem; field.
 Qed.
 
@@ -532,11 +532,11 @@ Definition uTTF {M : probMonad} : M bool :=
 Lemma uTTFE (M : probMonad) : uTTF = bcoin (@Prob.mk (2/3) H23) :> M _.
 Proof.
 rewrite /uTTF /bcoin uniform_cons.
-rewrite (_ : `Pr _ = `Pr /3)%R; last exact: prob_ext.
+rewrite (_ : _%:pr = (/ 3)%:pr)%R; last exact: prob_ext.
 rewrite uniform_cons.
-rewrite [in X in _ <| _ |> X](_ : `Pr _ = `Pr /2)%R; last exact/prob_ext.
+rewrite [in X in _ <| _ |> X](_ : _%:pr = (/ 2)%:pr)%R; last exact/prob_ext.
 rewrite uniform_singl //=.
-rewrite (choiceA _ _ (`Pr /2) (Prob.mk H23)); last first.
+rewrite (choiceA _ _ (/ 2)%:pr (Prob.mk H23)); last first.
   rewrite /= /onem; split; field.
 by rewrite choicemm choiceC.
 Qed.
@@ -552,7 +552,7 @@ elim: s => [//|h t IH _ H].
 rewrite uniform_cons.
 case/boolP : (t == [::]) => [/eqP -> {IH}|t0].
   rewrite uniform_nil.
-  rewrite (_ : `Pr _ = `Pr 1); last by apply prob_ext => /=; rewrite Rinv_1.
+  rewrite (_ : _%:pr = 1%:pr); last by apply prob_ext => /=; rewrite Rinv_1.
   rewrite choice1.
   rewrite 2!bindretf ifF //; apply/negbTE/H; by rewrite mem_head.
 rewrite 2!prob_bindDl; congr (_ <| _ |> _).

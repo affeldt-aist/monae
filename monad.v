@@ -6,10 +6,14 @@ From mathcomp Require Import all_ssreflect.
 From mathcomp Require boolp.
 Require Import monae_lib.
 
-(* This file defines monads in the special case of functors from the
-   category Type to the cateory Type. The file category.v generalizes
-   this with a proper notion of category (see Monad_of_category_monad.m
-    in category.v) *)
+(******************************************************************************)
+(*                A formalization of monads over the category Set             *)
+(*                                                                            *)
+(* We consider the type Type of Coq as the category Set and define functors   *)
+(* and monads on top of it. These monads are used to develop the basics of    *)
+(* monadic equational reasoning. The file category.v provides a more generic  *)
+(* definition of monads as well as a bridge to this file.                     *)
+(******************************************************************************)
 
 (* Contents:
 - Module FunctorLaws/Module Functor
@@ -37,8 +41,6 @@ Require Import monae_lib.
 Reserved Notation "A `2" (format "A `2", at level 3).
 Reserved Notation "f ^`2" (format "f ^`2", at level 3).
 Reserved Notation "m >> f" (at level 49).
-Reserved Notation "x '[~]' y" (at level 50).
-Reserved Notation "'[~p]'".
 Reserved Notation "f (o) g" (at level 11).
 Reserved Notation "'fmap' f" (at level 4).
 

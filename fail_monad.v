@@ -2,6 +2,10 @@ From mathcomp Require Import all_ssreflect.
 From mathcomp Require boolp.
 Require Import monae_lib monad.
 
+(******************************************************************************)
+(*                     Failure and nondeterministic monads                    *)
+(******************************************************************************)
+
 (* Contents:
 - Module MonadFail.
     definition of guard
@@ -23,6 +27,9 @@ wip (to go to another file):
 - Module MonadShiftReset.
 - Module MonadJump.
 *)
+
+Reserved Notation "x '[~]' y" (at level 50).
+Reserved Notation "'[~p]'".
 
 Set Implicit Arguments.
 Unset Strict Implicit.
