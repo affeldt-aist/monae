@@ -319,6 +319,68 @@ Definition bcoin {M : probMonad} (p : prob) : M bool :=
   Ret true <| p |> Ret false.
 Arguments bcoin : simpl never.
 
+Section prob_only.
+Variable M : probMonad.
+Variable p : prob.
+
+Definition two_coins : M (bool * bool)%type :=
+  (do a <- bcoin p; (do b <- bcoin p; Ret (a, b) : M _))%Do.
+
+Definition two_coins' : M (bool * bool)%type :=
+  (do a <- bcoin p; (do b <- bcoin p; Ret (b, a) : M _))%Do.
+
+Lemma prob_invp : (0 <= 1 / (1+p) <= 1)%R.
+Proof.
+split.
+- apply divR_ge0 => //.
+  by apply Rplus_lt_le_0_compat.
+- rewrite /Rdiv mul1R.
+  rewrite -{2}invR1.
+  apply Rle_Rinv => //.
+    by apply Rplus_lt_le_0_compat.
+  rewrite -{1}(addR0 1)%R.
+  apply Rplus_le_compat => //.
+  apply leRR.
+Qed.
+
+Definition Prob_invp := Prob.mk prob_invp.
+
+Lemma two_coinsE : two_coins = two_coins'.
+Proof.
+rewrite /two_coins /two_coins' /bcoin  !(bindretf,prob_bindDl).
+have Hcplt: p.~ = ((p * p).~ * ((1 / (1 + p)).~).~)%R.
+  rewrite /= onemK /onem (_ : 1-p*p = (1-p)*(1+p))%R.
+    rewrite /Rdiv mul1R -mulRA mulRV.
+    - by rewrite mulR1.
+    - by rewrite addRC; apply /eqP /tech_Rplus.
+  rewrite Rsqr_minus_plus.
+  by rewrite /Rsqr mulR1.
+have Half : (1 / (1 + p)).~ = (1 / 2 * (1 / (1 + p) * p.~).~)%R.
+  rewrite /onem.
+  have Hp := Prob.ge0 p.
+  apply (eqR_mul2r (r:=1+p)).
+    by rewrite addRC; apply tech_Rplus.
+  rewrite -mulRA.
+  rewrite !(mulRBl,mulRDl) !mul1R.
+  rewrite /Rdiv !mul1R.
+  rewrite -mulRA (mulRC (1-p)%R) mulRA.
+  rewrite mulVR; last first.
+    by rewrite addRC; apply /eqP /tech_Rplus.
+  rewrite addRC addRK mul1R subRD addRK /Rminus oppRK.
+  by rewrite mulRC mulRDl -/(Rdiv p 2) -double_var.
+rewrite -(choiceA (`Pr(p*p)) (`Pr Prob_invp.~)) //.
+rewrite (choiceA (`Pr Prob_invp.~) p (`Pr (1/2)) (`Pr (Prob_invp * p.~).~));
+  last by split => //=; rewrite /= !onemK.
+rewrite (choiceC (`Pr (1/2))).
+rewrite (_ : `Pr (1/2).~ = `Pr (1/2)); last first.
+  apply prob_ext => /=.
+  by rewrite /onem {1}(double_var 1) addRK.
+rewrite -(choiceA (`Pr Prob_invp.~) p (`Pr (1/2)) (`Pr (Prob_invp * p.~).~));
+  last by split => //=; rewrite /= !onemK.
+by rewrite (choiceA (`Pr(p*p)) (`Pr Prob_invp.~) p p).
+Qed.
+End prob_only.
+
 (* arbitrary nondeterministic choice between booleans *)
 Definition arb {M : altMonad} : M bool := Ret true [~] Ret false.
 
