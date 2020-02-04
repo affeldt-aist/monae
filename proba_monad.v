@@ -329,55 +329,42 @@ Definition two_coins : M (bool * bool)%type :=
 Definition two_coins' : M (bool * bool)%type :=
   (do a <- bcoin p; (do b <- bcoin p; Ret (b, a) : M _))%Do.
 
+(* TODO: move to Reals_ext.v? *)
 Lemma prob_invp : (0 <= 1 / (1+p) <= 1)%R.
 Proof.
 split.
-- apply divR_ge0 => //.
-  by apply Rplus_lt_le_0_compat.
-- rewrite /Rdiv mul1R.
-  rewrite -{2}invR1.
-  apply Rle_Rinv => //.
-    by apply Rplus_lt_le_0_compat.
-  rewrite -{1}(addR0 1)%R.
-  apply Rplus_le_compat => //.
-  apply leRR.
+- apply divR_ge0 => //; exact: addR_gt0wl.
+- rewrite leR_pdivr_mulr ?mul1R; last exact: addR_gt0wl.
+  by rewrite addRC -leR_subl_addr subRR.
 Qed.
 
 Definition Prob_invp := Prob.mk prob_invp.
 
+Local Open Scope R_scope.
 Lemma two_coinsE : two_coins = two_coins'.
 Proof.
 rewrite /two_coins /two_coins' /bcoin  !(bindretf,prob_bindDl).
 have Hcplt: p.~ = ((p * p).~ * ((1 / (1 + p)).~).~)%R.
-  rewrite /= onemK /onem (_ : 1-p*p = (1-p)*(1+p))%R.
-    rewrite /Rdiv mul1R -mulRA mulRV.
-    - by rewrite mulR1.
-    - by rewrite addRC; apply /eqP /tech_Rplus.
-  rewrite Rsqr_minus_plus.
-  by rewrite /Rsqr mulR1.
+  rewrite /= onemK /onem mulRR -{2}(exp1R 2) subR_sqr div1R -mulRA.
+  by rewrite mulRV ?mulR1 // paddR_neq0 //; left; apply/eqP.
 have Half : (1 / (1 + p)).~ = (1 / 2 * (1 / (1 + p) * p.~).~)%R.
   rewrite /onem.
-  have Hp := Prob.ge0 p.
   apply (eqR_mul2r (r:=1+p)).
-    by rewrite addRC; apply tech_Rplus.
-  rewrite -mulRA.
-  rewrite !(mulRBl,mulRDl) !mul1R.
-  rewrite /Rdiv !mul1R.
-  rewrite -mulRA (mulRC (1-p)%R) mulRA.
-  rewrite mulVR; last first.
-    by rewrite addRC; apply /eqP /tech_Rplus.
-  rewrite addRC addRK mul1R subRD addRK /Rminus oppRK.
-  by rewrite mulRC mulRDl -/(Rdiv p 2) -double_var.
-rewrite -(choiceA (`Pr(p*p)) (`Pr Prob_invp.~)) //.
-rewrite (choiceA (`Pr Prob_invp.~) p (`Pr (1/2)) (`Pr (Prob_invp * p.~).~));
+    by apply/eqP; rewrite paddR_neq0 //; left; apply/eqP.
+  rewrite -mulRA !(mulRBl,mulRDl) !(mul1R,div1R) mulRAC mulVR; last first.
+    by rewrite paddR_neq0 //; left; apply/eqP.
+  rewrite addRC addRK mul1R subRB addRC addRK addRR mulRA mulVR ?mul1R //.
+  by rewrite (_ : 2%R = 2%:R) // INR_eq0'.
+rewrite -(choiceA (p * p)%:pr Prob_invp.~%:pr) //.
+rewrite (choiceA Prob_invp.~%:pr p (1 / 2)%:pr (Prob_invp * p.~).~%:pr);
   last by split => //=; rewrite /= !onemK.
-rewrite (choiceC (`Pr (1/2))).
-rewrite (_ : `Pr (1/2).~ = `Pr (1/2)); last first.
+rewrite (choiceC (1/2)%:pr).
+rewrite (_ : (1/2).~%:pr = (1/2)%:pr); last first.
   apply prob_ext => /=.
   by rewrite /onem {1}(double_var 1) addRK.
-rewrite -(choiceA (`Pr Prob_invp.~) p (`Pr (1/2)) (`Pr (Prob_invp * p.~).~));
+rewrite -(choiceA Prob_invp.~%:pr p (1/2)%:pr (Prob_invp * p.~).~%:pr);
   last by split => //=; rewrite /= !onemK.
-by rewrite (choiceA (`Pr(p*p)) (`Pr Prob_invp.~) p p).
+by rewrite (choiceA (p*p)%:pr Prob_invp.~%:pr p p).
 Qed.
 End prob_only.
 
