@@ -501,7 +501,7 @@ rewrite boolp.funeqE; elim => [|h t IH].
 rewrite fcompE insertE compE alt_fmapDl fmapE bindretf compE [in RHS]rev_cons insert_rcons.
 rewrite rev_cons -cats1 rev_cons -cats1 -catA; congr (_ [~] _).
 move: IH; rewrite fcompE [X in X -> _]/= => <-.
-rewrite -!fmap_oE; congr (fmap _ (insert a t)).
+rewrite -!fmap_oE. congr (fmap _ (insert a t)).
 by rewrite boolp.funeqE => s; rewrite /= -rev_cons.
 Qed.
 

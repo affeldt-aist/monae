@@ -384,6 +384,7 @@ Definition arbcoin p : M bool :=
 Definition coinarb p : M bool :=
   (do c <- bcoin p ; (do a <- arb; Ret (a == c) : M _))%Do.
 
+(*
 Lemma Ret_eqb_addL b :
   (fun c => Ret (b == c)) = (fun c => Ret (~~ b (+) c)) :> (bool -> M bool).
 Proof. case: b; rewrite boolp.funeqE; by case. Qed.
@@ -393,6 +394,7 @@ Lemma Ret_eqb_addR b :
 Proof. case: b; rewrite boolp.funeqE; by case. Qed.
 
 Definition Ret_eqb_add := (Ret_eqb_addL, Ret_eqb_addR).
+*)
 
 Lemma arbcoin_spec p :
   arbcoin p = (bcoin p : M _) [~] bcoin p.~%:pr.
@@ -400,11 +402,10 @@ Proof.
 rewrite /arbcoin /arb.
 rewrite alt_bindDl.
 rewrite 2!bindretf.
-rewrite 2!Ret_eqb_add ![fun _ => Ret _]/=.
 rewrite bindmret; congr (_ [~] _).
 rewrite [in RHS]/bcoin choiceC.
 rewrite [in RHS](@choice_ext p); last by rewrite /= onemK.
-by rewrite {1}/bcoin prob_bindDl 2!bindretf.
+rewrite {1}/bcoin prob_bindDl 2!bindretf. eqxx /=.
 Qed.
 
 Lemma coinarb_spec p : coinarb p = arb.
@@ -412,11 +413,8 @@ Proof.
 rewrite [in LHS]/coinarb [in LHS]/bcoin.
 rewrite prob_bindDl.
 rewrite 2!bindretf.
-rewrite 2!Ret_eqb_add [fun _ => Ret _]/= [in X in _ <| _ |> X = _]/=.
-rewrite bindmret.
-rewrite {2}/arb alt_bindDl !bindretf [Ret _]/= [Ret (~~ _)]/=.
-rewrite {1}/arb.
-by rewrite altC choicemm altC.
+rewrite /arb !alt_bindDl !bindretf !eqxx.
+by rewrite eq_sym altC choicemm.
 Qed.
 
 Lemma coinarb_spec_convexity p w : coinarb p =
