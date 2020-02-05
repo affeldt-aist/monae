@@ -3,13 +3,17 @@ From mathcomp Require Import boolp.
 Require Import monae_lib.
 
 (******************************************************************************)
-(*                      Formalization of category theory                      *)
+(*                  Formalization of basic category theory                    *)
 (*                                                                            *)
 (* This file provides a notion of category that generalizes the one in        *)
 (* monad.v. Functors and monads are also defined.                             *)
 (*                                                                            *)
+(* Type_category       == the category corresponding to the Coq type Type     *)
+(* Module AdjComp      == define a pair of adjoint functors by composition of *)
+(*                        two pairs of adjoint functors                       *)
+(* Module MonadOfAdjoint == monad defined by adjointness                      *)
 (* Monad_of_category_monad.m == turns a monad over the Type category into     *)
-(*                              a monad in the sense of monad.v               *)
+(*                     a monad in the sense of monad.v                        *)
 (******************************************************************************)
 
 (* Contents:
@@ -242,9 +246,9 @@ Proof. apply hom_ext; by subst b'. Qed.
 End transport_lemmas.
 
 Section Type_as_a_category.
-Definition Type_category_class : Category.mixin_of Type :=
+Definition Type_category_mixin : Category.mixin_of Type :=
   @Category.Mixin Type id (fun _ _ _ => True) (fun _ => I) (fun _ _ _ _ _ _ _ => I).
-Canonical Type_category := Category.Pack Type_category_class.
+Canonical Type_category := Category.Pack Type_category_mixin.
 Definition hom_Type (a b : Type) (f : a -> b) : {hom a,b} := Hom (I : hom (f : El a -> El b)).
 End Type_as_a_category.
 
@@ -259,17 +263,16 @@ End def.
 End FunctorLaws.
 
 Module Functor.
-Record class_of (C D : category) (m : C -> D) : Type := Class {
+Record mixin_of (C D : category) (m : C -> D) : Type := Mixin {
   f : forall A B, {hom A,B} -> {hom m A, m B} ;
   _ : FunctorLaws.id f ;
-  _ : FunctorLaws.comp f
-}.
-Structure t (C D : category) : Type := Pack { m : C -> D ; class : class_of m }.
+  _ : FunctorLaws.comp f }.
+Structure t (C D : category) : Type := Pack { m : C -> D ; class : mixin_of m }.
 Module Exports.
 Section exports.
 Variables (C D : category).
 Definition Fun (F : t C D) : forall A B, {hom A, B} -> {hom m F A, m F B} :=
-  let: Pack _ (Class f _ _) := F return forall A B, {hom A, B} -> {hom m F A, m F B} in f.
+  let: Pack _ (Mixin f _ _) := F return forall A B, {hom A, B} -> {hom m F A, m F B} in f.
 Arguments Fun _ [A] [B] : simpl never.
 End exports.
 Notation functor := t.
@@ -312,7 +315,7 @@ have pp : ff = fg.
   exact: Prop_irrelevance.
 rewrite {p}.
 move: idf cf idg cg; rewrite pp => *.
-congr (Functor.Pack (Functor.Class _ _)); exact/Prop_irrelevance.
+congr (Functor.Pack (Functor.Mixin _ _)); exact/Prop_irrelevance.
 Qed.
 End functor_lemmas.
 
@@ -331,7 +334,7 @@ Variables C : category.
 Definition id_f (A B : C) (f : {hom A,B}) := f.
 Lemma id_id : FunctorLaws.id id_f. Proof. by []. Qed.
 Lemma id_comp : FunctorLaws.comp id_f. Proof. by []. Qed.
-Definition FId : functor _ _ := Functor.Pack (Functor.Class id_id id_comp).
+Definition FId : functor _ _ := Functor.Pack (Functor.Mixin id_id id_comp).
 Lemma FIdf (A B : C) (f : {hom A,B}) : FId # f = f.
 Proof. by []. Qed.
 End functorid.
@@ -350,7 +353,7 @@ rewrite /FunctorLaws.comp => a b c g h; rewrite /functorcomposition.
 by rewrite 2!functor_o_hom.
 Qed.
 Definition FComp : functor C0 C2:=
-  Functor.Pack (Functor.Class functorcomposition_id functorcomposition_comp).
+  Functor.Pack (Functor.Mixin functorcomposition_id functorcomposition_comp).
 End functorcomposition.
 Arguments FComp : simpl never.
 
@@ -360,19 +363,19 @@ Section functorcomposition_lemmas.
 Variables (C0 C1 C2 C3 : category).
 Lemma FCompId (F : functor C0 C1) : F \O FId = F.
 Proof.
-case: F => ? [???]; congr (Functor.Pack (Functor.Class _ _));
+case: F => ? [???]; congr (Functor.Pack (Functor.Mixin _ _));
   exact/Prop_irrelevance.
 Qed.
 Lemma FIdComp (F : functor C0 C1) : FId \O F = F.
 Proof.
-case: F => ? [???]; congr (Functor.Pack (Functor.Class _ _));
+case: F => ? [???]; congr (Functor.Pack (Functor.Mixin _ _));
   exact/Prop_irrelevance.
 Qed.
 Lemma FCompA (F : functor C2 C3) (G : functor C1 C2) (H : functor C0 C1) :
   (F \O G) \O H = F \O (G \O H).
 Proof.
 move: F G H => [f [???]] [g [???]] [h [???]].
-congr (Functor.Pack (Functor.Class  _ _)); exact/Prop_irrelevance.
+congr (Functor.Pack (Functor.Mixin  _ _)); exact/Prop_irrelevance.
 Qed.
 Lemma FCompE (F : functor C1 C2) (G : functor C0 C1) a b (k : {hom a, b}) :
   (F \O G) # k = F # (G # k).
@@ -882,10 +885,9 @@ Record mixin_of (M : functor C C) : Type := Mixin {
   _ : JoinLaws.join_naturality join ;
   _ : JoinLaws.left_unit ret join ;
   _ : JoinLaws.right_unit ret join ;
-  _ : JoinLaws.associativity join;
-  }.
+  _ : JoinLaws.associativity join }.
 Record class_of (M : C -> C) := Class {
-  base : Functor.class_of M ; mixin : mixin_of (Functor.Pack base) }.
+  base : Functor.mixin_of M ; mixin : mixin_of (Functor.Pack base) }.
 Structure t : Type := Pack { m : C -> C ; class : class_of m }.
 Definition baseType (M : t) := Functor.Pack (base (class M)).
 End monad.
@@ -998,7 +1000,6 @@ End monad_lemmas.
 Arguments Bind {C M A B} : simpl never.
 Notation "m >>= f" := (Bind f m).
 
-(* monad defined by adjointness *)
 Module MonadOfAdjoint.
 Section monad_of_adjoint.
 Import homcomp_notation.
@@ -1087,7 +1088,7 @@ rewrite bindA/=.
 congr (fun f => bind f m); rewrite hom_ext/=.
 by rewrite -[in RHS]homcompA bindretf_fun.
 Qed.
-Definition functor_mixin := Functor.Class fmap_id fmap_o.
+Definition functor_mixin := Functor.Mixin fmap_id fmap_o.
 Let M' := Functor.Pack functor_mixin.
 
 Let ret' : forall A, {hom A, M' A} := ret.
@@ -1126,7 +1127,7 @@ Lemma join_naturality : naturality (FComp M' M') M' join.
 Proof.
 move => A B h.
 rewrite /join /= funeqE => m /=.
-rewrite fmap_bind bindA/=.
+rewrite fmap_bind bindA /=.
 congr (fun f => bind f m).
 rewrite hom_ext/=.
 rewrite -[in RHS]homcompA.

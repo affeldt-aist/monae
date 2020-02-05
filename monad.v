@@ -13,6 +13,14 @@ Require Import monae_lib.
 (* and monads on top of it. These monads are used to develop the basics of    *)
 (* monadic equational reasoning. The file category.v provides a more generic  *)
 (* definition of monads as well as a bridge to this file.                     *)
+(*                                                                            *)
+(* Module FunctorLaws == map laws of a functor                                *)
+(*            functor == type of functors                                     *)
+(*              F # g == application of functor F to the morphism g           *)
+(*             F ~> G == natural transformation from functor F to functor G   *)
+(*             F -| G == adjoint functors                                     *)
+(*              monad == type of monads                                       *)
+(*      operation E M == sigma operation                                      *)
 (******************************************************************************)
 
 (* Contents:
@@ -54,7 +62,6 @@ Unset Printing Implicit Defensive.
 
 Notation "f ~~> g" := (forall A, f A -> g A) (at level 51, only parsing).
 
-(* map laws of a functor *)
 Module FunctorLaws.
 Section def.
 Variable (M : Type -> Type) (f : forall A B, (A -> B) -> M A -> M B).
@@ -212,7 +219,6 @@ Polymorphic Definition naturalP (M N : functor) (m : M ~~> N) :=
   forall A B (h : A -> B), (N # h) \o m A = m B \o (M # h).
 Arguments naturalP : clear implicits.
 
-(* natural transformation *)
 Module Natural.
 Section natural.
 Variables M N : functor.
@@ -612,7 +618,6 @@ Proof. by rewrite compA joinA. Qed.*)
 End monad_lemmas.
 Arguments Bind {M A B} : simpl never.
 
-(* sigma operation, jaskelioff ESOP 2009 *)
 Definition operation (E : functor) (M : monad) := (E \O M) ~> M.
 
 Notation "'do' x <- m ; e" := (Bind m (fun x => e)) : do_notation.

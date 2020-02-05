@@ -60,14 +60,14 @@ This library has been applied to other formalizations:
 
 *** Last stable version:
 
-Version 0.0.4:
+Version 0.0.6:
 3. ~opam install coq-monae~
 
 **** Requirements
 
 - [[https://coq.inria.fr][Coq]] 8.10
-- [[https://github.com/math-comp/math-comp][Mathematical Components library]] 1.9.0 or greater
-- [[https://github.com/affeldt-aist/infotheo][infotheo]] 0.0.5 or greater
+- [[https://github.com/math-comp/math-comp][Mathematical Components library]] 1.10.0
+- [[https://github.com/affeldt-aist/infotheo][infotheo]] 0.0.7
   + which requires [[https://github.com/math-comp/analysis][MathComp-Analysis]] 0.2.2 or greater
     * which requires
       - [[https://github.com/math-comp/finmap][finmap]] 1.2.0 or greater
@@ -76,7 +76,9 @@ All versions available from opam.
 
 *** Development version (git master):
 
-With Coq 8.10 and the development version of infotheo.
+With Coq 8.10 and the last stable release of infotheo.
+(The version that depends on the development version of infotheo
+is in the branch ~infotheo_dev~.)
 
 3. ~git clone git@github.com:affeldt-aist/monae.git~
 4. ~cd monae~
