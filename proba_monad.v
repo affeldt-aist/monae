@@ -343,7 +343,10 @@ Definition Prob_invp := Prob.mk prob_invp.
 Local Open Scope R_scope.
 Lemma two_coinsE : two_coins = two_coins'.
 Proof.
-rewrite /two_coins /two_coins' /bcoin  !(bindretf,prob_bindDl).
+rewrite /two_coins /two_coins' /bcoin.
+rewrite prob_bindDl.
+rewrite !bindretf.
+rewrite !(prob_bindDl,bindretf).
 have Hcplt: p.~ = ((p * p).~ * ((1 / (1 + p)).~).~)%R.
   rewrite /= onemK /onem mulRR -{2}(exp1R 2) subR_sqr div1R -mulRA.
   by rewrite mulRV ?mulR1 // paddR_neq0 //; left; apply/eqP.
