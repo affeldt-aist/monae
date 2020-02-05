@@ -2,6 +2,7 @@ Require Import Reals Lra.
 From mathcomp Require Import all_ssreflect.
 From mathcomp Require boolp.
 From infotheo Require Import ssrR Reals_ext proba.
+From infotheo Require convex_choice.
 Require Import monae_lib monad fail_monad.
 
 (*
@@ -85,6 +86,27 @@ Proof. by case: M => m [? []]. Qed.
 End prob_lemmas.
 Arguments choiceA {M} {A} _ _ _ _ {mx} {my} {mz}.
 Arguments choiceC {M} {A} _ {mx} {my}.
+
+Section convex.
+Variable M : probMonad.
+Variable A : Type.
+
+Import fdist convex_choice ConvexSpace.
+
+Definition prob_mixin : mixin_of (choice_of_Type (M A)).
+apply (@Class _ (fun p (a b : choice_of_Type (M A)) => Choice p A a b)).
+- apply choice1.
+- apply choicemm.
+- apply choiceC.
+- move=> p q a b c.
+  apply (choiceA p q).
+  by rewrite -p_is_rs s_of_pqE onemK.
+Defined.
+
+Definition probConvex := Pack prob_mixin.
+End convex.
+
+Arguments probConvex {M} {A}.
 
 Fixpoint uniform {M : probMonad} {A} (def(*NB: Coq functions are total*) : A) (s : seq A) : M A :=
   match s with
@@ -319,26 +341,8 @@ Definition bcoin {M : probMonad} (p : prob) : M bool :=
   Ret true <| p |> Ret false.
 Arguments bcoin : simpl never.
 
-From infotheo Require convex_choice.
-
 Section prob_only.
 Variable M : probMonad.
-
-Section convex.
-Variable T : Type.
-Import fdist convex_choice ConvexSpace.
-Definition prob_mixin : mixin_of (choice_of_Type (M T)).
-apply (@Class _ (fun p (a b : choice_of_Type (M T)) => Choice p T a b)).
-- apply choice1.
-- apply choicemm.
-- apply choiceC.
-- move=> p q a b c.
-  apply (choiceA p q).
-  by rewrite -p_is_rs s_of_pqE onemK.
-Defined.
-Definition convexM := Pack prob_mixin.
-End convex.
-
 Variable p q : prob.
 
 Definition two_coins : M (bool * bool)%type :=
@@ -364,7 +368,7 @@ rewrite /two_coins /two_coins' /bcoin.
 rewrite prob_bindDl.
 rewrite !bindretf.
 rewrite !(prob_bindDl,bindretf).
-apply (@convex_choice.convACA (convexM _)).
+apply (@convex_choice.convACA probConvex).
 Qed.
 End prob_only.
 
