@@ -405,7 +405,7 @@ rewrite 2!bindretf.
 rewrite bindmret; congr (_ [~] _).
 rewrite [in RHS]/bcoin choiceC.
 rewrite [in RHS](@choice_ext p); last by rewrite /= onemK.
-rewrite {1}/bcoin prob_bindDl 2!bindretf. eqxx /=.
+by rewrite {1}/bcoin prob_bindDl 2!bindretf eqxx /=.
 Qed.
 
 Lemma coinarb_spec p : coinarb p = arb.

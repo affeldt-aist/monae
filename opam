@@ -10,6 +10,7 @@ authors: [
   "Takafumi Saikawa"
   "Jacques Garrigue"
   "Celestine Sauvage"
+  "Kazunari Tanaka"
 ]
 build: [
   [make "-j%{jobs}%"]
@@ -32,6 +33,7 @@ tags: [
   "keyword: monad"
   "keyword: effect"
   "keyword: probability"
+  "keyword: nondeterminism"
   "logpath:monae"
   "date:2020-02-06"
 ]
