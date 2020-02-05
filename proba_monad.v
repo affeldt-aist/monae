@@ -319,17 +319,36 @@ Definition bcoin {M : probMonad} (p : prob) : M bool :=
   Ret true <| p |> Ret false.
 Arguments bcoin : simpl never.
 
+From infotheo Require convex_choice.
+
 Section prob_only.
 Variable M : probMonad.
-Variable p : prob.
+
+Section convex.
+Variable T : Type.
+Import fdist convex_choice ConvexSpace.
+Definition prob_mixin : mixin_of (choice_of_Type (M T)).
+apply (@Class _ (fun p (a b : choice_of_Type (M T)) => Choice p T a b)).
+- apply choice1.
+- apply choicemm.
+- apply choiceC.
+- move=> p q a b c.
+  apply (choiceA p q).
+  by rewrite -p_is_rs s_of_pqE onemK.
+Defined.
+Definition convexM := Pack prob_mixin.
+End convex.
+
+Variable p q : prob.
 
 Definition two_coins : M (bool * bool)%type :=
-  (do a <- bcoin p; (do b <- bcoin p; Ret (a, b) : M _))%Do.
+  (do a <- bcoin p; (do b <- bcoin q; Ret (a, b) : M _))%Do.
 
 Definition two_coins' : M (bool * bool)%type :=
-  (do a <- bcoin p; (do b <- bcoin p; Ret (b, a) : M _))%Do.
+  (do a <- bcoin q; (do b <- bcoin p; Ret (b, a) : M _))%Do.
 
 (* TODO: move to Reals_ext.v? *)
+(* Not needed here anymore *)
 Lemma prob_invp : (0 <= 1 / (1+p) <= 1)%R.
 Proof.
 split.
@@ -337,37 +356,15 @@ split.
 - rewrite leR_pdivr_mulr ?mul1R; last exact: addR_gt0wl.
   by rewrite addRC -leR_subl_addr subRR.
 Qed.
-
 Definition Prob_invp := Prob.mk prob_invp.
 
-Local Open Scope R_scope.
 Lemma two_coinsE : two_coins = two_coins'.
 Proof.
 rewrite /two_coins /two_coins' /bcoin.
 rewrite prob_bindDl.
 rewrite !bindretf.
 rewrite !(prob_bindDl,bindretf).
-have Hcplt: p.~ = ((p * p).~ * ((1 / (1 + p)).~).~)%R.
-  rewrite /= onemK /onem mulRR -{2}(exp1R 2) subR_sqr div1R -mulRA.
-  by rewrite mulRV ?mulR1 // paddR_neq0 //; left; apply/eqP.
-have Half : (1 / (1 + p)).~ = (1 / 2 * (1 / (1 + p) * p.~).~)%R.
-  rewrite /onem.
-  apply (eqR_mul2r (r:=1+p)).
-    by apply/eqP; rewrite paddR_neq0 //; left; apply/eqP.
-  rewrite -mulRA !(mulRBl,mulRDl) !(mul1R,div1R) mulRAC mulVR; last first.
-    by rewrite paddR_neq0 //; left; apply/eqP.
-  rewrite addRC addRK mul1R subRB addRC addRK addRR mulRA mulVR ?mul1R //.
-  by rewrite (_ : 2%R = 2%:R) // INR_eq0'.
-rewrite -(choiceA (p * p)%:pr Prob_invp.~%:pr) //.
-rewrite (choiceA Prob_invp.~%:pr p (1 / 2)%:pr (Prob_invp * p.~).~%:pr);
-  last by split => //=; rewrite /= !onemK.
-rewrite (choiceC (1/2)%:pr).
-rewrite (_ : (1/2).~%:pr = (1/2)%:pr); last first.
-  apply prob_ext => /=.
-  by rewrite /onem {1}(double_var 1) addRK.
-rewrite -(choiceA Prob_invp.~%:pr p (1/2)%:pr (Prob_invp * p.~).~%:pr);
-  last by split => //=; rewrite /= !onemK.
-by rewrite (choiceA (p*p)%:pr Prob_invp.~%:pr p p).
+apply (@convex_choice.convACA (convexM _)).
 Qed.
 End prob_only.
 
