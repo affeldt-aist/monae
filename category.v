@@ -3,13 +3,17 @@ From mathcomp Require Import boolp.
 Require Import monae_lib.
 
 (******************************************************************************)
-(*                      Formalization of category theory                      *)
+(*                  Formalization of basic category theory                    *)
 (*                                                                            *)
 (* This file provides a notion of category that generalizes the one in        *)
 (* monad.v. Functors and monads are also defined.                             *)
 (*                                                                            *)
+(* Type_category       == the category corresponding to the Coq type Type     *)
+(* Module AdjComp      == define a pair of adjoint functors by composition of *)
+(*                        two pairs of adjoint functors                       *)
+(* Module MonadOfAdjoint == monad defined by adjointness                      *)
 (* Monad_of_category_monad.m == turns a monad over the Type category into     *)
-(*                              a monad in the sense of monad.v               *)
+(*                     a monad in the sense of monad.v                        *)
 (******************************************************************************)
 
 (* Contents:
@@ -998,7 +1002,6 @@ End monad_lemmas.
 Arguments Bind {C M A B} : simpl never.
 Notation "m >>= f" := (Bind f m).
 
-(* monad defined by adjointness *)
 Module MonadOfAdjoint.
 Section monad_of_adjoint.
 Import homcomp_notation.

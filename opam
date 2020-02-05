@@ -19,7 +19,7 @@ install: [
 ]
 depends: [
   "coq" { >= "8.10" & < "8.11~" }
-  "coq-infotheo" { >= "0.0.5" }
+  "coq-infotheo" { >= "0.0.7" }
 ]
 synopsis: "Monae"
 description: """
@@ -33,5 +33,5 @@ tags: [
   "keyword: effect"
   "keyword: probability"
   "logpath:monae"
-  "date:2019-11-09"
+  "date:2020-02-06"
 ]
