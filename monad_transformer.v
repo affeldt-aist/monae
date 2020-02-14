@@ -1351,21 +1351,62 @@ Section from_def.
 Definition from (M : monad) : K_MonadT M ~~> M :=
   fun (A : Type) (c : K_MonadT M A) => c A Ret.
 
-Lemma natural_from (M : monad) : naturality (K_MonadT M) M (@from M).
+End from_def.
+
+Section from_prop.
+
+Variable M : monad.
+
+Lemma from_liftK A : (@from M A) \o (LiftT K_MonadT M A) = id.
+Proof.
+rewrite boolp.funeqE => m /=.
+rewrite /from /= /LiftT /=.
+rewrite /K_MonadM /=.
+(* TODO *) unlock => /=.
+rewrite /K_lift /=.
+by rewrite bindmret.
+Qed.
+
+Lemma natural_from : naturality (K_MonadT M) M (@from M).
 Proof.
 move=> A B h; rewrite /from.
 rewrite boolp.funeqE => m.
-rewrite [in LHS]/=.
-rewrite -[in LHS]compE.
-rewrite [RHS](_ : _ = (K_MonadT M # h) m B Ret) //.
 Abort.
 
-End from_def.
+End from_prop.
 
-Section k_op.
+Section k_op_def.
 Variables (E : functor) (M : monad) (op : (E \O M) ~> M).
 
 Definition K_op : (E \O K_MonadT M) ~~> K_MonadT M :=
   psi_g (kappa op).
 
-End k_op.
+End k_op_def.
+
+Section k_op_prop.
+
+Variables (M : monad) (E : functor) (op : operation E M).
+
+Lemma K_opE (A : Type) :
+  op A = (@from M A) \o (@K_op _ _ op A) \o
+    ((functor_app_natural E (Natural.Pack (natural_monadM (LiftT K_MonadT M)))) A).
+Proof.
+rewrite boolp.funeqE => m /=.
+rewrite /from /K_op /= /psi_g /kappa /fun_app_nt /=.
+rewrite /K_bind /=.
+rewrite -[in RHS]compE.
+rewrite -[in RHS]compE.
+rewrite -compA.
+rewrite -functor_o.
+rewrite from_liftK.
+rewrite functor_id.
+by rewrite compfid.
+Qed.
+
+Lemma algebaric_K_op : algebraicity (K_op op).
+Proof.
+move=> A B f t.
+rewrite /K_op.
+Abort.
+
+End k_op_prop.
