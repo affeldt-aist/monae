@@ -330,8 +330,7 @@ Proof. by move=> C D f; rewrite eps0''_natural. Qed.
 Definition eps0 : F0 \O U0 ~> FId :=
   locked (Natural.Pack (Natural.Class eps0'_natural)).
 
-Lemma eps0E (C : convType) : eps0 C =
-  (fun d => Convn_indexed_over_finType (fdist_of_Dist d) (fun x : finsupp d => (fsval x))) :> (_ -> _).
+Lemma eps0E (C : convType) : eps0 C = Convn_fsdist (C:=C) :> (_ -> _).
 Proof. by rewrite /eps0; unlock. Qed.
 
 Definition eta0' : FId ~~> U0 \O F0 :=
@@ -353,74 +352,7 @@ Import ScaledConvex.
 Local Open Scope fset_scope.
 Local Open Scope R_scope.
 Lemma triL0 : TriangularLaws.left eta0 eps0.
-Proof.
-move=> c; apply funext => x /=.
-rewrite eps0E eta0E; apply: (@S1_inj _ _ x).
-rewrite S1_Convn_indexed_over_finType /=.
-pose cast (y : finsupp x) : FId c := let: FSetSub a _ := y in a.
-have Y0 : forall (i : finsupp (FSDistfmap (@FSDist1.d _) x)),
-  {a : finsupp x | fsval i = FSDist1.d (cast a)}.
-  case=> i /= Hi; apply cid; move: Hi.
-  by rewrite supp_FSDistfmap => /imfsetP[c0 /= c0x Hi]; exists (FSetSub c0x).
-pose Y i := projT1 (Y0 i).
-rewrite (eq_bigr (fun i => scalept (x (cast (Y i))) (S1 (fsval i)))); last first.
-  move=> i _; rewrite fdist_of_FSDistE /F0 /Y; case: (Y0 _)=> a /= ia /=.
-  rewrite {1}ia FSDistfmapE (fbig_pred1_inj _ _ _ (@FSDist1_inj _)) //; exact/fsvalP.
-have HY' (i : finsupp x) :
-  FSDist1.d (fsval i) \in finsupp (FSDistfmap (@FSDist1.d c) x).
-  by rewrite supp_FSDistfmap; apply/imfsetP => /=; exists (fsval i).
-set Y' := fun x0 => FSetSub (HY' x0).
-have Y'K : cancel Y' Y.
-  by move=> i; apply val_inj => /=; rewrite /Y; case: (Y0 _) => ? /= /FSDist1_inj.
-have YK : cancel Y Y' by move=> i; apply val_inj; rewrite /= /Y; case: (Y0 _).
-set dxy := fdist_of_finFSDist.d (FSDist_lift_supp.d (FSDist_crop0.d x) Y'K).
-have Hdxy : x \o cast \o Y =1 dxy.
-  move=> i; rewrite fdist_of_finFSDist.dE /= FSDist_lift_supp.dE /=.
-  apply/eqP; case: ifPn.
-    by move/imfsetP => -[j Hj ->]; rewrite fsfunE ffunE ifT // inE.
-  apply/contraNT => x0; apply/imfsetP; exists (Y i) => //=.
-  by rewrite mem_finsupp fsfunE ffunE ifT // inE.
-clearbody dxy.
-rewrite (eq_bigr (fun i => scalept (dxy i) (S1 (fsval i)))); last first.
-  move=> i; by rewrite /= -Hdxy.
-rewrite -S1_Convn_indexed_over_finType; congr S1.
-apply FSDist_ext => a /=.
-rewrite /Convn_indexed_over_finType convn_convnfsdist /= ConvnFSDist.dE fsfunE /=.
-case: ifPn => Ha.
-- rewrite /Convn_indexed_over_finType.d_enum /=.
-  have ax : a \in finsupp x.
-    case/bigfcupP : Ha => i /andP[/= _].
-    rewrite /Convn_indexed_over_finType.d_enum ffunE -Hdxy /Y /=.
-    case: (Y0 _) => -x0 /= -> _; rewrite FSDist1.supp inE => /eqP ->; exact/fsvalP.
-  transitivity (\sum_(a0 <- finsupp x) x a0 * (FSDist1.d (FSDist1.d a0)) (FSDist1.d a)); last first.
-    rewrite (big_fsetID _ (xpred1 a)) /=.
-    rewrite -2!big_fset_condE [in X in _ + X = _]big1 ?addR0; last first.
-      move=> c0 /negbTE c0a.
-      by rewrite FSDist1.dE inE (inj_eq (@FSDist1_inj _)) eq_sym c0a mulR0.
-    by rewrite fbig_pred1_inj // FSDist1.dE inE eqxx mulR1.
-  rewrite (reindex_onto enum_rank enum_val) /=; last by move=> *; exact: enum_valK.
-  rewrite -(@eq_big _ _ _ _ _ xpredT _ (fun j => x (cast (Y j)) * fsval j a)); last 2 first.
-    by move=> i; rewrite enum_rankK eqxx.
-    by move=> i _; rewrite ffunE -Hdxy enum_rankK.
-  rewrite [in RHS]big_seq_fsetE /= (reindex Y') /=; last first.
-    by exists Y => i _; [rewrite Y'K | rewrite YK].
-  apply eq_bigr => i _ /=.
-  rewrite !FSDist1.dE !inE Y'K inj_eq //; exact: FSDist1_inj.
-- apply/esym/eqP; apply: contraNT Ha => xa0.
-  rewrite -mem_finsupp in xa0.
-  pose x' := Y' (FSetSub xa0).
-  have x'a : finsupp (fsval x') `<=` finsupp x.
-    apply/fsubsetP => i /=.
-    by rewrite FSDist1.supp inE => /eqP ->.
-  apply/bigfcupP; exists (enum_rank x').
-    rewrite /index_enum -enumT mem_enum /= /Convn_indexed_over_finType.d_enum ffunE -Hdxy /=.
-    rewrite enum_rankK /Y /=.
-    case: (Y0 _) => //= x0 /FSDist1_inj <-.
-    by apply/ltRP/FSDist.gt0.
-  rewrite mem_finsupp /= enum_rankK.
-  rewrite /= FSDist1.dE inE eqxx; exact/eqP/R1_neq_R0.
-Qed.
-
+Proof. by move=> c; apply funext=> x /=; rewrite eps0E eta0E necset_triL0. Qed.
 Lemma triR0 : TriangularLaws.right eta0 eps0.
 Proof.
 move=> c.
@@ -431,7 +363,7 @@ have suppE : fdist_of_FSDist.D (FSDist1.d a) = [finType of [fset a]]
   by rewrite fdist_of_FSDistDE FSDist1.supp /=.
 have suppE' : finsupp (@FSDist1.d c a) = [fset a] by rewrite FSDist1.supp.
 set i := eq_rect _ (fun n => 'I_n) ord0 _ (esym supp1).
-rewrite /Convn_indexed_over_finType (convn1Eq i) //=.
+rewrite /Convn_fsdist /Convn_indexed_over_finType (convn1Eq i) //=.
 have aP : a \in finsupp (FSDist1.d a) by rewrite FSDist1.supp inE.
 change a with (fsval (FSetSub aP)).
 congr fsval.
