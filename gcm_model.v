@@ -353,52 +353,19 @@ Local Open Scope fset_scope.
 Local Open Scope R_scope.
 Lemma triL0 : TriangularLaws.left eta0 eps0.
 Proof. by move=> c; apply funext=> x /=; rewrite eps0E eta0E necset_triL0. Qed.
-Lemma triR0 : TriangularLaws.right eta0 eps0.
+(* TODO: move to necset.v *)
+Lemma Convn_fsdist_FSDist1 (C : convType) (x : C) : Convn_fsdist (FSDist1.d x) = x.
 Proof.
-move=> c.
-rewrite eps0E eta0E funeqE => /= a /=.
-have supp1 : #|fdist_of_FSDist.D (FSDist1.d a)| = 1%N
-  by rewrite fdist_of_FSDistDE FSDist1.supp /= -cardfE cardfs1.
-have suppE : fdist_of_FSDist.D (FSDist1.d a) = [finType of [fset a]]
-  by rewrite fdist_of_FSDistDE FSDist1.supp /=.
-have suppE' : finsupp (@FSDist1.d c a) = [fset a] by rewrite FSDist1.supp.
-set i := eq_rect _ (fun n => 'I_n) ord0 _ (esym supp1).
-rewrite /Convn_fsdist /Convn_indexed_over_finType (convn1Eq i) //=.
-have aP : a \in finsupp (FSDist1.d a) by rewrite FSDist1.supp inE.
-change a with (fsval (FSetSub aP)).
-congr fsval.
-rewrite (enum_val_nth (FSetSub aP)).
-move: i; rewrite supp1 => i.
-rewrite (ord1 i) /=.
-Fail case: (enum xpredT).
-case: (@enum_mem
-        (@fset_sub_finType (ConvexSpace.car c)
-           (@FinSupp.fs (ConvexSpace.car c) R_eqType
-              (fun _ : Choice.sort (ConvexSpace.car c) => IZR Z0)
-              (@FSDist.f (ConvexSpace.car c)
-                 (@FSDist1.d (ConvexSpace.car c) a))))
-        (@mem
-           (@fset_sub_type (ConvexSpace.car c)
-              (@FinSupp.fs (ConvexSpace.car c) R_eqType
-                 (fun _ : Choice.sort (ConvexSpace.car c) => IZR Z0)
-                 (@FSDist.f (ConvexSpace.car c)
-                    (@FSDist1.d (ConvexSpace.car c) a))))
-           (predPredType
-              (@fset_sub_type (ConvexSpace.car c)
-                 (@FinSupp.fs (ConvexSpace.car c) R_eqType
-                    (fun _ : Choice.sort (ConvexSpace.car c) => IZR Z0)
-                    (@FSDist.f (ConvexSpace.car c)
-                       (@FSDist1.d (ConvexSpace.car c) a)))))
-           (fun
-              _ : @fset_sub_type (ConvexSpace.car c)
-                    (@FinSupp.fs (ConvexSpace.car c) R_eqType
-                       (fun _ : Choice.sort (ConvexSpace.car c) => IZR Z0)
-                       (@FSDist.f (ConvexSpace.car c)
-                          (@FSDist1.d (ConvexSpace.car c) a))) => true))) => //=.
-move: aP; rewrite suppE' => aP a' _.
-apply val_inj=> /=.
-by case: a' => a' /=; rewrite inE=> /eqP.
+apply: (@ScaledConvex.S1_inj _ _ x).
+rewrite S1_Convn_indexed_over_finType /=.
+rewrite (eq_bigr (fun=> ScaledConvex.S1 x)); last first.
+  move=> i _; rewrite fdist_of_FSDistE FSDist1.dE /= -(FSDist1.supp x).
+  rewrite fsvalP ScaledConvex.scalept1 /=; congr (ScaledConvex.S1 _).
+  case: i => i Hi /=; rewrite FSDist1.supp inE in Hi; exact/eqP.
+by rewrite big_const (_ : #| _ | = 1%N) // -cardfE FSDist1.supp cardfs1.
 Qed.
+Lemma triR0 : TriangularLaws.right eta0 eps0.
+Proof. move=> c; by rewrite eps0E eta0E funeqE => a /=; rewrite Convn_fsdist_FSDist1. Qed.
 End eps0_eta0.
 
 (* the join operator for Dist is ((coercion) \o eps0) *)
@@ -751,15 +718,7 @@ Definition P_delta : functor Type_category Type_category :=
   P_delta_right \O P_delta_left.
 
 Lemma eps0_Dist1 (A : Type) (d : P_delta_acto A) : eps0 _ (FSDist1.d d) = d.
-Proof.
-rewrite eps0E; apply: (@ScaledConvex.S1_inj _ _ d).
-rewrite S1_Convn_indexed_over_finType /=.
-rewrite (eq_bigr (fun=> ScaledConvex.S1 d)); last first.
-  move=> i _; rewrite fdist_of_FSDistE FSDist1.dE /= -(FSDist1.supp d).
-  rewrite fsvalP ScaledConvex.scalept1 /=; congr (ScaledConvex.S1 _).
-  case: i => i Hi /=; rewrite FSDist1.supp inE in Hi; exact/eqP.
-by rewrite big_const (_ : #| _ | = 1) // -cardfE FSDist1.supp cardfs1.
-Qed.
+Proof. by rewrite eps0E Convn_fsdist_FSDist1. Qed.
 End P_delta_functor.
 
 Section P_delta_category_monad.
