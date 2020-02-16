@@ -278,43 +278,8 @@ Proof. exact: Convn_fsdist_affine. Qed.
 Lemma eps0''_natural (C D : convType) (f : {hom C, D}) :
   f \o eps0'' = eps0'' \o (F0 \O U0) # f.
 Proof.
-rewrite FCompE /= /id_f.
-apply funext => d; apply S1_inj => /=.
-rewrite S1_proj_Convn_indexed_over_finType; last by case: f.
-rewrite S1_Convn_indexed_over_finType.
-evar (Y : fdist_of_FSDist.D ((FSDistfmap f) d) -> scaled_pt D).
-transitivity (\ssum_i Y i); last first.
-- apply eq_bigr => i _ /=.
-  rewrite fdist_of_FSDistE /= FSDistBind.dE imfset_id /=.
-  have -> : fsval i \in (\bigcup_(d0 <- [fset FSDist1.d (f a) | a in finsupp d]) finsupp d0)
-    by case: i => v; rewrite FSDistBind.supp imfset_id.
-  have H : scalept R0 (S1 (fsval i)) = Zero D by rewrite scalept0.
-  have H0 : forall a : C, 0 <= d a * (FSDist1.d (f a)) (fsval i)
-      by move=> a; apply mulR_ge0.
-  rewrite big_scaleptl'; [| done | done] => {H} {H0}.
-  rewrite (bigID (fun i0 => fsval i == f i0)) /=.
-  have -> : \ssum_(i0 <- finsupp d | fsval i != f i0)
-             scalept (d i0 * (FSDist1.d (f i0)) (fsval i)) (S1 (fsval i)) =
-           Zero _
-    by rewrite big1 // => c /negbTE Hc; rewrite FSDist1.dE inE Hc mulR0 scalept0.
-  rewrite addpt0.
-  rewrite big_seq_fsetE /=.
-  exact: erefl.
-rewrite /Y => {Y}.
-set f' := free_convType_mor_supp f d.
-transitivity (\ssum_i scalept (fdist_of_Dist d i) (S1 (fsval (f' i)))).
-  by apply eq_bigr => *; rewrite fsval_free_convType_mor_supp.
-rewrite (@partition_big
-           _ _ _ _ (fdist_of_FSDist.D ((FSDistfmap f) d)) _ f' xpredT) /f' //=.
-apply eq_bigr => -[i Hi] _ /=.
-transitivity (\ssum_(i0 | free_convType_mor_supp f d i0 == [` Hi])
-               scalept (d (fsval i0) * (FSDist1.d (f (fsval i0))) i) (S1 i)).
-- apply eq_bigr => i0 /eqP.
-  move/(congr1 (@fsval _ _)); rewrite fsval_free_convType_mor_supp /= => Hi0.
-  by rewrite fdist_of_FSDistE FSDist1.dE -Hi0 inE eqxx mulR1.
-apply eq_bigl => i0.
-apply/eqP/eqP; first by move/(congr1 (@fsval _ _)) => /= <-.
-by move=> ?; exact/val_inj.
+rewrite FCompE /= /id_f /eps0''; apply funext => d /=.
+rewrite Convn_fsdist_FSDistfmap //; by case: f.
 Qed.
 
 Definition eps0' : F0 \O U0 ~~> FId :=
@@ -353,17 +318,6 @@ Local Open Scope fset_scope.
 Local Open Scope R_scope.
 Lemma triL0 : TriangularLaws.left eta0 eps0.
 Proof. by move=> c; apply funext=> x /=; rewrite eps0E eta0E necset_triL0. Qed.
-(* TODO: move to necset.v *)
-Lemma Convn_fsdist_FSDist1 (C : convType) (x : C) : Convn_fsdist (FSDist1.d x) = x.
-Proof.
-apply: (@ScaledConvex.S1_inj _ _ x).
-rewrite S1_Convn_indexed_over_finType /=.
-rewrite (eq_bigr (fun=> ScaledConvex.S1 x)); last first.
-  move=> i _; rewrite fdist_of_FSDistE FSDist1.dE /= -(FSDist1.supp x).
-  rewrite fsvalP ScaledConvex.scalept1 /=; congr (ScaledConvex.S1 _).
-  case: i => i Hi /=; rewrite FSDist1.supp inE in Hi; exact/eqP.
-by rewrite big_const (_ : #| _ | = 1%N) // -cardfE FSDist1.supp cardfs1.
-Qed.
 Lemma triR0 : TriangularLaws.right eta0 eps0.
 Proof. move=> c; by rewrite eps0E eta0E funeqE => a /=; rewrite Convn_fsdist_FSDist1. Qed.
 End eps0_eta0.
