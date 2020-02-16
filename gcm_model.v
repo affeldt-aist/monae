@@ -317,7 +317,9 @@ Import ScaledConvex.
 Local Open Scope fset_scope.
 Local Open Scope R_scope.
 Lemma triL0 : TriangularLaws.left eta0 eps0.
-Proof. by move=> c; apply funext=> x /=; rewrite eps0E eta0E necset_triL0. Qed.
+Proof.
+by move=> c; apply funext=> x /=; rewrite eps0E eta0E triangular_laws_left0.
+Qed.
 Lemma triR0 : TriangularLaws.right eta0 eps0.
 Proof. move=> c; by rewrite eps0E eta0E funeqE => a /=; rewrite Convn_fsdist_FSDist1. Qed.
 End eps0_eta0.
@@ -344,23 +346,6 @@ Qed.
 End eps0_correct.
 
 Section semiCompSemiLattConvType_as_a_category.
-(*TODO: move to necset?*)
-Lemma Joet_affine_id_proof (A : semiCompSemiLattConvType) : JoetAffine.class_of (@id A).
-Proof.
-apply JoetAffine.Class; first exact: affine_function_id_proof.
-by move=> x; congr Joet; apply neset_ext; rewrite /= image_idfun.
-Qed.
-Lemma Joet_affine_comp_proof (A B C : semiCompSemiLattConvType) (f : A -> B) (g : B -> C) :
-  JoetAffine.class_of f -> JoetAffine.class_of g ->
-  JoetAffine.class_of (g \o f).
-Proof.
-case => af jf [] ag jg.
-apply JoetAffine.Class; first exact: affine_function_comp_proof'.
-move=> x; cbn.
-rewrite jf jg.
-congr Joet; apply neset_ext =>/=.
-by rewrite imageA.
-Qed.
 Import category.
 Definition semiCompSemiLattConvType_category_mixin :
   Category.mixin_of semiCompSemiLattConvType :=
@@ -649,12 +634,12 @@ exact: eps1''_correct.
 Qed.
 End join1.
 
-(* TODO: move? *)
-Lemma NECSet_mixinType_inj (A : convType) (a b : necset A) :
+(* TODO: useful? *)
+(*Lemma NECSet_mixinType_inj (A : convType) (a b : necset A) :
   NECSet.mixinType a = NECSet.mixinType b -> a = b.
 Proof.
 move: a b => -[a Ha] [b Hb] /= [ab]; subst a; congr NECSet.Pack; exact/Prop_irrelevance.
-Qed.
+Qed.*)
 
 Section P_delta_functor.
 Import category.
