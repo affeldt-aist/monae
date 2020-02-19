@@ -1080,11 +1080,14 @@ Record mixin_of (T : monadT) := Class {
   _ : forall (M N P : monad) (t : M ~> N) (s : N ~> P), hmap s \v hmap t = hmap (s \v t) ;
   _ : forall (M N : monad) (t : M ~> N), naturality _ _ (LiftT T M)
 }.
-Structure t := Pack { T : monadT ; class : mixin_of T }.
+Structure t := Pack { m : monadT ; class : mixin_of m }.
 End functorial_monad_transformer.
 Module Exports.
 Notation FMT := t.
-Coercion T : FMT >-> monadT.
+Definition Hmap (T : t) : forall (M N : monad), (M ~> N) -> (m T M ~> m T N) :=
+  let: Pack _ (Class f _ _ _ _ _) := T return forall (M N : monad), (M ~> N) -> (m T M ~> m T N) in f.
+Arguments Hmap _ _ : simpl never.
+Coercion m : FMT >-> monadT.
 End Exports.
 End Fmt.
 Export Fmt.Exports.
@@ -1367,10 +1370,37 @@ rewrite /K_lift /=.
 by rewrite bindmret.
 Qed.
 
+Definition hparam (M : Type -> Type) A B (h : A -> B)
+  (m : forall B : Type, (A -> M B) -> M B) := forall B : Type, (A -> M B) -> M B.
+
+Declare ML Module "paramcoq".
+
+Parametricity hparam.
+
 Lemma natural_from : naturality (K_MonadT M) M (@from M).
 Proof.
 move=> A B h; rewrite /from.
+rewrite /K_MonadT /=.
+rewrite /K_type /=.
 rewrite boolp.funeqE => m.
+rewrite /=.
+transitivity ((K_MonadT M # h) m B Ret) => //.
+set tmp : (A -> M A) -> M B := ((M # h) \o m A).
+pose tmb := (A -> M A) -> A -> M B.
+set e : tmb := (fun f => (M # h) \o f).
+have nat_m : (M # h) \o m A = m B \o e.
+  admit.
+move: nat_m.
+rewrite boolp.funeqE.
+move/(_ Ret) => /= ->.
+rewrite /e.
+rewrite [in RHS]/Fun /=.
+rewrite /Monad_of_ret_bind.Map /=.
+rewrite /K_bind /K_ret /=.
+by rewrite (natural RET).
+
+Check (m B \o e).
+
 Abort.
 
 End from_prop.
@@ -1410,3 +1440,15 @@ rewrite /K_op.
 Abort.
 
 End k_op_prop.
+
+Section wip.
+
+Variables (E : functor) (M : monad) (op : operation E M) (T : FMT).
+
+Check (Hmap T).
+
+Let op := Hmap from \o op \o functor_app_natural E (Hmap Lift).
+
+Lemma thm27 : 
+
+End wip.
