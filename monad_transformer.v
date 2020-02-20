@@ -1084,7 +1084,7 @@ Structure t := Pack { m : monadT ; class : mixin_of m }.
 End functorial_monad_transformer.
 Module Exports.
 Notation FMT := t.
-Definition Hmap (T : t) : forall (M N : monad), (M ~> N) -> (m T M ~> m T N) :=
+Polymorphic Definition Hmap (T : t) : forall (M N : monad), (M ~> N) -> (m T M ~> m T N) :=
   let: Pack _ (Class f _ _ _ _ _) := T return forall (M N : monad), (M ~> N) -> (m T M ~> m T N) in f.
 Arguments Hmap _ _ : simpl never.
 Coercion m : FMT >-> monadT.
@@ -1343,7 +1343,7 @@ Definition K_MonadT : monadT :=
 Section kappa_def.
 Variables (M : monad) (E : functor).
 
-Definition kappa (tau : E \O M ~> M) : E ~~> K_MonadT M :=
+Definition kappa (tau : operation E M) : E ~~> K_MonadT M :=
   fun (A : Type) (s : E A) (B : Type) (k : A -> M B) =>
     tau B ((E # k) s).
 
@@ -1355,6 +1355,21 @@ Definition from (M : monad) : K_MonadT M ~~> M :=
   fun (A : Type) (c : K_MonadT M A) => c A Ret.
 
 End from_def.
+
+(*Declare ML Module "paramcoq".*)
+
+Section to_be_proved_by_param.
+Variable M : functor.
+(*Definition hparam A := forall B : Type, (A -> M B) -> M B.
+Parametricity hparam arity 1.
+*)
+
+Lemma naturality_m A (m : forall B, (A -> M B) -> M B) X Y (h : X -> Y) :
+  M # h \o m X = m Y \o (fun f => (M # h) \o f).
+Proof.
+Admitted.
+
+End to_be_proved_by_param.
 
 Section from_prop.
 
@@ -1370,13 +1385,6 @@ rewrite /K_lift /=.
 by rewrite bindmret.
 Qed.
 
-Definition hparam (M : Type -> Type) A B (h : A -> B)
-  (m : forall B : Type, (A -> M B) -> M B) := forall B : Type, (A -> M B) -> M B.
-
-Declare ML Module "paramcoq".
-
-Parametricity hparam.
-
 Lemma natural_from : naturality (K_MonadT M) M (@from M).
 Proof.
 move=> A B h; rewrite /from.
@@ -1389,7 +1397,7 @@ set tmp : (A -> M A) -> M B := ((M # h) \o m A).
 pose tmb := (A -> M A) -> A -> M B.
 set e : tmb := (fun f => (M # h) \o f).
 have nat_m : (M # h) \o m A = m B \o e.
-  admit.
+  by rewrite (@naturality_m M A m).
 move: nat_m.
 rewrite boolp.funeqE.
 move/(_ Ret) => /= ->.
@@ -1398,10 +1406,7 @@ rewrite [in RHS]/Fun /=.
 rewrite /Monad_of_ret_bind.Map /=.
 rewrite /K_bind /K_ret /=.
 by rewrite (natural RET).
-
-Check (m B \o e).
-
-Abort.
+Qed.
 
 End from_prop.
 
@@ -1433,11 +1438,16 @@ rewrite functor_id.
 by rewrite compfid.
 Qed.
 
-Lemma algebaric_K_op : algebraicity (K_op op).
+Lemma algebraic_K_op : algebraicity (K_op op).
 Proof.
 move=> A B f t.
 rewrite /K_op.
-Abort.
+move: (natural_psi op).
+rewrite /naturality => H0.
+move: (algebraic_psi op).
+rewrite /algebraicity => H1.
+rewrite /kappa.
+Admitted.
 
 End k_op_prop.
 
@@ -1445,10 +1455,47 @@ Section wip.
 
 Variables (E : functor) (M : monad) (op : operation E M) (T : FMT).
 
-Check (Hmap T).
+Lemma natural_K_op : naturality _ _ (K_op op).
+Admitted.
 
-Let op := Hmap from \o op \o functor_app_natural E (Hmap Lift).
+Let nt1 := (Natural.Pack (natural_from M)).
+Let op1 : T (K_MonadT M) ~> T M := (Hmap T nt1).
+Let op3 : E \O T M ~> E \O T (K_MonadT M) := functor_app_natural E (Hmap T (Natural.Pack (natural_monadM (LiftT K_MonadT M)))).
+Let op2 := (Natural.Pack (@natural_alifting _ _ (@AOperation.Pack _ _ (Natural.Pack natural_K_op) (AOperation.Mixin (algebraic_K_op op))) _ (LiftT T _))).
 
-Lemma thm27 : 
+Let op' : E \O T M ~> T M := op1 \v
+op2
+\v
+          op3.
+
+Lemma thm27 : lifting_def op (LiftT T M) op'.
+Proof.
+rewrite /lifting_def => X.
+rewrite /op'.
+apply/esym.
+transitivity ((op1
+   \v op2) X
+   \o op3 X \o E # LiftT T M X); first by admit (*assoc*).
+rewrite -compA.
+transitivity ((op1
+   \v op2) X \o (
+(E # LiftT T (K_MonadT M) X) \o (E # LiftT K_MonadT M X)
+)).
+  f_equal.
+  rewrite /op3.
+  admit. (* F . eta = 1_F \h eta: define nat_fun_app using \h *)
+transitivity (
+  op1 X \o
+   (op2 X \o E # LiftT T (K_MonadT M) X) \o E # LiftT K_MonadT M X
+).
+  admit. (* assoc *)
+transitivity (
+op1 X \o (
+LiftT T (K_MonadT M) X \o (K_op op) X
+) \o
+    E # LiftT K_MonadT M X
+).
+  admit.
+Abort.
 
 End wip.

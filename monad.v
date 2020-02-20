@@ -220,12 +220,10 @@ Polymorphic Definition naturalP (M N : functor) (m : M ~~> N) :=
 Arguments naturalP : clear implicits.
 
 Module Natural.
-Section natural.
-Variables M N : functor.
 (*Definition P (m : M ~~> N) :=
   forall A B (h : A -> B), (N # h) \o m A = m B \o (M # h).*)
-Structure t := Pack { m : M ~~> N ; class : naturalP M N m }.
-End natural.
+Structure t (M N : functor) :=
+  Pack { m : M ~~> N ; class : naturalP M N m }.
 Module Exports.
 Coercion m : t >-> Funclass.
 (*Arguments P : clear implicits.*)

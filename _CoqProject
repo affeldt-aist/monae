@@ -1,4 +1,4 @@
--arg -w -arg -notation-overridden
+-arg -w -arg -notation-overridden -arg -type-in-type
 
 monae_lib.v
 monad.v
