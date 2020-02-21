@@ -183,7 +183,7 @@ End epsC_etaC.
 Section convType_as_a_category.
 Import category.
 Definition convType_category_mixin : Category.mixin_of convType :=
-  Category.Mixin affine_function_id_proof affine_function_comp_proof'.
+  @Category.Mixin convType (fun A : convType => A) AffineFunction.axiom affine_function_id_proof affine_function_comp_proof'.
 Canonical convType_category := Category.Pack convType_category_mixin.
 End convType_as_a_category.
 

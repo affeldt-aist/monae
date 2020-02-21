@@ -37,15 +37,17 @@ Unset Printing Implicit Defensive.
 
 Local Open Scope monae_scope.
 
+Import Univ.
+
 Module MonadFail.
-Record mixin_of (M : monad) : Type := Mixin {
+Record mixin_of (M : monad) : U1 := Mixin {
   fail : forall A, M A ;
   (* exceptions are left-zeros of sequential composition *)
   _ : BindLaws.left_zero (@Bind M) fail (* fail A >>= f = fail B *)
 }.
-Record class_of (m : Type -> Type) := Class {
+Record class_of (m : U0 -> U0) := Class {
   base : Monad.class_of m ; mixin : mixin_of (Monad.Pack base) }.
-Structure t := Pack { m : Type -> Type ; class : class_of m }.
+Structure t := Pack { m : U0 -> U0 ; class : class_of m }.
 Definition baseType (M : t) := Monad.Pack (base (class M)).
 Module Exports.
 Definition Fail (M : t) : forall A, m M A :=
@@ -64,7 +66,7 @@ Lemma bindfailf : BindLaws.left_zero (@Bind M) (@Fail _).
 Proof. by case : M => m [? []]. Qed.
 End fail_lemmas.
 
-Lemma fmap_fail {A B} (M : failMonad) (f : A -> B) : (M # f) Fail = Fail.
+Lemma fmap_fail {A B : U0} (M : failMonad) (f : A -> B) : (M # f) Fail = Fail.
 Proof. by rewrite fmapE bindfailf. Qed.
 
 Section guard_assert.
@@ -86,26 +88,26 @@ Proof.
 move: a b => -[|] b /=; by [rewrite guardT bindskipf | rewrite guardF bindfailf].
 Qed.
 
-Definition assert {A} (p : pred A) (a : A) : M A :=
+Definition assert {A : U0} (p : pred A) (a : A) : M A :=
   locked (guard (p a) >> Ret a).
 
-Lemma assertE {A} (p : pred A) (a : A) : assert p a = guard (p a) >> Ret a.
+Lemma assertE {A : U0} (p : pred A) (a : A) : assert p a = guard (p a) >> Ret a.
 Proof. by rewrite /assert; unlock. Qed.
 
-Lemma assertT {A} (a : A) : assert xpredT a = Ret a :> M _.
+Lemma assertT {A : U0} (a : A) : assert xpredT a = Ret a :> M _.
 Proof. by rewrite assertE guardT bindskipf. Qed.
 
-Lemma assertF {A} (a : A) : assert xpred0 a = Fail :> M _.
+Lemma assertF {A : U0} (a : A) : assert xpred0 a = Fail :> M _.
 Proof. by rewrite assertE guardF bindfailf. Qed.
 
-Lemma assertPn {A} (p : pred A) (a : A) :
+Lemma assertPn {A : U0} (p : pred A) (a : A) :
   if_spec (p a) (Ret a) Fail (~~ (p a)) (p a) (assert p a).
 Proof.
 rewrite assertE; case: guardPn => pa;
   by [rewrite bindskipf; constructor | rewrite bindfailf; constructor].
 Qed.
 
-Definition bassert {A} (p : pred A) (m : M A) : M A := m >>= assert p.
+Definition bassert {A : U0} (p : pred A) (m : M A) : M A := m >>= assert p.
 
 (* follows from guards commuting with anything *)
 Lemma commutativity_of_assertions A q :
@@ -135,16 +137,16 @@ Arguments guard {M}.
 Lemma well_founded_size A : well_founded (fun x y : seq A => size x < size y).
 Proof. by apply: (@Wf_nat.well_founded_lt_compat _ size) => ? ? /ltP. Qed.
 
-Definition bassert_hylo {M : failMonad} A B
+Definition bassert_hylo {M : failMonad} (A B : U0)
   (f : B -> M (A * B)%type) (p : pred B) (r : forall p f, B -> B -> bool) :=
   forall b, f b = bassert (fun z => r p f z.2 b) (f b).
 
-Definition bassert_size {M : failMonad} A B
+Definition bassert_size {M : failMonad} (A B : U0)
   (f : seq B -> M (A * seq B)%type) :=
   @bassert_hylo M _ _ f predT (fun _ _ x y => size x < size y).
 
 Section foldM.
-Variables (M : monad) (T R : Type) (f : R -> T -> M R).
+Variables (M : monad) (T R : U0) (f : R -> T -> M R).
 Fixpoint foldM z s : M _ := if s is x :: s' then f z x >>= (fun y => foldM y s') else (Ret z).
 End foldM.
 
@@ -153,7 +155,7 @@ Section unfoldM.
 Local Open Scope mprog.
 
 Section unfoldM_monad.
-Variables (M : monad) (A B : Type).
+Variables (M : monad) (A B : U0).
 Variable (r : B -> B -> bool).
 Hypothesis wfr : well_founded r.
 Variables (p : pred B) (f : B -> M (A * B)%type).
@@ -172,7 +174,7 @@ Definition unfoldM := Fix wfr (fun _ => _ _) unfoldM'.
 End unfoldM_monad.
 
 Section unfoldM_failMonad.
-Variables (M : failMonad) (A B' : Type).
+Variables (M : failMonad) (A B' : U0).
 Let B := seq B'.
 Notation unfoldM := (@unfoldM M A _ _ (@well_founded_size B')).
 Variables (p : pred B) (f : B -> M (A * B)%type).
@@ -200,7 +202,7 @@ Arguments unfoldM : simpl never.
 
 (* section 5.1, mu2019tr3 *)
 Section hyloM.
-Variables (M : failMonad) (A B C : Type).
+Variables (M : failMonad) (A B C : U0).
 Variables (op : A -> M C -> M C) (e : C) (p : pred B) (f : B -> M (A * B)%type).
 Variable seed : forall (p : pred B) (f : B -> M (A * B)%type), B -> B -> bool.
 
@@ -238,17 +240,17 @@ End hyloM.
 Arguments hyloM {M} {A} {B} {C} _ _ _ _ _.
 
 Module MonadAlt.
-Record mixin_of (M : monad) : Type := Mixin {
-  alt : forall T, M T -> M T -> M T
+Record mixin_of (M : monad) : U1 := Mixin {
+  alt : forall T : U0, M T -> M T -> M T
         where "a [~] b" := (alt a b) (* infix notation *) ;
-  _ : forall T, associative (@alt T) ;
+  _ : forall T : U0, associative (@alt T) ;
   (* composition distributes leftwards over choice *)
   _ : BindLaws.left_distributive (@Bind M) alt }.
 (* in general, composition does not distribute rightwards over choice *)
 (* NB: no bindDr to accommodate both angelic and demonic interpretations of nondeterminism *)
-Record class_of (m : Type -> Type) : Type := Class {
+Record class_of (m : U0 -> U0) : U1 := Class {
   base : Monad.class_of m ; mixin : mixin_of (Monad.Pack base) }.
-Structure t := Pack { m : Type -> Type ; class : class_of m }.
+Structure t := Pack { m : U0 -> U0 ; class : class_of m }.
 Definition baseType (M : t) := Monad.Pack (base (class M)).
 Module Exports.
 Definition Alt M : forall T, m M T -> m M T -> m M T :=
@@ -272,11 +274,11 @@ Lemma altA : forall A, associative (@Alt M A).
 Proof. by case: M => m [? []]. Qed.
 
 (* TODO: name ok? *)
-Lemma naturality_nondeter A B (f : A -> B) (p q : M _):
+Lemma naturality_nondeter (A B : U0) (f : A -> B) (p q : M _):
   (M # f) (p [~] q) = (M # f) p [~] (M # f) q.
 Proof. by rewrite 3!fmapE alt_bindDl. Qed.
 
-Lemma alt_fmapDl A B (f : A -> B) (m1 m2 : M A) :
+Lemma alt_fmapDl (A B : U0) (f : A -> B) (m1 m2 : M A) :
   (M # f) (m1 [~] m2) = (M # f) m1 [~] (M # f) m2.
 Proof. by rewrite 3!fmapE alt_bindDl. Qed.
 
@@ -284,7 +286,7 @@ End monadalt_lemmas.
 
 Section arbitrary.
 
-Variables (M : altMonad) (A : Type) (def : A).
+Variables (M : altMonad) (A : U0) (def : A).
 
 Definition arbitrary : seq A -> M A :=
   foldr1 (Ret def) (fun x y => x [~] y) \o map Ret.
@@ -296,7 +298,7 @@ Arguments arbitrary {M} {A}.
 Section subsequences_of_a_list.
 Local Open Scope mprog.
 
-Variables (M : altMonad) (A : Type).
+Variables (M : altMonad) (A : U0).
 
 Fixpoint subs (s : seq A) : M (seq A) :=
   if s isn't h :: t then Ret [::] else
@@ -339,21 +341,21 @@ Section permutation_and_insertion.
 Variable M : altMonad.
 Local Open Scope mprog.
 
-Fixpoint insert {A} (a : A) (s : seq A) : M (seq A) :=
+Fixpoint insert {A : U0} (a : A) (s : seq A) : M (seq A) :=
   if s isn't h :: t then Ret [:: a] else
   Ret (a :: h :: t) [~] fmap (cons h) (insert a t).
 Arguments insert : simpl never.
 
-Lemma insertE A (a : A) s :
+Lemma insertE (A : U0) (a : A) s :
   insert a s = if s isn't h :: t then Ret [:: a] else
   Ret (a :: h :: t) [~] fmap (cons h) (insert a t).
 Proof. by case: s. Qed.
 
-Fixpoint perm {A} (s : seq A) : M (seq A) :=
+Fixpoint perm {A : U0} (s : seq A) : M (seq A) :=
   if s isn't h :: t then Ret [::] else perm t >>= insert h.
 
 (* see also netys2017 *)
-Lemma insert_map A B (f : A -> B) (a : A) :
+Lemma insert_map (A B : U0) (f : A -> B) (a : A) :
   insert (f a) \o map f = map f (o) insert a :> (_ -> M _).
 Proof.
 rewrite boolp.funeqE; elim => [|y xs IH].
@@ -368,7 +370,7 @@ by rewrite fmap_oE -(fcompE (map f)) -IH [RHS]/= insertE.
 Qed.
 
 (* lemma 3.3 in mu2019tr2 *)
-Lemma perm_o_map A B (f : A -> B) :
+Lemma perm_o_map (A B : U0) (f : A -> B) :
   perm \o map f = map f (o) perm :> (seq A -> M (seq B)).
 Proof.
 rewrite boolp.funeqE; elim => [/=|x xs IH].
@@ -386,7 +388,7 @@ Hypothesis altmm : forall A, idempotent (@Alt _ A : M A -> M A -> M A).
 
 Local Open Scope mprog.
 
-Variables (A : Type) (p : pred A).
+Variables (A : U0) (p : pred A).
 
 Lemma filter_insertN a : ~~ p a ->
   forall s, (filter p (o) insert a) s = Ret (filter p s) :> M _.
@@ -445,14 +447,14 @@ Qed.
 End perm_filter.
 
 Module MonadAltCI.
-Record mixin_of (M : Type -> Type) (op : forall A, M A -> M A -> M A) : Type := Mixin {
-  _ : forall A, idempotent (op A) ;
-  _ : forall A, commutative (op A)
+Record mixin_of (M : U0 -> U0) (op : forall A, M A -> M A -> M A) : U1 := Mixin {
+  _ : forall A : U0, idempotent (op A) ;
+  _ : forall A : U0, commutative (op A)
 }.
-Record class_of (m : Type -> Type) : Type := Class {
+Record class_of (m : U0 -> U0) : U1 := Class {
   base : MonadAlt.class_of m ;
   mixin : mixin_of (@Alt (MonadAlt.Pack base)) }.
-Structure t := Pack { m : Type -> Type ; class : class_of m }.
+Structure t := Pack { m : U0 -> U0 ; class : class_of m }.
 Definition baseType (M : t) := MonadAlt.Pack (base (class M)).
 Module Exports.
 Notation altCIMonad := t.
@@ -475,6 +477,8 @@ Proof. move=> x y z; by rewrite altC altA (altC x). Qed.
 Lemma altACA A : @interchange (M A) (fun x y => x [~] y) (fun x y => x [~] y).
 Proof. move=> x y z t; rewrite !altA; congr (_ [~] _); by rewrite altAC. Qed.
 End altci_lemmas.
+
+(*xxxx
 
 (* mu2019tr2, Sect. 3, see also netsys2017 *)
 Section altci_insert.
@@ -1028,3 +1032,4 @@ Canonical baseType.
 End Exports.
 End MonadJump.
 Export MonadJump.Exports.
+*)
