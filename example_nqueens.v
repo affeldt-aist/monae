@@ -369,7 +369,7 @@ End queens_definition.
 
 Section section5a.
 
-Variable M : nondetStateMonad (Z * seq Z * seq Z).
+Variable M : nondetStateMonad (Z * seq Z * seq Z)%type.
 
 Definition opdot_queens : Z -> M (seq Z) -> M (seq Z) := opdot queens_next queens_ok.
 
