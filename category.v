@@ -55,12 +55,11 @@ Unset Printing Implicit Defensive.
 Module Category.
 Record mixin_of (T : Type) : Type := Mixin {
   obj : T -> Type ; (* T and obj is like a ``universe a la Tarski'' *)
-  hom : forall A B, (obj A -> obj B) -> Prop ; (* subset of morphisms *)
 (*  _ : injective obj ; (* NB: do we need this? *)*)
+  hom : forall A B, (obj A -> obj B) -> Prop ; (* subset of morphisms *)
   _ : forall (A : T), hom (A:=A) (B:=A) id ; (* id is in hom *)
   _ : forall (A B C : T) (f : obj A -> obj B) (g : obj B -> obj C),
-      hom f -> hom g -> hom (g \o f) ; (* hom is closed under composition *)
-}.
+      hom f -> hom g -> hom (g \o f) ; (* hom is closed under composition *) }.
 Structure t : Type := Pack { car : Type ; class : mixin_of car }.
 Module Exports.
 Notation category := t.
@@ -263,6 +262,7 @@ End def.
 End FunctorLaws.
 
 Module Functor.
+Set Printing Coercions.
 Record mixin_of (C D : category) (m : C -> D) : Type := Mixin {
   f : forall A B, {hom A,B} -> {hom m A, m B} ;
   _ : FunctorLaws.id f ;

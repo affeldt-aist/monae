@@ -349,7 +349,7 @@ Section semiCompSemiLattConvType_as_a_category.
 Import category.
 Definition semiCompSemiLattConvType_category_mixin :
   Category.mixin_of semiCompSemiLattConvType :=
-  Category.Mixin Joet_affine_id_proof Joet_affine_comp_proof.
+  @Category.Mixin semiCompSemiLattConvType (fun U : semiCompSemiLattConvType => U) JoetAffine.class_of Joet_affine_id_proof Joet_affine_comp_proof.
 Canonical semiCompSemiLattConvType_category :=
   Category.Pack semiCompSemiLattConvType_category_mixin.
 End semiCompSemiLattConvType_as_a_category.
