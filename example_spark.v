@@ -2,11 +2,14 @@ From mathcomp Require Import all_ssreflect.
 From mathcomp Require boolp.
 Require Import monae_lib monad fail_monad.
 
+(******************************************************************************)
+(*                              Spark example                                 *)
+(*                                                                            *)
+(* mu2019tr2                                                                  *)
+(******************************************************************************)
 Set Implicit Arguments.
 Unset Strict Implicit.
 Unset Printing Implicit Defensive.
-
-(* mu2019tr2 *)
 
 Section spark_aggregation.
 Local Open Scope mprog.

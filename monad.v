@@ -71,7 +71,7 @@ Definition UU0 : UU1 := Set.
 End Univ.
 Import Univ.
 
-(* NB: not putting M in UU0 -> UUO because of expressions like:
+(* NB: not putting M in UU0 -> UU0 because of expressions like:
   M (A * (size s).-1.-tuple A)%type *)
 Module FunctorLaws.
 Section def.

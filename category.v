@@ -5,15 +5,31 @@ Require Import monae_lib.
 (******************************************************************************)
 (*                  Formalization of basic category theory                    *)
 (*                                                                            *)
-(* This file provides a notion of category that generalizes the one in        *)
-(* monad.v. Functors and monads are also defined.                             *)
+(* This file provides definitions of category, functor, monad, as well as     *)
+(* basic theorems. It comes as a generalization of monad.v which is           *)
+(* specialized to the category of sets.                                       *)
 (*                                                                            *)
-(* Type_category       == the category corresponding to the Coq type Type     *)
-(* Module AdjComp      == define a pair of adjoint functors by composition of *)
+(*            category == type of categories, a category C is implemented     *)
+(*                        with a universe a la Tarski, there is a realizer    *)
+(*                        function El that associates to each object A the    *)
+(*                        type El A of its elements; this corresponds to the  *)
+(*                        definition of concrete categories                   *)
+(*          {hom A, B} == the hom-set of morphisms from A to B                *)
+(*       Type_category == the category corresponding to the Coq type Type     *)
+(*             F ~~> G == forall a, {hom F a ,G a}, which corresponds to a    *)
+(*                        natural transformation when it satisfies the        *)
+(*                        predicate naturality                                *)
+(*                 NId == the identity natural transformation                 *)
+(*          [NEq F, G] == natural transformation from F to G where both       *)
+(*                        only differ by the position of parentheses or the   *)
+(*                        presence of NId when they are compositions          *)
+(*                  \v == vertical composition                                *)
+(*                  \h == horizontal composition, or Godement product         *)
+(*      Module AdjComp == define a pair of adjoint functors by composition of *)
 (*                        two pairs of adjoint functors                       *)
 (* Module MonadOfAdjoint == monad defined by adjointness                      *)
 (* Monad_of_category_monad.m == turns a monad over the Type category into     *)
-(*                     a monad in the sense of monad.v                        *)
+(*                        a monad in the sense of monad.v                     *)
 (******************************************************************************)
 
 (* Contents:
@@ -51,20 +67,22 @@ Set Implicit Arguments.
 Unset Strict Implicit.
 Unset Printing Implicit Defensive.
 
-(* Our `category' is always concrete; morphisms are just functions. *)
+(* Our categories are always concrete; morphisms are just functions. *)
 Module Category.
-Record mixin_of (T : Type) : Type := Mixin {
-  obj : T -> Type ; (* T and obj is like a ``universe a la Tarski'' *)
-(*  _ : injective obj ; (* NB: do we need this? *)*)
-  hom : forall A B, (obj A -> obj B) -> Prop ; (* subset of morphisms *)
-  _ : forall (A : T), hom (A:=A) (B:=A) id ; (* id is in hom *)
-  _ : forall (A B C : T) (f : obj A -> obj B) (g : obj B -> obj C),
-      hom f -> hom g -> hom (g \o f) ; (* hom is closed under composition *) }.
+(* universe a la Tarski *)
+Record mixin_of (obj : Type) : Type := Mixin {
+  el : obj -> Type ; (* "interpretation" operation, "realizer" *)
+(*  _ : injective el ; (* NB: do we need this? *)*)
+  hom : forall A B, (el A -> el B) -> Prop ; (* subset of morphisms *)
+  _ : forall A, @hom A A id ; (* id is in hom *)
+  _ : forall A B C (f : el A -> el B) (g : el B -> el C),
+      hom f -> hom g -> hom (g \o f) (* hom is closed under composition *) }.
 Structure t : Type := Pack { car : Type ; class : mixin_of car }.
 Module Exports.
 Notation category := t.
 Coercion car : category >-> Sortclass.
-Definition El (C : t) : C -> Type := let: Pack _ (Mixin x _ _ _) := C in x.
+Definition El (C : category) : C -> Type :=
+  let: Pack _ (Mixin x _ _ _) := C in x.
 End Exports.
 End Category.
 Export Category.Exports.
@@ -246,9 +264,11 @@ End transport_lemmas.
 
 Section Type_as_a_category.
 Definition Type_category_mixin : Category.mixin_of Type :=
-  @Category.Mixin Type id (fun _ _ _ => True) (fun _ => I) (fun _ _ _ _ _ _ _ => I).
+  @Category.Mixin Type (fun x : Type => x)
+    (fun _ _ _ => True) (fun=> I) (fun _ _ _ _ _ _ _ => I).
 Canonical Type_category := Category.Pack Type_category_mixin.
-Definition hom_Type (a b : Type) (f : a -> b) : {hom a,b} := Hom (I : hom (f : El a -> El b)).
+Definition hom_Type (a b : Type) (f : a -> b) : {hom a, b} :=
+  Hom (I : hom (f : El a -> El b)).
 End Type_as_a_category.
 
 Module FunctorLaws.
@@ -262,9 +282,8 @@ End def.
 End FunctorLaws.
 
 Module Functor.
-Set Printing Coercions.
 Record mixin_of (C D : category) (m : C -> D) : Type := Mixin {
-  f : forall A B, {hom A,B} -> {hom m A, m B} ;
+  f : forall A B, {hom A, B} -> {hom m A, m B} ;
   _ : FunctorLaws.id f ;
   _ : FunctorLaws.comp f }.
 Structure t (C D : category) : Type := Pack { m : C -> D ; class : mixin_of m }.
@@ -388,17 +407,16 @@ Notation "F ~~> G" := (forall a, {hom F a ,G a}).
 Module Natural.
 Section natural.
 Variables (C D : category) (F G : functor C D).
-Definition P (apply : F ~~> G) :=
-  forall a b (h : {hom a,b}),
-    (G # h) \o (apply a) = (apply b) \o (F # h).
-Record class_of (apply : F ~~> G) := Class { _ : P apply }.
-Structure t := Pack { apply : F ~~> G ; class : class_of apply }.
+Definition P (f : F ~~> G) := forall a b (h : {hom a, b}),
+    (G # h) \o (f a) = (f b) \o (F # h).
+Record class_of (f : F ~~> G) := Class { _ : P f }.
+Structure t := Pack { f : F ~~> G ; class : class_of f }.
 End natural.
 Module Exports.
-Coercion apply : t >-> Funclass.
+Coercion f : t >-> Funclass.
 Arguments P [C D].
 Notation naturality := P.
-Notation "f ~> g" := (t f g).
+Notation "h ~> g" := (t h g).
 Notation Natural p := (Pack (Class p)).
 End Exports.
 End Natural.
@@ -430,8 +448,6 @@ End natural_transformation_lemmas.
 Arguments natural [C D F G].
 Arguments natural_head [C D F G].
 
-(* constructions on natural transformations :
-   identity, and compositions in two ways *)
 Section id_natural_transformation.
 Variables (C D : category) (F : functor C D).
 Definition natural_id : naturality _ _ (fun a => idfun_hom (F a)).
@@ -451,20 +467,21 @@ Module NEq.
 Section def.
 Import homcomp_notation.
 Variables (C D : category) (F G : functor C D).
-Variable (Iobj : forall a, F a = G a).
+Variable (Iobj : forall c, F c = G c).
 Local Notation tc := (transport_codom (Iobj _)).
 Local Notation td := (transport_dom (esym (Iobj _))).
 Variable (Imor : forall a b (f : {hom a, b}), tc (F # f) = td (G # f)).
-Definition f : F ~~> G := fun (a : C) => tc (idfun_hom (F a)).
-Definition n : F ~> G.
-apply (Natural.Pack (apply:= f)).
-apply Natural.Class=> a b h.
+Definition f : F ~~> G := fun (c : C) => tc (idfun_hom (F c)).
+Lemma natural : naturality F G f.
+Proof.
+move=> a b h.
 rewrite /f !transport_codomF 2!homcomp_hom !compfid.
-have/hom_ext-> : [hom of [homcomp hom_of_eq (Iobj b), F # h]] =
-                 [hom of tc (F # h)]
+have /hom_ext -> : [hom of [homcomp hom_of_eq (Iobj b), F # h]] =
+                  [hom of tc (F # h)]
   by rewrite transport_codomF.
 by rewrite homfunK Imor transport_domF homfunK /= esymK.
-Defined.
+Qed.
+Definition n : F ~> G := Natural.Pack (Natural.Class natural).
 End def.
 Module Exports.
 Arguments n [C D] : simpl never.
@@ -515,7 +532,6 @@ Lemma VCompE a : (g \v f) a = g a \o f a :> (_ -> _).
 Proof. by []. Qed.
 End vcomp_lemmas.
 
-(* horizontal composition, or Godement product *)
 Section horizontal_composition.
 Variables (C D E : category).
 Variables (F G : functor C D) (F' G' : functor D E).
@@ -633,8 +649,8 @@ Module TriangularLaws.
 Section triangularlaws.
 Variables (C D : category) (F : functor C D) (G : functor D C).
 Variables (eta : FId ~> G \O F) (eps : F \O G ~> FId).
-Definition left := forall c, [fun of eps (F c)] \o [fun of F # eta c] = idfun.
-Definition right := forall d, [fun of G # eps d] \o [fun of eta (G d)] = idfun.
+Definition left := forall c, [fun of eps (F c)] \o [fun of F # (eta c)] = idfun.
+Definition right := forall d, [fun of G # (eps d)] \o [fun of eta (G d)] = idfun.
 End triangularlaws.
 End TriangularLaws.
 
@@ -771,8 +787,8 @@ Module Exports.
 Section adj_comp.
 Import Adj.
 Variables (C0 C1 C2 : category).
-Variables (F0 : functor C0 C1) (G0 : functor C1 C0) (A0 : F0 -| G0).
-Variables (F1 : functor C1 C2) (G1 : functor C2 C1) (A1 : F1 -| G1).
+Variables (F : functor C0 C1) (G : functor C1 C0) (A0 : F -| G).
+Variables (F' : functor C1 C2) (G' : functor C2 C1) (A1 : F' -| G').
 Definition adj_comp := mk (triL (triangular_left A0) (triangular_left A1))
                           (triR (triangular_right A0) (triangular_right A1)).
 End adj_comp.
@@ -1009,8 +1025,8 @@ Variable A : F -| G.
 Definition eps := Adj.eps A.
 Definition eta := Adj.eta A.
 Definition M := G \O F.
-Definition join a : {hom M (M a), M a} := G # (@eps (F a)).
-Definition ret a : {hom a, M a} := @eta a.
+Definition join a : {hom M (M a), M a} := G # (eps (F a)).
+Definition ret a : {hom a, M a} := eta a.
 Let triL := Adj.triangular_left A.
 Let triR := Adj.triangular_right A.
 Let joinE : join = fun a => G # (@eps (F a)).
@@ -1027,24 +1043,21 @@ rewrite joinE -2!(functor_o G).
 by congr (Fun G); rewrite hom_ext /= (natural eps).
 Qed.
 Lemma join_associativity : JoinLaws.associativity join.
-Proof. by move=>a; rewrite join_associativity'. Qed.
+Proof. by move=> a; rewrite join_associativity'. Qed.
 Lemma ret_natural : JoinLaws.ret_naturality ret.
-Proof. by move=>*; rewrite (natural eta). Qed.
+Proof. by move=> *; rewrite (natural eta). Qed.
 Lemma join_left_unit : JoinLaws.left_unit ret join.
-Proof. by move=>a;rewrite joinE triR. Qed.
+Proof. by move=> a; rewrite joinE triR. Qed.
 Lemma join_right_unit : JoinLaws.right_unit ret join.
 Proof.
 move=> a; rewrite joinE. rewrite /M FCompE.
-rewrite /= -functor_o  -[in RHS]functor_id.
+rewrite /= -functor_o -[in RHS]functor_id.
 congr (Fun G).
 by rewrite hom_ext/= triL.
 Qed.
-Definition monad_of_adjoint_mixin : Monad.mixin_of M
-  := Monad.Mixin ret_natural
-                 join_natural
-                 join_left_unit
-                 join_right_unit
-                 join_associativity.
+Definition monad_of_adjoint_mixin : Monad.mixin_of M :=
+  Monad.Mixin ret_natural join_natural
+              join_left_unit join_right_unit join_associativity.
 End monad_of_adjoint.
 Module Exports.
 Definition Monad_of_adjoint C D
@@ -1172,17 +1185,17 @@ Variable (M : monad Type_category).
 Definition m'' : Type -> Type := M.
 Definition f (A B : Type) (h : A -> B) (x : m'' A) : m'' B :=
   (M # hom_Type h) x.
-Lemma fid : forall A, f id = id :> (m'' A -> m'' A).
+Lemma fid A : f id = id :> (m'' A -> m'' A).
 Proof.
-move=> A; apply funext=> x /=; rewrite /f.
-have-> : hom_Type id = [hom of idfun] by move=> T; apply hom_ext.
+rewrite /f.
+have -> : hom_Type id = [hom of idfun] by move=> ?; apply hom_ext.
 by rewrite functor_id.
 Qed.
-Lemma fcomp : forall A B C (g : B -> C) (h : A -> B),
-    f (g \o h) = f g \o f h :> (m'' A -> m'' C).
+Lemma fcomp A B C (g : B -> C) (h : A -> B) :
+  f (g \o h) = f g \o f h :> (m'' A -> m'' C).
 Proof.
-move=> A B C g h; apply funext=> x /=; rewrite /f.
-have-> : hom_Type (g \o h) = [hom of hom_Type g \o hom_Type h] by apply hom_ext.
+rewrite {1}/f.
+have -> : hom_Type (g \o h) = [hom of hom_Type g \o hom_Type h] by apply hom_ext.
 by rewrite functor_o.
 Qed.
 Definition m' := monad.Functor.Pack (monad.Functor.Class fid fcomp).
@@ -1193,20 +1206,17 @@ Definition ret (A : Type) (x : A) : m' A := (@Ret _ M A x).
 Definition join (A : Type) (x : m' (m' A)) := (@Join _ M A x).
 
 Lemma joinE A (x : m' (m' A)) : join x = @Join _ M A x.
-Proof. done. Qed.
+Proof. by []. Qed.
 
 Lemma ret_nat : monad.naturalP monad.FId m' ret.
-Proof.
-move=> A B h; apply funext=> x; rewrite /ret /Fun /= /f.
-by rewrite -[in LHS]compE (ret_naturality).
-Qed.
+Proof. move=> ? ? ?; exact: (ret_naturality M). Qed.
 Definition _ret_nat : monad.Natural.t monad.FId m' := monad.Natural.Pack ret_nat.
 Lemma join_nat : monad.naturalP (monad.FComp m' m') m' join.
 Proof.
 move=> A B h; apply funext=> x; rewrite /ret /Fun /= /f.
 rewrite -[in LHS]compE join_naturality.
 rewrite compE FCompE.
-suff-> : [fun of M # (M # hom_Type h)] x = [fun of M # hom_Type (Fun m' h)] x
+suff -> : [fun of M # (M # hom_Type h)] x = [fun of M # hom_Type (Fun m' h)] x
   by [].
 congr [fun of M # _].
 by apply/hom_ext/funext.
@@ -1219,11 +1229,11 @@ Qed.
 Lemma joinMret (A : Type) : @join _ \o (Fun m' (@ret _)) = id :> (m' A -> m' A).
 Proof.
 apply funext=> x; rewrite /join /ret /Fun /=.
-suff-> : @f A (m'' A) [eta [fun of @Ret Type_category M A]] x =
+suff -> : @f A (m'' A) [eta [fun of @Ret Type_category M A]] x =
          [fun of M # Ret] x
   by rewrite -[in LHS]compE joinMret.
 rewrite /f /m'' /=.
-suff-> : @hom_Type A (@Monad.m Type_category M A)
+suff -> : @hom_Type A (@Monad.m Type_category M A)
                    [eta [fun of @Ret Type_category M A]] = Ret by [].
 by apply hom_ext.
 Qed.
@@ -1234,7 +1244,7 @@ apply funext=> x; rewrite /join /ret /Fun /=.
 rewrite -[in RHS]compE -joinA compE.
 congr (_ _).
 rewrite /f /m'' /=.
-suff-> : (@hom_Type (@Monad.m Type_category M (@Monad.m Type_category M A))
+suff -> : (@hom_Type (@Monad.m Type_category M (@Monad.m Type_category M A))
                     (@Monad.m Type_category M A)
                     [eta [fun of @Join Type_category M A]]) = Join by [].
 by apply hom_ext.

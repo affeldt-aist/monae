@@ -4,6 +4,10 @@ From mathcomp Require boolp.
 From infotheo Require Import ssrZ.
 Require Import monae_lib monad fail_monad state_monad.
 
+(******************************************************************************)
+(*                            N-queens example                                *)
+(******************************************************************************)
+
 Local Open Scope monae_scope.
 
 Section nqueens_gibbons2011icfp.
