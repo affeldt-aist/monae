@@ -268,16 +268,16 @@ Local Notation U0 := forget_convType.
 Local Notation CC := choiceType_category.
 Local Notation CV := convType_category.
 
-Definition eps0'' {C : convType} (d : {dist C}) : C := Convn_fsdist d.
+Definition eps0'' {C : convType} (d : {dist C}) : C := Convn_of_FSDist d.
 
 Lemma eps0''_affine (C : convType) : affine_function (@eps0'' C).
-Proof. exact: Convn_fsdist_affine. Qed.
+Proof. exact: Convn_of_FSDist_affine. Qed.
 
 Lemma eps0''_natural (C D : convType) (f : {hom C, D}) :
   f \o eps0'' = eps0'' \o (F0 \O U0) # f.
 Proof.
 rewrite FCompE /= /id_f /eps0''; apply funext => d /=.
-rewrite Convn_fsdist_FSDistfmap //; by case: f.
+rewrite Convn_of_FSDist_FSDistfmap //; by case: f.
 Qed.
 
 Definition eps0' : F0 \O U0 ~~> FId :=
@@ -293,7 +293,7 @@ Proof. by move=> C D f; rewrite eps0''_natural. Qed.
 Definition eps0 : F0 \O U0 ~> FId :=
   locked (Natural.Pack (Natural.Class eps0'_natural)).
 
-Lemma eps0E (C : convType) : eps0 C = Convn_fsdist (C:=C) :> (_ -> _).
+Lemma eps0E (C : convType) : eps0 C = Convn_of_FSDist (C:=C) :> (_ -> _).
 Proof. by rewrite /eps0; unlock. Qed.
 
 Definition eta0' : FId ~~> U0 \O F0 :=
@@ -320,7 +320,7 @@ by move=> c; apply funext=> x /=; rewrite eps0E eta0E triangular_laws_left0.
 Qed.
 Lemma triR0 : TriangularLaws.right eta0 eps0.
 Proof.
-move=> c; by rewrite eps0E eta0E funeqE => a /=; rewrite Convn_fsdist_FSDist1.
+move=> c; by rewrite eps0E eta0E funeqE => a /=; rewrite Convn_of_FSDist_FSDist1.
 Qed.
 End eps0_eta0.
 
@@ -653,153 +653,15 @@ Lemma P_deltaE (A B : Type) (f : {hom A, B}) :
 Proof. exact: funext. Qed.
 
 Lemma eps0_Dist1 (A : Type) (d : P_delta_acto A) : eps0 _ (FSDist1.d d) = d.
-Proof. by rewrite eps0E Convn_fsdist_FSDist1. Qed.
+Proof. by rewrite eps0E Convn_of_FSDist_FSDist1. Qed.
 End P_delta_functor.
 
 Section P_delta_category_monad.
 Import category.
-
-Local Notation F1 := free_semiCompSemiLattConvType.
-Local Notation F0 := free_convType.
-Local Notation FC := free_choiceType.
-Local Notation UC := forget_choiceType.
-Local Notation U0 := forget_convType.
-Local Notation U1 := forget_semiCompSemiLattConvType.
-
-Definition eps : P_delta_left \O P_delta_right ~> FId :=
-  locked
-  (eps1
-     \v [NEq F1 \O FId \O U1 , F1 \O U1]
-     \v ((NId F1) \h eps0 \h (NId U1))
-     \v [NEq F1 \O F0 \O FId \O U0 \O U1 , F1 \O (F0 \O U0) \O U1 ]
-     \v ((NId F1) \h (NId F0) \h epsC \h (NId U0) \h (NId U1))
-     \v [NEq P_delta_left \O P_delta_right , F1 \O F0 \O (FC \O UC) \O U0 \O U1]).
-
-Definition ret : FId ~> P_delta :=
-  locked
-  ([NEq UC \O U0 \O (U1 \O F1) \O F0 \O FC , P_delta]
-     \v ((NId UC) \h (NId U0) \h eta1 \h (NId F0) \h (NId FC))
-     \v [NEq UC \O (U0 \O F0) \O FC , UC \O U0 \O FId \O F0 \O FC]
-     \v ((NId UC) \h eta0 \h (NId FC))
-     \v [NEq UC \O FC , UC \O FId \O FC]
-     \v etaC).
-
-Import homcomp_notation.
-
-Lemma epsE' :
-  eps =
-  eps1
-    \v [NEq F1 \O FId \O U1 , F1 \O U1]
-    \v ((NId F1) \h eps0 \h (NId U1))
-    \v [NEq F1 \O F0 \O FId \O U0 \O U1 , F1 \O (F0 \O U0) \O U1 ]
-    \v ((NId F1) \h (NId F0) \h epsC \h (NId U0) \h (NId U1))
-    \v [NEq P_delta_left \O P_delta_right , F1 \O F0 \O (FC \O UC) \O U0 \O U1].
-Proof. by rewrite /eps; unlock. Qed.
-
-Lemma retE' :
-  ret =
-  [NEq UC \O U0 \O (U1 \O F1) \O F0 \O FC , P_delta]
-     \v ((NId UC) \h (NId U0) \h eta1 \h (NId F0) \h (NId FC))
-     \v [NEq UC \O (U0 \O F0) \O FC , UC \O U0 \O FId \O F0 \O FC]
-     \v ((NId UC) \h eta0 \h (NId FC))
-     \v [NEq UC \O FC , UC \O FId \O FC]
-     \v etaC.
-Proof. by rewrite /ret; unlock. Qed.
-
-Lemma epsE'' (L : semiCompSemiLattConvType) :
-  eps L =
-  [homcomp
-     eps1 L
-   , ((NId F1) \h eps0 \h (NId U1)) L
-   , ((NId F1) \h (NId F0) \h epsC \h (NId U0) \h (NId U1)) L] :> (_ -> _).
-Proof. by rewrite epsE'. Qed.
-
-Lemma epsE (L : semiCompSemiLattConvType) :
-  eps L = ((eps1 _) \o (F1 # (eps0 _)) \o (F1 # (F0 # (epsC _)))) :> (_ -> _).
-Proof.
-rewrite epsE''; cbn.
-congr comp; congr comp.
-- by rewrite HCompId HIdComp.
-- by rewrite 2!HCompId -NIdFComp HIdComp.
-Qed.
-
-Lemma retE'' (T : Type) :
-  ret T =
-  [homcomp
-     ((NId UC) \h (NId U0) \h eta1 \h (NId F0) \h (NId FC)) T
-   , ((NId UC) \h eta0 \h (NId FC)) T
-   , etaC T] :> (_ -> _).
-Proof. by rewrite retE'. Qed.
-
-Lemma retE (T : Type) :
-  ret T = (@necset1 _) \o (@FSDist1.d (choice_of_Type T)) :> (_ -> _).
-Proof.
-rewrite funeqE => x; apply necset_ext.
-by rewrite /ret; unlock; rewrite /= etaCE eta0E eta1E FSDistfmap_id.
-Qed.
-
-Definition join : P_delta \O P_delta ~> P_delta :=
-  [NEq P_delta_right \O FId \O P_delta_left, P_delta]
-    \v ((NId P_delta_right) \h eps \h (NId P_delta_left))
-    \v [NEq P_delta \O P_delta ,
-        (P_delta_right \O (P_delta_left \O P_delta_right)) \O P_delta_left].
-
-Lemma joinE' (T : Type) :
-  join T = ((NId P_delta_right) \h eps \h (NId P_delta_left)) T :> (_ -> _).
-Proof. reflexivity. Qed.
-
-Lemma joinE (T : Type) : join T = @eps (P_delta_left T) :> (_ -> _).
-Proof. by rewrite /join !VCompE HCompId HIdComp compfid. Qed.
-
-Lemma ret_natural : JoinLaws.ret_naturality ret.
-Proof. exact: natural. Qed.
-
-Lemma join_natural : JoinLaws.join_naturality join.
-Proof. exact: natural. Qed.
-
-Lemma join_left_unit : JoinLaws.left_unit ret join.
-Proof.
-rewrite /JoinLaws.left_unit => a.
-rewrite funeqE => d.
-rewrite -homcompE joinE retE.
-rewrite epsE compE -homcompE eps1E.
-rewrite -[in RHS](Joet1 d); congr (Joet _).
-rewrite 2!free_semiCompSemiLattConvType_morE; apply/neset_ext => /=.
-rewrite 2!image_set1 FSDistfmap1.
-by rewrite epsCE eps0_Dist1.
-Qed.
-
-Lemma join_right_unit : JoinLaws.right_unit ret join.
-Proof.
-rewrite /JoinLaws.right_unit => a.
-rewrite joinE.
-rewrite P_deltaE.
-move: (AdjComp.triL triL0 triL1) => triL01.
-move: (AdjComp.triL triLC triL01 a) <-.
-congr comp.
-- rewrite epsE' /AdjComp.Eps /AdjComp.F; cbn.
-  rewrite 4!compfid.
-  congr comp.
-  by rewrite -NIdFComp !HCompId !HIdComp.
-- rewrite retE' /P_delta_left /AdjComp.Eta /AdjComp.G /AdjComp.F.
-  congr Fun.
-  rewrite /P_delta /P_delta_right /P_delta_left hom_ext.
-  rewrite !VCompE ![in RHS]HCompE !VCompE !compfid !compidf.
-  by rewrite -!NIdFComp !HCompId !HIdComp.
-Qed.
-
-Lemma joinA : JoinLaws.associativity join.
-Proof.
-rewrite /JoinLaws.associativity=> a.
-rewrite 2![in RHS]joinE (natural eps _ _ (eps (P_delta_left a))).
-rewrite joinE FCompE.
-rewrite P_deltaE.
-congr comp; congr [fun of P_delta_left # _].
-by rewrite hom_ext joinE funeqE.
-Qed.
-
-Definition P_delta_monadMixin : Monad.mixin_of P_delta :=
-  Monad.Mixin ret_natural join_natural join_left_unit join_right_unit joinA.
-Definition gcm :=
-  Monad_of_category_monad (Monad.Pack (Monad.Class P_delta_monadMixin)).
+Definition AC := Adj.mk triLC triRC.
+Definition A0 := Adj.mk triL0 triR0.
+Definition A1 := Adj.mk triL1 triR1.
+Definition Agcm := adj_comp AC (adj_comp A0 A1).
+Definition Mgcm := Monad_of_adjoint Agcm.
+Definition gcm := Monad_of_category_monad Mgcm.
 End P_delta_category_monad.
