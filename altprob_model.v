@@ -158,8 +158,7 @@ rewrite !monad.bindE /alt FunaltDr.
 suff -> : forall T (u v : gcm (gcm T)), monad.Join (u [+] v : gcm (gcm T)) = monad.Join u [+] monad.Join v by [].
 move=> T u v.
 rewrite /= /Monad_of_category_monad.join /=.
-
-rewrite /AdjComp.F /AdjComp.G HCompId HIdComp !HCompId !HIdComp.
+rewrite HCompId HIdComp !HCompId !HIdComp.
 have-> : (F1 \O F0) # epsC (U0 (U1 (P_delta_left T))) = idfun :> (_ -> _).
   have -> : epsC (U0 (U1 (P_delta_left T))) =
             [NEq _, _] _ by rewrite hom_ext /= epsCE.
@@ -256,7 +255,7 @@ rewrite !monad.bindE /choice FunpchoiceDr.
 suff -> : forall T (u v : gcm (gcm T)), monad.Join (u <|p|> v : gcm (gcm T)) = monad.Join u <|p|> monad.Join v by [].
 move=> T u v.
 rewrite /= /Monad_of_category_monad.join /=.
-rewrite /AdjComp.F /AdjComp.G HCompId HIdComp !HCompId !HIdComp.
+rewrite HCompId HIdComp !HCompId !HIdComp.
 have-> : (F1 \O F0) # epsC (U0 (U1 (P_delta_left T))) = idfun :> (_ -> _).
   have -> : epsC (U0 (U1 (P_delta_left T))) =
             [NEq _, _] _ by rewrite hom_ext /= epsCE.
