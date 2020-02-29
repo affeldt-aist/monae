@@ -318,25 +318,57 @@ transitivity (arb >>= (fun b : bool => (if b then x else y) <|p|> if b then x el
 by rewrite H -!Abou_Saleh_technical_equality.
 Qed.
 
-Variables p q : prob.
-Hypothesis pq : p <> q.
-Hypothesis pneq0 : p != 0%:pr.
-Hypothesis pneq1 : p != 1%:pr.
-Hypothesis qneq0 : q != 0%:pr.
-Hypothesis qneq1 : q != 1%:pr.
-Example gcmAP_alt_nontrivial :
+Section cat_lemma.
+Local Open Scope classical_set_scope.
+Import category.
+Lemma ret_MgcmE (b : choice_of_Type bool) :
+  category.Monad_of_category_monad.ret Mgcm b = necset1 (FSDist1.d b).
+Proof.
+rewrite /Monad_of_category_monad.ret /= /Hom.apply /=.
+rewrite !HCompId !HIdComp /= !HCompId !HIdComp /=.
+rewrite /id_f /= /etaC.
+unlock => /=.
+by rewrite eta0E eta1E.
+Qed.
+End cat_lemma.
+
+(* An example that this model isn't trivial:
+   we can distinguish different probabilities. *)
+Example gcmAP_alt_nontrivial (p q : prob) :
+  p <> q ->
   Ret true <|p|> Ret false <> Ret true <|q|> Ret false :> gcmAP _.
+Proof.
+move/eqP => pq.
 apply/eqP.
-move/eqP: pq.
-apply:contra=> /eqP.
+apply: contra pq => /eqP Heq.
+apply/eqP.
+move: Heq.
 rewrite /Ret /= /Choice /= /Conv /= /necset_convType.conv /=.
-
-Abort.
-(*
-move/(f_equal (fun x => x (true <|p|> false))).
-move/(_ (true<|p|>false)).
-
-move/NECSet.car.
-rewrite /Choice /= /Conv /=.
-*)
+unlock. 
+move/(f_equal (@NECSet.car _)) => /=.
+rewrite /necset_convType.pre_pre_conv /=.
+Local Open Scope convex_scope.
+move/(f_equal (fun x : FSDist.t (choice_of_Type bool) -> _ =>
+                 x (FSDist1.d (true : choice_of_Type bool) <|p|>
+                    FSDist1.d (false : choice_of_Type bool)))).
+set tmp := ex _.
+move=> Heq.
+have: tmp -> tmp by [].
+rewrite {2}Heq /tmp {Heq tmp}.
+case.
+  exists (FSDist1.d (true : choice_of_Type bool)).
+  exists (FSDist1.d (false : choice_of_Type bool)).
+  rewrite !ret_MgcmE.
+  split; first by apply/asboolP.
+  split; by [|apply/asboolP].
+move=> x [] y.
+rewrite !ret_MgcmE.
+rewrite !inE !necset1E => -[] /asboolP -> [] /asboolP ->.
+move/(f_equal (fun x : FSDist.t (choice_of_Type bool) => x true)) => /=.
+rewrite /Conv /= !ConvFSDist.dE !FSDist1.dE !inE !eqxx.
+case/boolP: ((true : choice_of_Type bool) == false).
+  by case/eqP.
+rewrite !mulR1 !mulR0 !addR0 => _ H.
+by apply prob_ext.
+Qed.
 End examples.
