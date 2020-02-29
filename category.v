@@ -25,6 +25,8 @@ Require Import monae_lib.
 (*                        presence of NId when they are compositions          *)
 (*                  \v == vertical composition                                *)
 (*                  \h == horizontal composition, or Godement product         *)
+(*              F -| G == pair of adjoint functors (Module                    *)
+(*                        Module AjointFunctors)                              *)
 (*      Module AdjComp == define a pair of adjoint functors by composition of *)
 (*                        two pairs of adjoint functors                       *)
 (* Module MonadOfAdjoint == monad defined by adjointness                      *)
@@ -45,7 +47,7 @@ Require Import monae_lib.
 - Module NEq.
 - Section vertical_composition.
 - Section horizontal_composition.
-- Module TriangularLaws./Module AdjointFunctor.
+- Module TriangularLaws./Module AdjointFunctors.
 - Module AdjComp.
 - Module JoinLaws.
 - Module BindLaws.
@@ -654,19 +656,20 @@ Definition right := forall d, [fun of G # (eps d)] \o [fun of eta (G d)] = idfun
 End triangularlaws.
 End TriangularLaws.
 
-Module AdjointFunctor.
+Module AdjointFunctors.
 Section def.
 Variables (C D : category) (F : functor C D) (G : functor D C).
-Record adjunction := mk {
+Record t := mk {
   eta : FId ~> G \O F ;
   eps : F \O G ~> FId ;
-  triangular_left : TriangularLaws.left eta eps ;
-  triangular_right : TriangularLaws.right eta eps
+  triL : TriangularLaws.left eta eps ;
+  triR : TriangularLaws.right eta eps
 }.
 End def.
 Section lemmas.
+Local Notation "F -| G" := (t F G).
 Variables (C D : category) (F : functor C D) (G : functor D C).
-Variable A : adjunction F G.
+Variable A : F -| G.
 Definition hom_iso c d : {hom F c, d} -> {hom c, G d} :=
   fun h => [hom of (G # h) \o (eta A c)].
 Definition hom_inv c d : {hom c, G d} -> {hom F c, d} :=
@@ -677,12 +680,12 @@ Import homcomp_notation.
 Lemma hom_isoK (c : C) (d : D) (f : {hom F c, d}) : hom_inv (hom_iso f) = f.
 Proof.
 rewrite /hom_inv /hom_iso; apply hom_ext => /=.
-by rewrite functor_o -(natural_head (eps _)) triangular_left.
+by rewrite functor_o -(natural_head (eps _)) triL.
 Qed.
 Lemma hom_invK (c : C) (d : D) (g : {hom c, G d}) : hom_iso (hom_inv g) = g.
 Proof.
 rewrite /hom_inv /hom_iso; apply hom_ext => /=.
-by rewrite functor_o homcompA (natural (eta A)) -homcompA triangular_right.
+by rewrite functor_o homcompA (natural (eta A)) -homcompA triR.
 Qed.
 
 Lemma hom_iso_inj (c : C) (d : D) : injective (@hom_iso c d).
@@ -695,7 +698,7 @@ Proof. by apply hom_ext; rewrite /hom_iso homfunK /= functor_id. Qed.
 Lemma eps_hom_inv (d : D) : eps A d = hom_inv (idfun_hom (G d)).
 Proof. by apply hom_ext; rewrite /hom_inv homfunK /= functor_id compfid. Qed.
 
-Lemma ext (B : adjunction F G) : eta A = eta B -> eps A = eps B -> A = B.
+Lemma ext (B : F -| G) : eta A = eta B -> eps A = eps B -> A = B.
 Proof.
 move: A B => [? ? ? ?] [? ? ? ?] /= ? ?; subst.
 congr mk; exact/Prop_irrelevance.
@@ -713,14 +716,12 @@ Arguments hom_isoK [C D F G].
 Arguments hom_invK [C D F G].
 Arguments hom_iso_inj [C D F G].
 Arguments hom_inv_inj [C D F G].
-End AdjointFunctor.
-Module Adj := AdjointFunctor.
-Notation "F -| G" := (Adj.adjunction F G).
+End AdjointFunctors.
+Notation "F -| G" := (AdjointFunctors.t F G).
 
 Module AdjComp.
 Section def.
 Import homcomp_notation.
-Import Adj.
 Variables (C0 C1 C2 : category).
 Variables (F0 : functor C0 C1) (G0 : functor C1 C0).
 Variables (F1 : functor C1 C2) (G1 : functor C2 C1).
@@ -785,12 +786,12 @@ Qed.
 End def.
 Module Exports.
 Section adj_comp.
-Import Adj.
 Variables (C0 C1 C2 : category).
 Variables (F : functor C0 C1) (G : functor C1 C0) (A0 : F -| G).
 Variables (F' : functor C1 C2) (G' : functor C2 C1) (A1 : F' -| G').
-Definition adj_comp := mk (triL (triangular_left A0) (triangular_left A1))
-                          (triR (triangular_right A0) (triangular_right A1)).
+Definition adj_comp := AdjointFunctors.mk
+  (triL (AdjointFunctors.triL A0) (AdjointFunctors.triL A1))
+  (triR (AdjointFunctors.triR A0) (AdjointFunctors.triR A1)).
 End adj_comp.
 End Exports.
 End AdjComp.
@@ -808,13 +809,13 @@ Definition ret_naturality := naturality FId M ret.
 Definition join_naturality := naturality (M \O M) M join.
 
 Definition left_unit :=
-  forall a, @join a \o @ret (M a) = idfun :> (El (M a) -> El (M a)).
+  forall a, join a \o ret (M a) = idfun :> (El (M a) -> El (M a)).
 
 Definition right_unit :=
-  forall a, @join _ \o M # @ret _ = idfun :> (El (M a) -> El (M a)).
+  forall a, join a \o M # ret a = idfun :> (El (M a) -> El (M a)).
 
 Definition associativity :=
-  forall a, @join _ \o M # @join _ = @join _ \o @join _ :> (El (M (M (M a))) -> El (M a)).
+  forall a, join a \o M # join a = join a \o join (M a) :> (El (M (M (M a))) -> El (M a)).
 End join_laws.
 End JoinLaws.
 
@@ -944,8 +945,8 @@ Lemma joinretM_head a (c : C) (f : {hom c,M a}) : [homcomp Join, Ret, f] = f.
 Proof. by rewrite compA joinretM. Qed.
 Lemma joinMret_head a (c : C) (f : {hom c,M a}) : [homcomp Join, M # Ret, f] = f.
 Proof. by rewrite compA joinMret. Qed.
-Lemma joinA_head a (c : C) (f : {hom c,M (M (M a))})
-  :[homcomp Join, M # Join, f] = [homcomp Join, Join, f].
+Lemma joinA_head a (c : C) (f : {hom c,M (M (M a))}) :
+  [homcomp Join, M # Join, f] = [homcomp Join, Join, f].
 Proof. by rewrite compA joinA. Qed.
 End monad_interface.
 
@@ -1022,13 +1023,13 @@ Import homcomp_notation.
 Variables C D : category.
 Variables (F : functor C D) (G : functor D C).
 Variable A : F -| G.
-Definition eps := Adj.eps A.
-Definition eta := Adj.eta A.
+Definition eps := AdjointFunctors.eps A.
+Definition eta := AdjointFunctors.eta A.
 Definition M := G \O F.
 Definition join a : {hom M (M a), M a} := G # (eps (F a)).
 Definition ret a : {hom a, M a} := eta a.
-Let triL := Adj.triangular_left A.
-Let triR := Adj.triangular_right A.
+Let triL := AdjointFunctors.triL A.
+Let triR := AdjointFunctors.triR A.
 Let joinE : join = fun a => G # (@eps (F a)).
 Proof. by []. Qed.
 Lemma join_natural : JoinLaws.join_naturality join.
@@ -1062,7 +1063,7 @@ End monad_of_adjoint.
 Module Exports.
 Definition Monad_of_adjoint C D
            (F : functor C D) (G : functor D C)
-           (A : Adj.adjunction F G) :=
+           (A : F -| G) :=
   Monad.Pack (Monad.Class (monad_of_adjoint_mixin A)).
 End Exports.
 End MonadOfAdjoint.

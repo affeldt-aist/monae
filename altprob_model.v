@@ -366,8 +366,7 @@ rewrite !ret_MgcmE.
 rewrite !inE !necset1E => -[] /asboolP -> [] /asboolP ->.
 move/(f_equal (fun x : FSDist.t (choice_of_Type bool) => x true)) => /=.
 rewrite /Conv /= !ConvFSDist.dE !FSDist1.dE !inE !eqxx.
-case/boolP: ((true : choice_of_Type bool) == false).
-  by case/eqP.
+case/boolP: ((true : choice_of_Type bool) == false) => [/eqP//|].
 rewrite !mulR1 !mulR0 !addR0 => _ H.
 by apply prob_ext.
 Qed.

@@ -109,7 +109,7 @@ End TODO_move_to_other_file.
 Section choiceType_as_a_category.
 Import category.
 Definition choiceType_category_mixin : Category.mixin_of choiceType :=
-  @Category.Mixin choiceType (fun x : choiceType => x)
+  @Category.Mixin choiceType (fun x : choiceType => Choice.sort x)
     (fun _ _ _ => True) (fun=> I) (fun _ _ _ _ _ _ _ => I).
 Canonical choiceType_category := Category.Pack choiceType_category_mixin.
 Definition hom_choiceType (A B : choiceType) (f : A -> B) : {hom A, B} :=
@@ -658,9 +658,9 @@ End P_delta_functor.
 
 Section P_delta_category_monad.
 Import category.
-Definition AC := Adj.mk triLC triRC.
-Definition A0 := Adj.mk triL0 triR0.
-Definition A1 := Adj.mk triL1 triR1.
+Definition AC := AdjointFunctors.mk triLC triRC.
+Definition A0 := AdjointFunctors.mk triL0 triR0.
+Definition A1 := AdjointFunctors.mk triL1 triR1.
 Definition Agcm := adj_comp AC (adj_comp A0 A1).
 Definition Mgcm := Monad_of_adjoint Agcm.
 Definition gcm := Monad_of_category_monad Mgcm.
