@@ -656,6 +656,8 @@ Lemma eps0_Dist1 (A : Type) (d : P_delta_acto A) : eps0 _ (FSDist1.d d) = d.
 Proof. by rewrite eps0E Convn_of_FSDist_FSDist1. Qed.
 End P_delta_functor.
 
+Require monad.
+
 Section P_delta_category_monad.
 Import category.
 Definition AC := AdjointFunctors.mk triLC triRC.
@@ -664,4 +666,42 @@ Definition A1 := AdjointFunctors.mk triL1 triR1.
 Definition Agcm := adj_comp AC (adj_comp A0 A1).
 Definition Mgcm := Monad_of_adjoint Agcm.
 Definition gcm := Monad_of_category_monad Mgcm.
+
+Section gcm_joinE.
+Import monad.
+Local Notation F1 := free_semiCompSemiLattConvType.
+Local Notation F0 := free_convType.
+Local Notation FC := free_choiceType.
+Local Notation UC := forget_choiceType.
+Local Notation U0 := forget_convType.
+Local Notation U1 := forget_semiCompSemiLattConvType.
+Variable T : Type.
+Variable X : gcm (gcm T).
+Lemma gcm_joinE : Join X = necset_join X.
+Import category.
+apply/necset_ext.
+rewrite /= /Monad_of_category_monad.join /= !HCompId !HIdComp eps1E. 
+have-> : [fun of AdjComp.F F0 F1
+                # epsC
+                    (AdjComp.G U0 U1
+                       (necset_semiCompSemiLattConvType
+                          (FSDist_convType (choice_of_Type T))))] = idfun.
+- by rewrite -[in RHS]functor_id; congr Fun; apply/hom_ext; rewrite epsCE.
+have-> : [fun of F1
+              # eps0
+              (U1
+                 (necset_semiCompSemiLattConvType (FSDist_convType (choice_of_Type T))))] =
+         @necset_join.F1join0 _.
+- apply funext=> x; apply necset_ext.
+  rewrite /= /necset_join.F1join0' /=.
+  rewrite /free_semiCompSemiLattConvType_mor; unlock=> /=.
+  by rewrite eps0E /=.
+rewrite -(bigcup_image
+            _ _ _ _
+            (fun x => if x \in necset_join.F1join0 X then NECSet.car x else set0) idfun).
+simpl.
+congr hull=> /=.
+Fail congr bigsetU.
+Abort.
+End gcm_joinE.
 End P_delta_category_monad.
