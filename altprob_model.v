@@ -8,7 +8,7 @@ Require category.
 Require Import monae_lib monad fail_monad proba_monad monad_model gcm_model.
 
 (******************************************************************************)
-(*                       Model of the altProbMonad                            *)
+(*                  Model of the monad type altProbMonad                      *)
 (*                                                                            *)
 (* gcmAP == model of a monad that combines non-deterministic choice and       *)
 (*          probability, built on top of the geometrically convex monad       *)
@@ -30,7 +30,7 @@ Definition alt A (x y : gcm A) : gcm A := x [+] y.
 Definition choice p A (x y : gcm A) : gcm A := x <| p |> y.
 
 Lemma altA A : associative (@alt A).
-Proof. by move=> x y z; rewrite /alt joetA. Qed.
+Proof. by move=> x y z; rewrite /alt lub_binaryA. Qed.
 
 Lemma image_FSDistfmap A B (x : gcm A) (k : choice_of_Type A -> gcm B) :
   FSDistfmap k @` x = (gcm # k) x.
@@ -90,18 +90,18 @@ Lemma affine_F1e0U1PD_alt T (u v : gcm (gcm T)) :
   [fun of F1 # eps0 (U1 (P_delta_left T))] (u [+] v) =
   [fun of F1 # eps0 (U1 (P_delta_left T))] u [+] [fun of F1 # eps0 (U1 (P_delta_left T))] v.
 Proof.
-rewrite [in LHS]/joet -Joet_hull.
+rewrite [in LHS]/lub_binary -lub_op_hull.
 have huv : NECSet.class_of (hull [set u; v]).
   apply: (NECSet.Class (CSet.Class (hull_is_convex _)) (NESet.Mixin _)).
   rewrite hull_eq0; apply/eqP => /(congr1 (fun x => x u)).
   by rewrite propeqE => -[X _]; apply X; left.
 have @UV : necset_semiCompSemiLattConvType (F1 ((F0 \O U0) (U1 (P_delta_left T)))) := NECSet.Pack huv.
-transitivity (Joet ([fun of F1 # eps0 (U1 (P_delta_left T))] @` UV)%:ne).
+transitivity (|_| ([fun of F1 # eps0 (U1 (P_delta_left T))] @` UV)%:ne).
   rewrite -(apply_affine (F1 # eps0 (U1 (P_delta_left T))) UV).
-  congr ([fun of _] _); congr Joet; exact/neset_ext.
-  rewrite [in RHS]/joet.
-transitivity (Joet (hull ([fun of F1 # eps0 (U1 (P_delta_left T))] @` [set u; v]))%:ne).
-  congr (Joet _%:ne); apply/neset_ext => /=.
+  congr ([fun of _] _); congr (|_| _); exact/neset_ext.
+rewrite [in RHS]/lub_binary.
+transitivity (|_| (hull ([fun of F1 # eps0 (U1 (P_delta_left T))] @` [set u; v]))%:ne).
+  congr (|_| _%:ne); apply/neset_ext => /=.
   have /image_preserves_convex_hull' : affine_function [fun of F1 # eps0 (U1 (P_delta_left T))].
     move=> a b p; rewrite /affine_function_at => /=.
     rewrite /free_semiCompSemiLattConvType_mor /=; unlock; rewrite /free_semiCompSemiLattConvType_mor' /=.
@@ -129,7 +129,7 @@ transitivity (Joet (hull ([fun of F1 # eps0 (U1 (P_delta_left T))] @` [set u; v]
       transitivity (eps0'' (ConvFSDist.d p x1 x2)) => //.
       by rewrite eps0''_affine.
   exact.
-rewrite Joet_hull; congr (Joet _%:ne).
+rewrite lub_op_hull; congr (|_| _%:ne).
 apply/neset_ext => /=.
 rewrite /free_semiCompSemiLattConvType_mor /=; unlock; rewrite /free_semiCompSemiLattConvType_mor' /=.
 rewrite funeqE => /= X; rewrite propeqE; split.
@@ -141,14 +141,14 @@ Lemma affine_e1PD_alt T (x y : El (F1 (FId (U1 (P_delta_left T))))) :
   [fun of eps1 (P_delta_left T)] (x [+] y) =
   [fun of eps1 (P_delta_left T)] x [+] [fun of eps1 (P_delta_left T)] y.
 Proof.
-rewrite /joet eps1E -Joet_setU.
-transitivity (Joet (hull (\bigcup_(x0 in [set x; y]) x0))%:ne); last first.
-  rewrite Joet_hull /=; apply/necset_ext => /=; congr hull.
+rewrite /lub_binary eps1E -lub_op_setU.
+transitivity (|_| (hull (\bigcup_(x0 in [set x; y]) x0))%:ne); last first.
+  rewrite lub_op_hull /=; apply/necset_ext => /=; congr hull.
   rewrite [in RHS]setU_bigsetU; apply classical_sets_ext.eq_bigcup => //.
   rewrite /bigsetU /= funeqE => /= X; rewrite propeqE; split.
   - case => /= x0 [] <- x0X; by [exists x0 => //; left | exists x0 => //; right].
   - case => x0 [] -> ?; by [exists x => //; left | exists y => //; right].
-congr (Joet _%:ne); exact/neset_ext.
+congr (|_| _%:ne); exact/neset_ext.
 Qed.
 
 Lemma bindaltDl : BindLaws.left_distributive (@monad.Bind gcm) alt.
@@ -172,9 +172,9 @@ Definition P_delta_monadAltMixin : MonadAlt.mixin_of gcm :=
 Definition gcmA : altMonad := MonadAlt.Pack (MonadAlt.Class P_delta_monadAltMixin).
 
 Lemma altxx A : idempotent (@Alt gcmA A).
-Proof. by move=> x; rewrite /Alt /= /alt joetxx. Qed.
+Proof. by move=> x; rewrite /Alt /= /alt lub_binaryxx. Qed.
 Lemma altC A : commutative (@Alt gcmA A).
-Proof. by move=> a b; rewrite /Alt /= /alt /= joetC. Qed.
+Proof. by move=> a b; rewrite /Alt /= /alt /= lub_binaryC. Qed.
 
 Definition P_delta_monadAltCIMixin : MonadAltCI.class_of gcmA :=
   MonadAltCI.Class (MonadAltCI.Mixin altxx altC).
@@ -245,7 +245,7 @@ Lemma affine_e1PD_conv T (x y : El (F1 (FId (U1 (P_delta_left T))))) p :
   [fun of eps1 (P_delta_left T)] (x <|p|> y) =
   [fun of eps1 (P_delta_left T)] x <|p|> [fun of eps1 (P_delta_left T)] y.
 Proof.
-rewrite eps1E -Joet_conv_setD; congr Joet; apply/neset_ext => /=.
+rewrite eps1E -lub_op_conv_setD; congr (|_| _); apply/neset_ext => /=.
 by rewrite -necset_convType.conv_conv_set.
 Qed.
 
@@ -266,17 +266,20 @@ End bindchoiceDl.
 
 Definition P_delta_monadProbMixin : MonadProb.mixin_of gcm :=
   MonadProb.Mixin choice0 choice1 choiceC choicemm choiceA bindchoiceDl.
-Definition P_delta_monadProbMixin' : MonadProb.mixin_of (Monad.Pack (MonadAlt.base (MonadAltCI.base (MonadAltCI.class gcmACI)))) :=
+Definition P_delta_monadProbMixin' :
+  MonadProb.mixin_of (Monad.Pack (MonadAlt.base (MonadAltCI.base (MonadAltCI.class gcmACI)))) :=
   P_delta_monadProbMixin.
-Definition gcmp : probMonad := MonadProb.Pack (MonadProb.Class P_delta_monadProbMixin).
+Definition gcmp : probMonad :=
+  MonadProb.Pack (MonadProb.Class P_delta_monadProbMixin).
 
 Lemma choicealtDr A (p : prob) :
   right_distributive (fun x y : gcmACI A => x <| p |> y) Alt.
-Proof. by move=> x y z; rewrite /choice joetDr. Qed.
+Proof. by move=> x y z; rewrite /choice lub_binaryDr. Qed.
 
 Definition P_delta_monadAltProbMixin : @MonadAltProb.mixin_of gcmACI choice :=
   MonadAltProb.Mixin choicealtDr.
-Definition P_delta_monadAltProbMixin' : @MonadAltProb.mixin_of gcmACI (MonadProb.choice P_delta_monadProbMixin) :=
+Definition P_delta_monadAltProbMixin' :
+  @MonadAltProb.mixin_of gcmACI (MonadProb.choice P_delta_monadProbMixin) :=
   P_delta_monadAltProbMixin.
 Definition gcmAP : altProbMonad :=
   MonadAltProb.Pack (MonadAltProb.Class P_delta_monadAltProbMixin').
@@ -348,7 +351,7 @@ case.
   split; by [|apply/asboolP].
 move=> x [] y.
 rewrite !inE !necset1E => -[] /asboolP -> [] /asboolP ->.
-move/(f_equal (fun x : FSDist.t (choice_of_Type bool) => x true)) => /=.
+move/(f_equal (fun x : {dist (choice_of_Type bool)} => x true)) => /=.
 rewrite /Conv /= !ConvFSDist.dE !FSDist1.dE !inE !eqxx.
 case/boolP: ((true : choice_of_Type bool) == false) => [/eqP//|].
 rewrite !mulR1 !mulR0 !addR0 => _ H.

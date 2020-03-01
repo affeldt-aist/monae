@@ -4,6 +4,10 @@ From mathcomp Require boolp.
 From infotheo Require Import ssrZ.
 Require Import monae_lib monad fail_monad.
 
+(******************************************************************************)
+(*                               State monads                                 *)
+(******************************************************************************)
+
 Set Implicit Arguments.
 Unset Strict Implicit.
 Unset Printing Implicit Defensive.

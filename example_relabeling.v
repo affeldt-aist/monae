@@ -4,13 +4,17 @@ From mathcomp Require boolp.
 From infotheo Require Import ssrZ.
 Require Import monae_lib monad fail_monad state_monad.
 
+(******************************************************************************)
+(*                           Tree relabeling                                  *)
+(*                                                                            *)
+(* see Sect. 9 of gibbons2011icfp                                             *)
+(******************************************************************************)
+
 Set Implicit Arguments.
 Unset Strict Implicit.
 Unset Printing Implicit Defensive.
 
 Local Open Scope monae_scope.
-
-(* see Sect. 9 of gibbons2011icfp *)
 
 Section Tree.
 Variable A : Type.
