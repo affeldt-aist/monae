@@ -318,21 +318,6 @@ transitivity (arb >>= (fun b : bool => (if b then x else y) <|p|> if b then x el
 by rewrite H -!Abou_Saleh_technical_equality.
 Qed.
 
-Section cat_lemma.
-Local Open Scope classical_set_scope.
-Import category.
-Definition mk1d (b : choice_of_Type bool) := FSDist1.d b.
-Lemma ret_MgcmE b :
-  category.Monad_of_category_monad.ret Mgcm b = necset1 (mk1d b).
-Proof.
-rewrite /Monad_of_category_monad.ret /= /Hom.apply /=.
-rewrite !HCompId !HIdComp /= !HCompId !HIdComp /=.
-rewrite /id_f /= /etaC.
-unlock => /=.
-by rewrite eta0E eta1E.
-Qed.
-End cat_lemma.
-
 (* An example that probabilistic choice in this model is not trivial:
    we can distinguish different probabilities. *)
 Example gcmAP_choice_nontrivial (p q : prob) :
@@ -344,13 +329,14 @@ apply/eqP.
 apply: contra pq => /eqP Heq.
 apply/eqP.
 move: Heq.
-rewrite /Ret /= /Choice /= /Conv /= /necset_convType.conv /=.
+rewrite !gcm_retE.
+rewrite /Choice /= /Conv /= /necset_convType.conv /=.
 unlock. 
 move/(f_equal (@NECSet.car _)) => /=.
 rewrite /necset_convType.pre_pre_conv /=.
 Local Open Scope convex_scope.
-move/(f_equal (fun x : FSDist.t (choice_of_Type bool) -> _ =>
-                 x (mk1d true <|p|> mk1d false))).
+set mk1d := fun b : choice_of_Type bool => FSDist1.d b.
+move/(f_equal (fun x : FSDist.t _ -> _ => x (mk1d true <|p|> mk1d false))).
 set tmp := ex _.
 move=> Heq.
 have: tmp -> tmp by [].
@@ -358,11 +344,9 @@ rewrite {2}Heq /tmp {Heq tmp}.
 case.
   exists (mk1d true).
   exists (mk1d false).
-  rewrite !ret_MgcmE.
   split; first by apply/asboolP.
   split; by [|apply/asboolP].
 move=> x [] y.
-rewrite !ret_MgcmE.
 rewrite !inE !necset1E => -[] /asboolP -> [] /asboolP ->.
 move/(f_equal (fun x : FSDist.t (choice_of_Type bool) => x true)) => /=.
 rewrite /Conv /= !ConvFSDist.dE !FSDist1.dE !inE !eqxx.

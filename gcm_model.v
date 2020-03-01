@@ -667,8 +667,19 @@ Definition Agcm := adj_comp AC (adj_comp A0 A1).
 Definition Mgcm := Monad_of_adjoint Agcm.
 Definition gcm := Monad_of_category_monad Mgcm.
 
-Section gcm_joinE.
+Section gcm_opsE.
 Import monad.
+
+Lemma gcm_retE (T : Type) (x : choice_of_Type T) :
+  Ret x = necset1 (FSDist1.d x) :> gcm T.
+Proof.
+rewrite /= /Monad_of_category_monad.ret /= /Hom.apply /=.
+rewrite !HCompId !HIdComp /= !HCompId !HIdComp /=.
+rewrite /id_f /= /etaC.
+unlock => /=.
+by rewrite eta0E eta1E.
+Qed.
+
 Local Notation F1 := free_semiCompSemiLattConvType.
 Local Notation F0 := free_convType.
 Local Notation FC := free_choiceType.
@@ -700,8 +711,17 @@ rewrite -(bigcup_image
             _ _ _ _
             (fun x => if x \in necset_join.F1join0 X then NECSet.car x else set0) idfun).
 simpl.
-congr hull=> /=.
-Fail congr bigsetU.
-Abort.
-End gcm_joinE.
+congr hull.
+rewrite /bigsetU.
+apply/eqEsubset => y [i Xi iy].
+- exists i; last exact: iy.
+  exists i => //.
+  move/asboolP in Xi.
+  by rewrite inE Xi.
+- move: Xi iy => [z /asboolP Xz].
+  rewrite inE Xz => <- zy.
+  exists z => //.
+  by apply/asboolP.
+Qed.
+End gcm_opsE.
 End P_delta_category_monad.
