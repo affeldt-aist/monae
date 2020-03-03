@@ -289,38 +289,6 @@ Section examples.
 Local Open Scope proba_monad_scope.
 Local Open Scope monae_scope.
 
-Section preparation.
-Variable M : altProbMonad.
-(* problematic right-distributivity of bind *)
-Definition prob_bindDr := forall p, BindLaws.right_distributive (@Bind M) (Choice p).
-
-(* another problematic distributivity: nondeterminism over probability *)
-Definition choiceDalt := forall (T : Type) p,
-    right_distributive (fun x y => x [~] y) (fun x y : M T => x <| p |> y).
-
-Lemma Abou_Saleh_technical_equality (T : Type) (x y : M T) :
-  x [~] y = arb >>= fun b => if b then x else y.
-Proof. by rewrite alt_bindDl !bindretf. Qed.
-
-Local Open Scope convex_scope.
-
-Lemma convDif (C : convType) (b : bool) (p : prob) (x y z w : C) :
-  (if b then x <| p |> y else z <| p |> w) =
-  (if b then x else z) <| p |> (if b then y else w).
-Proof. by case: b. Qed.
-End preparation.
-
-Example Abou_Saleh_prob_bindDr_implies_choiceDalt :
-  (prob_bindDr gcmAP) -> (choiceDalt gcmAP).
-Proof.
-move=> H T p x y z.
-rewrite -[in LHS](convmm x p) /Choice /=.
-rewrite Abou_Saleh_technical_equality.
-transitivity (arb >>= (fun b : bool => (if b then x else y) <|p|> if b then x else z)). 
-  by congr (@Bind gcmAP bool T (@arb gcmAP) _); rewrite funeqE=> b; rewrite convDif.
-by rewrite H -!Abou_Saleh_technical_equality.
-Qed.
-
 (* An example that probabilistic choice in this model is not trivial:
    we can distinguish different probabilities. *)
 Example gcmAP_choice_nontrivial (p q : prob) :
