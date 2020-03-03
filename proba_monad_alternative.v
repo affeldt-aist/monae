@@ -14,7 +14,7 @@ Unset Printing Implicit Defensive.
 Module MonadAltProbNoDistr.
 Record class_of (m : Type -> Type) := Class {
   base : MonadAltCI.class_of m ;
-  base2 : MonadProb.mixin_of (Monad.Pack (MonadAlt.base (MonadAltCI.base base))) }.
+  mixin_prob : MonadProb.mixin_of (Monad.Pack (MonadAlt.base (MonadAltCI.base base))) }.
 Structure t : Type := Pack { m : Type -> Type ; class : class_of m }.
 Definition baseType (M : t) : altCIMonad := MonadAltCI.Pack (base (class M)).
 Definition altType (M : t) : altMonad := MonadAlt.Pack (MonadAltCI.base (base (class M))).
@@ -23,7 +23,7 @@ Notation altProbNoDistrMonad := t.
 Coercion baseType : altProbNoDistrMonad >-> altCIMonad.
 Canonical baseType.
 Definition altprobnodistr_is_prob M :=
-  MonadProb.Pack (MonadProb.Class (base2 (class M))).
+  MonadProb.Pack (MonadProb.Class (mixin_prob (class M))).
 Canonical altprobnodistr_is_prob.
 Canonical altType.
 End Exports.

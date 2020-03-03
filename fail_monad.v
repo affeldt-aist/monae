@@ -514,8 +514,8 @@ Record mixin_of (M : failMonad) (a : forall A, M A -> M A -> M A) : UU0 :=
           _ : @BindLaws.right_id M (@Fail M) a }.
 Record class_of (m : UU1 -> UU1) : UU2 := Class {
   base : MonadFail.class_of m ;
-  base2 : MonadAlt.mixin_of (Monad.Pack (MonadFail.base base)) ;
-  mixin : @mixin_of (MonadFail.Pack base) (MonadAlt.alt base2) }.
+  mixin_alt : MonadAlt.mixin_of (Monad.Pack (MonadFail.base base)) ;
+  mixin_nondet : @mixin_of (MonadFail.Pack base) (MonadAlt.alt mixin_alt) }.
 Structure t : UU2 := Pack { m : UU1 -> UU1 ; class : class_of m }.
 Definition baseType (M : t) := MonadFail.Pack (base (class M)).
 Module Exports.
@@ -523,7 +523,7 @@ Notation nondetMonad := t.
 Coercion baseType : nondetMonad >-> failMonad.
 Canonical baseType.
 Definition alt_of_nondet (M : nondetMonad) : altMonad :=
-  MonadAlt.Pack (MonadAlt.Class (base2 (class M))).
+  MonadAlt.Pack (MonadAlt.Class (mixin_alt (class M))).
 Canonical alt_of_nondet.
 End Exports.
 End MonadNondet.
@@ -568,7 +568,7 @@ Module MonadCINondet.
 Record class_of (m : UU1 -> UU1) : UU2 := Class {
   base : MonadNondet.class_of m ;
   mixin : MonadAltCI.mixin_of
-    (@Alt (MonadAlt.Pack (MonadAlt.Class (MonadNondet.base2 base)))) }.
+    (@Alt (MonadAlt.Pack (MonadAlt.Class (MonadNondet.mixin_alt base)))) }.
 Structure t : UU2 := Pack { m : UU1 -> UU1 ; class : class_of m }.
 Definition baseType (M : t) := MonadNondet.Pack (base (class M)).
 Module Exports.
@@ -1030,4 +1030,3 @@ Canonical baseType.
 End Exports.
 End MonadJump.
 Export MonadJump.Exports.
-

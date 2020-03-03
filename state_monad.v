@@ -169,8 +169,8 @@ Record mixin_of S (M : stateMonad S) : Type := Mixin {
 }.
 Record class_of S (m : Type -> Type) := Class {
   base : MonadState.class_of S m ;
-  base2 : MonadContinuation.mixin_of (Monad.Pack (MonadState.base base));
-  mixin : @mixin_of S (MonadState.Pack base)
+  mixin_cont : MonadContinuation.mixin_of (Monad.Pack (MonadState.base base));
+  mixin_stateLoop : @mixin_of S (MonadState.Pack base)
 }.
 Structure t S : Type := Pack { m : Type -> Type ; class : class_of S m }.
 Definition baseType S (M : t S) : stateMonad S := MonadState.Pack (base (class M)).
@@ -182,12 +182,11 @@ Definition Foreach S (M : t S) : nat -> nat -> (nat -> m M unit) -> m M unit :=
 Coercion baseType : loopContStateMonad >-> stateMonad.
 Canonical baseType.
 Definition cont_of_loop S (M : loopContStateMonad S) : contMonad :=
-  MonadContinuation.Pack (MonadContinuation.Class (base2 (class M))).
+  MonadContinuation.Pack (MonadContinuation.Class (mixin_cont (class M))).
 Canonical cont_of_loop.
 End Exports.
 End MonadContStateLoop.
 Export MonadContStateLoop.Exports.
-
 
 Module MonadRun.
 Record mixin_of S (M : monad) : Type := Mixin {
@@ -232,8 +231,8 @@ Record mixin_of S (M : runMonad S) (get : M S) (put : S -> M unit) : Type := Mix
 }.
 Record class_of S (m : Type -> Type) := Class {
   base : MonadState.class_of S m ;
-  base2 : MonadRun.mixin_of S (Monad.Pack (MonadState.base base)) ;
-  mixin : @mixin_of S (MonadRun.Pack (MonadRun.Class base2)) (@Get _ (MonadState.Pack base)) (@Put _ (MonadState.Pack base)) ;
+  mixin_run : MonadRun.mixin_of S (Monad.Pack (MonadState.base base)) ;
+  mixin_stateRun : @mixin_of S (MonadRun.Pack (MonadRun.Class mixin_run)) (@Get _ (MonadState.Pack base)) (@Put _ (MonadState.Pack base)) ;
 }.
 Structure t S : Type := Pack { m : Type -> Type ;
   class : class_of S m }.
@@ -243,7 +242,7 @@ Notation stateRunMonad := t.
 Coercion baseType : stateRunMonad >-> stateMonad.
 Canonical baseType.
 Definition state_of_run S (M : stateRunMonad S) : runMonad S :=
-  MonadRun.Pack (MonadRun.Class (base2 (class M))).
+  MonadRun.Pack (MonadRun.Class (mixin_run (class M))).
 Canonical state_of_run.
 End Exports.
 End MonadStateRun.
@@ -266,8 +265,8 @@ Record mixin_of (M : nondetMonad) : Type := Mixin {
 }.
 Record class_of S (m : Type -> Type) : Type := Class {
   base : MonadNondet.class_of m ;
-  base2 : MonadState.mixin_of S (MonadFail.baseType (MonadNondet.baseType (MonadNondet.Pack base))) ;
-  mixin : mixin_of (MonadNondet.Pack base)
+  mixin_state : MonadState.mixin_of S (MonadFail.baseType (MonadNondet.baseType (MonadNondet.Pack base))) ;
+  mixin_nondetState : mixin_of (MonadNondet.Pack base)
 }.
 Structure t S : Type := Pack { m : Type -> Type ; class : class_of S m }.
 Definition baseType S (M : t S) := MonadNondet.Pack (base (class M)).
@@ -276,7 +275,7 @@ Notation nondetStateMonad := t.
 Coercion baseType : nondetStateMonad >-> nondetMonad.
 Canonical baseType.
 Definition state_of_nondetstate S (M : nondetStateMonad S) :=
-  MonadState.Pack (MonadState.Class (base2 (class M))).
+  MonadState.Pack (MonadState.Class (mixin_state (class M))).
 Canonical state_of_nondetstate.
 End Exports.
 End MonadNondetState.

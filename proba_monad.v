@@ -293,8 +293,8 @@ Record mixin_of (M : altCIMonad) (f : prob -> forall T, M T -> M T -> M T) := Mi
   _ : forall T p, right_distributive (f p T) (fun a b => a [~] b) }.
 Record class_of (m : Type -> Type) := Class {
   base : MonadAltCI.class_of m ;
-  base2 : MonadProb.mixin_of (Monad.Pack (MonadAlt.base (MonadAltCI.base base))) ;
-  mixin : @mixin_of (MonadAltCI.Pack base) (@MonadProb.choice _ base2) }.
+  mixin_prob : MonadProb.mixin_of (Monad.Pack (MonadAlt.base (MonadAltCI.base base))) ;
+  mixin_altProb : @mixin_of (MonadAltCI.Pack base) (@MonadProb.choice _ mixin_prob) }.
 Structure t : Type := Pack { m : Type -> Type ; class : class_of m }.
 Definition baseType (M : t) : altCIMonad := MonadAltCI.Pack (base (class M)).
 Definition altType (M : t) : altMonad := MonadAlt.Pack (MonadAltCI.base (base (class M))).
@@ -303,7 +303,7 @@ Notation altProbMonad := t.
 Coercion baseType : altProbMonad >-> altCIMonad.
 Canonical baseType.
 Definition altprob_is_prob M :=
-  MonadProb.Pack (MonadProb.Class (base2 (class M))).
+  MonadProb.Pack (MonadProb.Class (mixin_prob (class M))).
 Canonical altprob_is_prob.
 Canonical altType.
 End Exports.
@@ -434,8 +434,8 @@ Record mixin_of (M : exceptMonad) (a : prob -> forall A : Type, M A -> M A -> M 
 }.
 Record class_of (m : Type -> Type) := Class {
   base : MonadExcept.class_of m ;
-  base2 : MonadProb.mixin_of (Monad.Pack (MonadFail.base (MonadExcept.base base))) ;
-  mixin : @mixin_of (MonadExcept.Pack base) (@Choice (MonadProb.Pack (MonadProb.Class base2)))
+  mixin_prob : MonadProb.mixin_of (Monad.Pack (MonadFail.base (MonadExcept.base base))) ;
+  mixin_exceptProb : @mixin_of (MonadExcept.Pack base) (@Choice (MonadProb.Pack (MonadProb.Class mixin_prob)))
 }.
 Structure t : Type := Pack { m : Type -> Type ; class : class_of m }.
 Definition baseType (M : t) : exceptMonad := MonadExcept.Pack (base (class M)).
@@ -444,7 +444,7 @@ Notation exceptProbMonad := t.
 Coercion baseType : exceptProbMonad >-> exceptMonad.
 Canonical baseType.
 Definition prob_of_exceptprob M :=
-  MonadProb.Pack (MonadProb.Class (base2 (class M))).
+  MonadProb.Pack (MonadProb.Class (mixin_prob (class M))).
 Canonical prob_of_exceptprob.
 End Exports.
 End MonadExceptProb.

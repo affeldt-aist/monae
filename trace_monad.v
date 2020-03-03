@@ -47,8 +47,8 @@ Record mixin_of T (M : runMonad (seq T)) (mark : T -> M unit) : Type := Mixin {
 }.
 Record class_of T (m : Type -> Type) : Type := Class {
   base : MonadTrace.class_of T m ;
-  base2 : MonadRun.mixin_of _ (Monad.Pack (MonadTrace.base base)) ;
-  mixin : @mixin_of _ (MonadRun.Pack (MonadRun.Class base2))
+  mixin_run : MonadRun.mixin_of _ (Monad.Pack (MonadTrace.base base)) ;
+  mixin_traceRUn : @mixin_of _ (MonadRun.Pack (MonadRun.Class mixin_run))
     (@Mark _ (MonadTrace.Pack base));
 }.
 Structure t T : Type := Pack { m : Type -> Type ;
@@ -59,7 +59,7 @@ Notation traceRunMonad := t.
 Coercion baseType T (M : traceRunMonad T) : traceMonad T := baseType M.
 Canonical baseType.
 Definition trace_of_run T (M : traceRunMonad T) : runMonad (seq T) :=
-  MonadRun.Pack (MonadRun.Class (base2 (class M))).
+  MonadRun.Pack (MonadRun.Class (mixin_run (class M))).
 Canonical trace_of_run.
 End Exports.
 End MonadTraceRun.
@@ -181,8 +181,8 @@ Record mixin_of S T (M : runMonad (S * seq T)) (st_get : M S)
 }.
 Record class_of S T (m : Type -> Type) : Type := Class {
   base : MonadStateTrace.class_of S T m ;
-  base2 : MonadRun.mixin_of (S * seq T) (Monad.Pack (MonadStateTrace.base base)) ;
-  mixin : @mixin_of _ _ (MonadRun.Pack (MonadRun.Class base2))
+  mixin_run : MonadRun.mixin_of (S * seq T) (Monad.Pack (MonadStateTrace.base base)) ;
+  mixin_stateTraceRun : @mixin_of _ _ (MonadRun.Pack (MonadRun.Class mixin_run))
     (@stGet _ _ (MonadStateTrace.Pack base))
     (@stPut _ _ (MonadStateTrace.Pack base))
     (@stMark _ _ (MonadStateTrace.Pack base)) ;
@@ -195,7 +195,7 @@ Notation stateTraceRunMonad := t.
 Coercion baseType (S T : Type) (M : stateTraceRunMonad S T) : stateTraceMonad S T := baseType M.
 Canonical baseType.
 Definition statetrace_of_run S T (M : stateTraceRunMonad S T) : runMonad (S * seq T) :=
-  MonadRun.Pack (MonadRun.Class (base2 (class M))).
+  MonadRun.Pack (MonadRun.Class (mixin_run (class M))).
 Canonical statetrace_of_run.
 End Exports.
 End MonadStateTraceRun.
