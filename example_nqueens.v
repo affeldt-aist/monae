@@ -308,7 +308,9 @@ Definition downs s i := zipWith Zminus (map Z_of_nat (iota i (size s))) s.
 Definition safe s := uniq (ups s 0) && uniq (downs s 0).
 
 Definition queens_example := [:: 3; 5; 7; 1; 6; 0; 2; 4]%Z.
+(*
 Eval compute in safe queens_example.
+*)
 
 Definition mu_queens {M : nondetMonad} n : M (seq Z) :=
   perms (map Z_of_nat (iota 0 n)) >>= assert safe.

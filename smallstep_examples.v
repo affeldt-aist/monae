@@ -18,7 +18,9 @@ Definition p_nonce : program nat :=
 
 Definition M := @ModelStateTraceRun.mk.
 
+(*
 Eval unfold denote, p_nonce in denote (M nat nat) nat p_nonce.
+*)
 
 Local Open Scope do_notation.
 
@@ -28,9 +30,11 @@ Definition nonce : M nat nat nat :=
   do _ : unit <- stMark n;
   Ret n.
 
+(*
 Compute nonce (0, []).
 Compute (denote (M nat nat) nat p_nonce) (0, []).
 Compute run_ss p_nonce 0.
+*)
 
 Remark denote_p_nonce : denote (M nat nat) nat p_nonce = nonce.
 Proof. by []. Qed.
@@ -55,9 +59,11 @@ Example nonce_twice : M _ _ _ :=
   do y <- nonce ;
   Ret (Nat.eqb x y).
 
+(*
 Compute nonce_twice (0, []).
 Compute (denote (M nat nat) bool p_nonce_twice) (0, []).
 Compute run_ss p_nonce_twice 0.
+*)
 
 Remark denote_p_nonce_twice :
   denote (M nat nat) bool p_nonce_twice = nonce_twice.
@@ -86,9 +92,11 @@ Fixpoint p_countdown (fuel : nat) : program unit :=
     )
   end.
 
+(*
 Compute (countdown 100) (5, []).
 Compute (denote (M nat bool) unit (p_countdown 100)) (5, []).
 Compute run_ss (p_countdown 100) 5.
+*)
 
 Remark denote_countdown fuel :
   denote (M nat bool) unit (p_countdown fuel) = countdown fuel.
@@ -105,7 +113,9 @@ Example p_multiply (a b : nat) : program (T := unit) unit :=
     p_put (a + x)
   ).
 
+(*
 Compute run_ss (p_multiply 3 7) 0.
+*)
 
 Example p_division (a b : nat) : program (T := unit) unit :=
   p_do _ <- p_put (a, 0);
@@ -114,6 +124,8 @@ Example p_division (a b : nat) : program (T := unit) unit :=
     p_put (fst s - b, S (snd s))
   ).
 
+(*
 Compute run_ss (p_division 22 7) (0, 0).
 
 Compute run_s_n 15 (p_division 22 7) (stop unit) (0, 0).
+*)

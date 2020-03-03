@@ -835,7 +835,9 @@ Definition oaddn_break (M : monad) (break : nat -> M nat) (acc : nat) (x : optio
 Let M : contMonad := ModelCont.t nat.
 Definition sum_break (xs : seq (option nat)) : M nat :=
   Callcc (fun break : nat -> M nat => foldM (oaddn_break break) 0 xs).
+(*
 Compute (sum_break [:: Some 2; Some 6; None; Some 4]).
+*)
 
 Goal Ret 1 +m (Callcc (fun f => Ret 10 +m (f 100)) : M _) =
      Ret (1 + 100).
@@ -846,15 +848,21 @@ Local Open Scope monae_scope.
 
 Fixpoint list_iter (M : monad) A (f : A -> M unit) (s : seq A) : M unit :=
   if s is h :: t then f h >> list_iter f t else Ret tt.
+(*
 Compute (@list_iter ModelMonad.identity nat (fun a => Ret tt) [:: O; 1; 2]).
+*)
 
 Definition list_find (M : contMonad) A (p : pred A) (s : seq A) : M _ :=
   Callcc (fun k => list_iter (fun x => if p x then (*Throw*) k (Some x) else Ret tt) s >> Ret None).
 
 (* returns None if no such element exists *)
+(*
 Compute (@list_find (@ModelCont.t bool) nat [pred x | odd x] [:: 2; 4; 6]).
+*)
 (* returns the first element such that *)
+(*
 Compute (@list_find (@ModelCont.t bool) nat [pred x | odd x] [:: 2; 4; 3; 6]).
+*)
 
 End continuation_examples.
 
