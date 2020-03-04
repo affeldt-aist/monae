@@ -111,6 +111,20 @@ Definition kappa (tau : operation E M) : E ~~> K_MonadT M :=
 
 End kappa_def.
 
+Section kappa_lemmas.
+
+Variables (E : functor) (M : monad) (op : operation E M).
+
+Lemma natural_kappa : naturality _ _ (kappa op).
+Proof.
+move=> A B h; rewrite /kappa boolp.funeqE => ea; rewrite [in RHS]/=.
+transitivity (fun B0 (k : B -> M B0) => op B0 ((E # (k \o h)) ea)) => //.
+apply FunctionalExtensionality.functional_extensionality_dep => C.
+by rewrite boolp.funeqE => D; rewrite functor_o.
+Qed.
+
+End kappa_lemmas.
+
 Section from_def.
 
 Definition from (M : monad) : K_MonadT M ~~> M :=
@@ -118,15 +132,10 @@ Definition from (M : monad) : K_MonadT M ~~> M :=
 
 End from_def.
 
-(*Declare ML Module "paramcoq".*)
-
 Section to_be_proved_by_param.
-Variable M : functor.
-(*Definition hparam A := forall B : Type, (A -> M B) -> M B.
-Parametricity hparam arity 1.
-*)
+Variable M : functor(*monad*).
 
-Lemma naturality_m (A : UU1) (m : forall B, (A -> M B) -> M B) (X Y : UU1) (h : X -> Y) :
+Lemma naturality_m (A : UU1) (m : forall B, (A -> M B) -> M B(* K_type M A *)) (X Y : UU1) (h : X -> Y) :
   M # h \o m X = m Y \o (fun f => (M # h) \o f).
 Proof.
 Admitted.
@@ -155,19 +164,13 @@ rewrite /K_type /=.
 rewrite boolp.funeqE => m.
 rewrite /=.
 transitivity ((K_MonadT M # h) m B Ret) => //.
-set tmp : (A -> M A) -> M B := ((M # h) \o m A).
-pose tmb := (A -> M A) -> A -> M B.
-set e : tmb := (fun f => (M # h) \o f).
-have nat_m : (M # h) \o m A = m B \o e.
-  by rewrite (@naturality_m M A m).
-move: nat_m.
-rewrite boolp.funeqE.
-move/(_ Ret) => /= ->.
-rewrite /e.
 rewrite [in RHS]/Fun /=.
 rewrite /Monad_of_ret_bind.Map /=.
 rewrite /K_bind /K_ret /=.
-by rewrite (natural RET).
+transitivity (m B (Ret \o h)) => //.
+rewrite -(natural RET).
+transitivity ((M # h \o m A) Ret) => //.
+by rewrite naturality_m.
 Qed.
 
 End from_prop.
@@ -183,6 +186,11 @@ End k_op_def.
 Section k_op_prop.
 
 Variables (M : monad) (E : functor) (op : operation E M).
+
+Lemma natural_K_op : naturality _ _ (K_op op).
+Proof.
+by move=> A B h; rewrite /K_op (natural_psi (Natural.Pack (natural_kappa op))).
+Qed.
 
 Lemma K_opE (A : UU1) :
   op A = (@from M A) \o (@K_op _ _ op A) \o
@@ -202,14 +210,8 @@ Qed.
 
 Lemma algebraic_K_op : algebraicity (K_op op).
 Proof.
-move=> A B f t.
-rewrite /K_op.
-move: (natural_psi op).
-rewrite /naturality => H0.
-move: (algebraic_psi op).
-rewrite /algebraicity => H1.
-rewrite /kappa.
-Admitted.
+by move=> *; rewrite /K_op (algebraic_psi (Natural.Pack (natural_kappa op))).
+Qed.
 
 End k_op_prop.
 
@@ -217,13 +219,11 @@ Section wip.
 
 Variables (E : functor) (M : monad) (op : operation E M) (T : FMT).
 
-Lemma natural_K_op : naturality _ _ (K_op op).
-Admitted.
-
-Let nt1 := (Natural.Pack (natural_from M)).
+Let nt1 := Natural.Pack (natural_from M).
 Let op1 : T (K_MonadT M) ~> T M := (Hmap T nt1).
 Let op3 : E \O T M ~> E \O T (K_MonadT M) := functor_app_natural E (Hmap T (Natural.Pack (natural_monadM (LiftT K_MonadT M)))).
-Let op2 := Natural.Pack (@natural_alifting _ _ (@AOperation.Pack _ _ (Natural.Pack natural_K_op) (AOperation.Mixin (algebraic_K_op op))) _ (LiftT T _)).
+Let aop : aoperation E (K_MonadT M) := @AOperation.Pack _ _ (Natural.Pack (natural_K_op op)) (AOperation.Mixin (algebraic_K_op op)).
+Let op2 := Natural.Pack (@natural_alifting _ _ aop _ (LiftT T _)).
 
 Let op' : E \O T M ~> T M := op1 \v op2 \v op3.
 
@@ -250,9 +250,7 @@ transitivity (op1 X \o
 transitivity (
   op1 X \o (LiftT T (K_MonadT M) X \o (K_op op) X) \o
   E # LiftT K_MonadT M X).
-  congr ((_ \o _) \o _).
-  rewrite /op2.
-  admit.
+  by rewrite -(theorem19b aop (LiftT T (K_MonadT M))).
 transitivity (
   LiftT T M X \o nt1 X \o (K_op op) X \o
   E # LiftT K_MonadT M X).
@@ -264,6 +262,6 @@ rewrite -2!compA.
 congr (_ \o _).
 rewrite compA.
 by rewrite K_opE.
-Admitted.
+Qed.
 
 End wip.

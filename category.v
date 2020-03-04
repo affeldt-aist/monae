@@ -827,7 +827,6 @@ Variables (C : category) (M : C -> C).
 Variable b : forall A B, {hom A, M B} -> {hom M A, M B}.
 Local Notation "m >>= f" := (b f m).
 (*
-NB(saikawa)
 I am not convinced if the above typing of `bind' makes sense from the
 category-theoretical point of view.  It is rather an ad hoc change needed for
 stating the associavitity below.  I am not sure either if it works well in
