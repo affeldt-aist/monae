@@ -18,11 +18,12 @@ Set Implicit Arguments.
 Unset Strict Implicit.
 Unset Printing Implicit Defensive.
 
+Local Open Scope proba_scope.
+
 Section P_delta_altProbMonad.
 Local Open Scope R_scope.
 Local Open Scope reals_ext_scope.
 Local Open Scope classical_set_scope.
-Local Open Scope proba_scope.
 Local Open Scope convex_scope.
 Local Open Scope latt_scope.
 

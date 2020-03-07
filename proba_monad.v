@@ -21,7 +21,7 @@ Contents:
     probabilistic choice + exception
 *)
 
-Reserved Notation "mx <| p |> my" (format "mx  <| p |>  my", at level 50).
+Reserved Notation "mx <| p |> my" (format "mx  <| p |>  my", at level 49).
 
 Declare Scope proba_monad_scope.
 
@@ -94,7 +94,7 @@ Variable A : Type.
 Import fdist convex_choice ConvexSpace.
 
 Definition prob_mixin : mixin_of (choice_of_Type (M A)).
-apply (@Class _ (fun p (a b : choice_of_Type (M A)) => Choice p A a b)).
+apply (@Mixin _ (fun p (a b : choice_of_Type (M A)) => Choice p A a b)).
 - apply choice1.
 - apply choicemm.
 - apply choiceC.
@@ -103,7 +103,7 @@ apply (@Class _ (fun p (a b : choice_of_Type (M A)) => Choice p A a b)).
   by rewrite -p_is_rs s_of_pqE onemK.
 Defined.
 
-Definition probConvex := Pack prob_mixin.
+Definition probConvex := Pack (Class prob_mixin).
 End convex.
 
 Arguments probConvex {M} {A}.

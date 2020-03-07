@@ -64,9 +64,10 @@ Set Implicit Arguments.
 Unset Strict Implicit.
 Unset Printing Implicit Defensive.
 
+Local Open Scope proba_scope.
+
 Section TODO_move_to_other_file.
 Section misc_convex.
-Local Open Scope proba_scope.
 Local Open Scope convex_scope.
 Variables (A : convType).
 
@@ -327,7 +328,7 @@ Section eps0_correct.
 Import category.
 Import ScaledConvex.
 Local Open Scope R_scope.
-Variables (A : choiceType) (D : {dist (FSDist_convType A)}).
+Variables (A : choiceType) (D : {dist {dist A}}).
 
 Let eps0''_correct  : eps0'' D = FSDistjoin D.
 Proof.
@@ -693,7 +694,7 @@ Variable X : gcm (gcm T).
 Lemma gcm_joinE : Join X = necset_join X.
 Import category.
 apply/necset_ext.
-rewrite /= /Monad_of_category_monad.join /= !HCompId !HIdComp eps1E. 
+rewrite /= /Monad_of_category_monad.join /= !HCompId !HIdComp eps1E.
 have-> : [fun of AdjComp.F F0 F1
                 # epsC
                     (AdjComp.G U0 U1

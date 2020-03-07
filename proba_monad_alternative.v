@@ -27,7 +27,7 @@ Definition altprobnodistr_is_prob M :=
 Canonical altprobnodistr_is_prob.
 Canonical altType.
 Definition apndConvex {M} {A : Type} :=
-  ConvexSpace.Pack (prob_mixin (MonadProb.Pack (MonadProb.Class (mixin_prob (class M)))) A).
+  ConvexSpace.Pack (ConvexSpace.Class (prob_mixin (MonadProb.Pack (MonadProb.Class (mixin_prob (class M)))) A)).
 End Exports.
 End MonadAltProbNoDistr.
 Export MonadAltProbNoDistr.Exports.

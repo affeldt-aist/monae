@@ -11,26 +11,27 @@ Require Import monae_lib monad proba_monad.
 *)
 
 Local Open Scope monae_scope.
+Local Open Scope proba_scope.
+
+Notation choice_of_Type := convex_choice.choice_of_Type.
 
 Module MonadProbModel.
 Local Obligation Tactic := idtac.
 
-Definition ret' : forall A, A -> {dist (convex_choice.choice_of_Type A)} :=
-  fun A a => FSDist1.d (a : convex_choice.choice_of_Type A).
+Definition ret' : forall A, A -> {dist (choice_of_Type A)} :=
+  fun A a => FSDist1.d (a : choice_of_Type A).
 
-Definition bind : forall A B,
-  {dist (convex_choice.choice_of_Type A)} ->
-  (A -> {dist (convex_choice.choice_of_Type B)}) ->
-  {dist (convex_choice.choice_of_Type B)} :=
+Definition bind : forall A B, {dist (choice_of_Type A)} ->
+  (A -> {dist (choice_of_Type B)}) -> {dist (choice_of_Type B)} :=
   fun A B m f => FSDistBind.d m f.
 
 Definition functor : functor.
-apply: (@Functor.Pack (fun A => {dist (convex_choice.choice_of_Type A)}) _).
-apply (@Functor.Class _ (fun A B => @FSDistfmap (convex_choice.choice_of_Type A) (convex_choice.choice_of_Type B))).
+apply: (@Functor.Pack (fun A => {dist (choice_of_Type A)}) _).
+apply (@Functor.Class _ (fun A B => @FSDistfmap (choice_of_Type A) (choice_of_Type B))).
 move=> A.
-exact: (FSDistfmap_id (convex_choice.choice_of_Type A)).
+exact: (FSDistfmap_id (choice_of_Type A)).
 move=> A B C g h.
-exact: (@FSDistfmap_comp (convex_choice.choice_of_Type A) (convex_choice.choice_of_Type B) (convex_choice.choice_of_Type C)).
+exact: (@FSDistfmap_comp (choice_of_Type A) (choice_of_Type B) (choice_of_Type C)).
 Defined.
 
 Lemma naturality_ret' : naturality FId functor ret'.
@@ -56,7 +57,7 @@ by rewrite boolp.funeqE => a; rewrite /= FSDistBind1f.
 Qed.
 
 Program Definition prob_mixin : MonadProb.mixin_of monad :=
-  @MonadProb.Mixin monad (fun p A => @ConvFSDist.d (convex_choice.choice_of_Type A) p) _ _ _ _ _ _.
+  @MonadProb.Mixin monad (fun p A => @ConvFSDist.d (choice_of_Type A) p) _ _ _ _ _ _.
 Next Obligation. move=> ? ? ?; exact: ConvFSDist.conv0. Qed.
 Next Obligation. move=> ? ? ?; exact: ConvFSDist.conv1. Qed.
 Next Obligation. move=> ? ? ?; exact: ConvFSDist.convC. Qed.
@@ -64,11 +65,11 @@ Next Obligation. move=> ? ? ?; exact: ConvFSDist.convmm. Qed.
 Next Obligation. move=> ? ? ? ? ? ? ? ? ? /=; exact: ConvFSDist.convA. Qed.
 Next Obligation.
 move=> p A B m1 m2 k.
-rewrite !(@BindE (convex_choice.choice_of_Type A) (convex_choice.choice_of_Type B)).
+rewrite !(@BindE (choice_of_Type A) (choice_of_Type B)).
 by rewrite ConvFSDist.bind_left_distr.
 Qed.
 
-Definition prob_class : MonadProb.class_of (fun A : Type => {dist (convex_choice.choice_of_Type A)}) :=
+Definition prob_class : MonadProb.class_of (fun A : Type => {dist (choice_of_Type A)}) :=
   @MonadProb.Class _ _ prob_mixin.
 
 Definition prob : MonadProb.t := MonadProb.Pack prob_class.
