@@ -5,10 +5,14 @@ Require Import monae_lib monad fail_monad proba_monad.
 
 (******************************************************************************)
 (*                            Monty Hall example                              *)
+(*                                                                            *)
+(* references:                                                                *)
+(* - J. Gibbons, R. Hinze, Just do it: simple monadic equational reasoning,   *)
+(* ICFP 2011                                                                  *)
+(* J. Gibbons, Unifying Theories of Programming with Monads, UTP 2012         *)
 (******************************************************************************)
 
-(* from gibbons2011icfp and gibbonsUTP2012
-
+(*
 Contents:
 - Module Set3.
     a small theory about sets of three elements for the Monty Hall example

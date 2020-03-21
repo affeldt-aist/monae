@@ -6,6 +6,12 @@ Require Import monae_lib monad fail_monad state_monad.
 
 (******************************************************************************)
 (*                            N-queens example                                *)
+(*                                                                            *)
+(* references:                                                                *)
+(* - J. Gibbons, R. Hinze, Just do it: simple monadic equational reasoning,   *)
+(* ICFP 2011                                                                  *)
+(* - Shin-Cheng Mu, Calculating a Backtracking Algorithm: An Exercise in      *)
+(* Monadic Program Derivation, TR-IIS-19-003                                  *)
 (******************************************************************************)
 
 Local Open Scope monae_scope.

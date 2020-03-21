@@ -5,6 +5,21 @@ From infotheo Require Import ssrR Reals_ext proba.
 From infotheo Require convex_choice.
 Require Import monae_lib monad fail_monad.
 
+(******************************************************************************)
+(*                            Probability monads                              *)
+(*                                                                            *)
+(* probaMonad      == probabilistic choice and bind left-distributes over     *)
+(*                    choice                                                  *)
+(* probDrMonad     == probaMonad + bind right-distributes over choice         *)
+(* altProbMonad    == combined (probabilistic and nondeterministic) choice    *)
+(* exceptProbMonad == exceptions + probabilistic choice                       *)
+(*                                                                            *)
+(* references:                                                                *)
+(* - J. Gibbons, R. Hinze, Just do it: simple monadic equational reasoning,   *)
+(* ICFP 2011                                                                  *)
+(* J. Gibbons, Unifying Theories of Programming with Monads, UTP 2012         *)
+(******************************************************************************)
+
 (*
 Contents:
 - Definition of probabilities

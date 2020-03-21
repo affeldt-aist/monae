@@ -5,8 +5,11 @@ Require Import monae_lib monad fail_monad.
 (******************************************************************************)
 (*                              Spark example                                 *)
 (*                                                                            *)
-(* mu2019tr2                                                                  *)
+(* see Shin-Cheng Mu, Equational Reasoning for Non-deterministic Monad: A     *)
+(* Case study of {S}park Aggregation, TR-IIS-19-002                           *)
+(*                                                                            *)
 (******************************************************************************)
+
 Set Implicit Arguments.
 Unset Strict Implicit.
 Unset Printing Implicit Defensive.

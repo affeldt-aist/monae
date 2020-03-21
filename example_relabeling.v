@@ -7,7 +7,8 @@ Require Import monae_lib monad fail_monad state_monad.
 (******************************************************************************)
 (*                           Tree relabeling                                  *)
 (*                                                                            *)
-(* see Sect. 9 of gibbons2011icfp                                             *)
+(* see Sect. 9 of J. Gibbons, R. Hinze, Just do it: simple monadic equational *)
+(* reasoning, ICFP 2011                                                       *)
 (******************************************************************************)
 
 Set Implicit Arguments.

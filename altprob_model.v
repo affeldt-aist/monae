@@ -303,7 +303,7 @@ apply/eqP.
 move: Heq.
 rewrite !gcm_retE.
 rewrite /Choice /= /Conv /= /necset_convType.conv /=.
-unlock. 
+unlock.
 move/(f_equal (@NECSet.car _)) => /=.
 rewrite /necset_convType.pre_pre_conv /=.
 Local Open Scope convex_scope.

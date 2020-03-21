@@ -5,6 +5,33 @@ From mathcomp Require Import classical_sets.
 From infotheo Require convex_choice classical_sets_ext.
 Require Import monae_lib monad fail_monad state_monad trace_monad.
 
+(******************************************************************************)
+(*                       Models for various monads                            *)
+(*                                                                            *)
+(* identity                                                                   *)
+(* ListMonad.t                                                                *)
+(* SetMonad.t (used classical_sets)                                           *)
+(* Except.t                                                                   *)
+(*   option_monad                                                             *)
+(* Output.t                                                                   *)
+(* Environment.t                                                              *)
+(* State.t                                                                    *)
+(* Cont.t                                                                     *)
+(*                                                                            *)
+(* Sigma-operations:                                                          *)
+(* ListOps                                                                    *)
+(* OutputOps                                                                  *)
+(* EnvironmentOps                                                             *)
+(* ExceptOps                                                                  *)
+(* StateOps                                                                   *)
+(* ContOps                                                                    *)
+(*                                                                            *)
+(* ...etc...                                                                  *)
+(*                                                                            *)
+(* ModelBacktrackableState (using fsets)                                      *)
+(*                                                                            *)
+(******************************************************************************)
+
 (* Contents: sample models for the monads in monad.v, fail_monad.v, state_monad.v, trace_monad.v
    - Module ModelMonad
        identity monad
@@ -17,12 +44,6 @@ Require Import monae_lib monad fail_monad state_monad trace_monad.
        state monad
        continuation monad.
    - sigma operations
-       ListOps
-       OutputOps
-       EnvironmentOps
-       ExceptOps
-       StateOps
-       ContOps
    - Module ModelFail
        using ModelMonad.option_monad
        using ModelMonad.ListMonad.t

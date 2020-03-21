@@ -1,6 +1,10 @@
 From mathcomp Require Import all_ssreflect.
 From mathcomp Require boolp.
 
+(******************************************************************************)
+(*      Shared notations and easy definitions/lemmas of general interest      *)
+(******************************************************************************)
+
 Set Implicit Arguments.
 Unset Strict Implicit.
 Unset Printing Implicit Defensive.

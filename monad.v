@@ -10,7 +10,7 @@ Require Import monae_lib.
 Unset Universe Minimization ToSet.*)
 
 (******************************************************************************)
-(*                A formalization of monads over the category Set             *)
+(*               A formalization of monads over the category Set              *)
 (*                                                                            *)
 (* We consider the type Type of Coq as the category Set and define functors   *)
 (* and monads on top of it. These monads are used to develop the basics of    *)
