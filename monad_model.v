@@ -8,10 +8,13 @@ Require Import monae_lib monad fail_monad state_monad trace_monad.
 (******************************************************************************)
 (*                       Models for various monads                            *)
 (*                                                                            *)
+(* Sample models for the monads in monad.v, fail_monad.v, state_monad.v,      *)
+(* trace_monad.v.                                                              *)
+(*                                                                            *)
 (* identity                                                                   *)
 (* ListMonad.t                                                                *)
 (* SetMonad.t (used classical_sets)                                           *)
-(* Except.t                                                                   *)
+(* Except.t (exception or error monad)                                        *)
 (*   option_monad                                                             *)
 (* Output.t                                                                   *)
 (* Environment.t                                                              *)
@@ -26,23 +29,23 @@ Require Import monae_lib monad fail_monad state_monad trace_monad.
 (* StateOps                                                                   *)
 (* ContOps                                                                    *)
 (*                                                                            *)
-(* ...etc...                                                                  *)
+(* ModelFail                                                                  *)
+(* ModelExcept                                                                *)
+(* ModelState                                                                 *)
+(* ModelAlt                                                                   *)
+(* ModelAltCI                                                                 *)
+(* ModelNondet                                                                *)
+(* ModelStateTrace                                                            *)
+(* ModelCont                                                                  *)
+(* ModelStateTraceRun                                                         *)
 (*                                                                            *)
-(* ModelBacktrackableState (using fsets)                                      *)
+(* ModelBacktrackableState (from scratch using fsets, i.e., redefinition of   *)
+(* monad state monad fail monad alt monad nondet monad nondetstate monad)     *)
 (*                                                                            *)
 (******************************************************************************)
 
-(* Contents: sample models for the monads in monad.v, fail_monad.v, state_monad.v, trace_monad.v
+(* Contents:
    - Module ModelMonad
-       identity monad
-       list monad
-       set monad (using classical sets)
-       exception monad (a.k.a. error monad?)
-         option monad as a special case
-       output monad
-       environment monad
-       state monad
-       continuation monad.
    - sigma operations
    - Module ModelFail
        using ModelMonad.option_monad
@@ -70,13 +73,6 @@ Require Import monae_lib monad fail_monad state_monad trace_monad.
    - ModelStateTraceRun
        using ModelStateTrace and ModelRun
    - Module ModelBacktrackableState
-       from scratch using fsets, i.e., redefinition of
-         monad
-         state monad
-         fail monad
-         alt monad
-         nondet monad
-         nondetstate monad
 *)
 
 Set Implicit Arguments.
