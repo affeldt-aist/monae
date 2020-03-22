@@ -23,10 +23,13 @@ Unset Printing Implicit Defensive.
 
 Import Univ.
 
+Definition k_type (m : UU1 -> UU1) (A : UU1) :=
+  forall (B : UU1), (A -> m B) -> m B.
+
 Section codensity.
 Variable (M : monad).
 
-Definition K_type (A : UU1) : UU1 := forall (B : UU1) (_ : A -> M B), M B.
+Definition K_type (A : UU1) : UU1 := k_type M A.
 
 Definition K_ret (A : UU1) (a : A) : K_type A :=
   fun (B : UU1) (k : A -> M B) => k a.
@@ -49,7 +52,7 @@ Lemma K_fmap_comp : FunctorLaws.comp K_fmap.
 Proof. by []. Qed.
 
 Definition K_functor :=
-  Functor.Pack (Functor.Class K_fmap_id K_fmap_comp).
+  Functor.Pack (Functor.Mixin K_fmap_id K_fmap_comp).
 
 Lemma naturality_K_ret : naturality FId K_functor K_ret.
 Proof.
@@ -83,7 +86,7 @@ Definition K_lift (A : UU1) (m : M A) : eK_MonadM A :=
   fun (B : UU1) (k : A -> M B) => @Bind M A B m k.
 
 Program Definition K_MonadM : monadM M eK_MonadM :=
-  locked (monadM.Pack (@monadM.Class _ _ K_lift _ _)).
+  locked (monadM.Pack (@monadM.Mixin _ _ K_lift _ _)).
 Next Obligation.
 move=> A; rewrite /K_lift /= /K_ret /=.
 rewrite boolp.funeqE => a.
@@ -100,7 +103,7 @@ Qed.
 End codensity.
 
 Definition K_MonadT : monadT :=
-  MonadT.Pack (@MonadT.Class eK_MonadM K_MonadM).
+  MonadT.Pack (@MonadT.Mixin eK_MonadM K_MonadM).
 
 Section kappa_def.
 Variables (M : monad) (E : functor).
@@ -132,19 +135,14 @@ Definition from (M : monad) : K_MonadT M ~~> M :=
 
 End from_def.
 
-Section to_be_proved_by_param.
-Variable M : functor(*monad*).
-
-Lemma naturality_m (A : UU1) (m : forall B, (A -> M B) -> M B(* K_type M A *)) (X Y : UU1) (h : X -> Y) :
-  M # h \o m X = m Y \o (fun f => (M # h) \o f).
-Proof.
-Admitted.
-
-End to_be_proved_by_param.
+Definition naturality_k_type (M : functor) (A : UU1) (m : k_type M A)
+  (X Y : UU1) (h : X -> Y) := M # h \o m X = m Y \o (fun f => (M # h) \o f).
 
 Section from_prop.
 
 Variable M : monad.
+Hypothesis naturality_m : forall (A : UU1) (m : k_type M A) (X Y : UU1) (h : X -> Y),
+  naturality_k_type m h.
 
 Lemma from_liftK A : (@from M A) \o (LiftT K_MonadT M A) = id.
 Proof.
@@ -218,8 +216,10 @@ End k_op_prop.
 Section wip.
 
 Variables (E : functor) (M : monad) (op : operation E M) (T : FMT).
+Hypothesis naturality_m : forall (A : UU1) (m : k_type M A) (X Y : UU1) (h : X -> Y),
+  naturality_k_type m h.
 
-Let nt1 := Natural.Pack (natural_from M).
+Let nt1 := Natural.Pack (natural_from naturality_m).
 Let op1 : T (K_MonadT M) ~> T M := (Hmap T nt1).
 Let op3 : E \O T M ~> E \O T (K_MonadT M) := functor_app_natural E (Hmap T (Natural.Pack (natural_monadM (LiftT K_MonadT M)))).
 Let aop : aoperation E (K_MonadT M) := @AOperation.Pack _ _ (Natural.Pack (natural_K_op op)) (AOperation.Mixin (algebraic_K_op op)).
@@ -227,9 +227,9 @@ Let op2 := Natural.Pack (@natural_alifting _ _ aop _ (LiftT T _)).
 
 Let op' : E \O T M ~> T M := op1 \v op2 \v op3.
 
-Lemma thm27 : lifting_def op (LiftT T M) op'.
+Lemma thm27 : lifting_monadT op op'.
 Proof.
-rewrite /lifting_def => X.
+rewrite /lifting_monadT => X.
 rewrite /op'.
 apply/esym.
 transitivity ((op1 \v op2) X \o op3 X \o E # LiftT T M X).

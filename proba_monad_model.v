@@ -4,11 +4,9 @@ From infotheo Require Import Reals_ext ssr_ext fsdist.
 From infotheo Require convex_choice.
 Require Import monae_lib monad proba_monad.
 
-(*
-  This file provides a model for the probability monad.
-      depends on the formalization of distributions from the infotheo library
-      (https://github.com/affeldt-aist/infotheo).
-*)
+(******************************************************************************)
+(*                     Model for the probability monad                        *)
+(******************************************************************************)
 
 Local Open Scope monae_scope.
 Local Open Scope proba_scope.
@@ -27,7 +25,7 @@ Definition bind : forall A B, {dist (choice_of_Type A)} ->
 
 Definition functor : functor.
 apply: (@Functor.Pack (fun A => {dist (choice_of_Type A)}) _).
-apply (@Functor.Class _ (fun A B => @FSDistfmap (choice_of_Type A) (choice_of_Type B))).
+apply (@Functor.Mixin _ (fun A B => @FSDistfmap (choice_of_Type A) (choice_of_Type B))).
 move=> A.
 exact: (FSDistfmap_id (choice_of_Type A)).
 move=> A B C g h.

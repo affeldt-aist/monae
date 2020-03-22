@@ -83,14 +83,14 @@ End def.
 End FunctorLaws.
 
 Module Functor.
-Record mixin_of (m : UU1 -> UU1) : UU2 := Class {
+Record mixin_of (m : UU1 -> UU1) : UU2 := Mixin {
   f : forall (A B : UU1), (A -> B) -> m A -> m B ;
   _ : FunctorLaws.id f ;
   _ : FunctorLaws.comp f }.
 Structure t : UU2 := Pack { m : UU1 -> UU1 ; class : mixin_of m }.
 Module Exports.
 Definition Fun (F : t) : forall (A B : UU1), (A -> B) -> m F A -> m F B :=
-  let: Pack _ (Class f _ _) := F return forall (A B : UU1), (A -> B) -> m F A -> m F B in f.
+  let: Pack _ (Mixin f _ _) := F return forall (A B : UU1), (A -> B) -> m F A -> m F B in f.
 Arguments Fun _ [A] [B] : simpl never.
 Notation functor := t.
 Coercion m : functor >-> Funclass.
@@ -114,7 +114,7 @@ Proof. by move=> A /=; rewrite boolp.funeqE => -[x1 x2]. Qed.
 Lemma squaring_f_comp : FunctorLaws.comp squaring_f.
 Proof. by move=> A B C g h /=; rewrite boolp.funeqE => -[x1 x2]. Qed.
 Definition squaring : functor :=
-  Functor.Pack (Functor.Class squaring_f_id squaring_f_comp).
+  Functor.Pack (Functor.Mixin squaring_f_id squaring_f_comp).
 Notation "f ^`2" := (squaring # f).
 Lemma squaringE (A B : UU1) (f : A -> B) x : (f ^`2) x = (f x.1, f x.2).
 Proof. by []. Qed.
@@ -123,7 +123,7 @@ Section functorid.
 Definition id_f (A B : UU1) (f : A -> B) := f.
 Lemma id_id : FunctorLaws.id id_f. Proof. by []. Qed.
 Lemma id_comp : FunctorLaws.comp id_f. Proof. by []. Qed.
-Definition FId : functor := Functor.Pack (Functor.Class id_id id_comp).
+Definition FId : functor := Functor.Pack (Functor.Mixin id_id id_comp).
 End functorid.
 
 Section functorcomposition.
@@ -139,7 +139,7 @@ rewrite /FunctorLaws.comp => A B C g' h; rewrite /functorcomposition.
 rewrite boolp.funeqE => m; by rewrite [in RHS]compE 2!functor_o.
 Qed.
 Definition FComp : functor :=
-  Functor.Pack (Functor.Class functorcomposition_id functorcomposition_comp).
+  Functor.Pack (Functor.Mixin functorcomposition_id functorcomposition_comp).
 End functorcomposition.
 
 Notation "f \O g" := (FComp f g).
@@ -147,19 +147,19 @@ Notation "f \O g" := (FComp f g).
 Section functorcomposition_lemmas.
 Lemma FCompId f : f \O FId = f.
 Proof.
-case: f => [? [???]]; congr (Functor.Pack (Functor.Class _ _));
+case: f => [? [???]]; congr (Functor.Pack (Functor.Mixin _ _));
   exact/boolp.Prop_irrelevance.
 Qed.
 Lemma FIdComp f : FId \O f = f.
 Proof.
-case: f => [? [???]]; congr (Functor.Pack (Functor.Class _ _));
+case: f => [? [???]]; congr (Functor.Pack (Functor.Mixin _ _));
   exact/boolp.Prop_irrelevance.
 Qed.
 Lemma FIdf (A B : UU1) (f : A -> B) : FId # f = f. Proof. by []. Qed.
 Lemma FCompA (f g h : functor) : (f \O g) \O h = f \O (g \O h).
 Proof.
 move: f g h => [f [???]] [g [???]] [h [???]].
-congr (Functor.Pack (Functor.Class  _ _)); exact/boolp.Prop_irrelevance.
+congr (Functor.Pack (Functor.Mixin  _ _)); exact/boolp.Prop_irrelevance.
 Qed.
 Lemma FCompE (f g : functor) (A B : UU1) (k : A -> B) : (f \O g) # k = f # (g # k).
 Proof. by []. Qed.
@@ -178,7 +178,7 @@ Proof.
 by rewrite /FunctorLaws.comp => A B C g h; rewrite /curry_f boolp.funeqE; case.
 Qed.
 Definition curry_F X : functor :=
-  Functor.Pack (Functor.Class (curry_f_id X) (curry_f_comp X)).
+  Functor.Pack (Functor.Mixin (curry_f_id X) (curry_f_comp X)).
 End curry_functor.
 
 Section uncurry_functor.
@@ -196,7 +196,7 @@ rewrite /FunctorLaws.comp => A B C g h; rewrite /uncurry_f boolp.funeqE => ?.
 by rewrite compE compA.
 Qed.
 Definition uncurry_F X : functor :=
-  Functor.Pack (Functor.Class (uncurry_f_id X) (uncurry_f_comp X)).
+  Functor.Pack (Functor.Mixin (uncurry_f_id X) (uncurry_f_comp X)).
 End uncurry_functor.
 
 Lemma fmap_oE (M : functor) (A B C : UU1) (f : A -> B) (g : C -> A) (m : M C) :
@@ -226,19 +226,15 @@ End fcomp.
 Notation "f (o) g" := (fcomp f g) : mprog.
 Arguments fcomp : simpl never.
 
-Definition naturalP (M N : functor) (m : M ~~> N) :=
+Definition naturality (M N : functor) (m : M ~~> N) :=
   forall (A B : UU1) (h : A -> B), (N # h) \o m A = m B \o (M # h).
-Arguments naturalP : clear implicits.
+Arguments naturality : clear implicits.
 
 Module Natural.
-(*Definition P (m : M ~~> N) :=
-  forall A B (h : A -> B), (N # h) \o m A = m B \o (M # h).*)
 Structure t (M N : functor) :=
-  Pack { m : M ~~> N ; class : naturalP M N m }.
+  Pack { m : M ~~> N ; class : naturality M N m }.
 Module Exports.
 Coercion m : t >-> Funclass.
-(*Arguments P : clear implicits.*)
-Notation naturality := naturalP.
 Notation "f ~> g" := (t f g).
 End Exports.
 End Natural.
@@ -635,7 +631,7 @@ Proof. by rewrite compA joinA. Qed.*)
 End monad_lemmas.
 Arguments Bind {M A B} : simpl never.
 
-Definition operation (E : functor) (M : monad) := (E \O M) ~> M.
+Definition operation (E : functor) (M : monad) := E \O M ~> M.
 
 Notation "'do' x <- m ; e" := (Bind m (fun x => e)) : do_notation.
 Notation "'do' x : T <- m ; e" := (Bind m (fun x : T => e)) (only parsing) : do_notation.
@@ -716,7 +712,7 @@ move=> A B C g h; rewrite boolp.funeqE => m.
 rewrite /Map compE bindA; congr bind.
 by rewrite boolp.funeqE => a; rewrite bindretf.
 Qed.
-Definition functor_mixin := Functor.Class Map_id Map_o.
+Definition functor_mixin := Functor.Mixin Map_id Map_o.
 Let M' := Functor.Pack functor_mixin.
 
 Lemma MapE (A B : UU1) (f : A -> B) m : (M' # f) m = bind m (ret B \o f).

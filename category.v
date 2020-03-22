@@ -1199,7 +1199,7 @@ rewrite {1}/f.
 have -> : hom_Type (g \o h) = [hom of hom_Type g \o hom_Type h] by apply hom_ext.
 by rewrite functor_o.
 Qed.
-Definition m' := monad.Functor.Pack (monad.Functor.Class fid fcomp).
+Definition m' := monad.Functor.Pack (monad.Functor.Mixin fid fcomp).
 
 Import monad.Functor.Exports.
 
@@ -1209,10 +1209,10 @@ Definition join (A : Type) (x : m' (m' A)) := (@Join _ M A x).
 Lemma joinE A (x : m' (m' A)) : join x = @Join _ M A x.
 Proof. by []. Qed.
 
-Lemma ret_nat : monad.naturalP monad.FId m' ret.
+Lemma ret_nat : monad.naturality monad.FId m' ret.
 Proof. move=> ? ? ?; exact: (ret_naturality M). Qed.
 Definition _ret_nat : monad.Natural.t monad.FId m' := monad.Natural.Pack ret_nat.
-Lemma join_nat : monad.naturalP (monad.FComp m' m') m' join.
+Lemma join_nat : monad.naturality (monad.FComp m' m') m' join.
 Proof.
 move=> A B h; apply funext=> x; rewrite /ret /Fun /= /f.
 rewrite -[in LHS]compE join_naturality.

@@ -19,7 +19,7 @@ install: [
   [make "install"]
 ]
 depends: [
-  "coq" { >= "8.10" & < "8.11~" }
+  "coq" { >= "8.10" & < "8.12~" }
   "coq-infotheo" { >= "0.1" }
 ]
 synopsis: "Monae"

@@ -148,7 +148,7 @@ Lemma map_id : @FunctorLaws.id seq (@map).
 Proof. by move=> A; rewrite boolp.funeqE => x; rewrite map_id. Qed.
 Lemma map_comp : @FunctorLaws.comp seq (@map).
 Proof. by move=> A B C g h; rewrite boolp.funeqE => x; rewrite map_comp. Qed.
-Definition functor := Functor.Pack (Functor.Class map_id map_comp).
+Definition functor := Functor.Pack (Functor.Mixin map_id map_comp).
 Definition ret0 := fun A : Type => (@cons A)^~ [::].
 Lemma ret_naturality : naturality FId functor ret0.
 Proof. by move=> A B h; rewrite boolp.funeqE. Qed.
@@ -178,7 +178,7 @@ Proof.
 move=> A B C g h; rewrite boolp.funeqE => x /=.
 by rewrite classical_sets_ext.imageA.
 Qed.
-Definition functor := Functor.Pack (Functor.Class map_id map_comp).
+Definition functor := Functor.Pack (Functor.Mixin map_id map_comp).
 Lemma naturality_ret : naturality FId functor (@set1).
 Proof.
 move=> A B h; rewrite boolp.funeqE => a /=; rewrite boolp.funeqE => b /=.
@@ -211,7 +211,7 @@ Lemma map_id : FunctorLaws.id map.
 Proof. by move=> *; rewrite boolp.funeqE; case. Qed.
 Lemma map_comp : FunctorLaws.comp map.
 Proof. by move=> *; rewrite boolp.funeqE; case. Qed.
-Definition functor := Functor.Pack (Functor.Class map_id map_comp).
+Definition functor := Functor.Pack (Functor.Mixin map_id map_comp).
 Definition ret0 := @inr E.
 Lemma natural : naturality FId functor ret0.
 Proof. by move=> A B h; rewrite boolp.funeqE. Qed.
@@ -241,7 +241,7 @@ Lemma map_id : FunctorLaws.id map.
 Proof. by move=> A; rewrite boolp.funeqE; case. Qed.
 Lemma map_comp : FunctorLaws.comp map.
 Proof. by move=> A B C g h; rewrite boolp.funeqE; case. Qed.
-Definition functor := Functor.Pack (Functor.Class map_id map_comp).
+Definition functor := Functor.Pack (Functor.Mixin map_id map_comp).
 Definition ret0 : FId ~~> M := fun A a => (a, [::]).
 Lemma naturality_ret : naturality FId functor ret0.
 Proof. by move=> A B h; rewrite boolp.funeqE. Qed.
@@ -270,7 +270,7 @@ Definition map A B (f : A -> B) (m : M A) : M B := fun e => f (m e).
 Lemma map_id : FunctorLaws.id map. Proof. by []. Qed.
 Lemma map_comp : FunctorLaws.comp map.
 Proof. by move=> A B C g h; rewrite boolp.funeqE. Qed.
-Definition functor := Functor.Pack (Functor.Class map_id map_comp).
+Definition functor := Functor.Pack (Functor.Mixin map_id map_comp).
 Definition ret0 : FId ~~> M := fun A x => fun e => x.
 (* computation that ignores the environment *)
 Lemma naturality_ret : naturality FId functor ret0.
@@ -305,7 +305,7 @@ Proof.
 move=> A B C g h; rewrite boolp.funeqE => m; rewrite boolp.funeqE => s.
 by rewrite /map /=; case: m.
 Qed.
-Definition functor := Functor.Pack (Functor.Class map_id map_comp).
+Definition functor := Functor.Pack (Functor.Mixin map_id map_comp).
 Definition ret0 : FId ~~> M := fun A a => fun s => (a, s).
 Lemma naturality_ret : naturality FId functor ret0.
 Proof. by move=> A B h; rewrite boolp.funeqE => a /=; rewrite boolp.funeqE. Qed.
@@ -334,7 +334,7 @@ Lemma map_id : FunctorLaws.id map.
 Proof. by move=> A; rewrite boolp.funeqE => m; rewrite boolp.funeqE. Qed.
 Lemma map_comp : FunctorLaws.comp map.
 Proof. by move=> *; rewrite boolp.funeqE => m; rewrite boolp.funeqE. Qed.
-Definition functor := Functor.Pack (Functor.Class map_id map_comp).
+Definition functor := Functor.Pack (Functor.Mixin map_id map_comp).
 Lemma naturality_ret : naturality FId functor (fun A a => fun k => k a).
 Proof. by move=> A B f; rewrite boolp.funeqE => a /=; rewrite boolp.funeqE. Qed.
 Definition ret : FId ~> functor := Natural.Pack naturality_ret.
@@ -356,7 +356,7 @@ Module ListOps.
 Module Empty.
 Definition acto (X : Type) := unit.
 Definition actm X Y (f : X -> Y) (t : acto X) : acto Y := tt.
-Program Definition func := Functor.Pack (@Functor.Class _ actm _ _).
+Program Definition func := Functor.Pack (@Functor.Mixin _ actm _ _).
 Next Obligation. by move=> A; rewrite boolp.funeqE; case. Qed.
 Next Obligation. by move=> A B C f g; rewrite boolp.funeqE; case. Qed.
 End Empty.
@@ -365,7 +365,7 @@ Module Append.
 Definition acto (X : Type) := (X * X)%type.
 Definition actm X Y (f : X -> Y) (t : acto X) : acto Y :=
   let: (x1, x2) := t in (f x1, f x2).
-Program Definition func := Functor.Pack (@Functor.Class _ actm _ _).
+Program Definition func := Functor.Pack (@Functor.Mixin _ actm _ _).
 Next Obligation. by move=> A; rewrite boolp.funeqE; case. Qed.
 Next Obligation. by move=> A B C f g; rewrite boolp.funeqE; case. Qed.
 End Append.
@@ -396,7 +396,7 @@ Module Output. Section output. Variable L : Type.
 Definition acto X := (seq L * X)%type.
 Definition actm X Y (f : X -> Y) (t : acto X) : acto Y :=
   let: (w, x) := t in (w, f x).
-Program Definition func := Functor.Pack (@Functor.Class _ actm _ _).
+Program Definition func := Functor.Pack (@Functor.Mixin _ actm _ _).
 Next Obligation. by move=> A; rewrite boolp.funeqE; case. Qed.
 Next Obligation. by move=> A B C f g; rewrite boolp.funeqE; case. Qed.
 End output. End Output.
@@ -404,7 +404,7 @@ End output. End Output.
 Module Flush.
 Definition acto (X : Type) := X.
 Definition actm X Y (f : X -> Y) (t : acto X) : acto Y := f t.
-Program Definition func := Functor.Pack (@Functor.Class _ actm _ _).
+Program Definition func := Functor.Pack (@Functor.Mixin _ actm _ _).
 Next Obligation. by []. Qed.
 Next Obligation. by []. Qed.
 End Flush.
@@ -452,7 +452,7 @@ Module EnvironmentOps.
 Module Ask. Section ask. Variable E : Type.
 Definition acto X := E -> X.
 Definition actm X Y (f : X -> Y) (t : acto X) : acto Y := fun e => f (t e).
-Program Definition func := Functor.Pack (@Functor.Class _ actm _ _).
+Program Definition func := Functor.Pack (@Functor.Mixin _ actm _ _).
 Next Obligation. by []. Qed.
 Next Obligation. by []. Qed.
 End ask. End Ask.
@@ -461,7 +461,7 @@ Module Local. Section local. Variable E : Type.
 Definition acto X := ((E -> E) * X)%type.
 Definition actm X Y (f : X -> Y) (t : acto X) : acto Y :=
   let: (e, x) := t in (e, f x).
-Program Definition func := Functor.Pack (@Functor.Class _ actm _ _).
+Program Definition func := Functor.Pack (@Functor.Mixin _ actm _ _).
 Next Obligation. by move=> A; rewrite boolp.funeqE; case. Qed.
 Next Obligation. by move=> A B C g h; rewrite boolp.funeqE; case. Qed.
 End local. End Local.
@@ -502,7 +502,7 @@ Module ExceptOps.
 Module Throw. Section throw. Variable Z : Type.
 Definition acto (X : Type) := Z.
 Definition actm X Y (f : X -> Y) (t : acto X) : acto Y := t.
-Program Definition func := Functor.Pack (@Functor.Class _ actm _ _).
+Program Definition func := Functor.Pack (@Functor.Mixin _ actm _ _).
 Next Obligation. by []. Qed.
 Next Obligation. by []. Qed.
 End throw. End Throw.
@@ -511,7 +511,7 @@ Module Handle. Section handle. Variable Z : Type.
 Definition acto (X : Type) := (X * (Z -> X))%type.
 Definition actm X Y (f : X -> Y) (t : acto X) : acto Y :=
   let: (x, h) := t in (f x, fun z => f (h z)).
-Program Definition func := Functor.Pack (@Functor.Class _ actm _ _).
+Program Definition func := Functor.Pack (@Functor.Mixin _ actm _ _).
 Next Obligation. by move=> A; rewrite boolp.funeqE; case. Qed.
 Next Obligation. by move=> A B C g h; rewrite boolp.funeqE; case. Qed.
 End handle. End Handle.
@@ -545,7 +545,7 @@ Module StateOps.
 Module Get. Section get. Variable S : Type.
 Definition acto X := S -> X.
 Definition actm X Y (f : X -> Y) (t : acto X) : acto Y := fun s => f (t s).
-Program Definition func := Functor.Pack (@Functor.Class _ actm _ _).
+Program Definition func := Functor.Pack (@Functor.Mixin _ actm _ _).
 Next Obligation. by move=> A; rewrite boolp.funeqE. Qed.
 Next Obligation. by move=> A B C g h; rewrite boolp.funeqE. Qed.
 End get. End Get.
@@ -553,7 +553,7 @@ End get. End Get.
 Module Put. Section put. Variable S : Type.
 Definition acto X := (S * X)%type.
 Definition actm X Y (f : X -> Y) (sx : acto X) : acto Y := (sx.1, f sx.2).
-Program Definition func := Functor.Pack (@Functor.Class _ actm _ _).
+Program Definition func := Functor.Pack (@Functor.Mixin _ actm _ _).
 Next Obligation. by move=> A; rewrite boolp.funeqE; case. Qed.
 Next Obligation. by move=> A B C g h; rewrite boolp.funeqE. Qed.
 End put. End Put.
@@ -590,7 +590,7 @@ Module ContOps.
 Module Abort. Section abort. Variable r : Type.
 Definition acto (X : Type) := r.
 Definition actm A B (f : A -> B) (x : acto A) : acto B := x.
-Program Definition func := Functor.Pack (@Functor.Class _ actm _ _ ).
+Program Definition func := Functor.Pack (@Functor.Mixin _ actm _ _ ).
 Next Obligation. by []. Qed.
 Next Obligation. by []. Qed.
 End abort. End Abort.
@@ -599,7 +599,7 @@ Module Acallcc. Section acallcc. Variable r : Type.
 Definition acto := fun A => (A -> r) -> A.
 Definition actm X Y (f : X -> Y) (t : acto X) : acto Y :=
   fun (g : Y -> r) => f (t (fun x => g (f x))).
-Program Definition func := Functor.Pack (@Functor.Class _ actm _ _ ).
+Program Definition func := Functor.Pack (@Functor.Mixin _ actm _ _ ).
 Next Obligation. by []. Qed.
 Next Obligation. by []. Qed.
 End acallcc. End Acallcc.
@@ -1062,7 +1062,7 @@ rewrite andbT.
 by apply/imfsetP; exists (a2, s2).
 Qed.
 
-Definition func := Functor.Pack (Functor.Class map_id map_comp).
+Definition func := Functor.Pack (Functor.Mixin map_id map_comp).
 
 Lemma naturality_ret : naturality FId func ret0.
 Proof.

@@ -80,6 +80,10 @@ Lemma uncurryE f a b : (uncurry f) (a, b) = f a b. Proof. by []. Qed.
 
 Definition curry (g : A * B -> C) : A -> B -> C := fun a b => g (a, b).
 
+Lemma curryE D a b (g : A * B -> C) (h : _ -> D) :
+  h (curry g a b) = (h \o g) (a, b).
+Proof. by []. Qed.
+
 Lemma curryK : cancel curry uncurry.
 Proof. by move=> f; rewrite boolp.funeqE; case. Qed.
 
