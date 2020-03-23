@@ -2,7 +2,7 @@ Declare ML Module "paramcoq".
 
 Require FunctionalExtensionality.
 From mathcomp Require Import all_ssreflect. (* Just for \o *)
-Require Import monad mmt_sect5.
+Require Import monad mmt_sect5 monad_model.
 Import Univ.
 
 (** The identity functor *)
@@ -18,7 +18,7 @@ Realizer A as A_R := (@eq A).
    declaring [M] as a functor. The same applies for the
    other pairs of [M] and [map] further below. *)
 
-Definition M (X : UU1) : UU1 := X.
+Definition M (X : UU1) : UU1 := X. (* TODO: use FId *)
 
 Definition map {X Y : UU1} (f : X -> Y) (m : M X) : M Y :=
 f m.
@@ -55,7 +55,7 @@ Variable A : UU1.
 
 Realizer A as A_R := (@eq A).
 
-Definition M (X : UU1) : UU1 := option X.
+Definition M (X : UU1) : UU1 := option X. (* TODO: ModelMonad.option_monad *)
 
 Definition map {X Y : UU1} (f : X -> Y) (m : M X) : M Y :=
 option_map f m.
@@ -102,7 +102,7 @@ Variable A : UU1.
 
 Realizer A as A_R := (@eq A).
 
-Definition M (X : UU1) : UU1 := list X.
+Definition M (X : UU1) : UU1 := list X. (* TODO: ModelMonad.ListMonad.t *)
 
 Definition map {X Y : UU1} (f : X -> Y) (m : M X) : M Y :=
 List.map f m.
@@ -155,7 +155,7 @@ Variable A S : Type.
 Realizer A as A_R := (@eq A).
 Realizer S as S_R := (@eq S).
 
-Definition M X : Type := S -> X * S.
+Definition M X : Type := S -> X * S. (* TODO: ModelState.state *)
 
 Definition map {X Y : Type} (f : X -> Y) (m : M X) : M Y :=
 fun s => let (x, s') := m s in (f x, s').
