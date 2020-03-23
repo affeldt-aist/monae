@@ -135,14 +135,17 @@ Definition from (M : monad) : K_MonadT M ~~> M :=
 
 End from_def.
 
-Definition naturality_k_type (M : functor) (A : UU1) (m : k_type M A)
-  (X Y : UU1) (h : X -> Y) := M # h \o m X = m Y \o (fun f => (M # h) \o f).
+Definition naturality_k_type (M : functor) (A : UU1) (m : k_type M A) :=
+  naturality (exponential_F A \O M) M m.
 
+(*Definition naturality_k_type (M : functor) (A : UU1) (m : k_type M A)
+  (X Y : UU1) (h : X -> Y) :=
+  M # h \o m X = m Y \o (fun f => (M # h) \o f).*)
 Section from_prop.
 
 Variable M : monad.
-Hypothesis naturality_m : forall (A : UU1) (m : k_type M A) (X Y : UU1) (h : X -> Y),
-  naturality_k_type m h.
+Hypothesis naturality_m : forall (A : UU1) (m : k_type M A),
+  naturality_k_type m.
 
 Lemma from_liftK A : (@from M A) \o (LiftT K_MonadT M A) = id.
 Proof.
@@ -216,8 +219,8 @@ End k_op_prop.
 Section wip.
 
 Variables (E : functor) (M : monad) (op : operation E M) (T : FMT).
-Hypothesis naturality_m : forall (A : UU1) (m : k_type M A) (X Y : UU1) (h : X -> Y),
-  naturality_k_type m h.
+Hypothesis naturality_m : forall (A : UU1) (m : k_type M A),
+  naturality_k_type m.
 
 Let nt1 := Natural.Pack (natural_from naturality_m).
 Let op1 : T (K_MonadT M) ~> T M := (Hmap T nt1).

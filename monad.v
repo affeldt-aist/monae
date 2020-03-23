@@ -199,6 +199,18 @@ Definition uncurry_F X : functor :=
   Functor.Pack (Functor.Mixin (uncurry_f_id X) (uncurry_f_comp X)).
 End uncurry_functor.
 
+Section exponential_functor.
+Variable A : UU1.
+Definition exponential_M (X : UU1) := A -> X.
+Definition exponential_f (X Y : UU1) (f : X -> Y) :
+  exponential_M X -> exponential_M Y := fun e => f \o e.
+Lemma exponential_f_id : FunctorLaws.id exponential_f. Proof. by []. Qed.
+Lemma exponential_f_comp : FunctorLaws.comp exponential_f.
+Proof. by []. Qed.
+Definition exponential_F : functor :=
+  Functor.Pack (Functor.Mixin exponential_f_id exponential_f_comp).
+End exponential_functor.
+
 Lemma fmap_oE (M : functor) (A B C : UU1) (f : A -> B) (g : C -> A) (m : M C) :
   (M # (f \o g)) m = (M # f) ((M # g) m).
 Proof. by rewrite functor_o. Qed.

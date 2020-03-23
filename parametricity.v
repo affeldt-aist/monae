@@ -2,13 +2,15 @@ Declare ML Module "paramcoq".
 
 Require FunctionalExtensionality.
 From mathcomp Require Import all_ssreflect. (* Just for \o *)
+Require Import monad mmt_sect5.
+Import Univ.
 
 (** The identity functor *)
 Module Identity.
 
 Section Naturality.
 
-Variable A : Type.
+Variable A : UU1.
 
 Realizer A as A_R := (@eq A).
 
@@ -16,12 +18,12 @@ Realizer A as A_R := (@eq A).
    declaring [M] as a functor. The same applies for the
    other pairs of [M] and [map] further below. *)
 
-Definition M X : Type := X.
+Definition M (X : UU1) : UU1 := X.
 
-Definition map {X Y : Type} (f : X -> Y) (m : M X) : M Y :=
+Definition map {X Y : UU1} (f : X -> Y) (m : M X) : M Y :=
 f m.
 
-Definition T : Type := forall (X : Type), (A -> M X) -> M X.
+Definition T : UU1 := k_type M A.
 
 Parametricity T arity 2.
 
@@ -49,16 +51,16 @@ Module Option.
 
 Section Naturality.
 
-Variable A : Type.
+Variable A : UU1.
 
 Realizer A as A_R := (@eq A).
 
-Definition M X : Type := option X.
+Definition M (X : UU1) : UU1 := option X.
 
-Definition map {X Y : Type} (f : X -> Y) (m : M X) : M Y :=
+Definition map {X Y : UU1} (f : X -> Y) (m : M X) : M Y :=
 option_map f m.
 
-Definition T : Type := forall (X : Type), (A -> M X) -> M X.
+Definition T : UU1 := k_type M A.
 
 Parametricity Recursive T arity 2.
 
@@ -96,16 +98,16 @@ Module List.
 
 Section Naturality.
 
-Variable A : Type.
+Variable A : UU1.
 
 Realizer A as A_R := (@eq A).
 
-Definition M X : Type := list X.
+Definition M (X : UU1) : UU1 := list X.
 
-Definition map {X Y : Type} (f : X -> Y) (m : M X) : M Y :=
+Definition map {X Y : UU1} (f : X -> Y) (m : M X) : M Y :=
 List.map f m.
 
-Definition T : Type := forall (X : Type), (A -> M X) -> M X.
+Definition T : UU1 := k_type M A.
 
 Parametricity Recursive T arity 2.
 
@@ -153,12 +155,12 @@ Variable A S : Type.
 Realizer A as A_R := (@eq A).
 Realizer S as S_R := (@eq S).
 
-Definition M X : Type := S -> X*S.
+Definition M X : Type := S -> X * S.
 
 Definition map {X Y : Type} (f : X -> Y) (m : M X) : M Y :=
 fun s => let (x, s') := m s in (f x, s').
 
-Definition T : Type := forall (X : Type), (A -> M X) -> M X.
+Definition T : UU1 := k_type M A.
 
 Parametricity Recursive T arity 2.
 
@@ -203,13 +205,13 @@ Module Generic.
 
 Section Naturality.
 
-Variable A : Type.
+Variable A : UU1.
 
 Realizer A as A_R := (@eq A).
 
-Variable M : Type -> Type.
+Variable M : UU1 -> UU1.
 
-Variable map : forall {X Y : Type}, (X -> Y) -> M X -> M Y.
+Variable map : forall {X Y : UU1}, (X -> Y) -> M X -> M Y.
 
 Variable R : forall X Y : Type, (X -> Y -> Type) -> M X -> M Y -> Type.
 
@@ -218,7 +220,7 @@ Realizer M as M_R := R.
 (* What would the minimal properties to be satisfied by [R] such that
    the admitted subgoals below become provable? *)
 
-Definition T : Type := forall (X : Type), (A -> M X) -> M X.
+Definition T : UU1 := k_type M A.
 
 Parametricity T arity 2.
 
@@ -248,4 +250,3 @@ Abort.
 End Naturality.
 
 End Generic.
-

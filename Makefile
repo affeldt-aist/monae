@@ -31,6 +31,7 @@ sect5:
 #	$(COQ5) monad_model.v
 #	$(COQ5) monad_transformer.v
 	$(COQ5) mmt_sect5.v
+	$(COQ5) parametricity.v
 
 clean5:
 	rm -f monae_lib.vo monad.vo fail_monad.vo state_monad.vo trace_monad.vo monad_model.vo monad_transformer.vo mmt_sect5.vo
