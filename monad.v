@@ -6,9 +6,6 @@ From mathcomp Require Import all_ssreflect.
 From mathcomp Require boolp.
 Require Import monae_lib.
 
-(*Set Polymorphic Inductive Cumulativity.
-Unset Universe Minimization ToSet.*)
-
 (******************************************************************************)
 (*               A formalization of monads over the category Set              *)
 (*                                                                            *)
@@ -285,6 +282,10 @@ Notation "f \v g" := (VComp f g).
 Lemma vassoc (F1 F2 G H : functor) (f : F1 ~> F2) (g : G ~> F1) (h : H ~> G) :
   f \v g \v h = f \v (g \v h).
 Proof. by apply nattrans_ext => a /=. Qed.
+
+Lemma vcompE (F G H : functor) (n1 : F ~> H) (n2 : G ~> F) X :
+  (n1 \v n2) X = n1 X \o n2 X.
+Proof. by []. Qed.
 
 Section horizontal_composition.
 Variables (F G F' G' : functor) (s : F ~> G) (t : F' ~> G').

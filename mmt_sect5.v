@@ -10,16 +10,18 @@ Require Import monae_lib monad monad_transformer.
 (* Modular Monad Transformers, ESOP 2009] (from Sect. 5, definition 23). Do   *)
 (* `make sect5` to compile it, `make clean5` to clean it. Unlike the rest of  *)
 (* monae, it requires some form of impredicativity. For the time being, it is *)
-(* compiled with the -type-in-type option because monae requires monads to be *)
-(* Type -> Type because of some examples using MathComp. This file can also   *)
-(* by compiled with -impredicative-set provided the universes are lowered by  *)
-(* one level (however, some examples using MathComp may not compile anymore). *)
-(*                                                                            *)
+(* type-checked with Unset Universe Checking because monae requires monads to *)
+(* be Type -> Type because of some examples using MathComp. This file can     *)
+(* also be compiled with -impredicative-set provided the universes are        *)
+(* lowered by one level (however, some examples using MathComp may not        *)
+(* compile anymore).                                                          *)
 (******************************************************************************)
 
 Set Implicit Arguments.
 Unset Strict Implicit.
 Unset Printing Implicit Defensive.
+
+Unset Universe Checking.
 
 Import Univ.
 
@@ -138,9 +140,6 @@ End from_def.
 Definition naturality_k_type (M : functor) (A : UU1) (m : k_type M A) :=
   naturality (exponential_F A \O M) M m.
 
-(*Definition naturality_k_type (M : functor) (A : UU1) (m : k_type M A)
-  (X Y : UU1) (h : X -> Y) :=
-  M # h \o m X = m Y \o (fun f => (M # h) \o f).*)
 Section from_prop.
 
 Variable M : monad.
@@ -179,8 +178,7 @@ End from_prop.
 Section k_op_def.
 Variables (E : functor) (M : monad) (op : (E \O M) ~> M).
 
-Definition K_op : (E \O K_MonadT M) ~~> K_MonadT M :=
-  psi_g (kappa op).
+Definition K_op : (E \O K_MonadT M) ~~> K_MonadT M := psi_g (kappa op).
 
 End k_op_def.
 
@@ -216,7 +214,7 @@ Qed.
 
 End k_op_prop.
 
-Section wip.
+Section theorem_27.
 
 Variables (E : functor) (M : monad) (op : operation E M) (T : FMT).
 Hypothesis naturality_m : forall (A : UU1) (m : k_type M A),
@@ -249,7 +247,7 @@ transitivity ((op1 \v op2) X \o (
   by rewrite (natural_hmap T).
 transitivity (op1 X \o
   (op2 X \o E # LiftT T (K_MonadT M) X) \o E # LiftT K_MonadT M X).
-  done. (* TODO: assoc lemma *)
+  by rewrite vcompE -compA.
 transitivity (
   op1 X \o (LiftT T (K_MonadT M) X \o (K_op op) X) \o
   E # LiftT K_MonadT M X).
@@ -267,4 +265,4 @@ rewrite compA.
 by rewrite K_opE.
 Qed.
 
-End wip.
+End theorem_27.

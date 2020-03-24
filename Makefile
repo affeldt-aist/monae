@@ -16,20 +16,10 @@ _CoqProject Makefile: ;
 .PHONY: all clean
 
 # This last entry is only to support work-in-progress.
-# It recompiles that part of monae necessary to compile
-# mmt_sect5.v with impredicativity (it looks like
-# -type-in-type need not be applied to all files).
 
-COQ5 = coqc -w -notation-overridden -type-in-type -R . monae
+COQ5 = coqc -w -notation-overridden -R . monae
 
-sect5:
-#	$(COQ5) monae_lib.v
-#	$(COQ5) monad.v
-#	$(COQ5) fail_monad.v
-#	$(COQ5) state_monad.v
-#	$(COQ5) trace_monad.v
-#	$(COQ5) monad_model.v
-#	$(COQ5) monad_transformer.v
+sect5: all
 	$(COQ5) mmt_sect5.v
 	$(COQ5) parametricity.v
 

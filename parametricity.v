@@ -5,6 +5,8 @@ From mathcomp Require Import all_ssreflect. (* Just for \o *)
 Require Import monad mmt_sect5 monad_model.
 Import Univ.
 
+Unset Universe Checking.
+
 (** The identity functor *)
 Module Identity.
 
