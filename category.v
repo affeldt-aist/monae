@@ -76,16 +76,22 @@ Module Category.
 Record mixin_of (obj : Type) : Type := Mixin {
   el : obj -> Type ; (* "interpretation" operation, "realizer" *)
 (*  _ : injective el ; (* NB: do we need this? *)*)
-  hom : forall A B, (el A -> el B) -> Prop ; (* subset of morphisms *)
-  _ : forall A, @hom A A id ; (* id is in hom *)
+  inhom : forall A B, (el A -> el B) -> Prop ; (* predicate for morphisms *)
+  _ : forall A, @inhom A A id ; (* id is in hom *)
   _ : forall A B C (f : el A -> el B) (g : el B -> el C),
-      hom f -> hom g -> hom (g \o f) (* hom is closed under composition *) }.
+      inhom f -> inhom g -> inhom (g \o f) (* hom is closed under composition *) }.
 Structure t : Type := Pack { car : Type ; class : mixin_of car }.
 Module Exports.
 Notation category := t.
 Coercion car : category >-> Sortclass.
 Definition El (C : category) : C -> Type :=
   let: Pack _ (Mixin x _ _ _) := C in x.
+Definition InHom (C : category) : forall (A B : C), (El A -> El B) -> Prop :=
+  let: Pack _ (Mixin _ x _ _) := C in x.
+Definition id_in_hom (C : category) : forall A : C, InHom (A:=A) id :=
+  let: Pack _ (Mixin _ _ f _) := C in f.
+Definition funcomp_in_hom (C : category) : forall (X Y Z : C) (f : El X -> El Y) (g : El Y -> El Z), InHom f -> InHom g -> InHom (g \o f) :=
+  let: Pack _ (Mixin _ _ _ f) := C in f.
 End Exports.
 End Category.
 Export Category.Exports.
@@ -93,26 +99,27 @@ Export Category.Exports.
 Module Hom.
 Section ClassDef.
 Variables (C : category) (U V : C).
-Local Notation U' := (El U).
-Local Notation V' := (El V).
-Let hom (X : category) : forall (A B : X), (El A -> El B) -> Prop :=
-  let: Category.Pack _ (Category.Mixin _ x _ _) := X in x.
-Definition axiom (f : U' -> V') := hom f.
-Structure map (phUV : phant (U' -> V')) := Pack {apply; _ : axiom apply}.
+(* Local Notation U' := (El U). *)
+(* Local Notation V' := (El V). *)
+(* Let _axiom (X : category) : forall (A B : X), (El A -> El B) -> Prop := *)
+(*   let: Category.Pack _ (Category.Mixin _ x _ _) := X in x. *)
+(* Definition axiom (f : U' -> V') := Eval hnf in _axiom f. *)
+(* Structure map (phUV : phant (U' -> V')) := Pack {apply; _ : axiom apply}. *)
+Structure map (phUV : phant (El U -> El V)) := Pack {apply : El U -> El V; _ : InHom apply}. 
 Local Coercion apply : map >-> Funclass.
-Variables (phUV : phant (U' -> V')) (f g : U' -> V') (cF : map phUV).
-Definition class := let: Pack _ c as cF' := cF return axiom cF' in c.
+(* Variables (phUV : phant (U' -> V')) (f g : U' -> V') (cF : map phUV). *)
+Variables (phUV : phant (El U -> El V)) (f g : El U -> El V) (cF : map phUV).
+Definition class := let: Pack _ c as cF' := cF return InHom cF' in c.
 Definition clone fA of phant_id g (apply cF) & phant_id fA class :=
   @Pack phUV f fA.
 End ClassDef.
 Definition map' := map.
 Module Exports.
-Notation hom f := (axiom f).
 Coercion apply : map >-> Funclass.
 Add Printing Coercion apply.
 Notation "[ 'fun' 'of' f ]" := (apply f)
   (at level 0, format "[ 'fun'  'of'  f ]") : category_scope.
-Notation Hom fA := (Pack (Phant _) fA).
+Notation HomPack fA := (Pack (Phant _) fA).
 Notation "{ 'hom' U , V }" := (map (Phant (El U -> El V)))
   (at level 0, format "{ 'hom'  U ,  V }") : category_scope.
 Arguments map' : simpl never.
@@ -131,20 +138,20 @@ Open Scope category_scope.
 Section category_interface.
 Variable C : category.
 
-Lemma category_idfun_proof : forall (a : C), hom (idfun : El a -> El a).
+Lemma category_idfun_proof : forall (a : C), InHom (idfun : El a -> El a).
 Proof. by case: C => [? []]. Qed.
-Canonical idfun_hom a := Hom (locked (category_idfun_proof a)).
-Lemma idfun_homE a : idfun_hom a = Hom (category_idfun_proof a).
+Canonical idfun_hom a := HomPack (locked (category_idfun_proof a)).
+Lemma idfun_homE a : idfun_hom a = HomPack (category_idfun_proof a).
 Proof. by rewrite /idfun_hom; unlock. Qed.
 Lemma category_funcomp_proof : forall (a b c : C) (f : {hom b,c}) (g : {hom a,b}),
-  hom (f \o g).
+  InHom (f \o g).
 Proof.
 case: C => [car [el hom ? hom_comp]] a b c [f Hf] [g Hg]; exact/hom_comp.
 Qed.
 Canonical funcomp_hom (a b c : C) (f : {hom b, c}) (g : {hom a, b}) :=
-  Hom (locked (category_funcomp_proof f g)).
+  HomPack (locked (category_funcomp_proof f g)).
 Lemma funcomp_homE' a b c f g :
-  @funcomp_hom a b c f g = Hom (@category_funcomp_proof a b c f g).
+  @funcomp_hom a b c f g = HomPack (@category_funcomp_proof a b c f g).
 Proof. by rewrite /funcomp_hom; unlock. Qed.
 End category_interface.
 
@@ -271,7 +278,7 @@ Definition Type_category_mixin : Category.mixin_of Type :=
     (fun _ _ _ => True) (fun=> I) (fun _ _ _ _ _ _ _ => I).
 Canonical Type_category := Category.Pack Type_category_mixin.
 Definition hom_Type (a b : Type) (f : a -> b) : {hom a, b} :=
-  Hom (I : hom (f : El a -> El b)).
+  HomPack (I : InHom (f : El a -> El b)).
 End Type_as_a_category.
 
 Module FunctorLaws.

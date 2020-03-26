@@ -114,7 +114,7 @@ Definition choiceType_category_mixin : Category.mixin_of choiceType :=
     (fun _ _ _ => True) (fun=> I) (fun _ _ _ _ _ _ _ => I).
 Canonical choiceType_category := Category.Pack choiceType_category_mixin.
 Definition hom_choiceType (A B : choiceType) (f : A -> B) : {hom A, B} :=
-  Hom (I : hom (f : El A -> El B)).
+  HomPack (I : InHom (f : El A -> El B)).
 End choiceType_as_a_category.
 
 Section free_choiceType_functor.
@@ -138,8 +138,8 @@ Lemma free_choiceType_mor_comp_fun (a b c : Type) (g : {hom b, c})
   [fun of free_choiceType_mor g] \o [fun of free_choiceType_mor h].
 Proof. by rewrite free_choiceType_mor_comp. Qed.
 
-Let h := fun (a b : CC) (f : {hom CC; a, b}) =>
-  @Hom.Pack CT a b _ (FId # f) I : {hom CT; Choice.sort a , Choice.sort b}.
+Let h (a b : CC) (f : {hom CC; a, b}) : {hom CT; Choice.sort a , Choice.sort b} :=
+  HomPack (I : InHom (FId # f : El (C:=CT) a -> El b)).
 Lemma h_id : FunctorLaws.id h. Proof. by move=> *; apply hom_ext. Qed.
 Lemma h_comp : FunctorLaws.comp h. Proof. by move=> *; apply hom_ext. Qed.
 Definition forget_choiceType : functor CC CT :=
