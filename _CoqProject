@@ -10,7 +10,6 @@ fail_monad.v
 state_monad.v
 trace_monad.v
 proba_monad.v
-proba_monad_alternative.v
 monad_composition.v
 monad_model.v
 proba_monad_model.v
