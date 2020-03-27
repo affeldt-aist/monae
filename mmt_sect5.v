@@ -158,18 +158,10 @@ Qed.
 
 Lemma natural_from : naturality (K_MonadT M) M (@from M).
 Proof.
-move=> A B h; rewrite /from.
-rewrite /K_MonadT /=.
-rewrite /K_type /=.
-rewrite boolp.funeqE => m.
-rewrite /=.
-transitivity ((K_MonadT M # h) m B Ret) => //.
-rewrite [in RHS]/Fun /=.
-rewrite /Monad_of_ret_bind.Map /=.
-rewrite /K_bind /K_ret /=.
-transitivity (m B (Ret \o h)) => //.
+move=> A B h; rewrite boolp.funeqE => m /=.
+transitivity (m B (Ret \o h)) => //. (* by definition of from *)
 rewrite -(natural RET).
-transitivity ((M # h \o m A) Ret) => //.
+transitivity ((M # h \o m A) Ret) => //. (* by definition of from *)
 by rewrite naturality_m.
 Qed.
 
@@ -227,14 +219,14 @@ Let op3 : E \O t M ~> E \O t (K_MonadT M) :=
 Let aop : aoperation E (K_MonadT M) :=
   @AOperation.Pack _ _ (Natural.Pack (natural_K_op op))
                        (AOperation.Mixin (algebraic_K_op op)).
-Let op2 := Natural.Pack (@natural_alifting _ _ aop _ (Lift t _)).
+Let op2 := alifting aop (Lift t _).
 
-Let op' : E \O t M ~> t M := op1 \v op2 \v op3.
+Definition hlifting : E \O t M ~> t M := op1 \v op2 \v op3.
 
-Lemma thm27 : lifting_monadT op op'.
+Lemma thm27 : lifting_monadT op hlifting.
 Proof.
 rewrite /lifting_monadT => X.
-rewrite /op'.
+rewrite /hlifting.
 apply/esym.
 transitivity ((op1 \v op2) X \o op3 X \o E # Lift t M X).
   by rewrite (vassoc op1).

@@ -882,22 +882,24 @@ Section theorem19.
 Variables (E : functor) (M : monad) (op : aoperation E M).
 Variables (N : monad) (e : monadM M N).
 
-Definition alifting : E \O N ~~> N := fun X =>
+Definition alifting' : E \O N ~~> N := fun X =>
   locked (Join \o e (N X) \o phi op (N X)).
 
-Lemma aliftingE : alifting = psi ([natural of e] \v phi op).
-Proof. rewrite /alifting; unlock; by []. Qed.
+Lemma alifting'E : alifting' = psi ([natural of e] \v phi op).
+Proof. rewrite /alifting'; unlock; by []. Qed.
 
-Lemma natural_alifting : @naturality (E \O N) N alifting.
-Proof. rewrite aliftingE; exact: natural_psi. Qed.
+Lemma natural_alifting' : @naturality (E \O N) N alifting'.
+Proof. rewrite alifting'E; exact: natural_psi. Qed.
+
+Definition alifting := Natural.Pack natural_alifting'.
 
 Lemma theorem19a : algebraicity alifting.
-Proof. by move=> ? ? ? ?; rewrite aliftingE algebraic_psi. Qed.
+Proof. by move=> ? ? ? ?; rewrite /= alifting'E algebraic_psi. Qed.
 
 Lemma theorem19b : lifting op e alifting.
 Proof.
 move=> X /=.
-rewrite aliftingE.
+rewrite alifting'E.
 rewrite boolp.funeqE.
 move=> Y.
 rewrite /=.
@@ -939,12 +941,12 @@ Let lift_getX : (StateOps.Get.func S) \O (erZ M) ~~> (erZ M) :=
 
 Goal forall X (k : S -> erZ M X), lift_getX k = StateOps.get k :> erZ M X.
 move=> X0 k.
-by rewrite /lift_getX aliftingE.
+by rewrite /lift_getX /= alifting'E.
 Abort.
 
 Goal lift_getX Ret = @liftX  _ _ _ (@ModelState.get S).
 Proof.
-by rewrite /lift_getX aliftingE.
+by rewrite /lift_getX /= alifting'E.
 Abort.
 
 End state_errorT.
@@ -960,7 +962,7 @@ Let lift_acallccS : (ContOps.Acallcc.func r) \O (stS M) ~~> (stS M) :=
 Goal forall A (f : (stS M A -> r) -> stS M A),
   lift_acallccS f = (fun s k => f (fun m => uncurry m (s, k)) s k) :> stS M A.
 move=> A f.
-rewrite /lift_acallccS aliftingE.
+rewrite /lift_acallccS /= alifting'E.
 by rewrite /stS /= /stateT /= /stateMonadM /=; unlock => /=.
 Abort.
 
@@ -972,7 +974,7 @@ Lemma callccS_E A B f : lift_acallccS
        f (fun x => (fun (_ : S) (_ : B * S -> r) => k (@RET (stS M) A x)) : stS M B)) =
   usual_callccS f.
 Proof.
-rewrite /lift_acallccS aliftingE.
+rewrite /lift_acallccS /= alifting'E.
 by rewrite /stS /= /stateT /= /stateMonadM /=; unlock => /=.
 Qed.
 
