@@ -18,9 +18,18 @@ Require Import monae_lib.
 (*            functor == type of functors                                     *)
 (*              F # g == application of functor F to the morphism g           *)
 (*             F ~> G == natural transformation from functor F to functor G   *)
+(*                NId == identify natural transformation                      *)
+(*                 \v == vertical composition                                 *)
+(*                 \h == horizontal composition                               *)
+(*             F ## n == application of functor F to natural transformation n *)
 (*             F -| G == adjoint functors                                     *)
+(*    Module BindLaws == bind laws of a monad                                 *)
+(* Module monad_of_adjoint == derivation of a monad from an adjunction        *)
+(* Section composite_ajoint == composition of adjunctions                     *)
+(*    Module JoinLaws == join laws of a monad                                 *)
 (*              monad == type of monads                                       *)
 (*      operation E M == sigma operation                                      *)
+(* Module Monad_of_ret_bind == construction of a monad from ret and bind      *)
 (******************************************************************************)
 
 (* Contents:
@@ -51,6 +60,7 @@ Reserved Notation "f ^`2" (format "f ^`2", at level 3).
 Reserved Notation "m >> f" (at level 49).
 Reserved Notation "f (o) g" (at level 11).
 Reserved Notation "'fmap' f" (at level 4).
+Reserved Notation "F ## g" (at level 11).
 
 Declare Scope mprog.
 Declare Scope do_notation.
@@ -300,12 +310,6 @@ End horizontal_composition.
 
 Notation "f \h g" := (HComp g f).
 
-Section natural_transformation_example.
-Definition fork' : FId ~~> squaring := fun A (a : A) => (a, a).
-Lemma fork_natural : naturality _ _ fork'. Proof. by []. Qed.
-Definition fork : FId ~> squaring := Natural.Pack fork_natural.
-End natural_transformation_example.
-
 Section functor_natural_transformation.
 Variables (S F G : functor) (nt : F ~> G).
 Definition fun_app_nt : S \O F ~~> S \O G :=
@@ -317,10 +321,18 @@ Qed.
 Definition functor_app_natural : (S \O F) ~> (S \O G) :=
   Natural.Pack natural_fun_app_nt.
 End functor_natural_transformation.
+Arguments functor_app_natural S {_} {_}.
+Notation "F '##' g" := (functor_app_natural F g).
 
 Lemma functor_app_naturalE (S F G : functor) (nt : F ~> G) :
-  functor_app_natural S nt = NId S \h nt.
+  S ## nt = NId S \h nt.
 Proof. by apply nattrans_ext => a /=; rewrite compidf. Qed.
+
+Section natural_transformation_example.
+Definition fork' : FId ~~> squaring := fun A (a : A) => (a, a).
+Lemma fork_natural : naturality _ _ fork'. Proof. by []. Qed.
+Definition fork : FId ~> squaring := Natural.Pack fork_natural.
+End natural_transformation_example.
 
 Definition eta_type (f g : functor) := FId ~> g \O f.
 Definition eps_type (f g : functor) := f \O g ~> FId.

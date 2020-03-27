@@ -146,10 +146,10 @@ Variable M : monad.
 Hypothesis naturality_m : forall (A : UU1) (m : k_type M A),
   naturality_k_type m.
 
-Lemma from_liftK A : (@from M A) \o (LiftT K_MonadT M A) = id.
+Lemma from_liftK A : (@from M A) \o (Lift K_MonadT M A) = id.
 Proof.
 rewrite boolp.funeqE => m /=.
-rewrite /from /= /LiftT /=.
+rewrite /from /= /Lift /=.
 rewrite /K_MonadM /=.
 (* TODO *) unlock => /=.
 rewrite /K_lift /=.
@@ -193,7 +193,7 @@ Qed.
 
 Lemma K_opE (A : UU1) :
   op A = (@from M A) \o (@K_op _ _ op A) \o
-    ((functor_app_natural E (Natural.Pack (natural_monadM (LiftT K_MonadT M)))) A).
+    ((E ## [natural of Lift K_MonadT M]) A).
 Proof.
 rewrite boolp.funeqE => m /=.
 rewrite /from /K_op /= /psi_g /kappa /fun_app_nt /=.
@@ -216,49 +216,52 @@ End k_op_prop.
 
 Section theorem_27.
 
-Variables (E : functor) (M : monad) (op : operation E M) (T : FMT).
+Variables (E : functor) (M : monad) (op : operation E M) (t : FMT).
 Hypothesis naturality_m : forall (A : UU1) (m : k_type M A),
   naturality_k_type m.
 
-Let nt1 := Natural.Pack (natural_from naturality_m).
-Let op1 : T (K_MonadT M) ~> T M := (Hmap T nt1).
-Let op3 : E \O T M ~> E \O T (K_MonadT M) := functor_app_natural E (Hmap T (Natural.Pack (natural_monadM (LiftT K_MonadT M)))).
-Let aop : aoperation E (K_MonadT M) := @AOperation.Pack _ _ (Natural.Pack (natural_K_op op)) (AOperation.Mixin (algebraic_K_op op)).
-Let op2 := Natural.Pack (@natural_alifting _ _ aop _ (LiftT T _)).
+Let from_nt := Natural.Pack (natural_from naturality_m).
+Let op1 : t (K_MonadT M) ~> t M := Hmap t from_nt.
+Let op3 : E \O t M ~> E \O t (K_MonadT M) :=
+  E ## Hmap t [natural of Lift K_MonadT M].
+Let aop : aoperation E (K_MonadT M) :=
+  @AOperation.Pack _ _ (Natural.Pack (natural_K_op op))
+                       (AOperation.Mixin (algebraic_K_op op)).
+Let op2 := Natural.Pack (@natural_alifting _ _ aop _ (Lift t _)).
 
-Let op' : E \O T M ~> T M := op1 \v op2 \v op3.
+Let op' : E \O t M ~> t M := op1 \v op2 \v op3.
 
 Lemma thm27 : lifting_monadT op op'.
 Proof.
 rewrite /lifting_monadT => X.
 rewrite /op'.
 apply/esym.
-transitivity ((op1 \v op2) X \o op3 X \o E # LiftT T M X).
+transitivity ((op1 \v op2) X \o op3 X \o E # Lift t M X).
   by rewrite (vassoc op1).
 rewrite -compA.
 transitivity ((op1 \v op2) X \o (
-  (E # LiftT T (K_MonadT M) X) \o (E # LiftT K_MonadT M X))).
+  (E # Lift t (K_MonadT M) X) \o (E # Lift K_MonadT M X))).
   congr (_ \o _).
   rewrite /op3.
   rewrite functor_app_naturalE.
   rewrite /=.
   rewrite compidf.
   rewrite -!functor_o.
-  by rewrite (natural_hmap T).
+  by rewrite (natural_hmap t).
 transitivity (op1 X \o
-  (op2 X \o E # LiftT T (K_MonadT M) X) \o E # LiftT K_MonadT M X).
+  (op2 X \o E # Lift t (K_MonadT M) X) \o E # Lift K_MonadT M X).
   by rewrite vcompE -compA.
 transitivity (
-  op1 X \o (LiftT T (K_MonadT M) X \o (K_op op) X) \o
-  E # LiftT K_MonadT M X).
-  by rewrite -(theorem19b aop (LiftT T (K_MonadT M))).
+  op1 X \o (Lift t (K_MonadT M) X \o (K_op op) X) \o
+  E # Lift K_MonadT M X).
+  by rewrite -(theorem19b aop (Lift t (K_MonadT M))).
 transitivity (
-  LiftT T M X \o nt1 X \o (K_op op) X \o
-  E # LiftT K_MonadT M X).
+  Lift t M X \o from_nt X \o (K_op op) X \o
+  E # Lift K_MonadT M X).
   congr (_ \o _).
   rewrite compA.
   congr (_ \o _).
-  by rewrite (natural_hmap T).
+  by rewrite (natural_hmap t).
 rewrite -2!compA.
 congr (_ \o _).
 rewrite compA.

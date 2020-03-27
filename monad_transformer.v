@@ -99,9 +99,9 @@ Record t : UU2 := Pack {m : monad -> monad ; class : mixin_of m}.
 Module Exports.
 Notation monadT := t.
 Coercion m : monadT >-> Funclass.
-Definition LiftT (T : t) : forall M : monad, monadM M (m T M) :=
+Definition Lift (T : t) : forall M : monad, monadM M (m T M) :=
   let: Pack _ (Mixin f) := T return forall M : monad, monadM M (m T M) in f.
-Arguments LiftT _ _ : simpl never.
+Arguments Lift _ _ : simpl never.
 End Exports.
 End MonadT.
 Export MonadT.Exports.
@@ -652,8 +652,8 @@ End lifting.
 
 Section liftingt.
 Variables (E : functor) (M : monad) (op : operation E M)
-          (T : monadT).
-Definition lifting_monadT := lifting op (LiftT T M).
+          (t : monadT).
+Definition lifting_monadT := lifting op (Lift t M).
 End liftingt.
 
 Section algebraicity.
@@ -912,7 +912,7 @@ rewrite (_ : op (N X) ((E # (M # e X)) ((E # Ret) Y)) =
              (M # e X) (op (M X) ((E # Ret) Y))); last first.
   rewrite -(compE (M # e X)).
   by rewrite (natural op).
-transitivity (e X (Join (op (M X) ((E # Ret) Y) : M (M X)))); last first.
+transitivity (e X (Join (op (M X) ((E # Ret) Y)))); last first.
   rewrite joinE monadMbind.
   rewrite bindE.
   rewrite -(compE _ (M # e X)).
@@ -935,7 +935,7 @@ Let M : monad := ModelState.state S.
 Let erZ : monadT := errorT Z.
 
 Let lift_getX : (StateOps.Get.func S) \O (erZ M) ~~> (erZ M) :=
-  alifting (get_aop S) (LiftT erZ M).
+  alifting (get_aop S) (Lift erZ M).
 
 Goal forall X (k : S -> erZ M X), lift_getX k = StateOps.get k :> erZ M X.
 move=> X0 k.
@@ -955,7 +955,7 @@ Let M : monad := ModelCont.t r.
 Let stS : monadT := stateT S.
 
 Let lift_acallccS : (ContOps.Acallcc.func r) \O (stS M) ~~> (stS M) :=
-  alifting (callcc_aop r) (LiftT stS M).
+  alifting (callcc_aop r) (Lift stS M).
 
 Goal forall A (f : (stS M A -> r) -> stS M A),
   lift_acallccS f = (fun s k => f (fun m => uncurry m (s, k)) s k) :> stS M A.
@@ -1048,27 +1048,28 @@ Let M S: monad := ModelState.state S.
 Let optT : monadT := errorT unit.
 
 Definition lift_getX S : (StateOps.Get.func S) \O (optT (M S)) ~~> (optT (M S)) :=
-  alifting (get_aop S) (LiftT optT (M S)).
+  alifting (get_aop S) (Lift optT (M S)).
 
 Let lift_putX S : (StateOps.Put.func S) \O (optT (M S)) ~~> (optT (M S)) :=
-  alifting (put_aop S) (LiftT optT (M S)).
+  alifting (put_aop S) (Lift optT (M S)).
 
 Let incr : optT (M nat) unit := (lift_getX Ret) >>= (fun i => lift_putX (i.+1, Ret tt)).
 Let prog : optT (M nat) unit := incr >> (Fail : optT (M nat) unit) >> incr.
 
 End lifting_uniform.
 
-(* wip *)
-Definition natural_hmap_lift (T : monadT) (h : forall (M N : monad), (M ~> N) -> (T M ~> T N)) := forall (M N : monad) (t : M ~> N) X,
-  h M N t X \o LiftT T M X = LiftT T N X \o t X.
+Definition natural_hmap_lift (t : monadT)
+    (h : forall (M N : monad), (M ~> N) -> (t M ~> t N)) :=
+  forall (M N : monad) (n : M ~> N) X,
+    h M N n X \o Lift t M X = Lift t N X \o n X.
 
 Module Fmt.
 Section functorial_monad_transformer.
-Record mixin_of (T : monadT) := Class {
-  hmap : forall (M N : monad), (M ~> N) -> (T M ~> T N) ;
+Record mixin_of (t : monadT) := Class {
+  hmap : forall (M N : monad), (M ~> N) -> (t M ~> t N) ;
   _ : forall M N (e : monadM M N), MonadMLaws.ret (hmap [natural of e]) ;
   _ : forall M N (e : monadM M N), MonadMLaws.bind (hmap [natural of e]) ;
-  _ : forall (M : monad), hmap (NId M) = NId (T M) ;
+  _ : forall (M : monad), hmap (NId M) = NId (t M) ;
   _ : forall (M N P : monad) (t : M ~> N) (s : N ~> P), hmap s \v hmap t = hmap (s \v t) ;
   _ : natural_hmap_lift hmap }.
 Structure t := Pack { m : monadT ; class : mixin_of m }.
@@ -1147,7 +1148,7 @@ Lemma hmapX_lift : natural_hmap_lift hmapX.
 Proof.
 move=> M N t A.
 rewrite /hmapX.
-rewrite /LiftT /= /liftX /=.
+rewrite /Lift /= /liftX /=.
 rewrite -!FunctionalExtensionality.eta_expansion.
 rewrite /retX /=.
 rewrite /Bind /=.
@@ -1253,7 +1254,7 @@ Lemma hmapS_lift : natural_hmap_lift hmapS.
 Proof.
 move=> M N t A.
 rewrite /hmapS /= /hmapS'.
-rewrite /LiftT /=.
+rewrite /Lift /=.
 rewrite /stateMonadM /=.
 unlock.
 rewrite /=.
