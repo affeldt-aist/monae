@@ -1,11 +1,11 @@
 Declare ML Module "paramcoq".
 
-Require FunctionalExtensionality.
-From mathcomp Require Import all_ssreflect. (* Just for \o *)
+From mathcomp Require Import all_ssreflect.
 Require Import monad mmt_sect5 monad_model.
 Import Univ.
 
 Unset Universe Checking.
+Set Bullet Behavior "Strict Subproofs".
 
 (** The identity functor *)
 Module Identity.
@@ -16,14 +16,11 @@ Variable A : UU1.
 
 Realizer A as A_R := (@eq A).
 
-(* Definitions of [M] and [map] below could be replaced by
-   declaring [M] as a functor. The same applies for the
-   other pairs of [M] and [map] further below. *)
-
-Definition M (X : UU1) : UU1 := X. (* TODO: use FId *)
-
-Definition map {X Y : UU1} (f : X -> Y) (m : M X) : M Y :=
-f m.
+Definition M (X : UU1) : UU1 :=
+ltac:(
+  let t := constr:(ModelMonad.identity X) in
+  let t := eval cbn in t in
+  exact t).
 
 Definition T : UU1 := k_type M A.
 
@@ -33,12 +30,15 @@ Variable m : T.
 
 Axiom param : T_R m m.
 
-Lemma naturality (X Y : Type) (f : X -> Y) :
-map f \o m X = m Y \o (fun g => map f \o g).
+Lemma naturality :
+naturality (exponential_F A \O ModelMonad.identity) ModelMonad.identity m.
 Proof.
-apply FunctionalExtensionality.functional_extensionality_dep => g.
+intros X Y f.
+rewrite boolp.funeqE => g.
 unfold comp at 1 2.
-apply (param X Y (fun x y => map f x = y) g (map f \o g)).
+apply
+  (param X Y (fun x y => (ModelMonad.identity # f) x = y) g
+    (ModelMonad.identity # f \o g)).
 intros a1 a2 Ha.
 rewrite Ha.
 reflexivity.
@@ -49,6 +49,7 @@ End Naturality.
 End Identity.
 
 (** The option functor *)
+(* TODO: Replace with the exception monad *)
 Module Option.
 
 Section Naturality.
@@ -57,10 +58,11 @@ Variable A : UU1.
 
 Realizer A as A_R := (@eq A).
 
-Definition M (X : UU1) : UU1 := option X. (* TODO: ModelMonad.option_monad *)
-
-Definition map {X Y : UU1} (f : X -> Y) (m : M X) : M Y :=
-option_map f m.
+Definition M (X : UU1) : UU1 := 
+ltac:(
+  let t := constr:(ModelMonad.option_monad X) in
+  let t := eval cbn in t in
+  exact t).
 
 Definition T : UU1 := k_type M A.
 
@@ -70,14 +72,19 @@ Variable m : T.
 
 Axiom param : T_R m m.
 
-Lemma naturality (X Y : Type) (f : X -> Y) :
-map f \o m X = m Y \o (fun g => map f \o g).
+Program Lemma naturality :
+naturality
+  (exponential_F A \O ModelMonad.option_monad) ModelMonad.option_monad m.
 Proof.
-apply FunctionalExtensionality.functional_extensionality_dep => g.
+intros X Y f.
+rewrite boolp.funeqE => g.
 unfold comp at 1 2.
+Abort. (* WIP *)
+(*
 assert (H :
   forall a a' : A, a = a' ->
-  option_R X Y (fun (x : X) (y : Y) => f x = y) (g a) ((map f \o g) a')).
+  option_R X Y (fun (x : X) (y : Y) => f x = y) (g a)
+    ((ModelMonad.option_monad # f \o g) a')).
 {
   intros a a' Ha.
   subst a'.
@@ -87,9 +94,11 @@ assert (H :
   constructor.
   reflexivity.
 }
-assert (Hparam := param X Y (fun x y => f x = y) g (map f \o g) H).
+assert (Hparam :=
+  param X Y (fun x y => f x = y) g (ModelMonad.option_monad # f \o g) H).
 destruct Hparam; cbn; congruence.
 Qed.
+*)
 
 End Naturality.
 
@@ -104,10 +113,11 @@ Variable A : UU1.
 
 Realizer A as A_R := (@eq A).
 
-Definition M (X : UU1) : UU1 := list X. (* TODO: ModelMonad.ListMonad.t *)
-
-Definition map {X Y : UU1} (f : X -> Y) (m : M X) : M Y :=
-List.map f m.
+Definition M (X : UU1) : UU1 :=
+ltac:(
+  let t := constr:(ModelMonad.ListMonad.functor X) in
+  let t := eval cbn in t in
+  exact t).
 
 Definition T : UU1 := k_type M A.
 
@@ -117,14 +127,18 @@ Variable m : T.
 
 Axiom param : T_R m m.
 
-Lemma naturality (X Y : Type) (f : X -> Y) :
-map f \o m X = m Y \o (fun g => map f \o g).
+Lemma naturality :
+naturality
+  (exponential_F A \O ModelMonad.ListMonad.functor)
+  ModelMonad.ListMonad.functor m.
 Proof.
-apply FunctionalExtensionality.functional_extensionality_dep => g.
+intros X Y f.
+rewrite boolp.funeqE => g.
 unfold comp at 1 2.
 assert (H :
   forall a a' : A, a = a' ->
-  list_R X Y (fun (x : X) (y : Y) => f x = y) (g a) ((map f \o g) a')).
+  list_R X Y (fun (x : X) (y : Y) => f x = y) (g a)
+    ((ModelMonad.ListMonad.functor # f \o g) a')).
 {
   intros a a' Ha.
   subst a'.
@@ -135,13 +149,13 @@ assert (H :
   induction lx as [ | x' lx' IH]; [constructor | ].
   constructor; [reflexivity | exact IH].
 }
-assert (Hparam := param X Y (fun x y => f x = y) g (comp (map f) g) H).
+assert (Hparam :=
+  param X Y (fun x y => f x = y) g ((ModelMonad.ListMonad.functor # f) \o g) H).
 induction Hparam as [ | x y Hf mx my IH Hmap].
-- reflexivity.
+- admit. (*reflexivity.*)
 - cbn.
-  unfold map in *.
-  congruence.
-Qed.
+  admit. (*congruence.*)
+Abort.
 
 End Naturality.
 
@@ -157,10 +171,11 @@ Variable A S : Type.
 Realizer A as A_R := (@eq A).
 Realizer S as S_R := (@eq S).
 
-Definition M X : Type := S -> X * S. (* TODO: ModelState.state *)
-
-Definition map {X Y : Type} (f : X -> Y) (m : M X) : M Y :=
-fun s => let (x, s') := m s in (f x, s').
+Definition M X : Type :=
+ltac:(
+  let t := constr:(ModelMonad.State.functor S X) in
+  let t := eval cbn in t in
+  exact t).
 
 Definition T : UU1 := k_type M A.
 
@@ -170,28 +185,41 @@ Variable m : T.
 
 Axiom param : T_R m m.
 
+Lemma naturality :
+naturality
+  (exponential_F A \O ModelMonad.State.functor S )
+  (ModelMonad.State.functor S) m.
+(*
 Lemma naturality (X Y : Type) (f : X -> Y) :
-map f \o m X = m Y \o (fun g => map f \o g).
+ModelMonad.State.functor S # f \o m X =
+m Y \o (fun g => ModelMonad.State.functor S # f \o g).
+*)
 Proof.
-apply FunctionalExtensionality.functional_extensionality_dep => g.
+intros X Y f.
+rewrite boolp.funeqE => g.
 unfold comp at 1 2.
 assert (H :
   forall a a' : A, a = a' ->
-  M_R X Y (fun (x : X) (y : Y) => f x = y) (g a) ((map f \o g) a')).
+  M_R X Y (fun (x : X) (y : Y) => f x = y) (g a)
+    ((ModelMonad.State.functor S # f \o g) a')).
 {
   intros a a' Ha s s' Hs.
   unfold S_R in Hs.
   subst a' s'.
-  unfold comp, map.
+  unfold comp, Fun.
+  cbn.
+  unfold ModelMonad.State.map.
   case (g a s).
   intros x s'.
   constructor; reflexivity.
 }
-apply FunctionalExtensionality.functional_extensionality_dep => s0.
+rewrite boolp.funeqE => s0.
 assert (Hparam :=
-  param X Y (fun x y => f x = y) g (comp (map f) g) H s0 s0 (erefl s0)).
+  param X Y (fun x y => f x = y) g ((ModelMonad.State.functor S # f) \o g)
+    H s0 s0 (erefl s0)).
 simple inversion Hparam as [x y Hxy s s' Hs Hx Hy].
-unfold map at 1.
+compute.
+compute in Hy.
 rewrite <- Hx, <- Hy.
 unfold S_R in Hs.
 subst y s'.
@@ -201,54 +229,3 @@ Qed.
 End Naturality.
 
 End State.
-
-(** Attempt at a generic proof *)
-Module Generic.
-
-Section Naturality.
-
-Variable A : UU1.
-
-Realizer A as A_R := (@eq A).
-
-Variable M : UU1 -> UU1.
-
-Variable map : forall {X Y : UU1}, (X -> Y) -> M X -> M Y.
-
-Variable R : forall X Y : Type, (X -> Y -> Type) -> M X -> M Y -> Type.
-
-Realizer M as M_R := R.
-
-(* What would the minimal properties to be satisfied by [R] such that
-   the admitted subgoals below become provable? *)
-
-Definition T : UU1 := k_type M A.
-
-Parametricity T arity 2.
-
-Variable m : T.
-
-Axiom param : T_R m m.
-
-Lemma naturality (X Y : Type) (f : X -> Y) :
-map f \o m X = m Y \o (fun g => map f \o g).
-Proof.
-apply FunctionalExtensionality.functional_extensionality_dep => g.
-unfold comp at 1 2.
-assert (H :
-  forall a a' : A, a = a' ->
-  M_R X Y (fun (x : X) (y : Y) => f x = y) (g a) ((map f \o g) a')).
-{
-  intros a a' Ha.
-  subst a'.
-  unfold M_R, comp.
-  admit.
-}
-assert (Hparam := param X Y (fun x y => f x = y) g (comp (map f) g) H).
-unfold M_R, comp in *.
-admit.
-Abort.
-
-End Naturality.
-
-End Generic.
