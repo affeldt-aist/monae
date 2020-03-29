@@ -1218,7 +1218,7 @@ Proof. by []. Qed.
 
 Lemma ret_nat : monad.naturality monad.FId m' ret.
 Proof. move=> ? ? ?; exact: (ret_naturality M). Qed.
-Definition _ret_nat : monad.Natural.t monad.FId m' := monad.Natural.Pack ret_nat.
+Definition _ret_nat : monad.Natural.t monad.FId m' := monad.Natural.Pack (monad.Natural.Mixin ret_nat).
 Lemma join_nat : monad.naturality (monad.FComp m' m') m' join.
 Proof.
 move=> A B h; apply funext=> x; rewrite /ret /Fun /= /f.
@@ -1229,7 +1229,7 @@ suff -> : [fun of M # (M # hom_Type h)] x = [fun of M # hom_Type (Fun m' h)] x
 congr [fun of M # _].
 by apply/hom_ext/funext.
 Qed.
-Definition _join_nat := monad.Natural.Pack join_nat.
+Definition _join_nat := monad.Natural.Pack (monad.Natural.Mixin join_nat).
 Lemma joinretM : monad.JoinLaws.left_unit _ret_nat _join_nat.
 Proof.
 by move=> A; apply funext=> x; rewrite /join /ret /= -[in LHS]compE joinretM.

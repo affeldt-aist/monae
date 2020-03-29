@@ -28,7 +28,7 @@ Require Import monae_lib.
 (* Section composite_ajoint == composition of adjunctions                     *)
 (*    Module JoinLaws == join laws of a monad                                 *)
 (*              monad == type of monads                                       *)
-(*      operation E M == sigma operation                                      *)
+(*     E.-operation M == sigma operation                                      *)
 (* Module Monad_of_ret_bind == construction of a monad from ret and bind      *)
 (******************************************************************************)
 
@@ -61,6 +61,7 @@ Reserved Notation "m >> f" (at level 49).
 Reserved Notation "f (o) g" (at level 11).
 Reserved Notation "'fmap' f" (at level 4).
 Reserved Notation "F ## g" (at level 11).
+Reserved Notation "E .-operation M" (at level 2, format "E  .-operation  M").
 
 Declare Scope mprog.
 Declare Scope do_notation.
@@ -250,8 +251,10 @@ Definition naturality (M N : functor) (m : M ~~> N) :=
 Arguments naturality : clear implicits.
 
 Module Natural.
+Record mixin_of (M N : functor) (m : M ~~> N) := Mixin {
+  _ : naturality M N m }.
 Structure t (M N : functor) :=
-  Pack { m : M ~~> N ; class : naturality M N m }.
+  Pack { m : M ~~> N ; mixin : mixin_of m }.
 Module Exports.
 Coercion m : t >-> Funclass.
 Notation "f ~> g" := (t f g).
@@ -262,7 +265,7 @@ Export Natural.Exports.
 Section natrans_lemmas.
 Variables (M N : functor) (phi : M ~> N).
 Lemma natural (A B : UU1) (h : A -> B) : (N # h) \o phi A = phi B \o (M # h).
-Proof. by case: phi => ?. Qed.
+Proof. by case: phi => ? []. Qed.
 Lemma nattrans_ext (f g : M ~> N) :
   f = g <-> forall a, (f a = g a :> (_ -> _)).
 Proof.
@@ -275,7 +278,7 @@ End natrans_lemmas.
 Section id_natural_transformation.
 Variables C : functor.
 Definition natural_id : naturality _ _ (fun A => @id (C A)). Proof. by []. Qed.
-Definition NId : C ~> C := Natural.Pack natural_id.
+Definition NId : C ~> C := Natural.Pack (Natural.Mixin natural_id).
 End id_natural_transformation.
 
 Section vertical_composition.
@@ -284,7 +287,7 @@ Variables (g : D ~> E) (f : C ~> D).
 Definition ntcomp := fun A => g A \o f A.
 Definition natural_vcomp : naturality _ _ ntcomp.
 Proof. by move=> A B h; rewrite compA (natural g) -compA (natural f). Qed.
-Definition VComp : C ~> E := Natural.Pack natural_vcomp.
+Definition VComp : C ~> E := Natural.Pack (Natural.Mixin natural_vcomp).
 End vertical_composition.
 
 Notation "f \v g" := (VComp f g).
@@ -305,7 +308,7 @@ Proof.
 move=> A B h; rewrite compA (natural t) -compA -[in RHS]compA.
 by congr (_ \o _); rewrite FCompE -2!functor_o (natural s).
 Qed.
-Definition HComp : (F' \O F) ~> (G' \O G) := Natural.Pack natural_hcomp.
+Definition HComp : (F' \O F) ~> (G' \O G) := Natural.Pack (Natural.Mixin natural_hcomp).
 End horizontal_composition.
 
 Notation "f \h g" := (HComp g f).
@@ -319,19 +322,23 @@ Proof.
 by move=> *; rewrite /fun_app_nt 2!FCompE -2!(functor_o S) natural.
 Qed.
 Definition functor_app_natural : (S \O F) ~> (S \O G) :=
-  Natural.Pack natural_fun_app_nt.
+  Natural.Pack (Natural.Mixin natural_fun_app_nt).
 End functor_natural_transformation.
 Arguments functor_app_natural S {_} {_}.
 Notation "F '##' g" := (functor_app_natural F g).
 
-Lemma functor_app_naturalE (S F G : functor) (nt : F ~> G) :
+Lemma functor_app_naturalE (S F G : functor) (nt : F ~> G) X :
+  (S ## nt) X = S # nt X.
+Proof. by []. Qed.
+
+Lemma functor_app_natural_hcomp (S F G : functor) (nt : F ~> G) :
   S ## nt = NId S \h nt.
-Proof. by apply nattrans_ext => a /=; rewrite compidf. Qed.
+Proof. by apply nattrans_ext => a; rewrite functor_app_naturalE. Qed.
 
 Section natural_transformation_example.
 Definition fork' : FId ~~> squaring := fun A (a : A) => (a, a).
 Lemma fork_natural : naturality _ _ fork'. Proof. by []. Qed.
-Definition fork : FId ~> squaring := Natural.Pack fork_natural.
+Definition fork : FId ~> squaring := Natural.Pack (Natural.Mixin fork_natural).
 End natural_transformation_example.
 
 Definition eta_type (f g : functor) := FId ~> g \O f.
@@ -371,11 +378,11 @@ Variable (X : UU1).
 Lemma curry_naturality :
   naturality (curry_F X \O uncurry_F X) FId (fun A (af : X * (X -> A)) => af.2 af.1).
 Proof. by []. Qed.
-Definition curry_eps : eps_type (curry_F X) (uncurry_F X) := Natural.Pack curry_naturality.
+Definition curry_eps : eps_type (curry_F X) (uncurry_F X) := Natural.Pack (Natural.Mixin curry_naturality).
 Lemma curry_naturality2 :
   naturality FId (uncurry_F X \O curry_F X) (fun (A : Type) (a : A) => pair^~ a).
 Proof. by []. Qed.
-Definition curry_eta : eta_type (curry_F X) (uncurry_F X) := Natural.Pack curry_naturality2.
+Definition curry_eta : eta_type (curry_F X) (uncurry_F X) := Natural.Pack (Natural.Mixin curry_naturality2).
 Lemma adjoint_currry : curry_F X -| uncurry_F X.
 Proof.
 apply: (@AdjointFunctor.mk _ _ curry_eta curry_eps).
@@ -513,7 +520,7 @@ congr (_ # _).
 by rewrite -(natural (AdjointFunctor.eta H)).
 Qed.
 
-Let uni : @eta_type (F \O F0) (U0 \O U) := Natural.Pack uni_naturality.
+Let uni : @eta_type (F \O F0) (U0 \O U) := Natural.Pack (Natural.Mixin uni_naturality).
 
 Lemma couni_naturality :
   naturality ((F \O F0) \O (U0 \O U)) FId (fun A : UU1 => eps A \o F # eps0 (U A)).
@@ -525,7 +532,7 @@ rewrite [in LHS]FCompE -[in LHS](functor_o F) [in LHS](natural (AdjointFunctor.e
 by rewrite -[in RHS](functor_o F).
 Qed.
 
-Let couni : @eps_type (F \O F0) (U0 \O U) := Natural.Pack couni_naturality.
+Let couni : @eps_type (F \O F0) (U0 \O U) := Natural.Pack (Natural.Mixin couni_naturality).
 
 Lemma composite_adjoint : F \O F0 -| U0 \O U.
 Proof.
@@ -657,6 +664,7 @@ End monad_lemmas.
 Arguments Bind {M A B} : simpl never.
 
 Definition operation (E : functor) (M : monad) := E \O M ~> M.
+Notation "E .-operation M" := (operation E M).
 
 Notation "'do' x <- m ; e" := (Bind m (fun x => e)) : do_notation.
 Notation "'do' x : T <- m ; e" := (Bind m (fun x : T => e)) (only parsing) : do_notation.
@@ -749,7 +757,7 @@ move=> A B h; rewrite FIdf boolp.funeqE => ?.
 by rewrite compE /= /Map MapE /= bindretf.
 Qed.
 
-Let ret' : FId ~> M' := Natural.Pack naturality_ret.
+Let ret' : FId ~> M' := Natural.Pack (Natural.Mixin naturality_ret).
 
 Let bind_Map (A B C : UU1) (f : A -> B) (m : M A) (g : B -> M C) :
   bind (Map f m) g = bind m (g \o f).
@@ -763,7 +771,7 @@ move=> A B h; rewrite boolp.funeqE => mma.
 by rewrite /Fun 2!compE /Map bind_Map [in LHS] bindA.
 Qed.
 
-Definition join : M' \O M' ~> M' := Natural.Pack naturality_join.
+Definition join : M' \O M' ~> M' := Natural.Pack (Natural.Mixin naturality_join).
 
 Let bindE (A B : UU1) m (f : A -> M' B) : bind m f = join _ ((M' # f) m).
 Proof. by rewrite /join /= bind_Map. Qed.

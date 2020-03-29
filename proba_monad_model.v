@@ -38,7 +38,7 @@ move=> A B h.
 by rewrite boolp.funeqE => a /=; rewrite /Fun /= /ret' FSDistfmap1.
 Qed.
 
-Definition ret : FId ~> functor := Natural.Pack naturality_ret'.
+Definition ret : FId ~> functor := Natural.Pack (Natural.Mixin naturality_ret').
 
 Program Definition monad : Monad.t :=
   @Monad_of_ret_bind _ ret bind _ _ _.

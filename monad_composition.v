@@ -1,7 +1,13 @@
 From mathcomp Require Import all_ssreflect.
 Require Import monae_lib monad.
 
-(* jones and duponcheel, composing monads, sect 2, 3 *)
+(******************************************************************************)
+(*                          Composing monads                                  *)
+(*                                                                            *)
+(* formalization of [Jones and Duponcheel, Composing Monads, Yale RR 1993]    *)
+(* (Sections 2 and 3)                                                         *)
+(*                                                                            *)
+(******************************************************************************)
 
 Set Implicit Arguments.
 Unset Strict Implicit.
@@ -12,7 +18,7 @@ Section comp.
 Variables (M N : monad).
 Lemma naturality_ret : naturality FId (M \O N) ((@RET M) \h (@RET N)).
 Proof. by move=> A B h; rewrite -(natural ((@RET M) \h (@RET N))). Qed.
-Definition ret : FId ~> M \O N := Natural.Pack naturality_ret.
+Definition ret : FId ~> M \O N := Natural.Pack (Natural.Mixin naturality_ret).
 End comp.
 End Comp.
 Notation CRet := (Comp.ret).
@@ -48,7 +54,7 @@ by rewrite -compA.
 Qed.
 
 Definition JOIN' : (M \O N) \O (M \O N) ~> M \O N :=
-  @Natural.Pack _ _ _ JOIN_naturality.
+  Natural.Pack (Natural.Mixin JOIN_naturality).
 
 Lemma JOIN_ret : JoinLaws.left_unit (@CRet M N) (@JOIN').
 Proof.
@@ -117,7 +123,7 @@ rewrite -natural.
 by rewrite functor_o.
 Qed.
 
-Definition JOIN' := Natural.Pack join_naturality.
+Definition JOIN' := Natural.Pack (Natural.Mixin join_naturality).
 
 Lemma JOIN_ret : JoinLaws.left_unit (@CRet M N) (@JOIN').
 Proof.
@@ -253,7 +259,7 @@ Qed.
 Lemma JOIN_naturality : @naturality _ _ (JOIN).
 Proof. by move=> ?? g; rewrite JOINE -/prod (Prod.JOIN_naturality prod1 g) JOINE. Qed.
 
-Definition JOIN' := Natural.Pack JOIN_naturality.
+Definition JOIN' := Natural.Pack (Natural.Mixin JOIN_naturality).
 
 Lemma JOIN_ret : JoinLaws.left_unit (@CRet M N) (@JOIN').
 Proof.
@@ -286,18 +292,36 @@ End Swap.
 Section nattrans_cast_lemmas.
 Variables (F G : functor).
 Lemma IV : FId \O G ~> F -> G ~> F.
-Proof. case=> m H; apply: (@Natural.Pack G F m H). Qed.
+Proof.
+case=> m [H]; apply: (@Natural.Pack G F m _).
+exact: Natural.Mixin.
+Qed.
 Lemma VI : G \O FId ~> F -> G ~> F.
-Proof. case=> m H; apply: (@Natural.Pack G F m H). Qed.
+Proof.
+case=> m [H]; apply: (@Natural.Pack G F m _).
+exact: Natural.Mixin.
+Qed.
 Variable K J : functor.
 Lemma AV : G \O K \O J ~> F -> G \O (K \O J) ~> F.
-Proof. case=> m H; apply: (@Natural.Pack (G \O (K \O J)) F m H). Qed.
+Proof.
+case=> m [H]; apply: (@Natural.Pack (G \O (K \O J)) F m _).
+exact: Natural.Mixin.
+Qed.
 Lemma AV' : G \O (K \O J) ~> F -> G \O K \O J ~> F.
-Proof. case=> m H; apply: (@Natural.Pack (G \O K \O J) F m H). Qed.
+Proof.
+case=> m [H]; apply: (@Natural.Pack (G \O K \O J) F m _).
+exact: Natural.Mixin.
+Qed.
 Lemma VA : F ~> G \O K \O J -> F ~> G \O (K \O J).
-Proof. case=> m H; apply: (@Natural.Pack F (G \O (K \O J)) m H). Qed.
+Proof.
+case=> m [H]; apply: (@Natural.Pack F (G \O (K \O J)) m _).
+exact: Natural.Mixin.
+Qed.
 Lemma VA' : F ~> G \O (K \O J) -> F ~> G \O K \O J.
-Proof. case=> m H; apply: (@Natural.Pack F (G \O K \O J) m H). Qed.
+Proof.
+case=> m [H]; apply: (@Natural.Pack F (G \O K \O J) m _).
+exact: Natural.Mixin.
+Qed.
 End nattrans_cast_lemmas.
 
 Module DistributiveLaw.
