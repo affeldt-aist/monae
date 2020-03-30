@@ -1,11 +1,11 @@
-(*
-  A small-step semantics for an imperative language with a primitive to record
-  execution trace.
-*)
-
 Require Import Eqdep JMeq List ssreflect.
 Import ListNotations.
 From mathcomp Require Import ssrnat.
+
+(******************************************************************************)
+(* A small-step semantics for an imperative language with a primitive to      *)
+(* record execution trace.                                                    *)
+(******************************************************************************)
 
 Set Universe Polymorphism.
 Unset Universe Minimization ToSet.

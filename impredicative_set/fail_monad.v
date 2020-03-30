@@ -2,10 +2,6 @@ From mathcomp Require Import all_ssreflect.
 From mathcomp Require boolp.
 Require Import monae_lib hierarchy monad.
 
-(******************************************************************************)
-(*                     Failure and nondeterministic monads                    *)
-(******************************************************************************)
-
 (* Contents:
 - Module MonadFail.
     definition of guard
@@ -34,22 +30,24 @@ Unset Printing Implicit Defensive.
 
 Local Open Scope monae_scope.
 
-Lemma fmap_fail {A B : Type} (M : failMonad) (f : A -> B) : (M # f) Fail = Fail.
+Import Univ.
+
+Lemma fmap_fail {A B : UU0} (M : failMonad) (f : A -> B) : (M # f) Fail = Fail.
 Proof. by rewrite fmapE bindfailf. Qed.
 
 Lemma well_founded_size A : well_founded (fun x y : seq A => size x < size y).
 Proof. by apply: (@Wf_nat.well_founded_lt_compat _ size) => ? ? /ltP. Qed.
 
-Definition bassert_hylo {M : failMonad} (A B : Type)
+Definition bassert_hylo {M : failMonad} (A B : UU0)
   (f : B -> M (A * B)%type) (p : pred B) (r : forall p f, B -> B -> bool) :=
   forall b, f b = bassert (fun z => r p f z.2 b) (f b).
 
-Definition bassert_size {M : failMonad} (A B : Type)
+Definition bassert_size {M : failMonad} (A B : UU0)
   (f : seq B -> M (A * seq B)%type) :=
   @bassert_hylo M _ _ f predT (fun _ _ x y => size x < size y).
 
 Section foldM.
-Variables (M : monad) (T R : Type) (f : R -> T -> M R).
+Variables (M : monad) (T R : UU0) (f : R -> T -> M R).
 Fixpoint foldM z s : M _ := if s is x :: s' then f z x >>= (fun y => foldM y s') else (Ret z).
 End foldM.
 
@@ -58,7 +56,7 @@ Section unfoldM.
 Local Open Scope mprog.
 
 Section unfoldM_monad.
-Variables (M : monad) (A B : Type).
+Variables (M : monad) (A B : UU0).
 Variable (r : B -> B -> bool).
 Hypothesis wfr : well_founded r.
 Variables (p : pred B) (f : B -> M (A * B)%type).
@@ -77,7 +75,7 @@ Definition unfoldM := Fix wfr (fun _ => _ _) unfoldM'.
 End unfoldM_monad.
 
 Section unfoldM_failMonad.
-Variables (M : failMonad) (A B' : Type).
+Variables (M : failMonad) (A B' : UU0).
 Let B := seq B'.
 Notation unfoldM := (@unfoldM M A _ _ (@well_founded_size B')).
 Variables (p : pred B) (f : B -> M (A * B)%type).
@@ -105,7 +103,7 @@ Arguments unfoldM : simpl never.
 
 (* section 5.1, mu2019tr3 *)
 Section hyloM.
-Variables (M : failMonad) (A B C : Type).
+Variables (M : failMonad) (A B C : UU0).
 Variables (op : A -> M C -> M C) (e : C) (p : pred B) (f : B -> M (A * B)%type).
 Variable seed : forall (p : pred B) (f : B -> M (A * B)%type), B -> B -> bool.
 
@@ -142,23 +140,9 @@ Qed.
 End hyloM.
 Arguments hyloM {M} {A} {B} {C} _ _ _ _ _.
 
-Section monadalt_lemmas.
-Variable (M : altMonad).
-
-(* TODO: name ok? *)
-Lemma naturality_nondeter (A B : Type) (f : A -> B) (p q : M _):
-  (M # f) (p [~] q) = (M # f) p [~] (M # f) q.
-Proof. by rewrite 3!fmapE alt_bindDl. Qed.
-
-Lemma alt_fmapDl (A B : Type) (f : A -> B) (m1 m2 : M A) :
-  (M # f) (m1 [~] m2) = (M # f) m1 [~] (M # f) m2.
-Proof. by rewrite 3!fmapE alt_bindDl. Qed.
-
-End monadalt_lemmas.
-
 Section arbitrary.
 
-Variables (M : altMonad) (A : Type) (def : A).
+Variables (M : altMonad) (A : UU0) (def : A).
 
 Definition arbitrary : seq A -> M A :=
   foldr1 (Ret def) (fun x y => x [~] y) \o map Ret.
@@ -166,11 +150,24 @@ Definition arbitrary : seq A -> M A :=
 End arbitrary.
 Arguments arbitrary {M} {A}.
 
+Section monadalt_lemmas.
+Variable (M : altMonad).
+(* TODO: name ok? *)
+Lemma naturality_nondeter (A B : UU0) (f : A -> B) (p q : M _):
+  (M # f) (p [~] q) = (M # f) p [~] (M # f) q.
+Proof. by rewrite 3!fmapE alt_bindDl. Qed.
+
+Lemma alt_fmapDl (A B : UU0) (f : A -> B) (m1 m2 : M A) :
+  (M # f) (m1 [~] m2) = (M # f) m1 [~] (M # f) m2.
+Proof. by rewrite 3!fmapE alt_bindDl. Qed.
+
+End monadalt_lemmas.
+
 (* Sect. 3.1, gibbons2012utp *)
 Section subsequences_of_a_list.
 Local Open Scope mprog.
 
-Variables (M : altMonad) (A : Type).
+Variables (M : altMonad) (A : UU0).
 
 Fixpoint subs (s : seq A) : M (seq A) :=
   if s isn't h :: t then Ret [::] else
@@ -213,21 +210,21 @@ Section permutation_and_insertion.
 Variable M : altMonad.
 Local Open Scope mprog.
 
-Fixpoint insert {A : Type} (a : A) (s : seq A) : M (seq A) :=
+Fixpoint insert {A : UU0} (a : A) (s : seq A) : M (seq A) :=
   if s isn't h :: t then Ret [:: a] else
   Ret (a :: h :: t) [~] fmap (cons h) (insert a t).
 Arguments insert : simpl never.
 
-Lemma insertE (A : Type) (a : A) s :
+Lemma insertE (A : UU0) (a : A) s :
   insert a s = if s isn't h :: t then Ret [:: a] else
   Ret (a :: h :: t) [~] fmap (cons h) (insert a t).
 Proof. by case: s. Qed.
 
-Fixpoint perm {A : Type} (s : seq A) : M (seq A) :=
+Fixpoint perm {A : UU0} (s : seq A) : M (seq A) :=
   if s isn't h :: t then Ret [::] else perm t >>= insert h.
 
 (* see also netys2017 *)
-Lemma insert_map (A B : Type) (f : A -> B) (a : A) :
+Lemma insert_map (A B : UU0) (f : A -> B) (a : A) :
   insert (f a) \o map f = map f (o) insert a :> (_ -> M _).
 Proof.
 rewrite boolp.funeqE; elim => [|y xs IH].
@@ -242,7 +239,7 @@ by rewrite fmap_oE -(fcompE (map f)) -IH [RHS]/= insertE.
 Qed.
 
 (* lemma 3.3 in mu2019tr2 *)
-Lemma perm_o_map (A B : Type) (f : A -> B) :
+Lemma perm_o_map (A B : UU0) (f : A -> B) :
   perm \o map f = map f (o) perm :> (seq A -> M (seq B)).
 Proof.
 rewrite boolp.funeqE; elim => [/=|x xs IH].
@@ -260,7 +257,7 @@ Hypothesis altmm : forall A, idempotent (@Alt _ A : M A -> M A -> M A).
 
 Local Open Scope mprog.
 
-Variables (A : Type) (p : pred A).
+Variables (A : UU0) (p : pred A).
 
 Lemma filter_insertN a : ~~ p a ->
   forall s, (filter p (o) insert a) s = Ret (filter p s) :> M _.
@@ -320,7 +317,7 @@ End perm_filter.
 
 (* mu2019tr2, Sect. 3, see also netsys2017 *)
 Section altci_insert.
-Variables (M : altCIMonad) (A : Type) (a : A).
+Variables (M : altCIMonad) (A : UU0) (a : A).
 Local Open Scope mprog.
 
 Lemma insert_rcons a' s :
@@ -358,7 +355,7 @@ by rewrite bindfailf.
 Abort.
 
 Section nondet_insert.
-Variables (M : nondetMonad) (A : Type).
+Variables (M : nondetMonad) (A : UU0).
 Implicit Types s : seq A.
 
 Lemma insert_Ret a s : exists m, insert a s = Ret (a :: s) [~] m :> M _.
@@ -375,167 +372,6 @@ by eexists; rewrite ih alt_bindDl bindretf Hn -altA.
 Qed.
 
 End nondet_insert.
-
-(* gibbons2011icfp, Sect. 4.4 *)
-
-Section select.
-Variables (M : nondetMonad) (A : Type).
-Implicit Types s : seq A.
-
-Fixpoint select s : M (A * seq A)%type :=
-  if s isn't h :: t then Fail else
-  (Ret (h, t) [~] select t >>= (fun x => Ret (x.1, h :: x.2))).
-
-Local Obligation Tactic := idtac.
-(* variant of select that keeps track of the length, useful to write perms *)
-Program Fixpoint tselect (s : seq A) : M (A * (size s).-1.-tuple A)%type :=
-  if s isn't h :: t then Fail else
-  Ret (h, @Tuple (size t) A t _) [~]
-  tselect t >>= (fun x => Ret (x.1, @Tuple (size t) A _ _ (* h :: x.2 *))).
-Next Obligation. by []. Defined.
-Next Obligation.
-move=> s h [|h' t] hts [x1 x2]; [exact: [::] | exact: (h :: x2)].
-Defined.
-Next Obligation.
-move=> s h [|h' t] hts [x1 x2] //=; by rewrite size_tuple.
-Defined.
-Next Obligation. by []. Defined.
-
-Lemma tselect_nil : tselect [::] = Fail. Proof. by []. Qed.
-
-Lemma tselect1 a : tselect [:: a] = Ret (a, [tuple]).
-Proof.
-rewrite /= bindfailf altmfail /tselect_obligation_1 /= tupleE /nil_tuple.
-by do 3 f_equal; apply eq_irrelevance.
-Qed.
-
-Program Definition tselect_cons_statement a t (_ : t <> nil) :=
-  tselect (a :: t) = Ret (a, @Tuple _ _ t _) [~]
-                    tselect t >>= (fun x => Ret (x.1, @Tuple _ _ (a :: x.2) _)).
-Next Obligation. by []. Defined.
-Next Obligation.
-move=> a t t0 [x1 x2].
-rewrite /= size_tuple prednK //; by destruct t.
-Defined.
-
-Program Lemma tselect_cons a t (Ht : t <> nil) : tselect_cons_statement a Ht.
-Proof.
-rewrite /tselect_cons_statement [in LHS]/=; congr (_ [~] _).
-bind_ext; case=> x1 x2 /=.
-do 2 f_equal; apply val_inj => /=; by destruct t.
-Qed.
-
-Local Open Scope mprog.
-
-Lemma selectE s : select s = fmap (fun xy => (xy.1, tval xy.2)) (tselect s).
-Proof.
-elim: s => [|h [|h' t] IH].
-- by rewrite fmapE bindfailf.
-- by rewrite tselect1 fmapE bindretf /= bindfailf altmfail.
-- rewrite {1}/select -/(select (h' :: t)) IH [in RHS]alt_fmapDl.
-  rewrite [in X in _ = X [~] _]fmapE bindretf; congr (_ [~] _).
-  rewrite bind_fmap fmap_bind; bind_ext => -[x1 x2].
-  by rewrite fcompE fmapE bindretf.
-Qed.
-
-Lemma decr_size_select : bassert_size select.
-Proof.
-case => [|h t]; first by rewrite !selectE fmap_fail /bassert bindfailf.
-rewrite /bassert selectE bind_fmap fmapE; bind_ext => -[x y] /=.
-by case: assertPn => //=; rewrite size_tuple /= ltnS leqnn.
-Qed.
-
-End select.
-Arguments select {M} {A}.
-Arguments tselect {M} {A}.
-
-Section permutations.
-Variables (M : nondetMonad) (A : Type).
-Implicit Types s : seq A.
-
-Local Obligation Tactic := idtac.
-Program Definition perms' s
-  (f : forall s', size s' < size s -> M (seq A)) : M (seq A) :=
-  (if s isn't h :: t then Ret [::] else
-    do x <- tselect (h :: t); do y <- f x.2 _; Ret (x.1 :: y))%Do.
-Next Obligation.
-move=> s H h t hts [y ys]; by rewrite size_tuple -hts ltnS leqnn.
-Qed.
-Next Obligation. by []. Qed.
-
-Definition perms : seq A -> M (seq A) :=
-  Fix (@well_founded_size _) (fun _ => M _) perms'.
-
-Lemma tpermsE s : (perms s = if s isn't h :: t then Ret [::] else
-  do x <- tselect (h :: t); do y <- perms x.2; Ret (x.1 :: y))%Do.
-Proof.
-rewrite {1}/perms Fix_eq //; [by case: s|move=> s' f g H].
-by rewrite /perms'; destruct s' => //; bind_ext=> x; rewrite H.
-Qed.
-
-Lemma permsE s : (perms s = if s isn't h :: t then Ret [::] else
-  do x <- select (h :: t); do y <- perms x.2; Ret (x.1 :: y))%Do.
-Proof.
-rewrite tpermsE; case: s => // h t.
-by rewrite selectE bind_fmap.
-Qed.
-
-End permutations.
-Arguments perms {M} {A}.
-
-(* from section 4.3 of mu2017, definition of perms using unfoldM *)
-Section mu_perm.
-Variables (A : Type) (M : nondetMonad).
-
-Definition mu_perm : seq A -> M (seq A) :=
-  unfoldM (@well_founded_size _) (@nilp _) select.
-
-Lemma mu_permE s : (mu_perm s = if s isn't h :: t then Ret [::]
-  else do a <- select (h :: t) ; do b <- mu_perm a.2; Ret (a.1 :: b))%Do.
-Proof.
-rewrite /mu_perm unfoldME; last exact: decr_size_select.
-case: s => // h t; rewrite (_ : nilp _ = false) //.
-by bind_ext => -[x1 x2] ; rewrite fmapE.
-Qed.
-
-Lemma perms_mu_perm s : perms s = mu_perm s.
-Proof.
-move Hn : (size s) => n.
-elim: n s Hn => [|n IH [//|h t] /= [tn]].
-  case => //; by rewrite permsE mu_permE.
-rewrite tpermsE mu_permE selectE bind_fmap; bind_ext => -[a b].
-by rewrite IH // size_tuple.
-Qed.
-
-End mu_perm.
-Arguments mu_perm {A} {M}.
-
-Module SyntaxNondet.
-
-Inductive t : Type -> Type :=
-| ret : forall A, A -> t A
-| bind : forall B A, t B -> (B -> t A) -> t A
-| fail : forall A, t A
-| alt : forall A, t A -> t A -> t A.
-
-Fixpoint denote {M : nondetMonad} {A} (m : t A) : M A :=
-  match m with
-  | ret A a => Ret a
-  | bind A B m f => denote m >>= (fun x => denote (f x))
-  | fail A => Fail
-  | alt A m1 m2 => denote m1 [~] denote m2
-  end.
-
-Module Exports.
-Notation nondetSyntax := t.
-Notation ndAlt := alt.
-Notation ndRet := ret.
-Notation ndBind := bind.
-Notation ndFail := fail.
-Notation ndDenote := denote.
-End Exports.
-End SyntaxNondet.
-Export SyntaxNondet.Exports.
 
 Section fastproduct.
 

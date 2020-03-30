@@ -2,7 +2,7 @@ Require Import ZArith.
 From mathcomp Require Import all_ssreflect.
 From mathcomp Require boolp.
 From infotheo Require Import ssrZ.
-Require Import monae_lib monad fail_monad.
+Require Import monae_lib hierarchy monad fail_monad.
 
 (******************************************************************************)
 (*                               State monads                                 *)
@@ -24,49 +24,7 @@ Local Open Scope monae_scope.
 - Module MonadArray.
 *)
 
-Module MonadState.
-Record mixin_of S (M : monad) : Type := Mixin {
-  get : M S ;
-  put : S -> M unit ;
-  _ : forall s s', put s >> put s' = put s' ;
-  _ : forall s, put s >> get = put s >> Ret s ;
-  _ : get >>= put = skip ;
-  _ : forall (A : Type) (k : S -> S -> M A),
-    get >>= (fun s => get >>= k s) = get >>= fun s => k s s
-}.
-Record class_of S (m : Type -> Type) := Class {
-  base : Monad.class_of m ; mixin : mixin_of S (Monad.Pack base) }.
-Structure t S : Type := Pack { m : Type -> Type ; class : class_of S m }.
-(* inheritance *)
-Definition baseType S (M : t S) := Monad.Pack (base (class M)).
-Module Exports.
-Definition Get S (M : t S) : m M S :=
-  let: Pack _ (Class _ (Mixin x _ _ _ _ _)) := M return m M S in x.
-Arguments Get {S M} : simpl never.
-Definition Put S (M : t S) : S -> m M unit :=
-  let: Pack _ (Class _ (Mixin _ x _ _ _ _)) := M return S -> m M unit in x.
-Arguments Put {S M} : simpl never.
-Notation stateMonad := t.
-Coercion baseType : stateMonad >-> monad.
-Canonical baseType.
-End Exports.
-End MonadState.
-Export MonadState.Exports.
-
-Section state_lemmas.
-Variables (S : Type) (M : stateMonad S).
-Lemma putput s s' : Put s >> Put s' = Put s' :> M _.
-Proof. by case: M => m [[[? ? ? ? []]]]. Qed.
-Lemma putget s : Put s >> Get = Put s >> Ret s :> M _.
-Proof. by case: M => m [[[? ? ? ? []]]]. Qed.
-Lemma getputskip : Get >>= Put = skip :> M _.
-Proof.  by case: M => m [[[? ? ? ? []]]]. Qed.
-Lemma getget (k : S -> S -> M S) :
- (Get >>= (fun s => Get >>= k s)) = (Get >>= fun s => k s s).
-Proof. by case: M k => m [[[? ? ? ? []]]]. Qed.
-End state_lemmas.
-
-Lemma putgetput S {M : stateMonad S} x {B} (k : _ -> M B) :
+Lemma putgetput (S : Type) {M : stateMonad S} x {B} (k : _ -> M B) :
   Put x >> Get >>= (fun x' => k x') = Put x >> k x :> M _.
 Proof. by rewrite putget bindA bindretf. Qed.
 
@@ -92,42 +50,6 @@ Example test_nonce0 (M : stateMonad nat) : M nat :=
   Get >>= (fun s => Put s.+1 >> Ret s).
 (*Reset test_nonce0.
 Fail Check test_nonce0.*)
-
-(* NB: this is experimental, may disappear, see rather foreah in
-monad_transformer because it is more general *)
-Module MonadStateLoop.
-  Record mixin_of S (M : stateMonad S) : Type := Mixin {
-   foreach : nat -> nat -> (nat -> M unit) -> M unit ;
-  _ : forall m body, foreach m m body = Ret tt ;
-  _ : forall m n body, foreach (m.+1 + n) m body =
-     (body (m + n)) >> foreach (m + n) m body :> M unit
-}.
-Record class_of S (m : Type -> Type) := Class {
-  base : MonadState.class_of S m ;
-  mixin : mixin_of (MonadState.Pack base)}.
-Structure t S : Type := Pack { m : Type -> Type ; class : class_of S m }.
-Definition baseType S (M : t S) : stateMonad S := MonadState.Pack (base (class M)).
-Module Exports.
-Notation loopStateMonad := t.
-Definition Foreach S (M : t S) : nat -> nat -> (nat -> m M unit) -> m M unit :=
-  let: Pack _ (Class _ (Mixin x _ _)) :=
-    M return nat -> nat -> (nat -> m M unit) -> m M unit in x.
-Coercion baseType : loopStateMonad >-> stateMonad.
-Canonical baseType.
-End Exports.
-End MonadStateLoop.
-Export MonadStateLoop.Exports.
-
-Section stateloop_lemmas.
-Variables (S : Type) (M : loopStateMonad S).
-Lemma loop0 m (body : nat -> M unit) :
-  Foreach m m body = Ret tt :> M _.
-Proof. by case: M body => ? [? []]. Qed.
-Lemma loop1 m n body :
-  Foreach (m.+1 + n) m body =
-  (body (m + n) : M _) >> Foreach (m + n) m body :> M unit.
-Proof. by case: M body => ? [? []]. Qed.
-End stateloop_lemmas.
 
 Section stateloop_examples.
 Variable (M : loopStateMonad nat).
@@ -158,136 +80,6 @@ rewrite iota_add /= sumn_cat /=.
 by rewrite add0n addn0 /= addnAC addnA.
 Qed.
 End stateloop_examples.
-
-(* TODO : utility ? *)
-Module MonadContStateLoop.
-Record mixin_of S (M : stateMonad S) : Type := Mixin {
-  foreach : nat -> nat -> (nat -> M unit) -> M unit ;
-  _ : forall m body, foreach m m body = Ret tt ;
-  _ : forall m n body, foreach (m.+1 + n) m body =
-     (body (m + n)) >> foreach (m + n) m body :> M unit
-}.
-Record class_of S (m : Type -> Type) := Class {
-  base : MonadState.class_of S m ;
-  mixin_cont : MonadContinuation.mixin_of (Monad.Pack (MonadState.base base));
-  mixin_stateLoop : @mixin_of S (MonadState.Pack base)
-}.
-Structure t S : Type := Pack { m : Type -> Type ; class : class_of S m }.
-Definition baseType S (M : t S) : stateMonad S := MonadState.Pack (base (class M)).
-Module Exports.
-Notation loopContStateMonad := t.
-Definition Foreach S (M : t S) : nat -> nat -> (nat -> m M unit) -> m M unit :=
-  let: Pack _ (Class _ _ (Mixin x _ _)) :=
-    M return nat -> nat -> (nat -> m M unit) -> m M unit in x.
-Coercion baseType : loopContStateMonad >-> stateMonad.
-Canonical baseType.
-Definition cont_of_loop S (M : loopContStateMonad S) : contMonad :=
-  MonadContinuation.Pack (MonadContinuation.Class (mixin_cont (class M))).
-Canonical cont_of_loop.
-End Exports.
-End MonadContStateLoop.
-Export MonadContStateLoop.Exports.
-
-Module MonadRun.
-Record mixin_of S (M : monad) : Type := Mixin {
-  run : forall A, M A -> S -> A * S ;
-  _ : forall A (a : A) s, run (Ret a) s = (a, s) ;
-  _ : forall A B (m : M A) (f : A -> M B) s,
-      run (m >>= f) s =
-      let: (a', s') := run m s in run (f a') s'
-}.
-Record class_of S (m : Type -> Type) := Class {
-  base : Monad.class_of m ;
-  mixin : mixin_of S (Monad.Pack base)
-}.
-Structure t S : Type := Pack { m : Type -> Type ;
-  class : class_of S m }.
-Definition baseType S (M : t S) := Monad.Pack (base (class M)).
-Module Exports.
-Definition Run S (M : t S) : forall A, m M A -> S -> A * S :=
-  let: Pack _ (Class _ (Mixin x _ _)) := M
-  return forall A, m M A -> S -> A * S in x.
-Arguments Run {S M A} : simpl never.
-Notation runMonad := t.
-Coercion baseType : runMonad >-> monad.
-Canonical baseType.
-End Exports.
-End MonadRun.
-Export MonadRun.Exports.
-
-Section run_lemmas.
-Variables (S : Type) (M : runMonad S).
-Lemma runret : forall A (a : A) s, Run (Ret a : M _) s = (a, s).
-Proof. by case: M => m [? []]. Qed.
-Lemma runbind : forall A B (ma : M A) (f : A -> M B) s,
-  Run (ma >>= f) s = let: (a', s') := Run ma s in Run (f a') s'.
-Proof. by case: M => m [? []]. Qed.
-End run_lemmas.
-
-Module MonadStateRun.
-Record mixin_of S (M : runMonad S) (get : M S) (put : S -> M unit) : Type := Mixin {
-  _ : forall s, Run get s = (s, s) ;
-  _ : forall s s', Run (put s') s = (tt, s') ;
-}.
-Record class_of S (m : Type -> Type) := Class {
-  base : MonadState.class_of S m ;
-  mixin_run : MonadRun.mixin_of S (Monad.Pack (MonadState.base base)) ;
-  mixin_stateRun : @mixin_of S (MonadRun.Pack (MonadRun.Class mixin_run)) (@Get _ (MonadState.Pack base)) (@Put _ (MonadState.Pack base)) ;
-}.
-Structure t S : Type := Pack { m : Type -> Type ;
-  class : class_of S m }.
-Definition baseType S (M : t S) := MonadState.Pack (base (class M)).
-Module Exports.
-Notation stateRunMonad := t.
-Coercion baseType : stateRunMonad >-> stateMonad.
-Canonical baseType.
-Definition state_of_run S (M : stateRunMonad S) : runMonad S :=
-  MonadRun.Pack (MonadRun.Class (mixin_run (class M))).
-Canonical state_of_run.
-End Exports.
-End MonadStateRun.
-Export MonadStateRun.Exports.
-
-Section staterun_lemmas.
-Variables (S : Type) (M : stateRunMonad S).
-Lemma runget : forall s, Run (Get : M _) s = (s, s).
-Proof. by case: M => m [? ? []]. Qed.
-Lemma runput : forall s s', Run (Put s' : M _) s = (tt, s').
-Proof. by case: M => m [? ? []]. Qed.
-End staterun_lemmas.
-
-Module MonadNondetState.
-Record mixin_of (M : nondetMonad) : Type := Mixin {
-  (* backtrackable state *)
-  _ : BindLaws.right_zero (@Bind M) (@Fail _) ;
-  (* composition distributes rightwards over choice *)
-  _ : BindLaws.right_distributive (@Bind M) [~p]
-}.
-Record class_of S (m : Type -> Type) : Type := Class {
-  base : MonadNondet.class_of m ;
-  mixin_state : MonadState.mixin_of S (MonadFail.baseType (MonadNondet.baseType (MonadNondet.Pack base))) ;
-  mixin_nondetState : mixin_of (MonadNondet.Pack base)
-}.
-Structure t S : Type := Pack { m : Type -> Type ; class : class_of S m }.
-Definition baseType S (M : t S) := MonadNondet.Pack (base (class M)).
-Module Exports.
-Notation nondetStateMonad := t.
-Coercion baseType : nondetStateMonad >-> nondetMonad.
-Canonical baseType.
-Definition state_of_nondetstate S (M : nondetStateMonad S) :=
-  MonadState.Pack (MonadState.Class (mixin_state (class M))).
-Canonical state_of_nondetstate.
-End Exports.
-End MonadNondetState.
-Export MonadNondetState.Exports.
-
-Section nondetstate_lemmas.
-Variables (S : Type) (M : nondetStateMonad S).
-Lemma bindmfail : BindLaws.right_zero (@Bind M) (@Fail _).
-Proof. by case: M => m [? ? [? ?]]. Qed.
-Lemma alt_bindDr : BindLaws.right_distributive (@Bind M) (@Alt _).
-Proof. by case: M => m [? ? []]. Qed.
-End nondetstate_lemmas.
 
 Lemma getput_prepend S (M : nondetStateMonad S) A (m : M A) :
   m = Get >>= (fun x => Put x >> m).
@@ -634,35 +426,8 @@ Definition seq_disjoint {A : eqType} : pred [eqType of (seq A)`2] :=
 Lemma intersect0s (A : eqType) (s : seq A) : intersect [::] s = [::].
 Proof. by elim: s. Qed.
 
-Module MonadFresh.
-Record mixin_of (S : eqType) (m : Type -> Type) : Type := Mixin {
-  fresh : m S }.
-Record class_of S (m : Type -> Type) : Type := Class {
-  base : Monad.class_of m ;
-  mixin : mixin_of S m }.
-Structure t S := Pack { m : Type -> Type ; class : class_of S m }.
-Definition baseType S (M : t S) := Monad.Pack (base (class M)).
-Module Exports.
-Definition Fresh S (M : t S) : m M S :=
-  let: Pack _ (Class _ (Mixin x)) := M return m M S in x.
-Arguments Fresh {S M} : simpl never.
-Notation freshMonad := t.
-Coercion baseType : freshMonad >-> monad.
-Canonical baseType.
-End Exports.
-End MonadFresh.
-Export MonadFresh.Exports.
-
 Definition promotable A (p : pred (seq A)) (q : pred (seq A * seq A)) :=
   forall s t, p s -> p t -> p (s ++ t) = q (s, t).
-
-Module segment_closed.
-Record t A := mk {
-  p : pred (seq A) ;
-  H : forall a b, p (a ++ b) -> p a /\ p b }.
-End segment_closed.
-Definition segment_closed_p A := @segment_closed.p A.
-Coercion segment_closed_p : segment_closed.t >-> pred.
 
 Lemma segment_closed_suffix A (p : segment_closed.t A) s :
   ~~ p s -> forall t, ~~ p (s ++ t).
@@ -775,49 +540,6 @@ Qed.
 
 End examples_promotable_segment_closed.
 
-Module MonadFailFresh.
-Record mixin_of S (M : failMonad) (fresh : M S) : Type := Mixin {
-  symbols := fun n => sequence (nseq n fresh);
-  (* generated symbols are indeed fresh (specification of fresh) *)
-  distinct : segment_closed.t S ;
-  _ : bassert distinct \o symbols = symbols ;
-  (* failure is a right zero of composition (backtracking interpretation) *)
-  _ : BindLaws.right_zero (@Bind M) (@Fail _)
-}.
-Record class_of S (m : Type -> Type) := Class {
-  base : MonadFail.class_of m ;
-  mixin : MonadFresh.mixin_of S m ;
-  ext : @mixin_of S (MonadFail.Pack base) (MonadFresh.fresh mixin)
-}.
-Structure t S : Type := Pack { m : Type -> Type ; class : class_of S m }.
-Definition baseType S (M : t S) := MonadFail.Pack (base (class M)).
-Module Exports.
-Definition Symbols S (M : t S) :=
-  let: Pack _ (Class _ _ (Mixin x _ _ _)) := M return nat -> m M (seq S) in x.
-Arguments Symbols {S M} : simpl never.
-Definition Distinct S (M : t S) :=
-  let: Pack _ (Class _ _ (Mixin _ x _ _)) := M return segment_closed.t S in x.
-Arguments Distinct {S} M : simpl never.
-Notation failFreshMonad := t.
-Coercion baseType : failFreshMonad >-> failMonad.
-Canonical baseType.
-Definition fresh_of_failfresh S (M : failFreshMonad S) : MonadFresh.t S :=
-  @MonadFresh.Pack _ (MonadFailFresh.m M)
-  (MonadFresh.Class (Monad.class (MonadFail.baseType (baseType M)))
-                    (mixin (class M))).
-Canonical fresh_of_failfresh.
-End Exports.
-End MonadFailFresh.
-Export MonadFailFresh.Exports.
-
-Section failfresh_lemmas.
-Variables (S : eqType) (M : failFreshMonad S).
-Lemma failfresh_bindmfail : BindLaws.right_zero (@Bind M) (@Fail _).
-Proof. by case: M => m [? ? []]. Qed.
-Lemma bassert_symbols : bassert (Distinct M) \o Symbols = Symbols :> (nat -> M _).
-Proof. by case: M => m [? ? []]. Qed.
-End failfresh_lemmas.
-
 Section properties_of_Symbols.
 Variables (A : eqType) (M : failFreshMonad A).
 
@@ -870,71 +592,6 @@ by rewrite_ bindretf.
 Qed.
 
 End properties_of_Symbols.
-
-Module MonadArray.
-Record mixin_of S (I : eqType) (M : monad) : Type := Mixin {
-  get : I -> M S ;
-  put : I -> S -> M unit ;
-  _ : forall i s s', put i s >> put i s' = put i s' ;
-  _ : forall i s (A : Type) (k : S -> M A), put i s >> get i >>= k =
-      put i s >> k s ;
-  _ : forall i, get i >>= put i = skip ;
-  _ : forall i (A : Type) (k : S -> S -> M A),
-    get i >>= (fun s => get i >>= k s) = get i >>= fun s => k s s ;
-  _ : forall i j (A : Type) (k : S -> S -> M A),
-    get i >>= (fun u => get j >>= (fun v => k u v)) =
-    get j >>= (fun v => get i >>= (fun u => k u v)) ;
-  _ : forall i j u v, (i != j) \/ (u = v) ->
-    put i u >> put j v = put j v >> put i u ;
-  _ : forall i j u (A : Type) (k : S -> M A), i != j ->
-    put i u >> get j >>= k =
-    get j >>= (fun v => put i u >> k v)
-}.
-Record class_of S (I : eqType) (m : Type -> Type) := Class {
-  base : Monad.class_of m ; mixin : mixin_of S I (Monad.Pack base) }.
-Structure t S (I : eqType) : Type :=
-  Pack { m : Type -> Type ; class : class_of S I m }.
-(* inheritance *)
-Definition baseType S I (M : t S I) := Monad.Pack (base (class M)).
-Module Exports.
-Definition aGet S I (M : t S I) : I -> m M S :=
-  let: Pack _ (Class _ (Mixin x _ _ _ _ _ _ _ _)) := M return I -> m M S in x.
-Arguments aGet {S I M} : simpl never.
-Definition aPut S I (M : t S I) : I -> S -> m M unit :=
-  let: Pack _ (Class _ (Mixin _ x _ _ _ _ _ _ _ )) := M
-    return I -> S -> m M unit in x.
-Arguments aPut {S I M} : simpl never.
-Notation arrayMonad := t.
-Coercion baseType : arrayMonad >-> monad.
-Canonical baseType.
-End Exports.
-End MonadArray.
-Export MonadArray.Exports.
-
-Section monadarray_lemmas.
-Variables (S : Type) (I : eqType) (M : arrayMonad S I).
-Lemma aputput i s s' : aPut i s >> aPut i s' = aPut i s' :> M _.
-Proof. by case: M => ? [? []]. Qed.
-Lemma aputget i s A (k : S -> M A) : aPut i s >> aGet i >>= k =
-    aPut i s >> k s :> M _.
-Proof. by case: M k => ? [? []]. Qed.
-Lemma agetputskip i : aGet i >>= aPut i = skip :> M _.
-Proof. by case: M => ? [? []]. Qed.
-Lemma agetget i A (k : S -> S -> M A) :
-  aGet i >>= (fun s => aGet i >>= k s) = aGet i >>= fun s => k s s.
-Proof. by case: M k => ? [? []]. Qed.
-Lemma agetC i j A (k : S -> S -> M A) :
-  aGet i >>= (fun u => aGet j >>= (fun v => k u v)) =
-  aGet j >>= (fun v => aGet i >>= (fun u => k u v)).
-Proof. by case: M k => ? [? []]. Qed.
-Lemma aputC i j u v : i != j \/ u = v ->
-  aPut i u >> aPut j v = aPut j v >> aPut i u :> M _.
-Proof. by case: M i j u v => ? [? []]. Qed.
-Lemma aputgetC i j u A (k : S -> M A) : i != j ->
-  aPut i u >> aGet j >>= (fun v => k v) =
-  aGet j >>= (fun v => aPut i u >> k v).
-Proof. by case: M i j u A k => ? [? []]. Qed.
-End monadarray_lemmas.
 
 Section monadarray_example.
 Local Open Scope do_notation.

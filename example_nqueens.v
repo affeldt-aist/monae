@@ -2,7 +2,7 @@ Require Import ZArith.
 From mathcomp Require Import all_ssreflect.
 From mathcomp Require boolp.
 From infotheo Require Import ssrZ.
-Require Import monae_lib monad fail_monad state_monad.
+Require Import monae_lib hierarchy monad fail_monad state_monad.
 
 (******************************************************************************)
 (*                            N-queens example                                *)

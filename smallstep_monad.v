@@ -1,14 +1,15 @@
 Require Import ssreflect ssrfun ssrbool Eqdep List.
 Import ListNotations.
-Require Import monad state_monad trace_monad smallstep.
+Require Import hierarchy monad state_monad trace_monad smallstep.
 From mathcomp Require Import ssrnat seq.
 
-(* contents:
-  Denotation of the imperative language given in terms of the state/trace monad.
-  Prove that the small-step semantics is equivalent to the denotation.
-  1. Section DenotationalSemantics
-  2. Section semantics_equivalence
-*)
+(******************************************************************************)
+(* contents:                                                                  *)
+(* Denotation of the imperative language given in terms of the state/trace    *)
+(* monad.Prove that the small-step semantics is equivalent to the denotation. *)
+(* 1. Section DenotationalSemantics                                           *)
+(* 2. Section semantics_equivalence                                           *)
+(******************************************************************************)
 
 Set Bullet Behavior "Strict Subproofs".
 

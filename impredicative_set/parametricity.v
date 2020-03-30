@@ -2,6 +2,7 @@ Declare ML Module "paramcoq".
 
 From mathcomp Require Import all_ssreflect.
 Require Import hierarchy monad mmt_sect5 monad_model.
+Import Univ.
 
 Unset Universe Checking.
 Set Bullet Behavior "Strict Subproofs".
@@ -11,17 +12,17 @@ Module Identity.
 
 Section Naturality.
 
-Variable A : Type.
+Variable A : UU1.
 
 Realizer A as A_R := (@eq A).
 
-Definition M (X : Type) : Type :=
+Definition M (X : UU1) : UU1 :=
 ltac:(
   let t := constr:(ModelMonad.identity X) in
   let t := eval cbn in t in
   exact t).
 
-Definition T : Type := k_type M A.
+Definition T : UU1 := k_type M A.
 
 Parametricity T arity 2.
 
@@ -52,18 +53,18 @@ Module Exception.
 
 Section Naturality.
 
-Variables E A : Type.
+Variables E A : UU1.
 
 Realizer E as E_R := (@eq E).
 Realizer A as A_R := (@eq A).
 
-Definition M (X : Type) : Type := 
+Definition M (X : UU1) : UU1 := 
 ltac:(
   let t := constr:(ModelMonad.Except.t E X) in
   let t := eval cbn in t in
   exact t).
 
-Definition T : Type := k_type M A.
+Definition T : UU1 := k_type M A.
 
 Parametricity Recursive T arity 2.
 
@@ -103,11 +104,11 @@ Module Option.
 
 Section Naturality.
 
-Variable A : Type.
+Variable A : UU1.
 
-Definition M (X : Type) : Type := ModelMonad.option_monad X.
+Definition M (X : UU1) : UU1 := ModelMonad.option_monad X.
 
-Definition T : Type := k_type M A.
+Definition T : UU1 := k_type M A.
 
 Variable m : T.
 
@@ -127,17 +128,17 @@ Module List.
 
 Section Naturality.
 
-Variable A : Type.
+Variable A : UU1.
 
 Realizer A as A_R := (@eq A).
 
-Definition M (X : Type) : Type :=
+Definition M (X : UU1) : UU1 :=
 ltac:(
   let t := constr:(ModelMonad.ListMonad.t X) in
   let t := eval cbn in t in
   exact t).
 
-Definition T : Type := k_type M A.
+Definition T : UU1 := k_type M A.
 
 Parametricity Recursive T arity 2.
 
@@ -199,7 +200,7 @@ ltac:(
   let t := eval cbn in t in
   exact t).
 
-Definition T : Type := k_type M A.
+Definition T : UU1 := k_type M A.
 
 Parametricity Recursive T arity 2.
 

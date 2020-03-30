@@ -15,9 +15,11 @@ Set Implicit Arguments.
 Unset Strict Implicit.
 Unset Printing Implicit Defensive.
 
-Definition Squaring (A : Type) := (A * A)%type.
+Import Univ.
+
+Definition Squaring (A : UU0) := (A * A)%type.
 Notation "A `2" := (Squaring A).
-Definition squaring_f (A B : Type) (f : A -> B) : A`2 -> B`2 := fun x => (f x.1, f x.2).
+Definition squaring_f (A B : UU0) (f : A -> B) : A`2 -> B`2 := fun x => (f x.1, f x.2).
 Lemma squaring_f_id : FunctorLaws.id squaring_f.
 Proof. by move=> A /=; rewrite boolp.funeqE => -[x1 x2]. Qed.
 Lemma squaring_f_comp : FunctorLaws.comp squaring_f.
@@ -25,12 +27,12 @@ Proof. by move=> A B C g h /=; rewrite boolp.funeqE => -[x1 x2]. Qed.
 Definition squaring : functor :=
   Functor.Pack (Functor.Mixin squaring_f_id squaring_f_comp).
 Notation "f ^`2" := (squaring # f).
-Lemma squaringE (A B : Type) (f : A -> B) x : (f ^`2) x = (f x.1, f x.2).
+Lemma squaringE (A B : UU0) (f : A -> B) x : (f ^`2) x = (f x.1, f x.2).
 Proof. by []. Qed.
 
 Section curry_functor.
-Definition curry_M (X : Type) : Type -> Type := fun B => (X * B)%type.
-Definition curry_f (X A B : Type) (f : A -> B) : curry_M X A -> curry_M X B :=
+Definition curry_M (X : UU0) : UU0 -> UU0 := fun B => (X * B)%type.
+Definition curry_f (X A B : UU0) (f : A -> B) : curry_M X A -> curry_M X B :=
   fun x : X * A => (x.1, f x.2).
 Lemma curry_f_id X : FunctorLaws.id (@curry_f X).
 Proof.
@@ -45,8 +47,8 @@ Definition curry_F X : functor :=
 End curry_functor.
 
 Section uncurry_functor.
-Definition uncurry_M (X : Type) : Type -> Type := fun B => X -> B.
-Definition uncurry_f (X A B : Type) (f : A -> B) : uncurry_M X A -> uncurry_M X B :=
+Definition uncurry_M (X : UU0) : UU0 -> UU0 := fun B => X -> B.
+Definition uncurry_f (X A B : UU0) (f : A -> B) : uncurry_M X A -> uncurry_M X B :=
   fun g : X -> A => f \o g.
 Lemma uncurry_f_id X : FunctorLaws.id (@uncurry_f X).
 Proof.
@@ -63,9 +65,9 @@ Definition uncurry_F X : functor :=
 End uncurry_functor.
 
 Section exponential_functor.
-Variable A : Type.
-Definition exponential_M (X : Type) := A -> X.
-Definition exponential_f (X Y : Type) (f : X -> Y) :
+Variable A : UU0.
+Definition exponential_M (X : UU0) := A -> X.
+Definition exponential_f (X Y : UU0) (f : X -> Y) :
   exponential_M X -> exponential_M Y := fun e => f \o e.
 Lemma exponential_f_id : FunctorLaws.id exponential_f. Proof. by []. Qed.
 Lemma exponential_f_comp : FunctorLaws.comp exponential_f.
@@ -74,7 +76,7 @@ Definition exponential_F : functor :=
   Functor.Pack (Functor.Mixin exponential_f_id exponential_f_comp).
 End exponential_functor.
 
-Lemma fmap_oE (M : functor) (A B C : Type) (f : A -> B) (g : C -> A) (m : M C) :
+Lemma fmap_oE (M : functor) (A B C : UU0) (f : A -> B) (g : C -> A) (m : M C) :
   (M # (f \o g)) m = (M # f) ((M # g) m).
 Proof. by rewrite functor_o. Qed.
 
@@ -119,7 +121,7 @@ Notation "f \h g" := (HComp g f).
 Section functor_natural_transformation.
 Variables (S F G : functor) (nt : F ~> G).
 Definition fun_app_nt : S \O F ~~> S \O G :=
-  fun (A : Type) => S # (nt A).
+  fun (A : UU0) => S # (nt A).
 Lemma natural_fun_app_nt : naturality (S \O F) (S \O G) fun_app_nt.
 Proof.
 by move=> *; rewrite /fun_app_nt 2!FCompE -2!(functor_o S) natural.
@@ -168,8 +170,8 @@ Record t := mk {
 End adjointfunctor.
 Section lemmas.
 Variables (F G : functor) (H : t F G).
-Definition hom_iso (A B : Type) (h : F A -> B) : A -> G B := (G # h) \o @eta _ _ H A.
-Definition hom_inv (A B : Type) (h : A -> G B) : F A -> B := @eps _ _ H B \o (F # h).
+Definition hom_iso (A B : UU0) (h : F A -> B) : A -> G B := (G # h) \o @eta _ _ H A.
+Definition hom_inv (A B : UU0) (h : A -> G B) : F A -> B := @eps _ _ H B \o (F # h).
 End lemmas.
 End AdjointFunctor.
 Arguments AdjointFunctor.t : clear implicits.
@@ -177,13 +179,13 @@ Arguments AdjointFunctor.t : clear implicits.
 Notation "F -| G" := (AdjointFunctor.t F G).
 
 Section adjoint_example.
-Variable (X : Type).
+Variable (X : UU0).
 Lemma curry_naturality :
   naturality (curry_F X \O uncurry_F X) FId (fun A (af : X * (X -> A)) => af.2 af.1).
 Proof. by []. Qed.
 Definition curry_eps : eps_type (curry_F X) (uncurry_F X) := Natural.Pack (Natural.Mixin curry_naturality).
 Lemma curry_naturality2 :
-  naturality FId (uncurry_F X \O curry_F X) (fun (A : Type) (a : A) => pair^~ a).
+  naturality FId (uncurry_F X \O curry_F X) (fun (A : UU0) (a : A) => pair^~ a).
 Proof. by []. Qed.
 Definition curry_eta : eta_type (curry_F X) (uncurry_F X) := Natural.Pack (Natural.Mixin curry_naturality2).
 Lemma adjoint_currry : curry_F X -| uncurry_F X.
@@ -272,7 +274,7 @@ Let eta : eta_type F U := AdjointFunctor.eta H.
 Let eps : eps_type F U := AdjointFunctor.eps H.
 
 Lemma uni_naturality :
-  naturality FId ((U0 \O U) \O (F \O F0)) (fun A : Type => U0 # eta (F0 A) \o eta0 A).
+  naturality FId ((U0 \O U) \O (F \O F0)) (fun A : UU0 => U0 # eta (F0 A) \o eta0 A).
 Proof.
 move=> A B h; rewrite FIdf.
 rewrite -[in RHS]compA -[in RHS](natural (AdjointFunctor.eta H0)) compA [in RHS]compA.
@@ -286,7 +288,7 @@ Qed.
 Let uni : @eta_type (F \O F0) (U0 \O U) := Natural.Pack (Natural.Mixin uni_naturality).
 
 Lemma couni_naturality :
-  naturality ((F \O F0) \O (U0 \O U)) FId (fun A : Type => eps A \o F # eps0 (U A)).
+  naturality ((F \O F0) \O (U0 \O U)) FId (fun A : UU0 => eps A \o F # eps0 (U A)).
 Proof.
 move=> A B h.
 rewrite [in LHS]compA {}(natural (AdjointFunctor.eps H)) -compA.
@@ -325,12 +327,12 @@ Module Monad_of_ret_bind.
 Section monad_of_ret_bind.
 Variable M : functor.
 Variable ret : FId ~> M.
-Variable bind : forall (A B : Type), M A -> (A -> M B) -> M B.
+Variable bind : forall (A B : UU0), M A -> (A -> M B) -> M B.
 Hypothesis bindretf : BindLaws.left_neutral bind ret.
 Hypothesis bindmret : BindLaws.right_neutral bind ret.
 Hypothesis bindA : BindLaws.associative bind.
 
-Definition Map (A B : Type) (f : A -> B) (m : M A) := bind m (@ret B \o f).
+Definition Map (A B : UU0) (f : A -> B) (m : M A) := bind m (@ret B \o f).
 Lemma Map_id : FunctorLaws.id Map.
 Proof. by move=> A; rewrite boolp.funeqE => m; rewrite /Map bindmret. Qed.
 Lemma Map_o : FunctorLaws.comp Map.
@@ -342,7 +344,7 @@ Qed.
 Definition functor_mixin := Functor.Mixin Map_id Map_o.
 Let M' := Functor.Pack functor_mixin.
 
-Lemma MapE (A B : Type) (f : A -> B) m : (M' # f) m = bind m (ret B \o f).
+Lemma MapE (A B : UU0) (f : A -> B) m : (M' # f) m = bind m (ret B \o f).
 Proof. by []. Qed.
 
 Lemma naturality_ret : naturality FId M' ret.
@@ -353,13 +355,13 @@ Qed.
 
 Let ret' : FId ~> M' := Natural.Pack (Natural.Mixin naturality_ret).
 
-Let bind_Map (A B C : Type) (f : A -> B) (m : M A) (g : B -> M C) :
+Let bind_Map (A B C : UU0) (f : A -> B) (m : M A) (g : B -> M C) :
   bind (Map f m) g = bind m (g \o f).
 Proof.
 rewrite /Map bindA; congr bind; by rewrite boolp.funeqE => ?; rewrite bindretf.
 Qed.
 
-Lemma naturality_join : naturality (M' \O M') M' (fun A : Type => (bind (B:=A))^~ id).
+Lemma naturality_join : naturality (M' \O M') M' (fun A : UU0 => (bind (B:=A))^~ id).
 Proof.
 move=> A B h; rewrite boolp.funeqE => mma.
 by rewrite /Fun 2!compE /Map bind_Map [in LHS] bindA.
@@ -367,7 +369,7 @@ Qed.
 
 Definition join : M' \O M' ~> M' := Natural.Pack (Natural.Mixin naturality_join).
 
-Let bindE (A B : Type) m (f : A -> M' B) : bind m f = join _ ((M' # f) m).
+Let bindE (A B : UU0) m (f : A -> M' B) : bind m f = join _ ((M' # f) m).
 Proof. by rewrite /join /= bind_Map. Qed.
 
 Lemma joinretM : JoinLaws.left_unit ret' join.
@@ -433,7 +435,7 @@ Lemma mpairE (M : monad) A (mx my : M A) :
   mpair (mx, my) = mx >>= (fun x => my >>= fun y => Ret (x, y)).
 Proof. by []. Qed.
 
-Lemma naturality_mpair (M : monad) (A B : Type) (f : A -> B) (g : A -> M A):
+Lemma naturality_mpair (M : monad) (A B : UU0) (f : A -> B) (g : A -> M A):
   (M # f^`2) \o (mpair \o g^`2) = mpair \o ((M # f) \o g)^`2.
 Proof.
 rewrite boolp.funeqE => -[a0 a1].

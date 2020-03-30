@@ -50,11 +50,13 @@ Local Open Scope monae_scope.
 
 Reserved Notation "E .-aoperation M" (at level 2, format "E  .-aoperation  M").
 
+Import Univ.
+
 Module MonadMLaws.
 Section monadmlaws.
 Variables (M N : monad).
-Definition ret (e : M ~~> N) := forall A : Type, e A \o Ret = Ret.
-Definition bind (e : M ~~> N) := forall (A B : Type) (m : M A) (f : A -> M B),
+Definition ret (e : M ~~> N) := forall A : UU0, e A \o Ret = Ret.
+Definition bind (e : M ~~> N) := forall (A B : UU0) (m : M A) (f : A -> M B),
     e B (m >>= f) = e A m >>= (e B \o f).
 End monadmlaws.
 End MonadMLaws.
@@ -112,15 +114,15 @@ Section state_monad_transformer.
 
 Local Obligation Tactic := idtac.
 
-Variables (S : Type) (M : monad).
+Variables (S : UU0) (M : monad).
 
-Definition MS := fun A : Type => S -> M (A * S)%type.
+Definition MS := fun A : UU0 => S -> M (A * S)%type.
 
-Definition retS (A : Type) : A -> MS A := curry Ret.
+Definition retS (A : UU0) : A -> MS A := curry Ret.
 
 Definition bindS A B (m : MS A) f : MS B := fun s => m s >>= uncurry f.
 
-Definition MS_fmap (A B : Type) (f : A -> B) (m : MS A) : MS B :=
+Definition MS_fmap (A B : UU0) (f : A -> B) (m : MS A) : MS B :=
   (M # (fun x => (f x.1, x.2))) \o m.
 
 Lemma MS_id : FunctorLaws.id MS_fmap.
@@ -188,9 +190,9 @@ Section exception_monad_transformer.
 
 Local Obligation Tactic := idtac.
 
-Variables (Z : Type) (* the type of exceptions *) (M : monad).
+Variables (Z : UU0) (* the type of exceptions *) (M : monad).
 
-Definition MX := fun X : Type => M (Z + X)%type.
+Definition MX := fun X : UU0 => M (Z + X)%type.
 
 Definition retX X x : MX X := Ret (inr x).
 
@@ -198,7 +200,7 @@ Definition bindX X Y (t : MX X) (f : X -> MX Y) : MX Y :=
   t >>= fun c => match c with inl z => Ret (inl z) | inr x => f x end.
 
 Local Open Scope mprog.
-Definition MX_map (A B : Type) (f : A -> B) : MX A -> MX B :=
+Definition MX_map (A B : UU0) (f : A -> B) : MX A -> MX B :=
   M # (fun x => match x with inl y => inl y | inr y => inr (f y) end).
 Local Close Scope mprog.
 
@@ -262,15 +264,15 @@ Section continuation_monad_tranformer.
 
 Local Obligation Tactic := idtac.
 
-Variables (r : Type) (M : monad).
+Variables (r : UU0) (M : monad).
 
-Definition MC : Type -> Type := fun A => (A -> M r) -> M r %type.
+Definition MC : UU0 -> UU0 := fun A => (A -> M r) -> M r %type.
 
-Definition retC (A : Type) (a : A) : MC A := fun k => k a.
+Definition retC (A : UU0) (a : A) : MC A := fun k => k a.
 
 Definition bindC A B (m : MC A) f : MC B := fun k => m (f^~ k).
 
-Definition MC_map (A B : Type) (f : A -> B) (m : MC A) : MC B.
+Definition MC_map (A B : UU0) (f : A -> B) (m : MC A) : MC B.
 move=> Br; apply m => a.
 apply Br; exact: (f a).
 Defined.
@@ -429,10 +431,12 @@ End continuation_monad_transformer_examples.
 
 Require Import monad_model.
 
+(*yyy
+
 Lemma functor_ext (F G : functor) :
   forall (H : Functor.m F = Functor.m G),
   Functor.f (Functor.class G) =
-  eq_rect _ (fun m => forall A B, (A -> B) -> m A -> m B) (Functor.f (Functor.class F)) _ H  ->
+  eq_rect _ (fun m => forall A B : UU0, (A -> B) -> m A -> m B) (Functor.f (Functor.class F)) _ H  ->
   G = F.
 Proof.
 move: F G => [F [HF1 HF2 HF3]] [G [HG1 HG2 HG3]] /= H; subst G => /= ?; subst HG1.
@@ -623,6 +627,9 @@ Qed.
 
 End instantiations_with_the_identity_monad.
 
+yyy*)
+
+
 Section calcul.
 
 Let contTi := @contT^~ ModelMonad.identity.
@@ -652,7 +659,7 @@ Section lifting.
 Variables (E : functor) (M : monad) (op : E.-operation M)
           (N : monad) (e : monadM M N).
 Definition lifting (f : E \O N ~~> N) :=
-  forall X : Type, e X \o op X = f X \o (E # e X).
+  forall X : UU0, e X \o op X = f X \o (E # e X).
 End lifting.
 
 Section liftingt.
@@ -664,7 +671,7 @@ End liftingt.
 Section algebraicity.
 Variables (E : functor) (M : monad).
 Definition algebraicity (op : E.-operation M) :=
-  forall (A B : Type) (f : A -> M B) (t : E (M A)),
+  forall (A B : UU0) (f : A -> M B) (t : E (M A)),
     op A t >>= f = op B ((E # (fun m => m >>= f)) t).
 End algebraicity.
 
@@ -953,7 +960,7 @@ End theorem19.
 Section examples_of_lifting.
 
 Section state_errorT.
-Variables S Z : Type.
+Variables S Z : UU0.
 Let M : monad := ModelState.state S.
 Let erZ : monadT := errorT Z.
 
@@ -972,7 +979,7 @@ Abort.
 End state_errorT.
 
 Section continuation_stateT.
-Variable (r S : Type).
+Variable (r S : UU0).
 Let M : monad := ModelCont.t r.
 Let stS : monadT := stateT S.
 
@@ -986,7 +993,7 @@ rewrite /lift_acallccS /=.
 by rewrite /stS /= /stateT /= /stateMonadM /=; unlock => /=.
 Abort.
 
-Definition usual_callccS A B (f : (A -> stS M B) -> stS M A) : stS M A :=
+Definition usual_callccS (A B : UU0) (f : (A -> stS M B) -> stS M A) : stS M A :=
   fun s k => f (fun x _ _ => k (x, s)) s k.
 
 Lemma callccS_E A B f : @lift_acallccS _
@@ -1123,9 +1130,9 @@ Proof. by case: T => [? []]. Qed.
 End fmt_lemmas.
 
 Section error_FMT.
-Variable X : Type.
+Variable X : UU0.
 Let T : monadT := errorT X.
-Let hmapX' (F G : monad) (tau : F ~> G) (A : Type) (t : T F A) : T G A :=
+Let hmapX' (F G : monad) (tau : F ~> G) (A : UU0) (t : T F A) : T G A :=
   tau _ t.
 
 Lemma natural_hmapX' (F G : monad) (tau : F ~> G) :
@@ -1209,9 +1216,9 @@ Program Definition errorFMT : FMT := @Fmt.Pack (errorT X)
 End error_FMT.
 
 Section Fmt_stateT.
-Variable S : Type.
+Variable S : UU0.
 Let T : monadT := stateT S.
-Definition hmapS' (F G : monad) (tau : F ~> G) (A : Type) (t : T F A) : T G A :=
+Definition hmapS' (F G : monad) (tau : F ~> G) (A : UU0) (t : T F A) : T G A :=
   fun s => tau _ (t s).
 
 Lemma natural_hmapS' (F G : monad) (tau : F ~> G) :

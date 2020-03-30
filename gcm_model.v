@@ -660,6 +660,7 @@ Proof. by rewrite eps0E Convn_of_FSDist_FSDist1. Qed.
 End P_delta_functor.
 
 Require monad.
+Require Import hierarchy.
 
 Section P_delta_category_monad.
 Import category.
@@ -671,7 +672,7 @@ Definition Mgcm := Monad_of_adjoint Agcm.
 Definition gcm := Monad_of_category_monad Mgcm.
 
 Section gcm_opsE.
-Import monad.
+Import hierarchy.
 
 Lemma gcm_retE (T : Type) (x : choice_of_Type T) :
   Ret x = necset1 (FSDist1.d x) :> gcm T.

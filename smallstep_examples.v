@@ -1,11 +1,12 @@
-(*
-  Concrete examples of programs and their small-step and denotational semantics.
-*)
-
 Require Import ZArith List ssreflect.
 Import ListNotations.
-Require Import monad state_monad trace_monad.
+Require Import hierarchy monad state_monad trace_monad.
 Require Import smallstep smallstep_monad monad_model.
+
+(******************************************************************************)
+(*  Concrete examples of programs and their small-step and denotational       *)
+(* semantics.                                                                 *)
+(******************************************************************************)
 
 Notation "'eT' x y" := (@existT _ _ x y) (at level 200).
 Notation "'e' x" := (@exist _ _ x _) (at level 200).

@@ -4,10 +4,6 @@ From mathcomp Require Import all_ssreflect.
 From infotheo Require Import ssrZ.
 Require Import hierarchy monad state_monad (*for the run monad*).
 
-(******************************************************************************)
-(*                            Trace monad                                     *)
-(******************************************************************************)
-
 (*
 Contents:
 - Module MonadTrace.
@@ -22,6 +18,8 @@ Unset Strict Implicit.
 Unset Printing Implicit Defensive.
 
 Local Open Scope monae_scope.
+
+Import Univ.
 
 Definition marks T {M : traceMonad T} (l : seq T) : M (seq unit) :=
   sequence (map Mark l).
@@ -58,7 +56,7 @@ End statetrace_program_equivalence_example.
 
 Section statetrace_example.
 Local Open Scope do_notation.
-Variables (T : Type) (M : stateTraceMonad Z T).
+Variables (T : UU0) (M : stateTraceMonad Z T).
 Variables (log0 log1 : T).
 
 Definition monadtrace_example (m0 m1 m2 : M nat) : M nat :=
@@ -79,7 +77,7 @@ Definition assoc_inv {A B C : Type} : A * (B * C) -> (A * B) * C :=
   fun x => ((x.1, x.2.1), x.2.2).
 
 Section relation_statetrace_state_trace.
-Variables (S T : Type) (MN : stateTraceRunMonad S T).
+Variables (S T : UU0) (MN : stateTraceRunMonad S T).
 
 Lemma stGet_Get (M : stateRunMonad S) s :
   Run (stGet : MN _) s = assoc (Run (Get : M _) s.1, s.2).
@@ -111,10 +109,10 @@ Notation "'Drop'" := MonadTrans.drop.
 Module Tracer.
 Record class m (v : traceMonad unit) (mv : MonadTrans.t m v) : Type := Class {
   (* NB: see also monad_transformer.v *)
-  lift_ret : forall A (a : A), Lift mv (Ret a) = Ret a :> v A ;
+  lift_ret : forall (A : UU0) (a : A), Lift mv (Ret a) = Ret a :> v A ;
   lift_bind : forall A B (m0 : m A) (f : A -> m B),
     Lift mv (m0 >>= f) = Lift mv m0 >>= (@MonadTrans.lift _ _ mv _ \o f) :> v B ;
-  drop_ret : forall A (a : A), Drop mv (Ret a) = Ret a :> m A ;
+  drop_ret : forall (A : UU0) (a : A), Drop mv (Ret a) = Ret a :> m A ;
   drop_bind : forall A B (m0 : v B) (f : B -> v A),
     Drop mv (m0 >>= f) = Drop mv m0 >>= (@MonadTrans.drop _ _ mv _ \o f) :> m A ;
   drop_mark : Drop mv (Mark tt) = Ret tt

@@ -2,7 +2,7 @@ From mathcomp Require Import all_ssreflect.
 From mathcomp Require boolp.
 From infotheo Require Import Reals_ext ssr_ext fsdist.
 From infotheo Require convex_choice.
-Require Import monae_lib monad proba_monad.
+Require Import monae_lib hierarchy monad proba_monad.
 
 (******************************************************************************)
 (*                     Model for the probability monad                        *)

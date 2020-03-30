@@ -3,7 +3,7 @@ From mathcomp Require Import all_ssreflect.
 From mathcomp Require boolp.
 From infotheo Require Import ssrR Reals_ext proba.
 From infotheo Require convex_choice.
-Require Import monae_lib monad fail_monad.
+Require Import monae_lib hierarchy monad fail_monad.
 
 (******************************************************************************)
 (*                            Probability monads                              *)
@@ -46,61 +46,7 @@ Unset Printing Implicit Defensive.
 
 Local Open Scope monae_scope.
 Local Open Scope reals_ext_scope.
-
-Module MonadProb.
-Record mixin_of (M : monad) : Type := Mixin {
-  choice : forall (p : prob) T, M T -> M T -> M T
-           where "a <| p |> b" := (choice p a b) ;
-  (* identity axioms *)
-  _ : forall T (a b : M T), a <| 0%:pr |> b = b ;
-  _ : forall T (a b : M T), a <| 1%:pr |> b = a ;
-  (* skewed commutativity *)
-  _ : forall T p (a b : M T), a <| p |> b = b <| p.~%:pr |> a ;
-  _ : forall T p, idempotent (@choice p T) ;
-  (* quasi associativity *)
-  _ : forall T (p q r s : prob) (a b c : M T),
-    (p = r * s :> R /\ s.~ = p.~ * q.~)%R ->
-    a <| p |> (b <| q |> c) = (a <| r |> b) <| s |> c ;
-  (* composition distributes leftwards over [probabilistic] choice *)
-  _ : forall p, BindLaws.left_distributive (@Bind M) (choice p) }.
-Record class_of (m : Type -> Type) := Class {
-  base : Monad.class_of m ; mixin : mixin_of (Monad.Pack base) }.
-Structure t := Pack { m : Type -> Type ; class : class_of m }.
-Definition baseType (M : t) := Monad.Pack (MonadProb.base (class M)).
-Module Exports.
-Definition Choice (M : t) : forall p T, m M T -> m M T -> m M T :=
-  let: Pack _ (Class _ (Mixin x _ _ _ _ _ _ )) := M return
-    forall p T, m M T -> m M T -> m M T in x.
-Arguments Choice {M} : simpl never.
-Notation "a <| p |> b" := (Choice p _ a b) : proba_monad_scope.
-Notation probMonad := t.
-Coercion baseType : probMonad >-> monad.
-Canonical baseType.
-End Exports.
-End MonadProb.
-Export MonadProb.Exports.
-
 Local Open Scope proba_monad_scope.
-
-Section prob_lemmas.
-Variable (M : probMonad).
-Lemma choicemm : forall A p, idempotent (@Choice M p A).
-Proof. by case: M => m [? []]. Qed.
-Lemma choice0 : forall A (mx my : M A), mx <| 0%:pr |> my = my.
-Proof. by case: M => m [? []]. Qed.
-Lemma choice1 : forall A (mx my : M A), mx <| 1%:pr |> my = mx.
-Proof. by case: M => m [? []]. Qed.
-Lemma choiceA A : forall (p q r s : prob) (mx my mz : M A),
-    (p = r * s :> R /\ s.~ = p.~ * q.~)%R ->
-    mx <| p |> (my <| q |> mz) = (mx <| r |> my) <| s |> mz.
-Proof. by case: M A => m [? []]. Qed.
-Lemma choiceC : forall A (p : prob) (mx my : M A), mx <| p |> my = my <| p.~%:pr |> mx.
-Proof. by case: M => m [? []]. Qed.
-Lemma prob_bindDl p : BindLaws.left_distributive (@Bind M) (Choice p).
-Proof. by case: M => m [? []]. Qed.
-End prob_lemmas.
-Arguments choiceA {M} {A} _ _ _ _ {mx} {my} {mz}.
-Arguments choiceC {M} {A} _ {mx} {my}.
 
 Section convex.
 Variable M : probMonad.
@@ -214,25 +160,6 @@ rewrite choiceC /= (@choice_ext pa) //=.
 rewrite /onem; field.
 Qed.
 
-Module MonadProbDr.
-Record mixin_of (M : probMonad) : Type := Mixin {
-  (* composition distributes rightwards over [probabilistic] choice *)
-  (* WARNING: this should not be asserted as an axiom in conjunction with distributivity of <||> over [] *)
-  prob_bindDr : forall p, BindLaws.right_distributive (@Bind M) (Choice p) (* NB: not used *)
-} .
-Record class_of (m : Type -> Type) := Class {
-  base : MonadProb.class_of m ;
-  mixin : mixin_of (MonadProb.Pack base) }.
-Structure t := Pack { m : Type -> Type; class : class_of m }.
-Definition baseType (M : t) := MonadProb.Pack (base (class M)).
-Module Exports.
-Notation probDrMonad := t.
-Coercion baseType : probDrMonad >-> probMonad.
-Canonical baseType.
-End Exports.
-End MonadProbDr.
-Export MonadProbDr.Exports.
-
 Lemma uniform_inde (M : probMonad) A a (x : seq A) {B} (m : M B) :
   uniform a x >> m = m.
 Proof.
@@ -302,35 +229,6 @@ rewrite [in RHS]/mpair uniform_cat.
 rewrite [in RHS](_ : Prob.mk _ = probinvn m) //.
 by apply prob_ext => /=; rewrite /divRnnm div1R.
 Qed.
-
-Module MonadAltProb.
-Record mixin_of (M : altCIMonad) (f : prob -> forall T, M T -> M T -> M T) := Mixin {
-  _ : forall T p, right_distributive (f p T) (fun a b => a [~] b) }.
-Record class_of (m : Type -> Type) := Class {
-  base : MonadAltCI.class_of m ;
-  mixin_prob : MonadProb.mixin_of (Monad.Pack (MonadAlt.base (MonadAltCI.base base))) ;
-  mixin_altProb : @mixin_of (MonadAltCI.Pack base) (@MonadProb.choice _ mixin_prob) }.
-Structure t : Type := Pack { m : Type -> Type ; class : class_of m }.
-Definition baseType (M : t) : altCIMonad := MonadAltCI.Pack (base (class M)).
-Definition altType (M : t) : altMonad := MonadAlt.Pack (MonadAltCI.base (base (class M))).
-Module Exports.
-Notation altProbMonad := t.
-Coercion baseType : altProbMonad >-> altCIMonad.
-Canonical baseType.
-Definition altprob_is_prob M :=
-  MonadProb.Pack (MonadProb.Class (mixin_prob (class M))).
-Canonical altprob_is_prob.
-Canonical altType.
-End Exports.
-End MonadAltProb.
-Export MonadAltProb.Exports.
-
-Section altprob_lemmas.
-Variable (M : altProbMonad).
-Lemma choiceDr : forall A p,
-  right_distributive (fun x y : M A => x <| p |> y) (fun x y => x [~] y).
-Proof. by case: M => m [? ? []]. Qed.
-End altprob_lemmas.
 
 (* TODO(rei): incipit of section 5 of gibbonsUTP2012 on the model of MonadAltProb *)
 
@@ -441,29 +339,6 @@ by rewrite /bcoin choiceC altC.
 Qed.
 
 End mixing_choices.
-
-Module MonadExceptProb.
-Record mixin_of (M : exceptMonad) (a : prob -> forall A : Type, M A -> M A -> M A) := Mixin {
-  catchDl : forall A w, left_distributive (@Catch M A) (fun x y => a w A x y)
-    (* NB: not used? *)
-}.
-Record class_of (m : Type -> Type) := Class {
-  base : MonadExcept.class_of m ;
-  mixin_prob : MonadProb.mixin_of (Monad.Pack (MonadFail.base (MonadExcept.base base))) ;
-  mixin_exceptProb : @mixin_of (MonadExcept.Pack base) (@Choice (MonadProb.Pack (MonadProb.Class mixin_prob)))
-}.
-Structure t : Type := Pack { m : Type -> Type ; class : class_of m }.
-Definition baseType (M : t) : exceptMonad := MonadExcept.Pack (base (class M)).
-Module Exports.
-Notation exceptProbMonad := t.
-Coercion baseType : exceptProbMonad >-> exceptMonad.
-Canonical baseType.
-Definition prob_of_exceptprob M :=
-  MonadProb.Pack (MonadProb.Class (mixin_prob (class M))).
-Canonical prob_of_exceptprob.
-End Exports.
-End MonadExceptProb.
-Export MonadExceptProb.Exports.
 
 Definition coins23 {M : exceptProbMonad} : M bool :=
   Ret true <| (/ 2)%:pr |> (Ret false <| (/ 2)%:pr |> (Fail : M _)).

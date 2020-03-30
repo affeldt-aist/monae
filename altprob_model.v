@@ -5,7 +5,7 @@ From mathcomp Require Import finmap.
 From infotheo Require Import Reals_ext Rbigop ssrR fdist fsdist convex_choice.
 From infotheo Require Import necset.
 Require category.
-Require Import monae_lib monad fail_monad proba_monad monad_model gcm_model.
+Require Import monae_lib hierarchy monad fail_monad proba_monad monad_model gcm_model.
 
 (******************************************************************************)
 (*                  Model of the monad type altProbMonad                      *)
@@ -152,11 +152,11 @@ transitivity (|_| (hull (\bigcup_(x0 in [set x; y]) x0))%:ne); last first.
 congr (|_| _%:ne); exact/neset_ext.
 Qed.
 
-Lemma bindaltDl : BindLaws.left_distributive (@monad.Bind gcm) alt.
+Lemma bindaltDl : BindLaws.left_distributive (@hierarchy.Bind gcm) alt.
 Proof.
 move=> A B x y k.
-rewrite !monad.bindE /alt FunaltDr.
-suff -> : forall T (u v : gcm (gcm T)), monad.Join (u [+] v : gcm (gcm T)) = monad.Join u [+] monad.Join v by [].
+rewrite !hierarchy.bindE /alt FunaltDr.
+suff -> : forall T (u v : gcm (gcm T)), hierarchy.Join (u [+] v : gcm (gcm T)) = hierarchy.Join u [+] hierarchy.Join v by [].
 move=> T u v.
 rewrite /= /Monad_of_category_monad.join /=.
 rewrite HCompId HIdComp !HCompId !HIdComp.
@@ -250,10 +250,10 @@ rewrite eps1E -lub_op_conv_setD; congr (|_| _); apply/neset_ext => /=.
 by rewrite -necset_convType.conv_conv_set.
 Qed.
 
-Lemma bindchoiceDl p : BindLaws.left_distributive (@monad.Bind gcm) (@choice p).
+Lemma bindchoiceDl p : BindLaws.left_distributive (@hierarchy.Bind gcm) (@choice p).
 move=> A B x y k.
-rewrite !monad.bindE /choice FunpchoiceDr.
-suff -> : forall T (u v : gcm (gcm T)), monad.Join (u <|p|> v : gcm (gcm T)) = monad.Join u <|p|> monad.Join v by [].
+rewrite !hierarchy.bindE /choice FunpchoiceDr.
+suff -> : forall T (u v : gcm (gcm T)), hierarchy.Join (u <|p|> v : gcm (gcm T)) = hierarchy.Join u <|p|> hierarchy.Join v by [].
 move=> T u v.
 rewrite /= /Monad_of_category_monad.join /=.
 rewrite HCompId HIdComp !HCompId !HIdComp.

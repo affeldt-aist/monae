@@ -1206,9 +1206,9 @@ rewrite {1}/f.
 have -> : hom_Type (g \o h) = [hom of hom_Type g \o hom_Type h] by apply hom_ext.
 by rewrite functor_o.
 Qed.
-Definition m' := monad.Functor.Pack (monad.Functor.Mixin fid fcomp).
+Definition m' := hierarchy.Functor.Pack (hierarchy.Functor.Mixin fid fcomp).
 
-Import monad.Functor.Exports.
+Import hierarchy.Functor.Exports.
 
 Definition ret (A : Type) (x : A) : m' A := (@Ret _ M A x).
 Definition join (A : Type) (x : m' (m' A)) := (@Join _ M A x).
@@ -1216,10 +1216,10 @@ Definition join (A : Type) (x : m' (m' A)) := (@Join _ M A x).
 Lemma joinE A (x : m' (m' A)) : join x = @Join _ M A x.
 Proof. by []. Qed.
 
-Lemma ret_nat : monad.naturality monad.FId m' ret.
+Lemma ret_nat : hierarchy.naturality hierarchy.FId m' ret.
 Proof. move=> ? ? ?; exact: (ret_naturality M). Qed.
-Definition _ret_nat : monad.Natural.t monad.FId m' := monad.Natural.Pack (monad.Natural.Mixin ret_nat).
-Lemma join_nat : monad.naturality (monad.FComp m' m') m' join.
+Definition _ret_nat : hierarchy.Natural.t hierarchy.FId m' := hierarchy.Natural.Pack (hierarchy.Natural.Mixin ret_nat).
+Lemma join_nat : hierarchy.naturality (hierarchy.FComp m' m') m' join.
 Proof.
 move=> A B h; apply funext=> x; rewrite /ret /Fun /= /f.
 rewrite -[in LHS]compE join_naturality.
@@ -1229,8 +1229,8 @@ suff -> : [fun of M # (M # hom_Type h)] x = [fun of M # hom_Type (Fun m' h)] x
 congr [fun of M # _].
 by apply/hom_ext/funext.
 Qed.
-Definition _join_nat := monad.Natural.Pack (monad.Natural.Mixin join_nat).
-Lemma joinretM : monad.JoinLaws.left_unit _ret_nat _join_nat.
+Definition _join_nat := hierarchy.Natural.Pack (hierarchy.Natural.Mixin join_nat).
+Lemma joinretM : hierarchy.JoinLaws.left_unit _ret_nat _join_nat.
 Proof.
 by move=> A; apply funext=> x; rewrite /join /ret /= -[in LHS]compE joinretM.
 Qed.
@@ -1258,8 +1258,8 @@ suff -> : (@hom_Type (@Monad.m Type_category M (@Monad.m Type_category M A))
 by apply hom_ext.
 Qed.
 
-Definition m : monad.Monad.t := monad.Monad.Pack
- (monad.Monad.Class (monad.Monad.Mixin joinretM joinMret joinA)).
+Definition m : hierarchy.Monad.t := hierarchy.Monad.Pack
+ (hierarchy.Monad.Class (hierarchy.Monad.Mixin joinretM joinMret joinA)).
 End def.
 Module Exports.
 Notation Monad_of_category_monad := m.

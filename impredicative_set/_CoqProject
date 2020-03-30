@@ -3,6 +3,7 @@
 -arg -w -arg -notation-overridden
 -arg -w -arg -duplicate-clear
 -arg -w -arg -ambiguous-paths
+-arg -impredicative-set
 
 monae_lib.v
 hierarchy.v
@@ -10,20 +11,10 @@ monad.v
 fail_monad.v
 state_monad.v
 trace_monad.v
-proba_monad.v
 monad_composition.v
 monad_model.v
-proba_monad_model.v
-example_spark.v
-example_nqueens.v
-example_relabeling.v
-example_monty.v
-smallstep.v
-smallstep_monad.v
-smallstep_examples.v
-category.v
-gcm_model.v
-altprob_model.v
 monad_transformer.v
+mmt_sect5.v
+parametricity.v
 
 -R . monae
