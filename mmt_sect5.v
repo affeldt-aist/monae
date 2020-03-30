@@ -196,7 +196,7 @@ Let op3 : E \O t M ~> E \O t (K_MonadT M) :=
 
 Definition hlifting : E.-operation (t M) := op1 \v op2 \v op3.
 
-Lemma theoremm27 : lifting_monadT op hlifting.
+Lemma theorem27 : lifting_monadT op hlifting.
 Proof.
 rewrite /lifting_monadT => X.
 rewrite /hlifting.
