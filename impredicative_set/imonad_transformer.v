@@ -427,12 +427,10 @@ End sum.
 
 End continuation_monad_transformer_examples.
 
-(*yyy
-
 Lemma functor_ext (F G : functor) :
   forall (H : Functor.m F = Functor.m G),
   Functor.f (Functor.class G) =
-  eq_rect _ (fun m => forall A B : UU0, (A -> B) -> m A -> m B) (Functor.f (Functor.class F)) _ H  ->
+  eq_rect _ (fun m : UU0 -> UU0 => forall A B : UU0, (A -> B) -> m A -> m B) (Functor.f (Functor.class F)) _ H  ->
   G = F.
 Proof.
 move: F G => [F [HF1 HF2 HF3]] [G [HG1 HG2 HG3]] /= H; subst G => /= ?; subst HG1.
@@ -474,11 +472,11 @@ congr Natural.Pack; exact/boolp.Prop_irrelevance.
 Qed.
 
 Lemma monad_of_ret_bind_ext (F G : functor) (RET1 : FId ~> F) (RET2 : FId ~> G)
-  (bind1 : forall A B : Type, F A -> (A -> F B) -> F B)
-  (bind2 : forall A B : Type, G A -> (A -> G B) -> G B) :
+  (bind1 : forall A B : UU0, F A -> (A -> F B) -> F B)
+  (bind2 : forall A B : UU0, G A -> (A -> G B) -> G B) :
   forall (FG : F = G),
   RET1 = eq_rect _ (fun m => FId ~> m) RET2 _ ((*beuh*) (esym FG)) ->
-  bind1 = eq_rect _ (fun m : functor => forall A B : Type, m A -> (A -> m B) -> m B) bind2 _ (esym FG) ->
+  bind1 = eq_rect _ (fun m : functor => forall A B : UU0, m A -> (A -> m B) -> m B) bind2 _ (esym FG) ->
   forall H1 K1 H2 K2 H3 K3,
   @Monad_of_ret_bind F RET1 bind1 H1 H2 H3 =
   @Monad_of_ret_bind G RET2 bind2 K1 K2 K3.
@@ -493,12 +491,12 @@ Qed.
 
 (* result of a discussion with Maxime and Enrico on 2019-09-12 *)
 Section eq_rect_ret.
-Variable X : Type.
-Let U  : Type := functor.
-Let Q : U -> Type := Functor.m^~ X.
+Variable X : UU0.
+Let U  : UU1 := functor.
+Let Q : U -> UU0 := Functor.m^~ X.
 
 Lemma eq_rect_ret (p p' : U) (K : Q p' = Q p) (x : Q p') (h : p = p') :
-  x = eq_rect p Q (eq_rect _ id x _ K) p' h.
+  x = eq_rect p Q (eq_rect _ (fun X : UU0 => id X) x _ K) p' h.
 Proof.
 by rewrite /eq_rect; destruct h; rewrite (_ : K = erefl) // -Classical_Prop.EqdepTheory.UIP_refl.
 Qed.
@@ -508,16 +506,16 @@ Lemma eq_rect_state_ret S (p := ModelMonad.State.functor S : U)
   (x : Q p') (h : p = p') : x = eq_rect p Q x p' h.
 Proof.
 have K : Q p' = Q p by [].
-rewrite {2}(_ : x = eq_rect _ (fun x => x) x _ K) //; first exact: eq_rect_ret.
+rewrite {2}(_ : x = eq_rect _ (fun x : UU0 => x) x _ K) //; first exact: eq_rect_ret.
 by rewrite /eq_rect (_ : K = erefl) // -Classical_Prop.EqdepTheory.UIP_refl.
 Qed.
 
-Lemma eq_rect_error_ret (E : Type) (p : U := ModelMonad.Except.functor E)
+Lemma eq_rect_error_ret (E : UU0) (p : U := ModelMonad.Except.functor E)
   (p' : U := exceptionT_functor E ModelMonad.identity)
   (x : Q p') (h : p = p') : x = eq_rect p Q x p' h.
 Proof.
 have K : Q p' = Q p by [].
-rewrite {2}(_ : x = eq_rect _ (fun x => x) x _ K) //; first exact: eq_rect_ret.
+rewrite {2}(_ : x = eq_rect _ (fun x : UU0 => x) x _ K) //; first exact: eq_rect_ret.
 by rewrite /eq_rect (_ : K = erefl) // -Classical_Prop.EqdepTheory.UIP_refl.
 Qed.
 
@@ -526,7 +524,7 @@ Lemma eq_rect_cont_ret r (p : U := ModelMonad.Cont.functor r)
   (x : Q p') (h : p = p') : x = eq_rect p Q x p' h.
 Proof.
 have K : Q p' = Q p by [].
-rewrite {2}(_ : x = eq_rect _ (fun x => x) x _ K) //; first exact: eq_rect_ret.
+rewrite {2}(_ : x = eq_rect _ (fun x : UU0 => x) x _ K) //; first exact: eq_rect_ret.
 by rewrite /eq_rect (_ : K = erefl) // -Classical_Prop.EqdepTheory.UIP_refl.
 Qed.
 
@@ -592,7 +590,7 @@ apply (@monad_of_ret_bind_ext _ _ _ _ _ _ FG) => /=.
 set x := @bindS _ _; exact: (@eq_rect_bind_state S x (esym FG)).
 Qed.
 
-Lemma error_monad_errorT (Z : Type) :
+Lemma error_monad_errorT (Z : UU0) :
   errorT Z ModelMonad.identity = ModelMonad.Except.t Z.
 Proof.
 rewrite /= /eexceptionMonadM /ModelMonad.Except.t.
@@ -622,9 +620,6 @@ set x := @bindC _ _; exact: (@eq_rect_bind_cont r x (esym FG)).
 Qed.
 
 End instantiations_with_the_identity_monad.
-
-yyy*)
-
 
 Section calcul.
 
