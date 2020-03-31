@@ -1186,7 +1186,7 @@ End Monad_of_bind_ret.
 Export Monad_of_bind_ret.Exports.
 
 (* interface to monad.v *)
-Require monad.
+Require hierarchy.
 Module Monad_of_category_monad.
 Section def.
 Variable (M : monad Type_category).

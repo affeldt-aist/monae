@@ -1,6 +1,6 @@
 From mathcomp Require Import all_ssreflect.
 From mathcomp Require boolp.
-Require Import imonae_lib ihierarchy imonad ifail_monad istate_monad imonad_model.
+Require Import imonae_lib ihierarchy imonad_lib ifail_lib istate_lib imonad_model.
 
 (******************************************************************************)
 (*                    Formalization of monad transformers                     *)

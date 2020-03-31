@@ -2,7 +2,7 @@ Require Import ZArith.
 From mathcomp Require Import all_ssreflect.
 From mathcomp Require boolp.
 From infotheo Require Import ssrZ.
-Require Import monae_lib hierarchy monad fail_monad.
+Require Import monae_lib hierarchy monad_lib fail_lib.
 
 (******************************************************************************)
 (*              Definitions and lemmas about state monads                     *)
@@ -128,7 +128,7 @@ congr (_ [~] _).
   rewrite bindretf; bind_ext => ?; by rewrite bindretf.
 rewrite -lock.
 transitivity (do x0 <- tselect (h' :: t); do x <- Get;
-   f (x0.1, Tuple (fail_monad.tselect_cons_statement_obligation_2 h H x0)) x)%Do.
+   f (x0.1, Tuple (fail_lib.tselect_cons_statement_obligation_2 h H x0)) x)%Do.
  rewrite -IH; bind_ext => x.
  rewrite bindA;by rewrite_ bindretf.
 rewrite bindA; bind_ext => y; by rewrite bindretf.

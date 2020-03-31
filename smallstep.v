@@ -1,7 +1,7 @@
 Require Import Eqdep JMeq List ssreflect.
 Import ListNotations.
 From mathcomp Require Import ssreflect ssrfun ssrbool eqtype ssrnat seq.
-Require Import hierarchy monad state_monad trace_monad monad_model.
+Require Import hierarchy monad_lib state_lib trace_lib monad_model.
 
 (******************************************************************************)
 (*              Application of monadTrace to program semantics                *)

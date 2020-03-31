@@ -20,8 +20,8 @@ _CoqProject Makefile: ;
 COQ5 = coqc -w -notation-overridden -R . monae
 
 sect5: all
-	$(COQ5) mmt_sect5.v
-	$(COQ5) parametricity.v
+	$(COQ5) fmt_lifting.v
+	$(COQ5) parametricity_codensity.v
 
 clean5:
-	rm -f monae_lib.vo monad.vo fail_monad.vo state_monad.vo trace_monad.vo monad_model.vo monad_transformer.vo mmt_sect5.vo
+	rm -f monae_lib.vo monad.vo fail_lib.vo state_lib.vo trace_lib.vo monad_model.vo monad_transformer.vo fmt_lifting.vo

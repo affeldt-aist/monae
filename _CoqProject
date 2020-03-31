@@ -6,11 +6,11 @@
 
 monae_lib.v
 hierarchy.v
-monad.v
-fail_monad.v
-state_monad.v
-trace_monad.v
-proba_monad.v
+monad_lib.v
+fail_lib.v
+state_lib.v
+trace_lib.v
+proba_lib.v
 monad_composition.v
 monad_model.v
 proba_monad_model.v

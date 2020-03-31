@@ -1,6 +1,6 @@
 From mathcomp Require Import all_ssreflect.
 From mathcomp Require boolp.
-Require Import monae_lib hierarchy monad monad_transformer.
+Require Import imonae_lib ihierarchy imonad_lib imonad_transformer.
 
 (******************************************************************************)
 (*         Formalization of Sect. 5 of modular monad transformers             *)
@@ -8,35 +8,30 @@ Require Import monae_lib hierarchy monad monad_transformer.
 (* This file corresponds to the formalization of [Mauro Jaskelioff,           *)
 (* Modular Monad Transformers, ESOP 2009] (from Sect. 5, definition 23).      *)
 (*                                                                            *)
-(* WARNING:                                                                   *)
-(* Do `make sect5` to compile it, `make clean5` to clean it. Unlike the rest  *)
-(* of monae, it requires some form of impredicativity. That is why it is      *)
-(* type-checked with Unset Universe Checking. See the directory               *)
-(* impredicative_set for a version where this check isn't disabled.           *)
 (******************************************************************************)
 
 Set Implicit Arguments.
 Unset Strict Implicit.
 Unset Printing Implicit Defensive.
 
-Unset Universe Checking.
+Import Univ.
 
-Definition k_type (m : Type -> Type) (A : Type) :=
-  forall (B : Type), (A -> m B) -> m B.
+Definition k_type (m : UU0 -> UU0) (A : UU0) :=
+  forall (B : UU0), (A -> m B) -> m B.
 
 Section codensity.
 Variable (M : monad).
 
-Definition K_type (A : Type) : Type := k_type M A.
+Definition K_type (A : UU0) : UU0 := k_type M A.
 
-Definition K_ret (A : Type) (a : A) : K_type A :=
-  fun (B : Type) (k : A -> M B) => k a.
+Definition K_ret (A : UU0) (a : A) : K_type A :=
+  fun (B : UU0) (k : A -> M B) => k a.
 
-Definition K_bind (A B : Type) (m : K_type A) f : K_type B :=
-  fun (C : Type) (k : B -> M C) => m C (fun a : A => (f a) C k).
+Definition K_bind (A B : UU0) (m : K_type A) f : K_type B :=
+  fun (C : UU0) (k : B -> M C) => m C (fun a : A => (f a) C k).
 
-Definition K_fmap (A B : Type) (f : A -> B) (m : K_type A) : K_type B :=
-  fun (C : Type) (k : B -> M C) => m C (fun a : A => k (f a)).
+Definition K_fmap (A B : UU0) (f : A -> B) (m : K_type A) : K_type B :=
+  fun (C : UU0) (k : B -> M C) => m C (fun a : A => k (f a)).
 
 Lemma K_fmap_id : FunctorLaws.id K_fmap.
 Proof.
@@ -81,8 +76,8 @@ move=> A B C m f g; rewrite /K_bind.
 by apply FunctionalExtensionality.functional_extensionality_dep.
 Qed.
 
-Definition K_lift (A : Type) (m : M A) : eK_MonadM A :=
-  fun (B : Type) (k : A -> M B) => @Bind M A B m k.
+Definition K_lift (A : UU0) (m : M A) : eK_MonadM A :=
+  fun (B : UU0) (k : A -> M B) => @Bind M A B m k.
 
 Program Definition K_MonadM : monadM M eK_MonadM :=
   locked (monadM.Pack (@monadM.Mixin _ _ K_lift _ _)).
@@ -108,7 +103,7 @@ Section kappa.
 Variables (M : monad) (E : functor) (op : E.-operation M).
 
 Definition kappa' : E ~~> K_MonadT M :=
-  fun (A : Type) (s : E A) (B : Type) (k : A -> M B) =>
+  fun (A : UU0) (s : E A) (B : UU0) (k : A -> M B) =>
     op B ((E # k) s).
 
 Lemma natural_kappa' : naturality _ _ kappa'.
@@ -121,21 +116,21 @@ Qed.
 
 Definition kappa := Natural.Pack (Natural.Mixin natural_kappa').
 
-Lemma kappaE X : kappa X = (fun (s : E X) (B : Type) (k : X -> M B) => op B ((E # k) s)).
+Lemma kappaE X : kappa X = (fun (s : E X) (B : UU0) (k : X -> M B) => op B ((E # k) s)).
 Proof. by []. Qed.
 
 End kappa.
 
-Definition naturality_k_type (M : functor) (A : Type) (m : k_type M A) :=
+Definition naturality_k_type (M : functor) (A : UU0) (m : k_type M A) :=
   naturality (exponential_F A \O M) M m.
 
 Section from.
 Variables (M : monad).
 
 Definition from_component : K_MonadT M ~~> M :=
-  fun (A : Type) (c : K_MonadT M A) => c A Ret.
+  fun (A : UU0) (c : K_MonadT M A) => c A Ret.
 
-Hypothesis naturality_k_type : forall (A : Type) (m : k_type M A),
+Hypothesis naturality_k_type : forall (A : UU0) (m : k_type M A),
   naturality_k_type m.
 
 Lemma natural_from_component : naturality (K_MonadT M) M from_component.
@@ -166,7 +161,7 @@ Variables (E : functor) (M : monad) (op : E.-operation M).
 
 Definition K_op : E.-aoperation (K_MonadT M) := psi (kappa op).
 
-Lemma K_opE (A : Type) : op A =
+Lemma K_opE (A : UU0) : op A =
   (@from_component M A) \o (@K_op A) \o ((E ## (monadM_nt (Lift K_MonadT M))) A).
 Proof.
 rewrite boolp.funeqE => m /=.
@@ -185,7 +180,7 @@ End k_op.
 
 Section theorem27.
 Variables (E : functor) (M : monad) (op : E.-operation M) (t : FMT).
-Hypothesis naturality_type : forall (A : Type) (m : k_type M A),
+Hypothesis naturality_type : forall (A : UU0) (m : k_type M A),
   naturality_k_type m.
 
 Let op1 : t (K_MonadT M) ~> t M := Hmap t (from naturality_type).
@@ -224,7 +219,7 @@ End theorem27.
 Section proposition_28.
 
 Variables (E : functor) (M : monad) (aop : E.-aoperation M) (t : FMT).
-Hypothesis naturality_k_type : forall (A : Type) (m : k_type M A),
+Hypothesis naturality_k_type : forall (A : UU0) (m : k_type M A),
   naturality_k_type m.
 
 Lemma proposition_28 :
@@ -257,9 +252,9 @@ End proposition_28.
 
 Section example_29_errorT.
 Variables (E : functor) (M : monad) (op : E.-operation M).
-Hypothesis naturality_k_type : forall (A : Type) (m : k_type M A),
+Hypothesis naturality_k_type : forall (A : UU0) (m : k_type M A),
   naturality_k_type m.
-Variable X : Type.
+Variable X : UU0.
 
 Let op' Y : (E \O errorFMT X M) Y -> errorFMT X M Y := fun x => @op _ x.
 

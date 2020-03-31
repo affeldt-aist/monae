@@ -1,6 +1,6 @@
 From mathcomp Require Import all_ssreflect.
 From mathcomp Require boolp.
-Require Import monae_lib hierarchy monad fail_monad.
+Require Import monae_lib hierarchy monad_lib fail_lib state_lib monad_model.
 
 (******************************************************************************)
 (*                    Formalization of monad transformers                     *)
@@ -317,8 +317,6 @@ Definition contT r : monadT :=
 Definition abortT r X (M : monad) A : contT r M A := fun _ : A -> M r => Ret X.
 Arguments abortT {r} _ {M} {A}.
 
-Require Import state_monad.
-
 Section continuation_monad_transformer_examples.
 
 Fixpoint for_loop (M : monad) (it min : nat) (body : nat -> contT unit M unit) : M unit :=
@@ -427,12 +425,10 @@ End sum.
 
 End continuation_monad_transformer_examples.
 
-Require Import monad_model.
-
 Lemma functor_ext (F G : functor) :
   forall (H : Functor.m F = Functor.m G),
   Functor.f (Functor.class G) =
-  eq_rect _ (fun m => forall A B, (A -> B) -> m A -> m B) (Functor.f (Functor.class F)) _ H  ->
+  eq_rect _ (fun m : Type -> Type => forall A B : Type, (A -> B) -> m A -> m B) (Functor.f (Functor.class F)) _ H  ->
   G = F.
 Proof.
 move: F G => [F [HF1 HF2 HF3]] [G [HG1 HG2 HG3]] /= H; subst G => /= ?; subst HG1.
@@ -498,7 +494,7 @@ Let U  : Type := functor.
 Let Q : U -> Type := Functor.m^~ X.
 
 Lemma eq_rect_ret (p p' : U) (K : Q p' = Q p) (x : Q p') (h : p = p') :
-  x = eq_rect p Q (eq_rect _ id x _ K) p' h.
+  x = eq_rect p Q (eq_rect _ (fun X : Type => id X) x _ K) p' h.
 Proof.
 by rewrite /eq_rect; destruct h; rewrite (_ : K = erefl) // -Classical_Prop.EqdepTheory.UIP_refl.
 Qed.
@@ -508,7 +504,7 @@ Lemma eq_rect_state_ret S (p := ModelMonad.State.functor S : U)
   (x : Q p') (h : p = p') : x = eq_rect p Q x p' h.
 Proof.
 have K : Q p' = Q p by [].
-rewrite {2}(_ : x = eq_rect _ (fun x => x) x _ K) //; first exact: eq_rect_ret.
+rewrite {2}(_ : x = eq_rect _ (fun x : Type => x) x _ K) //; first exact: eq_rect_ret.
 by rewrite /eq_rect (_ : K = erefl) // -Classical_Prop.EqdepTheory.UIP_refl.
 Qed.
 
@@ -517,7 +513,7 @@ Lemma eq_rect_error_ret (E : Type) (p : U := ModelMonad.Except.functor E)
   (x : Q p') (h : p = p') : x = eq_rect p Q x p' h.
 Proof.
 have K : Q p' = Q p by [].
-rewrite {2}(_ : x = eq_rect _ (fun x => x) x _ K) //; first exact: eq_rect_ret.
+rewrite {2}(_ : x = eq_rect _ (fun x : Type => x) x _ K) //; first exact: eq_rect_ret.
 by rewrite /eq_rect (_ : K = erefl) // -Classical_Prop.EqdepTheory.UIP_refl.
 Qed.
 
@@ -526,7 +522,7 @@ Lemma eq_rect_cont_ret r (p : U := ModelMonad.Cont.functor r)
   (x : Q p') (h : p = p') : x = eq_rect p Q x p' h.
 Proof.
 have K : Q p' = Q p by [].
-rewrite {2}(_ : x = eq_rect _ (fun x => x) x _ K) //; first exact: eq_rect_ret.
+rewrite {2}(_ : x = eq_rect _ (fun x : Type => x) x _ K) //; first exact: eq_rect_ret.
 by rewrite /eq_rect (_ : K = erefl) // -Classical_Prop.EqdepTheory.UIP_refl.
 Qed.
 
@@ -986,7 +982,7 @@ rewrite /lift_acallccS /=.
 by rewrite /stS /= /stateT /= /stateMonadM /=; unlock => /=.
 Abort.
 
-Definition usual_callccS A B (f : (A -> stS M B) -> stS M A) : stS M A :=
+Definition usual_callccS (A B : Type) (f : (A -> stS M B) -> stS M A) : stS M A :=
   fun s k => f (fun x _ _ => k (x, s)) s k.
 
 Lemma callccS_E A B f : @lift_acallccS _

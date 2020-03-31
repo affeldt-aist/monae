@@ -3,7 +3,7 @@ From mathcomp Require Import all_ssreflect.
 From mathcomp Require boolp.
 From infotheo Require Import ssrR Reals_ext proba.
 From infotheo Require convex_choice.
-Require Import imonae_lib ihierarchy imonad ifail_monad.
+Require Import monae_lib hierarchy monad_lib fail_lib.
 
 (******************************************************************************)
 (*             Definitions and lemmas for probability monads                  *)
@@ -29,11 +29,9 @@ Local Open Scope monae_scope.
 Local Open Scope reals_ext_scope.
 Local Open Scope proba_monad_scope.
 
-Import Univ.
-
 Section convex.
 Variable M : probMonad.
-Variable A : UU0.
+Variable A : Type.
 
 Import fdist convex_choice ConvexSpace.
 
@@ -52,14 +50,14 @@ End convex.
 
 Arguments probConvex {M} {A}.
 
-Fixpoint uniform {M : probMonad} {A : UU0} (def(*NB: Coq functions are total*) : A) (s : seq A) : M A :=
+Fixpoint uniform {M : probMonad} {A : Type} (def(*NB: Coq functions are total*) : A) (s : seq A) : M A :=
   match s with
     | [::] => Ret def
     | [:: x] => Ret x
     | x :: xs => Ret x <| (/ IZR (Z_of_nat (size (x :: xs))))%:pr |> uniform def xs
   end.
 
-Lemma uniform_nil (M : probMonad) (A : UU0) (def : A) :
+Lemma uniform_nil (M : probMonad) (A : Type) (def : A) :
   uniform def [::] = Ret def :> M A.
 Proof. by []. Qed.
 
@@ -67,7 +65,7 @@ Lemma choice_ext (q p : prob) (M : probMonad) A (m1 m2 : M A) :
   p = q :> R -> m1 <| p |> m2 = m1 <| q |> m2.
 Proof. by move/prob_ext => ->. Qed.
 
-Lemma uniform_cons (M : probMonad) (A : UU0) (def : A) h s :
+Lemma uniform_cons (M : probMonad) (A : Type) (def : A) h s :
   uniform def (h :: s) = Ret h <| (/ IZR (Z_of_nat (size (h :: s))))%:pr |> uniform def s :> M A.
 Proof.
 case: s => //.
@@ -75,21 +73,21 @@ rewrite (@choice_ext 1%:pr) // ?choice1 //.
 by rewrite /= Rinv_1.
 Qed.
 
-Lemma uniform_singl (M : probMonad) (A : UU0) (def : A) h : size h = 1%nat ->
+Lemma uniform_singl (M : probMonad) (A : Type) (def : A) h : size h = 1%nat ->
   uniform def h = Ret (head def h) :> M A.
 Proof.
 case: h => // h [|//] _.
 by rewrite uniform_cons uniform_nil (@choice_ext 1%:pr) ?choice1 //= invR1.
 Qed.
 
-Lemma uniform_nseq (M : probMonad) (A : UU0) (def : A) h n :
+Lemma uniform_nseq (M : probMonad) (A : Type) (def : A) h n :
   uniform def (nseq n.+1 h) = Ret h :> M A.
 Proof.
 elim: n => // n IH.
 by rewrite (_ : nseq _ _ = h :: nseq n.+1 h) // uniform_cons IH choicemm.
 Qed.
 
-Lemma uniform_cat (M : probMonad) (A : UU0) (a : A) s t :
+Lemma uniform_cat (M : probMonad) (A : Type) (a : A) s t :
   let m := size s in let n := size t in
   uniform a (s ++ t) = uniform a s <| (divRnnm m n)%:pr |> uniform a t :> M _.
 Proof.
@@ -134,7 +132,7 @@ rewrite -minus_INR; last by apply/leP; rewrite leq_addr.
 by rewrite addnC minusE -subnBA // subnn subn0.
 Qed.
 
-Lemma uniform2 (M : probMonad) (A : UU0) (def : A) a b :
+Lemma uniform2 (M : probMonad) (A : Type) (def : A) a b :
   uniform def [:: a; b] = uniform def [:: b; a] :> M _.
 Proof.
 rewrite uniform_cons uniform_singl // uniform_cons uniform_singl //.
@@ -143,14 +141,14 @@ rewrite choiceC /= (@choice_ext pa) //=.
 rewrite /onem; field.
 Qed.
 
-Lemma uniform_inde (M : probMonad) (A : UU0) a (x : seq A) {B} (m : M B) :
+Lemma uniform_inde (M : probMonad) (A : Type) a (x : seq A) {B} (m : M B) :
   uniform a x >> m = m.
 Proof.
 elim: x m => [/= m|x xs IH m]; first by rewrite bindretf.
 by rewrite uniform_cons prob_bindDl IH bindretf choicemm.
 Qed.
 
-Lemma uniform_naturality (M : probMonad) (A B : UU0) (a : A) (b : B) (f : A -> B) :
+Lemma uniform_naturality (M : probMonad) (A B : Type) (a : A) (b : B) (f : A -> B) :
   forall x, (0 < size x)%nat ->
   ((@uniform M _ b) \o map f) x = ((M # f) \o uniform a) x.
 Proof.
@@ -165,7 +163,7 @@ by rewrite [in RHS]fmapE prob_bindDl bindretf fmapE; congr Choice.
 Qed.
 Arguments uniform_naturality {M A B}.
 
-Lemma mpair_uniform_base_case (M : probMonad) (A : UU0) a x (y : seq A) :
+Lemma mpair_uniform_base_case (M : probMonad) (A : Type) a x (y : seq A) :
   (0 < size y)%nat ->
   uniform (a, a) (cp [:: x] y) = mpair (uniform a [:: x], uniform a y) :> M _.
 Proof.
@@ -177,7 +175,7 @@ transitivity (do z <- Ret x; do y' <- uniform a y; Ret (z, y') : M _)%Do.
 by [].
 Qed.
 
-Lemma mpair_uniform (M : probMonad) (A : UU0) a (x y : seq A) :
+Lemma mpair_uniform (M : probMonad) (A : Type) a (x y : seq A) :
   (0 < size x)%nat -> (0 < size y)%nat ->
   mpair (uniform a x, uniform a y) = uniform (a, a) (cp x y) :> M (A * A)%type.
 Proof.
@@ -214,7 +212,7 @@ Qed.
 
 Section convexity_property.
 
-Variables (M : altProbMonad) (A : UU0) (p q : M A).
+Variables (M : altProbMonad) (A : Type) (p q : M A).
 
 Lemma convexity w : p [~] q =
   (p <| w |> p) [~] (q <| w |> p) [~] (p <| w |> q) [~] (q <| w |> q).
@@ -395,4 +393,23 @@ rewrite uniform_singl //=.
 rewrite (choiceA _ _ (/ 2)%:pr (Prob.mk H23)); last first.
   rewrite /= /onem; split; field.
 by rewrite choicemm choiceC.
+Qed.
+
+Lemma uniform_notin (M : probMonad) (A : eqType) (def : A) (s : seq A) B
+  (ma mb : A -> M B) (p : pred A) :
+  s != [::] ->
+  (forall x, x \in s -> ~~ p x) ->
+  uniform def s >>= (fun t => if p t then ma t else mb t) =
+  uniform def s >>= mb.
+Proof.
+elim: s => [//|h t IH _ H].
+rewrite uniform_cons.
+case/boolP : (t == [::]) => [/eqP -> {IH}|t0].
+  rewrite uniform_nil.
+  rewrite (_ : _%:pr = 1%:pr); last by apply prob_ext => /=; rewrite Rinv_1.
+  rewrite choice1.
+  rewrite 2!bindretf ifF //; apply/negbTE/H; by rewrite mem_head.
+rewrite 2!prob_bindDl; congr (_ <| _ |> _).
+  rewrite 2!bindretf ifF //; apply/negbTE/H; by rewrite mem_head.
+by rewrite IH // => a ta; rewrite H // in_cons ta orbT.
 Qed.

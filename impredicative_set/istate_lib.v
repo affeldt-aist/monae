@@ -2,7 +2,7 @@ Require Import ZArith.
 From mathcomp Require Import all_ssreflect.
 From mathcomp Require boolp.
 From infotheo Require Import ssrZ.
-Require Import imonae_lib ihierarchy imonad ifail_monad.
+Require Import imonae_lib ihierarchy imonad_lib ifail_lib.
 
 (******************************************************************************)
 (*              Definitions and lemmas about state monads                     *)

@@ -1,6 +1,6 @@
 From mathcomp Require Import all_ssreflect.
 From mathcomp Require boolp.
-Require Import monae_lib hierarchy monad fail_monad.
+Require Import monae_lib hierarchy monad_lib fail_lib.
 
 (******************************************************************************)
 (*                              Spark example                                 *)

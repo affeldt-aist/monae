@@ -1,7 +1,14 @@
 Declare ML Module "paramcoq".
 
 From mathcomp Require Import all_ssreflect.
-Require Import ihierarchy imonad immt_sect5 imonad_model.
+Require Import ihierarchy imonad_lib ifmt_lifting imonad_model.
+
+(******************************************************************************)
+(* Instantiations of Theorem 25 of [Mauro Jaskelioff, Modular Monad           *)
+(* Transformers, ESOP 2009].                                                  *)
+(*                                                                            *)
+(* WARNING: see ifmt_lifting.v                                                   *)
+(******************************************************************************)
 
 Import Univ.
 Set Bullet Behavior "Strict Subproofs".

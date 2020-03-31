@@ -659,7 +659,8 @@ Lemma eps0_Dist1 (A : Type) (d : P_delta_acto A) : eps0 _ (FSDist1.d d) = d.
 Proof. by rewrite eps0E Convn_of_FSDist_FSDist1. Qed.
 End P_delta_functor.
 
-Require monad.
+(* TODO: move *)
+Require monad_lib.
 Require Import hierarchy.
 
 Section P_delta_category_monad.

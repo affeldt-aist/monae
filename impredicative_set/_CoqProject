@@ -7,15 +7,15 @@
 
 imonae_lib.v
 ihierarchy.v
-imonad.v
-ifail_monad.v
-istate_monad.v
-itrace_monad.v
-iproba_monad.v
+imonad_lib.v
+ifail_lib.v
+istate_lib.v
+itrace_lib.v
+iproba_lib.v
 imonad_composition.v
 imonad_model.v
 imonad_transformer.v
-immt_sect5.v
-iparametricity.v
+ifmt_lifting.v
+iparametricity_codensity.v
 
 -R . monaeImpredicativeSet

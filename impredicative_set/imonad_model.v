@@ -3,7 +3,7 @@ From mathcomp Require Import finmap.
 From mathcomp Require boolp.
 From mathcomp Require Import classical_sets.
 From infotheo Require convex_choice classical_sets_ext.
-Require Import imonae_lib ihierarchy imonad ifail_monad istate_monad itrace_monad.
+Require Import imonae_lib ihierarchy imonad_lib ifail_lib istate_lib itrace_lib.
 
 (******************************************************************************)
 (*                       Models for various monads                            *)
