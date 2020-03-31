@@ -2,25 +2,29 @@ Require Import ZArith.
 From mathcomp Require Import all_ssreflect.
 From mathcomp Require boolp.
 From infotheo Require Import ssrZ.
-Require Import monae_lib hierarchy monad fail_monad.
+Require Import imonae_lib ihierarchy imonad ifail_monad.
+
+(******************************************************************************)
+(*              Definitions and lemmas about state monads                     *)
+(*                                                                            *)
+(* putpermsC                                                                  *)
+(*   perms is independent of the state and so commutes with put               *)
+(* commute (ref: definition 4.2, mu2019tr3)                                   *)
+(* Section loop (ref: section 4.1, mu2019tr3)                                 *)
+(*   scanlM                                                                   *)
+(*   scanlM_of_scanl (ref: theorem 4.1, mu2019tr3)                            *)
+(* Section section43.                                                         *)
+(*   ref: mu2019tr3                                                           *)
+(*   theorem44                                                                *)
+(*                                                                            *)
+(******************************************************************************)
 
 Set Implicit Arguments.
 Unset Strict Implicit.
 Unset Printing Implicit Defensive.
 
-Local Open Scope monae_scope.
-
-(* Contents:
-- Module MonadState.
-- Module MonadStateLoop.
-- Module MonadStateRun.
-- Module MonadNondetState.
-- Module MonadFresh.
-- Module MonadFailFresh.
-- Module MonadArray.
-*)
-
 Import Univ.
+Local Open Scope monae_scope.
 
 Lemma putgetput (S : UU0) {M : stateMonad S} x {B} (k : _ -> M B) :
   Put x >> Get >>= (fun x' => k x') = Put x >> k x :> M _.
@@ -83,7 +87,6 @@ Lemma getput_prepend (S : UU0) (M : nondetStateMonad S) A (m : M A) :
   m = Get >>= (fun x => Put x >> m).
 Proof. by rewrite -{2}(bindskipf m) -bindA getputskip 2!bindskipf. Qed.
 
-(* section 4.1, mu2019tr3 *)
 Section loop.
 Variables (A S : UU0) (M : stateMonad S) (op : S -> A -> S).
 Local Open Scope mprog.
@@ -111,7 +114,6 @@ rewrite_ bindA.
 by rewrite_ bindretf.
 Qed.
 
-(* theorem 4.1, mu2019tr3 *)
 Lemma scanlM_of_scanl s xs : Ret (scanl op s xs) = protect (scanlM s xs).
 Proof.
 elim: xs s => [/=|x xs IH] s.
@@ -138,7 +140,6 @@ Qed.
 End loop.
 Arguments scanlM {A S M}.
 
-(* mu2019tr3 *)
 Section section43.
 
 Variables (S : UU0) (M : nondetStateMonad S).
@@ -200,7 +201,6 @@ Let res := @cons A.
 Definition opdot (a : A) (m : M (seq B)) : M (seq B) :=
   Get >>= (fun st => guard (ok (op st a)) >> Put (op st a) >> fmap (res a) m).
 
-(* mu2019tr3 *)
 Lemma theorem44 (xs : seq A) :
   foldr (opmul op) (Ret [::]) xs >>=
     (fun ys => guard (all ok ys) >> Ret xs) = foldr opdot (Ret [::]) xs.

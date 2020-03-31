@@ -1,28 +1,20 @@
 From mathcomp Require Import all_ssreflect.
 From mathcomp Require boolp.
-Require Import monae_lib hierarchy monad.
+Require Import imonae_lib ihierarchy imonad.
 
-(* Contents:
-- Module MonadFail.
-    definition of guard
-- Module MonadAlt.
-    non-deterministic choice
-  Section subsequences_of_a_list.
-  Section permutation_and_insertion.
-    examples of non-deterministic programs
-- Module MonadAltCI.
-- Module MonadNondet
-  Section permutations.
-- Section nondet_insert.
-- Module MonadCINondet.
-- Module MonadExcept.
-    example of the fast product
-
-wip (to go to another file):
-- Module MonadContinuation.
-- Module MonadShiftReset.
-- Module MonadJump.
-*)
+(******************************************************************************)
+(*     Definitions and lemmas using failure and nondeterministic monads       *)
+(*                                                                            *)
+(*   foldM/unfoldM                                                            *)
+(*   hyloM                                                                    *)
+(* Section subsequences_of_a_list (ref: Sect. 3.1, gibbons2012utp)            *)
+(* Section permutation_and_insertion (ref: Sect. 3, mu2019tr2)                *)
+(*   insert                                                                   *)
+(* select (ref: Sect. 4.4, gibbons2011icfp)                                   *)
+(* perms : seq A -> M (seq A)                                                 *)
+(* mu_perm (ref: Sect 4.3, mu2017)                                            *)
+(*   definition of perms using unfoldM                                        *)
+(******************************************************************************)
 
 Set Implicit Arguments.
 Unset Strict Implicit.
@@ -152,6 +144,7 @@ Arguments arbitrary {M} {A}.
 
 Section monadalt_lemmas.
 Variable (M : altMonad).
+
 (* TODO: name ok? *)
 Lemma naturality_nondeter (A B : UU0) (f : A -> B) (p q : M _):
   (M # f) (p [~] q) = (M # f) p [~] (M # f) q.
@@ -163,7 +156,6 @@ Proof. by rewrite 3!fmapE alt_bindDl. Qed.
 
 End monadalt_lemmas.
 
-(* Sect. 3.1, gibbons2012utp *)
 Section subsequences_of_a_list.
 Local Open Scope mprog.
 
@@ -205,7 +197,6 @@ Qed.
 
 End subsequences_of_a_list.
 
-(* mu2019tr2, Sect. 3 *)
 Section permutation_and_insertion.
 Variable M : altMonad.
 Local Open Scope mprog.

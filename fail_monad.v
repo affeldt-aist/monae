@@ -3,30 +3,18 @@ From mathcomp Require boolp.
 Require Import monae_lib hierarchy monad.
 
 (******************************************************************************)
-(*                     Failure and nondeterministic monads                    *)
+(*     Definitions and lemmas using failure and nondeterministic monads       *)
+(*                                                                            *)
+(*   foldM/unfoldM                                                            *)
+(*   hyloM                                                                    *)
+(* Section subsequences_of_a_list (ref: Sect. 3.1, gibbons2012utp)            *)
+(* Section permutation_and_insertion (ref: Sect. 3, mu2019tr2)                *)
+(*   insert                                                                   *)
+(* select (ref: Sect. 4.4, gibbons2011icfp)                                   *)
+(* perms : seq A -> M (seq A)                                                 *)
+(* mu_perm (ref: Sect 4.3, mu2017)                                            *)
+(*   definition of perms using unfoldM                                        *)
 (******************************************************************************)
-
-(* Contents:
-- Module MonadFail.
-    definition of guard
-- Module MonadAlt.
-    non-deterministic choice
-  Section subsequences_of_a_list.
-  Section permutation_and_insertion.
-    examples of non-deterministic programs
-- Module MonadAltCI.
-- Module MonadNondet
-  Section permutations.
-- Section nondet_insert.
-- Module MonadCINondet.
-- Module MonadExcept.
-    example of the fast product
-
-wip (to go to another file):
-- Module MonadContinuation.
-- Module MonadShiftReset.
-- Module MonadJump.
-*)
 
 Set Implicit Arguments.
 Unset Strict Implicit.
@@ -142,6 +130,16 @@ Qed.
 End hyloM.
 Arguments hyloM {M} {A} {B} {C} _ _ _ _ _.
 
+Section arbitrary.
+
+Variables (M : altMonad) (A : Type) (def : A).
+
+Definition arbitrary : seq A -> M A :=
+  foldr1 (Ret def) (fun x y => x [~] y) \o map Ret.
+
+End arbitrary.
+Arguments arbitrary {M} {A}.
+
 Section monadalt_lemmas.
 Variable (M : altMonad).
 
@@ -156,17 +154,6 @@ Proof. by rewrite 3!fmapE alt_bindDl. Qed.
 
 End monadalt_lemmas.
 
-Section arbitrary.
-
-Variables (M : altMonad) (A : Type) (def : A).
-
-Definition arbitrary : seq A -> M A :=
-  foldr1 (Ret def) (fun x y => x [~] y) \o map Ret.
-
-End arbitrary.
-Arguments arbitrary {M} {A}.
-
-(* Sect. 3.1, gibbons2012utp *)
 Section subsequences_of_a_list.
 Local Open Scope mprog.
 
@@ -208,7 +195,6 @@ Qed.
 
 End subsequences_of_a_list.
 
-(* mu2019tr2, Sect. 3 *)
 Section permutation_and_insertion.
 Variable M : altMonad.
 Local Open Scope mprog.
@@ -376,8 +362,6 @@ Qed.
 
 End nondet_insert.
 
-(* gibbons2011icfp, Sect. 4.4 *)
-
 Section select.
 Variables (M : nondetMonad) (A : Type).
 Implicit Types s : seq A.
@@ -483,7 +467,6 @@ Qed.
 End permutations.
 Arguments perms {M} {A}.
 
-(* from section 4.3 of mu2017, definition of perms using unfoldM *)
 Section mu_perm.
 Variables (A : Type) (M : nondetMonad).
 

@@ -1,5 +1,5 @@
 From mathcomp Require Import all_ssreflect.
-Require Import monae_lib hierarchy monad.
+Require Import imonae_lib ihierarchy imonad.
 
 (******************************************************************************)
 (*                          Composing monads                                  *)

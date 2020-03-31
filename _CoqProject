@@ -19,11 +19,10 @@ example_nqueens.v
 example_relabeling.v
 example_monty.v
 smallstep.v
-smallstep_monad.v
-smallstep_examples.v
 category.v
 gcm_model.v
 altprob_model.v
 monad_transformer.v
 
 -R . monae
+

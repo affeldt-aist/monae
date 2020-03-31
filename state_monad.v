@@ -5,7 +5,18 @@ From infotheo Require Import ssrZ.
 Require Import monae_lib hierarchy monad fail_monad.
 
 (******************************************************************************)
-(*                               State monads                                 *)
+(*              Definitions and lemmas about state monads                     *)
+(*                                                                            *)
+(* putpermsC                                                                  *)
+(*   perms is independent of the state and so commutes with put               *)
+(* commute (ref: definition 4.2, mu2019tr3)                                   *)
+(* Section loop (ref: section 4.1, mu2019tr3)                                 *)
+(*   scanlM                                                                   *)
+(*   scanlM_of_scanl (ref: theorem 4.1, mu2019tr3)                            *)
+(* Section section43.                                                         *)
+(*   ref: mu2019tr3                                                           *)
+(*   theorem44                                                                *)
+(*                                                                            *)
 (******************************************************************************)
 
 Set Implicit Arguments.
@@ -13,16 +24,6 @@ Unset Strict Implicit.
 Unset Printing Implicit Defensive.
 
 Local Open Scope monae_scope.
-
-(* Contents:
-- Module MonadState.
-- Module MonadStateLoop.
-- Module MonadStateRun.
-- Module MonadNondetState.
-- Module MonadFresh.
-- Module MonadFailFresh.
-- Module MonadArray.
-*)
 
 Lemma putgetput (S : Type) {M : stateMonad S} x {B} (k : _ -> M B) :
   Put x >> Get >>= (fun x' => k x') = Put x >> k x :> M _.
@@ -133,7 +134,6 @@ transitivity (do x0 <- tselect (h' :: t); do x <- Get;
 rewrite bindA; bind_ext => y; by rewrite bindretf.
 Qed.
 
-(* perms is independent of the state and so commutes with put *)
 Lemma putpermsC (x : S) A (s : seq A) B (f : _ -> M B) :
   Put x >> (perms s >>= f) = perms s >>= (fun rs => Put x >> f rs).
 Proof.
@@ -213,11 +213,9 @@ case: Bool.bool_dec => // x2t.
 case: (IH x2) => // x0 <-; by rewrite fmapE.
 Qed.
 
-(* definition 4.2, mu2019tr3 *)
 Definition commute {M : monad} A B (m : M A) (n : M B) C (f : A -> B -> M C) : Prop :=
   m >>= (fun x => n >>= (fun y => f x y)) = n >>= (fun y => m >>= (fun x => f x y)) :> M _.
 
-(* theorem 4.3, mu2019tr3 *)
 Lemma commute_nondetState S (M : nondetStateMonad S)
   A (m : M A) B (n : M B) C (f : A -> B -> M C) :
   nondetState_sub m -> commute m n f.
@@ -246,7 +244,6 @@ elim: x m n f => [{}A a m n f <-| B0 {}A n0 H0 n1 H1 m n2 f <- |
   by rewrite alt_bindDr H0 // H1.
 Qed.
 
-(* section 4.1, mu2019tr3 *)
 Section loop.
 Variables (A S : Type) (M : stateMonad S) (op : S -> A -> S).
 Local Open Scope mprog.
@@ -274,7 +271,6 @@ rewrite_ bindA.
 by rewrite_ bindretf.
 Qed.
 
-(* theorem 4.1, mu2019tr3 *)
 Lemma scanlM_of_scanl s xs : Ret (scanl op s xs) = protect (scanlM s xs).
 Proof.
 elim: xs s => [/=|x xs IH] s.
@@ -301,7 +297,6 @@ Qed.
 End loop.
 Arguments scanlM {A S M}.
 
-(* mu2019tr3 *)
 Section section43.
 
 Variables (S : Type) (M : nondetStateMonad S).
@@ -363,7 +358,6 @@ Let res := @cons A.
 Definition opdot (a : A) (m : M (seq B)) : M (seq B) :=
   Get >>= (fun st => guard (ok (op st a)) >> Put (op st a) >> fmap (res a) m).
 
-(* mu2019tr3 *)
 Lemma theorem44 (xs : seq A) :
   foldr (opmul op) (Ret [::]) xs >>=
     (fun ys => guard (all ok ys) >> Ret xs) = foldr opdot (Ret [::]) xs.

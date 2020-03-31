@@ -2,16 +2,11 @@ Ltac typeof X := type of X.
 Require Import ZArith.
 From mathcomp Require Import all_ssreflect.
 From infotheo Require Import ssrZ.
-Require Import hierarchy monad state_monad (*for the run monad*).
+Require Import ihierarchy imonad.
 
-(*
-Contents:
-- Module MonadTrace.
-- Module MonadTraceRun.
-- Module MonadStateTrace.
-- Module MonadStateTraceRun.
-- wip
-*)
+(******************************************************************************)
+(*                     Example using the trace monad                          *)
+(******************************************************************************)
 
 Set Implicit Arguments.
 Unset Strict Implicit.
@@ -93,8 +88,7 @@ Proof. by rewrite runtmark runstmark. Qed.
 
 End relation_statetrace_state_trace.
 
-(* WIP *)
-
+(* wip *)
 Module MonadTrans.
 Structure t (m : monad) (u : monad) : Type := Pack {
   lift : forall A, m A -> u A ;

@@ -29,15 +29,15 @@ This library has been applied to other formalizations:
 ** Files
 
 - [[monae_lib.v][monae_lib.v]]: simple additions to base libraries
+- [[hierarchy.v][hierarchy.v]]: hierarchy of monadic effects
 - [[monad.v][monad.v]]: basics of monadic equational reasoning
-- [[category.v][category.v]]: formalization of categories (generalization of ~monad.v~)
-- [[fail_monad.v][fail_monad.v]]: fail monad and related monads
-- [[state_monad.v][state_monad.v]]: state-related monads
-- [[trace_monad.v][trace_monad.v]]: about the state-trace monad
+- [[category.v][category.v]]: formalization of categories (generalization of ~hierarchy.v~)
+- [[fail_monad.v][fail_monad.v]]: lemmas about fail monad and related monads
+- [[state_monad.v][state_monad.v]]: lemmas about state-related monads
+- [[trace_monad.v][trace_monad.v]]: lemmas about about the state-trace monad
 - [[proba_monad.v][proba_monad.v]]: about the probability monad
 - [[monad_composition.v][monad_composition.v]]: composing monads
-- [[monad_transformer.v][monad_transformer.v]]: monad transformers
-- [[monad_model.v][monad_model.v]]: concrete models of monads (corresponding to ~{,state_,trace_}monad.v~)
+- [[monad_model.v][monad_model.v]]: concrete models of monads (corresponding to state and trace monads)
 - [[proba_monad_model.v][proba_monad_model.v]]: concrete model of the probability monad
 - [[gcm_model.v][gcm_model.v]]: model of the geometrically convex monad
 - [[altprob_model.v][altprob_model.v]]: model of a monad that mixes non-deterministic choice and probabilistic choice
@@ -48,6 +48,12 @@ This library has been applied to other formalizations:
 - [[smallstep.v][smallstep.v]]: semantics for an imperative language
 - [[smallstep_monad.v][smallstep_monad.v]]: equivalence operational semantics/denotation
 - [[smallstep_examples.v][smallstep_examples.v]]: sample imperative programs
+- [[monad_transformer.v][monad_transformer.v]]: monad transformers
+  + completed by ~mmt_sect5.v~ and ~parametricty.v~ which require
+    disabling of universe checking
+- the directory ~impredicative_set~ contains a lighter version of
+  Monae where monads live in ~Set~ and that compiles with
+  ~impredicate-set~
 
 ** Installation
 

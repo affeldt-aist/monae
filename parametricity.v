@@ -1,7 +1,15 @@
 Declare ML Module "paramcoq".
 
+
 From mathcomp Require Import all_ssreflect.
 Require Import hierarchy monad mmt_sect5 monad_model.
+
+(******************************************************************************)
+(* Instantiations of Theorem 25 of [Mauro Jaskelioff, Modular Monad           *)
+(* Transformers, ESOP 2009].                                                  *)
+(*                                                                            *)
+(* WARNING: see mmt_sect5.v                                                   *)
+(******************************************************************************)
 
 Unset Universe Checking.
 Set Bullet Behavior "Strict Subproofs".

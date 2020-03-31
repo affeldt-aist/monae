@@ -1,6 +1,6 @@
 From mathcomp Require Import all_ssreflect.
 From mathcomp Require boolp.
-Require Import monae_lib hierarchy monad fail_monad.
+Require Import imonae_lib ihierarchy imonad ifail_monad istate_monad imonad_model.
 
 (******************************************************************************)
 (*                    Formalization of monad transformers                     *)
@@ -319,8 +319,6 @@ Definition contT r : monadT :=
 Definition abortT r X (M : monad) A : contT r M A := fun _ : A -> M r => Ret X.
 Arguments abortT {r} _ {M} {A}.
 
-Require Import state_monad.
-
 Section continuation_monad_transformer_examples.
 
 Fixpoint for_loop (M : monad) (it min : nat) (body : nat -> contT unit M unit) : M unit :=
@@ -428,8 +426,6 @@ Example sum_from_0_to_10 : M unit :=
 End sum.
 
 End continuation_monad_transformer_examples.
-
-Require Import monad_model.
 
 (*yyy
 

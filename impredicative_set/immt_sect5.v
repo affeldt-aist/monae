@@ -1,20 +1,13 @@
 From mathcomp Require Import all_ssreflect.
 From mathcomp Require boolp.
-Require Import monae_lib hierarchy monad monad_transformer.
+Require Import imonae_lib ihierarchy imonad imonad_transformer.
 
 (******************************************************************************)
 (*         Formalization of Sect. 5 of modular monad transformers             *)
-(*                            Work in progress!                               *)
 (*                                                                            *)
 (* This file corresponds to the formalization of [Mauro Jaskelioff,           *)
-(* Modular Monad Transformers, ESOP 2009] (from Sect. 5, definition 23). Do   *)
-(* `make sect5` to compile it, `make clean5` to clean it. Unlike the rest of  *)
-(* monae, it requires some form of impredicativity. For the time being, it is *)
-(* type-checked with Unset Universe Checking because monae requires monads to *)
-(* be Type -> Type because of some examples using MathComp. This file can     *)
-(* also be compiled with -impredicative-set provided the universes are        *)
-(* lowered by one level (however, some examples using MathComp may not        *)
-(* compile anymore).                                                          *)
+(* Modular Monad Transformers, ESOP 2009] (from Sect. 5, definition 23).      *)
+(*                                                                            *)
 (******************************************************************************)
 
 Set Implicit Arguments.

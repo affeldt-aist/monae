@@ -4,7 +4,20 @@ Require Import ssrmatching.
 Require FunctionalExtensionality.
 From mathcomp Require Import all_ssreflect.
 From mathcomp Require boolp.
-Require Import monae_lib hierarchy.
+Require Import imonae_lib ihierarchy.
+
+(******************************************************************************)
+(*  Properties and examples of functors, natural transformations, and monads  *)
+(*                                                                            *)
+(*                    F ## n == application of functor F to natural           *)
+(*                              transformation n                              *)
+(*                    F -| G == adjoint functors                              *)
+(*   Module monad_of_adjoint == derivation of a monad from an adjunction      *)
+(* Section composite_adjoint == composition of adjunctions                    *)
+(*            E.-operation M == sigma operation                               *)
+(*  Module Monad_of_ret_bind == construction of a monad from ret and bind     *)
+(*                                                                            *)
+(******************************************************************************)
 
 Reserved Notation "A `2" (format "A `2", at level 3).
 Reserved Notation "f ^`2" (format "f ^`2", at level 3).

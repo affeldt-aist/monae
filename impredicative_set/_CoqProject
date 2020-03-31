@@ -5,16 +5,17 @@
 -arg -w -arg -ambiguous-paths
 -arg -impredicative-set
 
-monae_lib.v
-hierarchy.v
-monad.v
-fail_monad.v
-state_monad.v
-trace_monad.v
-monad_composition.v
-monad_model.v
-monad_transformer.v
-mmt_sect5.v
-parametricity.v
+imonae_lib.v
+ihierarchy.v
+imonad.v
+ifail_monad.v
+istate_monad.v
+itrace_monad.v
+iproba_monad.v
+imonad_composition.v
+imonad_model.v
+imonad_transformer.v
+immt_sect5.v
+iparametricity.v
 
--R . monae
+-R . monaeImpredicativeSet
