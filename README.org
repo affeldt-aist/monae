@@ -82,9 +82,8 @@ All versions available from opam.
 
 *** Development version (git master):
 
-With Coq 8.10.2 or higher the last stable release of infotheo.
-(The version that depends on the development version of infotheo
-is in the branch ~infotheo_dev~.)
+With Coq 8.10.2 or higher and the last stable release of infotheo
+(`make sect5` requires ParamCoq).
 
 3. ~git clone git@github.com:affeldt-aist/monae.git~
 4. ~cd monae~
