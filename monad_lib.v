@@ -1,7 +1,6 @@
 Ltac typeof X := type of X.
 
 Require Import ssrmatching.
-Require FunctionalExtensionality.
 From mathcomp Require Import all_ssreflect.
 From mathcomp Require boolp.
 Require Import monae_lib hierarchy.

@@ -1,7 +1,7 @@
 Declare ML Module "paramcoq".
 
 From mathcomp Require Import all_ssreflect.
-Require Import ihierarchy imonad_lib ifmt_lifting imonad_model.
+Require Import imonae_lib ihierarchy imonad_lib ifmt_lifting imonad_model.
 
 (******************************************************************************)
 (* Instantiations of Theorem 25 of [Mauro Jaskelioff, Modular Monad           *)
@@ -40,7 +40,7 @@ Lemma naturality :
 naturality (exponential_F A \O ModelMonad.identity) ModelMonad.identity m.
 Proof.
 intros X Y f.
-rewrite boolp.funeqE => g.
+apply boolp_funeqE => g.
 unfold comp at 1 2.
 apply
   (param X Y (fun x y => (ModelMonad.identity # f) x = y) g
@@ -64,7 +64,7 @@ Variables E A : UU0.
 Realizer E as E_R := (@eq E).
 Realizer A as A_R := (@eq A).
 
-Definition M (X : UU0) : UU0 := 
+Definition M (X : UU0) : UU0 :=
 ltac:(
   let t := constr:(ModelMonad.Except.t E X) in
   let t := eval cbn in t in
@@ -83,7 +83,7 @@ naturality
   (exponential_F A \O ModelMonad.Except.t E) (ModelMonad.Except.t E) m.
 Proof.
 intros X Y f.
-rewrite boolp.funeqE => g.
+apply boolp_funeqE => g.
 unfold comp at 1 2.
 assert (H :
   forall a a' : A, a = a' ->
@@ -158,7 +158,7 @@ naturality
   ModelMonad.ListMonad.t m.
 Proof.
 intros X Y f.
-rewrite boolp.funeqE => g.
+apply boolp_funeqE => g.
 unfold comp at 1 2.
 assert (H :
   forall a a' : A, a = a' ->
@@ -220,7 +220,7 @@ naturality
   (ModelMonad.State.t S) m.
 Proof.
 intros X Y f.
-rewrite boolp.funeqE => g.
+apply boolp_funeqE => g.
 unfold comp at 1 2.
 assert (H :
   forall a a' : A, a = a' ->
@@ -237,7 +237,7 @@ assert (H :
   intros x s'.
   constructor; reflexivity.
 }
-rewrite boolp.funeqE => s0.
+apply boolp_funeqE => s0.
 assert (Hparam :=
   param X Y (fun x y => f x = y) g ((ModelMonad.State.t S # f) \o g)
     H s0 s0 (erefl s0)).

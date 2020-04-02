@@ -1,5 +1,8 @@
 From mathcomp Require Import all_ssreflect.
 From mathcomp Require boolp.
+Require ProofIrrelevance.
+
+Definition eq_rect_eq := @ProofIrrelevance.ProofIrrelevanceTheory.Eq_rect_eq.eq_rect_eq.
 
 (******************************************************************************)
 (*      Shared notations and easy definitions/lemmas of general interest      *)
@@ -9,7 +12,7 @@ Set Implicit Arguments.
 Unset Strict Implicit.
 Unset Printing Implicit Defensive.
 
-(* notations common to monad.v and category.v *)
+(* notations common to hierarchy.v and category.v *)
 
 Reserved Notation "m >>= f" (at level 49).
 Reserved Notation "'do' x <- m ; e"

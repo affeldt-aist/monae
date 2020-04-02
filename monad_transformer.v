@@ -445,7 +445,7 @@ have ? : t = t'.
   apply FunctionalExtensionality.functional_extensionality_dep => A.
   apply FunctionalExtensionality.functional_extensionality => x.
   rewrite H.
-  by rewrite -[in RHS]Classical_Prop.Eq_rect_eq.eq_rect_eq.
+  by rewrite -[in RHS]eq_rect_eq.
 subst t'.
 congr Natural.Pack; exact/boolp.Prop_irrelevance.
 Qed.
@@ -459,12 +459,12 @@ Lemma natural_ext2 (F F' : functor) (t : F \O F ~> F) (t' : F' \O F' ~> F') :
   t' = eq_rect _ (fun m => m \O m ~> m) t _ K.
 Proof.
 move: t t' => [t t1] [t' t'1] /= H L; subst F.
-rewrite -[in RHS]Classical_Prop.Eq_rect_eq.eq_rect_eq /=.
+rewrite -[in RHS]eq_rect_eq /=.
 have ? : t = t'.
   apply FunctionalExtensionality.functional_extensionality_dep => A.
   apply FunctionalExtensionality.functional_extensionality => x.
   rewrite L.
-  by rewrite -[in RHS]Classical_Prop.Eq_rect_eq.eq_rect_eq.
+  by rewrite -[in RHS]eq_rect_eq.
 subst t'.
 congr Natural.Pack; exact/boolp.Prop_irrelevance.
 Qed.
@@ -496,7 +496,7 @@ Let Q : U -> Type := Functor.m^~ X.
 Lemma eq_rect_ret (p p' : U) (K : Q p' = Q p) (x : Q p') (h : p = p') :
   x = eq_rect p Q (eq_rect _ (fun X : Type => id X) x _ K) p' h.
 Proof.
-by rewrite /eq_rect; destruct h; rewrite (_ : K = erefl) // -Classical_Prop.EqdepTheory.UIP_refl.
+rewrite /eq_rect; destruct h; rewrite (_ : K = erefl) //; exact/boolp.Prop_irrelevance.
 Qed.
 
 Lemma eq_rect_state_ret S (p := ModelMonad.State.functor S : U)
@@ -505,7 +505,7 @@ Lemma eq_rect_state_ret S (p := ModelMonad.State.functor S : U)
 Proof.
 have K : Q p' = Q p by [].
 rewrite {2}(_ : x = eq_rect _ (fun x : Type => x) x _ K) //; first exact: eq_rect_ret.
-by rewrite /eq_rect (_ : K = erefl) // -Classical_Prop.EqdepTheory.UIP_refl.
+rewrite /eq_rect (_ : K = erefl) //; exact/boolp.Prop_irrelevance.
 Qed.
 
 Lemma eq_rect_error_ret (E : Type) (p : U := ModelMonad.Except.functor E)
@@ -514,7 +514,7 @@ Lemma eq_rect_error_ret (E : Type) (p : U := ModelMonad.Except.functor E)
 Proof.
 have K : Q p' = Q p by [].
 rewrite {2}(_ : x = eq_rect _ (fun x : Type => x) x _ K) //; first exact: eq_rect_ret.
-by rewrite /eq_rect (_ : K = erefl) // -Classical_Prop.EqdepTheory.UIP_refl.
+rewrite /eq_rect (_ : K = erefl) //; exact/boolp.Prop_irrelevance.
 Qed.
 
 Lemma eq_rect_cont_ret r (p : U := ModelMonad.Cont.functor r)
@@ -523,7 +523,7 @@ Lemma eq_rect_cont_ret r (p : U := ModelMonad.Cont.functor r)
 Proof.
 have K : Q p' = Q p by [].
 rewrite {2}(_ : x = eq_rect _ (fun x : Type => x) x _ K) //; first exact: eq_rect_ret.
-by rewrite /eq_rect (_ : K = erefl) // -Classical_Prop.EqdepTheory.UIP_refl.
+rewrite /eq_rect (_ : K = erefl) //; exact/boolp.Prop_irrelevance.
 Qed.
 
 End eq_rect_ret.
@@ -535,7 +535,7 @@ Let Q : U -> Type := fun F => forall A B, Functor.m F A -> (A -> Functor.m F B) 
 Lemma eq_rect_bind (p p' : U) (K : Q p' = Q p) (x : Q p') (h : p = p') :
   x = eq_rect p Q (eq_rect _ id x _ K) p' h.
 Proof.
-by rewrite /eq_rect; destruct h; rewrite (_ : K = erefl) // -Classical_Prop.EqdepTheory.UIP_refl.
+rewrite /eq_rect; destruct h; rewrite (_ : K = erefl) //; exact/boolp.Prop_irrelevance.
 Qed.
 
 Lemma eq_rect_bind_state S (p : U := ModelMonad.State.functor S)
@@ -544,7 +544,7 @@ Lemma eq_rect_bind_state S (p : U := ModelMonad.State.functor S)
 Proof.
 have K : Q p' = Q p by [].
 rewrite {2}(_ : x = eq_rect _ id x _ K); first exact: eq_rect_bind.
-by rewrite /eq_rect (_ : K = erefl) // -Classical_Prop.EqdepTheory.UIP_refl.
+rewrite /eq_rect (_ : K = erefl) //; exact/boolp.Prop_irrelevance.
 Qed.
 
 Lemma eq_rect_bind_error E (p : U := ModelMonad.Except.functor E)
@@ -553,7 +553,7 @@ Lemma eq_rect_bind_error E (p : U := ModelMonad.Except.functor E)
 Proof.
 have K : Q p' = Q p by [].
 rewrite {2}(_ : x = eq_rect _ id x _ K) //; first exact: eq_rect_bind.
-by rewrite /eq_rect (_ : K = erefl) // -Classical_Prop.EqdepTheory.UIP_refl.
+rewrite /eq_rect (_ : K = erefl) //; exact/boolp.Prop_irrelevance.
 Qed.
 
 Lemma eq_rect_bind_cont S (p : U := ModelMonad.Cont.functor S)
@@ -562,7 +562,7 @@ Lemma eq_rect_bind_cont S (p : U := ModelMonad.Cont.functor S)
 Proof.
 have K : Q p' = Q p by [].
 rewrite {2}(_ : x = eq_rect _ id x _ K) //; first exact: eq_rect_bind.
-by rewrite /eq_rect (_ : K = erefl) // -Classical_Prop.EqdepTheory.UIP_refl.
+rewrite /eq_rect (_ : K = erefl) //; exact/boolp.Prop_irrelevance.
 Qed.
 
 End eq_rect_bind.
@@ -572,10 +572,6 @@ Section instantiations_with_the_identity_monad.
 Lemma state_monad_stateT S :
   stateT S ModelMonad.identity = ModelMonad.State.t S.
 Proof.
-(* NB:
-used to be as simple as this
-congr (Monad_of_ret_bind _ _ _); exact/boolp.Prop_irrelevance
-*)
 rewrite /= /estateMonadM /ModelMonad.State.t.
 have FG : MS_functor S ModelMonad.identity = ModelMonad.State.functor S.
   apply: functor_ext => /=.

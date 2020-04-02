@@ -1,10 +1,8 @@
 Ltac typeof X := type of X.
 
-Require Import ssrmatching Reals.
+Require Import ssrmatching.
 Require FunctionalExtensionality.
 From mathcomp Require Import all_ssreflect.
-From mathcomp Require boolp.
-From infotheo Require Import Reals_ext.
 Require Import imonae_lib.
 
 (******************************************************************************)
@@ -52,17 +50,6 @@ Require Import imonae_lib.
 (*      traceRunMonad == traceMonad + run                                     *)
 (*    stateTraceMonad == state + trace                                        *)
 (* stateTraceRunMonad == stateTraceMonad + run                                *)
-(*                                                                            *)
-(* Probability monads:                                                        *)
-(*         probaMonad == probabilistic choice and bind left-distributes over  *)
-(*                       choice                                               *)
-(*        probDrMonad == probaMonad + bind right-distributes over choice      *)
-(*       altProbMonad == combined (probabilistic and nondeterministic) choice *)
-(*    exceptProbMonad == exceptions + probabilistic choice                    *)
-(*                                                                            *)
-(* Freshness monads:                                                          *)
-(*         freshMonad == monad with freshness                                 *)
-(*     failFreshMonad == freshMonad + failure                                 *)
 (*                                                                            *)
 (* references:                                                                *)
 (* - R. Affeldt, D. Nowak, T. Saikawa, A Hierarchy of Monadic Effects for     *)
@@ -148,7 +135,7 @@ Qed.
 Lemma functorcomposition_comp : FunctorLaws.comp functorcomposition.
 Proof.
 rewrite /FunctorLaws.comp => A B C g' h; rewrite /functorcomposition.
-rewrite boolp.funeqE => m; by rewrite [in RHS]compE 2!functor_o.
+apply boolp_funeqE => m; by rewrite [in RHS]compE 2!functor_o.
 Qed.
 Definition FComp : functor :=
   Functor.Pack (Functor.Mixin functorcomposition_id functorcomposition_comp).
@@ -156,22 +143,23 @@ End functorcomposition.
 
 Notation "f \O g" := (FComp f g).
 
+Require ProofIrrelevance.
 Section functorcomposition_lemmas.
 Lemma FCompId f : f \O FId = f.
 Proof.
 case: f => [? [???]]; congr (Functor.Pack (Functor.Mixin _ _));
-  exact/boolp.Prop_irrelevance.
+  exact/boolp_Prop_irrelevance.
 Qed.
 Lemma FIdComp f : FId \O f = f.
 Proof.
 case: f => [? [???]]; congr (Functor.Pack (Functor.Mixin _ _));
-  exact/boolp.Prop_irrelevance.
+  exact/boolp_Prop_irrelevance.
 Qed.
 Lemma FIdf (A B : UU0) (f : A -> B) : FId # f = f. Proof. by []. Qed.
 Lemma FCompA (f g h : functor) : (f \O g) \O h = f \O (g \O h).
 Proof.
 move: f g h => [f [???]] [g [???]] [h [???]].
-congr (Functor.Pack (Functor.Mixin  _ _)); exact/boolp.Prop_irrelevance.
+congr (Functor.Pack (Functor.Mixin  _ _)); exact/boolp_Prop_irrelevance.
 Qed.
 Lemma FCompE (f g : functor) (A B : UU0) (k : A -> B) :
   (f \O g) # k = f # (g # k).
@@ -229,7 +217,7 @@ Lemma nattrans_ext (f g : M ~> N) :
 Proof.
 split => [ -> // |]; move: f g => [f Hf] [g Hg] /= fg.
 have ? : f = g by exact: FunctionalExtensionality.functional_extensionality_dep.
-subst g; congr (Natural.Pack _); exact/boolp.Prop_irrelevance.
+subst g; congr (Natural.Pack _); exact/boolp_Prop_irrelevance.
 Qed.
 End natrans_lemmas.
 
@@ -405,7 +393,7 @@ Definition skip M := @RET M _ tt.
 Arguments skip {M} : simpl never.
 
 Ltac bind_ext :=
-  let congr_ext m := ltac:(congr (Bind m); rewrite boolp.funeqE) in
+  let congr_ext m := ltac:(congr (Bind m); apply boolp_funeqE) in
   match goal with
     | |- @Bind _ _ _ ?m ?f1 = @Bind _ _ _ ?m ?f2 =>
       congr_ext m
@@ -433,7 +421,7 @@ Tactic Notation "With" tactic(tac) "Open" ssrpatternarg(pat) :=
   evar (g : typ);
   rewrite (_ : f = g);
   [rewrite {}/f {}/g|
-   rewrite boolp.funeqE => x; rewrite {}/g {}/f; tac]; last first.
+   apply boolp_funeqE => x; rewrite {}/g {}/f; tac]; last first.
 
 Tactic Notation "Open" ssrpatternarg(pat) :=
   With (idtac) Open pat.
@@ -484,12 +472,12 @@ Qed.*)
 (* TODO: move? *)
 Lemma foldl_revE (T R : UU0) (f : R -> T -> R) (z : R) :
   foldl f z \o rev = foldr (fun x : T => f^~ x) z.
-Proof. by rewrite boolp.funeqE => s; rewrite -foldl_rev. Qed.
+Proof. by apply boolp_funeqE => s; rewrite -foldl_rev. Qed.
 
 Lemma mfoldl_rev (T R : UU0) (f : R -> T -> R) (z : R) (s : seq T -> M (seq T)) :
   foldl f z (o) (rev (o) s) = foldr (fun x => f^~ x) z (o) s.
 Proof.
-rewrite boolp.funeqE => x; rewrite !fcompE 3!fmapE !bindA.
+apply boolp_funeqE => x; rewrite !fcompE 3!fmapE !bindA.
 bind_ext => ?; by rewrite bindretf /= -foldl_rev.
 Qed.
 
@@ -604,7 +592,7 @@ Definition bassert {A : UU0} (p : pred A) (m : M A) : M A := m >>= assert p.
 Lemma commutativity_of_assertions A q :
   Join \o (M # (bassert q)) = bassert q \o Join :> (_ -> M A).
 Proof.
-by rewrite boolp.funeqE => x; rewrite !compE join_fmap /bassert joinE bindA.
+by apply boolp_funeqE => x; rewrite !compE join_fmap /bassert joinE bindA.
 Qed.
 
 (* guards commute with anything *)
@@ -1348,133 +1336,3 @@ Proof. by case: M => m [? ? [? ? ?]] []. Qed.
 Lemma runstmark : forall t s, Run (stMark t : M _) s = (tt, (s.1, rcons s.2 t)).
 Proof. by case: M => m [? ? [? ? ?]] t []. Qed.
 End statetracerun_lemmas.
-
-Module MonadProb.
-Local Open Scope reals_ext_scope.
-Record mixin_of (M : monad) := Mixin {
-  choice : forall (p : prob) (T : UU0), M T -> M T -> M T
-           where "a <| p |> b" := (choice p a b) ;
-  (* identity axioms *)
-  _ : forall (T : UU0) (a b : M T), a <| 0%:pr |> b = b ;
-  _ : forall (T : UU0) (a b : M T), a <| 1%:pr |> b = a ;
-  (* skewed commutativity *)
-  _ : forall (T : UU0) p (a b : M T), a <| p |> b = b <| p.~%:pr |> a ;
-  _ : forall (T : UU0) p, idempotent (@choice p T) ;
-  (* quasi associativity *)
-  _ : forall (T : UU0) (p q r s : prob) (a b c : M T),
-    (p = r * s :> R /\ s.~ = p.~ * q.~)%R ->
-    a <| p |> (b <| q |> c) = (a <| r |> b) <| s |> c ;
-  (* composition distributes leftwards over [probabilistic] choice *)
-  _ : forall p, BindLaws.left_distributive (@Bind M) (choice p) }.
-Record class_of (m : UU0 -> UU0) := Class {
-  base : Monad.class_of m ; mixin : mixin_of (Monad.Pack base) }.
-Structure t := Pack { m : UU0 -> UU0 ; class : class_of m }.
-Definition baseType (M : t) := Monad.Pack (MonadProb.base (class M)).
-Module Exports.
-Definition Choice (M : t) : forall p T, m M T -> m M T -> m M T :=
-  let: Pack _ (Class _ (Mixin x _ _ _ _ _ _ )) := M return
-    forall p T, m M T -> m M T -> m M T in x.
-Arguments Choice {M} : simpl never.
-Notation "a <| p |> b" := (Choice p _ a b) : proba_monad_scope.
-Notation probMonad := t.
-Coercion baseType : probMonad >-> monad.
-Canonical baseType.
-End Exports.
-End MonadProb.
-Export MonadProb.Exports.
-
-Section prob_lemmas.
-Local Open Scope proba_monad_scope.
-Local Open Scope reals_ext_scope.
-Variable (M : probMonad).
-Lemma choicemm : forall A p, idempotent (@Choice M p A).
-Proof. by case: M => m [? []]. Qed.
-Lemma choice0 : forall A (mx my : M A), mx <| 0%:pr |> my = my.
-Proof. by case: M => m [? []]. Qed.
-Lemma choice1 : forall A (mx my : M A), mx <| 1%:pr |> my = mx.
-Proof. by case: M => m [? []]. Qed.
-Lemma choiceA A : forall (p q r s : prob) (mx my mz : M A),
-    (p = r * s :> R /\ s.~ = p.~ * q.~)%R ->
-    mx <| p |> (my <| q |> mz) = (mx <| r |> my) <| s |> mz.
-Proof. by case: M A => m [? []]. Qed.
-Lemma choiceC : forall A (p : prob) (mx my : M A), mx <| p |> my = my <| p.~%:pr |> mx.
-Proof. by case: M => m [? []]. Qed.
-Lemma prob_bindDl p : BindLaws.left_distributive (@Bind M) (Choice p).
-Proof. by case: M => m [? []]. Qed.
-End prob_lemmas.
-Arguments choiceA {M} {A} _ _ _ _ {mx} {my} {mz}.
-Arguments choiceC {M} {A} _ {mx} {my}.
-
-Module MonadProbDr.
-Record mixin_of (M : probMonad) := Mixin {
-  (* composition distributes rightwards over [probabilistic] choice *)
-  (* WARNING: this should not be asserted as an axiom in conjunction with distributivity of <||> over [] *)
-  prob_bindDr : forall p, BindLaws.right_distributive (@Bind M) (Choice p) (* NB: not used *)
-} .
-Record class_of (m : UU0 -> UU0) := Class {
-  base : MonadProb.class_of m ;
-  mixin : mixin_of (MonadProb.Pack base) }.
-Structure t := Pack { m : UU0 -> UU0; class : class_of m }.
-Definition baseType (M : t) := MonadProb.Pack (base (class M)).
-Module Exports.
-Notation probDrMonad := t.
-Coercion baseType : probDrMonad >-> probMonad.
-Canonical baseType.
-End Exports.
-End MonadProbDr.
-Export MonadProbDr.Exports.
-
-Module MonadAltProb.
-Record mixin_of (M : altCIMonad) (f : prob -> forall T : UU0, M T -> M T -> M T)
-  := Mixin {_ : forall T p, right_distributive (f p T) (fun a b => a [~] b) }.
-Record class_of (m : UU0 -> UU0) := Class {
-  base : MonadAltCI.class_of m ;
-  mixin_prob : MonadProb.mixin_of
-    (Monad.Pack (MonadAlt.base (MonadAltCI.base base))) ;
-  mixin_altProb : @mixin_of (MonadAltCI.Pack base)
-                            (@MonadProb.choice _ mixin_prob) }.
-Structure t := Pack { m : UU0 -> UU0 ; class : class_of m }.
-Definition baseType (M : t) : altCIMonad := MonadAltCI.Pack (base (class M)).
-Definition altType (M : t) : altMonad :=
-  MonadAlt.Pack (MonadAltCI.base (base (class M))).
-Module Exports.
-Notation altProbMonad := t.
-Coercion baseType : altProbMonad >-> altCIMonad.
-Canonical baseType.
-Definition altprob_is_prob M :=
-  MonadProb.Pack (MonadProb.Class (mixin_prob (class M))).
-Canonical altprob_is_prob.
-Canonical altType.
-End Exports.
-End MonadAltProb.
-Export MonadAltProb.Exports.
-
-Section altprob_lemmas.
-Local Open Scope proba_monad_scope.
-Variable (M : altProbMonad).
-Lemma choiceDr : forall (A : UU0) p,
-  right_distributive (fun x y : M A => x <| p |> y) (fun x y => x [~] y).
-Proof. by case: M => m [? ? []]. Qed.
-End altprob_lemmas.
-
-Module MonadExceptProb.
-Record mixin_of (M : exceptMonad) (a : prob -> forall A : UU0, M A -> M A -> M A) := Mixin {
-  catchDl : forall (A : UU0) w, left_distributive (@Catch M A) (fun x y => a w A x y)
-    (* NB: not used? *)}.
-Record class_of (m : UU0 -> UU0) := Class {
-  base : MonadExcept.class_of m ;
-  mixin_prob : MonadProb.mixin_of (Monad.Pack (MonadFail.base (MonadExcept.base base))) ;
-  mixin_exceptProb : @mixin_of (MonadExcept.Pack base) (@Choice (MonadProb.Pack (MonadProb.Class mixin_prob)))
-}.
-Structure t := Pack { m : UU0 -> UU0 ; class : class_of m }.
-Definition baseType (M : t) : exceptMonad := MonadExcept.Pack (base (class M)).
-Module Exports.
-Notation exceptProbMonad := t.
-Coercion baseType : exceptProbMonad >-> exceptMonad.
-Canonical baseType.
-Definition prob_of_exceptprob M :=
-  MonadProb.Pack (MonadProb.Class (mixin_prob (class M))).
-Canonical prob_of_exceptprob.
-End Exports.
-End MonadExceptProb.
-Export MonadExceptProb.Exports.

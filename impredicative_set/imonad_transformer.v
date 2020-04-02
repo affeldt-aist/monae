@@ -1,5 +1,4 @@
 From mathcomp Require Import all_ssreflect.
-From mathcomp Require boolp.
 Require Import imonae_lib ihierarchy imonad_lib ifail_lib istate_lib imonad_model.
 
 (******************************************************************************)
@@ -88,7 +87,7 @@ Section monadM_lemmas.
 Variables (M N : monad) (e : monadM M N).
 Lemma natural_monadM : naturality M N e.
 Proof.
-move=> A B h; rewrite boolp.funeqE => m /=.
+move=> A B h; apply boolp_funeqE => m /=.
 by rewrite !fmapE monadMbind compA monadMret.
 Qed.
 End monadM_lemmas.
@@ -127,24 +126,24 @@ Definition MS_fmap (A B : UU0) (f : A -> B) (m : MS A) : MS B :=
 
 Lemma MS_id : FunctorLaws.id MS_fmap.
 Proof.
-move=> A; rewrite boolp.funeqE => m.
-rewrite /MS_fmap boolp.funeqE => s.
+move=> A; apply boolp_funeqE => m.
+rewrite /MS_fmap; apply boolp_funeqE => s.
 rewrite (_ : (fun x : A * S => _) = id) ?functor_id //.
-by rewrite boolp.funeqE; case.
+by apply boolp_funeqE; case.
 Qed.
 
 Lemma MS_comp : FunctorLaws.comp MS_fmap.
 Proof.
-move=> A B C g h; rewrite /MS_fmap boolp.funeqE => m.
-by rewrite boolp.funeqE => s /=; rewrite -[RHS]compE -functor_o.
+move=> A B C g h; rewrite /MS_fmap; apply boolp_funeqE => m.
+by apply boolp_funeqE => s /=; rewrite -[RHS]compE -functor_o.
 Qed.
 
 Definition MS_functor := Functor.Pack (Functor.Mixin MS_id MS_comp).
 
 Lemma naturality_retS : naturality FId MS_functor retS.
 Proof.
-move=> A B h; rewrite /Fun /= boolp.funeqE => a /=.
-rewrite /MS_fmap /= boolp.funeqE => s /=.
+move=> A B h; rewrite /Fun /=; apply boolp_funeqE => a /=.
+rewrite /MS_fmap /=; apply boolp_funeqE => s /=.
 by rewrite /retS [in LHS]curryE (natural RET).
 Qed.
 
@@ -154,14 +153,14 @@ Definition retS_natural : FId ~> MS_functor :=
 Program Definition estateMonadM : monad :=
   @Monad_of_ret_bind MS_functor retS_natural bindS _ _ _.
 Next Obligation.
-by move=> A B a f; rewrite /bindS boolp.funeqE => s; rewrite bindretf.
+by move=> A B a f; rewrite /bindS; apply boolp_funeqE => s; rewrite bindretf.
 Defined.
 Next Obligation.
-move=> A m; rewrite /bindS boolp.funeqE => s.
+move=> A m; rewrite /bindS; apply boolp_funeqE => s.
 rewrite -[in RHS](bindmret (m s)); by bind_ext; case.
 Defined.
 Next Obligation.
-move=> A B C m f g; rewrite /bindS boolp.funeqE => s.
+move=> A B C m f g; rewrite /bindS; apply boolp_funeqE => s.
 by rewrite bindA; bind_ext; case.
 Defined.
 
@@ -172,11 +171,11 @@ Program Definition stateMonadM : monadM M estateMonadM :=
   locked (monadM.Pack (@monadM.Mixin _ _ liftS _ _)).
 Next Obligation.
 move=> A.
-rewrite /liftS boolp.funeqE => a /=; rewrite boolp.funeqE => s /=.
+rewrite /liftS; apply boolp_funeqE => a /=; apply boolp_funeqE => s /=.
 by rewrite bindretf.
 Qed.
 Next Obligation.
-move=> A B m f; rewrite /liftS boolp.funeqE => s.
+move=> A B m f; rewrite /liftS; apply boolp_funeqE => s.
 rewrite [in RHS]/Bind [in RHS]/Join /= /Monad_of_ret_bind.join /= /bindS !bindA.
 bind_ext => a; by rewrite !bindretf.
 Qed.
@@ -206,24 +205,24 @@ Local Close Scope mprog.
 
 Lemma MX_map_i : FunctorLaws.id MX_map.
 Proof.
-move=> A; rewrite boolp.funeqE => x.
+move=> A; apply boolp_funeqE => x.
 rewrite /MX in x *.
-by rewrite /MX_map (_ : (fun _ => _) = id) ?functor_id // boolp.funeqE; case.
+by rewrite /MX_map (_ : (fun _ => _) = id) ?functor_id //; apply boolp_funeqE; case.
 Qed.
 
 Lemma MX_map_o : FunctorLaws.comp MX_map.
 Proof.
 rewrite /MX_map => A B C g h /=.
-rewrite boolp.funeqE => x /=.
+apply boolp_funeqE => x /=.
 rewrite -[RHS]compE -functor_o /=; congr (_ # _).
-by rewrite boolp.funeqE; case.
+by apply boolp_funeqE; case.
 Qed.
 
 Definition exceptionT_functor := Functor.Pack (Functor.Mixin MX_map_i MX_map_o).
 
 Lemma naturality_retX : naturality FId exceptionT_functor retX.
 Proof.
-move=> A B h; rewrite /retX boolp.funeqE /= => a.
+move=> A B h; rewrite /retX; apply boolp_funeqE => /= a.
 by rewrite /Fun /= /MX_map -[LHS]compE (natural RET).
 Qed.
 
@@ -247,7 +246,7 @@ Definition liftX X (m : M X) : eexceptionMonadM X :=
 Program Definition exceptionMonadM : monadM M eexceptionMonadM :=
   monadM.Pack (@monadM.Mixin _ _ liftX _ _).
 Next Obligation.
-by move=> A; rewrite boolp.funeqE => a; rewrite /liftX /= bindretf.
+by move=> A; apply boolp_funeqE => a; rewrite /liftX /= bindretf.
 Qed.
 Next Obligation.
 move=> A B m f; rewrite /liftX [in RHS]/Bind [in RHS]/Join /=.
@@ -301,13 +300,13 @@ Program Definition contMonadM : monadM M econtMonadM  :=
   monadM.Pack (@monadM.Mixin _ _ liftC  _ _).
 Next Obligation.
 move => A.
-rewrite /liftC boolp.funeqE => a /=.
-rewrite boolp.funeqE => s.
+rewrite /liftC; apply boolp_funeqE => a /=.
+apply boolp_funeqE => s.
 by rewrite bindretf.
 Qed.
 Next Obligation.
 move => A B m f.
-rewrite /liftC boolp.funeqE => cont.
+rewrite /liftC; apply boolp_funeqE => cont.
 by rewrite !bindA.
 Qed.
 
@@ -434,8 +433,10 @@ Lemma functor_ext (F G : functor) :
   G = F.
 Proof.
 move: F G => [F [HF1 HF2 HF3]] [G [HG1 HG2 HG3]] /= H; subst G => /= ?; subst HG1.
-congr (Functor.Pack (Functor.Mixin _ _)); exact/boolp.Prop_irrelevance.
+congr (Functor.Pack (Functor.Mixin _ _)); exact/boolp_Prop_irrelevance.
 Defined.
+
+Require Import Logic.Eqdep.
 
 Lemma natural_ext (F G G' : functor) (t : F ~> G) (t' : F ~> G') :
   forall (H : G = G'),
@@ -447,9 +448,9 @@ have ? : t = t'.
   apply FunctionalExtensionality.functional_extensionality_dep => A.
   apply FunctionalExtensionality.functional_extensionality => x.
   rewrite H.
-  by rewrite -[in RHS]Classical_Prop.Eq_rect_eq.eq_rect_eq.
+  by rewrite -[in RHS]eq_rect_eq.
 subst t'.
-congr Natural.Pack; exact/boolp.Prop_irrelevance.
+congr Natural.Pack; exact/boolp_Prop_irrelevance.
 Qed.
 
 Lemma natural_ext2 (F F' : functor) (t : F \O F ~> F) (t' : F' \O F' ~> F') :
@@ -461,14 +462,14 @@ Lemma natural_ext2 (F F' : functor) (t : F \O F ~> F) (t' : F' \O F' ~> F') :
   t' = eq_rect _ (fun m => m \O m ~> m) t _ K.
 Proof.
 move: t t' => [t t1] [t' t'1] /= H L; subst F.
-rewrite -[in RHS]Classical_Prop.Eq_rect_eq.eq_rect_eq /=.
+rewrite -[in RHS]eq_rect_eq /=.
 have ? : t = t'.
   apply FunctionalExtensionality.functional_extensionality_dep => A.
   apply FunctionalExtensionality.functional_extensionality => x.
   rewrite L.
-  by rewrite -[in RHS]Classical_Prop.Eq_rect_eq.eq_rect_eq.
+  by rewrite -[in RHS]eq_rect_eq.
 subst t'.
-congr Natural.Pack; exact/boolp.Prop_irrelevance.
+congr Natural.Pack; exact/boolp_Prop_irrelevance.
 Qed.
 
 Lemma monad_of_ret_bind_ext (F G : functor) (RET1 : FId ~> F) (RET2 : FId ~> G)
@@ -483,9 +484,9 @@ Lemma monad_of_ret_bind_ext (F G : functor) (RET1 : FId ~> F) (RET2 : FId ~> G)
 Proof.
 move=> FG; subst G; move=> HRET; subst RET1; move=> HBIND; subst bind1 => H1 K1 H2 K2 H3 K3.
 rewrite /Monad_of_ret_bind; congr Monad.Pack; simpl in *.
-have <- : H1 = K1 by exact/boolp.Prop_irrelevance.
-have <- : H2 = K2 by exact/boolp.Prop_irrelevance.
-have <- : H3 = K3 by exact/boolp.Prop_irrelevance.
+have <- : H1 = K1 by exact/boolp_Prop_irrelevance.
+have <- : H2 = K2 by exact/boolp_Prop_irrelevance.
+have <- : H3 = K3 by exact/boolp_Prop_irrelevance.
 by [].
 Qed.
 
@@ -498,7 +499,7 @@ Let Q : U -> UU0 := Functor.m^~ X.
 Lemma eq_rect_ret (p p' : U) (K : Q p' = Q p) (x : Q p') (h : p = p') :
   x = eq_rect p Q (eq_rect _ (fun X : UU0 => id X) x _ K) p' h.
 Proof.
-by rewrite /eq_rect; destruct h; rewrite (_ : K = erefl) // -Classical_Prop.EqdepTheory.UIP_refl.
+rewrite /eq_rect; destruct h; rewrite (_ : K = erefl) //; exact/boolp_Prop_irrelevance.
 Qed.
 
 Lemma eq_rect_state_ret S (p := ModelMonad.State.functor S : U)
@@ -507,7 +508,7 @@ Lemma eq_rect_state_ret S (p := ModelMonad.State.functor S : U)
 Proof.
 have K : Q p' = Q p by [].
 rewrite {2}(_ : x = eq_rect _ (fun x : UU0 => x) x _ K) //; first exact: eq_rect_ret.
-by rewrite /eq_rect (_ : K = erefl) // -Classical_Prop.EqdepTheory.UIP_refl.
+rewrite /eq_rect (_ : K = erefl) //; exact/boolp_Prop_irrelevance.
 Qed.
 
 Lemma eq_rect_error_ret (E : UU0) (p : U := ModelMonad.Except.functor E)
@@ -516,7 +517,7 @@ Lemma eq_rect_error_ret (E : UU0) (p : U := ModelMonad.Except.functor E)
 Proof.
 have K : Q p' = Q p by [].
 rewrite {2}(_ : x = eq_rect _ (fun x : UU0 => x) x _ K) //; first exact: eq_rect_ret.
-by rewrite /eq_rect (_ : K = erefl) // -Classical_Prop.EqdepTheory.UIP_refl.
+rewrite /eq_rect (_ : K = erefl) //; exact/boolp_Prop_irrelevance.
 Qed.
 
 Lemma eq_rect_cont_ret r (p : U := ModelMonad.Cont.functor r)
@@ -525,7 +526,7 @@ Lemma eq_rect_cont_ret r (p : U := ModelMonad.Cont.functor r)
 Proof.
 have K : Q p' = Q p by [].
 rewrite {2}(_ : x = eq_rect _ (fun x : UU0 => x) x _ K) //; first exact: eq_rect_ret.
-by rewrite /eq_rect (_ : K = erefl) // -Classical_Prop.EqdepTheory.UIP_refl.
+rewrite /eq_rect (_ : K = erefl) //; exact/boolp_Prop_irrelevance.
 Qed.
 
 End eq_rect_ret.
@@ -537,7 +538,7 @@ Let Q : U -> Type := fun F => forall A B, Functor.m F A -> (A -> Functor.m F B) 
 Lemma eq_rect_bind (p p' : U) (K : Q p' = Q p) (x : Q p') (h : p = p') :
   x = eq_rect p Q (eq_rect _ id x _ K) p' h.
 Proof.
-by rewrite /eq_rect; destruct h; rewrite (_ : K = erefl) // -Classical_Prop.EqdepTheory.UIP_refl.
+rewrite /eq_rect; destruct h; rewrite (_ : K = erefl) //; exact/boolp_Prop_irrelevance.
 Qed.
 
 Lemma eq_rect_bind_state S (p : U := ModelMonad.State.functor S)
@@ -546,7 +547,7 @@ Lemma eq_rect_bind_state S (p : U := ModelMonad.State.functor S)
 Proof.
 have K : Q p' = Q p by [].
 rewrite {2}(_ : x = eq_rect _ id x _ K); first exact: eq_rect_bind.
-by rewrite /eq_rect (_ : K = erefl) // -Classical_Prop.EqdepTheory.UIP_refl.
+rewrite /eq_rect (_ : K = erefl) //; exact/boolp_Prop_irrelevance.
 Qed.
 
 Lemma eq_rect_bind_error E (p : U := ModelMonad.Except.functor E)
@@ -555,7 +556,7 @@ Lemma eq_rect_bind_error E (p : U := ModelMonad.Except.functor E)
 Proof.
 have K : Q p' = Q p by [].
 rewrite {2}(_ : x = eq_rect _ id x _ K) //; first exact: eq_rect_bind.
-by rewrite /eq_rect (_ : K = erefl) // -Classical_Prop.EqdepTheory.UIP_refl.
+rewrite /eq_rect (_ : K = erefl) //; exact/boolp_Prop_irrelevance.
 Qed.
 
 Lemma eq_rect_bind_cont S (p : U := ModelMonad.Cont.functor S)
@@ -564,7 +565,7 @@ Lemma eq_rect_bind_cont S (p : U := ModelMonad.Cont.functor S)
 Proof.
 have K : Q p' = Q p by [].
 rewrite {2}(_ : x = eq_rect _ id x _ K) //; first exact: eq_rect_bind.
-by rewrite /eq_rect (_ : K = erefl) // -Classical_Prop.EqdepTheory.UIP_refl.
+rewrite /eq_rect (_ : K = erefl) //; exact/boolp_Prop_irrelevance.
 Qed.
 
 End eq_rect_bind.
@@ -574,16 +575,12 @@ Section instantiations_with_the_identity_monad.
 Lemma state_monad_stateT S :
   stateT S ModelMonad.identity = ModelMonad.State.t S.
 Proof.
-(* NB:
-used to be as simple as this
-congr (Monad_of_ret_bind _ _ _); exact/boolp.Prop_irrelevance
-*)
 rewrite /= /estateMonadM /ModelMonad.State.t.
 have FG : MS_functor S ModelMonad.identity = ModelMonad.State.functor S.
   apply: functor_ext => /=.
   apply FunctionalExtensionality.functional_extensionality_dep => A.
   apply FunctionalExtensionality.functional_extensionality_dep => B.
-  rewrite boolp.funeqE => f; rewrite boolp.funeqE => m; rewrite boolp.funeqE => s.
+  apply boolp_funeqE => f; apply boolp_funeqE => m; apply boolp_funeqE => s.
   by rewrite /MS_fmap /Fun /= /ModelMonad.State.map; destruct (m s).
 apply (@monad_of_ret_bind_ext _ _ _ _ _ _ FG) => /=.
   apply/natural_ext => A a /=; exact: eq_rect_state_ret _ (esym FG).
@@ -598,7 +595,7 @@ have FG : exceptionT_functor Z ModelMonad.identity = ModelMonad.Except.functor Z
   apply: functor_ext => /=.
   apply FunctionalExtensionality.functional_extensionality_dep => A.
   apply FunctionalExtensionality.functional_extensionality_dep => B.
-  rewrite boolp.funeqE => f; rewrite boolp.funeqE => m.
+  apply boolp_funeqE => f; apply boolp_funeqE => m.
   by rewrite /MX_map /Fun /= /ModelMonad.Except.map; destruct m.
 apply (@monad_of_ret_bind_ext _ _ _ _ _ _ FG) => /=.
   apply/natural_ext => A a /=; exact: (eq_rect_error_ret _ (esym FG)).
@@ -613,7 +610,7 @@ have FG : MC_functor r ModelMonad.identity = ModelMonad.Cont.functor r.
   apply: functor_ext => /=.
   apply FunctionalExtensionality.functional_extensionality_dep => A.
   apply FunctionalExtensionality.functional_extensionality_dep => B.
-  by rewrite boolp.funeqE => f; rewrite boolp.funeqE => m.
+  by apply boolp_funeqE => f; apply boolp_funeqE => m.
 apply (@monad_of_ret_bind_ext _ _ _ _ _ _ FG) => /=.
   apply/natural_ext => A a /=; exact: (@eq_rect_cont_ret A r _ (esym FG)).
 set x := @bindC _ _; exact: (@eq_rect_bind_cont r x (esym FG)).
@@ -696,7 +693,7 @@ Lemma aoperation_ext (f g : E.-aoperation M) :
 Proof.
 split => [ -> // |]; move: f g => [f Hf] [g Hg] /= fg.
 have ? : f = g by exact: FunctionalExtensionality.functional_extensionality_dep.
-subst g; congr (AOperation.Pack _); exact/boolp.Prop_irrelevance.
+subst g; congr (AOperation.Pack _); exact/boolp_Prop_irrelevance.
 Qed.
 
 End algebraic_operation_interface.
@@ -769,7 +766,7 @@ Proof.
 move=> A B f t.
 rewrite /EnvironmentOps.local_op /=.
 rewrite /EnvironmentOps.local /=.
-rewrite boolp.funeqE => e /=.
+apply boolp_funeqE => e /=.
 rewrite bindE /=.
 rewrite /ModelMonad.Environment.bind /=.
 rewrite /Fun /=.
@@ -889,7 +886,7 @@ Variables (E : functor) (M : monad).
 Lemma psiK (op : E ~> M) : phi (psi op) = op.
 Proof.
 apply/nattrans_ext => A.
-rewrite phiE psiE boolp.funeqE => m /=.
+rewrite phiE psiE; apply boolp_funeqE => m /=.
 rewrite -(compE (op _)) -(natural op) -(compE Join).
 by rewrite compA joinMret.
 Qed.
@@ -897,7 +894,7 @@ Qed.
 Lemma phiK (op : E.-aoperation M) : psi (phi op) = op.
 Proof.
 apply/aoperation_ext => A.
-rewrite psiE phiE boolp.funeqE => m /=.
+rewrite psiE phiE; apply boolp_funeqE => m /=.
 rewrite -(compE (op _)) joinE (algebraic op).
 rewrite -(compE (E # _)) -functor_o.
 rewrite -(compE (op _)).
@@ -925,7 +922,7 @@ Proof. by []. Qed.
 Lemma theorem19 : lifting op e alifting.
 Proof.
 move=> X.
-rewrite boolp.funeqE => Y.
+apply boolp_funeqE => Y.
 transitivity (e X (op X Y)) => //.
 rewrite /alifting compE psiE vcompE phiE.
 rewrite 3!compE.
@@ -1006,18 +1003,18 @@ Lemma stateMonad_of_stateT S (M : monad) : MonadState.class_of S (stateT S M).
 Proof.
 refine (@MonadState.Class _ _ _ (@MonadState.Mixin _ (stateT S M) (fun s => Ret (s, s)) (fun s' _ => Ret (tt, s')) _ _ _ _)).
 move=> s s'.
-rewrite boolp.funeqE => s0.
+apply boolp_funeqE => s0.
 case: M => m [[f fi fo] [/= r j a b c]].
 rewrite /Bind /Join /JOIN /estateMonadM /Monad_of_ret_bind /bindS /Fun /=.
 rewrite /Monad_of_ret_bind.Map bindretf /=.
 by rewrite /retS bindretf.
 move=> s.
-rewrite boolp.funeqE => s0.
+apply boolp_funeqE => s0.
 case: M => m [[f fi fo] [/= r j a b c]].
 rewrite /retS /Ret /RET /Bind /estateMonadM /Monad_of_ret_bind /Fun /bindS /=.
 rewrite /Monad_of_ret_bind.Map.
 by rewrite 4!bindretf /=.
-rewrite boolp.funeqE => s.
+apply boolp_funeqE => s.
 case: M => m [[f fi fo] [/= r j a b c]].
 rewrite /Bind /Join /JOIN /=.
 rewrite /estateMonadM /Monad_of_ret_bind /bindS /Fun /=.
@@ -1025,7 +1022,7 @@ rewrite /Monad_of_ret_bind.Map bindretf /=.
 by rewrite /retS bindretf.
 case: M => m [[f fi fo] [/= r j a b c]].
 move=> A k.
-rewrite boolp.funeqE => s.
+apply boolp_funeqE => s.
 rewrite /Bind /Join /JOIN /= /bindS /estateMonadM /=.
 rewrite /Monad_of_ret_bind /Fun /Monad_of_ret_bind.Map /=.
 rewrite /Monad_of_ret_bind.Map /= /bindS /=.
@@ -1132,10 +1129,10 @@ Proof.
 move=> A B h.
 rewrite /hmapX' -2!FunctionalExtensionality.eta_expansion.
 have H : forall G, errorT X G # h = MX_map h.
-  move=> E; rewrite boolp.funeqE => m /=.
+  move=> E; apply boolp_funeqE => m /=.
   rewrite /Fun /= /Monad_of_ret_bind.Map /MX_map /= /bindX /= fmapE.
   congr (_ >>= _).
-  by rewrite boolp.funeqE; case.
+  by apply boolp_funeqE; case.
 by rewrite 2!H /MX_map /= natural.
 Qed.
 
@@ -1145,7 +1142,7 @@ Definition hmapX (F G : monad) (tau : F ~> G) : T F ~> T G :=
 Let monadMret_hmapX (F G : monad) (e : monadM F G) :
   MonadMLaws.ret (hmapX (monadM_nt e)).
 Proof.
-move=> A; rewrite boolp.funeqE => /= a.
+move=> A; apply boolp_funeqE => /= a.
 by rewrite /hmapX' /retX /= -(compE (e _)) monadMret.
 Qed.
 
@@ -1157,7 +1154,7 @@ rewrite !bindE /= /bindX /=.
 rewrite !monadMbind /=.
 rewrite !bindA /=.
 congr (_ >>= _).
-rewrite boolp.funeqE.
+apply boolp_funeqE.
 case.
   move=> x.
   rewrite bindretf.
@@ -1219,18 +1216,18 @@ move=> A B h.
 rewrite /hmapS'.
 rewrite /=.
 have H : forall G, estateMonadM S G # h = MS_functor S G # h.
-  move=> H; rewrite boolp.funeqE => m.
+  move=> H; apply boolp_funeqE => m.
   rewrite /Fun /=.
   rewrite /Monad_of_ret_bind.Map /=.
   rewrite /bindS /MS_fmap /retS /=.
-  rewrite boolp.funeqE => s.
+  apply boolp_funeqE => s.
   set j := uncurry _.
   have -> : j = Ret \o (fun x : A * S => (h x.1, x.2)).
-    by rewrite boolp.funeqE; case.
+    by apply boolp_funeqE; case.
   by rewrite -fmapE.
 rewrite !H {H}.
 rewrite {1}/MS_functor /= {1}/Fun /=.
-rewrite /MS_fmap boolp.funeqE => m; rewrite boolp.funeqE => s /=.
+rewrite /MS_fmap; apply boolp_funeqE => m; apply boolp_funeqE => s /=.
 rewrite -(compE  _ (tau (A * S)%type)).
 by rewrite natural.
 Qed.
@@ -1241,8 +1238,8 @@ Definition hmapS (F G : monad) (tau : F ~> G) : T F ~> T G :=
 Let monadMret_hmapS (F G : monad) (e : monadM F G) :
   MonadMLaws.ret (hmapS (monadM_nt e)).
 Proof.
-move=> A; rewrite boolp.funeqE => /= a.
-rewrite /hmapS' /= /retS /= boolp.funeqE => s.
+move=> A; apply boolp_funeqE => /= a.
+rewrite /hmapS' /= /retS /=; apply boolp_funeqE => s.
 by rewrite [in LHS]curryE monadMret.
 Qed.
 
@@ -1250,12 +1247,12 @@ Let monadMbind_hmapS (F G : monad) (e : monadM F G) :
   MonadMLaws.bind (hmapS (monadM_nt e)).
 Proof.
 move=> A B m f.
-rewrite /hmapS /= boolp.funeqE => s.
+rewrite /hmapS /=; apply boolp_funeqE => s.
 rewrite !bindE /= /bindS /=.
 rewrite !monadMbind /=.
 rewrite !bindA /=.
 congr (_ >>= _).
-rewrite boolp.funeqE; case => a s'.
+apply boolp_funeqE; case => a s'.
 rewrite /retS /=.
 rewrite bindretf.
 rewrite -(compE _ Ret).
@@ -1292,8 +1289,8 @@ unlock.
 rewrite /=.
 rewrite /liftS /=.
 rewrite /Bind /=.
-rewrite boolp.funeqE => ma /=.
-rewrite boolp.funeqE => s /=.
+apply boolp_funeqE => ma /=.
+apply boolp_funeqE => s /=.
 rewrite 2!(_ : (fun x : A => Ret (x, s)) = Ret \o (fun x => (x, s))) //.
 rewrite functor_o.
 rewrite -(compE Join).

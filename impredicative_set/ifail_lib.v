@@ -1,5 +1,4 @@
 From mathcomp Require Import all_ssreflect.
-From mathcomp Require boolp.
 Require Import imonae_lib ihierarchy imonad_lib.
 
 (******************************************************************************)
@@ -218,7 +217,7 @@ Fixpoint perm {A : UU0} (s : seq A) : M (seq A) :=
 Lemma insert_map (A B : UU0) (f : A -> B) (a : A) :
   insert (f a) \o map f = map f (o) insert a :> (_ -> M _).
 Proof.
-rewrite boolp.funeqE; elim => [|y xs IH].
+apply boolp_funeqE; elim => [|y xs IH].
   by rewrite fcompE insertE -(compE (fmap (map f))) (natural RET) compE insertE.
 apply/esym.
 rewrite fcompE insertE alt_fmapDl.
@@ -233,7 +232,7 @@ Qed.
 Lemma perm_o_map (A B : UU0) (f : A -> B) :
   perm \o map f = map f (o) perm :> (seq A -> M (seq B)).
 Proof.
-rewrite boolp.funeqE; elim => [/=|x xs IH].
+apply boolp_funeqE; elim => [/=|x xs IH].
   by rewrite fcompE [perm _]/= -[in RHS]compE (natural RET).
 by rewrite fcompE [in perm _]/= fmap_bind -insert_map -bind_fmap -fcompE -IH.
 Qed.
@@ -259,19 +258,19 @@ rewrite fcompE insertE alt_fmapDl.
 rewrite -(compE (fmap _)) (natural RET) FIdf [in X in X [~] _]/= (negbTE pa).
 case: ifPn => ph.
 - rewrite -fmap_oE (_ : filter p \o cons h = cons h \o filter p); last first.
-    rewrite boolp.funeqE => x /=; by rewrite ph.
+    apply boolp_funeqE => x /=; by rewrite ph.
   rewrite fmap_oE.
   move: (IH); rewrite fcompE => ->.
   by rewrite fmapE /= ph bindretf /= altmm.
 - rewrite -fmap_oE (_ : filter p \o cons h = filter p); last first.
-    rewrite boolp.funeqE => x /=; by rewrite (negbTE ph).
+    apply boolp_funeqE => x /=; by rewrite (negbTE ph).
   move: (IH); rewrite fcompE => -> /=; by rewrite (negbTE ph) altmm.
 Qed.
 
 Lemma filter_insertT a : p a ->
   filter p (o) insert a = insert a \o filter p :> (_ -> M _).
 Proof.
-move=> pa; rewrite boolp.funeqE; elim => [|h t IH].
+move=> pa; apply boolp_funeqE; elim => [|h t IH].
   by rewrite fcompE !insertE fmapE bindretf /= pa.
 rewrite fcompE [in RHS]/=; case: ifPn => ph.
 - rewrite [in RHS]insertE.
@@ -284,7 +283,7 @@ rewrite fcompE [in RHS]/=; case: ifPn => ph.
 - rewrite [in LHS]insertE alt_fmapDl.
   rewrite -[in X in _ [~] X = _]fmap_oE.
   rewrite (_ : (filter p \o cons h) = filter p); last first.
-    by rewrite boolp.funeqE => x /=; rewrite (negbTE ph).
+    by apply boolp_funeqE => x /=; rewrite (negbTE ph).
   move: (IH); rewrite fcompE => ->.
   rewrite fmapE bindretf /= pa (negbTE ph) [in RHS]insertE; case: (filter _ _) => [|h' t'].
     by rewrite insertE altmm.
@@ -294,7 +293,7 @@ Qed.
 (* netys2017 *)
 Lemma perm_filter : perm \o filter p = filter p (o) perm :> (_ -> M _).
 Proof.
-rewrite boolp.funeqE; elim => [|h t /= IH].
+apply boolp_funeqE; elim => [|h t /= IH].
   by rewrite fcompE fmapE bindretf.
 case: ifPn => ph.
   rewrite [in LHS]/= IH [in LHS]fcomp_def compE [in LHS]bind_fmap.
@@ -326,13 +325,13 @@ Qed.
 
 Lemma rev_insert : rev (o) insert a = insert a \o rev :> (_ -> M _).
 Proof.
-rewrite boolp.funeqE; elim => [|h t IH].
+apply boolp_funeqE; elim => [|h t IH].
   by rewrite fcompE insertE fmapE bindretf.
 rewrite fcompE insertE compE alt_fmapDl fmapE bindretf compE [in RHS]rev_cons insert_rcons.
 rewrite rev_cons -cats1 rev_cons -cats1 -catA; congr (_ [~] _).
 move: IH; rewrite fcompE [X in X -> _]/= => <-.
 rewrite -!fmap_oE. congr (fmap _ (insert a t)).
-by rewrite boolp.funeqE => s; rewrite /= -rev_cons.
+by apply boolp_funeqE => s; rewrite /= -rev_cons.
 Qed.
 
 End altci_insert.
@@ -425,7 +424,7 @@ rewrite (_ : Callcc _ = Ret 100) ?bindretf //.
 transitivity (Callcc (fun _ : nat -> M nat => Ret 100)); last by rewrite callcc1.
 transitivity (Callcc (fun f : nat -> M nat => Ret 10 >>= (fun a => f 100))); first by rewrite callcc2.
 rewrite callcc3 //; congr Callcc.
-rewrite boolp.funeqE => g.
+apply boolp_funeqE => g.
 by rewrite bindretf.
 Qed.
 

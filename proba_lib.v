@@ -272,18 +272,6 @@ Definition arbcoin p : M bool :=
 Definition coinarb p : M bool :=
   (do c <- bcoin p ; (do a <- arb; Ret (a == c) : M _))%Do.
 
-(*
-Lemma Ret_eqb_addL b :
-  (fun c => Ret (b == c)) = (fun c => Ret (~~ b (+) c)) :> (bool -> M bool).
-Proof. case: b; rewrite boolp.funeqE; by case. Qed.
-
-Lemma Ret_eqb_addR b :
-  (fun c => Ret (c == b)) = (fun c => Ret (~~ b (+) c)) :> (bool -> M bool).
-Proof. case: b; rewrite boolp.funeqE; by case. Qed.
-
-Definition Ret_eqb_add := (Ret_eqb_addL, Ret_eqb_addR).
-*)
-
 Lemma arbcoin_spec p :
   arbcoin p = (bcoin p : M _) [~] bcoin p.~%:pr.
 Proof.

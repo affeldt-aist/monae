@@ -1,5 +1,4 @@
 From mathcomp Require Import all_ssreflect.
-From mathcomp Require boolp.
 Require Import imonae_lib ihierarchy imonad_lib imonad_transformer.
 
 (******************************************************************************)
@@ -35,9 +34,9 @@ Definition K_fmap (A B : UU0) (f : A -> B) (m : K_type A) : K_type B :=
 
 Lemma K_fmap_id : FunctorLaws.id K_fmap.
 Proof.
-move=> A; rewrite /K_fmap boolp.funeqE => m /=.
+move=> A; rewrite /K_fmap; apply boolp_funeqE => m /=.
 apply FunctionalExtensionality.functional_extensionality_dep => B.
-rewrite boolp.funeqE => k.
+apply boolp_funeqE => k.
 by rewrite -FunctionalExtensionality.eta_expansion.
 Qed.
 
@@ -51,7 +50,7 @@ Lemma naturality_K_ret : naturality FId K_functor K_ret.
 Proof.
 move=> A B h.
 rewrite /K_functor /Fun /= /K_fmap /K_ret /=.
-rewrite boolp.funeqE => a /=.
+apply boolp_funeqE => a /=.
 by apply FunctionalExtensionality.functional_extensionality_dep.
 Qed.
 
@@ -63,13 +62,13 @@ Program Definition eK_MonadM : monad :=
 Next Obligation.
 move=> A B a f; rewrite /K_bind /=.
 apply FunctionalExtensionality.functional_extensionality_dep => C.
-by rewrite boolp.funeqE.
+by apply boolp_funeqE.
 Qed.
 Next Obligation.
 move=> A m.
 rewrite /K_bind /K_ret.
 apply FunctionalExtensionality.functional_extensionality_dep => C.
-by rewrite boolp.funeqE.
+by apply boolp_funeqE.
 Qed.
 Next Obligation.
 move=> A B C m f g; rewrite /K_bind.
@@ -83,14 +82,14 @@ Program Definition K_MonadM : monadM M eK_MonadM :=
   locked (monadM.Pack (@monadM.Mixin _ _ K_lift _ _)).
 Next Obligation.
 move=> A; rewrite /K_lift /= /K_ret /=.
-rewrite boolp.funeqE => a.
+apply boolp_funeqE => a.
 apply FunctionalExtensionality.functional_extensionality_dep => B /=.
-by rewrite boolp.funeqE => b; rewrite bindretf.
+by apply boolp_funeqE => b; rewrite bindretf.
 Qed.
 Next Obligation.
 move=> A B m f; rewrite /K_lift.
 apply FunctionalExtensionality.functional_extensionality_dep => C /=.
-rewrite boolp.funeqE => g.
+apply boolp_funeqE => g.
 by rewrite bindA.
 Qed.
 
@@ -108,10 +107,10 @@ Definition kappa' : E ~~> K_MonadT M :=
 
 Lemma natural_kappa' : naturality _ _ kappa'.
 Proof.
-move=> A B h; rewrite /kappa' boolp.funeqE => ea; rewrite [in RHS]/=.
+move=> A B h; rewrite /kappa'; apply boolp_funeqE => ea; rewrite [in RHS]/=.
 transitivity (fun B0 (k : B -> M B0) => op B0 ((E # (k \o h)) ea)) => //.
 apply FunctionalExtensionality.functional_extensionality_dep => C.
-by rewrite boolp.funeqE => D; rewrite functor_o.
+by apply boolp_funeqE => D; rewrite functor_o.
 Qed.
 
 Definition kappa := Natural.Pack (Natural.Mixin natural_kappa').
@@ -135,7 +134,7 @@ Hypothesis naturality_k_type : forall (A : UU0) (m : k_type M A),
 
 Lemma natural_from_component : naturality (K_MonadT M) M from_component.
 Proof.
-move=> A B h; rewrite boolp.funeqE => m /=.
+move=> A B h; apply boolp_funeqE => m /=.
 transitivity (m B (Ret \o h)) => //. (* by definition of from *)
 rewrite -(natural RET).
 transitivity ((M # h \o m A) Ret) => //. (* by definition of from *)
@@ -146,7 +145,7 @@ Definition from := Natural.Pack (Natural.Mixin natural_from_component).
 
 Lemma from'_liftK A : (@from_component A) \o (Lift K_MonadT M A) = id.
 Proof.
-rewrite boolp.funeqE => m /=.
+apply boolp_funeqE => m /=.
 rewrite /from_component /= /Lift /=.
 rewrite /K_MonadM /=.
 (* TODO *) unlock => /=.
@@ -164,7 +163,7 @@ Definition K_op : E.-aoperation (K_MonadT M) := psi (kappa op).
 Lemma K_opE (A : UU0) : op A =
   (@from_component M A) \o (@K_op A) \o ((E ## (monadM_nt (Lift K_MonadT M))) A).
 Proof.
-rewrite boolp.funeqE => m /=.
+apply boolp_funeqE => m /=.
 rewrite /from_component /K_op /= /psi' /kappa' /fun_app_nt /=.
 rewrite /K_bind /=.
 rewrite -[in RHS]compE.
