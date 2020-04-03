@@ -20,7 +20,7 @@ Require Import monae_lib.
 (*            functor == type of functors                                     *)
 (*              F # g == application of functor F to the morphism g           *)
 (*             F ~> G == natural transformation from functor F to functor G   *)
-(*                NId == identify natural transformation                      *)
+(*                NId == identity natural transformation                      *)
 (*                 \v == vertical composition                                 *)
 (*                 \h == horizontal composition                               *)
 (*    Module JoinLaws == join laws of a monad                                 *)
