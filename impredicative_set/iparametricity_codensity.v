@@ -40,7 +40,7 @@ Lemma naturality :
 naturality (exponential_F A \O ModelMonad.identity) ModelMonad.identity m.
 Proof.
 intros X Y f.
-apply boolp_funeqE => g.
+apply fun_ext => g.
 unfold comp at 1 2.
 apply
   (param X Y (fun x y => (ModelMonad.identity # f) x = y) g
@@ -83,7 +83,7 @@ naturality
   (exponential_F A \O ModelMonad.Except.t E) (ModelMonad.Except.t E) m.
 Proof.
 intros X Y f.
-apply boolp_funeqE => g.
+apply fun_ext => g.
 unfold comp at 1 2.
 assert (H :
   forall a a' : A, a = a' ->
@@ -158,7 +158,7 @@ naturality
   ModelMonad.ListMonad.t m.
 Proof.
 intros X Y f.
-apply boolp_funeqE => g.
+apply fun_ext => g.
 unfold comp at 1 2.
 assert (H :
   forall a a' : A, a = a' ->
@@ -220,7 +220,7 @@ naturality
   (ModelMonad.State.t S) m.
 Proof.
 intros X Y f.
-apply boolp_funeqE => g.
+apply fun_ext => g.
 unfold comp at 1 2.
 assert (H :
   forall a a' : A, a = a' ->
@@ -237,7 +237,7 @@ assert (H :
   intros x s'.
   constructor; reflexivity.
 }
-apply boolp_funeqE => s0.
+apply fun_ext => s0.
 assert (Hparam :=
   param X Y (fun x y => f x = y) g ((ModelMonad.State.t S # f) \o g)
     H s0 s0 (erefl s0)).

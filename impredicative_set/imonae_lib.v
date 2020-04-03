@@ -1,9 +1,9 @@
 From mathcomp Require Import all_ssreflect.
 Require FunctionalExtensionality ProofIrrelevance.
 
-Definition boolp_funeqE := @FunctionalExtensionality.functional_extensionality.
+Definition fun_ext := @FunctionalExtensionality.functional_extensionality.
 
-Definition boolp_Prop_irrelevance := @ProofIrrelevance.proof_irrelevance.
+Definition proof_irr := @ProofIrrelevance.proof_irrelevance.
 
 Definition eq_rect_eq := @ProofIrrelevance.ProofIrrelevanceTheory.Eq_rect_eq.eq_rect_eq.
 
@@ -59,7 +59,7 @@ Variable (g : seq T -> R).
 Hypothesis H1 : g nil = r.
 Hypothesis H2 : forall h t, g (h :: t) = f h (g t).
 Lemma foldr_universal : g = foldr f r.
-Proof. apply boolp_funeqE; elim => // h t ih /=; by rewrite H2 ih. Qed.
+Proof. apply fun_ext; elim => // h t ih /=; by rewrite H2 ih. Qed.
 Lemma foldr_universal_ext x : g x = foldr f r x.
 Proof. by rewrite -(foldr_universal). Qed.
 End universal.
@@ -69,7 +69,7 @@ Variables (U : Type) (h : U -> R) (w : U) (g : T -> U -> U).
 Hypothesis H1 : h w = r.
 Hypothesis H2 : forall x y, h (g x y) = f x (h y).
 Lemma foldr_fusion : h \o foldr g w = foldr f r.
-Proof. apply boolp_funeqE; elim => // a b /= ih; by rewrite H2 ih. Qed.
+Proof. apply fun_ext; elim => // a b /= ih; by rewrite H2 ih. Qed.
 Lemma foldr_fusion_ext x : (h \o foldr g w) x = foldr f r x.
 Proof. by rewrite -foldr_fusion. Qed.
 End fusion_law.
@@ -91,7 +91,7 @@ Lemma curryE D a b (g : A * B -> C) (h : _ -> D) :
 Proof. by []. Qed.
 
 Lemma curryK : cancel curry uncurry.
-Proof. by move=> f; apply boolp_funeqE; case. Qed.
+Proof. by move=> f; apply fun_ext; case. Qed.
 
 Lemma uncurryK f : cancel uncurry curry.
 Proof. by []. Qed.

@@ -21,13 +21,13 @@ Unset Printing Implicit Defensive.
 
 Unset Universe Checking.
 
-Definition k_type (m : Type -> Type) (A : Type) :=
+Definition k_type (m : Type -> Type) (A : Type) : Type :=
   forall (B : Type), (A -> m B) -> m B.
 
 Section codensity.
 Variable (M : monad).
 
-Definition K_type (A : Type) : Type := k_type M A.
+Definition K_type (A : Type) := k_type M A.
 
 Definition K_ret (A : Type) (a : A) : K_type A :=
   fun (B : Type) (k : A -> M B) => k a.
@@ -149,7 +149,7 @@ Qed.
 
 Definition from := Natural.Pack (Natural.Mixin natural_from_component).
 
-Lemma from'_liftK A : (@from_component A) \o (Lift K_MonadT M A) = id.
+Lemma from_component_liftK A : (@from_component A) \o (Lift K_MonadT M A) = id.
 Proof.
 rewrite boolp.funeqE => m /=.
 rewrite /from_component /= /Lift /=.
@@ -176,7 +176,7 @@ rewrite -[in RHS]compE.
 rewrite -[in RHS]compE.
 rewrite -compA.
 rewrite -functor_o.
-rewrite from'_liftK.
+rewrite from_component_liftK.
 rewrite functor_id.
 by rewrite compfid.
 Qed.

@@ -181,8 +181,7 @@ Qed.
 
 End state_monad_transformer.
 
-Definition stateT S : monadT :=
-  MonadT.Pack (@MonadT.Mixin (estateMonadM S) (@stateMonadM S)).
+Definition stateT S := MonadT.Pack (MonadT.Mixin (@stateMonadM S)).
 
 Section exception_monad_transformer.
 
@@ -255,8 +254,7 @@ Qed.
 
 End exception_monad_transformer.
 
-Definition errorT Z : monadT :=
-  MonadT.Pack (@MonadT.Mixin (eexceptionMonadM Z) (@exceptionMonadM Z)).
+Definition errorT Z := MonadT.Pack (MonadT.Mixin (@exceptionMonadM Z)).
 
 Section continuation_monad_tranformer.
 
@@ -311,8 +309,7 @@ Qed.
 
 End continuation_monad_tranformer.
 
-Definition contT r : monadT :=
-  MonadT.Pack (@MonadT.Mixin (econtMonadM r) (@contMonadM r)).
+Definition contT r := MonadT.Pack (MonadT.Mixin (@contMonadM r)).
 
 Definition abortT r X (M : monad) A : contT r M A := fun _ : A -> M r => Ret X.
 Arguments abortT {r} _ {M} {A}.
@@ -949,15 +946,14 @@ Variables S Z : Type.
 Let M : monad := ModelState.state S.
 Let erZ : monadT := errorT Z.
 
-Let lift_getX : (StateOps.Get.func S) \O (erZ M) ~> (erZ M) :=
+Let lift_getX : (StateOps.Get.func S).-aoperation (erZ M) :=
   alifting (get_aop S) (Lift erZ M).
 
-Goal forall X (k : S -> erZ M X), @lift_getX _ k = StateOps.get k :> erZ M X.
+Goal forall X (k : S -> erZ M X), lift_getX _ k = StateOps.get_op _ k.
 by [].
 Abort.
 
-Goal @lift_getX _ Ret = @liftX  _ _ _ (@ModelState.get S).
-Proof.
+Goal lift_getX _ Ret = liftX _ (@ModelState.get S).
 by [].
 Abort.
 
@@ -968,11 +964,11 @@ Variable (r S : Type).
 Let M : monad := ModelCont.t r.
 Let stS : monadT := stateT S.
 
-Let lift_acallccS : (ContOps.Acallcc.func r) \O (stS M) ~> (stS M) :=
+Let lift_acallccS : (ContOps.Acallcc.func r).-aoperation (stS M) :=
   alifting (callcc_aop r) (Lift stS M).
 
 Goal forall A (f : (stS M A -> r) -> stS M A),
-  @lift_acallccS _ f = (fun s k => f (fun m => uncurry m (s, k)) s k) :> stS M A.
+  lift_acallccS _ f = (fun s k => f (fun m => uncurry m (s, k)) s k) :> stS M A.
 move=> A f.
 rewrite /lift_acallccS /=.
 by rewrite /stS /= /stateT /= /stateMonadM /=; unlock => /=.

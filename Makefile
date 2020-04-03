@@ -24,4 +24,4 @@ sect5: all
 	$(COQ5) parametricity_codensity.v
 
 clean5:
-	rm -f monae_lib.vo monad.vo fail_lib.vo state_lib.vo trace_lib.vo monad_model.vo monad_transformer.vo fmt_lifting.vo
+	rm -f *.vo

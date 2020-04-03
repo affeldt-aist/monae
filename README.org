@@ -49,11 +49,9 @@ This library has been applied to other formalizations:
 - [[smallstep_monad.v][smallstep_monad.v]]: equivalence operational semantics/denotation
 - [[smallstep_examples.v][smallstep_examples.v]]: sample imperative programs
 - [[monad_transformer.v][monad_transformer.v]]: monad transformers
-  + completed by ~mmt_sect5.v~ and ~parametricty.v~ which require
-    disabling of universe checking
-- the directory ~impredicative_set~ contains a lighter version of
-  Monae where monads live in ~Set~ and that compiles with
-  ~impredicate-set~
+  + completed by ~fmt_lifting.v~ and ~parametricty_codensity.v~ which require disabling of universe checking
+    * the directory ~impredicative_set~ contains a lighter version of Monae where monads live in ~Set~
+      and that compiles with ~impredicate-set~ (and universe checking enabled)
 
 ** Installation
 

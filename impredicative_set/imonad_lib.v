@@ -32,9 +32,9 @@ Definition Squaring (A : UU0) := (A * A)%type.
 Notation "A `2" := (Squaring A).
 Definition squaring_f (A B : UU0) (f : A -> B) : A`2 -> B`2 := fun x => (f x.1, f x.2).
 Lemma squaring_f_id : FunctorLaws.id squaring_f.
-Proof. by move=> A /=; apply boolp_funeqE => -[x1 x2]. Qed.
+Proof. by move=> A /=; apply fun_ext => -[x1 x2]. Qed.
 Lemma squaring_f_comp : FunctorLaws.comp squaring_f.
-Proof. by move=> A B C g h /=; apply boolp_funeqE => -[x1 x2]. Qed.
+Proof. by move=> A B C g h /=; apply fun_ext => -[x1 x2]. Qed.
 Definition squaring : functor :=
   Functor.Pack (Functor.Mixin squaring_f_id squaring_f_comp).
 Notation "f ^`2" := (squaring # f).
@@ -47,11 +47,11 @@ Definition curry_f (X A B : UU0) (f : A -> B) : curry_M X A -> curry_M X B :=
   fun x : X * A => (x.1, f x.2).
 Lemma curry_f_id X : FunctorLaws.id (@curry_f X).
 Proof.
-by rewrite /FunctorLaws.id => A; rewrite /curry_f; apply boolp_funeqE; case.
+by rewrite /FunctorLaws.id => A; rewrite /curry_f; apply fun_ext; case.
 Qed.
 Lemma curry_f_comp X : FunctorLaws.comp (@curry_f X).
 Proof.
-by rewrite /FunctorLaws.comp => A B C g h; rewrite /curry_f; apply boolp_funeqE; case.
+by rewrite /FunctorLaws.comp => A B C g h; rewrite /curry_f; apply fun_ext; case.
 Qed.
 Definition curry_F X : functor :=
   Functor.Pack (Functor.Mixin (curry_f_id X) (curry_f_comp X)).
@@ -63,12 +63,12 @@ Definition uncurry_f (X A B : UU0) (f : A -> B) : uncurry_M X A -> uncurry_M X B
   fun g : X -> A => f \o g.
 Lemma uncurry_f_id X : FunctorLaws.id (@uncurry_f X).
 Proof.
-rewrite /FunctorLaws.id => A; rewrite /uncurry_f; apply boolp_funeqE => ?.
+rewrite /FunctorLaws.id => A; rewrite /uncurry_f; apply fun_ext => ?.
 by rewrite compidf.
 Qed.
 Lemma uncurry_f_comp X : FunctorLaws.comp (@uncurry_f X).
 Proof.
-rewrite /FunctorLaws.comp => A B C g h; rewrite /uncurry_f; apply boolp_funeqE => ?.
+rewrite /FunctorLaws.comp => A B C g h; rewrite /uncurry_f; apply fun_ext => ?.
 by rewrite compE compA.
 Qed.
 Definition uncurry_F X : functor :=
@@ -202,9 +202,9 @@ Definition curry_eta : eta_type (curry_F X) (uncurry_F X) := Natural.Pack (Natur
 Lemma adjoint_currry : curry_F X -| uncurry_F X.
 Proof.
 apply: (@AdjointFunctor.mk _ _ curry_eta curry_eps).
-by move=> A; rewrite /TriangularLaws.left; apply boolp_funeqE; case.
+by move=> A; rewrite /TriangularLaws.left; apply fun_ext; case.
 move=> A; rewrite /TriangularLaws.right /uncurry_F /curry_eps /curry_eta /uncurry_M.
-by rewrite /= /uncurry_f /= /comp /=; apply boolp_funeqE => f; apply boolp_funeqE.
+by rewrite /= /uncurry_f /= /comp /=; apply fun_ext => f; apply fun_ext.
 Qed.
 End adjoint_example.
 
@@ -345,12 +345,12 @@ Hypothesis bindA : BindLaws.associative bind.
 
 Definition Map (A B : UU0) (f : A -> B) (m : M A) := bind m (@ret B \o f).
 Lemma Map_id : FunctorLaws.id Map.
-Proof. by move=> A; apply boolp_funeqE => m; rewrite /Map bindmret. Qed.
+Proof. by move=> A; apply fun_ext => m; rewrite /Map bindmret. Qed.
 Lemma Map_o : FunctorLaws.comp Map.
 Proof.
-move=> A B C g h; apply boolp_funeqE => m.
+move=> A B C g h; apply fun_ext => m.
 rewrite /Map compE bindA; congr bind.
-by apply boolp_funeqE => a; rewrite bindretf.
+by apply fun_ext => a; rewrite bindretf.
 Qed.
 Definition functor_mixin := Functor.Mixin Map_id Map_o.
 Let M' := Functor.Pack functor_mixin.
@@ -360,7 +360,7 @@ Proof. by []. Qed.
 
 Lemma naturality_ret : naturality FId M' ret.
 Proof.
-move=> A B h; rewrite FIdf; apply boolp_funeqE => ?.
+move=> A B h; rewrite FIdf; apply fun_ext => ?.
 by rewrite compE /= /Map MapE /= bindretf.
 Qed.
 
@@ -369,12 +369,12 @@ Let ret' : FId ~> M' := Natural.Pack (Natural.Mixin naturality_ret).
 Let bind_Map (A B C : UU0) (f : A -> B) (m : M A) (g : B -> M C) :
   bind (Map f m) g = bind m (g \o f).
 Proof.
-rewrite /Map bindA; congr bind; by apply boolp_funeqE => ?; rewrite bindretf.
+rewrite /Map bindA; congr bind; by apply fun_ext => ?; rewrite bindretf.
 Qed.
 
 Lemma naturality_join : naturality (M' \O M') M' (fun A : UU0 => (bind (B:=A))^~ id).
 Proof.
-move=> A B h; apply boolp_funeqE => mma.
+move=> A B h; apply fun_ext => mma.
 by rewrite /Fun 2!compE /Map bind_Map [in LHS] bindA.
 Qed.
 
@@ -385,18 +385,18 @@ Proof. by rewrite /join /= bind_Map. Qed.
 
 Lemma joinretM : JoinLaws.left_unit ret' join.
 Proof.
-rewrite /join => A; apply boolp_funeqE => ma /=.
+rewrite /join => A; apply fun_ext => ma /=.
 by rewrite bindretf. Qed.
 
 Lemma joinMret : JoinLaws.right_unit ret' join.
 Proof.
-rewrite /join => A; apply boolp_funeqE => ma /=.
+rewrite /join => A; apply fun_ext => ma /=.
 by rewrite bind_Map compidf bindmret.
 Qed.
 
 Lemma joinA : JoinLaws.associativity join.
 Proof.
-move=> A; apply boolp_funeqE => mmma.
+move=> A; apply fun_ext => mmma.
 by rewrite /join /= bind_Map compidf bindA.
 Qed.
 
@@ -449,7 +449,7 @@ Proof. by []. Qed.
 Lemma naturality_mpair (M : monad) (A B : UU0) (f : A -> B) (g : A -> M A):
   (M # f^`2) \o (mpair \o g^`2) = mpair \o ((M # f) \o g)^`2.
 Proof.
-apply boolp_funeqE => -[a0 a1].
+apply fun_ext => -[a0 a1].
 rewrite compE fmap_bind.
 rewrite compE mpairE compE bind_fmap; bind_ext => a2.
 rewrite fcompE fmap_bind 2!compE bind_fmap; bind_ext => a3.

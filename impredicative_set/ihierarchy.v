@@ -135,7 +135,7 @@ Qed.
 Lemma functorcomposition_comp : FunctorLaws.comp functorcomposition.
 Proof.
 rewrite /FunctorLaws.comp => A B C g' h; rewrite /functorcomposition.
-apply boolp_funeqE => m; by rewrite [in RHS]compE 2!functor_o.
+apply fun_ext => m; by rewrite [in RHS]compE 2!functor_o.
 Qed.
 Definition FComp : functor :=
   Functor.Pack (Functor.Mixin functorcomposition_id functorcomposition_comp).
@@ -148,18 +148,18 @@ Section functorcomposition_lemmas.
 Lemma FCompId f : f \O FId = f.
 Proof.
 case: f => [? [???]]; congr (Functor.Pack (Functor.Mixin _ _));
-  exact/boolp_Prop_irrelevance.
+  exact/proof_irr.
 Qed.
 Lemma FIdComp f : FId \O f = f.
 Proof.
 case: f => [? [???]]; congr (Functor.Pack (Functor.Mixin _ _));
-  exact/boolp_Prop_irrelevance.
+  exact/proof_irr.
 Qed.
 Lemma FIdf (A B : UU0) (f : A -> B) : FId # f = f. Proof. by []. Qed.
 Lemma FCompA (f g h : functor) : (f \O g) \O h = f \O (g \O h).
 Proof.
 move: f g h => [f [???]] [g [???]] [h [???]].
-congr (Functor.Pack (Functor.Mixin  _ _)); exact/boolp_Prop_irrelevance.
+congr (Functor.Pack (Functor.Mixin  _ _)); exact/proof_irr.
 Qed.
 Lemma FCompE (f g : functor) (A B : UU0) (k : A -> B) :
   (f \O g) # k = f # (g # k).
@@ -217,7 +217,7 @@ Lemma nattrans_ext (f g : M ~> N) :
 Proof.
 split => [ -> // |]; move: f g => [f Hf] [g Hg] /= fg.
 have ? : f = g by exact: FunctionalExtensionality.functional_extensionality_dep.
-subst g; congr (Natural.Pack _); exact/boolp_Prop_irrelevance.
+subst g; congr (Natural.Pack _); exact/proof_irr.
 Qed.
 End natrans_lemmas.
 
@@ -393,7 +393,7 @@ Definition skip M := @RET M _ tt.
 Arguments skip {M} : simpl never.
 
 Ltac bind_ext :=
-  let congr_ext m := ltac:(congr (Bind m); apply boolp_funeqE) in
+  let congr_ext m := ltac:(congr (Bind m); apply fun_ext) in
   match goal with
     | |- @Bind _ _ _ ?m ?f1 = @Bind _ _ _ ?m ?f2 =>
       congr_ext m
@@ -421,7 +421,7 @@ Tactic Notation "With" tactic(tac) "Open" ssrpatternarg(pat) :=
   evar (g : typ);
   rewrite (_ : f = g);
   [rewrite {}/f {}/g|
-   apply boolp_funeqE => x; rewrite {}/g {}/f; tac]; last first.
+   apply fun_ext => x; rewrite {}/g {}/f; tac]; last first.
 
 Tactic Notation "Open" ssrpatternarg(pat) :=
   With (idtac) Open pat.
@@ -472,12 +472,12 @@ Qed.*)
 (* TODO: move? *)
 Lemma foldl_revE (T R : UU0) (f : R -> T -> R) (z : R) :
   foldl f z \o rev = foldr (fun x : T => f^~ x) z.
-Proof. by apply boolp_funeqE => s; rewrite -foldl_rev. Qed.
+Proof. by apply fun_ext => s; rewrite -foldl_rev. Qed.
 
 Lemma mfoldl_rev (T R : UU0) (f : R -> T -> R) (z : R) (s : seq T -> M (seq T)) :
   foldl f z (o) (rev (o) s) = foldr (fun x => f^~ x) z (o) s.
 Proof.
-apply boolp_funeqE => x; rewrite !fcompE 3!fmapE !bindA.
+apply fun_ext => x; rewrite !fcompE 3!fmapE !bindA.
 bind_ext => ?; by rewrite bindretf /= -foldl_rev.
 Qed.
 
@@ -592,7 +592,7 @@ Definition bassert {A : UU0} (p : pred A) (m : M A) : M A := m >>= assert p.
 Lemma commutativity_of_assertions A q :
   Join \o (M # (bassert q)) = bassert q \o Join :> (_ -> M A).
 Proof.
-by apply boolp_funeqE => x; rewrite !compE join_fmap /bassert joinE bindA.
+by apply fun_ext => x; rewrite !compE join_fmap /bassert joinE bindA.
 Qed.
 
 (* guards commute with anything *)
