@@ -7,7 +7,7 @@ Require Import imonae_lib ihierarchy imonad_lib ifmt_lifting imonad_model.
 (* Instantiations of Theorem 25 of [Mauro Jaskelioff, Modular Monad           *)
 (* Transformers, ESOP 2009].                                                  *)
 (*                                                                            *)
-(* WARNING: see ifmt_lifting.v                                                   *)
+(* WARNING: see ifmt_lifting.v                                                *)
 (******************************************************************************)
 
 Import Univ.
