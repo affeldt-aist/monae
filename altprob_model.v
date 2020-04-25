@@ -74,7 +74,7 @@ rewrite -[in LHS]image_FSDistfmap funeqE => d; rewrite propeqE; split.
   rewrite in_setE -image_FSDistfmap => -[] [z1 xz1 <-{d1}].
   rewrite in_setE -image_FSDistfmap => -[] [z2 xz2 <-{d2}].
   move=> ->{d}; exists (z1 <|p|> z2); last exact: ConvFSDist.bind_left_distr.
-  rewrite -in_setE necset_convType.convE inE; apply/asboolP; exists z1, z2.
+  rewrite -in_setE necset_convType.convE; apply/asboolP; exists z1, z2.
   by rewrite !in_setE.
 Qed.
 
@@ -320,11 +320,10 @@ case.
   split; first by apply/asboolP.
   split; by [|apply/asboolP].
 move=> x [] y.
-rewrite !inE !necset1E => -[] /asboolP -> [] /asboolP ->.
+rewrite 2!in_setE 2!necset1E => -[] -> [] ->.
 move/(f_equal (fun x : {dist (choice_of_Type bool)} => x true)) => /=.
 rewrite /Conv /= !ConvFSDist.dE !FSDist1.dE !inE !eqxx.
 case/boolP: ((true : choice_of_Type bool) == false) => [/eqP//|].
-rewrite !mulR1 !mulR0 !addR0 => _ H.
-by apply prob_ext.
+by rewrite !mulR1 !mulR0 !addR0 => _ ?; apply prob_ext.
 Qed.
 End examples.

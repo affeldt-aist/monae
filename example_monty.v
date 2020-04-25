@@ -9,7 +9,7 @@ Require Import monae_lib hierarchy monad_lib fail_lib proba_lib.
 (* references:                                                                *)
 (* - J. Gibbons, R. Hinze, Just do it: simple monadic equational reasoning,   *)
 (* ICFP 2011                                                                  *)
-(* J. Gibbons, Unifying Theories of Programming with Monads, UTP 2012         *)
+(* - J. Gibbons, Unifying Theories of Programming with Monads, UTP 2012       *)
 (******************************************************************************)
 
 (*

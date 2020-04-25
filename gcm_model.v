@@ -455,7 +455,6 @@ Proof.
 move=> a b c [] g affine_g [] h affine_h; rewrite hom_ext funeqE => /= x /=.
 apply necset_ext => /=.
 rewrite 2!free_semiCompSemiLattConvType_morE' /= -imageA.
-congr image.
 by rewrite free_semiCompSemiLattConvType_morE'.
 Qed.
 
@@ -556,9 +555,9 @@ Proof.
 move=> a b p; rewrite /affine_function_at /eta1'' /=.
 apply/necset_ext/eqEsubset=> x /=.
 - move->; rewrite necset_convType.convE.
-  by exists a, b; rewrite !inE !asboolE /necset1 /=.
+  by exists a, b; rewrite !asboolE /necset1 /=.
 - rewrite necset_convType.convE => -[] a0 [] b0.
-  by rewrite !inE !asboolE /necset1 /= => -[] -> [] -> ->.
+  by rewrite !asboolE /necset1 /= => -[] -> [] -> ->.
 Qed.
 Definition eta1' : FId ~~> U1 \O F1 :=
   fun C => @Hom.Pack CV _ _ _ (@eta1'' C) (@eta1''_affine C).
@@ -723,12 +722,10 @@ rewrite /bigsetU.
 apply/eqEsubset => y [i Xi iy].
 - exists i; last exact: iy.
   exists i => //.
-  move/asboolP in Xi.
-  by rewrite inE Xi.
-- move: Xi iy => [z /asboolP Xz].
-  rewrite inE Xz => <- zy.
-  exists z => //.
-  by apply/asboolP.
+  by move/asboolP : Xi; rewrite asboolE -in_setE => ->.
+- move: Xi iy => [z] /asboolP; rewrite asboolE -in_setE => Xz.
+  rewrite Xz => <- zy.
+  by exists z => //; exact/asboolP.
 Qed.
 End gcm_opsE.
 End P_delta_category_monad.
