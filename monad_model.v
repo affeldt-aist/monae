@@ -42,6 +42,9 @@ Require Import monae_lib hierarchy monad_lib fail_lib state_lib trace_lib.
 (* ModelBacktrackableState (from scratch using fsets, i.e., redefinition of   *)
 (* monad state monad fail monad alt monad nondet monad nondetstate monad)     *)
 (*                                                                            *)
+(* references:                                                                *)
+(* - Wadler, P. Monads and composable continuations. LISP and Symbolic        *)
+(*   Computation 7, 39–55 (1994)                                              *)
 (******************************************************************************)
 
 (* Contents:
@@ -321,18 +324,18 @@ Definition t := Monad_of_ret_bind left_neutral right_neutral associative.
 End state.
 End State.
 
-(* among other refs:
-https://qiita.com/suharahiromichi/items/f07f932103c28f36dd0e *)
+(* see Sect. 3 of of [Wadler, 94] for the model of the ret and the bind of the
+continuation monad *)
 Module Cont.
 Section cont.
-Variable r : Type.
+Variable r : Type. (* the type of answers *)
 Definition acto := fun A => (A -> r) -> r.
 Local Notation M := acto.
-Definition map (A B : Type) (f : A -> B) (m : M A) : M B :=
+Definition actm A B (f : A -> B) (m : M A) : M B :=
   fun Br : B -> r => m (fun a : A => Br (f a)).
-Lemma map_id : FunctorLaws.id map.
+Lemma map_id : FunctorLaws.id actm.
 Proof. by move=> A; rewrite boolp.funeqE => m; rewrite boolp.funeqE. Qed.
-Lemma map_comp : FunctorLaws.comp map.
+Lemma map_comp : FunctorLaws.comp actm.
 Proof. by move=> *; rewrite boolp.funeqE => m; rewrite boolp.funeqE. Qed.
 Definition functor := Functor.Pack (Functor.Mixin map_id map_comp).
 Lemma naturality_ret : naturality FId functor (fun A a => fun k => k a).
@@ -793,6 +796,7 @@ Next Obligation. by []. Qed.
 End st.
 End ModelStateTrace.
 
+(* see Sect 3.1 of [Wadler, 94] for the model of callcc *)
 Definition usual_callcc r (M := fun C => (C -> r) -> r) A B (f : (A -> M B) -> M A) : M A :=
   fun k : A -> r => f (fun a _ => k a) k.
 
@@ -809,6 +813,7 @@ Program Definition t : contMonad := MonadContinuation.Pack (MonadContinuation.Cl
 End modelcont.
 End ModelCont.
 
+(* we looked at examples from https://qiita.com/suharahiromichi *)
 Section continuation_examples.
 Fixpoint fib (n : nat) : nat :=
   match n with
@@ -852,12 +857,13 @@ Definition oaddn_break (M : monad) (break : nat -> M nat) (acc : nat) (x : optio
 Let M : contMonad := ModelCont.t nat.
 Definition sum_break (xs : seq (option nat)) : M nat :=
   Callcc (fun break : nat -> M nat => foldM (oaddn_break break) 0 xs).
+
 (*
 Compute (sum_break [:: Some 2; Some 6; None; Some 4]).
 *)
 
-Goal Ret 1 +m (Callcc (fun f => Ret 10 +m (f 100)) : M _) =
-     Ret (1 + 100).
+(* example from Sect. 3.1 of [Wadler, 94] *)
+Goal Ret 1 +m (Callcc (fun f => Ret 10 +m (f 100))) = Ret (1 + 100) :> M _.
 Proof. by rewrite /addM bindretf boolp.funeqE. Abort.
 
 (* https://xavierleroy.org/mpri/2-4/transformations.pdf *)
@@ -865,6 +871,7 @@ Local Open Scope monae_scope.
 
 Fixpoint list_iter (M : monad) A (f : A -> M unit) (s : seq A) : M unit :=
   if s is h :: t then f h >> list_iter f t else Ret tt.
+
 (*
 Compute (@list_iter ModelMonad.identity nat (fun a => Ret tt) [:: O; 1; 2]).
 *)
@@ -883,50 +890,59 @@ Compute (@list_find (@ModelCont.t bool) nat [pred x | odd x] [:: 2; 4; 3; 6]).
 
 End continuation_examples.
 
-(* TODO: wip *)
+(* see Sect. 3.2 of [Wadler, 94] for the model of shift and reset *)
 Module ModelShiftReset.
-Local Open Scope monae_scope.
-(* Local Obligation Tactic := idtac. *)
-Definition shift r : forall A, ((A -> ModelCont.t r r) -> ModelCont.t r r) -> ModelCont.t r A :=
- fun A h => fun c => h (fun v => Ret (c v)) ssrfun.id.
+Definition shift r :
+    forall A, ((A -> ModelCont.t r r) -> ModelCont.t r r) -> ModelCont.t r A :=
+ fun A h => fun c => h (fun v c' => c' (c v)) ssrfun.id.
 
 Definition reset r : ModelCont.t r r -> ModelCont.t r r :=
-  fun m => fun c => c (m ssrfun.id).
+  fun m  => fun c => c (m ssrfun.id).
 
-Program Definition shiftresetM r : monad :=
+Program Definition t r : shiftresetMonad r :=
   let M : contMonad := ModelCont.t r in
   @MonadShiftReset.Pack _ _ (@MonadShiftReset.Class _ r (MonadContinuation.class M)
  (@MonadShiftReset.Mixin _ _
  (@shift r)
  (@reset r) _ _ _ _ _)).
+End ModelShiftReset.
 
-Section examples.
-Let M : monad := shiftresetM nat.
+Section shiftreset_examples.
+(* see Sect. 3.2 of [Wadler, 94] *)
+Local Open Scope monae_scope.
+Let M : monad := ModelShiftReset.t nat.
 Goal Ret 1 +m (Reset (Ret 10 +m (Shift (fun f : _ -> M nat => f (100) >>= f) : M _)) : M _) =
      Ret (1 + (10 + (10 + 100))).
 Proof. by rewrite /addM bindretf boolp.funeqE. Abort.
-Goal Ret 1 +m (Reset (Ret 10 +m (Shift (fun f : _ -> M nat => @RET M _ 100) : M _)) : M _) =
+Goal Ret 1 +m (Reset (Ret 10 +m (Shift (fun f : _ -> M nat => Ret 100 : M _) : M _)) : M _) =
      Ret (1 + 100).
 Proof. by rewrite /addM bindretf boolp.funeqE. Abort.
 Goal Ret 1 +m (Reset (Ret 10 +m (Shift (fun f : _ -> M nat => f 100 +m f 1000) : M _)) : M _) =
      Ret (1 + ((10 + 100) + (10 + 1000))).
 Proof. by rewrite /addM bindretf boolp.funeqE. Abort.
 
-Let N : monad := shiftresetM (seq nat).
+Let N : monad := ModelShiftReset.t (seq nat).
 Fixpoint perverse (l : seq nat) : N (seq nat) :=
   if l is h :: t then
     Shift (fun f : _ -> N _ => Ret h >>= (fun x => perverse t >>= f >>= (fun y => @RET N _ (x :: y))))
   else Ret [::].
-Goal Reset (perverse [:: 1; 2; 3]) = Ret [:: 3; 2; 1] :> shiftresetM _ (seq nat).
+Goal Reset (perverse [:: 1; 2; 3]) = Ret [:: 3; 2; 1] :> ModelShiftReset.t _ (seq nat).
 by [].
 Abort.
 
 Definition stranger :=
-  let g b := Reset ((Shift (fun f : _ -> shiftresetM _ _ => f b) >>= (fun x => if x then Ret 2 else Ret 3)) : shiftresetM _ _) in
+  let g b := Reset ((Shift (fun f : _ -> ModelShiftReset.t _ _ => f b) >>=
+                           (fun x => if x then Ret 2 else Ret 3)) : ModelShiftReset.t _ _) in
   g true +m g false.
 Goal stranger = Ret 5. by []. Abort.
-End examples.
-End ModelShiftReset.
+
+Goal Reset (Ret 2 +m Shift (fun k : _ -> M _ => k 3 +m Ret 1 : M _) : M _) = Ret 6 :> M _.
+Proof. by rewrite /addM bindretf boolp.funeqE. Abort.
+Goal Reset (Ret 2 *m Shift (fun k : _ -> M _ => k 4 +m Ret 1 : M _)
+                  *m Shift (fun k : _ -> M _ => k 3 +m Ret 1 : M _) : M _ ) = Ret 26 :> M _.
+Proof. by rewrite /mulM bindretf boolp.funeqE. Abort.
+
+End shiftreset_examples.
 
 (* wip *)
 Module ModelStateLoop.
