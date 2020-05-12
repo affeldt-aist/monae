@@ -792,8 +792,8 @@ Local Open Scope monae_scope.
 Record mixin_of (M : monad) := Mixin {
    callcc : forall A B : Type, ((A -> M B) -> M A) -> M A;
    _ : forall (A B : Type) (g : (A -> M B) -> M A) (k : B -> M B),
-       callcc (fun f => g (fun x => f x >>= k)) = callcc g;
-   _ : forall (A B : Type) (m : M B), callcc (fun _ : B -> M A => m) = m ;
+       callcc (fun f => g (fun x => f x >>= k)) = callcc g; (* see Sect. 7.2 of [Schrijvers, 19] *)
+   _ : forall (A B : Type) (m : M B), callcc (fun _ : B -> M A => m) = m ; (* see Sect. 3.3 of [Wadler, 94] *)
    _ : forall (A B C : Type) (m : M A) x (k : A -> B -> M C),
        callcc (fun f : _ -> M _ => m >>= (fun a => f x >>= (fun b => k a b))) =
        callcc (fun f : _ -> M _ => m >> f x) ;
@@ -819,9 +819,9 @@ Local Open Scope monae_scope.
 Variables (M : contMonad).
 Lemma callcc0 (A B : Type) (g : (A -> M B) -> M A) (k : B -> M B) :
   Callcc (fun f => g (fun x => f x >>= k)) = Callcc g.
-Proof. by case: M A B g k => m [? []]. Qed. (* NB Schrijvers *)
+Proof. by case: M A B g k => m [? []]. Qed.
 Lemma callcc1 (A B : Type) p : Callcc (fun _ : B -> M A => p) = p.
-Proof. by case: M A B p => m [? []]. Qed. (* NB Wadler callcc_elim *)
+Proof. by case: M A B p => m [? []]. Qed.
 Lemma callcc2 (A B C : Type) (m : M A) x (k : A -> B -> M C) :
   (Callcc (fun f : _ -> M _ => do a <- m; do b <- f x; k a b) =
    Callcc (fun f : _ -> M _ => m >> f x))%Do.
@@ -832,14 +832,14 @@ Proof. by case: M A B m b => m [? []]. Qed.
 End continuation_lemmas.
 
 Module MonadShiftReset.
-(* NB: interace is wip *)
+(* NB: interface is wip *)
 Local Open Scope monae_scope.
 Record mixin_of (M : contMonad) U := Mixin {
   shift : forall A : Type, ((A -> M U) -> M U) -> M A ;
   reset : M U -> M U ;
-  _ : forall (A : Type) (m : M A), shift (fun k => m >>= k) = m ; (* NB Wadler *)
+  _ : forall (A : Type) (m : M A), shift (fun k => m >>= k) = m ; (* see Sect. 3.3 of [Wadler, 94] *)
   _ : forall (A B : Type) (h : (A -> M B) -> M A),
-    Callcc h = shift (fun k' => h (fun x => shift (fun k'' => k' x)) >>= k') (* NB Wadler *) ;
+    Callcc h = shift (fun k' => h (fun x => shift (fun k'' => k' x)) >>= k') ; (* see Sect. 3.3 of [Wadler, 94] *)
   _ : forall (A : Type) (c : A) (c': U) (k : A -> U -> _),
     (reset (do x <- Ret c; do y <- shift (fun _ => Ret c'); k x y) = Ret c >> Ret c')%Do ;
   _ : forall (c c' : U) (k : U -> U -> _),
@@ -889,9 +889,8 @@ End shiftreset_lemmas.
 (* NB: wip, no model *)
 Module MonadJump.
 Local Open Scope monae_scope.
-(* Monad Transformers and Modular Algebraic Eﬀects: What Binds Them Together
-   Tom Schrijvers & al. Report CW699, September 2016
-   $8.2 p10 *)
+(* Sect. 7.2 of [Tom Schrijvers & al., Monad Transformers and Modular
+Algebraic Eﬀects: What Binds Them Together, Haskell 2019] *)
 Record mixin_of (ref : Type -> Type) (M : monad) := Mixin {
    jump : forall A B : Type, ref A -> A -> M B;
    sub : forall A B : Type, (ref A -> M B) -> (A -> M B) -> M B;
@@ -900,7 +899,7 @@ Record mixin_of (ref : Type -> Type) (M : monad) := Mixin {
    _ : forall (A B : Type) p r', sub p (@jump A B r') = p r';
    _ : forall (A B : Type) (p : ref A -> ref B -> M B) (k1 : A -> M B) k2,
        sub (fun r1 : ref A => sub (fun r2 => p r1 r2) (k2 r1)) k1 =
-       sub (fun r2 : ref B => sub (fun r1 => p r1 r2) k1) (fun x => sub (k2^~x) k1);
+       sub (fun r2 : ref B => sub (fun r1 => p r1 r2) k1) (fun x => sub (k2^~x) k1); (*NB: differs from [Schrijvers et al. 19]*)
    _ : forall (A B : Type) r x k, (@jump A B r x) >>= k = @jump A B r x;
    _ : forall (A B : Type) p q k, @sub A B p q >>= k = @sub A B (p >=> k) (q >=> k)
 }.
