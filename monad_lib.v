@@ -8,6 +8,7 @@ Require Import monae_lib hierarchy.
 (******************************************************************************)
 (*  Properties and examples of functors, natural transformations, and monads  *)
 (*                                                                            *)
+(*                    s \h g == horizontal composition                        *)
 (*                    F ## n == application of functor F to natural           *)
 (*                              transformation n                              *)
 (*                    F -| G == adjoint functors                              *)

@@ -107,6 +107,8 @@ Global Arguments convn1Eq [n g d Hn1].
 End misc_convex.
 End TODO_move_to_other_file.
 
+Local Open Scope category_scope.
+
 Section choiceType_as_a_category.
 Import category.
 Definition choiceType_category_mixin : Category.mixin_of choiceType :=
@@ -134,8 +136,8 @@ Definition free_choiceType : functor CT CC :=
 
 Lemma free_choiceType_mor_comp_fun (a b c : Type) (g : {hom b, c})
       (h : {hom a, b}):
-  [fun of free_choiceType_mor [hom of [fun of g] \o [fun of h]]] =
-  [fun of free_choiceType_mor g] \o [fun of free_choiceType_mor h].
+  free_choiceType_mor [hom g \o h] =
+  (free_choiceType_mor g) \o (free_choiceType_mor h) :> (_ -> _).
 Proof. by rewrite free_choiceType_mor_comp. Qed.
 
 Let h (a b : CC) (f : {hom CC; a, b}) : {hom CT; Choice.sort a , Choice.sort b} :=
@@ -175,7 +177,7 @@ Definition etaC: FId ~> UC \O FC :=
 Lemma etaCE (T : Type) : etaC T = idfun :> (_ -> _).
 Proof. by rewrite /etaC; unlock. Qed.
 
-Import homcomp_notation.
+Import comps_notation.
 Lemma triLC : TriangularLaws.left etaC epsC.
 Proof. by move=> c; rewrite etaCE epsCE. Qed.
 Lemma triRC : TriangularLaws.right etaC epsC.
@@ -200,11 +202,11 @@ Definition free_convType_mor (A B : choiceType) (f : {hom A, B}) :
   {hom FSDist_convType A, FSDist_convType B}.
 refine (@Hom.Pack CV _ _ _ (FSDistfmap f) _).
 (* TODO: try to use a variant of FSDistfmap_affine? *)
-exact: (fun x y t => ConvFSDist.bind_left_distr t x y (fun a : A => FSDist1.d ([fun of f] a))).
+exact: (fun x y t => ConvFSDist.bind_left_distr t x y (fun a : A => FSDist1.d (f a))).
 Defined.
 
 Lemma mem_finsupp_free_convType_mor (A B : choiceType) (f : A -> B) (d : {dist A}) (x : finsupp d) :
-  f (fsval x) \in finsupp ([fun of free_convType_mor (hom_choiceType f)] d).
+  f (fsval x) \in finsupp ((free_convType_mor (hom_choiceType f)) d).
 Proof.
 rewrite /= FSDistBind.supp imfset_id.
 apply/bigfcupP; exists (FSDist1.d (f (fsval x))).
@@ -236,8 +238,8 @@ Definition free_convType : functor CC CV :=
 
 Lemma free_convType_mor_comp_fun (A B C : choiceType) (g : {hom B, C})
       (h : {hom A, B}):
-  [fun of free_convType_mor [hom of [fun of g] \o [fun of h]]] =
-  [fun of free_convType_mor g] \o [fun of free_convType_mor h].
+  free_convType_mor [hom g \o h] =
+  (free_convType_mor g) \o (free_convType_mor h) :> (_ -> _).
 Proof. by rewrite free_convType_mor_comp. Qed.
 
 Let m1 : CV -> CC := idfun.
@@ -309,7 +311,7 @@ Proof. by rewrite /eta0; unlock. Qed.
 Lemma eta0E (T : choiceType) : eta0 T = (@FSDist1.d _) :> (_ -> _).
 Proof. by rewrite /eta0; unlock. Qed.
 
-Import homcomp_notation.
+Import comps_notation.
 Import ScaledConvex.
 Local Open Scope fset_scope.
 Local Open Scope R_scope.
@@ -370,7 +372,7 @@ Local Open Scope convex_scope.
 Local Notation CV := convType_category.
 Local Notation CS := semiCompSemiLattConvType_category.
 
-Lemma hom_affine_function (A B : convType) (f : {hom A, B}) : affine_function [fun of f].
+Lemma hom_affine_function (A B : convType) (f : {hom A, B}) : affine_function f.
 Proof. by case: f. Qed.
 
 (* the morphism part of necset *)
@@ -465,7 +467,7 @@ Local Notation F1 := free_semiCompSemiLattConvType.
 
 Lemma free_semiCompSemiLattConvType_mor_comp_fun (a b c : convType)
     (g : {hom b, c}) (h : {hom a, b}):
-  [fun of F1 # [hom of [fun of g] \o [fun of h]]] = [fun of F1 # g] \o [fun of F1 # h].
+  (F1 # [hom g \o h]) = (F1 # g) \o (F1 # h) :> (_ -> _).
 Proof. by rewrite /Fun /= free_semiCompSemiLattConvType_mor_comp. Qed.
 
 Let m2 : CS -> CV := id.
@@ -574,7 +576,7 @@ Proof. by rewrite /eta1; unlock. Qed.
 Lemma eta1E'' (C : convType) (x : C) : eta1 C x = necset1 x.
 Proof. by rewrite /eta1; unlock. Qed.
 
-Import homcomp_notation.
+Import comps_notation.
 Lemma necset1E (T : convType) (t : T) : necset1 t = [set t] :> set T.
 Proof. by []. Qed.
 Lemma triL1 : TriangularLaws.left eta1 eps1.
@@ -697,17 +699,17 @@ Lemma gcm_joinE : Join X = necset_join X.
 Import category.
 apply/necset_ext.
 rewrite /= /Monad_of_category_monad.join /= !HCompId !HIdComp eps1E.
-have-> : [fun of AdjComp.F F0 F1
+have-> : AdjComp.F F0 F1
                 # epsC
                     (AdjComp.G U0 U1
                        (necset_semiCompSemiLattConvType
-                          (FSDist_convType (choice_of_Type T))))] = idfun.
+                          (FSDist_convType (choice_of_Type T)))) = idfun :> (_ -> _).
 - by rewrite -[in RHS]functor_id; congr Fun; apply/hom_ext; rewrite epsCE.
-have-> : [fun of F1
+have-> : F1
               # eps0
               (U1
-                 (necset_semiCompSemiLattConvType (FSDist_convType (choice_of_Type T))))] =
-         @necset_join.F1join0 _.
+                 (necset_semiCompSemiLattConvType (FSDist_convType (choice_of_Type T)))) =
+         @necset_join.F1join0 _ :> (_ -> _).
 - apply funext=> x; apply necset_ext.
   rewrite /= /necset_join.F1join0' /=.
   rewrite /free_semiCompSemiLattConvType_mor; unlock=> /=.

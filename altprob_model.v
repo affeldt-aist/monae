@@ -19,6 +19,7 @@ Unset Strict Implicit.
 Unset Printing Implicit Defensive.
 
 Local Open Scope proba_scope.
+Local Open Scope category_scope.
 
 Section P_delta_altProbMonad.
 Local Open Scope R_scope.
@@ -79,7 +80,7 @@ Qed.
 
 Section bindaltDl.
 Import category.
-Import homcomp_notation.
+Import comps_notation.
 Local Notation F1 := free_semiCompSemiLattConvType.
 Local Notation F0 := free_convType.
 Local Notation FC := free_choiceType.
@@ -88,8 +89,8 @@ Local Notation U0 := forget_convType.
 Local Notation U1 := forget_semiCompSemiLattConvType.
 
 Lemma affine_F1e0U1PD_alt T (u v : gcm (gcm T)) :
-  [fun of F1 # eps0 (U1 (P_delta_left T))] (u [+] v) =
-  [fun of F1 # eps0 (U1 (P_delta_left T))] u [+] [fun of F1 # eps0 (U1 (P_delta_left T))] v.
+  (F1 # eps0 (U1 (P_delta_left T))) (u [+] v) =
+  (F1 # eps0 (U1 (P_delta_left T))) u [+] (F1 # eps0 (U1 (P_delta_left T))) v.
 Proof.
 rewrite [in LHS]/lub_binary -lub_op_hull.
 have huv : NECSet.class_of (hull [set u; v]).
@@ -97,21 +98,21 @@ have huv : NECSet.class_of (hull [set u; v]).
   rewrite hull_eq0; apply/eqP => /(congr1 (fun x => x u)).
   by rewrite propeqE => -[X _]; apply X; left.
 have @UV : necset_semiCompSemiLattConvType (F1 ((F0 \O U0) (U1 (P_delta_left T)))) := NECSet.Pack huv.
-transitivity (|_| ([fun of F1 # eps0 (U1 (P_delta_left T))] @` UV)%:ne).
+transitivity (|_| ((F1 # eps0 (U1 (P_delta_left T))) @` UV)%:ne).
   rewrite -(apply_affine (F1 # eps0 (U1 (P_delta_left T))) UV).
-  congr ([fun of _] _); congr (|_| _); exact/neset_ext.
+  congr (_ _); congr (|_| _); exact/neset_ext.
 rewrite [in RHS]/lub_binary.
-transitivity (|_| (hull ([fun of F1 # eps0 (U1 (P_delta_left T))] @` [set u; v]))%:ne).
+transitivity (|_| (hull ((F1 # eps0 (U1 (P_delta_left T))) @` [set u; v]))%:ne).
   congr (|_| _%:ne); apply/neset_ext => /=.
-  have /image_preserves_convex_hull' : affine_function [fun of F1 # eps0 (U1 (P_delta_left T))].
+  have /image_preserves_convex_hull' : affine_function (F1 # eps0 (U1 (P_delta_left T))).
     move=> a b p; rewrite /affine_function_at => /=.
     rewrite /free_semiCompSemiLattConvType_mor /=; unlock; rewrite /free_semiCompSemiLattConvType_mor' /=.
     apply/necset_ext => /=; rewrite funeqE => X; rewrite propeqE; split.
     - case=> D.
       rewrite /Conv /= necset_convType.convE => -[x0 [y0 [x0a [y0a]]]] ->{D} <-{X}.
       rewrite /Conv /= necset_convType.convE.
-      exists ([fun of eps0 (necset_semiCompSemiLattConvType (FSDist_convType (choice_of_Type T)))] x0),
-        ([fun of eps0 (necset_semiCompSemiLattConvType (FSDist_convType (choice_of_Type T)))] y0).
+      exists ((eps0 (necset_semiCompSemiLattConvType (FSDist_convType (choice_of_Type T)))) x0),
+        ((eps0 (necset_semiCompSemiLattConvType (FSDist_convType (choice_of_Type T)))) y0).
       split.
         by rewrite in_setE /=; exists x0 => //; rewrite -in_setE.
       split.
@@ -139,8 +140,8 @@ rewrite funeqE => /= X; rewrite propeqE; split.
 Qed.
 
 Lemma affine_e1PD_alt T (x y : El (F1 (FId (U1 (P_delta_left T))))) :
-  [fun of eps1 (P_delta_left T)] (x [+] y) =
-  [fun of eps1 (P_delta_left T)] x [+] [fun of eps1 (P_delta_left T)] y.
+  (eps1 (P_delta_left T)) (x [+] y) =
+  (eps1 (P_delta_left T)) x [+] (eps1 (P_delta_left T)) y.
 Proof.
 rewrite /lub_binary eps1E -lub_op_setU.
 transitivity (|_| (hull (\bigcup_(x0 in [set x; y]) x0))%:ne); last first.
@@ -209,7 +210,7 @@ Qed.
 
 Section bindchoiceDl.
 Import category.
-Import homcomp_notation.
+Import comps_notation.
 Local Notation F1 := free_semiCompSemiLattConvType.
 Local Notation F0 := free_convType.
 Local Notation FC := free_choiceType.
@@ -218,8 +219,8 @@ Local Notation U0 := forget_convType.
 Local Notation U1 := forget_semiCompSemiLattConvType.
 
 Lemma affine_F1e0U1PD_conv T (u v : gcm (gcm T)) p :
-  [fun of F1 # eps0 (U1 (P_delta_left T))] (u <|p|> v) =
-  [fun of F1 # eps0 (U1 (P_delta_left T))] u <|p|> [fun of F1 # eps0 (U1 (P_delta_left T))] v.
+  (F1 # eps0 (U1 (P_delta_left T))) (u <|p|> v) =
+  (F1 # eps0 (U1 (P_delta_left T))) u <|p|> (F1 # eps0 (U1 (P_delta_left T))) v.
 Proof.
 rewrite /Conv /= /free_semiCompSemiLattConvType_mor /=; unlock.
 rewrite /free_semiCompSemiLattConvType_mor' /=; apply/necset_ext => /=.
@@ -243,8 +244,8 @@ by rewrite eps0''_affine.
 Qed.
 
 Lemma affine_e1PD_conv T (x y : El (F1 (FId (U1 (P_delta_left T))))) p :
-  [fun of eps1 (P_delta_left T)] (x <|p|> y) =
-  [fun of eps1 (P_delta_left T)] x <|p|> [fun of eps1 (P_delta_left T)] y.
+  (eps1 (P_delta_left T)) (x <|p|> y) =
+  (eps1 (P_delta_left T)) x <|p|> (eps1 (P_delta_left T)) y.
 Proof.
 rewrite eps1E -lub_op_conv_setD; congr (|_| _); apply/neset_ext => /=.
 by rewrite -necset_convType.conv_conv_set.
