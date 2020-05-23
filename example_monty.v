@@ -6,22 +6,16 @@ Require Import monae_lib hierarchy monad_lib fail_lib proba_lib.
 (******************************************************************************)
 (*                            Monty Hall example                              *)
 (*                                                                            *)
+(*             Module Set3 == a small theory about sets of three elements     *)
+(*     Section monty_proba == Monty Hall with the probability monad           *)
+(*  Section monty_nondeter == nondeterministic Monty Hall                     *)
+(* Section forgetful_monty == with the exceptProbMonad                        *)
+(*                                                                            *)
 (* references:                                                                *)
 (* - J. Gibbons, R. Hinze, Just do it: simple monadic equational reasoning,   *)
 (* ICFP 2011                                                                  *)
 (* - J. Gibbons, Unifying Theories of Programming with Monads, UTP 2012       *)
 (******************************************************************************)
-
-(*
-Contents:
-- Module Set3.
-    a small theory about sets of three elements for the Monty Hall example
-- Section monty
-  + using the probabilistic choice only
-  + probabilistic choice and non-deterministic choice
-  + Section forgetful_monty.
-    probabilistic choice and exception
-*)
 
 Set Implicit Arguments.
 Unset Strict Implicit.
@@ -72,6 +66,9 @@ rewrite -mem_enum enumE !inE => /orP[-> //|/orP[] /eqP ->];
 Qed.
 
 Definition another (h p : X) : X := odflt a [pick d | d != h & d != p].
+
+Lemma another_in d d' : another d d' \in enum X.
+Proof. by rewrite mem_enum. Qed.
 
 Lemma another_ab : another a b = c.
 Proof.
@@ -183,6 +180,13 @@ Let A := Set3.a card_door.
 Let B := Set3.b card_door.
 Let C := Set3.c card_door.
 Let doors := enum door.
+
+Lemma size_filter_doors d d' : 0 < size (doors \\ [:: d; d']).
+Proof.
+rewrite size_filter -has_count; apply/hasP.
+exists (Set3.another card_door d d'); last exact: Set3.another_notin.
+by rewrite Set3.another_in.
+Qed.
 
 (* TODO *)
 Lemma head_filter def h p : forall x, x \in [:: h; p] -> head def (doors \\ [:: h; p]) != x.
@@ -329,9 +333,6 @@ Lemma play_switch : play switch = bcoin (@Prob.mk (2/3) H23).
 Proof.
 rewrite {1}/play {1}/monty hide_pickE.
 transitivity (do hp <- uniform (def, def) (cp doors doors);
-  do t <- tease hp.1 hp.2; do s <- Ret (head (doors \\ [:: hp.2; t])); Ret (s == hp.1))%Do.
-  by [].
-transitivity (do hp <- uniform (def, def) (cp doors doors);
   do t <- tease hp.1 hp.2; Ret ((head (doors \\ [:: hp.2; t])) == hp.1))%Do.
   bind_ext => -[h p].
   rewrite [_.1]/= [_.2]/=; by rewrite_ bindretf.
@@ -363,10 +364,13 @@ End monty_proba.
 
 Section monty_nondeter.
 
+Definition hide_n {M : altMonad} : M door := arbitrary A doors.
+
+Definition tease_n {M : altMonad} (h p : door) : M door :=
+  arbitrary A (doors \\ [:: h; p]).
+
 Variable M : altProbMonad.
 
-Definition hide_n : M door := arbitrary A doors.
-Definition tease_n (h p : door) : M door := arbitrary A (doors \\ [:: h; p]).
 Let pick : M door := @pick _.
 Definition play_n (strategy : door -> door -> M door) : M bool :=
   monty hide_n pick tease_n strategy.
@@ -415,10 +419,95 @@ Qed.
 Lemma hide_pick_nondeter : (do h <- hide_n; do p <- pick; Ret (h == p) = uFFT)%Do.
 Proof.
 transitivity (fmap (uncurry (fun a b => a == b)) (do h <- hide_n; do p <- pick; Ret (h, p)))%Do.
-  rewrite fmapE !bindA; bind_ext => y1.
+rewrite fmapE !bindA; bind_ext => y1.
   rewrite !bindA; by rewrite_ bindretf.
 rewrite monty_choice_your_choice_combine -!/(try _).
 by rewrite 2!naturality_nondeter !try_uFFT 2!altmm.
+Qed.
+
+Lemma monty_stick : play_n stick = bcoin (/ 3)%:pr.
+Proof.
+rewrite /play_n /monty /stick.
+transitivity (
+  hide_n >>= (fun h : door => pick >>= (fun p : door => tease_n h p >> Ret (p == h)))
+).
+  by bind_ext => d; bind_ext => d'; rewrite_ bindretf.
+transitivity (
+  hide_n >>= (fun h : door => pick >>= (fun p : door => Ret (h == p)))
+).
+  bind_ext => d; bind_ext => d'.
+  by rewrite arbitrary_inde // 1?eq_sym // size_filter_doors.
+by rewrite hide_pick_nondeter uFFTE.
+Qed.
+
+Lemma uniform_doors_unfold' (P : rel door) def d :
+  uniform def doors >>= (fun p => Ret (P d p)) = Ret (P d A) <|(/ 3)%:pr|> (Ret (P d B) <|(/ 2)%:pr|> Ret (P d C)) :> M _.
+Proof.
+rewrite [LHS](_ : _ = fmap (fun p => P d p) (uniform def doors)); last first.
+  rewrite fmapE; bind_ext; by case.
+rewrite -(compE (fmap _)) -(uniform_naturality _ true); last first.
+  by rewrite /doors Set3.enumE.
+by rewrite /doors Set3.enumE.
+Qed.
+
+Lemma bcoin23E' :
+  arbitrary A doors >>= (fun h : door => uniform A doors >>= (fun p : door => Ret (h != p) : M _)) =
+  bcoin (@Prob.mk (2/3) H23) :> M _.
+Proof.
+transitivity (
+  arbitrary A doors >>= (fun h : door => uniform A doors >>= (fun p : door => Ret (h, p) >>= (fun x => Ret (x.1 != x.2) : M bool)))
+).
+  by bind_ext => h; rewrite_ bindretf.
+transitivity (
+  (arbitrary A doors >>= (fun h : door => uniform A doors >>= (fun p : door => Ret (h, p) : M _))) >>= (fun x => Ret (x.1 != x.2) : M bool)
+).
+  by rewrite bindA; rewrite_ bindA.
+rewrite monty_choice_your_choice_combine /pick /monty.pick 2!alt_bindDl.
+have K : forall D, (uniform A doors >>= (fun p : door => Ret (D, p))) >>= (fun x : door * door => Ret (x.1 != x.2)) = (uniform A doors >>= (fun p : door => Ret (D != p))) :> M _.
+  move=> D; rewrite bindA.
+  by rewrite_ bindretf.
+rewrite 3!K !(@uniform_doors_unfold' (fun a b => a != b)) !eqxx /=.
+rewrite Set3.a_neq_b Set3.b_neq_c Set3.a_neq_c eq_sym Set3.a_neq_b eq_sym.
+rewrite Set3.a_neq_c eq_sym Set3.b_neq_c choicemm.
+rewrite (@choiceC _ _ (/2)%:pr) (@choiceA _ _ _ _ (/ 2)%:pr (@Prob.mk _ H23)%:pr); last first.
+  by rewrite /onem /=; split; field.
+rewrite choicemm.
+rewrite (@choiceA _ _ _ _ (/ 2)%:pr (@Prob.mk _ H23)%:pr); last first.
+  by rewrite /onem /=; split; field.
+rewrite choicemm choiceC /onem /=.
+set X := (X in _ <| X |> _).
+have -> : X = @Prob.mk (2 / 3) H23 by apply prob_ext => /=; field.
+by rewrite 2!altmm /bcoin.
+Qed.
+
+Lemma monty_switch : play_n switch = bcoin (@Prob.mk (2/3) H23).
+Proof.
+rewrite {1}/play_n {1}/monty /switch.
+transitivity (
+  hide_n >>=
+  (fun h : door => pick >>= (fun p : door => tease_n h p >>= (fun t : door => Ret (h == head A (doors \\ [:: p; t])))))
+).
+  by bind_ext => d; bind_ext => d'; rewrite_ bindretf; rewrite_ eq_sym.
+transitivity (
+  hide_n >>= (fun h : door => pick >>= (fun p : door => tease_n h p >> if h == p then Ret false else Ret true))
+).
+  bind_ext => h; bind_ext => p; rewrite /tease_n.
+  case: ifPn => [/eqP|] hp.
+    rewrite -{2}hp.
+    With (rewrite (_ : _ == _ = false)) Open (X in _ >>= X).
+      apply/negbTE; rewrite eq_sym; apply/head_filter; by rewrite inE eqxx.
+    reflexivity.
+    by rewrite arbitrary_inde // size_filter_doors.
+  rewrite Set3.filter_another // !arbitrary1 2!bindretf.
+  rewrite Set3.filter_another //; last first.
+    move: (Set3.another_notin card_door h p).
+    rewrite !inE negb_or => /andP[_]; by rewrite eq_sym.
+  by rewrite Set3.another_another //= eqxx.
+transitivity (hide_n >>= (fun h : door => pick >>= (fun p : door => Ret (h != p)) : M _)).
+  bind_ext => h; bind_ext => p.
+  by rewrite /tease_n arbitrary_inde ?size_filter_doors //; case: ifPn.
+rewrite /hide_n /pick /monty.pick.
+by rewrite bcoin23E'.
 Qed.
 
 End monty_nondeter.
