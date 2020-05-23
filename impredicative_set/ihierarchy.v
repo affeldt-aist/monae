@@ -18,7 +18,7 @@ Require Import imonae_lib.
 (*            functor == type of functors                                     *)
 (*              F # g == application of functor F to the morphism g           *)
 (*             F ~> G == natural transformation from functor F to functor G   *)
-(*                NId == identify natural transformation                      *)
+(*                NId == identity natural transformation                      *)
 (*                 \v == vertical composition                                 *)
 (*                 \h == horizontal composition                               *)
 (*    Module JoinLaws == join laws of a monad                                 *)
@@ -884,9 +884,8 @@ End shiftreset_lemmas.
 (* NB: wip, no model *)
 Module MonadJump.
 Local Open Scope monae_scope.
-(* Monad Transformers and Modular Algebraic Eﬀects: What Binds Them Together
-   Tom Schrijvers & al. Report CW699, September 2016
-   $8.2 p10 *)
+(* Sect. 7.2 of [Tom Schrijvers & al., Monad Transformers and Modular
+Algebraic Eﬀects: What Binds Them Together, Haskell 2019] *)
 Record mixin_of (ref : UU0 -> UU0) (M : monad) := Mixin {
    jump : forall A B : UU0, ref A -> A -> M B;
    sub : forall A B : UU0, (ref A -> M B) -> (A -> M B) -> M B;
@@ -895,7 +894,7 @@ Record mixin_of (ref : UU0 -> UU0) (M : monad) := Mixin {
    _ : forall (A B : UU0) p r', sub p (@jump A B r') = p r';
    _ : forall (A B : UU0) (p : ref A -> ref B -> M B) (k1 : A -> M B) k2,
        sub (fun r1 : ref A => sub (fun r2 => p r1 r2) (k2 r1)) k1 =
-       sub (fun r2 : ref B => sub (fun r1 => p r1 r2) k1) (fun x => sub (k2^~x) k1);
+       sub (fun r2 : ref B => sub (fun r1 => p r1 r2) k1) (fun x => sub (k2^~x) k1); (*NB: differs from [Schrijvers et al. 19]*)
    _ : forall (A B : UU0) r x k, (@jump A B r x) >>= k = @jump A B r x;
    _ : forall (A B : UU0) p q k, @sub A B p q >>= k = @sub A B (p >=> k) (q >=> k)
 }.

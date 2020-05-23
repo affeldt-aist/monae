@@ -509,9 +509,18 @@ Definition addM (M : monad) (a b : M nat) : M nat :=
   a >>= (fun x => b >>= (fun y => Ret (x + y))).
 Notation "a +m b" := (addM a b) (at level 50, format "a  +m  b").
 
+Definition mulM (M : monad) (a b : M nat) : M nat :=
+  a >>= (fun x => b >>= (fun y => Ret (x * y))).
+Notation "a *m b" := (mulM a b) (at level 50, format "a  *m  b").
+
+(* TODO: examples below are about control monads and should maybe be moved to a
+new file; reference: Wadler, P. Monads and composable continuations. LISP and
+Symbolic Computation 7, 39–55 (1994) *)
+
 Section continuation_example.
 Variable M : contMonad.
-Let wadler_example : Ret 1 +m Callcc (fun f => Ret 10 +m f 100) = Ret (1 + 100) :> M _.
+
+Let wadler94_sect31 : Ret 1 +m Callcc (fun f => Ret 10 +m f 100) = Ret (1 + 100) :> M _.
 Proof.
 rewrite {1}/addM bindretf.
 rewrite (_ : Callcc _ = Ret 100) ?bindretf //.
@@ -526,18 +535,6 @@ End continuation_example.
 
 Section shiftreset_examples.
 Variable (M : shiftresetMonad nat).
-Let wadler_example2 :
-  Ret 1 +m (Reset (Ret 10 +m (Shift (fun f : _ -> M nat => Ret 100 : M _) : M _)) : M _) =
-  Ret (1 + 100).
-Proof.
-rewrite /addM.
-rewrite bindretf.
-transitivity (Ret 100 >>= (fun y => Ret (1 + y)) : M _); last first.
-  by rewrite bindretf.
-congr (Bind _ _). (* TODO : bind_ext casse *)
-rewrite (shiftreset2 _ _).
-by rewrite bindretf.
-Qed.
 
 Let wadler_example1 :
   Ret 1 +m (Reset (Ret 10 +m (Shift (fun f : _ -> M nat => f (100) >>= f) : M _)) : M _) =
@@ -552,6 +549,19 @@ rewrite shiftreset3.
 rewrite (_ : do x <- Ret 10; _ = do y <- Shift (@^~ 100) : M _; Ret (10 + (10 + y)))%Do; last first.
   by rewrite bindretf.
 by rewrite shiftreset4.
+Qed.
+
+Let wadler94_sect32_2 :
+  Ret 1 +m (Reset (Ret 10 +m (Shift (fun f : _ -> M nat => Ret 100 : M _) : M _)) : M _) =
+  Ret (1 + 100).
+Proof.
+rewrite /addM.
+rewrite bindretf.
+transitivity (Ret 100 >>= (fun y => Ret (1 + y)) : M _); last first.
+  by rewrite bindretf.
+congr (Bind _ _). (* TODO : bind_ext casse *)
+rewrite (shiftreset2 _ _).
+by rewrite bindretf.
 Qed.
 
 End shiftreset_examples.

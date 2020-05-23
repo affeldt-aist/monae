@@ -9,7 +9,7 @@ Require Import monae_lib hierarchy monad_lib fail_lib state_lib trace_lib.
 (*                       Models for various monads                            *)
 (*                                                                            *)
 (* Sample models for the monads in monad.v, fail_monad.v, state_monad.v,      *)
-(* trace_monad.v.                                                              *)
+(* trace_monad.v.                                                             *)
 (*                                                                            *)
 (* identity                                                                   *)
 (* ListMonad.t                                                                *)
