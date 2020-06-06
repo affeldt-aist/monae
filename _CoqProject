@@ -26,4 +26,3 @@ monad_transformer.v
 
 -R . monae
 -R ../infotheo infotheo
--R ../analysis/theories mathcomp.analysis
