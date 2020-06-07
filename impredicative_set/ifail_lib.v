@@ -4,6 +4,7 @@ Require Import imonae_lib ihierarchy imonad_lib.
 (******************************************************************************)
 (*     Definitions and lemmas using failure and nondeterministic monads       *)
 (*                                                                            *)
+(*                arb == arbitrary nondeterministic choice between booleans   *)
 (*      foldM/unfoldM                                                         *)
 (*              hyloM                                                         *)
 (*    arbitrary def s == nondeterministic choice of an element in the list s, *)
@@ -27,6 +28,8 @@ Unset Printing Implicit Defensive.
 Local Open Scope monae_scope.
 
 Import Univ.
+
+Definition arb {M : altMonad} : M bool := Ret true [~] Ret false.
 
 Section monadalt_lemmas.
 Variable (M : altMonad).
@@ -238,10 +241,10 @@ rewrite -alt_bindDl.
 by rewrite -arbitrary_cat.
 Qed.
 
-Lemma arbitrary_inde (T : UU0) a (x : seq T) {U} (m : M U) :
-  0 < size x -> arbitrary a x >> m = m.
+Lemma arbitrary_inde (T : UU0) a (s : seq T) {U} (m : M U) :
+  0 < size s -> arbitrary a s >> m = m.
 Proof.
-elim: x a m => // h [_ a m _|h' t ih a m _].
+elim: s a m => // h [_ a m _|h' t ih a m _].
   by rewrite arbitrary1 bindretf.
 by rewrite arbitrary_cons // alt_bindDl ih // bindretf altmm.
 Qed.
@@ -259,9 +262,9 @@ Fixpoint subs (s : seq A) : M (seq A) :=
   let t' := subs t in
   fmap (cons h) t' [~] t'.
 
-Fixpoint SUBS (s : seq A) : Functor.m (Monad.baseType (MonadAlt.baseType M)) _ :=
+Fixpoint SUBS (s : seq A) : Functor.acto (Monad.baseType (MonadAlt.baseType M)) _ :=
   if s isn't h :: t then Ret [::] else
-  let t' : Functor.m (Monad.baseType (MonadAlt.baseType M)) _ := SUBS t in
+  let t' : Functor.acto (Monad.baseType (MonadAlt.baseType M)) _ := SUBS t in
   Alt (((MonadAlt.baseType M) # (cons h)) t') t'.
 
 Goal subs = SUBS. by []. Abort.
@@ -536,8 +539,8 @@ End continuation_example.
 Section shiftreset_examples.
 Variable (M : shiftresetMonad nat).
 
-Let wadler_example1 :
-  Ret 1 +m (Reset (Ret 10 +m (Shift (fun f : _ -> M nat => f (100) >>= f) : M _)) : M _) =
+Let wadler94_sect32_1 :
+  Ret 1 +m (Reset (Ret 10 +m (Shift (fun f : _ -> M nat => f 100 >>= f) : M _)) : M _) =
   Ret (1 + (10 + (10 + 100))).
 Proof.
 rewrite /addM.

@@ -19,6 +19,8 @@ Set Implicit Arguments.
 Unset Strict Implicit.
 Unset Printing Implicit Defensive.
 
+Local Open Scope monae_scope.
+
 Unset Universe Checking.
 
 Definition k_type (m : Type -> Type) (A : Type) : Type :=
@@ -55,7 +57,7 @@ Definition K_functor :=
 Lemma naturality_K_ret : naturality FId K_functor K_ret.
 Proof.
 move=> A B h.
-rewrite /K_functor /Fun /= /K_fmap /K_ret /=.
+rewrite /K_functor /Actm /= /K_fmap /K_ret /=.
 rewrite boolp.funeqE => a /=.
 by apply FunctionalExtensionality.functional_extensionality_dep.
 Qed.

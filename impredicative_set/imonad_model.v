@@ -44,6 +44,8 @@ Set Implicit Arguments.
 Unset Strict Implicit.
 Unset Printing Implicit Defensive.
 
+Local Open Scope monae_scope.
+
 Section PR.
 Local Open Scope fset_scope.
 Section ImfsetTh.
@@ -229,8 +231,8 @@ Definition t := Monad_of_ret_bind left_neutral right_neutral associative.
 End state.
 End State.
 
-(* among other refs:
-https://qiita.com/suharahiromichi/items/f07f932103c28f36dd0e *)
+(* see Sect. 3 of of [Wadler, 94] for the model of the ret and the bind of the
+continuation monad *)
 Module Cont.
 Section cont.
 Variable r : UU0.
@@ -290,7 +292,7 @@ Definition append A : (M A * M A)%type -> M A :=
 Lemma naturality_append : naturality (Append.func \O M) M append.
 Proof.
 move=> A B h; apply fun_ext; case => s1 s2 /=.
-rewrite /Fun /= /Monad_of_ret_bind.Map /=.
+rewrite /Actm /= /Monad_of_ret_bind.Map /=.
 rewrite /ModelMonad.ListMonad.bind /= /ModelMonad.ListMonad.ret /=.
 by rewrite map_cat flatten_cat.
 Qed.
@@ -325,7 +327,7 @@ Definition output (A : UU0) : (seq L * M A) -> M A := fun m => let: (x, w') := m
 Lemma naturality_output : naturality (Output.func L \O M) M output.
 Proof.
 move=> A B h; apply fun_ext; case => w [x w'] /=.
-by rewrite /output /= cats0 /Fun /= /Monad_of_ret_bind.Map /= cats0.
+by rewrite /output /= cats0 /Actm /= /Monad_of_ret_bind.Map /= cats0.
 Qed.
 Definition output_op : (Output.func L).-operation M :=
   Natural.Pack (Natural.Mixin naturality_output).
@@ -669,7 +671,6 @@ Fixpoint fib (n : nat) : nat :=
     | 1 => 1
     | (m.+1 as sm).+1 => fib sm + fib m
   end.
-Local Open Scope monae_scope.
 Fixpoint fib_cps {M : monad} (n : nat) : M nat :=
   match n with
     | 0 => Ret 1
@@ -694,7 +695,6 @@ Proof.
 move=> M; apply nat_ind2 => // n ih1 ih2.
 by rewrite fib_cpsE ih2 bindretf ih1 bindretf.
 Qed.
-Local Close Scope monae_scope.
 
 Definition oaddn (M : monad) (acc : nat) (x : option nat) : M nat :=
   if x is Some x then Ret (x + acc) else Ret acc.
@@ -710,12 +710,11 @@ Definition sum_break (xs : seq (option nat)) : M nat :=
 Compute (sum_break [:: Some 2; Some 6; None; Some 4]).
 *)
 
-Goal Ret 1 +m (Callcc (fun f => Ret 10 +m (f 100)) : M _) =
-     Ret (1 + 100).
+(* example from Sect. 3.1 of [Wadler, 94] *)
+Goal Ret 1 +m (Callcc (fun f => Ret 10 +m (f 100)) : M _) = Ret (1 + 100).
 Proof. by rewrite /addM bindretf; apply fun_ext. Abort.
 
 (* https://xavierleroy.org/mpri/2-4/transformations.pdf *)
-Local Open Scope monae_scope.
 
 Fixpoint list_iter (M : monad) A (f : A -> M unit) (s : seq A) : M unit :=
   if s is h :: t then f h >> list_iter f t else Ret tt.
@@ -757,7 +756,6 @@ End ModelShiftReset.
 
 Section shiftreset_examples.
 (* see Sect. 3.2 of [Wadler, 94] *)
-Local Open Scope monae_scope.
 Let M : monad := ModelShiftReset.t nat.
 Goal Ret 1 +m (Reset (Ret 10 +m (Shift (fun f : _ -> M nat => f (100) >>= f) : M _)) : M _) =
      Ret (1 + (10 + (10 + 100))).
@@ -795,7 +793,6 @@ End shiftreset_examples.
 (* wip *)
 Module ModelStateLoop.
 Section modelstateloop.
-Local Open Scope monae_scope.
 Variable S : UU0.
 Local Notation M := (@ModelMonad.State.t S).
 Fixpoint mforeach (it min : nat) (body : nat -> M unit) : M unit :=
@@ -824,7 +821,7 @@ by [].
 move=> A B m0 f s.
 rewrite !bindE /=.
 rewrite /ModelMonad.State.bind /=.
-rewrite /Fun /=.
+rewrite /Actm /=.
 rewrite /Monad_of_ret_bind.Map /=.
 rewrite /ModelMonad.State.bind /=.
 rewrite /ModelMonad.State.ret /=.

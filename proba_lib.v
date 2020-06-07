@@ -13,10 +13,8 @@ Require Import monae_lib hierarchy monad_lib fail_lib.
 (*   uniform choices are independent, in the sense that choosing              *)
 (*   consecutively from two uniform distributions is equivalent to choosing   *)
 (*   simultaneously from their cartesian product                              *)
-(* bcoin:                                                                     *)
-(*   biased coin                                                              *)
-(* arb:                                                                       *)
-(*   arbitrary nondeterministic choice between booleans                       *)
+(* bcoin p == a biased coin with probability p                                *)
+(*                                                                            *)
 (******************************************************************************)
 
 Declare Scope proba_monad_scope.
@@ -260,8 +258,6 @@ rewrite !(prob_bindDl,bindretf).
 apply (@convex_choice.convACA probConvex).
 Qed.
 End prob_only.
-
-Definition arb {M : altMonad} : M bool := Ret true [~] Ret false.
 
 Section mixing_choices.
 

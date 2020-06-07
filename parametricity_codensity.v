@@ -10,6 +10,8 @@ Require Import hierarchy monad_lib fmt_lifting monad_model.
 (* WARNING: see fmt_lifting.v                                                 *)
 (******************************************************************************)
 
+Local Open Scope monae_scope.
+
 Unset Universe Checking.
 
 Set Bullet Behavior "Strict Subproofs".
@@ -65,7 +67,7 @@ Variables E A : Type.
 Realizer E as E_R := (@eq E).
 Realizer A as A_R := (@eq A).
 
-Definition M (X : Type) : Type := 
+Definition M (X : Type) : Type :=
 ltac:(
   let t := constr:(ModelMonad.Except.t E X) in
   let t := eval cbn in t in
@@ -180,8 +182,8 @@ assert (Hparam :=
 transitivity (m Y ((ModelMonad.ListMonad.t # f) \o g)); [ | reflexivity].
 induction Hparam as [ | x y Hf mx my IH Hmap].
 - reflexivity.
-- unfold Fun.
-  unfold Fun in Hmap.
+- unfold Actm.
+  unfold Actm in Hmap.
   cbn in *.
   rewrite <- Hmap, Hf.
   reflexivity.
@@ -231,7 +233,7 @@ assert (H :
   intros a a' Ha s s' Hs.
   unfold S_R in Hs.
   subst a' s'.
-  unfold comp, Fun.
+  unfold comp, Actm.
   cbn.
   unfold ModelMonad.State.map, ModelMonad.State.bind, Monad_of_ret_bind.Map.
   case (g a s).

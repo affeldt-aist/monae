@@ -7,6 +7,7 @@ Require Import imonae_lib ihierarchy.
 (******************************************************************************)
 (*  Properties and examples of functors, natural transformations, and monads  *)
 (*                                                                            *)
+(*                    s \h g == horizontal composition                        *)
 (*                    F ## n == application of functor F to natural           *)
 (*                              transformation n                              *)
 (*                    F -| G == adjoint functors                              *)
@@ -25,6 +26,8 @@ Reserved Notation "E .-operation M" (at level 2, format "E  .-operation  M").
 Set Implicit Arguments.
 Unset Strict Implicit.
 Unset Printing Implicit Defensive.
+
+Local Open Scope monae_scope.
 
 Import Univ.
 
@@ -332,8 +335,6 @@ End composite_adjoint.
 Definition operation (E : functor) (M : monad) := E \O M ~> M.
 Notation "E .-operation M" := (operation E M).
 
-Local Open Scope monae_scope.
-
 Module Monad_of_ret_bind.
 Section monad_of_ret_bind.
 Variable M : functor.
@@ -375,7 +376,7 @@ Qed.
 Lemma naturality_join : naturality (M' \O M') M' (fun A : UU0 => (bind (B:=A))^~ id).
 Proof.
 move=> A B h; apply fun_ext => mma.
-by rewrite /Fun 2!compE /Map bind_Map [in LHS] bindA.
+by rewrite /Actm 2!compE /Map bind_Map [in LHS] bindA.
 Qed.
 
 Definition join : M' \O M' ~> M' := Natural.Pack (Natural.Mixin naturality_join).

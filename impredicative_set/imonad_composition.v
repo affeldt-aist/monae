@@ -13,6 +13,8 @@ Set Implicit Arguments.
 Unset Strict Implicit.
 Unset Printing Implicit Defensive.
 
+Local Open Scope monae_scope.
+
 Import Univ.
 
 Module Comp.
@@ -34,8 +36,7 @@ Arguments prod {_}.
 Definition JOIN : (M \O N) \O (M \O N) ~~> M \O N := fun _ => Join \o M # prod.
 Arguments JOIN {_}.
 
-Definition prod1 := forall (A B : UU0) (f : A -> B),
-  prod \o N # ((M \O N) # f) = (M \O N) # f \o prod.
+Definition prod1 := forall (A B : UU0) (f : A -> B), prod \o N # ((M \O N) # f) = (M \O N) # f \o prod.
 Definition prod2 := forall A, prod \o Ret = id :> (_ -> (M \O N) A).
 Definition prod3 := forall A, prod \o N # CRet M N _ = Ret :> (_ -> (M \O N) A).
 Definition prod4 := forall A, prod \o N # JOIN = JOIN \o prod :> (_ -> (M \O N) A).
@@ -107,8 +108,7 @@ Arguments dorp {_}.
 Definition JOIN : (M \O N) \O (M \O N) ~~> M \O N := fun _ => M # Join \o dorp.
 Arguments JOIN {_}.
 
-Definition dorp1 := forall (A B : UU0) (f : A -> B),
-  dorp \o (M \O N) # (M # f) = (M \O N) # f \o dorp.
+Definition dorp1 := forall (A B : UU0) (f : A -> B), dorp \o (M \O N) # (M # f) = (M \O N) # f \o dorp.
 Definition dorp2 := forall A, (@dorp A) \o CRet M N _ = M # Ret.
 Definition dorp3 := forall A, (@dorp A) \o (M \O N) # Ret = id.
 Definition dorp4 := forall A, (@dorp A) \o JOIN = JOIN \o (M \O N) # dorp.
@@ -196,8 +196,7 @@ Proof. by rewrite JOINE. Qed.
 Fact JOIN_dorp A : @JOIN A = M # Join \o dorp.
 Proof. by rewrite /dorp. Qed.
 
-Definition swap1 := forall (A B : UU0) (f : A -> B),
-  swap \o N # (M # f) = M # (N # f) \o swap .
+Definition swap1 := forall (A B : UU0) (f : A -> B), swap \o N # (M # f) = M # (N # f) \o swap .
 Definition swap2 := forall A, @swap A \o Ret = M # Ret :> (M A -> (M \O N) A).
 Definition swap3 := forall A, @swap A \o N # Ret = Ret :> (N A -> (M \O N) A).
 Definition swap4 := forall A, (@prod A) \o N # (@dorp _) = (@dorp _) \o (@prod _).
@@ -345,7 +344,7 @@ Record t := mk {
 }.
 End distributivelaw.
 End DistributiveLaw.
-Coercion DistributiveLaw.f : DistributiveLaw.t >-> Natural.t.
+Coercion DistributiveLaw.f : DistributiveLaw.t >-> nattrans.
 
 (* TODO *)
 Definition beck (S T : monad) (f : DistributiveLaw.t S T) : monad.

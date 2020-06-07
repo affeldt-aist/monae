@@ -82,6 +82,8 @@ Set Implicit Arguments.
 Unset Strict Implicit.
 Unset Printing Implicit Defensive.
 
+Local Open Scope monae_scope.
+
 Section classical_sets_extra.
 Local Open Scope classical_set_scope.
 
@@ -187,7 +189,7 @@ Proof.
 move=> A B h; rewrite boolp.funeqE => a /=; rewrite boolp.funeqE => b /=.
 rewrite boolp.propeqE; split.
   by case => a0; rewrite /set1 => ->{a0} <-{b}.
-by rewrite /set1 => ->{b} /=; rewrite /Fun /=; exists a.
+by rewrite /set1 => ->{b} /=; exists a.
 Qed.
 Definition ret : FId ~> functor := Natural.Pack (Natural.Mixin naturality_ret).
 Lemma left_neutral :
@@ -385,7 +387,7 @@ Definition append A : (M A * M A)%type -> M A :=
 Lemma naturality_append : naturality (Append.func \O M) M append.
 Proof.
 move=> A B h; rewrite boolp.funeqE; case => s1 s2 /=.
-rewrite /Fun /= /Monad_of_ret_bind.Map /=.
+rewrite /Actm /= /Monad_of_ret_bind.Map /=.
 rewrite /ModelMonad.ListMonad.bind /= /ModelMonad.ListMonad.ret /=.
 by rewrite map_cat flatten_cat.
 Qed.
@@ -416,11 +418,11 @@ Section outputops.
 Variable L : Type.
 Local Notation M := (ModelMonad.Output.t L).
 
-Definition output A : (seq L * M A) -> M A := fun m => let: (x, w') := m.2 in (x, m.1 ++ w'). (*NB: w'++m.1 in the esop paper*)
+Definition output (A : Type) : (seq L * M A) -> M A := fun m => let: (x, w') := m.2 in (x, m.1 ++ w'). (*NB: w'++m.1 in the esop paper*)
 Lemma naturality_output : naturality (Output.func L \O M) M output.
 Proof.
 move=> A B h; rewrite boolp.funeqE; case => w [x w'] /=.
-by rewrite /output /= cats0 /Fun /= /Monad_of_ret_bind.Map /= cats0.
+by rewrite /output /= cats0 /Actm /= /Monad_of_ret_bind.Map /= cats0.
 Qed.
 Definition output_op : (Output.func L).-operation M :=
   Natural.Pack (Natural.Mixin naturality_output).
@@ -453,16 +455,16 @@ End ModelOutput.
 Module EnvironmentOps.
 
 Module Ask. Section ask. Variable E : Type.
-Definition acto X := E -> X.
-Definition actm X Y (f : X -> Y) (t : acto X) : acto Y := fun e => f (t e).
+Definition acto (X : Type) := E -> X.
+Definition actm (X Y : Type) (f : X -> Y) (t : acto X) : acto Y := fun e => f (t e).
 Program Definition func := Functor.Pack (@Functor.Mixin _ actm _ _).
 Next Obligation. by []. Qed.
 Next Obligation. by []. Qed.
 End ask. End Ask.
 
 Module Local. Section local. Variable E : Type.
-Definition acto X := ((E -> E) * X)%type.
-Definition actm X Y (f : X -> Y) (t : acto X) : acto Y :=
+Definition acto (X : Type) := ((E -> E) * X)%type.
+Definition actm (X Y : Type) (f : X -> Y) (t : acto X) : acto Y :=
   let: (e, x) := t in (e, f x).
 Program Definition func := Functor.Pack (@Functor.Mixin _ actm _ _).
 Next Obligation. by move=> A; rewrite boolp.funeqE; case. Qed.
@@ -504,7 +506,7 @@ Module ExceptOps.
 
 Module Throw. Section throw. Variable Z : Type.
 Definition acto (X : Type) := Z.
-Definition actm X Y (f : X -> Y) (t : acto X) : acto Y := t.
+Definition actm (X Y :Type) (f : X -> Y) (t : acto X) : acto Y := t.
 Program Definition func := Functor.Pack (@Functor.Mixin _ actm _ _).
 Next Obligation. by []. Qed.
 Next Obligation. by []. Qed.
@@ -512,7 +514,7 @@ End throw. End Throw.
 
 Module Handle. Section handle. Variable Z : Type.
 Definition acto (X : Type) := (X * (Z -> X))%type.
-Definition actm X Y (f : X -> Y) (t : acto X) : acto Y :=
+Definition actm (X Y : Type) (f : X -> Y) (t : acto X) : acto Y :=
   let: (x, h) := t in (f x, fun z => f (h z)).
 Program Definition func := Functor.Pack (@Functor.Mixin _ actm _ _).
 Next Obligation. by move=> A; rewrite boolp.funeqE; case. Qed.
@@ -523,7 +525,7 @@ Section exceptops.
 Variable Z : Type.
 Local Notation M := (ModelMonad.Except.t Z).
 
-Definition throw A : Z -> M A := fun z => inl z.
+Definition throw (A : Type) : Z -> M A := fun z => inl z.
 Lemma naturality_throw : naturality (Throw.func Z \O M) M throw.
 Proof. by []. Qed.
 Definition throw_op : (Throw.func Z).-operation M :=
@@ -546,16 +548,16 @@ Arguments ExceptOps.handle_op {Z}.
 Module StateOps.
 
 Module Get. Section get. Variable S : Type.
-Definition acto X := S -> X.
-Definition actm X Y (f : X -> Y) (t : acto X) : acto Y := fun s => f (t s).
+Definition acto (X : Type) := S -> X.
+Definition actm (X Y : Type) (f : X -> Y) (t : acto X) : acto Y := fun s => f (t s).
 Program Definition func := Functor.Pack (@Functor.Mixin _ actm _ _).
 Next Obligation. by move=> A; rewrite boolp.funeqE. Qed.
 Next Obligation. by move=> A B C g h; rewrite boolp.funeqE. Qed.
 End get. End Get.
 
 Module Put. Section put. Variable S : Type.
-Definition acto X := (S * X)%type.
-Definition actm X Y (f : X -> Y) (sx : acto X) : acto Y := (sx.1, f sx.2).
+Definition acto (X : Type) := (S * X)%type.
+Definition actm (X Y : Type) (f : X -> Y) (sx : acto X) : acto Y := (sx.1, f sx.2).
 Program Definition func := Functor.Pack (@Functor.Mixin _ actm _ _).
 Next Obligation. by move=> A; rewrite boolp.funeqE; case. Qed.
 Next Obligation. by move=> A B C g h; rewrite boolp.funeqE. Qed.
@@ -592,15 +594,15 @@ Module ContOps.
 
 Module Abort. Section abort. Variable r : Type.
 Definition acto (X : Type) := r.
-Definition actm A B (f : A -> B) (x : acto A) : acto B := x.
+Definition actm (A B : Type) (f : A -> B) (x : acto A) : acto B := x.
 Program Definition func := Functor.Pack (@Functor.Mixin _ actm _ _ ).
 Next Obligation. by []. Qed.
 Next Obligation. by []. Qed.
 End abort. End Abort.
 
 Module Acallcc. Section acallcc. Variable r : Type.
-Definition acto := fun A => (A -> r) -> A.
-Definition actm X Y (f : X -> Y) (t : acto X) : acto Y :=
+Definition acto := fun A : Type => (A -> r) -> A.
+Definition actm (X Y : Type) (f : X -> Y) (t : acto X) : acto Y :=
   fun (g : Y -> r) => f (t (fun x => g (f x))).
 Program Definition func := Functor.Pack (@Functor.Mixin _ actm _ _ ).
 Next Obligation. by []. Qed.
@@ -612,7 +614,7 @@ Variable r : Type.
 
 Local Notation M := (ModelMonad.Cont.t r).
 
-Definition abort A : r -> M A := fun r _ => r.
+Definition abort (A : Type) : r -> M A := fun r _ => r.
 Lemma naturality_abort : naturality (Abort.func r \O M) M abort.
 Proof. by []. Qed.
 Definition abort_op : (Abort.func r).-operation M :=
@@ -804,9 +806,9 @@ Module ModelCont.
 Section modelcont.
 Variable r : Type.
 Local Notation M := (ModelMonad.Cont.t r).
-Definition callcc A B (f : (A -> M B) -> M A) : M A :=
+Definition callcc (A B : Type) (f : (A -> M B) -> M A) : M A :=
   ContOps.acallcc_op _ _ (fun k => f (fun x _ => k (Ret x))).
-Lemma callccE A B (f : (A -> M B) -> M A) : callcc f = usual_callcc f.
+Lemma callccE (A B : Type) (f : (A -> M B) -> M A) : callcc f = usual_callcc f.
 Proof. by []. Qed.
 Program Definition t : contMonad := MonadContinuation.Pack (MonadContinuation.Class
   (@MonadContinuation.Mixin (ModelMonad.Cont.t r) callcc _ _ _ _)).
@@ -821,7 +823,6 @@ Fixpoint fib (n : nat) : nat :=
     | 1 => 1
     | (m.+1 as sm).+1 => fib sm + fib m
   end.
-Local Open Scope monae_scope.
 Fixpoint fib_cps {M : monad} (n : nat) : M nat :=
   match n with
     | 0 => Ret 1
@@ -846,7 +847,6 @@ Proof.
 move=> M; apply nat_ind2 => // n ih1 ih2.
 by rewrite fib_cpsE ih2 bindretf ih1 bindretf.
 Qed.
-Local Close Scope monae_scope.
 
 Definition oaddn (M : monad) (acc : nat) (x : option nat) : M nat :=
   if x is Some x then Ret (x + acc) else Ret acc.
@@ -867,7 +867,6 @@ Goal Ret 1 +m (Callcc (fun f => Ret 10 +m (f 100))) = Ret (1 + 100) :> M _.
 Proof. by rewrite /addM bindretf boolp.funeqE. Abort.
 
 (* https://xavierleroy.org/mpri/2-4/transformations.pdf *)
-Local Open Scope monae_scope.
 
 Fixpoint list_iter (M : monad) A (f : A -> M unit) (s : seq A) : M unit :=
   if s is h :: t then f h >> list_iter f t else Ret tt.
@@ -876,7 +875,7 @@ Fixpoint list_iter (M : monad) A (f : A -> M unit) (s : seq A) : M unit :=
 Compute (@list_iter ModelMonad.identity nat (fun a => Ret tt) [:: O; 1; 2]).
 *)
 
-Definition list_find (M : contMonad) A (p : pred A) (s : seq A) : M _ :=
+Definition list_find (M : contMonad) (A : Type) (p : pred A) (s : seq A) : M _ :=
   Callcc (fun k => list_iter (fun x => if p x then (*Throw*) k (Some x) else Ret tt) s >> Ret None).
 
 (* returns None if no such element exists *)
@@ -893,7 +892,7 @@ End continuation_examples.
 (* see Sect. 3.2 of [Wadler, 94] for the model of shift and reset *)
 Module ModelShiftReset.
 Definition shift r :
-    forall A, ((A -> ModelCont.t r r) -> ModelCont.t r r) -> ModelCont.t r A :=
+    forall A : Type, ((A -> ModelCont.t r r) -> ModelCont.t r r) -> ModelCont.t r A :=
  fun A h => fun c => h (fun v c' => c' (c v)) ssrfun.id.
 
 Definition reset r : ModelCont.t r r -> ModelCont.t r r :=
@@ -909,7 +908,6 @@ End ModelShiftReset.
 
 Section shiftreset_examples.
 (* see Sect. 3.2 of [Wadler, 94] *)
-Local Open Scope monae_scope.
 Let M : monad := ModelShiftReset.t nat.
 Goal Ret 1 +m (Reset (Ret 10 +m (Shift (fun f : _ -> M nat => f (100) >>= f) : M _)) : M _) =
      Ret (1 + (10 + (10 + 100))).
@@ -947,7 +945,6 @@ End shiftreset_examples.
 (* wip *)
 Module ModelStateLoop.
 Section modelstateloop.
-Local Open Scope monae_scope.
 Variable S : Type.
 Local Notation M := (@ModelMonad.State.t S).
 Fixpoint mforeach (it min : nat) (body : nat -> M unit) : M unit :=
@@ -967,7 +964,7 @@ End ModelStateLoop.
 
 Module ModelRun.
 
-Definition mk {S T} : runMonad (S * seq T).
+Definition mk {S T : Type} : runMonad (S * seq T).
 set m := @ModelMonad.State.t (S * seq T).
 refine (@MonadRun.Pack _ _ (@MonadRun.Class _ _ (Monad.class m)
   (@MonadRun.Mixin _ m
@@ -976,7 +973,7 @@ by [].
 move=> A B m0 f s.
 rewrite !bindE /=.
 rewrite /ModelMonad.State.bind /=.
-rewrite /Fun /=.
+rewrite /Actm /=.
 rewrite /Monad_of_ret_bind.Map /=.
 rewrite /ModelMonad.State.bind /=.
 rewrite /ModelMonad.State.ret /=.
@@ -1083,7 +1080,7 @@ Definition func := Functor.Pack (Functor.Mixin map_id map_comp).
 Lemma naturality_ret : naturality FId func ret_component.
 Proof.
 move=> A B h; rewrite /ret_component boolp.funeqE => a; rewrite boolp.funeqE => s.
-by rewrite /func /Fun /map /bind /= imfset_set1 /= big_seq_fset1.
+by rewrite /func /Actm /map /bind /= imfset_set1 /= big_seq_fset1.
 Qed.
 
 Definition ret : FId ~> func := Natural.Pack (Natural.Mixin naturality_ret).
@@ -1116,7 +1113,6 @@ apply/fsetP => /= x; apply/bigfcupP'/bigfcupP'; case => /= CS  /imfsetP[/=].
   exists (g bs.1 bs.2) => //; apply/imfsetP => /=; exists bs => //.
   apply/bigfcupP' => /=; exists (f sa.1 sa.2) => //; by apply/imfsetP => /=; exists sa.
 Qed.
-Local Open Scope monae_scope.
 Lemma BindE (A B : Type) m (f : A -> t B) :
   m >>= f = fun s => \bigcup_(i <- (fun x : [choiceType of convex_choice.choice_of_Type A * convex_choice.choice_of_Type S] => f x.1 x.2) @` (m s)) i.
 Proof.
@@ -1128,13 +1124,13 @@ set rhs := [fset _ _ | _ in _].
 rewrite (_ : lhs = rhs) //; apply/fsetP => x; rewrite {}/lhs {}/rhs.
 apply/idP/imfsetP => /=.
 - case/imfsetP => -[a1 a2] /=.
-  rewrite /Fun /=.
+  rewrite /Actm /=.
   rewrite /Monad_of_ret_bind.Map /=.
   case/bigfcupP' => /= b.
   by case/imfsetP => -[b1 b2] /= Hb ->{b} /fset1P[-> -> ->{x a1 a2}]; exists (b1, b2).
 - case=> -[a1 s1] Ha /= ->{x}.
   apply/imfsetP => /=.
-  rewrite /Fun /= /Monad_of_ret_bind.Map /=.
+  rewrite /Actm /= /Monad_of_ret_bind.Map /=.
   eexists.
   + apply/bigfcupP' => /=.
     eexists.

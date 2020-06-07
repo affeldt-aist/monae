@@ -405,14 +405,14 @@ Fixpoint denote {A} (p : program A) : M A :=
   end.
 
 Notation "'Repeat' n {{ p }}" := (
-  (fix loop (m : nat) : MonadStateTrace.m M unit :=
+  (fix loop (m : nat) : MonadStateTrace.acto M unit :=
    match m with
    | 0 => Ret tt
    | m'.+1 => denote p >> loop m'
    end) n) (at level 200).
 
 Notation "'While' fuel @ c {{ p }}" := (
-  (fix loop (m : nat) : MonadStateTrace.m M unit :=
+  (fix loop (m : nat) : MonadStateTrace.acto M unit :=
    match m with
    | 0 => Ret tt
    | m'.+1 =>

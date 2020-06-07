@@ -10,6 +10,8 @@ Require Import imonae_lib ihierarchy imonad_lib ifmt_lifting imonad_model.
 (* WARNING: see ifmt_lifting.v                                                *)
 (******************************************************************************)
 
+Local Open Scope monae_scope.
+
 Import Univ.
 Set Bullet Behavior "Strict Subproofs".
 
@@ -179,8 +181,8 @@ assert (Hparam :=
 transitivity (m Y ((ModelMonad.ListMonad.t # f) \o g)); [ | reflexivity].
 induction Hparam as [ | x y Hf mx my IH Hmap].
 - reflexivity.
-- unfold Fun.
-  unfold Fun in Hmap.
+- unfold Actm.
+  unfold Actm in Hmap.
   cbn in *.
   rewrite <- Hmap, Hf.
   reflexivity.
@@ -230,7 +232,7 @@ assert (H :
   intros a a' Ha s s' Hs.
   unfold S_R in Hs.
   subst a' s'.
-  unfold comp, Fun.
+  unfold comp, Actm.
   cbn.
   unfold ModelMonad.State.map, ModelMonad.State.bind, Monad_of_ret_bind.Map.
   case (g a s).
