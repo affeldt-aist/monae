@@ -142,7 +142,7 @@ Definition MS_functor := Functor.Pack (Functor.Mixin MS_id MS_comp).
 
 Lemma naturality_retS : naturality FId MS_functor retS.
 Proof.
-move=> A B h; rewrite /Fun /=; apply fun_ext => a /=.
+move=> A B h; rewrite /Actm /=; apply fun_ext => a /=.
 rewrite /MS_fmap /=; apply fun_ext => s /=.
 by rewrite /retS [in LHS]curryE (natural RET).
 Qed.
@@ -222,7 +222,7 @@ Definition exceptionT_functor := Functor.Pack (Functor.Mixin MX_map_i MX_map_o).
 Lemma naturality_retX : naturality FId exceptionT_functor retX.
 Proof.
 move=> A B h; rewrite /retX; apply fun_ext => /= a.
-by rewrite /Fun /= /MX_map -[LHS]compE (natural RET).
+by rewrite /Actm /= /MX_map -[LHS]compE (natural RET).
 Qed.
 
 Definition retX_nat : FId ~> exceptionT_functor :=
@@ -424,9 +424,9 @@ End sum.
 End continuation_monad_transformer_examples.
 
 Lemma functor_ext (F G : functor) :
-  forall (H : Functor.m F = Functor.m G),
-  Functor.f (Functor.class G) =
-  eq_rect _ (fun m : UU0 -> UU0 => forall A B : UU0, (A -> B) -> m A -> m B) (Functor.f (Functor.class F)) _ H  ->
+  forall (H : Functor.acto F = Functor.acto G),
+  Functor.actm (Functor.class G) =
+  eq_rect _ (fun m : UU0 -> UU0 => forall A B : UU0, (A -> B) -> m A -> m B) (Functor.actm (Functor.class F)) _ H  ->
   G = F.
 Proof.
 move: F G => [F [HF1 HF2 HF3]] [G [HG1 HG2 HG3]] /= H; subst G => /= ?; subst HG1.
@@ -437,7 +437,7 @@ Require Import Logic.Eqdep.
 
 Lemma natural_ext (F G G' : functor) (t : F ~> G) (t' : F ~> G') :
   forall (H : G = G'),
-  forall (K : forall X (x : F X), Natural.m t' x = eq_rect _ (fun m : functor => m X) (Natural.m t x) _ H),
+  forall (K : forall X (x : F X), Natural.cpnt t' x = eq_rect _ (fun m : functor => m X) (Natural.cpnt t x) _ H),
   t' = eq_rect _ (fun m => F ~> m) t _ H.
 Proof.
 move : t t' => [t t1] [t' t'1] /= H; subst G' => H /=.
@@ -453,8 +453,8 @@ Qed.
 Lemma natural_ext2 (F F' : functor) (t : F \O F ~> F) (t' : F' \O F' ~> F') :
   forall (K : F = F'),
   forall L : (forall X (x : (F' \O F') X),
-    Natural.m t' x = eq_rect _ (fun m : functor => m X)
-      (Natural.m t (eq_rect _ (fun m : functor => (m \O m) X) x _ (esym K)))
+    Natural.cpnt t' x = eq_rect _ (fun m : functor => m X)
+      (Natural.cpnt t (eq_rect _ (fun m : functor => (m \O m) X) x _ (esym K)))
       _ K),
   t' = eq_rect _ (fun m => m \O m ~> m) t _ K.
 Proof.
@@ -491,7 +491,7 @@ Qed.
 Section eq_rect_ret.
 Variable X : UU0.
 Let U  : UU1 := functor.
-Let Q : U -> UU0 := Functor.m^~ X.
+Let Q : U -> UU0 := Functor.acto^~ X.
 
 Lemma eq_rect_ret (p p' : U) (K : Q p' = Q p) (x : Q p') (h : p = p') :
   x = eq_rect p Q (eq_rect _ (fun X : UU0 => id X) x _ K) p' h.
@@ -530,7 +530,7 @@ End eq_rect_ret.
 
 Section eq_rect_bind.
 Let U : Type := functor.
-Let Q : U -> Type := fun F => forall A B, Functor.m F A -> (A -> Functor.m F B) -> Functor.m F B.
+Let Q : U -> Type := fun F => forall A B, Functor.acto F A -> (A -> Functor.acto F B) -> Functor.acto F B.
 
 Lemma eq_rect_bind (p p' : U) (K : Q p' = Q p) (x : Q p') (h : p = p') :
   x = eq_rect p Q (eq_rect _ id x _ K) p' h.
@@ -578,7 +578,7 @@ have FG : MS_functor S ModelMonad.identity = ModelMonad.State.functor S.
   apply FunctionalExtensionality.functional_extensionality_dep => A.
   apply FunctionalExtensionality.functional_extensionality_dep => B.
   apply fun_ext => f; apply fun_ext => m; apply fun_ext => s.
-  by rewrite /MS_fmap /Fun /= /ModelMonad.State.map; destruct (m s).
+  by rewrite /MS_fmap /Actm /= /ModelMonad.State.map; destruct (m s).
 apply (@monad_of_ret_bind_ext _ _ _ _ _ _ FG) => /=.
   apply/natural_ext => A a /=; exact: eq_rect_state_ret _ (esym FG).
 set x := @bindS _ _; exact: (@eq_rect_bind_state S x (esym FG)).
@@ -593,7 +593,7 @@ have FG : exceptionT_functor Z ModelMonad.identity = ModelMonad.Except.functor Z
   apply FunctionalExtensionality.functional_extensionality_dep => A.
   apply FunctionalExtensionality.functional_extensionality_dep => B.
   apply fun_ext => f; apply fun_ext => m.
-  by rewrite /MX_map /Fun /= /ModelMonad.Except.map; destruct m.
+  by rewrite /MX_map /Actm /= /ModelMonad.Except.map; destruct m.
 apply (@monad_of_ret_bind_ext _ _ _ _ _ _ FG) => /=.
   apply/natural_ext => A a /=; exact: (eq_rect_error_ret _ (esym FG)).
 set x := @bindX _ _; exact: (@eq_rect_bind_error Z x (esym FG)).
@@ -673,7 +673,7 @@ End aoperation.
 Module Exports.
 Arguments m {E} {M}.
 Notation aoperation := t.
-Coercion baseType : aoperation >-> Natural.t.
+Coercion baseType : aoperation >-> nattrans.
 Canonical baseType.
 End Exports.
 End AOperation.
@@ -703,7 +703,7 @@ Proof. by []. Qed.
 Lemma algebraic_append : algebraicity ListOps.append_op.
 Proof.
 move=> A B f [t1 t2] /=.
-rewrite !bindE /= /ModelMonad.ListMonad.bind /= /Fun /=.
+rewrite !bindE /= /ModelMonad.ListMonad.bind /= /Actm /=.
 rewrite /Monad_of_ret_bind.Map /=.
 rewrite /ModelMonad.ListMonad.bind /= /ModelMonad.ListMonad.ret /=.
 by rewrite -flatten_cat -map_cat /= -flatten_cat -map_cat.
@@ -722,7 +722,7 @@ Proof.
 move=> A B f [x w].
 rewrite /OutputOps.flush_op /=.
 rewrite /OutputOps.flush /=.
-rewrite /Fun /=.
+rewrite /Actm /=.
 rewrite bindE /=.
 rewrite /OutputOps.Flush.actm.
 rewrite bindE /=.
@@ -748,7 +748,7 @@ rewrite bindE /=.
 case: (f a) => // z.
 rewrite bindE /=.
 rewrite /ModelMonad.Except.bind /=.
-rewrite /Fun /=.
+rewrite /Actm /=.
 rewrite /Monad_of_ret_bind.Map /=.
 rewrite /ModelMonad.Except.bind /=.
 case: (g z) => [z0|a0].
@@ -766,7 +766,7 @@ rewrite /EnvironmentOps.local /=.
 apply fun_ext => e /=.
 rewrite bindE /=.
 rewrite /ModelMonad.Environment.bind /=.
-rewrite /Fun /=.
+rewrite /Actm /=.
 rewrite /Monad_of_ret_bind.Map /=.
 rewrite /ModelMonad.Environment.bind /=.
 rewrite /ModelMonad.Environment.ret /=.
@@ -774,7 +774,7 @@ rewrite /EnvironmentOps.Local.actm /=.
 case: t => /= ee m.
 rewrite bindE /=.
 rewrite /ModelMonad.Environment.bind /=.
-rewrite /Fun /=.
+rewrite /Actm /=.
 rewrite /Monad_of_ret_bind.Map /=.
 rewrite /ModelMonad.Environment.bind /=.
 rewrite /ModelMonad.Environment.ret /=.
@@ -1001,26 +1001,26 @@ refine (@MonadState.Class _ _ _ (@MonadState.Mixin _ (stateT S M) (fun s => Ret 
 move=> s s'.
 apply fun_ext => s0.
 case: M => m [[f fi fo] [/= r j a b c]].
-rewrite /Bind /Join /JOIN /estateMonadM /Monad_of_ret_bind /bindS /Fun /=.
+rewrite /Bind /Join /JOIN /estateMonadM /Monad_of_ret_bind /bindS /Actm /=.
 rewrite /Monad_of_ret_bind.Map bindretf /=.
 by rewrite /retS bindretf.
 move=> s.
 apply fun_ext => s0.
 case: M => m [[f fi fo] [/= r j a b c]].
-rewrite /retS /Ret /RET /Bind /estateMonadM /Monad_of_ret_bind /Fun /bindS /=.
+rewrite /retS /Ret /RET /Bind /estateMonadM /Monad_of_ret_bind /Actm /bindS /=.
 rewrite /Monad_of_ret_bind.Map.
 by rewrite 4!bindretf /=.
 apply fun_ext => s.
 case: M => m [[f fi fo] [/= r j a b c]].
 rewrite /Bind /Join /JOIN /=.
-rewrite /estateMonadM /Monad_of_ret_bind /bindS /Fun /=.
+rewrite /estateMonadM /Monad_of_ret_bind /bindS /Actm /=.
 rewrite /Monad_of_ret_bind.Map bindretf /=.
 by rewrite /retS bindretf.
 case: M => m [[f fi fo] [/= r j a b c]].
 move=> A k.
 apply fun_ext => s.
 rewrite /Bind /Join /JOIN /= /bindS /estateMonadM /=.
-rewrite /Monad_of_ret_bind /Fun /Monad_of_ret_bind.Map /=.
+rewrite /Monad_of_ret_bind /Actm /Monad_of_ret_bind.Map /=.
 rewrite /Monad_of_ret_bind.Map /= /bindS /=.
 by rewrite !bindretf /= !bindretf.
 Qed.
@@ -1126,7 +1126,7 @@ move=> A B h.
 rewrite /hmapX' -2!FunctionalExtensionality.eta_expansion.
 have H : forall G, errorT X G # h = MX_map h.
   move=> E; apply fun_ext => m /=.
-  rewrite /Fun /= /Monad_of_ret_bind.Map /MX_map /= /bindX /= fmapE.
+  rewrite /Actm /= /Monad_of_ret_bind.Map /MX_map /= /bindX /= fmapE.
   congr (_ >>= _).
   by apply fun_ext; case.
 by rewrite 2!H /MX_map /= natural.
@@ -1179,7 +1179,7 @@ rewrite -!FunctionalExtensionality.eta_expansion.
 rewrite /retX /=.
 rewrite /Bind /=.
 rewrite (_ : (fun x : A => Ret (inr x)) = Ret \o inr) //.
-rewrite (_ : (fun m : Monad.m M A => Join ((M # (Ret \o inr)) m)) =
+rewrite (_ : (fun m : Monad.acto M A => Join ((M # (Ret \o inr)) m)) =
              Join \o (M # (Ret \o inr)) ) //.
 rewrite functor_o.
 rewrite (compA Join).
@@ -1213,7 +1213,7 @@ rewrite /hmapS'.
 rewrite /=.
 have H : forall G, estateMonadM S G # h = MS_functor S G # h.
   move=> H; apply fun_ext => m.
-  rewrite /Fun /=.
+  rewrite /Actm /=.
   rewrite /Monad_of_ret_bind.Map /=.
   rewrite /bindS /MS_fmap /retS /=.
   apply fun_ext => s.
@@ -1222,7 +1222,7 @@ have H : forall G, estateMonadM S G # h = MS_functor S G # h.
     by apply fun_ext; case.
   by rewrite -fmapE.
 rewrite !H {H}.
-rewrite {1}/MS_functor /= {1}/Fun /=.
+rewrite {1}/MS_functor /= {1}/Actm /=.
 rewrite /MS_fmap; apply fun_ext => m; apply fun_ext => s /=.
 rewrite -(compE  _ (tau (A * S)%type)).
 by rewrite natural.

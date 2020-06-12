@@ -28,6 +28,8 @@ Set Implicit Arguments.
 Unset Strict Implicit.
 Unset Printing Implicit Defensive.
 
+Local Open Scope monae_scope.
+
 Definition Squaring (A : Type) := (A * A)%type.
 Notation "A `2" := (Squaring A).
 Definition squaring_f (A B : Type) (f : A -> B) : A`2 -> B`2 := fun x => (f x.1, f x.2).
@@ -332,8 +334,6 @@ End composite_adjoint.
 Definition operation (E : functor) (M : monad) := E \O M ~> M.
 Notation "E .-operation M" := (operation E M).
 
-Local Open Scope monae_scope.
-
 Module Monad_of_ret_bind.
 Section monad_of_ret_bind.
 Variable M : functor.
@@ -375,7 +375,7 @@ Qed.
 Lemma naturality_join : naturality (M' \O M') M' (fun A : Type => (bind (B:=A))^~ id).
 Proof.
 move=> A B h; rewrite boolp.funeqE => mma.
-by rewrite /Fun 2!compE /Map bind_Map [in LHS] bindA.
+by rewrite /Actm 2!compE /Map bind_Map [in LHS]bindA.
 Qed.
 
 Definition join : M' \O M' ~> M' := Natural.Pack (Natural.Mixin naturality_join).

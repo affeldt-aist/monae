@@ -82,7 +82,7 @@ by rewrite add0n addn0 /= addnAC addnA.
 Qed.
 End stateloop_examples.
 
-Lemma getput_prepend S (M : nondetStateMonad S) A (m : M A) :
+Lemma getput_prepend (S : Type) (M : nondetStateMonad S) A (m : M A) :
   m = Get >>= (fun x => Put x >> m).
 Proof. by rewrite -{2}(bindskipf m) -bindA getputskip 2!bindskipf. Qed.
 

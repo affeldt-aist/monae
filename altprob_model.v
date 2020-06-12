@@ -27,6 +27,7 @@ Local Open Scope reals_ext_scope.
 Local Open Scope classical_set_scope.
 Local Open Scope convex_scope.
 Local Open Scope latt_scope.
+Local Open Scope monae_scope.
 
 Definition alt A (x y : gcm A) : gcm A := x [+] y.
 Definition choice p A (x y : gcm A) : gcm A := x <| p |> y.
@@ -37,7 +38,7 @@ Proof. by move=> x y z; rewrite /alt lub_binaryA. Qed.
 Lemma image_FSDistfmap A B (x : gcm A) (k : choice_of_Type A -> gcm B) :
   FSDistfmap k @` x = (gcm # k) x.
 Proof.
-rewrite /Fun /= /category.Monad_of_category_monad.f /= /category.id_f /=.
+rewrite /Actm /= /category.Monad_of_category_monad.f /= /category.id_f /=.
 by rewrite/free_semiCompSemiLattConvType_mor /=; unlock.
 Qed.
 
@@ -74,7 +75,7 @@ rewrite -[in LHS]image_FSDistfmap funeqE => d; rewrite propeqE; split.
   rewrite in_setE -image_FSDistfmap => -[] [z1 xz1 <-{d1}].
   rewrite in_setE -image_FSDistfmap => -[] [z2 xz2 <-{d2}].
   move=> ->{d}; exists (z1 <|p|> z2); last exact: ConvFSDist.bind_left_distr.
-  rewrite -in_setE necset_convType.convE inE; apply/asboolP; exists z1, z2.
+  rewrite -in_setE necset_convType.convE; apply/asboolP; exists z1, z2.
   by rewrite !in_setE.
 Qed.
 
@@ -89,8 +90,8 @@ Local Notation U0 := forget_convType.
 Local Notation U1 := forget_semiCompSemiLattConvType.
 
 Lemma affine_F1e0U1PD_alt T (u v : gcm (gcm T)) :
-  (F1 # eps0 (U1 (P_delta_left T))) (u [+] v) =
-  (F1 # eps0 (U1 (P_delta_left T))) u [+] (F1 # eps0 (U1 (P_delta_left T))) v.
+  (F1 # eps0 (U1 (P_delta_left T)))%category (u [+] v) =
+  (F1 # eps0 (U1 (P_delta_left T)))%category u [+] (F1 # eps0 (U1 (P_delta_left T)))%category v.
 Proof.
 rewrite [in LHS]/lub_binary -lub_op_hull.
 have huv : NECSet.class_of (hull [set u; v]).
@@ -98,13 +99,13 @@ have huv : NECSet.class_of (hull [set u; v]).
   rewrite hull_eq0; apply/eqP => /(congr1 (fun x => x u)).
   by rewrite propeqE => -[X _]; apply X; left.
 have @UV : necset_semiCompSemiLattConvType (F1 ((F0 \O U0) (U1 (P_delta_left T)))) := NECSet.Pack huv.
-transitivity (|_| ((F1 # eps0 (U1 (P_delta_left T))) @` UV)%:ne).
-  rewrite -(apply_affine (F1 # eps0 (U1 (P_delta_left T))) UV).
+transitivity (|_| ((F1 # eps0 (U1 (P_delta_left T)))%category @` UV)%:ne).
+  rewrite -(apply_affine (F1 # eps0 (U1 (P_delta_left T)))%category UV).
   congr (_ _); congr (|_| _); exact/neset_ext.
 rewrite [in RHS]/lub_binary.
-transitivity (|_| (hull ((F1 # eps0 (U1 (P_delta_left T))) @` [set u; v]))%:ne).
+transitivity (|_| (hull ((F1 # eps0 (U1 (P_delta_left T)))%category @` [set u; v]))%:ne).
   congr (|_| _%:ne); apply/neset_ext => /=.
-  have /image_preserves_convex_hull' : affine_function (F1 # eps0 (U1 (P_delta_left T))).
+  have /image_preserves_convex_hull' : affine_function (F1 # eps0 (U1 (P_delta_left T)))%category.
     move=> a b p; rewrite /affine_function_at => /=.
     rewrite /free_semiCompSemiLattConvType_mor /=; unlock; rewrite /free_semiCompSemiLattConvType_mor' /=.
     apply/necset_ext => /=; rewrite funeqE => X; rewrite propeqE; split.
@@ -161,7 +162,7 @@ suff -> : forall T (u v : gcm (gcm T)), hierarchy.Join (u [+] v : gcm (gcm T)) =
 move=> T u v.
 rewrite /= /Monad_of_category_monad.join /=.
 rewrite HCompId HIdComp !HCompId !HIdComp.
-have-> : (F1 \O F0) # epsC (U0 (U1 (P_delta_left T))) = idfun :> (_ -> _).
+have-> : ((F1 \O F0) # epsC (U0 (U1 (P_delta_left T))))%category = idfun :> (_ -> _).
   have -> : epsC (U0 (U1 (P_delta_left T))) =
             [NEq _, _] _ by rewrite hom_ext /= epsCE.
   by rewrite functor_id.
@@ -219,8 +220,8 @@ Local Notation U0 := forget_convType.
 Local Notation U1 := forget_semiCompSemiLattConvType.
 
 Lemma affine_F1e0U1PD_conv T (u v : gcm (gcm T)) p :
-  (F1 # eps0 (U1 (P_delta_left T))) (u <|p|> v) =
-  (F1 # eps0 (U1 (P_delta_left T))) u <|p|> (F1 # eps0 (U1 (P_delta_left T))) v.
+  ((F1 # eps0 (U1 (P_delta_left T))) (u <|p|> v) =
+   (F1 # eps0 (U1 (P_delta_left T))) u <|p|> (F1 # eps0 (U1 (P_delta_left T))) v)%category.
 Proof.
 rewrite /Conv /= /free_semiCompSemiLattConvType_mor /=; unlock.
 rewrite /free_semiCompSemiLattConvType_mor' /=; apply/necset_ext => /=.
@@ -258,7 +259,7 @@ suff -> : forall T (u v : gcm (gcm T)), hierarchy.Join (u <|p|> v : gcm (gcm T))
 move=> T u v.
 rewrite /= /Monad_of_category_monad.join /=.
 rewrite HCompId HIdComp !HCompId !HIdComp.
-have-> : (F1 \O F0) # epsC (U0 (U1 (P_delta_left T))) = idfun :> (_ -> _).
+have-> : ((F1 \O F0) # epsC (U0 (U1 (P_delta_left T))))%category = idfun :> (_ -> _).
   have -> : epsC (U0 (U1 (P_delta_left T))) =
             [NEq _, _] _ by rewrite hom_ext /= epsCE.
   by rewrite functor_id.
@@ -289,7 +290,6 @@ End P_delta_altProbMonad.
 
 Section examples.
 Local Open Scope proba_monad_scope.
-Local Open Scope monae_scope.
 
 (* An example that probabilistic choice in this model is not trivial:
    we can distinguish different probabilities. *)
@@ -320,11 +320,10 @@ case.
   split; first by apply/asboolP.
   split; by [|apply/asboolP].
 move=> x [] y.
-rewrite !inE !necset1E => -[] /asboolP -> [] /asboolP ->.
+rewrite 2!in_setE 2!necset1E => -[] -> [] ->.
 move/(f_equal (fun x : {dist (choice_of_Type bool)} => x true)) => /=.
 rewrite /Conv /= !ConvFSDist.dE !FSDist1.dE !inE !eqxx.
 case/boolP: ((true : choice_of_Type bool) == false) => [/eqP//|].
-rewrite !mulR1 !mulR0 !addR0 => _ H.
-by apply prob_ext.
+by rewrite !mulR1 !mulR0 !addR0 => _ ?; apply prob_ext.
 Qed.
 End examples.

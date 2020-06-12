@@ -4,15 +4,21 @@ Require Import imonae_lib ihierarchy imonad_lib.
 (******************************************************************************)
 (*     Definitions and lemmas using failure and nondeterministic monads       *)
 (*                                                                            *)
-(*   foldM/unfoldM                                                            *)
-(*   hyloM                                                                    *)
-(* Section subsequences_of_a_list (ref: Sect. 3.1, gibbons2012utp)            *)
-(* Section permutation_and_insertion (ref: Sect. 3, mu2019tr2)                *)
-(*   insert                                                                   *)
-(* select (ref: Sect. 4.4, gibbons2011icfp)                                   *)
-(* perms : seq A -> M (seq A)                                                 *)
-(* mu_perm (ref: Sect 4.3, mu2017)                                            *)
-(*   definition of perms using unfoldM                                        *)
+(*                arb == arbitrary nondeterministic choice between booleans   *)
+(*      foldM/unfoldM                                                         *)
+(*              hyloM                                                         *)
+(*    arbitrary def s == nondeterministic choice of an element in the list s, *)
+(*                       def if the list is empty                             *)
+(*             subs s == subsequence of a list                                *)
+(*                       (ref: Sect. 3.1, gibbons2012utp)                     *)
+(*         insert a s == insertion                                            *)
+(*      permutation s == permutation                                          *)
+(*                       (ref: Sect. 3, mu2019tr2)                            *)
+(*             select == (ref: Sect. 4.4, gibbons2011icfp)                    *)
+(*              perms == type seq A -> M (seq A)                              *)
+(*            mu_perm == definition of perms using unfoldM                    *)
+(*                       (ref: Sect 4.3, mu2017)                              *)
+(*                                                                            *)
 (******************************************************************************)
 
 Set Implicit Arguments.
@@ -22,6 +28,22 @@ Unset Printing Implicit Defensive.
 Local Open Scope monae_scope.
 
 Import Univ.
+
+Definition arb {M : altMonad} : M bool := Ret true [~] Ret false.
+
+Section monadalt_lemmas.
+Variable (M : altMonad).
+
+(* TODO: name ok? *)
+Lemma naturality_nondeter (A B : UU0) (f : A -> B) (p q : M _):
+  (M # f) (p [~] q) = (M # f) p [~] (M # f) q.
+Proof. by rewrite 3!fmapE alt_bindDl. Qed.
+
+Lemma alt_fmapDl (A B : UU0) (f : A -> B) (m1 m2 : M A) :
+  (M # f) (m1 [~] m2) = (M # f) m1 [~] (M # f) m2.
+Proof. by rewrite 3!fmapE alt_bindDl. Qed.
+
+End monadalt_lemmas.
 
 Lemma fmap_fail {A B : UU0} (M : failMonad) (f : A -> B) : (M # f) Fail = Fail.
 Proof. by rewrite fmapE bindfailf. Qed.
@@ -141,19 +163,94 @@ Definition arbitrary : seq A -> M A :=
 End arbitrary.
 Arguments arbitrary {M} {A}.
 
-Section monadalt_lemmas.
-Variable (M : altMonad).
+Lemma arbitrary1 (N : altMonad) (T : UU0) (def : T) h :
+  arbitrary def [:: h] = Ret h :> N T.
+Proof. by []. Qed.
 
-(* TODO: name ok? *)
-Lemma naturality_nondeter (A B : UU0) (f : A -> B) (p q : M _):
-  (M # f) (p [~] q) = (M # f) p [~] (M # f) q.
-Proof. by rewrite 3!fmapE alt_bindDl. Qed.
+Section arbitrary_lemmas.
+Variables (M : altCIMonad).
 
-Lemma alt_fmapDl (A B : UU0) (f : A -> B) (m1 m2 : M A) :
-  (M # f) (m1 [~] m2) = (M # f) m1 [~] (M # f) m2.
-Proof. by rewrite 3!fmapE alt_bindDl. Qed.
+Lemma arbitrary2 (T : UU0) (def : T) h t :
+  arbitrary def [:: h; t] = Ret h [~] Ret t :> M _.
+Proof. by rewrite /arbitrary /= altC. Qed.
 
-End monadalt_lemmas.
+Lemma arbitrary_cons (T :UU0) (def : T) h t : 0 < size t ->
+  arbitrary def (h :: t) = Ret h [~] arbitrary def t :> M _.
+Proof.
+move: def h; elim: t => // a [//|b [|c t]] ih def h _.
+- by rewrite arbitrary2.
+- by rewrite /arbitrary /= altA altC (altC (Ret b)).
+- move: (ih a h erefl); rewrite /arbitrary /= => ->.
+  move: (ih h a erefl); rewrite /arbitrary /= => ->.
+  by rewrite altCA.
+Qed.
+
+Lemma arbitrary_naturality (T U : UU0) (a : T) (b : U) (f : T -> U) :
+  forall x, 0 < size x -> (M # f \o arbitrary a) x = (arbitrary b \o map f) x.
+Proof.
+elim=> // x [_ _ | x' xs /(_ isT)].
+  by rewrite [in LHS]compE fmapE bindretf.
+rewrite [in X in X -> _]/= fmapE => ih _.
+rewrite [in RHS]compE [in RHS]/= [in RHS](arbitrary_cons b) // [in LHS]compE.
+by rewrite [in LHS]arbitrary_cons // fmapE /= alt_bindDl bindretf /= ih.
+Qed.
+
+Lemma mpair_arbitrary_base_case (T : UU0) a x (y : seq T) :
+  (0 < size y)%nat ->
+  arbitrary (a, a) (cp [:: x] y) = mpair (arbitrary a [:: x], arbitrary a y) :> M _.
+Proof.
+move=> y0; rewrite cp1.
+transitivity (arbitrary a y >>= (fun y' => Ret (x, y')) : M _).
+  by rewrite -(compE (arbitrary _)) -(arbitrary_naturality a) // compE fmapE.
+transitivity (do z <- Ret x; do y' <- arbitrary a y; Ret (z, y') : M _)%Do.
+  by rewrite bindretf.
+by [].
+Qed.
+
+Lemma arbitrary_cat (T : UU0) (a : T) s t :
+  let m := size s in let n := size t in
+  0 < m -> 0 < n ->
+  arbitrary a (s ++ t) = arbitrary a s [~] arbitrary a t :> M _.
+Proof.
+elim: s t => [//|s1 s2 IH].
+elim/last_ind => // t1 t2 _ m n m0 n0 //.
+rewrite cat_cons [in LHS]arbitrary_cons; last first.
+  by rewrite size_cat size_rcons addnS.
+destruct s2 as [|s2 s3] => //.
+rewrite IH // altA; congr (_ [~] _).
+by rewrite [in RHS]arbitrary_cons.
+Qed.
+
+Lemma mpair_arbitrary (T : UU0) a (x y : seq T) :
+  0 < size x -> 0 < size y ->
+  mpair (arbitrary a x, arbitrary a y) = arbitrary (a, a) (cp x y) :> M (T * T)%type.
+Proof.
+elim: x y => // x; case=> [_ y _ size_y|x' xs IH y _ size_y]; apply/esym.
+  exact/mpair_arbitrary_base_case.
+set xxs := x' :: xs.
+rewrite /cp -cat1s allpairs_cat -/(cp _ _) cp1 /= arbitrary_cat; last 2 first.
+  by rewrite size_map.
+  by rewrite size_cat size_map addn_gt0 size_y.
+pose n := size y.
+pose l := size (cp xxs y).
+rewrite -IH //.
+rewrite -/xxs.
+move: (mpair_arbitrary_base_case a x size_y).
+rewrite {1}/cp [in X in arbitrary _ X]/= cats0 => ->.
+rewrite -alt_bindDl.
+by rewrite -arbitrary_cat.
+Qed.
+
+Lemma arbitrary_inde (T : UU0) a (s : seq T) {U} (m : M U) :
+  0 < size s -> arbitrary a s >> m = m.
+Proof.
+elim: s a m => // h [_ a m _|h' t ih a m _].
+  by rewrite arbitrary1 bindretf.
+by rewrite arbitrary_cons // alt_bindDl ih // bindretf altmm.
+Qed.
+
+End arbitrary_lemmas.
+Arguments arbitrary_naturality {M T U}.
 
 Section subsequences_of_a_list.
 Local Open Scope mprog.
@@ -165,9 +262,9 @@ Fixpoint subs (s : seq A) : M (seq A) :=
   let t' := subs t in
   fmap (cons h) t' [~] t'.
 
-Fixpoint SUBS (s : seq A) : Functor.m (Monad.baseType (MonadAlt.baseType M)) _ :=
+Fixpoint SUBS (s : seq A) : Functor.acto (Monad.baseType (MonadAlt.baseType M)) _ :=
   if s isn't h :: t then Ret [::] else
-  let t' : Functor.m (Monad.baseType (MonadAlt.baseType M)) _ := SUBS t in
+  let t' : Functor.acto (Monad.baseType (MonadAlt.baseType M)) _ := SUBS t in
   Alt (((MonadAlt.baseType M) # (cons h)) t') t'.
 
 Goal subs = SUBS. by []. Abort.
@@ -415,9 +512,18 @@ Definition addM (M : monad) (a b : M nat) : M nat :=
   a >>= (fun x => b >>= (fun y => Ret (x + y))).
 Notation "a +m b" := (addM a b) (at level 50, format "a  +m  b").
 
+Definition mulM (M : monad) (a b : M nat) : M nat :=
+  a >>= (fun x => b >>= (fun y => Ret (x * y))).
+Notation "a *m b" := (mulM a b) (at level 50, format "a  *m  b").
+
+(* TODO: examples below are about control monads and should maybe be moved to a
+new file; reference: Wadler, P. Monads and composable continuations. LISP and
+Symbolic Computation 7, 39–55 (1994) *)
+
 Section continuation_example.
 Variable M : contMonad.
-Let wadler_example : Ret 1 +m Callcc (fun f => Ret 10 +m f 100) = Ret (1 + 100) :> M _.
+
+Let wadler94_sect31 : Ret 1 +m Callcc (fun f => Ret 10 +m f 100) = Ret (1 + 100) :> M _.
 Proof.
 rewrite {1}/addM bindretf.
 rewrite (_ : Callcc _ = Ret 100) ?bindretf //.
@@ -432,21 +538,9 @@ End continuation_example.
 
 Section shiftreset_examples.
 Variable (M : shiftresetMonad nat).
-Let wadler_example2 :
-  Ret 1 +m (Reset (Ret 10 +m (Shift (fun f : _ -> M nat => Ret 100 : M _) : M _)) : M _) =
-  Ret (1 + 100).
-Proof.
-rewrite /addM.
-rewrite bindretf.
-transitivity (Ret 100 >>= (fun y => Ret (1 + y)) : M _); last first.
-  by rewrite bindretf.
-congr (Bind _ _). (* TODO : bind_ext casse *)
-rewrite (shiftreset2 _ _).
-by rewrite bindretf.
-Qed.
 
-Let wadler_example1 :
-  Ret 1 +m (Reset (Ret 10 +m (Shift (fun f : _ -> M nat => f (100) >>= f) : M _)) : M _) =
+Let wadler94_sect32_1 :
+  Ret 1 +m (Reset (Ret 10 +m (Shift (fun f : _ -> M nat => f 100 >>= f) : M _)) : M _) =
   Ret (1 + (10 + (10 + 100))).
 Proof.
 rewrite /addM.
@@ -458,6 +552,19 @@ rewrite shiftreset3.
 rewrite (_ : do x <- Ret 10; _ = do y <- Shift (@^~ 100) : M _; Ret (10 + (10 + y)))%Do; last first.
   by rewrite bindretf.
 by rewrite shiftreset4.
+Qed.
+
+Let wadler94_sect32_2 :
+  Ret 1 +m (Reset (Ret 10 +m (Shift (fun f : _ -> M nat => Ret 100 : M _) : M _)) : M _) =
+  Ret (1 + 100).
+Proof.
+rewrite /addM.
+rewrite bindretf.
+transitivity (Ret 100 >>= (fun y => Ret (1 + y)) : M _); last first.
+  by rewrite bindretf.
+congr (Bind _ _). (* TODO : bind_ext casse *)
+rewrite (shiftreset2 _ _).
+by rewrite bindretf.
 Qed.
 
 End shiftreset_examples.

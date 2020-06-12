@@ -18,3 +18,4 @@ ifmt_lifting.v
 iparametricity_codensity.v
 
 -R . monaeImpredicativeSet
+-R ../../infotheo infotheo

@@ -25,4 +25,4 @@ altprob_model.v
 monad_transformer.v
 
 -R . monae
-
+-R ../infotheo infotheo

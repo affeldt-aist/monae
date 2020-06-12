@@ -164,7 +164,7 @@ Definition epsC' : FC \O UC ~~> FId :=
 Lemma epsC'_natural : naturality _ _ epsC'.
 Proof. by []. Qed.
 Definition epsC : FC \O UC ~> FId :=
-  locked (Natural.Pack (Natural.Class epsC'_natural)).
+  locked (Natural.Pack (Natural.Mixin epsC'_natural)).
 Lemma epsCE (T : choiceType) : epsC T = idfun :> (_ -> _).
 Proof. by rewrite /epsC; unlock. Qed.
 
@@ -173,7 +173,7 @@ Definition etaC': FId ~~> UC \O FC :=
 Lemma etaC'_natural : naturality _ _ etaC'.
 Proof. by []. Qed.
 Definition etaC: FId ~> UC \O FC :=
-  locked (Natural.Pack (Natural.Class etaC'_natural)).
+  locked (Natural.Pack (Natural.Mixin etaC'_natural)).
 Lemma etaCE (T : Type) : etaC T = idfun :> (_ -> _).
 Proof. by rewrite /etaC; unlock. Qed.
 
@@ -292,7 +292,7 @@ Lemma eps0'_natural : naturality _ _ eps0'.
 Proof. by move=> C D f; rewrite eps0''_natural. Qed.
 
 Definition eps0 : F0 \O U0 ~> FId :=
-  locked (Natural.Pack (Natural.Class eps0'_natural)).
+  locked (Natural.Pack (Natural.Mixin eps0'_natural)).
 
 Lemma eps0E (C : convType) : eps0 C = Convn_of_FSDist (C:=C) :> (_ -> _).
 Proof. by rewrite /eps0; unlock. Qed.
@@ -305,7 +305,7 @@ by move=> a b h; rewrite funeqE=> x; rewrite FIdf /eta0' /= FSDistfmap1.
 Qed.
 
 Definition eta0 : FId ~> U0 \O F0 :=
-  locked (Natural.Pack (Natural.Class eta0'_natural)).
+  locked (Natural.Pack (Natural.Mixin eta0'_natural)).
 Lemma eta0E' : eta0 = Natural eta0'_natural.
 Proof. by rewrite /eta0; unlock. Qed.
 Lemma eta0E (T : choiceType) : eta0 T = (@FSDist1.d _) :> (_ -> _).
@@ -455,7 +455,6 @@ Proof.
 move=> a b c [] g affine_g [] h affine_h; rewrite hom_ext funeqE => /= x /=.
 apply necset_ext => /=.
 rewrite 2!free_semiCompSemiLattConvType_morE' /= -imageA.
-congr image.
 by rewrite free_semiCompSemiLattConvType_morE'.
 Qed.
 
@@ -468,7 +467,7 @@ Local Notation F1 := free_semiCompSemiLattConvType.
 Lemma free_semiCompSemiLattConvType_mor_comp_fun (a b c : convType)
     (g : {hom b, c}) (h : {hom a, b}):
   (F1 # [hom g \o h]) = (F1 # g) \o (F1 # h) :> (_ -> _).
-Proof. by rewrite /Fun /= free_semiCompSemiLattConvType_mor_comp. Qed.
+Proof. by rewrite /Actm /= free_semiCompSemiLattConvType_mor_comp. Qed.
 
 Let m2 : CS -> CV := id.
 Let h2 := fun (a b : CS) (f : {hom CS; a, b}) =>
@@ -542,7 +541,7 @@ Lemma eps1'_natural : naturality _ _ eps1'.
 Proof. by move=> K L f; rewrite eps1''_natural. Qed.
 
 Definition eps1 : F1 \O U1 ~> FId :=
-  locked (Natural.Pack (Natural.Class eps1'_natural)).
+  locked (Natural.Pack (Natural.Mixin eps1'_natural)).
 
 Lemma eps1E': eps1 = Natural eps1'_natural.
 Proof. by rewrite /eps1; unlock. Qed.
@@ -556,9 +555,9 @@ Proof.
 move=> a b p; rewrite /affine_function_at /eta1'' /=.
 apply/necset_ext/eqEsubset=> x /=.
 - move->; rewrite necset_convType.convE.
-  by exists a, b; rewrite !inE !asboolE /necset1 /=.
+  by exists a, b; rewrite !asboolE /necset1 /=.
 - rewrite necset_convType.convE => -[] a0 [] b0.
-  by rewrite !inE !asboolE /necset1 /= => -[] -> [] -> ->.
+  by rewrite !asboolE /necset1 /= => -[] -> [] -> ->.
 Qed.
 Definition eta1' : FId ~~> U1 \O F1 :=
   fun C => @Hom.Pack CV _ _ _ (@eta1'' C) (@eta1''_affine C).
@@ -568,7 +567,7 @@ move=> a b h; rewrite funeqE=> x; apply necset_ext => /=.
 by rewrite /eta1' /= /id_f free_semiCompSemiLattConvType_morE'/= image_set1.
 Qed.
 Definition eta1 : FId ~> U1 \O F1 :=
-  locked (Natural.Pack (Natural.Class eta1'_natural)).
+  locked (Natural.Pack (Natural.Mixin eta1'_natural)).
 Lemma eta1E' : eta1 = Natural eta1'_natural.
 Proof. by rewrite /eta1; unlock. Qed.
 Lemma eta1E (C : convType) : eta1 C = (@necset1 _) :> (_ -> _).
@@ -699,16 +698,16 @@ Lemma gcm_joinE : Join X = necset_join X.
 Import category.
 apply/necset_ext.
 rewrite /= /Monad_of_category_monad.join /= !HCompId !HIdComp eps1E.
-have-> : AdjComp.F F0 F1
+have-> : (AdjComp.F F0 F1
                 # epsC
                     (AdjComp.G U0 U1
                        (necset_semiCompSemiLattConvType
-                          (FSDist_convType (choice_of_Type T)))) = idfun :> (_ -> _).
-- by rewrite -[in RHS]functor_id; congr Fun; apply/hom_ext; rewrite epsCE.
-have-> : F1
+                          (FSDist_convType (choice_of_Type T)))))%category = idfun :> (_ -> _).
+- by rewrite -[in RHS]functor_id; congr Actm; apply/hom_ext; rewrite epsCE.
+have-> : (F1
               # eps0
               (U1
-                 (necset_semiCompSemiLattConvType (FSDist_convType (choice_of_Type T)))) =
+                 (necset_semiCompSemiLattConvType (FSDist_convType (choice_of_Type T)))))%category =
          @necset_join.F1join0 _ :> (_ -> _).
 - apply funext=> x; apply necset_ext.
   rewrite /= /necset_join.F1join0' /=.
@@ -723,12 +722,10 @@ rewrite /bigsetU.
 apply/eqEsubset => y [i Xi iy].
 - exists i; last exact: iy.
   exists i => //.
-  move/asboolP in Xi.
-  by rewrite inE Xi.
-- move: Xi iy => [z /asboolP Xz].
-  rewrite inE Xz => <- zy.
-  exists z => //.
-  by apply/asboolP.
+  by move/asboolP : Xi; rewrite asboolE -in_setE => ->.
+- move: Xi iy => [z] /asboolP; rewrite asboolE -in_setE => Xz.
+  rewrite Xz => <- zy.
+  by exists z => //; exact/asboolP.
 Qed.
 End gcm_opsE.
 End P_delta_category_monad.

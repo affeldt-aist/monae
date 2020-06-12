@@ -35,27 +35,27 @@ Defined.
 Lemma naturality_ret' : naturality FId functor ret'.
 Proof.
 move=> A B h.
-by rewrite boolp.funeqE => a /=; rewrite /Fun /= /ret' FSDistfmap1.
+by rewrite boolp.funeqE => a /=; rewrite /Actm /= /ret' FSDistfmap1.
 Qed.
 
 Definition ret : FId ~> functor := Natural.Pack (Natural.Mixin naturality_ret').
 
-Program Definition monad : Monad.t :=
+Program Definition monad_ : monad :=
   @Monad_of_ret_bind _ ret bind _ _ _.
 Next Obligation. move=> ? ? ? ?; exact: FSDistBind1f. Qed.
 Next Obligation. move=> ? ?; exact: FSDistBindp1. Qed.
 Next Obligation. move=> A B C m f g; exact: FSDistBindA. Qed.
 
-Lemma BindE (A B : choiceType) m (f : A -> monad B) :
+Lemma BindE (A B : choiceType) m (f : A -> monad_ B) :
   (m >>= f) = FSDistBind.d m f.
 Proof.
-rewrite /Bind /Join /= /Monad_of_ret_bind.join /Fun /=.
+rewrite /Bind /Join /= /Monad_of_ret_bind.join /Actm /=.
 rewrite /Monad_of_ret_bind.Map /bind FSDistBindA; congr FSDistBind.d.
 by rewrite boolp.funeqE => a; rewrite /= FSDistBind1f.
 Qed.
 
-Program Definition prob_mixin : MonadProb.mixin_of monad :=
-  @MonadProb.Mixin monad (fun p A => @ConvFSDist.d (choice_of_Type A) p) _ _ _ _ _ _.
+Program Definition prob_mixin : MonadProb.mixin_of monad_ :=
+  @MonadProb.Mixin monad_ (fun p A => @ConvFSDist.d (choice_of_Type A) p) _ _ _ _ _ _.
 Next Obligation. move=> ? ? ?; exact: ConvFSDist.conv0. Qed.
 Next Obligation. move=> ? ? ?; exact: ConvFSDist.conv1. Qed.
 Next Obligation. move=> ? ? ?; exact: ConvFSDist.convC. Qed.
@@ -70,6 +70,6 @@ Qed.
 Definition prob_class : MonadProb.class_of (fun A : Type => {dist (choice_of_Type A)}) :=
   @MonadProb.Class _ _ prob_mixin.
 
-Definition prob : MonadProb.t := MonadProb.Pack prob_class.
+Definition prob : probMonad := MonadProb.Pack prob_class.
 
 End MonadProbModel.

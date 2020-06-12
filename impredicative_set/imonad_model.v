@@ -44,6 +44,8 @@ Set Implicit Arguments.
 Unset Strict Implicit.
 Unset Printing Implicit Defensive.
 
+Local Open Scope monae_scope.
+
 Section PR.
 Local Open Scope fset_scope.
 Section ImfsetTh.
@@ -229,8 +231,8 @@ Definition t := Monad_of_ret_bind left_neutral right_neutral associative.
 End state.
 End State.
 
-(* among other refs:
-https://qiita.com/suharahiromichi/items/f07f932103c28f36dd0e *)
+(* see Sect. 3 of of [Wadler, 94] for the model of the ret and the bind of the
+continuation monad *)
 Module Cont.
 Section cont.
 Variable r : UU0.
@@ -290,7 +292,7 @@ Definition append A : (M A * M A)%type -> M A :=
 Lemma naturality_append : naturality (Append.func \O M) M append.
 Proof.
 move=> A B h; apply fun_ext; case => s1 s2 /=.
-rewrite /Fun /= /Monad_of_ret_bind.Map /=.
+rewrite /Actm /= /Monad_of_ret_bind.Map /=.
 rewrite /ModelMonad.ListMonad.bind /= /ModelMonad.ListMonad.ret /=.
 by rewrite map_cat flatten_cat.
 Qed.
@@ -325,7 +327,7 @@ Definition output (A : UU0) : (seq L * M A) -> M A := fun m => let: (x, w') := m
 Lemma naturality_output : naturality (Output.func L \O M) M output.
 Proof.
 move=> A B h; apply fun_ext; case => w [x w'] /=.
-by rewrite /output /= cats0 /Fun /= /Monad_of_ret_bind.Map /= cats0.
+by rewrite /output /= cats0 /Actm /= /Monad_of_ret_bind.Map /= cats0.
 Qed.
 Definition output_op : (Output.func L).-operation M :=
   Natural.Pack (Natural.Mixin naturality_output).
@@ -644,6 +646,7 @@ Next Obligation. by []. Qed.
 End st.
 End ModelStateTrace.
 
+(* see Sect 3.1 of [Wadler, 94] for the model of callcc *)
 Definition usual_callcc r (M := fun C => (C -> r) -> r) A B (f : (A -> M B) -> M A) : M A :=
   fun k : A -> r => f (fun a _ => k a) k.
 
@@ -660,6 +663,7 @@ Program Definition t : contMonad := MonadContinuation.Pack (MonadContinuation.Cl
 End modelcont.
 End ModelCont.
 
+(* we looked at examples from https://qiita.com/suharahiromichi *)
 Section continuation_examples.
 Fixpoint fib (n : nat) : nat :=
   match n with
@@ -667,7 +671,6 @@ Fixpoint fib (n : nat) : nat :=
     | 1 => 1
     | (m.+1 as sm).+1 => fib sm + fib m
   end.
-Local Open Scope monae_scope.
 Fixpoint fib_cps {M : monad} (n : nat) : M nat :=
   match n with
     | 0 => Ret 1
@@ -692,7 +695,6 @@ Proof.
 move=> M; apply nat_ind2 => // n ih1 ih2.
 by rewrite fib_cpsE ih2 bindretf ih1 bindretf.
 Qed.
-Local Close Scope monae_scope.
 
 Definition oaddn (M : monad) (acc : nat) (x : option nat) : M nat :=
   if x is Some x then Ret (x + acc) else Ret acc.
@@ -703,19 +705,20 @@ Definition oaddn_break (M : monad) (break : nat -> M nat) (acc : nat) (x : optio
 Let M : contMonad := ModelCont.t nat.
 Definition sum_break (xs : seq (option nat)) : M nat :=
   Callcc (fun break : nat -> M nat => foldM (oaddn_break break) 0 xs).
+
 (*
 Compute (sum_break [:: Some 2; Some 6; None; Some 4]).
 *)
 
-Goal Ret 1 +m (Callcc (fun f => Ret 10 +m (f 100)) : M _) =
-     Ret (1 + 100).
+(* example from Sect. 3.1 of [Wadler, 94] *)
+Goal Ret 1 +m (Callcc (fun f => Ret 10 +m (f 100)) : M _) = Ret (1 + 100).
 Proof. by rewrite /addM bindretf; apply fun_ext. Abort.
 
 (* https://xavierleroy.org/mpri/2-4/transformations.pdf *)
-Local Open Scope monae_scope.
 
 Fixpoint list_iter (M : monad) A (f : A -> M unit) (s : seq A) : M unit :=
   if s is h :: t then f h >> list_iter f t else Ret tt.
+
 (*
 Compute (@list_iter ModelMonad.identity nat (fun a => Ret tt) [:: O; 1; 2]).
 *)
@@ -734,55 +737,62 @@ Compute (@list_find (@ModelCont.t bool) nat [pred x | odd x] [:: 2; 4; 3; 6]).
 
 End continuation_examples.
 
-(* TODO: wip *)
+(* see Sect. 3.2 of [Wadler, 94] for the model of shift and reset *)
 Module ModelShiftReset.
-Local Open Scope monae_scope.
-(* Local Obligation Tactic := idtac. *)
-Definition shift r : forall A : UU0, ((A -> ModelCont.t r r) -> ModelCont.t r r) -> ModelCont.t r A :=
- fun A h => fun c => h (fun v => Ret (c v)) ssrfun.id.
+Definition shift r :
+    forall A : UU0, ((A -> ModelCont.t r r) -> ModelCont.t r r) -> ModelCont.t r A :=
+ fun A h => fun c => h (fun v c' => c' (c v)) ssrfun.id.
 
 Definition reset r : ModelCont.t r r -> ModelCont.t r r :=
-  fun m => fun c => c (m ssrfun.id).
+  fun m  => fun c => c (m ssrfun.id).
 
-Program Definition shiftresetM r : monad :=
+Program Definition t r : shiftresetMonad r :=
   let M : contMonad := ModelCont.t r in
   @MonadShiftReset.Pack _ _ (@MonadShiftReset.Class _ r (MonadContinuation.class M)
  (@MonadShiftReset.Mixin _ _
  (@shift r)
  (@reset r) _ _ _ _ _)).
+End ModelShiftReset.
 
-Section examples.
-Let M : monad := shiftresetM nat.
+Section shiftreset_examples.
+(* see Sect. 3.2 of [Wadler, 94] *)
+Let M : monad := ModelShiftReset.t nat.
 Goal Ret 1 +m (Reset (Ret 10 +m (Shift (fun f : _ -> M nat => f (100) >>= f) : M _)) : M _) =
      Ret (1 + (10 + (10 + 100))).
-Proof. by rewrite /addM bindretf; apply fun_ext. Abort.
-Goal Ret 1 +m (Reset (Ret 10 +m (Shift (fun f : _ -> M nat => @RET M _ 100) : M _)) : M _) =
+Proof. by rewrite /addM bindretf boolp.funeqE. Abort.
+Goal Ret 1 +m (Reset (Ret 10 +m (Shift (fun f : _ -> M nat => Ret 100 : M _) : M _)) : M _) =
      Ret (1 + 100).
-Proof. by rewrite /addM bindretf; apply fun_ext. Abort.
+Proof. by rewrite /addM bindretf boolp.funeqE. Abort.
 Goal Ret 1 +m (Reset (Ret 10 +m (Shift (fun f : _ -> M nat => f 100 +m f 1000) : M _)) : M _) =
      Ret (1 + ((10 + 100) + (10 + 1000))).
-Proof. by rewrite /addM bindretf; apply fun_ext. Abort.
+Proof. by rewrite /addM bindretf boolp.funeqE. Abort.
 
-Let N : monad := shiftresetM (seq nat).
+Let N : monad := ModelShiftReset.t (seq nat).
 Fixpoint perverse (l : seq nat) : N (seq nat) :=
   if l is h :: t then
     Shift (fun f : _ -> N _ => Ret h >>= (fun x => perverse t >>= f >>= (fun y => @RET N _ (x :: y))))
   else Ret [::].
-Goal Reset (perverse [:: 1; 2; 3]) = Ret [:: 3; 2; 1] :> shiftresetM _ (seq nat).
+Goal Reset (perverse [:: 1; 2; 3]) = Ret [:: 3; 2; 1] :> ModelShiftReset.t _ (seq nat).
 by [].
 Abort.
 
 Definition stranger :=
-  let g b := Reset ((Shift (fun f : _ -> shiftresetM _ _ => f b) >>= (fun x => if x then Ret 2 else Ret 3)) : shiftresetM _ _) in
+  let g b := Reset ((Shift (fun f : _ -> ModelShiftReset.t _ _ => f b) >>=
+                           (fun x => if x then Ret 2 else Ret 3)) : ModelShiftReset.t _ _) in
   g true +m g false.
 Goal stranger = Ret 5. by []. Abort.
-End examples.
-End ModelShiftReset.
+
+Goal Reset (Ret 2 +m Shift (fun k : _ -> M _ => k 3 +m Ret 1 : M _) : M _) = Ret 6 :> M _.
+Proof. by rewrite /addM bindretf boolp.funeqE. Abort.
+Goal Reset (Ret 2 *m Shift (fun k : _ -> M _ => k 4 +m Ret 1 : M _)
+                  *m Shift (fun k : _ -> M _ => k 3 +m Ret 1 : M _) : M _ ) = Ret 26 :> M _.
+Proof. by rewrite /mulM bindretf boolp.funeqE. Abort.
+
+End shiftreset_examples.
 
 (* wip *)
 Module ModelStateLoop.
 Section modelstateloop.
-Local Open Scope monae_scope.
 Variable S : UU0.
 Local Notation M := (@ModelMonad.State.t S).
 Fixpoint mforeach (it min : nat) (body : nat -> M unit) : M unit :=
@@ -811,7 +821,7 @@ by [].
 move=> A B m0 f s.
 rewrite !bindE /=.
 rewrite /ModelMonad.State.bind /=.
-rewrite /Fun /=.
+rewrite /Actm /=.
 rewrite /Monad_of_ret_bind.Map /=.
 rewrite /ModelMonad.State.bind /=.
 rewrite /ModelMonad.State.ret /=.
