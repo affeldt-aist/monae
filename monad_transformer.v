@@ -181,7 +181,13 @@ Qed.
 
 End state_monad_transformer.
 
-Definition stateT S := MonadT.Pack (MonadT.Mixin (@stateMonadM S)).
+Definition stateT S : monadT := MonadT.Pack (MonadT.Mixin (@stateMonadM S)).
+
+Lemma liftSE S (M : monad) U (m : M U) : liftS m = Lift (stateT S) M U m.
+Proof.
+case: M m => [M [[f fi fo] [r j a b c]] m].
+by rewrite /= /Lift /= /stateMonadM; unlock.
+Qed.
 
 Section exception_monad_transformer.
 
@@ -255,6 +261,9 @@ Qed.
 End exception_monad_transformer.
 
 Definition errorT Z := MonadT.Pack (MonadT.Mixin (@exceptionMonadM Z)).
+
+Lemma liftXE Z (M : monad) U (m : M U) : liftX _ m = Lift (errorT Z) M U m.
+Proof. by []. Qed.
 
 Section continuation_monad_tranformer.
 
@@ -942,18 +951,19 @@ End theorem19.
 Section examples_of_lifting.
 
 Section state_errorT.
-Variables S Z : Type.
-Let M : monad := ModelState.state S.
-Let erZ : monadT := errorT Z.
+Let M S : monad := ModelState.state S.
 
-Let lift_getX : (StateOps.Get.func S).-aoperation (erZ M) :=
-  alifting (get_aop S) (Lift erZ M).
+Definition aLGet {Z S} : (StateOps.Get.func S).-aoperation (errorT Z (M S)) :=
+  alifting (get_aop S) (Lift (errorT Z) (M S)).
 
-Goal forall X (k : S -> erZ M X), lift_getX _ k = StateOps.get_op _ k.
+Definition aLPut {Z S} : (StateOps.Put.func S).-operation (errorT Z (M S)) :=
+  alifting (put_aop S) (Lift (errorT Z) (M S)).
+
+Goal forall Z S X (k : S -> errorT Z (M S) X), aLGet _ k = StateOps.get_op _ k.
 by [].
 Abort.
 
-Goal lift_getX _ Ret = liftX _ (@ModelState.get S).
+Goal forall Z S, aLGet _ Ret = Lift (errorT Z) (M S) _ (@ModelState.get S).
 by [].
 Abort.
 
@@ -964,109 +974,113 @@ Variable (r S : Type).
 Let M : monad := ModelCont.t r.
 Let stS : monadT := stateT S.
 
-Let lift_acallccS : (ContOps.Acallcc.func r).-aoperation (stS M) :=
+Definition aLCallcc : (ContOps.Acallcc.func r).-aoperation (stS M) :=
   alifting (callcc_aop r) (Lift stS M).
 
 Goal forall A (f : (stS M A -> r) -> stS M A),
-  lift_acallccS _ f = (fun s k => f (fun m => uncurry m (s, k)) s k) :> stS M A.
+  aLCallcc _ f = (fun s k => f (fun m => uncurry m (s, k)) s k) :> stS M A.
 move=> A f.
-rewrite /lift_acallccS /=.
-by rewrite /stS /= /stateT /= /stateMonadM /=; unlock => /=.
+by rewrite /aLCallcc /= /stS /= /stateT /= /stateMonadM /=; unlock.
 Abort.
 
 Definition usual_callccS (A B : Type) (f : (A -> stS M B) -> stS M A) : stS M A :=
   fun s k => f (fun x _ _ => k (x, s)) s k.
 
-Lemma callccS_E A B f : @lift_acallccS _
+Lemma callccS_E A B f : @aLCallcc _
     (fun k : stS M A -> r =>
        f (fun x => (fun (_ : S) (_ : B * S -> r) => k (@RET (stS M) A x)) : stS M B)) =
   usual_callccS f.
 Proof.
-rewrite /lift_acallccS /=.
-by rewrite /stS /= /stateT /= /stateMonadM /=; unlock => /=.
+by rewrite /aLCallcc /= /stS /= /stateT /= /stateMonadM /=; unlock.
 Qed.
 
 End continuation_stateT.
 
 End examples_of_lifting.
 
-Section examples_of_programs.
+Section example_stateT.
 
-Lemma stateMonad_of_stateT S (M : monad) : MonadState.class_of S (stateT S M).
+Definition stateMonad_of_stateT_mixin S (M : monad) :
+  MonadState.mixin_of S (stateT S M).
 Proof.
-refine (@MonadState.Class _ _ _ (@MonadState.Mixin _ (stateT S M) (fun s => Ret (s, s)) (fun s' _ => Ret (tt, s')) _ _ _ _)).
-move=> s s'.
-rewrite boolp.funeqE => s0.
-case: M => m [[f fi fo] [/= r j a b c]].
-rewrite /Bind /Join /JOIN /estateMonadM /Monad_of_ret_bind /bindS /Actm /=.
-rewrite /Monad_of_ret_bind.Map bindretf /=.
-by rewrite /retS bindretf.
-move=> s.
-rewrite boolp.funeqE => s0.
-case: M => m [[f fi fo] [/= r j a b c]].
-rewrite /retS /Ret /RET /Bind /estateMonadM /Monad_of_ret_bind /Actm /bindS /=.
-rewrite /Monad_of_ret_bind.Map.
-by rewrite 4!bindretf /=.
-rewrite boolp.funeqE => s.
-case: M => m [[f fi fo] [/= r j a b c]].
-rewrite /Bind /Join /JOIN /=.
-rewrite /estateMonadM /Monad_of_ret_bind /bindS /Actm /=.
-rewrite /Monad_of_ret_bind.Map bindretf /=.
-by rewrite /retS bindretf.
-case: M => m [[f fi fo] [/= r j a b c]].
-move=> A k.
-rewrite boolp.funeqE => s.
-rewrite /Bind /Join /JOIN /= /bindS /estateMonadM /=.
-rewrite /Monad_of_ret_bind /Actm /Monad_of_ret_bind.Map /=.
-rewrite /Monad_of_ret_bind.Map /= /bindS /=.
-by rewrite !bindretf /= !bindretf.
+refine (@MonadState.Mixin _ (stateT S M) (fun s => Ret (s, s))
+    (fun s' _ => Ret (tt, s')) _ _ _ _).
+- move=> s s'.
+  rewrite boolp.funeqE => s0.
+  case: M => m [f [/= r j a b c]].
+  rewrite /Bind /Join /JOIN /estateMonadM /Monad_of_ret_bind /bindS /Actm /=.
+  by rewrite /Monad_of_ret_bind.Map bindretf /= /retS bindretf.
+- move=> s.
+  rewrite boolp.funeqE => s0.
+  case: M => m [f [/= r j a b c]].
+  rewrite /retS /Ret /RET /Bind /estateMonadM /Monad_of_ret_bind /Actm /=.
+  by rewrite /bindS /= /Monad_of_ret_bind.Map 4!bindretf.
+- rewrite boolp.funeqE => s.
+  case: M => m [f [/= r j a b c]].
+  rewrite /Bind /Join /JOIN /= /estateMonadM /Monad_of_ret_bind /bindS /Actm /=.
+  by rewrite /Monad_of_ret_bind.Map bindretf /= /retS bindretf.
+- case: M => m [f [/= r j a b c]] A k.
+  rewrite boolp.funeqE => s.
+  rewrite /Bind /Join /JOIN /= /bindS /estateMonadM /= /Monad_of_ret_bind.
+  rewrite /Actm /Monad_of_ret_bind.Map /= /Monad_of_ret_bind.Map /= /bindS /=.
+  by rewrite !bindretf /= !bindretf.
 Qed.
 
-Canonical stateMonad_of_stateT' S M := MonadState.Pack (stateMonad_of_stateT S M).
+Canonical stateMonad_of_stateT S M :=
+  MonadState.Pack (MonadState.Class (stateMonad_of_stateT_mixin S M)).
+
+Lemma bindLfailf (M : failMonad) S T U (m : stateT S M U) :
+  Lift (stateT S) M T Fail >> m = Lift (stateT S) M U Fail.
+Proof.
+rewrite -!liftSE /liftS boolp.funeqE => s.
+rewrite bindfailf {1}/Bind /= /bindS /=.
+rewrite [X in _ X s](_ : _ = (fun _ => Fail)); last first.
+  by rewrite boolp.funeqE => s'; rewrite bindfailf.
+rewrite (_ : _ _ s = Fail) ?bindfailf //.
+by rewrite /Actm /= /Monad_of_ret_bind.Map /= /bindS bindfailf.
+Qed.
 
 Variable M : failMonad.
-Let N := stateT nat M.
-Let incr : N unit := Get >>= (Put \o (fun i => i.+1)).
-Let prog := incr >> (liftS Fail : N nat) >> incr.
+Let N : monad := stateT nat M.
 
-End examples_of_programs.
+Let incr : N unit := Get >>= (Put \o succn).
+Let prog T : N unit := incr >> Lift (stateT nat) M T Fail >> incr.
 
-Section examples_of_programs2.
-
-Let M := ModelState.state nat.
-Definition optionT := errorT unit M.
-Definition liftOpt := liftX unit.
-
-Lemma failMonad_of_ : MonadFail.class_of optionT.
+Goal forall T, prog T = Lift (stateT nat) M unit Fail.
 Proof.
-refine (@MonadFail.Class _ _ (@MonadFail.Mixin optionT (fun B => Ret (@inl _ B tt))  _ )).
-by [].
+move=> T; rewrite /prog.
+rewrite bindA.
+rewrite bindLfailf.
+Abort.
+
+End example_stateT.
+
+Section example_errorT.
+
+Definition failMonad_of_errorT_mixin (M : monad) :
+  MonadFail.class_of (errorT unit M).
+Proof.
+refine (@MonadFail.Class _ _
+  (@MonadFail.Mixin (errorT unit M)
+                    (fun B => Ret (@inl _ B tt))
+                    _ )).
+move=> A B.
+case: M => m [f [/= r j a b c]] g.
+rewrite /Bind /= /bindX /= /eexceptionMonadM /Monad_of_ret_bind /= /Actm /=.
+by rewrite /Monad_of_ret_bind.Map /= /bindX /= !bindretf.
 Qed.
 
-Canonical failMonad_of_' := MonadFail.Pack failMonad_of_.
+Canonical failMonad_of_errorT M := MonadFail.Pack (failMonad_of_errorT_mixin M).
 
-Definition GetO := liftOpt (@Get nat M).
-Definition PutO := (fun s => liftOpt (@Put nat M s)).
-Let incr := GetO >>= (fun i => PutO (i.+1)).
-Let prog := incr >> (Fail : optionT nat) >> incr.
+Definition LGet S (M : stateMonad S) := Lift (errorT unit) M S (@Get S M).
+Definition LPut S (M : stateMonad S) := Lift (errorT unit) M unit \o (@Put S M).
 
-End examples_of_programs2.
+Variable M : stateMonad nat.
+Let N : monad := errorT unit M.
+Let incr : N unit := LGet M >>= (LPut M \o succn).
+Let prog T : N unit := incr >> (Fail : _ T) >> incr.
 
-Section lifting_uniform.
-
-Let M S: monad := ModelState.state S.
-Let optT : monadT := errorT unit.
-
-Definition lift_getX S : (StateOps.Get.func S) \O (optT (M S)) ~> (optT (M S)) :=
-  alifting (get_aop S) (Lift optT (M S)).
-
-Let lift_putX S : (StateOps.Put.func S) \O (optT (M S)) ~> (optT (M S)) :=
-  alifting (put_aop S) (Lift optT (M S)).
-
-Let incr : optT (M nat) unit := (@lift_getX _ _ Ret) >>= (fun i => @lift_putX _ _ (i.+1, Ret tt)).
-Let prog : optT (M nat) unit := incr >> (Fail : optT (M nat) unit) >> incr.
-
-End lifting_uniform.
+End example_errorT.
 
 Definition natural_hmap_lift (t : monadT)
     (h : forall (M N : monad), (M ~> N) -> (t M ~> t N)) :=

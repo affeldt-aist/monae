@@ -17,7 +17,7 @@ _CoqProject Makefile: ;
 
 # This last entry is only to support work-in-progress.
 
-COQ5 = coqc -w -notation-overridden -R . monae -R ../infotheo infotheo
+COQ5 = coqc -w -notation-overridden -R . monae
 
 sect5: all
 	$(COQ5) fmt_lifting.v
