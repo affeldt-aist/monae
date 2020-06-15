@@ -257,21 +257,83 @@ Abort.
 
 End proposition_28.
 
+Section example_29_stateT.
+Variables (E : functor) (M : monad) (op : E.-operation M).
+Hypothesis naturality_k_type : forall (A : Type) (m : k_type M A),
+  naturality_k_type m.
+Variable S : Type.
+
+Let tau (X : Type) s (f : S -> M (X * S)%type) := f s.
+
+Let op' X : (E \O stateFMT S M) X -> stateFMT S M X :=
+  fun t s => op (X * S)%type ((E # tau s) t).
+
+Lemma hlifting_stateT (X : Type) :
+  (hlifting op (stateFMT S) naturality_k_type) X = @op' _.
+Proof.
+rewrite boolp.funeqE => emx.
+rewrite /op'.
+rewrite boolp.funeqE => s.
+rewrite /hlifting.
+rewrite 2!vcompE.
+set h := Hmap _.
+rewrite (K_opE op).
+rewrite 2!functor_app_naturalE.
+rewrite /=.
+congr (from_component _).
+apply FunctionalExtensionality.functional_extensionality_dep => A.
+rewrite boolp.funeqE => f.
+rewrite {1}/psi' /=.
+rewrite /bindS /=.
+rewrite -liftSE /liftS /=.
+rewrite -(compE _ _ emx) -functor_o.
+rewrite -[in RHS](compE _ _ emx) -functor_o.
+rewrite bindA.
+set ret_id := (X in _ >>= X).
+have -> : ret_id = fun (x : MS S (eK_MonadM M) X) (C : Type) => (fun t => x s C t).
+  by rewrite boolp.funeqE.
+rewrite {1}/Bind /= /K_bind /= {1}/Actm /=.
+rewrite /Monad_of_ret_bind.Map /= /K_bind /=.
+rewrite /psi' /= /K_bind /kappa' /=.
+rewrite /K_ret /= /K_type /= /k_type /=.
+rewrite -(compE _ _ emx).
+rewrite -functor_o.
+rewrite -[in RHS](compE _ _ emx).
+by rewrite -functor_o.
+Qed.
+
+End example_29_stateT.
+
 Section example_29_errorT.
 Variables (E : functor) (M : monad) (op : E.-operation M).
 Hypothesis naturality_k_type : forall (A : Type) (m : k_type M A),
   naturality_k_type m.
-Variable X : Type.
+Variable Z : Type.
 
-Let op' Y : (E \O errorFMT X M) Y -> errorFMT X M Y := fun x => @op _ x.
+Let op' Y : (E \O errorFMT Z M) Y -> errorFMT Z M Y := @op _.
 
-Lemma hlifting_errorT Y : (hlifting op (errorFMT X) naturality_k_type) Y = @op' Y.
+Lemma hlifting_errorT (X : Type) :
+  (hlifting op (errorFMT Z) naturality_k_type) X = @op' X.
 Proof.
-rewrite /hlifting /op'.
+rewrite boolp.funeqE => emx.
+rewrite /op'.
+rewrite (K_opE op (Z + X)%type).
+rewrite /hlifting.
 rewrite 2!vcompE.
 set h := Hmap _.
-rewrite (_ : h = hmapX X) //.
-rewrite /alifting.
-Abort.
+rewrite /=.
+congr (from_component (psi' _ _)).
+apply FunctionalExtensionality.functional_extensionality_dep => A.
+rewrite boolp.funeqE => B.
+apply FunctionalExtensionality.functional_extensionality_dep => C.
+rewrite /=.
+rewrite /psi'.
+rewrite /K_ret /= /K_bind /=.
+rewrite boolp.funeqE => D.
+rewrite /kappa'.
+congr (op C _).
+rewrite -(compE (E # _)).
+by rewrite -functor_o.
+Qed.
 
 End example_29_errorT.

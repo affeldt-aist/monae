@@ -1210,6 +1210,9 @@ Program Definition errorFMT : FMT := @Fmt.Pack (errorT X)
 
 End error_FMT.
 
+Lemma liftFMTXE X (M : monad) U : @liftX _ _ _ = Lift (errorFMT X) M U.
+Proof. by []. Qed.
+
 Section Fmt_stateT.
 Variable S : Type.
 Let T : monadT := stateT S.

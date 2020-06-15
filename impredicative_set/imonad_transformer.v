@@ -184,9 +184,9 @@ End state_monad_transformer.
 
 Definition stateT S : monadT := MonadT.Pack (MonadT.Mixin (@stateMonadM S)).
 
-Lemma liftSE S (M : monad) U (m : M U) : liftS m = Lift (stateT S) M U m.
+Lemma liftSE S (M : monad) U : @liftS _ _ _ = Lift (stateT S) M U.
 Proof.
-case: M m => [M [[f fi fo] [r j a b c]] m].
+case: M => [M [[f fi fo] [r j a b c]]].
 by rewrite /= /Lift /= /stateMonadM; unlock.
 Qed.
 
@@ -263,7 +263,7 @@ End exception_monad_transformer.
 
 Definition errorT Z := MonadT.Pack (MonadT.Mixin (@exceptionMonadM Z)).
 
-Lemma liftXE Z (M : monad) U (m : M U) : liftX _ m = Lift (errorT Z) M U m.
+Lemma liftXE Z (M : monad) U : @liftX _ _ _ = Lift (errorT Z) M U.
 Proof. by []. Qed.
 
 Section continuation_monad_tranformer.
@@ -1212,6 +1212,9 @@ Program Definition errorFMT : FMT := @Fmt.Pack (errorT X)
     monadMbind_hmapX _ hmapX_v hmapX_lift).
 
 End error_FMT.
+
+Lemma liftFMTXE X (M : monad) U : @liftX _ _ _ = Lift (errorFMT X) M U.
+Proof. by []. Qed.
 
 Section Fmt_stateT.
 Variable S : UU0.
