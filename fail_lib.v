@@ -261,10 +261,10 @@ Fixpoint subs (s : seq A) : M (seq A) :=
   let t' := subs t in
   fmap (cons h) t' [~] t'.
 
-Fixpoint SUBS (s : seq A) : Functor.acto (Monad.baseType (MonadAlt.baseType M)) _ :=
+Fixpoint SUBS (s : seq A) : Functor.acto (Monad.functorType (MonadAlt.monadType M)) _ :=
   if s isn't h :: t then Ret [::] else
-  let t' : Functor.acto (Monad.baseType (MonadAlt.baseType M)) _ := SUBS t in
-  Alt (((MonadAlt.baseType M) # (cons h)) t') t'.
+  let t' : Functor.acto (Monad.functorType (MonadAlt.monadType M)) _ := SUBS t in
+  Alt (((MonadAlt.monadType M) # (cons h)) t') t'.
 
 Goal subs = SUBS. by []. Abort.
 
@@ -654,7 +654,7 @@ Variable M : exceptMonad.
 Definition fastprod s : M _ := Catch (work s) (Ret O).
 
 Let Fastprod (s : seq nat) :=
-  @Catch M nat (@work (MonadExcept.baseType M) s) (Ret O).
+  @Catch M nat (@work (MonadExcept.failMonadType M) s) (Ret O).
 
 (* fastprod is pure, never throwing an unhandled exception *)
 Lemma fastprodE s : fastprod s = Ret (product s).

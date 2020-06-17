@@ -93,25 +93,28 @@ Notation "f ~~> g" := (forall A, f A -> g A) (at level 51, only parsing) : monae
 
 Local Open Scope monae_scope.
 
+Notation UU1 := Type.
+Notation UU0 := Type.
+
 (* NB: not putting M in Set -> Set because of expressions like:
   M (A * (size s).-1.-tuple A)%type *)
 Module FunctorLaws.
 Section def.
-Variable (M : Type -> Type) (f : forall A B : Type, (A -> B) -> M A -> M B).
-Definition id := forall A : Type, f id = id :> (M A -> M A).
-Definition comp := forall (A B C : Type) (g : B -> C) (h : A -> B),
+Variable (M : UU0 -> UU0) (f : forall A B : UU0, (A -> B) -> M A -> M B).
+Definition id := forall A : UU0, f id = id :> (M A -> M A).
+Definition comp := forall (A B C : UU0) (g : B -> C) (h : A -> B),
   f (g \o h) = f g \o f h :> (M A -> M C).
 End def.
 End FunctorLaws.
 
 Module Functor.
-Record mixin_of (M : Type -> Type) := Mixin {
-  actm : forall (A B : Type), (A -> B) -> M A -> M B ;
+Record mixin_of (M : UU0 -> UU0) := Mixin {
+  actm : forall (A B : UU0), (A -> B) -> M A -> M B ;
   _ : FunctorLaws.id actm ;
   _ : FunctorLaws.comp actm }.
-Structure type := Pack { acto : Type -> Type ; class : mixin_of acto }.
+Structure type := Pack { acto : UU0 -> UU0 ; class : mixin_of acto }.
 Module Exports.
-Definition Actm (F : type) : forall (A B : Type), (A -> B) -> acto F A -> acto F B :=
+Definition Actm (F : type) : forall (A B : UU0), (A -> B) -> acto F A -> acto F B :=
   let: Pack _ (Mixin actm _ _) := F in actm.
 Arguments Actm _ [A] [B] : simpl never.
 Notation "F # g" := (Actm F g) : monae_scope.
@@ -129,7 +132,7 @@ Lemma functor_o : FunctorLaws.comp (Actm F). Proof. by case: F => [? []]. Qed.
 End functor_lemmas.
 
 Section functorid.
-Definition id_f (A B : Type) (f : A -> B) := f.
+Definition id_f (A B : UU0) (f : A -> B) := f.
 Lemma id_id : FunctorLaws.id id_f. Proof. by []. Qed.
 Lemma id_comp : FunctorLaws.comp id_f. Proof. by []. Qed.
 Definition FId : functor := Functor.Pack (Functor.Mixin id_id id_comp).
@@ -137,7 +140,7 @@ End functorid.
 
 Section functorcomposition.
 Variables f g : functor.
-Definition functorcomposition (A B : Type) := fun h : A -> B => f # (g # h).
+Definition functorcomposition (A B : UU0) := fun h : A -> B => f # (g # h).
 Lemma functorcomposition_id : FunctorLaws.id functorcomposition.
 Proof.
 by rewrite /FunctorLaws.id => A; rewrite /functorcomposition 2!functor_id.
@@ -164,13 +167,13 @@ Proof.
 case: f => [? [???]]; congr (Functor.Pack (Functor.Mixin _ _));
   exact/boolp.Prop_irrelevance.
 Qed.
-Lemma FIdf (A B : Type) (f : A -> B) : FId # f = f. Proof. by []. Qed.
+Lemma FIdf (A B : UU0) (f : A -> B) : FId # f = f. Proof. by []. Qed.
 Lemma FCompA (f g h : functor) : (f \O g) \O h = f \O (g \O h).
 Proof.
 move: f g h => [f [???]] [g [???]] [h [???]].
 congr (Functor.Pack (Functor.Mixin  _ _)); exact/boolp.Prop_irrelevance.
 Qed.
-Lemma FCompE (f g : functor) (A B : Type) (k : A -> B) :
+Lemma FCompE (f g : functor) (A B : UU0) (k : A -> B) :
   (f \O g) # k = f # (g # k).
 Proof. by []. Qed.
 End functorcomposition_lemmas.
@@ -180,20 +183,20 @@ End functorcomposition_lemmas.
 Section fcomp.
 Variable M : functor.
 
-Definition fcomp (A B C : Type) (f : A -> B) (g : C -> M A) :=
+Definition fcomp (A B C : UU0) (f : A -> B) (g : C -> M A) :=
   locked ((M # f) \o g).
 Arguments fcomp : simpl never.
 Local Notation "f (o) g" := (fcomp f g).
 
-Lemma fcomp_def (A B C : Type) (f : A -> B) (g : C -> M A) :
+Lemma fcomp_def (A B C : UU0) (f : A -> B) (g : C -> M A) :
   f (o) g = ((M # f)) \o g.
 Proof. by rewrite /fcomp; unlock. Qed.
 
-Lemma fcompE (A B C : Type) (f : A -> B) (g : C -> M A) c :
+Lemma fcompE (A B C : UU0) (f : A -> B) (g : C -> M A) c :
   (f (o) g) c = (M # f) (g c).
 Proof. by rewrite fcomp_def. Qed.
 
-Lemma fcomp_comp (A B C D : Type) (f : A -> B) (g : C -> A) (m : D -> M C) :
+Lemma fcomp_comp (A B C D : UU0) (f : A -> B) (g : C -> A) (m : D -> M C) :
   (f \o g) (o) m = f (o) (g (o) m).
 Proof. by rewrite 3!fcomp_def functor_o compA. Qed.
 
@@ -201,8 +204,8 @@ End fcomp.
 Notation "f (o) g" := (fcomp f g) : mprog.
 Arguments fcomp : simpl never.
 
-Definition naturality (M N : functor) (m : M ~~> N) :=
-  forall (A B : Type) (h : A -> B), (N # h) \o m A = m B \o (M # h).
+Definition naturality (M N : functor) (f : M ~~> N) :=
+  forall (A B : UU0) (h : A -> B), (N # h) \o f A = f B \o (M # h).
 Arguments naturality : clear implicits.
 
 Module Natural.
@@ -219,7 +222,7 @@ Export Natural.Exports.
 
 Section natrans_lemmas.
 Variables (M N : functor) (phi : M ~> N).
-Lemma natural (A B : Type) (h : A -> B) : (N # h) \o phi A = phi B \o (M # h).
+Lemma natural (A B : UU0) (h : A -> B) : (N # h) \o phi A = phi B \o (M # h).
 Proof. by case: phi => ? []. Qed.
 Lemma nattrans_ext (f g : M ~> N) :
   f = g <-> forall a, (f a = g a :> (_ -> _)).
@@ -252,20 +255,20 @@ Record mixin_of (M : functor) := Mixin {
   _ : JoinLaws.left_unit ret join ;
   _ : JoinLaws.right_unit ret join ;
   _ : JoinLaws.associativity join }.
-Record class_of (M : Type -> Type) := Class {
+Record class_of (M : UU0 -> UU0) := Class {
   base : Functor.mixin_of M ; mixin : mixin_of (Functor.Pack base) }.
-Structure type := Pack { acto : Type -> Type ; class : class_of acto}.
-Definition baseType (M : type) := Functor.Pack (base (class M)).
+Structure type := Pack { acto : UU0 -> UU0 ; class : class_of acto }.
+Definition functorType (M : type) := Functor.Pack (base (class M)).
 Module Exports.
-Definition RET (M : type) : FId ~> baseType M :=
+Definition RET (M : type) : FId ~> functorType M :=
   let: Pack _ (Class _ (Mixin ret _ _ _ _)) := M in ret.
 Arguments RET {M} : simpl never.
-Definition JOIN (M : type) : baseType M \O baseType M ~> baseType M :=
+Definition JOIN (M : type) : functorType M \O functorType M ~> functorType M :=
   let: Pack _ (Class _ (Mixin _ join _ _ _)) := M in join.
 Arguments JOIN {M} : simpl never.
 Notation monad := type.
-Coercion baseType : monad >-> functor.
-Canonical baseType.
+Coercion functorType : monad >-> functor.
+Canonical functorType.
 End Exports.
 End Monad.
 Export Monad.Exports.
@@ -287,7 +290,7 @@ Module BindLaws.
 Section bindlaws.
 Variable M : functor.
 
-Variable b : forall (A B : Type), M A -> (A -> M B) -> M B.
+Variable b : forall (A B : UU0), M A -> (A -> M B) -> M B.
 
 Local Notation "m >>= f" := (b m f).
 
@@ -303,15 +306,15 @@ Definition left_distributive (add : forall B, M B -> M B -> M B) :=
     (add _ m1 m2) >>= k = add _ (m1 >>= k) (m2 >>= k).
 
 Definition left_zero (f : forall A, M A) :=
-  forall (A B : Type) (g : A -> M B), f A >>= g = f B.
+  forall (A B : UU0) (g : A -> M B), f A >>= g = f B.
 
 Definition right_zero (f : forall A, M A) :=
-  forall (A B : Type) (g : M B), g >>= (fun _ => f A) = f A.
+  forall (A B : UU0) (g : M B), g >>= (fun _ => f A) = f A.
 
 Definition left_neutral (r : FId ~> M) :=
-  forall (A B : Type) (a : A) (f : A -> M B), r _ a >>= f = f a.
+  forall (A B : UU0) (a : A) (f : A -> M B), r _ a >>= f = f a.
 
-Definition right_neutral (r : forall A : Type, A -> M A) :=
+Definition right_neutral (r : forall A : UU0, A -> M A) :=
   forall A (m : M A), m >>= r _ = m.
 
 Definition left_id (r : forall A, M A) (op : forall B, M B -> M B -> M B) :=
@@ -331,7 +334,7 @@ Hypothesis joinretM : JoinLaws.left_unit ret join.
 Hypothesis joinMret : JoinLaws.right_unit ret join.
 Hypothesis joinA : JoinLaws.associativity join.
 
-Let bind (A B : Type) (m : F A) (f : A -> F B) : F B := join _ ((F # f) m).
+Let bind (A B : UU0) (m : F A) (f : A -> F B) : F B := join _ ((F # f) m).
 
 Lemma bindretf_derived : BindLaws.left_neutral bind ret.
 Proof.
@@ -359,7 +362,7 @@ Variable M : monad.
 Definition Bind A B (x : M A) (f : A -> M B) : M B := Join ((M # f) x).
 Arguments Bind {A B} : simpl never.
 Local Notation "m >>= f" := (Bind m f).
-Lemma bindE (A B : Type) : forall x (f : A -> M B), x >>= f = Join ((M # f) x).
+Lemma bindE (A B : UU0) : forall x (f : A -> M B), x >>= f = Join ((M # f) x).
 Proof. by []. Qed.
 Lemma bindretf : BindLaws.left_neutral (@Bind) (@RET _).
 Proof. apply: bindretf_derived; exact: joinretM. Qed.
@@ -389,7 +392,7 @@ Fixpoint sequence (M : monad) A (s : seq (M A)) : M (seq A) :=
   (if s isn't h :: t then Ret [::] else
   do v <- h; do vs <- sequence t; Ret (v :: vs))%Do.
 
-Lemma sequence_nil (M : monad) (A : Type) : sequence [::] = Ret [::] :> M (seq A).
+Lemma sequence_nil (M : monad) (A : UU0) : sequence [::] = Ret [::] :> M (seq A).
 Proof. by []. Qed.
 
 Lemma sequence_cons (M : monad) A h (t : seq (M A)) :
@@ -445,26 +448,26 @@ Section fmap_and_join.
 Variable M : monad.
 Local Open Scope mprog.
 
-Lemma fmapE (A B : Type) (f : A -> B) (m : M _) : fmap f m = m >>= (Ret \o f).
+Lemma fmapE (A B : UU0) (f : A -> B) (m : M _) : fmap f m = m >>= (Ret \o f).
 Proof.
 by rewrite bindE [in RHS]functor_o [in RHS]compE -[in RHS](compE Join) joinMret.
 Qed.
 
-Lemma bind_fmap (A B C : Type) (f : A -> B) (m : M A) (g : B -> M C) :
+Lemma bind_fmap (A B C : UU0) (f : A -> B) (m : M A) (g : B -> M C) :
   fmap f m >>= g = m >>= (g \o f).
 Proof. by rewrite fmapE bindA; rewrite_ bindretf. Qed.
 
-Lemma fmap_if (A B : Type) (f : A -> B) b (m : M A) a :
+Lemma fmap_if (A B : UU0) (f : A -> B) b (m : M A) a :
   fmap f (if b then m else Ret a) = if b then fmap f m else Ret (f a).
 Proof. case: ifPn => Hb //; by rewrite fmapE bindretf. Qed.
 
-Lemma fmap_bind (A B C : Type) (f : A -> B) m (g : C -> M A) :
+Lemma fmap_bind (A B C : UU0) (f : A -> B) m (g : C -> M A) :
   fmap f (m >>= g) = m >>= (f (o) g).
 Proof.
 rewrite fcomp_def fmapE bindA; bind_ext => c; by rewrite compE -/(fmap _ _) fmapE.
 Qed.
 
-Lemma skip_fmap (A B : Type) (f : A -> B) (mb : M B) ma :
+Lemma skip_fmap (A B : UU0) (f : A -> B) (mb : M B) ma :
   mb >> (fmap f ma) = fmap f (mb >> ma).
 Proof. by rewrite fmap_bind fcomp_def. Qed.
 
@@ -475,11 +478,11 @@ by elim=> // h t /= IH; rewrite !rev_cons IH map_rcons.
 Qed.*)
 
 (* TODO: move? *)
-Lemma foldl_revE (T R : Type) (f : R -> T -> R) (z : R) :
+Lemma foldl_revE (T R : UU0) (f : R -> T -> R) (z : R) :
   foldl f z \o rev = foldr (fun x : T => f^~ x) z.
 Proof. by rewrite boolp.funeqE => s; rewrite -foldl_rev. Qed.
 
-Lemma mfoldl_rev (T R : Type) (f : R -> T -> R) (z : R) (s : seq T -> M (seq T)) :
+Lemma mfoldl_rev (T R : UU0) (f : R -> T -> R) (z : R) (s : seq T -> M (seq T)) :
   foldl f z (o) (rev (o) s) = foldr (fun x => f^~ x) z (o) s.
 Proof.
 rewrite boolp.funeqE => x; rewrite !fcompE 3!fmapE !bindA.
@@ -489,7 +492,7 @@ Qed.
 Lemma joinE A (pp : M (M A)) : Join pp = pp >>= id.
 Proof. rewrite bindE; congr Join; by rewrite functor_id. Qed.
 
-Lemma join_fmap (A B : Type) (f : A -> M B) (m : M A) : Join (fmap f m) = m >>= f.
+Lemma join_fmap (A B : UU0) (f : A -> M B) (m : M A) : Join (fmap f m) = m >>= f.
 Proof. by rewrite bindE. Qed.
 
 End fmap_and_join.
@@ -497,26 +500,27 @@ End fmap_and_join.
 Section kleisli.
 Variable M : monad.
 
-Definition kleisli (A B C : Type) (m : B -> M C) (n : A -> M B) : A -> M C :=
+Definition kleisli (A B C : UU0) (m : B -> M C) (n : A -> M B) : A -> M C :=
   Join \o (M # m) \o n.
 Local Notation "m <=< n" := (kleisli m n).
 Local Notation "m >=> n" := (kleisli n m).
 
-Lemma bind_kleisli (A B C : Type) m (f : A -> M B) (g : B -> M C) :
+Lemma bind_kleisli (A B C : UU0) m (f : A -> M B) (g : B -> M C) :
   m >>= (f >=> g) = (m >>= f) >>= g.
 Proof. by rewrite bindA; bind_ext => a; rewrite /kleisli !compE join_fmap. Qed.
 
-Lemma ret_kleisli (A B : Type) (k : A -> M B) : Ret >=> k = k.
+Lemma ret_kleisli (A B : UU0) (k : A -> M B) : Ret >=> k = k.
 Proof. by rewrite /kleisli -compA (natural RET) FIdf compA joinretM. Qed.
 
 Local Open Scope mprog.
-Lemma fcomp_kleisli (A B C D : Type) (f : A -> B) (g : C -> M A) (h : D -> M C) :
+Lemma fcomp_kleisli (A B C D : UU0) (f : A -> B) (g : C -> M A) (h : D -> M C) :
   f (o) (g <=< h) = (f (o) g) <=< h.
 Proof.
-by rewrite /kleisli 2!fcomp_def 2!(compA (fmap f)) (natural JOIN) functor_o compA.
+rewrite /kleisli 2!fcomp_def 2!(compA (fmap f)) natural [in RHS]functor_o.
+by rewrite -compA.
 Qed.
 
-Lemma kleisli_fcomp (A B C : Type) (f : A -> M B) (g : B -> A) (h : C -> M B) :
+Lemma kleisli_fcomp (A B C : UU0) (f : A -> M B) (g : B -> A) (h : C -> M B) :
   ((f \o g) <=< h) = f <=< (g (o) h).
 Proof. by rewrite /kleisli fcomp_def functor_o 2!compA. Qed.
 Local Close Scope mprog.
@@ -527,21 +531,21 @@ Notation "m >=> n" := (kleisli n m) : monae_scope.
 
 Module MonadFail.
 Record mixin_of (M : monad) := Mixin {
-  fail : forall A : Type, M A ;
+  fail : forall A : UU0, M A ;
   (* exceptions are left-zeros of sequential composition *)
   _ : BindLaws.left_zero (@Bind M) fail (* fail A >>= f = fail B *)
 }.
-Record class_of (M : Type -> Type) := Class {
+Record class_of (M : UU0 -> UU0) := Class {
   base : Monad.class_of M ; mixin : mixin_of (Monad.Pack base) }.
-Structure type := Pack { acto : Type -> Type ; class : class_of acto }.
-Definition baseType (M : type) := Monad.Pack (base (class M)).
+Structure type := Pack { acto : UU0 -> UU0 ; class : class_of acto }.
+Definition monadType (M : type) := Monad.Pack (base (class M)).
 Module Exports.
 Definition Fail (M : type) : forall A, acto M A :=
   let: Pack _ (Class _ (Mixin x _)) := M in x.
 Arguments Fail {M A} : simpl never.
 Notation failMonad := type.
-Coercion baseType : failMonad >-> monad.
-Canonical baseType.
+Coercion monadType : failMonad >-> monad.
+Canonical monadType.
 End Exports.
 End MonadFail.
 Export MonadFail.Exports.
@@ -570,26 +574,26 @@ Proof.
 move: a b => -[|] b /=; by [rewrite guardT bindskipf | rewrite guardF bindfailf].
 Qed.
 
-Definition assert {A : Type} (p : pred A) (a : A) : M A :=
+Definition assert {A : UU0} (p : pred A) (a : A) : M A :=
   locked (guard (p a) >> Ret a).
 
-Lemma assertE {A : Type} (p : pred A) (a : A) : assert p a = guard (p a) >> Ret a.
+Lemma assertE {A : UU0} (p : pred A) (a : A) : assert p a = guard (p a) >> Ret a.
 Proof. by rewrite /assert; unlock. Qed.
 
-Lemma assertT {A : Type} (a : A) : assert xpredT a = Ret a :> M _.
+Lemma assertT {A : UU0} (a : A) : assert xpredT a = Ret a :> M _.
 Proof. by rewrite assertE guardT bindskipf. Qed.
 
-Lemma assertF {A : Type} (a : A) : assert xpred0 a = Fail :> M _.
+Lemma assertF {A : UU0} (a : A) : assert xpred0 a = Fail :> M _.
 Proof. by rewrite assertE guardF bindfailf. Qed.
 
-Lemma assertPn {A : Type} (p : pred A) (a : A) :
+Lemma assertPn {A : UU0} (p : pred A) (a : A) :
   if_spec (p a) (Ret a) Fail (~~ (p a)) (p a) (assert p a).
 Proof.
 rewrite assertE; case: guardPn => pa;
   by [rewrite bindskipf; constructor | rewrite bindfailf; constructor].
 Qed.
 
-Definition bassert {A : Type} (p : pred A) (m : M A) : M A := m >>= assert p.
+Definition bassert {A : UU0} (p : pred A) (m : M A) : M A := m >>= assert p.
 
 (* follows from guards commuting with anything *)
 Lemma commutativity_of_assertions A q :
@@ -618,17 +622,17 @@ Arguments guard {M}.
 
 Module MonadAlt.
 Record mixin_of (M : monad) := Mixin {
-  alt : forall T : Type, M T -> M T -> M T
+  alt : forall T : UU0, M T -> M T -> M T
         where "a [~] b" := (alt a b) (* infix notation *) ;
-  _ : forall T : Type, associative (@alt T) ;
+  _ : forall T : UU0, associative (@alt T) ;
   (* composition distributes leftwards over choice *)
   _ : BindLaws.left_distributive (@Bind M) alt }.
 (* in general, composition does not distribute rightwards over choice *)
 (* NB: no bindDr to accommodate both angelic and demonic interpretations of nondeterminism *)
-Record class_of (M : Type -> Type) := Class {
+Record class_of (M : UU0 -> UU0) := Class {
   base : Monad.class_of M ; mixin : mixin_of (Monad.Pack base) }.
-Structure type := Pack { acto : Type -> Type ; class : class_of acto }.
-Definition baseType (M : type) := Monad.Pack (base (class M)).
+Structure type := Pack { acto : UU0 -> UU0 ; class : class_of acto }.
+Definition monadType (M : type) := Monad.Pack (base (class M)).
 Module Exports.
 Definition Alt M : forall T, acto M T -> acto M T -> acto M T :=
   let: Pack _ (Class _ (Mixin x _ _)) := M in x.
@@ -636,8 +640,8 @@ Arguments Alt {M T} : simpl never.
 Notation "'[~p]'" := (@Alt _). (* prefix notation *)
 Notation "x '[~]' y" := (Alt x y).
 Notation altMonad := type.
-Coercion baseType : altMonad >-> monad.
-Canonical baseType.
+Coercion monadType : altMonad >-> monad.
+Canonical monadType.
 End Exports.
 End MonadAlt.
 Export MonadAlt.Exports.
@@ -651,18 +655,18 @@ Proof. by case: M => m [? []]. Qed.
 End monadalt_lemmas.
 
 Module MonadAltCI.
-Record mixin_of (M : Type -> Type) (op : forall A, M A -> M A -> M A) :=
-  Mixin { _ : forall A : Type, idempotent (op A) ;
-          _ : forall A : Type, commutative (op A) }.
-Record class_of (M : Type -> Type) := Class {
+Record mixin_of (M : UU0 -> UU0) (op : forall A, M A -> M A -> M A) :=
+  Mixin { _ : forall A : UU0, idempotent (op A) ;
+          _ : forall A : UU0, commutative (op A) }.
+Record class_of (M : UU0 -> UU0) := Class {
   base : MonadAlt.class_of M ;
   mixin : mixin_of (@Alt (MonadAlt.Pack base)) }.
-Structure type := Pack { acto : Type -> Type ; class : class_of acto }.
-Definition baseType (M : type) := MonadAlt.Pack (base (class M)).
+Structure type := Pack { acto : UU0 -> UU0 ; class : class_of acto }.
+Definition altMonadType (M : type) := MonadAlt.Pack (base (class M)).
 Module Exports.
 Notation altCIMonad := type.
-Coercion baseType : altCIMonad >-> altMonad.
-Canonical baseType.
+Coercion altMonadType : altCIMonad >-> altMonad.
+Canonical altMonadType.
 End Exports.
 End MonadAltCI.
 Export MonadAltCI.Exports.
@@ -685,19 +689,19 @@ Module MonadNondet.
 Record mixin_of (M : failMonad) (a : forall A, M A -> M A -> M A) :=
   Mixin { _ : @BindLaws.left_id M (@Fail M) a ;
           _ : @BindLaws.right_id M (@Fail M) a }.
-Record class_of (M : Type -> Type) := Class {
+Record class_of (M : UU0 -> UU0) := Class {
   base : MonadFail.class_of M ;
   mixin_alt : MonadAlt.mixin_of (Monad.Pack (MonadFail.base base)) ;
   mixin_nondet : @mixin_of (MonadFail.Pack base) (MonadAlt.alt mixin_alt) }.
-Structure type := Pack { acto : Type -> Type ; class : class_of acto }.
-Definition baseType (M : type) := MonadFail.Pack (base (class M)).
+Structure type := Pack { acto : UU0 -> UU0 ; class : class_of acto }.
+Definition failMonadType (M : type) := MonadFail.Pack (base (class M)).
+Definition altMonadType (M : type) :=
+  MonadAlt.Pack (MonadAlt.Class (mixin_alt (class M))).
 Module Exports.
 Notation nondetMonad := type.
-Coercion baseType : nondetMonad >-> failMonad.
-Canonical baseType.
-Definition alt_of_nondet (M : nondetMonad) : altMonad :=
-  MonadAlt.Pack (MonadAlt.Class (mixin_alt (class M))).
-Canonical alt_of_nondet.
+Coercion failMonadType : nondetMonad >-> failMonad.
+Canonical failMonadType.
+Canonical altMonadType.
 End Exports.
 End MonadNondet.
 Export MonadNondet.Exports.
@@ -711,27 +715,27 @@ Proof. by case: M => m [[? ?] [? ? ?] [? ?]]. Qed.
 End nondet_lemmas.
 
 Module MonadCINondet.
-Record class_of (m : Type -> Type) := Class {
+Record class_of (m : UU0 -> UU0) := Class {
   base : MonadNondet.class_of m ;
   mixin : MonadAltCI.mixin_of
     (@Alt (MonadAlt.Pack (MonadAlt.Class (MonadNondet.mixin_alt base)))) }.
-Structure type := Pack { acto : Type -> Type ; class : class_of acto }.
-Definition baseType (M : type) := MonadNondet.Pack (base (class M)).
+Structure type := Pack { acto : UU0 -> UU0 ; class : class_of acto }.
+Definition nondetMonadType (M : type) := MonadNondet.Pack (base (class M)).
+Definition altCIMonadType (M : type) :=
+  MonadAltCI.Pack (MonadAltCI.Class (mixin (class M))).
 Module Exports.
 Notation nondetCIMonad := type.
-Coercion baseType : nondetCIMonad >-> nondetMonad.
-Canonical baseType.
-Definition altCI_of_nondet (M : nondetCIMonad) : altCIMonad :=
-  MonadAltCI.Pack (MonadAltCI.Class (mixin (class M))).
-Canonical altCI_of_nondet.
+Coercion nondetMonadType : nondetCIMonad >-> nondetMonad.
+Canonical nondetMonadType.
+Canonical altCIMonadType.
 End Exports.
 End MonadCINondet.
 Export MonadCINondet.Exports.
 
 Section nondet_big.
-Variables (M : nondetMonad) (A : Type).
+Variables (M : nondetMonad) (A : UU0).
 Canonical alt_monoid :=
-  Monoid.Law (@altA (alt_of_nondet M) A) (@altfailm _ _) (@altmfail _ _).
+  Monoid.Law (@altA (MonadNondet.altMonadType M) A) (@altfailm _ _) (@altmfail _ _).
 
 Lemma test_bigop n : \big[Alt/Fail]_(i < n) (Fail : M A) = Fail.
 Proof.
@@ -751,20 +755,19 @@ Record mixin_of (M : failMonad) := Mixin {
   (* unexceptional bodies need no handler *)
   _ : forall A x, @left_zero (M A) (M A) (Ret x) (@catch A)
   (* NB: left-zero of sequential composition inherited from failMonad *) }.
-Record class_of (M : Type -> Type) := Class {
+Record class_of (M : UU0 -> UU0) := Class {
   base : MonadFail.class_of M ;
   mixin : mixin_of (MonadFail.Pack base) }.
-Structure type := Pack { acto : Type -> Type ; class : class_of acto }.
-Definition baseType M := MonadFail.Pack (base (class M)).
+Structure type := Pack { acto : UU0 -> UU0 ; class : class_of acto }.
+Definition failMonadType M := MonadFail.Pack (base (class M)).
 Definition monadType M := Monad.Pack (MonadFail.base (base (class M))).
 Module Exports.
 Definition Catch (M : type) : forall A, acto M A -> acto M A -> acto M A :=
   let: Pack _ (Class _ (Mixin x _ _ _ _)) := M in x.
 Arguments Catch {M A} : simpl never.
 Notation exceptMonad := type.
-Coercion baseType : exceptMonad >-> failMonad.
-Canonical baseType.
-(* NB: ignore the warning *)
+Coercion failMonadType : exceptMonad >-> failMonad.
+Canonical failMonadType.
 Canonical monadType.
 End Exports.
 End MonadExcept.
@@ -785,42 +788,42 @@ End except_lemmas.
 Module MonadContinuation.
 (* NB: interface is wip *)
 Record mixin_of (M : monad) := Mixin {
-   callcc : forall A B : Type, ((A -> M B) -> M A) -> M A;
-   _ : forall (A B : Type) (g : (A -> M B) -> M A) (k : B -> M B),
+   callcc : forall A B : UU0, ((A -> M B) -> M A) -> M A;
+   _ : forall (A B : UU0) (g : (A -> M B) -> M A) (k : B -> M B),
        callcc (fun f => g (fun x => f x >>= k)) = callcc g; (* see Sect. 7.2 of [Schrijvers, 19] *)
-   _ : forall (A B : Type) (m : M B), callcc (fun _ : B -> M A => m) = m ; (* see Sect. 3.3 of [Wadler, 94] *)
-   _ : forall (A B C : Type) (m : M A) x (k : A -> B -> M C),
+   _ : forall (A B : UU0) (m : M B), callcc (fun _ : B -> M A => m) = m ; (* see Sect. 3.3 of [Wadler, 94] *)
+   _ : forall (A B C : UU0) (m : M A) x (k : A -> B -> M C),
        callcc (fun f : _ -> M _ => m >>= (fun a => f x >>= (fun b => k a b))) =
        callcc (fun f : _ -> M _ => m >> f x) ;
-   _ : forall (A B : Type) (m : M A) b,
+   _ : forall (A B : UU0) (m : M A) b,
        callcc (fun f : B -> M B => m >> f b) =
        callcc (fun _ : B -> M B => m >> Ret b) }.
-Record class_of (M : Type -> Type) := Class {
+Record class_of (M : UU0 -> UU0) := Class {
   base : Monad.class_of M ; mixin : mixin_of (Monad.Pack base) }.
-Structure type := Pack { acto : Type -> Type ; class : class_of acto }.
-Definition baseType (M : type) := Monad.Pack (base (class M)).
+Structure type := Pack { acto : UU0 -> UU0 ; class : class_of acto }.
+Definition monadType (M : type) := Monad.Pack (base (class M)).
 Module Exports.
-Definition Callcc (M : type) : forall A B : Type, ((A -> acto M B) -> acto M A) -> acto M A :=
+Definition Callcc (M : type) : forall A B : UU0, ((A -> acto M B) -> acto M A) -> acto M A :=
   let: Pack _ (Class _ (Mixin x _ _ _ _)) := M in x.
 Notation contMonad := type.
-Coercion baseType : contMonad >-> monad.
-Canonical baseType.
+Coercion monadType : contMonad >-> monad.
+Canonical monadType.
 End Exports.
 End MonadContinuation.
 Export MonadContinuation.Exports.
 
 Section continuation_lemmas.
 Variables (M : contMonad).
-Lemma callcc0 (A B : Type) (g : (A -> M B) -> M A) (k : B -> M B) :
+Lemma callcc0 (A B : UU0) (g : (A -> M B) -> M A) (k : B -> M B) :
   Callcc (fun f => g (fun x => f x >>= k)) = Callcc g.
 Proof. by case: M A B g k => m [? []]. Qed.
-Lemma callcc1 (A B : Type) p : Callcc (fun _ : B -> M A => p) = p.
+Lemma callcc1 (A B : UU0) p : Callcc (fun _ : B -> M A => p) = p.
 Proof. by case: M A B p => m [? []]. Qed.
-Lemma callcc2 (A B C : Type) (m : M A) x (k : A -> B -> M C) :
+Lemma callcc2 (A B C : UU0) (m : M A) x (k : A -> B -> M C) :
   (Callcc (fun f : _ -> M _ => do a <- m; do b <- f x; k a b) =
    Callcc (fun f : _ -> M _ => m >> f x))%Do.
 Proof. by case: M A B C m x k => m [? []]. Qed.
-Lemma callcc3 (A B : Type) (m : M A) b :
+Lemma callcc3 (A B : UU0) (m : M A) b :
   Callcc (fun f : B -> M B => m >> f b) = Callcc (fun _ : B -> M B => m >> Ret b).
 Proof. by case: M A B m b => m [? []]. Qed.
 End continuation_lemmas.
@@ -828,12 +831,12 @@ End continuation_lemmas.
 Module MonadShiftReset.
 (* NB: interface is wip *)
 Record mixin_of (M : contMonad) U := Mixin {
-  shift : forall A : Type, ((A -> M U) -> M U) -> M A ;
+  shift : forall A : UU0, ((A -> M U) -> M U) -> M A ;
   reset : M U -> M U ;
-  _ : forall (A : Type) (m : M A), shift (fun k => m >>= k) = m ; (* see Sect. 3.3 of [Wadler, 94] *)
-  _ : forall (A B : Type) (h : (A -> M B) -> M A),
-    Callcc h = shift (fun k' => h (fun x => shift (fun k'' => k' x)) >>= k') ; (* see Sect. 3.3 of [Wadler, 94] *)
-  _ : forall (A : Type) (c : A) (c': U) (k : A -> U -> _),
+  _ : forall (A : UU0) (m : M A), shift (fun k => m >>= k) = m ; (* see Sect. 3.3 of [Wadler, 94] *)
+  _ : forall (A B : UU0) (h : (A -> M B) -> M A),
+    Callcc h = shift (fun k' => h (fun x => shift (fun k'' => k' x)) >>= k')  ; (* see Sect. 3.3 of [Wadler, 94] *)
+  _ : forall (A : UU0) (c : A) (c': U) (k : A -> U -> _),
     (reset (do x <- Ret c; do y <- shift (fun _ => Ret c'); k x y) = Ret c >> Ret c')%Do ;
   _ : forall (c c' : U) (k : U -> U -> _),
     (reset (do x <- Ret c; do y <- shift (fun f => do v <- f c'; f v); Ret (k x y)) =
@@ -841,31 +844,31 @@ Record mixin_of (M : contMonad) U := Mixin {
   _ : forall (c : U) k,
     (reset (do y <- shift (@^~ c); Ret (k y)) = Ret (k c))%Do
 }.
-Record class_of (M : Type -> Type) B := Class {
+Record class_of (M : UU0 -> UU0) B := Class {
   base : MonadContinuation.class_of M ;
   mixin : mixin_of (MonadContinuation.Pack base) B }.
-Structure type B := Pack { acto : Type -> Type ; class : class_of acto B }.
-Definition baseType B (M : type B) := MonadContinuation.Pack (base (class M)).
+Structure type B := Pack { acto : UU0 -> UU0 ; class : class_of acto B }.
+Definition contMonadType B (M : type B) := MonadContinuation.Pack (base (class M)).
 Module Exports.
-Definition Shift B (M : type B) : forall A : Type, ((A -> acto M B) -> acto M B) -> acto M A :=
+Definition Shift B (M : type B) : forall A : UU0, ((A -> acto M B) -> acto M B) -> acto M A :=
   let: Pack _ (Class _ (Mixin x _ _ _ _ _ _)) := M in x.
 Definition Reset B (M : type B) : acto M B -> acto M B :=
   let: Pack _ (Class _ (Mixin _ x _ _ _ _ _)) := M in x.
 Notation shiftresetMonad := type.
-Coercion baseType : shiftresetMonad >-> contMonad.
-Canonical baseType.
+Coercion contMonadType : shiftresetMonad >-> contMonad.
+Canonical contMonadType.
 End Exports.
 End MonadShiftReset.
 Export MonadShiftReset.Exports.
 
 Section shiftreset_lemmas.
-Variables (U : Type) (M : shiftresetMonad U).
-Lemma shiftreset0 (A : Type) (m : M A) : Shift (fun k => m >>= k) = m.
+Variables (U : UU0) (M : shiftresetMonad U).
+Lemma shiftreset0 (A : UU0) (m : M A) : Shift (fun k => m >>= k) = m.
 Proof. by case: M A m => m [? []]. Qed.
-Lemma shiftreset1 (A B : Type) (h : (A -> M B) -> M A) :
+Lemma shiftreset1 (A B : UU0) (h : (A -> M B) -> M A) :
   Callcc h = Shift (fun k' => h (fun x => Shift (fun k'' => k' x)) >>= k').
 Proof. by case: M A B h => m [? []]. Qed.
-Lemma shiftreset2 (A : Type) c c' (k : A -> U -> _):
+Lemma shiftreset2 (A : UU0) c c' (k : A -> U -> _):
   Reset (do x <- Ret c; do y <- (Shift (fun _ => @RET M U c') : M U); k x y)%Do =
     (Ret c >> Ret c') :> M _ .
 Proof. by case: M c c' k => m [? []]. Qed.
@@ -882,22 +885,22 @@ End shiftreset_lemmas.
 Module MonadJump.
 (* Sect. 7.2 of [Tom Schrijvers & al., Monad Transformers and Modular
 Algebraic Eﬀects: What Binds Them Together, Haskell 2019] *)
-Record mixin_of (ref : Type -> Type) (M : monad) := Mixin {
-   jump : forall A B : Type, ref A -> A -> M B;
-   sub : forall A B : Type, (ref A -> M B) -> (A -> M B) -> M B;
-   _ : forall (A B : Type) k x, sub (fun r => @jump A B r x) k = k x;
-   _ : forall (A B : Type) p k, @sub A B (fun _ => p) k = p;
-   _ : forall (A B : Type) p r', sub p (@jump A B r') = p r';
-   _ : forall (A B : Type) (p : ref A -> ref B -> M B) (k1 : A -> M B) k2,
+Record mixin_of (ref : UU0 -> UU0) (M : monad) := Mixin {
+   jump : forall A B : UU0, ref A -> A -> M B;
+   sub : forall A B : UU0, (ref A -> M B) -> (A -> M B) -> M B;
+   _ : forall (A B : UU0) k x, sub (fun r => @jump A B r x) k = k x;
+   _ : forall (A B : UU0) p k, @sub A B (fun _ => p) k = p;
+   _ : forall (A B : UU0) p r', sub p (@jump A B r') = p r';
+   _ : forall (A B : UU0) (p : ref A -> ref B -> M B) (k1 : A -> M B) k2,
        sub (fun r1 : ref A => sub (fun r2 => p r1 r2) (k2 r1)) k1 =
        sub (fun r2 : ref B => sub (fun r1 => p r1 r2) k1) (fun x => sub (k2^~x) k1); (*NB: differs from [Schrijvers et al. 19]*)
-   _ : forall (A B : Type) r x k, (@jump A B r x) >>= k = @jump A B r x;
-   _ : forall (A B : Type) p q k, @sub A B p q >>= k = @sub A B (p >=> k) (q >=> k)
+   _ : forall (A B : UU0) r x k, (@jump A B r x) >>= k = @jump A B r x;
+   _ : forall (A B : UU0) p q k, @sub A B p q >>= k = @sub A B (p >=> k) (q >=> k)
 }.
-Record class_of ref (M : Type -> Type) := Class {
+Record class_of ref (M : UU0 -> UU0) := Class {
   base : Monad.class_of M ; mixin : mixin_of ref (Monad.Pack base) }.
-Structure type ref := Pack { acto : Type -> Type ; class : class_of ref acto }.
-Definition baseType ref (M : type ref) := Monad.Pack (base (class M)).
+Structure type ref := Pack { acto : UU0 -> UU0 ; class : class_of ref acto }.
+Definition monadType ref (M : type ref) := Monad.Pack (base (class M)).
 Module Exports.
 Definition Jump ref (M : type ref) : forall A B, ref A -> A -> acto M B :=
   let: Pack _ (Class _ (Mixin x _ _ _ _ _ _ _)) := M in x.
@@ -907,42 +910,41 @@ Definition Sub ref (M : type ref)
   let: Pack _ (Class _ (Mixin _ x _ _ _ _ _ _)) := M in x.
 Arguments Sub {ref M A B} : simpl never.
 Notation jumpMonad := type.
-Coercion baseType : jumpMonad >-> monad.
-Canonical baseType.
+Coercion monadType : jumpMonad >-> monad.
+Canonical monadType.
 End Exports.
 End MonadJump.
 Export MonadJump.Exports.
 
 Module MonadState.
-Record mixin_of (S : Type) (M : monad) := Mixin {
+Record mixin_of (S : UU0) (M : monad) := Mixin {
   get : M S ;
   put : S -> M unit ;
   _ : forall s s', put s >> put s' = put s' ;
   _ : forall s, put s >> get = put s >> Ret s ;
   _ : get >>= put = skip ;
-  _ : forall (A : Type) (k : S -> S -> M A),
+  _ : forall (A : UU0) (k : S -> S -> M A),
     get >>= (fun s => get >>= k s) = get >>= fun s => k s s }.
-Record class_of (S : Type) (M : Type -> Type) := Class {
-  base : Monad.class_of M ; mixin : mixin_of S (Monad.Pack base) }.
-Structure type (S : Type) := Pack { acto : Type -> Type ; class : class_of S acto }.
-(* inheritance *)
-Definition baseType (S : Type) (M : type S) := Monad.Pack (base (class M)).
+Record class_of (S : UU0) (m : UU0 -> UU0) := Class {
+  base : Monad.class_of m ; mixin : mixin_of S (Monad.Pack base) }.
+Structure type (S : UU0) := Pack { acto : UU0 -> UU0 ; class : class_of S acto }.
+Definition monadType (S : UU0) (M : type S) := Monad.Pack (base (class M)).
 Module Exports.
-Definition Get (S : Type) (M : type S) : acto M S :=
+Definition Get (S : UU0) (M : type S) : acto M S :=
   let: Pack _ (Class _ (Mixin x _ _ _ _ _)) := M in x.
 Arguments Get {S M} : simpl never.
-Definition Put (S : Type) (M : type S) : S -> acto M unit :=
+Definition Put (S : UU0) (M : type S) : S -> acto M unit :=
   let: Pack _ (Class _ (Mixin _ x _ _ _ _)) := M in x.
 Arguments Put {S M} : simpl never.
 Notation stateMonad := type.
-Coercion baseType : stateMonad >-> monad.
-Canonical baseType.
+Coercion monadType : stateMonad >-> monad.
+Canonical monadType.
 End Exports.
 End MonadState.
 Export MonadState.Exports.
 
 Section state_lemmas.
-Variables (S : Type) (M : stateMonad S).
+Variables (S : UU0) (M : stateMonad S).
 Lemma putput s s' : Put s >> Put s' = Put s' :> M _.
 Proof. by case: M => m [[[? ? ? ? []]]]. Qed.
 Lemma putget s : Put s >> Get = Put s >> Ret s :> M _.
@@ -956,27 +958,27 @@ End state_lemmas.
 
 (* TODO : utility ? *)
 Module MonadContStateLoop.
-Record mixin_of (S : Type) (M : stateMonad S) := Mixin {
+Record mixin_of (S : UU0) (M : stateMonad S) := Mixin {
   foreach : nat -> nat -> (nat -> M unit) -> M unit ;
   _ : forall m body, foreach m m body = Ret tt ;
   _ : forall m n body, foreach (m.+1 + n) m body =
      (body (m + n)) >> foreach (m + n) m body :> M unit
 }.
-Record class_of (S : Type) (M : Type -> Type) := Class {
+Record class_of (S : UU0) (M : UU0 -> UU0) := Class {
   base : MonadState.class_of S M ;
   mixin_cont : MonadContinuation.mixin_of (Monad.Pack (MonadState.base base));
   mixin_stateLoop : @mixin_of S (MonadState.Pack base)
 }.
-Structure type (S : Type) := Pack { acto : Type -> Type ; class : class_of S acto }.
-Definition baseType (S : Type) (M : type S) : stateMonad S :=
+Structure type (S : UU0) := Pack { acto : UU0 -> UU0 ; class : class_of S acto }.
+Definition stateMonadType (S : UU0) (M : type S) : stateMonad S :=
   MonadState.Pack (base (class M)).
 Module Exports.
 Notation loopContStateMonad := type.
-Definition Foreach (S : Type) (M : type S) : nat -> nat -> (nat -> acto M unit) -> acto M unit :=
+Definition Foreach (S : UU0) (M : type S) : nat -> nat -> (nat -> acto M unit) -> acto M unit :=
   let: Pack _ (Class _ _ (Mixin x _ _)) := M in x.
-Coercion baseType : loopContStateMonad >-> stateMonad.
-Canonical baseType.
-Definition cont_of_loop (S : Type) (M : loopContStateMonad S) : contMonad :=
+Coercion stateMonadType : loopContStateMonad >-> stateMonad.
+Canonical stateMonadType.
+Definition cont_of_loop (S : UU0) (M : loopContStateMonad S) : contMonad :=
   MonadContinuation.Pack (MonadContinuation.Class (mixin_cont (class M))).
 Canonical cont_of_loop.
 End Exports.
@@ -984,63 +986,63 @@ End MonadContStateLoop.
 Export MonadContStateLoop.Exports.
 
 Module MonadRun.
-Record mixin_of (S : Type) (M : monad) := Mixin {
-  run : forall A : Type, M A -> S -> A * S ;
-  _ : forall (A : Type) (a : A) s, run (Ret a) s = (a, s) ;
-  _ : forall (A B : Type) (m : M A) (f : A -> M B) s,
+Record mixin_of (S : UU0) (M : monad) := Mixin {
+  run : forall A : UU0, M A -> S -> A * S ;
+  _ : forall (A : UU0) (a : A) s, run (Ret a) s = (a, s) ;
+  _ : forall (A B : UU0) (m : M A) (f : A -> M B) s,
       run (m >>= f) s =
       let: (a', s') := run m s in run (f a') s' }.
-Record class_of (S : Type) (M : Type -> Type) := Class {
+Record class_of (S : UU0) (M : UU0 -> UU0) := Class {
   base : Monad.class_of M ;
   mixin : mixin_of S (Monad.Pack base) }.
-Structure type (S : Type) := Pack { acto : Type -> Type ; class : class_of S acto }.
-Definition baseType (S : Type) (M : type S) := Monad.Pack (base (class M)).
+Structure type (S : UU0) := Pack { acto : UU0 -> UU0 ; class : class_of S acto }.
+Definition monadType (S : UU0) (M : type S) := Monad.Pack (base (class M)).
 Module Exports.
-Definition Run (S : Type) (M : type S) : forall A : Type, acto M A -> S -> A * S :=
+Definition Run (S : UU0) (M : type S) : forall A : UU0, acto M A -> S -> A * S :=
   let: Pack _ (Class _ (Mixin x _ _)) := M in x.
 Arguments Run {S M A} : simpl never.
 Notation runMonad := type.
-Coercion baseType : runMonad >-> monad.
-Canonical baseType.
+Coercion monadType : runMonad >-> monad.
+Canonical monadType.
 End Exports.
 End MonadRun.
 Export MonadRun.Exports.
 
 Section run_lemmas.
-Variables (S : Type) (M : runMonad S).
-Lemma runret : forall (A : Type) (a : A) s, Run (Ret a : M _) s = (a, s).
+Variables (S : UU0) (M : runMonad S).
+Lemma runret : forall (A : UU0) (a : A) s, Run (Ret a : M _) s = (a, s).
 Proof. by case: M => m [? []]. Qed.
-Lemma runbind : forall (A B : Type) (ma : M A) (f : A -> M B) s,
+Lemma runbind : forall (A B : UU0) (ma : M A) (f : A -> M B) s,
   Run (ma >>= f) s = let: (a', s') := Run ma s in Run (f a') s'.
 Proof. by case: M => m [? []]. Qed.
 End run_lemmas.
 
 Module MonadStateRun.
-Record mixin_of (S : Type) (M : runMonad S) (get : M S) (put : S -> M unit) : Type
+Record mixin_of (S : UU0) (M : runMonad S) (get : M S) (put : S -> M unit) : UU0
   := Mixin {
   _ : forall s, Run get s = (s, s) ;
   _ : forall s s', Run (put s') s = (tt, s') }.
-Record class_of (S : Type) (M : Type -> Type) := Class {
+Record class_of (S : UU0) (M : UU0 -> UU0) := Class {
   base : MonadState.class_of S M ;
   mixin_run : MonadRun.mixin_of S (Monad.Pack (MonadState.base base)) ;
   mixin_stateRun : @mixin_of S (MonadRun.Pack (MonadRun.Class mixin_run))
     (@Get _ (MonadState.Pack base)) (@Put _ (MonadState.Pack base)) ;
 }.
-Structure type (S : Type) := Pack { acto : Type -> Type ; class : class_of S acto }.
-Definition baseType (S : Type) (M : type S) := MonadState.Pack (base (class M)).
+Structure type (S : UU0) := Pack { acto : UU0 -> UU0 ; class : class_of S acto }.
+Definition stateMonadType (S : UU0) (M : type S) := MonadState.Pack (base (class M)).
+Definition runMonadType (S : UU0) (M : type S) :=
+  MonadRun.Pack (MonadRun.Class (mixin_run (class M))).
 Module Exports.
 Notation stateRunMonad := type.
-Coercion baseType : stateRunMonad >-> stateMonad.
-Canonical baseType.
-Definition state_of_run (S : Type) (M : stateRunMonad S) : runMonad S :=
-  MonadRun.Pack (MonadRun.Class (mixin_run (class M))).
-Canonical state_of_run.
+Coercion stateMonadType : stateRunMonad >-> stateMonad.
+Canonical stateMonadType.
+Canonical runMonadType.
 End Exports.
 End MonadStateRun.
 Export MonadStateRun.Exports.
 
 Section staterun_lemmas.
-Variables (S : Type) (M : stateRunMonad S).
+Variables (S : UU0) (M : stateRunMonad S).
 Lemma runget : forall s, Run (Get : M _) s = (s, s).
 Proof. by case: M => m [? ? []]. Qed.
 Lemma runput : forall s s', Run (Put s' : M _) s = (tt, s').
@@ -1053,26 +1055,26 @@ Record mixin_of (M : nondetMonad) := Mixin {
   _ : BindLaws.right_zero (@Bind M) (@Fail _) ;
   (* composition distributes rightwards over choice *)
   _ : BindLaws.right_distributive (@Bind M) [~p] }.
-Record class_of (S : Type) (M : Type -> Type) := Class {
+Record class_of (S : UU0) (M : UU0 -> UU0) := Class {
   base : MonadNondet.class_of M ;
-  mixin_state : MonadState.mixin_of S (MonadFail.baseType (MonadNondet.baseType (MonadNondet.Pack base))) ;
+  mixin_state : MonadState.mixin_of S (MonadFail.monadType (MonadNondet.failMonadType (MonadNondet.Pack base))) ;
   mixin_nondetState : mixin_of (MonadNondet.Pack base)
 }.
-Structure type (S : Type) := Pack { acto : Type -> Type ; class : class_of S acto }.
-Definition baseType (S : Type) (M : type S) := MonadNondet.Pack (base (class M)).
+Structure type (S : UU0) := Pack { acto : UU0 -> UU0 ; class : class_of S acto }.
+Definition nondetMonadType (S : UU0) (M : type S) := MonadNondet.Pack (base (class M)).
+Definition stateMonadType (S : UU0) (M : type S) :=
+  MonadState.Pack (MonadState.Class (mixin_state (class M))).
 Module Exports.
 Notation nondetStateMonad := type.
-Coercion baseType : nondetStateMonad >-> nondetMonad.
-Canonical baseType.
-Definition state_of_nondetstate (S : Type) (M : nondetStateMonad S) :=
-  MonadState.Pack (MonadState.Class (mixin_state (class M))).
-Canonical state_of_nondetstate.
+Coercion nondetMonadType : nondetStateMonad >-> nondetMonad.
+Canonical nondetMonadType.
+Canonical stateMonadType.
 End Exports.
 End MonadNondetState.
 Export MonadNondetState.Exports.
 
 Section nondetstate_lemmas.
-Variables (S : Type) (M : nondetStateMonad S).
+Variables (S : UU0) (M : nondetStateMonad S).
 Lemma bindmfail : BindLaws.right_zero (@Bind M) (@Fail _).
 Proof. by case: M => m [? ? [? ?]]. Qed.
 Lemma alt_bindDr : BindLaws.right_distributive (@Bind M) (@Alt _).
@@ -1082,29 +1084,29 @@ End nondetstate_lemmas.
 (* NB: this is experimental, may disappear, see rather foreah in
 monad_transformer because it is more general *)
 Module MonadStateLoop.
-Record mixin_of (S : Type) (M : stateMonad S) := Mixin {
+Record mixin_of (S : UU0) (M : stateMonad S) := Mixin {
    foreach : nat -> nat -> (nat -> M unit) -> M unit ;
   _ : forall m body, foreach m m body = Ret tt ;
   _ : forall m n body, foreach (m.+1 + n) m body =
      (body (m + n)) >> foreach (m + n) m body :> M unit }.
-Record class_of (S : Type) (M : Type -> Type) := Class {
+Record class_of (S : UU0) (M : UU0 -> UU0) := Class {
   base : MonadState.class_of S M ;
   mixin : mixin_of (MonadState.Pack base)}.
-Structure type (S : Type) := Pack { acto : Type -> Type ; class : class_of S acto }.
-Definition baseType (S : Type) (M : type S) : stateMonad S :=
+Structure type (S : UU0) := Pack { acto : UU0 -> UU0 ; class : class_of S acto }.
+Definition stateMonadType (S : UU0) (M : type S) : stateMonad S :=
   MonadState.Pack (base (class M)).
 Module Exports.
 Notation loopStateMonad := type.
-Definition Foreach (S : Type) (M : loopStateMonad S) : nat -> nat -> (nat -> acto M unit) -> acto M unit :=
+Definition Foreach (S : UU0) (M : loopStateMonad S) : nat -> nat -> (nat -> acto M unit) -> acto M unit :=
   let: Pack _ (Class _ (Mixin x _ _)) := M in x.
-Coercion baseType : loopStateMonad >-> stateMonad.
-Canonical baseType.
+Coercion stateMonadType : loopStateMonad >-> stateMonad.
+Canonical stateMonadType.
 End Exports.
 End MonadStateLoop.
 Export MonadStateLoop.Exports.
 
 Section stateloop_lemmas.
-Variables (S : Type) (M : loopStateMonad S).
+Variables (S : UU0) (M : loopStateMonad S).
 Lemma loop0 m (body : nat -> M unit) :
   Foreach m m body = Ret tt :> M _.
 Proof. by case: M body => ? [? []]. Qed.
@@ -1115,115 +1117,114 @@ Proof. by case: M body => ? [? []]. Qed.
 End stateloop_lemmas.
 
 Module MonadArray.
-Record mixin_of (S : Type) (I : eqType) (M : monad) := Mixin {
+Record mixin_of (S : UU0) (I : eqType) (M : monad) := Mixin {
   get : I -> M S ;
   put : I -> S -> M unit ;
   _ : forall i s s', put i s >> put i s' = put i s' ;
-  _ : forall i s (A : Type) (k : S -> M A), put i s >> get i >>= k =
+  _ : forall i s (A : UU0) (k : S -> M A), put i s >> get i >>= k =
       put i s >> k s ;
   _ : forall i, get i >>= put i = skip ;
-  _ : forall i (A : Type) (k : S -> S -> M A),
+  _ : forall i (A : UU0) (k : S -> S -> M A),
     get i >>= (fun s => get i >>= k s) = get i >>= fun s => k s s ;
-  _ : forall i j (A : Type) (k : S -> S -> M A),
+  _ : forall i j (A : UU0) (k : S -> S -> M A),
     get i >>= (fun u => get j >>= (fun v => k u v)) =
     get j >>= (fun v => get i >>= (fun u => k u v)) ;
   _ : forall i j u v, (i != j) \/ (u = v) ->
     put i u >> put j v = put j v >> put i u ;
-  _ : forall i j u (A : Type) (k : S -> M A), i != j ->
+  _ : forall i j u (A : UU0) (k : S -> M A), i != j ->
     put i u >> get j >>= k =
     get j >>= (fun v => put i u >> k v) }.
-Record class_of (S : Type) (I : eqType) (m : Type -> Type) := Class {
+Record class_of (S : UU0) (I : eqType) (m : UU0 -> UU0) := Class {
   base : Monad.class_of m ; mixin : mixin_of S I (Monad.Pack base) }.
-Structure type (S : Type) (I : eqType) :=
-  Pack { acto : Type -> Type ; class : class_of S I acto }.
-(* inheritance *)
-Definition baseType (S : Type) I (M : type S I) := Monad.Pack (base (class M)).
+Structure type (S : UU0) (I : eqType) :=
+  Pack { acto : UU0 -> UU0 ; class : class_of S I acto }.
+Definition monadType (S : UU0) I (M : type S I) := Monad.Pack (base (class M)).
 Module Exports.
-Definition aGet (S : Type) I (M : type S I) : I -> acto M S :=
+Definition aGet (S : UU0) I (M : type S I) : I -> acto M S :=
   let: Pack _ (Class _ (Mixin x _ _ _ _ _ _ _ _)) := M in x.
 Arguments aGet {S I M} : simpl never.
-Definition aPut (S : Type) I (M : type S I) : I -> S -> acto M unit :=
+Definition aPut (S : UU0) I (M : type S I) : I -> S -> acto M unit :=
   let: Pack _ (Class _ (Mixin _ x _ _ _ _ _ _ _ )) := M in x.
 Arguments aPut {S I M} : simpl never.
 Notation arrayMonad := type.
-Coercion baseType : arrayMonad >-> monad.
-Canonical baseType.
+Coercion monadType : arrayMonad >-> monad.
+Canonical monadType.
 End Exports.
 End MonadArray.
 Export MonadArray.Exports.
 
 Section monadarray_lemmas.
-Variables (S : Type) (I : eqType) (M : arrayMonad S I).
+Variables (S : UU0) (I : eqType) (M : arrayMonad S I).
 Lemma aputput i s s' : aPut i s >> aPut i s' = aPut i s' :> M _.
 Proof. by case: M => ? [? []]. Qed.
-Lemma aputget i s (A : Type) (k : S -> M A) : aPut i s >> aGet i >>= k =
+Lemma aputget i s (A : UU0) (k : S -> M A) : aPut i s >> aGet i >>= k =
     aPut i s >> k s :> M _.
 Proof. by case: M k => ? [? []]. Qed.
 Lemma agetputskip i : aGet i >>= aPut i = skip :> M _.
 Proof. by case: M => ? [? []]. Qed.
-Lemma agetget i (A : Type) (k : S -> S -> M A) :
+Lemma agetget i (A : UU0) (k : S -> S -> M A) :
   aGet i >>= (fun s => aGet i >>= k s) = aGet i >>= fun s => k s s.
 Proof. by case: M k => ? [? []]. Qed.
-Lemma agetC i j (A : Type) (k : S -> S -> M A) :
+Lemma agetC i j (A : UU0) (k : S -> S -> M A) :
   aGet i >>= (fun u => aGet j >>= (fun v => k u v)) =
   aGet j >>= (fun v => aGet i >>= (fun u => k u v)).
 Proof. by case: M k => ? [? []]. Qed.
 Lemma aputC i j u v : i != j \/ u = v ->
   aPut i u >> aPut j v = aPut j v >> aPut i u :> M _.
 Proof. by case: M i j u v => ? [? []]. Qed.
-Lemma aputgetC i j u (A : Type) (k : S -> M A) : i != j ->
+Lemma aputgetC i j u (A : UU0) (k : S -> M A) : i != j ->
   aPut i u >> aGet j >>= (fun v => k v) =
   aGet j >>= (fun v => aPut i u >> k v).
 Proof. by case: M i j u A k => ? [? []]. Qed.
 End monadarray_lemmas.
 
 Module MonadTrace.
-Record mixin_of (T : Type) (M : Type -> Type) := Mixin {
+Record mixin_of (T : UU0) (M : UU0 -> UU0) := Mixin {
   mark : T -> M unit }.
-Record class_of (T : Type) (M : Type -> Type) := Class {
+Record class_of (T : UU0) (M : UU0 -> UU0) := Class {
   base : Monad.class_of M ; mixin : mixin_of T M }.
-Structure type (T : Type) := Pack { acto : Type -> Type; class : class_of T acto }.
-Definition baseType (T : Type) (M : type T) := Monad.Pack (base (class M)).
+Structure type (T : UU0) := Pack { acto : UU0 -> UU0; class : class_of T acto }.
+Definition monadType (T : UU0) (M : type T) := Monad.Pack (base (class M)).
 Module Exports.
-Definition Mark (T : Type) (M : type T) : T -> acto M unit :=
+Definition Mark (T : UU0) (M : type T) : T -> acto M unit :=
   let: Pack _ (Class _ (Mixin x)) := M in x.
 Arguments Mark {T M} : simpl never.
 Notation traceMonad := type.
-Coercion baseType : traceMonad >-> monad.
-Canonical baseType.
+Coercion monadType : traceMonad >-> monad.
+Canonical monadType.
 End Exports.
 End MonadTrace.
 Export MonadTrace.Exports.
 
 Module MonadTraceRun.
-Record mixin_of (T : Type) (M : runMonad (seq T)) (mark : T -> M unit) :=
+Record mixin_of (T : UU0) (M : runMonad (seq T)) (mark : T -> M unit) :=
   Mixin {_ : forall t l, Run (mark t) l = (tt, rcons l t)}.
-Record class_of (T : Type) (M : Type -> Type) := Class {
+Record class_of (T : UU0) (M : UU0 -> UU0) := Class {
   base : MonadTrace.class_of T M ;
   mixin_run : MonadRun.mixin_of _ (Monad.Pack (MonadTrace.base base)) ;
   mixin_traceRUn : @mixin_of _ (MonadRun.Pack (MonadRun.Class mixin_run))
     (@Mark _ (MonadTrace.Pack base)) }.
-Structure type (T : Type) := Pack { acto : Type -> Type ; class : class_of T acto }.
-Definition baseType (T : Type) (M : type T) := MonadTrace.Pack (base (class M)).
+Structure type (T : UU0) := Pack { acto : UU0 -> UU0 ; class : class_of T acto }.
+Definition traceMonadType (T : UU0) (M : type T) := MonadTrace.Pack (base (class M)).
+Definition runMonadType (T : UU0) (M : type T) :=
+  MonadRun.Pack (MonadRun.Class (mixin_run (class M))).
 Module Exports.
 Notation traceRunMonad := type.
-Coercion baseType (T : Type) (M : traceRunMonad T) : traceMonad T := baseType M.
-Canonical baseType.
-Definition trace_of_run (T : Type) (M : traceRunMonad T) : runMonad (seq T) :=
-  MonadRun.Pack (MonadRun.Class (mixin_run (class M))).
-Canonical trace_of_run.
+Coercion traceMonadType : traceRunMonad >-> traceMonad.
+Canonical traceMonadType.
+Canonical runMonadType.
 End Exports.
 End MonadTraceRun.
 Export MonadTraceRun.Exports.
 
 Section tracerun_lemmas.
-Variables (T : Type) (M : traceRunMonad T).
+Variables (T : UU0) (M : traceRunMonad T).
 Lemma runtmark : forall s t, Run (Mark t : M _) s = (tt, rcons s t).
 Proof. by case: M => m [? ? []]. Qed.
 End tracerun_lemmas.
 
 Module MonadStateTrace.
-Record mixin_of (S T : Type) (M : monad) := Mixin {
+Record mixin_of (S T : UU0) (M : monad) := Mixin {
   st_get : M S ;
   st_put : S -> M unit ;
   st_mark : T -> M unit ;
@@ -1236,13 +1237,13 @@ Record mixin_of (S T : Type) (M : monad) := Mixin {
   _ : forall e (k : _ -> M S), st_get >>= (fun v => st_mark e >> k v) =
                          st_mark e >> st_get >>= k
 }.
-Record class_of (S T : Type) (M : Type -> Type) := Class {
+Record class_of (S T : UU0) (M : UU0 -> UU0) := Class {
   base : Monad.class_of M ;
   mixin : mixin_of S T (Monad.Pack base) }.
-Structure type (S T : Type) := Pack { acto : Type -> Type ; class : class_of S T acto }.
-Definition baseType (S T : Type) (M : type S T) := Monad.Pack (base (class M)).
+Structure type (S T : UU0) := Pack { acto : UU0 -> UU0 ; class : class_of S T acto }.
+Definition monadType (S T : UU0) (M : type S T) := Monad.Pack (base (class M)).
 Module Exports.
-Definition stGet (S T : Type) (M : type S T) : acto M S :=
+Definition stGet (S T : UU0) (M : type S T) : acto M S :=
   let: Pack _ (Class _ (Mixin x _ _ _ _ _ _ _ _)) := M in x.
 Arguments stGet {S T M} : simpl never.
 Definition stPut S T (M : type S T) : S -> acto M unit :=
@@ -1252,14 +1253,14 @@ Definition stMark S T (M : type S T) : T -> acto M unit :=
   let: Pack _ (Class _ (Mixin _ _ x _ _ _ _ _ _)) := M in x.
 Arguments stMark {S T M} : simpl never.
 Notation stateTraceMonad := type.
-Coercion baseType : stateTraceMonad >-> monad.
-Canonical baseType.
+Coercion monadType : stateTraceMonad >-> monad.
+Canonical monadType.
 End Exports.
 End MonadStateTrace.
 Export MonadStateTrace.Exports.
 
 Section statetrace_lemmas.
-Variables (S T : Type) (M : stateTraceMonad S T).
+Variables (S T : UU0) (M : stateTraceMonad S T).
 Lemma st_putput s s' : stPut s >> stPut s' = stPut s' :> M _.
 Proof. by case: M => m [? []]. Qed.
 Lemma st_putget s : stPut s >> stGet = stPut s >> Ret s :> M _.
@@ -1277,13 +1278,13 @@ Proof. by case: M k => m [? []]. Qed.
 End statetrace_lemmas.
 
 Module MonadStateTraceRun.
-Record mixin_of (S T : Type) (M : runMonad (S * seq T)%type) (st_get : M S)
+Record mixin_of (S T : UU0) (M : runMonad (S * seq T)%type) (st_get : M S)
   (st_put : S -> M unit) (st_mark : T -> M unit) := Mixin {
   _ : forall s l, Run st_get (s, l) = (s, (s, l)) ;
   _ : forall s l s', Run (st_put s') (s, l) = (tt, (s', l)) ;
   _ : forall t s l, Run (st_mark t) (s, l) = (tt, (s, rcons l t))
 }.
-Record class_of (S T : Type) (M : Type -> Type) := Class {
+Record class_of (S T : UU0) (M : UU0 -> UU0) := Class {
   base : MonadStateTrace.class_of S T M ;
   mixin_run : MonadRun.mixin_of (S * seq T)%type
     (Monad.Pack (MonadStateTrace.base base)) ;
@@ -1292,25 +1293,24 @@ Record class_of (S T : Type) (M : Type -> Type) := Class {
     (@stPut _ _ (MonadStateTrace.Pack base))
     (@stMark _ _ (MonadStateTrace.Pack base)) ;
 }.
-Structure type (S T : Type) := Pack {
-  acto : Type -> Type ; class : class_of S T acto }.
-Definition baseType (S T : Type) (M : type T S) :=
+Structure type (S T : UU0) := Pack {
+  acto : UU0 -> UU0 ; class : class_of S T acto }.
+Definition stateTraceMonadType (S T : UU0) (M : type T S) :=
   MonadStateTrace.Pack (base (class M)).
+Definition runMonadType (S T : UU0) (M : type S T) :=
+  MonadRun.Pack (MonadRun.Class (mixin_run (class M))).
 Module Exports.
 Notation stateTraceRunMonad := type.
-Coercion baseType (S T : Type) (M : stateTraceRunMonad S T) : stateTraceMonad S T
-  := baseType M.
-Canonical baseType.
-Definition statetrace_of_run (S T : Type) (M : stateTraceRunMonad S T)
-    : runMonad (S * seq T)%type :=
-  MonadRun.Pack (MonadRun.Class (mixin_run (class M))).
-Canonical statetrace_of_run.
+Coercion stateTraceMonadType (S T : UU0) (M : stateTraceRunMonad S T) : stateTraceMonad S T
+  := stateTraceMonadType M.
+Canonical stateTraceMonadType.
+Canonical runMonadType.
 End Exports.
 End MonadStateTraceRun.
 Export MonadStateTraceRun.Exports.
 
 Section statetracerun_lemmas.
-Variables (S T : Type) (M : stateTraceRunMonad S T).
+Variables (S T : UU0) (M : stateTraceRunMonad S T).
 Lemma runstget : forall s, Run (stGet : M _) s = (s.1, s).
 Proof. by case: M => m [? ? [? ? ?]] []. Qed.
 Lemma runstput : forall s s', Run (stPut s' : M _) s = (tt, (s', s.2)).
@@ -1339,15 +1339,15 @@ Record mixin_of (M : monad) := Mixin {
 Record class_of (M : Type -> Type) := Class {
   base : Monad.class_of M ; mixin : mixin_of (Monad.Pack base) }.
 Structure type := Pack { acto : Type -> Type ; class : class_of acto }.
-Definition baseType (M : type) := Monad.Pack (MonadProb.base (class M)).
+Definition monadType (M : type) := Monad.Pack (MonadProb.base (class M)).
 Module Exports.
 Definition Choice (M : type) : forall p T, acto M T -> acto M T -> acto M T :=
   let: Pack _ (Class _ (Mixin x _ _ _ _ _ _ )) := M in x.
 Arguments Choice {M} : simpl never.
 Notation "a <| p |> b" := (Choice p _ a b) : proba_monad_scope.
 Notation probMonad := type.
-Coercion baseType : probMonad >-> monad.
-Canonical baseType.
+Coercion monadType : probMonad >-> monad.
+Canonical monadType.
 End Exports.
 End MonadProb.
 Export MonadProb.Exports.
@@ -1384,11 +1384,11 @@ Record class_of (m : Type -> Type) := Class {
   base : MonadProb.class_of m ;
   mixin : mixin_of (MonadProb.Pack base) }.
 Structure type := Pack { acto : Type -> Type; class : class_of acto }.
-Definition baseType (M : type) := MonadProb.Pack (base (class M)).
+Definition probMonadType (M : type) := MonadProb.Pack (base (class M)).
 Module Exports.
 Notation probDrMonad := type.
-Coercion baseType : probDrMonad >-> probMonad.
-Canonical baseType.
+Coercion probMonadType : probDrMonad >-> probMonad.
+Canonical probMonadType.
 End Exports.
 End MonadProbDr.
 Export MonadProbDr.Exports.
@@ -1403,17 +1403,17 @@ Record class_of (M : Type -> Type) := Class {
   mixin_altProb : @mixin_of (MonadAltCI.Pack base)
                             (@MonadProb.choice _ mixin_prob) }.
 Structure type := Pack { acto : Type -> Type ; class : class_of acto }.
-Definition baseType (M : type) : altCIMonad := MonadAltCI.Pack (base (class M)).
-Definition altType (M : type) : altMonad :=
+Definition altCIMonadType (M : type) := MonadAltCI.Pack (base (class M)).
+Definition altMonadType (M : type) :=
   MonadAlt.Pack (MonadAltCI.base (base (class M))).
+Definition probMonadType (M : type) :=
+  MonadProb.Pack (MonadProb.Class (mixin_prob (class M))).
 Module Exports.
 Notation altProbMonad := type.
-Coercion baseType : altProbMonad >-> altCIMonad.
-Canonical baseType.
-Definition altprob_is_prob M :=
-  MonadProb.Pack (MonadProb.Class (mixin_prob (class M))).
-Canonical altprob_is_prob.
-Canonical altType.
+Coercion altCIMonadType : altProbMonad >-> altCIMonad.
+Canonical altCIMonadType.
+Canonical probMonadType.
+Canonical altMonadType.
 End Exports.
 End MonadAltProb.
 Export MonadAltProb.Exports.
@@ -1437,14 +1437,14 @@ Record class_of (M : Type -> Type) := Class {
     (@Choice (MonadProb.Pack (MonadProb.Class mixin_prob)))
 }.
 Structure type := Pack { acto : Type -> Type ; class : class_of acto }.
-Definition baseType (M : type) : exceptMonad := MonadExcept.Pack (base (class M)).
+Definition exceptMonadType (M : type) := MonadExcept.Pack (base (class M)).
+Definition probMonadType M :=
+  MonadProb.Pack (MonadProb.Class (mixin_prob (class M))).
 Module Exports.
 Notation exceptProbMonad := type.
-Coercion baseType : exceptProbMonad >-> exceptMonad.
-Canonical baseType.
-Definition prob_of_exceptprob M :=
-  MonadProb.Pack (MonadProb.Class (mixin_prob (class M))).
-Canonical prob_of_exceptprob.
+Coercion exceptMonadType : exceptProbMonad >-> exceptMonad.
+Canonical exceptMonadType.
+Canonical probMonadType.
 End Exports.
 End MonadExceptProb.
 Export MonadExceptProb.Exports.
@@ -1456,14 +1456,14 @@ Record class_of S (M : Type -> Type) := Class {
   base : Monad.class_of M ;
   mixin : mixin_of S M }.
 Structure type S := Pack { acto : Type -> Type ; class : class_of S acto }.
-Definition baseType S (M : type S) := Monad.Pack (base (class M)).
+Definition monadType S (M : type S) := Monad.Pack (base (class M)).
 Module Exports.
 Definition Fresh S (M : type S) : acto M S :=
   let: Pack _ (Class _ (Mixin x)) := M in x.
 Arguments Fresh {S M} : simpl never.
 Notation freshMonad := type.
-Coercion baseType : freshMonad >-> monad.
-Canonical baseType.
+Coercion monadType : freshMonad >-> monad.
+Canonical monadType.
 End Exports.
 End MonadFresh.
 Export MonadFresh.Exports.
@@ -1491,7 +1491,11 @@ Record class_of (S : eqType) (M : Type -> Type) := Class {
   ext : @mixin_of S (MonadFail.Pack base) (MonadFresh.fresh mixin)
 }.
 Structure type S : Type := Pack { acto : Type -> Type ; class : class_of S acto }.
-Definition baseType S (M : type S) := MonadFail.Pack (base (class M)).
+Definition failMonadType S (M : type S) := MonadFail.Pack (base (class M)).
+Definition freshMonadType S (M : type S) :=
+  @MonadFresh.Pack _ (MonadFailFresh.acto M)
+  (MonadFresh.Class (Monad.class (MonadFail.monadType (failMonadType M)))
+                    (mixin (class M))).
 Module Exports.
 Definition Symbols S (M : type S) :=
   let: Pack _ (Class _ _ (Mixin x _ _ _)) := M return nat -> acto M (seq S) in x.
@@ -1500,13 +1504,9 @@ Definition Distinct S (M : type S) :=
   let: Pack _ (Class _ _ (Mixin _ x _ _)) := M return segment_closed.t S in x.
 Arguments Distinct {S} M : simpl never.
 Notation failFreshMonad := type.
-Coercion baseType : failFreshMonad >-> failMonad.
-Canonical baseType.
-Definition fresh_of_failfresh S (M : failFreshMonad S) : freshMonad S :=
-  @MonadFresh.Pack _ (MonadFailFresh.acto M)
-  (MonadFresh.Class (Monad.class (MonadFail.baseType (baseType M)))
-                    (mixin (class M))).
-Canonical fresh_of_failfresh.
+Coercion failMonadType : failFreshMonad >-> failMonad.
+Canonical failMonadType.
+Canonical freshMonadType.
 End Exports.
 End MonadFailFresh.
 Export MonadFailFresh.Exports.
