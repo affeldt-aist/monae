@@ -23,22 +23,22 @@ Local Open Scope monae_scope.
 
 Unset Universe Checking.
 
-Definition k_type (m : Type -> Type) (A : Type) : Type :=
-  forall (B : Type), (A -> m B) -> m B.
+Definition k_type (m : UU0 -> UU0) (A : UU0) :=
+  forall (B : UU0), (A -> m B) -> m B.
 
 Section codensity.
 Variable (M : monad).
 
-Definition K_type (A : Type) := k_type M A.
+Definition K_type (A : UU0) : UU0 := k_type M A.
 
-Definition K_ret (A : Type) (a : A) : K_type A :=
-  fun (B : Type) (k : A -> M B) => k a.
+Definition K_ret (A : UU0) (a : A) : K_type A :=
+  fun (B : UU0) (k : A -> M B) => k a.
 
-Definition K_bind (A B : Type) (m : K_type A) f : K_type B :=
-  fun (C : Type) (k : B -> M C) => m C (fun a : A => (f a) C k).
+Definition K_bind (A B : UU0) (m : K_type A) f : K_type B :=
+  fun (C : UU0) (k : B -> M C) => m C (fun a : A => (f a) C k).
 
-Definition K_fmap (A B : Type) (f : A -> B) (m : K_type A) : K_type B :=
-  fun (C : Type) (k : B -> M C) => m C (fun a : A => k (f a)).
+Definition K_fmap (A B : UU0) (f : A -> B) (m : K_type A) : K_type B :=
+  fun (C : UU0) (k : B -> M C) => m C (fun a : A => k (f a)).
 
 Lemma K_fmap_id : FunctorLaws.id K_fmap.
 Proof.
@@ -83,8 +83,8 @@ move=> A B C m f g; rewrite /K_bind.
 by apply FunctionalExtensionality.functional_extensionality_dep.
 Qed.
 
-Definition K_lift (A : Type) (m : M A) : eK_MonadM A :=
-  fun (B : Type) (k : A -> M B) => @Bind M A B m k.
+Definition K_lift (A : UU0) (m : M A) : eK_MonadM A :=
+  fun (B : UU0) (k : A -> M B) => @Bind M A B m k.
 
 Program Definition K_MonadM : monadM M eK_MonadM :=
   locked (monadM.Pack (@monadM.Mixin _ _ K_lift _ _)).
@@ -110,7 +110,7 @@ Section kappa.
 Variables (M : monad) (E : functor) (op : E.-operation M).
 
 Definition kappa' : E ~~> K_MonadT M :=
-  fun (A : Type) (s : E A) (B : Type) (k : A -> M B) =>
+  fun (A : UU0) (s : E A) (B : UU0) (k : A -> M B) =>
     op B ((E # k) s).
 
 Lemma natural_kappa' : naturality _ _ kappa'.
@@ -123,21 +123,21 @@ Qed.
 
 Definition kappa := Natural.Pack (Natural.Mixin natural_kappa').
 
-Lemma kappaE X : kappa X = (fun (s : E X) (B : Type) (k : X -> M B) => op B ((E # k) s)).
+Lemma kappaE X : kappa X = (fun (s : E X) (B : UU0) (k : X -> M B) => op B ((E # k) s)).
 Proof. by []. Qed.
 
 End kappa.
 
-Definition naturality_k_type (M : functor) (A : Type) (m : k_type M A) :=
+Definition naturality_k_type (M : functor) (A : UU0) (m : k_type M A) :=
   naturality (exponential_F A \O M) M m.
 
 Section from.
 Variables (M : monad).
 
 Definition from_component : K_MonadT M ~~> M :=
-  fun (A : Type) (c : K_MonadT M A) => c A Ret.
+  fun (A : UU0) (c : K_MonadT M A) => c A Ret.
 
-Hypothesis naturality_k_type : forall (A : Type) (m : k_type M A),
+Hypothesis naturality_k_type : forall (A : UU0) (m : k_type M A),
   naturality_k_type m.
 
 Lemma natural_from_component : naturality (K_MonadT M) M from_component.
@@ -168,7 +168,7 @@ Variables (E : functor) (M : monad) (op : E.-operation M).
 
 Definition K_op : E.-aoperation (K_MonadT M) := psi (kappa op).
 
-Lemma K_opE (A : Type) : op A =
+Lemma K_opE (A : UU0) : op A =
   (@from_component M A) \o (@K_op A) \o ((E ## (monadM_nt (Lift K_MonadT M))) A).
 Proof.
 rewrite boolp.funeqE => m /=.
@@ -187,7 +187,7 @@ End k_op.
 
 Section theorem27.
 Variables (E : functor) (M : monad) (op : E.-operation M) (t : FMT).
-Hypothesis naturality_type : forall (A : Type) (m : k_type M A),
+Hypothesis naturality_type : forall (A : UU0) (m : k_type M A),
   naturality_k_type m.
 
 Let op1 : t (K_MonadT M) ~> t M := Hmap t (from naturality_type).
@@ -226,7 +226,7 @@ End theorem27.
 Section proposition_28.
 
 Variables (E : functor) (M : monad) (aop : E.-aoperation M) (t : FMT).
-Hypothesis naturality_k_type : forall (A : Type) (m : k_type M A),
+Hypothesis naturality_k_type : forall (A : UU0) (m : k_type M A),
   naturality_k_type m.
 
 Lemma proposition_28 :
@@ -259,16 +259,16 @@ End proposition_28.
 
 Section example_29_stateT.
 Variables (E : functor) (M : monad) (op : E.-operation M).
-Hypothesis naturality_k_type : forall (A : Type) (m : k_type M A),
+Hypothesis naturality_k_type : forall (A : UU0) (m : k_type M A),
   naturality_k_type m.
-Variable S : Type.
+Variable S : UU0.
 
-Let tau (X : Type) s (f : S -> M (X * S)%type) := f s.
+Let tau (X : UU0) s (f : S -> M (X * S)%type) := f s.
 
 Let op' X : (E \O stateFMT S M) X -> stateFMT S M X :=
   fun t s => op (X * S)%type ((E # tau s) t).
 
-Lemma hlifting_stateT (X : Type) :
+Lemma hlifting_stateT (X : UU0) :
   (hlifting op (stateFMT S) naturality_k_type) X = @op' _.
 Proof.
 rewrite boolp.funeqE => emx.
@@ -290,7 +290,7 @@ rewrite -(compE _ _ emx) -functor_o.
 rewrite -[in RHS](compE _ _ emx) -functor_o.
 rewrite bindA.
 set ret_id := (X in _ >>= X).
-have -> : ret_id = fun (x : MS S (eK_MonadM M) X) (C : Type) => (fun t => x s C t).
+have -> : ret_id = fun (x : MS S (eK_MonadM M) X) (C : UU0) => (fun t => x s C t).
   by rewrite boolp.funeqE.
 rewrite {1}/Bind /= /K_bind /= {1}/Actm /=.
 rewrite /Monad_of_ret_bind.Map /= /K_bind /=.
@@ -306,13 +306,13 @@ End example_29_stateT.
 
 Section example_29_errorT.
 Variables (E : functor) (M : monad) (op : E.-operation M).
-Hypothesis naturality_k_type : forall (A : Type) (m : k_type M A),
+Hypothesis naturality_k_type : forall (A : UU0) (m : k_type M A),
   naturality_k_type m.
-Variable Z : Type.
+Variable Z : UU0.
 
 Let op' Y : (E \O errorFMT Z M) Y -> errorFMT Z M Y := @op _.
 
-Lemma hlifting_errorT (X : Type) :
+Lemma hlifting_errorT (X : UU0) :
   (hlifting op (errorFMT Z) naturality_k_type) X = @op' X.
 Proof.
 rewrite boolp.funeqE => emx.
@@ -337,3 +337,175 @@ by rewrite -functor_o.
 Qed.
 
 End example_29_errorT.
+
+Section example_29_envT.
+Variables (E : functor) (M : monad) (op : E.-operation M).
+Hypothesis naturality_k_type : forall (A : UU0) (m : k_type M A),
+  naturality_k_type m.
+Variable Env : UU0.
+
+Let tau (X : UU0) e (f : Env -> M X) := f e.
+
+Let op' X : (E \O envFMT Env M) X -> envFMT Env M X :=
+  fun t => fun e => op X ((E # tau e) t).
+
+Lemma hlifting_envT (X : UU0) :
+  (hlifting op (envFMT Env) naturality_k_type) X = @op' _.
+Proof.
+rewrite boolp.funeqE => emx.
+rewrite /op'.
+rewrite boolp.funeqE => s.
+rewrite /hlifting.
+rewrite 2!vcompE.
+set h := Hmap _.
+rewrite (K_opE op).
+rewrite 2!functor_app_naturalE.
+rewrite /=.
+congr (from_component _).
+apply FunctionalExtensionality.functional_extensionality_dep => A.
+rewrite boolp.funeqE => f.
+rewrite {1}/psi' /=.
+rewrite /bindEnv /=.
+rewrite -liftEnvE /liftEnv /=.
+rewrite -(compE _ _ emx) -functor_o.
+rewrite -[in RHS](compE _ _ emx) -functor_o.
+rewrite /Bind /Join /= /K_bind /=.
+rewrite {1}/Actm /= /Monad_of_ret_bind.Map /=.
+rewrite /K_bind.
+rewrite /psi' /= /K_bind /= /kappa' /=.
+congr (op A).
+rewrite -(compE _ _ emx) -[in RHS](compE _ _ emx).
+by rewrite -2!functor_o.
+Qed.
+
+End example_29_envT.
+
+Section example_29_outputT.
+Variables (E : functor) (M : monad) (op : E.-operation M).
+Hypothesis naturality_k_type : forall (A : UU0) (m : k_type M A),
+  naturality_k_type m.
+Variable R : UU0.
+
+Let op' X : (E \O outputFMT R M) X -> outputFMT R M X :=
+  @op (X * seq R)%type.
+
+Lemma hlifting_outputT (X : UU0) :
+  (hlifting op (outputFMT R) naturality_k_type) X = @op' _.
+Proof.
+rewrite boolp.funeqE => emx.
+rewrite /op'.
+rewrite /hlifting.
+rewrite 2!vcompE.
+set h := Hmap _.
+rewrite (K_opE op).
+rewrite 2!functor_app_naturalE.
+rewrite /=.
+congr (from_component _).
+apply FunctionalExtensionality.functional_extensionality_dep => A.
+rewrite boolp.funeqE => f.
+rewrite {1}/psi' /=.
+rewrite /bindO /=.
+rewrite -liftOE /liftO /=.
+rewrite -(compE _ _ emx) -functor_o.
+rewrite /Bind /Join /= /K_bind /=.
+rewrite {1}/Actm /= /Monad_of_ret_bind.Map /=.
+rewrite /K_bind.
+rewrite /psi' /= /K_bind /= /kappa' /=.
+congr (op A).
+rewrite -(compE _ _ emx) -[in RHS](compE _ _ emx).
+rewrite -2!functor_o.
+congr ((E # _) _).
+rewrite boolp.funeqE => rmx /=.
+rewrite /K_ret /= /Actm /= /Monad_of_ret_bind.Map /K_bind.
+congr (Lift K_MonadT M _ _ _ _).
+by rewrite boolp.funeqE; case.
+Qed.
+
+End example_29_outputT.
+
+Section example_31. (* error monad with Z = unit *)
+Let E := monad_model.ExceptOps.Handle.func unit.
+Let M := monad_model.ModelExcept.t.
+Let handle : E.-operation M:= @monad_model.ExceptOps.handle_op unit.
+Hypothesis naturality_k_type : forall (A : UU0) (m : k_type M A),
+  naturality_k_type m.
+
+Section example_31_stateT.
+Variable S : UU0.
+Definition handle_stateT (X : UU0) (t : stateFMT S M X) (h : unit -> stateFMT S M X)
+  : stateFMT S M X := fun s => match t s with
+    | inl z(*unit*) => h z s
+    | inr x => inr x
+    end.
+
+Let handle_stateT' (X : UU0) : (E \O stateFMT S M) X -> (stateFMT S M) X :=
+  uncurry (@handle_stateT X).
+
+Lemma handle_stateTE (X : UU0) :
+  (hlifting handle (stateFMT S) naturality_k_type) X = @handle_stateT' X.
+Proof.
+rewrite hlifting_stateT.
+rewrite boolp.funeqE => -[m f].
+by rewrite boolp.funeqE.
+Qed.
+End example_31_stateT.
+
+Section example_31_errorT.
+Variable Z : UU0.
+Definition handle_errorT (X : UU0) (t : errorFMT Z M X) (h : unit -> errorFMT Z M X)
+  : errorFMT Z M X := match t with
+    | inl z(*unit*) => h z
+    | inr x => inr x
+    end.
+
+Let handle_errorT' (X : UU0) : (E \O errorFMT Z M) X -> (errorFMT Z M) X :=
+  uncurry (@handle_errorT X).
+
+Lemma handle_errorTE (X : UU0) :
+  (hlifting handle (errorFMT Z) naturality_k_type) X = @handle_errorT' X.
+Proof.
+rewrite hlifting_errorT.
+by rewrite boolp.funeqE.
+Qed.
+End example_31_errorT.
+
+Section example_31_envT.
+Variable Z : UU0.
+Definition handle_envT (X : UU0) (t : envFMT Z M X) (h : unit -> envFMT Z M X)
+  : envFMT Z M X := fun e => match t e with
+    | inl z(*unit*) => h z e
+    | inr x => inr x
+    end.
+
+Let handle_envT' (X : UU0) : (E \O envFMT Z M) X -> (envFMT Z M) X :=
+  uncurry (@handle_envT X).
+
+Lemma handle_envTE (X : UU0) :
+  (hlifting handle (envFMT Z) naturality_k_type) X = @handle_envT' X.
+Proof.
+rewrite hlifting_envT.
+rewrite boolp.funeqE => -[m f].
+by rewrite boolp.funeqE.
+Qed.
+End example_31_envT.
+
+Section example_31_outputT.
+Variable R : UU0.
+Definition handle_outputT (X : UU0) (t : outputFMT R M X) (h : unit -> outputFMT R M X)
+  : outputFMT R M X := match t with
+    | inl z(*unit*) => h z
+    | inr x => inr x
+    end.
+
+Let handle_outputT' (X : UU0) : (E \O outputFMT R M) X -> (outputFMT R M) X :=
+  uncurry (@handle_outputT X).
+
+Lemma handle_outputTE (X : UU0) :
+  (hlifting handle (outputFMT R) naturality_k_type) X = @handle_outputT' X.
+Proof.
+rewrite hlifting_outputT.
+by rewrite boolp.funeqE; case.
+Qed.
+End example_31_outputT.
+
+End example_31.
