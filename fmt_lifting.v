@@ -423,10 +423,94 @@ Qed.
 
 End example_29_outputT.
 
+Section example_30.
+Variable Env : UU0.
+Let E := monad_model.EnvironmentOps.Local.func Env.
+Let M := monad_model.ModelMonad.Environment.t Env.
+Let local : E.-operation M := monad_model.EnvironmentOps.local_op Env.
+Hypothesis naturality_k_type : forall (A : UU0) (m : k_type M A),
+  naturality_k_type m.
+
+Section example_30_FMT.
+Variable T : FMT.
+
+Definition localKT (X : UU0) (f : Env -> Env) (t : T (K_MonadT M) X) : T (K_MonadT M) X :=
+  Join (Lift T (K_MonadT M) (T (K_MonadT M) X) (fun Y k => local Y (f, k t))).
+
+Definition localT (X : UU0) (f : Env -> Env) (t : T M X) : T M X :=
+  let t' := Hmap T (monadM_nt (Lift K_MonadT M)) X t in
+  Hmap T (from naturality_k_type) X (localKT f t').
+
+End example_30_FMT.
+
+Section example_30_stateT.
+Variable S : UU0.
+
+Definition local_stateT (X : UU0) (f : Env -> Env) (t : stateFMT S M X) : stateFMT S M X := fun s e => t s (f e).
+
+Let local_stateT' (X : UU0) : (E \O stateFMT S M) X -> (stateFMT S M) X :=
+  uncurry (@local_stateT X).
+
+Lemma local_stateTE (X : UU0) :
+  (hlifting local (stateFMT S) naturality_k_type) X = @local_stateT' X.
+Proof.
+rewrite hlifting_stateT.
+by rewrite boolp.funeqE => -[].
+Qed.
+End example_30_stateT.
+
+Section example_30_errorT.
+Variable Z : UU0.
+Definition local_errorT (X : UU0) (f : Env -> Env) (t : errorFMT Z M X) : errorFMT Z M X := fun e => t (f e).
+
+Let local_errorT' (X : UU0) : (E \O errorFMT Z M) X -> (errorFMT Z M) X :=
+  uncurry (@local_errorT X).
+
+Lemma local_errorTE (X : UU0) :
+  (hlifting local (errorFMT Z) naturality_k_type) X = @local_errorT' X.
+Proof.
+rewrite hlifting_errorT.
+by rewrite boolp.funeqE => -[].
+Qed.
+
+End example_30_errorT.
+
+Section example_31_envT.
+Variable Z : UU0.
+Definition local_envT (X : UU0) (f : Env -> Env) (t : envFMT Z M X) : envFMT Z M X := fun e e' => t e (f e').
+
+Let local_envT' (X : UU0) : (E \O envFMT Z M) X -> (envFMT Z M) X :=
+  uncurry (@local_envT X).
+
+Lemma local_envTE (X : UU0) :
+  (hlifting local (envFMT Z) naturality_k_type) X = @local_envT' X.
+Proof.
+rewrite hlifting_envT.
+by rewrite boolp.funeqE => -[].
+Qed.
+End example_31_envT.
+
+Section example_31_outputT.
+Variable R : UU0.
+Definition local_outputT (X : UU0) (f : Env -> Env) (t : outputFMT R M X) : outputFMT R M X := fun e => t (f e).
+
+Let local_outputT' (X : UU0) : (E \O outputFMT R M) X -> (outputFMT R M) X :=
+  uncurry (@local_outputT X).
+
+Lemma local_outputTE (X : UU0) :
+  (hlifting local (outputFMT R) naturality_k_type) X = @local_outputT' X.
+Proof.
+rewrite hlifting_outputT.
+by rewrite boolp.funeqE; case.
+Qed.
+End example_31_outputT.
+
+End example_30.
+
 Section example_31. (* error monad with Z = unit *)
 Let E := monad_model.ExceptOps.Handle.func unit.
 Let M := monad_model.ModelExcept.t.
-Let handle : E.-operation M:= @monad_model.ExceptOps.handle_op unit.
+Let handle : E.-operation M := @monad_model.ExceptOps.handle_op unit.
 Hypothesis naturality_k_type : forall (A : UU0) (m : k_type M A),
   naturality_k_type m.
 
@@ -509,3 +593,61 @@ Qed.
 End example_31_outputT.
 
 End example_31.
+
+Section example_32.
+Variable R : UU0.
+Let E := monad_model.OutputOps.Flush.func.
+Let M := monad_model.ModelMonad.Output.t R.
+Let flush : E.-operation M := @monad_model.OutputOps.flush_op R.
+Hypothesis naturality_k_type : forall (A : UU0) (m : k_type M A),
+  naturality_k_type m.
+
+Section example_32_stateT.
+Variable S : UU0.
+Definition flush_stateT (X : UU0) (t : stateFMT S M X) : stateFMT S M X := fun s => let: (x, _) := t s in (x, [::]).
+
+Lemma flush_stateTE (X : UU0) :
+  (hlifting flush (stateFMT S) naturality_k_type) X = @flush_stateT X.
+Proof. by rewrite hlifting_stateT. Qed.
+End example_32_stateT.
+
+Section example_32_errorT.
+Variable Z : UU0.
+Definition flush_errorT (X : UU0) (t : errorFMT Z M X) (h : Z -> errorFMT Z M X) : errorFMT Z M X :=
+  let: (c, _) := t in (c, [::]).
+
+Let flush_errorT' (X : UU0) : (E \O errorFMT Z M) X -> (errorFMT Z M) X :=
+  fun c => let : (x, _) := c in (x, [::]).
+
+Lemma flush_errorTE (X : UU0) :
+  (hlifting flush (errorFMT Z) naturality_k_type) X = @flush_errorT' X.
+Proof. by rewrite hlifting_errorT. Qed.
+End example_32_errorT.
+
+Section example_32_envT.
+Variable Z : UU0.
+Definition flush_envT (X : UU0) (t : envFMT Z M X) : envFMT Z M X :=
+  fun e => let: (x, _) := t e in (x, [::]).
+
+Lemma flush_envTE (X : UU0) :
+  (hlifting flush (envFMT Z) naturality_k_type) X = @flush_envT X.
+Proof. by rewrite hlifting_envT. Qed.
+End example_32_envT.
+
+Section example_32_outputT.
+Variable Z : UU0.
+Definition flush_outputT (X : UU0) (t : outputFMT R M X) (h : Z -> outputFMT R M X)
+  : outputFMT R M X := let: (p, w) := t in (p, [::]).
+
+Let flush_outputT' (X : UU0) : (E \O outputFMT R M) X -> (outputFMT R M) X :=
+  fun e => let: (pw, w') := e in (pw, [::]).
+
+Lemma flush_outputTE (X : UU0) :
+  (hlifting flush (outputFMT R) naturality_k_type) X = @flush_outputT' X.
+Proof.
+rewrite hlifting_outputT.
+by rewrite boolp.funeqE; case.
+Qed.
+End example_32_outputT.
+
+End example_32.
