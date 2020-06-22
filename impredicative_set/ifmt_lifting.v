@@ -331,3 +331,175 @@ by rewrite -functor_o.
 Qed.
 
 End example_29_errorT.
+
+Section example_29_envT.
+Variables (E : functor) (M : monad) (op : E.-operation M).
+Hypothesis naturality_k_type : forall (A : UU0) (m : k_type M A),
+  naturality_k_type m.
+Variable Env : UU0.
+
+Let tau (X : UU0) e (f : Env -> M X) := f e.
+
+Let op' X : (E \O envFMT Env M) X -> envFMT Env M X :=
+  fun t => fun e => op X ((E # tau e) t).
+
+Lemma hlifting_envT (X : UU0) :
+  (hlifting op (envFMT Env) naturality_k_type) X = @op' _.
+Proof.
+apply fun_ext => emx.
+rewrite /op'.
+apply fun_ext => s.
+rewrite /hlifting.
+rewrite 2!vcompE.
+set h := Hmap _.
+rewrite (K_opE op).
+rewrite 2!functor_app_naturalE.
+rewrite /=.
+congr (from_component _).
+apply FunctionalExtensionality.functional_extensionality_dep => A.
+apply fun_ext => f.
+rewrite {1}/psi' /=.
+rewrite /bindEnv /=.
+rewrite -liftEnvE /liftEnv /=.
+rewrite -(compE _ _ emx) -functor_o.
+rewrite -[in RHS](compE _ _ emx) -functor_o.
+rewrite /Bind /Join /= /K_bind /=.
+rewrite {1}/Actm /= /Monad_of_ret_bind.Map /=.
+rewrite /K_bind.
+rewrite /psi' /= /K_bind /= /kappa' /=.
+congr (op A).
+rewrite -(compE _ _ emx) -[in RHS](compE _ _ emx).
+by rewrite -2!functor_o.
+Qed.
+
+End example_29_envT.
+
+Section example_29_outputT.
+Variables (E : functor) (M : monad) (op : E.-operation M).
+Hypothesis naturality_k_type : forall (A : UU0) (m : k_type M A),
+  naturality_k_type m.
+Variable R : UU0.
+
+Let op' X : (E \O outputFMT R M) X -> outputFMT R M X :=
+  @op (X * seq R)%type.
+
+Lemma hlifting_outputT (X : UU0) :
+  (hlifting op (outputFMT R) naturality_k_type) X = @op' _.
+Proof.
+apply fun_ext => emx.
+rewrite /op'.
+rewrite /hlifting.
+rewrite 2!vcompE.
+set h := Hmap _.
+rewrite (K_opE op).
+rewrite 2!functor_app_naturalE.
+rewrite /=.
+congr (from_component _).
+apply FunctionalExtensionality.functional_extensionality_dep => A.
+apply fun_ext => f.
+rewrite {1}/psi' /=.
+rewrite /bindO /=.
+rewrite -liftOE /liftO /=.
+rewrite -(compE _ _ emx) -functor_o.
+rewrite /Bind /Join /= /K_bind /=.
+rewrite {1}/Actm /= /Monad_of_ret_bind.Map /=.
+rewrite /K_bind.
+rewrite /psi' /= /K_bind /= /kappa' /=.
+congr (op A).
+rewrite -(compE _ _ emx) -[in RHS](compE _ _ emx).
+rewrite -2!functor_o.
+congr ((E # _) _).
+apply fun_ext => rmx /=.
+rewrite /K_ret /= /Actm /= /Monad_of_ret_bind.Map /K_bind.
+congr (Lift K_MonadT M _ _ _ _).
+by apply fun_ext; case.
+Qed.
+
+End example_29_outputT.
+
+Section example_31. (* error monad with Z = unit *)
+Let E := imonad_model.ExceptOps.Handle.func unit.
+Let M := imonad_model.ModelExcept.t.
+Let handle : E.-operation M:= @imonad_model.ExceptOps.handle_op unit.
+Hypothesis naturality_k_type : forall (A : UU0) (m : k_type M A),
+  naturality_k_type m.
+
+Section example_31_stateT.
+Variable S : UU0.
+Definition handle_stateT (X : UU0) (t : stateFMT S M X) (h : unit -> stateFMT S M X)
+  : stateFMT S M X := fun s => match t s with
+    | inl z(*unit*) => h z s
+    | inr x => inr x
+    end.
+
+Let handle_stateT' (X : UU0) : (E \O stateFMT S M) X -> (stateFMT S M) X :=
+  uncurry (@handle_stateT X).
+
+Lemma handle_stateTE (X : UU0) :
+  (hlifting handle (stateFMT S) naturality_k_type) X = @handle_stateT' X.
+Proof.
+rewrite hlifting_stateT.
+apply fun_ext => -[m f].
+by apply fun_ext.
+Qed.
+End example_31_stateT.
+
+Section example_31_errorT.
+Variable Z : UU0.
+Definition handle_errorT (X : UU0) (t : errorFMT Z M X) (h : unit -> errorFMT Z M X)
+  : errorFMT Z M X := match t with
+    | inl z(*unit*) => h z
+    | inr x => inr x
+    end.
+
+Let handle_errorT' (X : UU0) : (E \O errorFMT Z M) X -> (errorFMT Z M) X :=
+  uncurry (@handle_errorT X).
+
+Lemma handle_errorTE (X : UU0) :
+  (hlifting handle (errorFMT Z) naturality_k_type) X = @handle_errorT' X.
+Proof.
+rewrite hlifting_errorT.
+by apply fun_ext.
+Qed.
+End example_31_errorT.
+
+Section example_31_envT.
+Variable Z : UU0.
+Definition handle_envT (X : UU0) (t : envFMT Z M X) (h : unit -> envFMT Z M X)
+  : envFMT Z M X := fun e => match t e with
+    | inl z(*unit*) => h z e
+    | inr x => inr x
+    end.
+
+Let handle_envT' (X : UU0) : (E \O envFMT Z M) X -> (envFMT Z M) X :=
+  uncurry (@handle_envT X).
+
+Lemma handle_envTE (X : UU0) :
+  (hlifting handle (envFMT Z) naturality_k_type) X = @handle_envT' X.
+Proof.
+rewrite hlifting_envT.
+apply fun_ext => -[m f].
+by apply fun_ext.
+Qed.
+End example_31_envT.
+
+Section example_31_outputT.
+Variable R : UU0.
+Definition handle_outputT (X : UU0) (t : outputFMT R M X) (h : unit -> outputFMT R M X)
+  : outputFMT R M X := match t with
+    | inl z(*unit*) => h z
+    | inr x => inr x
+    end.
+
+Let handle_outputT' (X : UU0) : (E \O outputFMT R M) X -> (outputFMT R M) X :=
+  uncurry (@handle_outputT X).
+
+Lemma handle_outputTE (X : UU0) :
+  (hlifting handle (outputFMT R) naturality_k_type) X = @handle_outputT' X.
+Proof.
+rewrite hlifting_outputT.
+by apply fun_ext; case.
+Qed.
+End example_31_outputT.
+
+End example_31.

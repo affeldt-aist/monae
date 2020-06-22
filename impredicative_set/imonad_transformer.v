@@ -88,7 +88,7 @@ Variables (M N : monad) (e : monadM M N).
 Lemma natural_monadM : naturality M N e.
 Proof.
 move=> A B h; apply fun_ext => m /=.
-by rewrite !fmapE monadMbind compA monadMret.
+by rewrite !fmapE monadMbind (compA (e B)) monadMret.
 Qed.
 End monadM_lemmas.
 
@@ -184,9 +184,9 @@ End state_monad_transformer.
 
 Definition stateT S : monadT := MonadT.Pack (MonadT.Mixin (@stateMonadM S)).
 
-Lemma liftSE S (M : monad) U : @liftS _ _ _ = Lift (stateT S) M U.
+Lemma liftSE S (M : monad) U (m : M U) : liftS m = Lift (stateT S) M U m.
 Proof.
-case: M => [M [[f fi fo] [r j a b c]]].
+case: M m => [M [[f fi fo] [r j a b c]]] m.
 by rewrite /= /Lift /= /stateMonadM; unlock.
 Qed.
 
@@ -263,8 +263,173 @@ End exception_monad_transformer.
 
 Definition errorT Z := MonadT.Pack (MonadT.Mixin (@exceptionMonadM Z)).
 
-Lemma liftXE Z (M : monad) U : @liftX _ _ _ = Lift (errorT Z) M U.
+Lemma liftXE Z (M : monad) U (m : M U) : liftX _ m = Lift (errorT Z) M U m.
 Proof. by []. Qed.
+
+Section environment_monad_transformer.
+
+Local Obligation Tactic := idtac.
+
+Variables (R : UU0) (M : monad).
+
+Definition MEnv := fun A : UU0 => R -> M A.
+
+Definition retEnv (A : UU0) : A -> MEnv A := fun a r => Ret a.
+
+Definition bindEnv A B (m : MEnv A) f : MEnv B := fun r => m r >>= (fun a => f a r).
+
+Definition MEnv_fmap (A B : UU0) (f : A -> B) (m : MEnv A) : MEnv B :=
+  (M # f) \o m.
+
+Lemma MEnv_id : FunctorLaws.id MEnv_fmap.
+Proof.
+move=> A; apply fun_ext => m.
+by rewrite /MEnv_fmap functor_id compidf.
+Qed.
+
+Lemma MEnv_comp : FunctorLaws.comp MEnv_fmap.
+Proof.
+move=> A B C g h; rewrite /MEnv_fmap; apply fun_ext => m /=.
+by rewrite [in RHS]compA -functor_o.
+Qed.
+
+Definition MEnv_functor := Functor.Pack (Functor.Mixin MEnv_id MEnv_comp).
+
+Lemma naturality_retE : naturality FId MEnv_functor retEnv.
+Proof.
+move=> A B h; rewrite /Actm /=; apply fun_ext => a /=.
+rewrite /MEnv_fmap /retEnv; apply fun_ext => r /=.
+by rewrite -[LHS](compE _ Ret) natural FIdf.
+Qed.
+
+Definition retEnv_natural : FId ~> MEnv_functor :=
+  Natural.Pack (Natural.Mixin naturality_retE).
+
+Program Definition eenvMonadM : monad :=
+  @Monad_of_ret_bind MEnv_functor retEnv_natural bindEnv _ _ _.
+Next Obligation.
+by move=> A B a f; rewrite /bindEnv; apply fun_ext => r; rewrite bindretf.
+Defined.
+Next Obligation.
+move=> A m; rewrite /bindEnv; apply fun_ext => r.
+rewrite -[in RHS](bindmret (m r)); by bind_ext; case.
+Defined.
+Next Obligation.
+move=> A B C m f g; rewrite /bindEnv; apply fun_ext => r.
+by rewrite bindA; bind_ext; case.
+Defined.
+
+Definition liftEnv A (m : M A) : eenvMonadM A :=
+  fun r => m.
+
+Program Definition envMonadM : monadM M eenvMonadM :=
+  locked (monadM.Pack (@monadM.Mixin _ _ liftEnv _ _)).
+Next Obligation.
+by [].
+Qed.
+Next Obligation.
+move=> A B m f; rewrite /liftEnv; apply fun_ext => r.
+rewrite [in RHS]/Bind [in RHS]/Join /= /Monad_of_ret_bind.join /= /bindEnv !bindA.
+bind_ext => a; by rewrite !bindretf.
+Qed.
+
+End environment_monad_transformer.
+
+Definition envT E : monadT := MonadT.Pack (MonadT.Mixin (@envMonadM E)).
+
+Lemma liftEnvE E (M : monad) U : @liftEnv _ _ _ = Lift (envT E) M U.
+Proof.
+case: M => [M [[f fi fo] [r j a b c]]].
+by rewrite /= /Lift /= /envMonadM; unlock.
+Qed.
+
+(* traces monad transformer? *)
+Section output_monad_transformer.
+
+Local Obligation Tactic := idtac.
+
+Variables (R : UU0) (M : monad).
+
+Definition MO (X : UU0) := M (X * seq R)%type.
+
+Definition retO (A : UU0) : A -> MO A := fun a => Ret (a, [::]).
+
+Definition bindO A B (m : MO A) (f : A -> MO B) : MO B :=
+  m >>= (fun o => let: (x, w) := o in f x >>=
+  (fun o' => let (x', w') := o' in Ret (x', w ++ w'))).
+
+Definition MO_fmap (A B : UU0) (f : A -> B) (m : MO A) : MO B :=
+  (M # (fun x => (f x.1, x.2))) m.
+
+Lemma MO_id : FunctorLaws.id MO_fmap.
+Proof.
+move=> A; apply fun_ext => m.
+rewrite /MO_fmap (_ : (fun _ => _) = id) ?functor_id//.
+by apply fun_ext; case.
+Qed.
+
+Lemma MO_comp : FunctorLaws.comp MO_fmap.
+Proof.
+move=> A B C g h; rewrite /MO_fmap; apply fun_ext => m /=.
+by rewrite -[in RHS](compE _ (M # _)) -functor_o.
+Qed.
+
+Definition MO_functor := Functor.Pack (Functor.Mixin MO_id MO_comp).
+
+Lemma naturality_retO : naturality FId MO_functor retO.
+Proof.
+move=> A B h; rewrite /Actm /=; apply fun_ext => a /=.
+by rewrite /MO_fmap /retO -[LHS](compE _ Ret) natural FIdf.
+Qed.
+
+Definition retO_natural : FId ~> MO_functor :=
+  Natural.Pack (Natural.Mixin naturality_retO).
+
+Program Definition eoutputMonadM : monad :=
+  @Monad_of_ret_bind MO_functor retO_natural bindO _ _ _.
+Next Obligation.
+move=> A B a f; rewrite /bindO /= bindretf /=.
+rewrite (_ : (fun o' : B * seq R => _) = (fun o => Ret o)) ?bindmret //.
+by apply fun_ext; case.
+Defined.
+Next Obligation.
+move=> A m; rewrite /bindO /= /retO /= -[RHS]bindmret.
+by bind_ext => -[a w]; rewrite bindretf cats0.
+Defined.
+Next Obligation.
+move=> A B C m f g; rewrite /bindO /=.
+rewrite bindA; bind_ext; case=> x w.
+rewrite !bindA; bind_ext; case=> x' w'.
+rewrite !bindA bindretf; bind_ext; case=> x'' w''.
+by rewrite bindretf catA.
+Defined.
+
+Definition liftO A (m : M A) : eoutputMonadM A :=
+  m >>= (fun x => Ret (x, [::])).
+
+Program Definition outputMonadM : monadM M eoutputMonadM :=
+  locked (monadM.Pack (@monadM.Mixin _ _ liftO _ _)).
+Next Obligation.
+move=> a; rewrite /liftO /= /retO; apply fun_ext => o /=.
+by rewrite bindretf.
+Qed.
+Next Obligation.
+move=> A B m f; rewrite /liftO /=.
+rewrite bindA.
+rewrite [in RHS]/Bind [in RHS]/Join /= /Monad_of_ret_bind.join /= /bindO !bindA.
+bind_ext => a; rewrite !bindretf bindA /=; bind_ext => b.
+by rewrite bindretf.
+Qed.
+
+End output_monad_transformer.
+
+Definition outputT R : monadT := MonadT.Pack (MonadT.Mixin (@outputMonadM R)).
+
+Lemma liftOE R (M : monad) U : @liftO _ _ _ = Lift (outputT R) M U.
+Proof.
+case: M => [M [[f fi fo] [r j a b c]]].
+by rewrite /= /Lift /= /outputMonadM; unlock.
+Qed.
 
 Section continuation_monad_tranformer.
 
@@ -1324,3 +1489,185 @@ Program Definition stateFMT : FMT := @Fmt.Pack T
     monadMbind_hmapS _ hmapS_v hmapS_lift).
 
 End Fmt_stateT.
+
+Section Fmt_envT.
+Variable E : UU0.
+Let T : monadT := envT E.
+Definition hmapEnv' (F G : monad) (tau : F ~> G) (A : UU0) (t : T F A) : T G A :=
+  fun s => tau _ (t s).
+
+Lemma natural_hmapEnv' (F G : monad) (tau : F ~> G) :
+  naturality (T F) (T G) (hmapEnv' tau).
+Proof.
+move=> A B h.
+rewrite /hmapEnv'.
+rewrite /=.
+have H : forall G, eenvMonadM E G # h = MEnv_functor E G # h.
+  move=> H; apply fun_ext => m.
+  rewrite /Actm /=.
+  rewrite /Monad_of_ret_bind.Map /=.
+  rewrite /bindEnv /MEnv_fmap /retEnv /=.
+  apply fun_ext => s.
+  by rewrite (_ : (fun a : A => _) = Ret \o h) // -fmapE.
+rewrite !H {H}.
+rewrite {1}/MEnv_functor /= {1}/Actm /=.
+rewrite /MEnv_fmap; apply fun_ext => m; apply fun_ext => s /=.
+rewrite -(compE  _ (tau A)).
+by rewrite natural.
+Qed.
+
+Definition hmapEnv (F G : monad) (tau : F ~> G) : T F ~> T G :=
+  Natural.Pack (Natural.Mixin (natural_hmapEnv' tau)).
+
+Let monadMret_hmapEnv (F G : monad) (e : monadM F G) :
+  MonadMLaws.ret (hmapEnv (monadM_nt e)).
+Proof.
+move=> A; apply fun_ext => /= a.
+rewrite /hmapEnv' /= /retEnv /=; apply fun_ext => s.
+by rewrite -[LHS](compE _ Ret) monadMret.
+Qed.
+
+Let monadMbind_hmapEnv (F G : monad) (e : monadM F G) :
+  MonadMLaws.bind (hmapEnv (monadM_nt e)).
+Proof.
+move=> A B m f.
+rewrite /hmapEnv /=; apply fun_ext => s.
+rewrite !bindE /= /bindEnv /=.
+rewrite !monadMbind /=.
+rewrite !bindA /=.
+congr (_ >>= _).
+apply fun_ext => a.
+rewrite /retEnv /=.
+rewrite bindretf.
+rewrite -(compE _ Ret).
+rewrite -bind_fmap.
+rewrite monadMret.
+rewrite -(compE _ Ret).
+rewrite natural.
+rewrite FIdf.
+rewrite bindE.
+rewrite -(compE _ Ret).
+rewrite -(compE _ (_ \o _)).
+rewrite natural.
+rewrite compA.
+rewrite joinretM.
+rewrite FIdf.
+by rewrite compidf.
+Qed.
+
+Let hmapEnv_NId (M : monad) : hmapEnv (NId M) = NId (T M).
+Proof. by apply nattrans_ext. Qed.
+
+Let hmapEnv_v (M N P : monad) (t : M ~> N) (s : N ~> P) :
+  hmapEnv s \v hmapEnv t = hmapEnv (s \v t).
+Proof. exact/nattrans_ext. Qed.
+
+Let hmapEnv_lift : natural_hmap_lift hmapEnv.
+Proof.
+move=> M N t A.
+rewrite /hmapEnv /= /hmapEnv'.
+rewrite /Lift /=.
+rewrite /envMonadM /=.
+unlock.
+rewrite /=.
+rewrite /liftEnv /=.
+rewrite /Bind /=.
+by apply fun_ext => ma /=.
+Qed.
+
+Program Definition envFMT : FMT := @Fmt.Pack T
+  (@Fmt.Class _ (fun M N nt => hmapEnv nt) monadMret_hmapEnv
+    monadMbind_hmapEnv _ hmapEnv_v hmapEnv_lift).
+
+End Fmt_envT.
+
+Section Fmt_outputT.
+Variable R : UU0.
+Let T : monadT := outputT R.
+Definition hmapO' (F G : monad) (tau : F ~> G) (A : UU0) (t : T F A) : T G A := tau _ t.
+
+Lemma natural_hmapO' (F G : monad) (tau : F ~> G) :
+  naturality (T F) (T G) (hmapO' tau).
+Proof.
+move=> A B h.
+rewrite /hmapO'.
+rewrite /=.
+have H : forall G, eoutputMonadM R G # h = MO_functor R G # h.
+  move=> H; apply fun_ext => m.
+  rewrite /Actm /=.
+  rewrite /Monad_of_ret_bind.Map /=.
+  rewrite /MO_fmap.
+  rewrite /bindO /retO /=.
+  rewrite fmapE.
+  congr (_ >>= _).
+  apply fun_ext => -[x w].
+  by rewrite bindretf cats0.
+rewrite !H {H}.
+rewrite {1}/MO_functor /= {1}/Actm /=.
+rewrite /MO_fmap; apply fun_ext => m /=.
+rewrite -[in LHS](compE  _ (tau _)).
+by rewrite natural.
+Qed.
+
+Definition hmapO (F G : monad) (tau : F ~> G) : T F ~> T G :=
+  Natural.Pack (Natural.Mixin (natural_hmapO' tau)).
+
+Let monadMret_hmapO (F G : monad) (e : monadM F G) :
+  MonadMLaws.ret (hmapO (monadM_nt e)).
+Proof.
+move=> A; apply fun_ext => /= a.
+rewrite /hmapO' /= /retO /=.
+by rewrite -[LHS](compE _ Ret) monadMret.
+Qed.
+
+Let monadMbind_hmapO (F G : monad) (e : monadM F G) :
+  MonadMLaws.bind (hmapO (monadM_nt e)).
+Proof.
+move=> A B m f.
+rewrite /hmapO /=.
+rewrite !bindE /= /bindO /=.
+rewrite !monadMbind /=.
+rewrite !bindA /=.
+bind_ext => -[x w].
+rewrite /retO /=.
+rewrite bindretf.
+rewrite -(compE _ Ret).
+rewrite -bind_fmap.
+rewrite monadMret.
+rewrite -(compE _ Ret).
+rewrite natural.
+rewrite FIdf /=.
+rewrite bindA.
+rewrite !bindretf.
+rewrite monadMbind /=.
+bind_ext => -[x' w'] /=.
+by rewrite cats0 -[LHS](compE _ Ret (x', _)) monadMret.
+Qed.
+
+Let hmapO_NId (M : monad) : hmapO (NId M) = NId (T M).
+Proof. by apply nattrans_ext. Qed.
+
+Let hmapO_v (M N P : monad) (t : M ~> N) (s : N ~> P) :
+  hmapO s \v hmapO t = hmapO (s \v t).
+Proof. exact/nattrans_ext. Qed.
+
+Let hmapO_lift : natural_hmap_lift hmapO.
+Proof.
+move=> M N t A.
+rewrite /hmapO /= /hmapO'.
+rewrite /Lift /=.
+rewrite /outputMonadM /=.
+unlock.
+rewrite /=.
+rewrite /liftO /=.
+apply fun_ext => ma /=.
+rewrite -!fmapE.
+rewrite -(compE _ (t A)).
+by rewrite natural.
+Qed.
+
+Program Definition outputFMT : FMT := @Fmt.Pack T
+  (@Fmt.Class _ (fun M N nt => hmapO nt) monadMret_hmapO
+    monadMbind_hmapO _ hmapO_v hmapO_lift).
+
+End Fmt_outputT.
