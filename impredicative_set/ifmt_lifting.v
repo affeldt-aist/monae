@@ -487,10 +487,9 @@ rewrite -functor_o.
 rewrite (_ : _ \o _ = id) ?functor_id //.
 apply fun_ext => n /=.
 rewrite 2!bindretf.
-symmetry.
-erewrite <- bindmret at 1.
-congr (n >>= _).
-by apply fun_ext; case.
+Open (X in _ >>= X).
+ by case : x => ? ?; rewrite cat0s.
+by rewrite bindmret.
 Qed.
 
 End proposition_28_outputFMT.
