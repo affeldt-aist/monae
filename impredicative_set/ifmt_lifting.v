@@ -411,6 +411,30 @@ Qed.
 
 End proposition_28_stateFMT.
 
+Section proposition_28_errorFMT.
+
+Variables (E : functor) (M : monad) (aop : E.-aoperation M).
+Hypothesis naturality_k_type : forall (A : UU0) (m : k_type M A),
+  naturality_k_type m.
+
+Lemma proposition_28_errorFMT (Z : UU0) (t := errorFMT Z) :
+  hlifting aop t naturality_k_type = alifting aop (Lift t M).
+Proof.
+apply nattrans_ext => X.
+rewrite (hlifting_errorT aop naturality_k_type Z).
+apply fun_ext => m.
+rewrite /alifting.
+rewrite psiE /= /bindX (*-liftXE*) /liftX /=.
+rewrite 2!algebraic.
+congr (aop _ _).
+rewrite -[RHS](compE _ (E # _)).
+rewrite -functor_o.
+rewrite -[RHS](compE _ (E # _)).
+rewrite -functor_o.
+Abort.
+
+End proposition_28_errorFMT.
+
 Section example_30.
 Variable Env : UU0.
 Let E := imonad_model.EnvironmentOps.Local.func Env.
