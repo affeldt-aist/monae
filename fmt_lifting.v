@@ -223,40 +223,6 @@ by rewrite compA -K_opE.
 Qed.
 End theorem27.
 
-Section proposition_28.
-
-Variables (E : functor) (M : monad) (aop : E.-aoperation M) (t : FMT).
-Hypothesis naturality_k_type : forall (A : UU0) (m : k_type M A),
-  naturality_k_type m.
-
-Lemma proposition_28 :
-  hlifting aop t naturality_k_type = alifting aop (Lift t M).
-Proof.
-rewrite /hlifting /K_op.
-rewrite {1}/alifting.
-rewrite psiK.
-rewrite /alifting.
-apply/nattrans_ext => A.
-rewrite 2!vcompE.
-rewrite functor_app_naturalE.
-rewrite 2!psiE.
-rewrite vcompE.
-transitivity (
-(Hmap t (from naturality_k_type) A \o
-     Join \o monadM_nt (Lift t (K_MonadT M)) (t (K_MonadT M) A)) \o (kappa aop (t (K_MonadT M) A) \o
-    E # Hmap t (monadM_nt (Lift K_MonadT M)) A)
-) => //.
-rewrite -natural.
-transitivity (
-  (Hmap t (from naturality_k_type) A \o Join) \o (monadM_nt (Lift t (K_MonadT M)) (t (K_MonadT M) A) \o
-    (K_MonadT M # Hmap t (monadM_nt (Lift K_MonadT M)) A) \o kappa aop (t M A))
-) => //.
-rewrite -natural.
-rewrite kappaE vcompE phiE.
-Abort.
-
-End proposition_28.
-
 Section example_29_stateT.
 Variables (E : functor) (M : monad) (op : E.-operation M).
 Hypothesis naturality_k_type : forall (A : UU0) (m : k_type M A),
@@ -422,6 +388,61 @@ by rewrite boolp.funeqE; case.
 Qed.
 
 End example_29_outputT.
+
+Section proposition_28_stateFMT.
+
+Variables (E : functor) (M : monad) (aop : E.-aoperation M).
+Hypothesis naturality_k_type : forall (A : UU0) (m : k_type M A),
+  naturality_k_type m.
+
+Lemma proposition_28_stateFMT (S : UU0) (t := stateFMT S) :
+  hlifting aop t naturality_k_type = alifting aop (Lift t M).
+Proof.
+apply nattrans_ext => X.
+rewrite (hlifting_stateT aop naturality_k_type S).
+rewrite boolp.funeqE => m.
+rewrite boolp.funeqE => s.
+rewrite /alifting.
+rewrite psiE /= /bindS -liftSE /liftS /=.
+rewrite 2!algebraic.
+congr (aop _ _).
+rewrite -[RHS](compE _ (E # _)).
+rewrite -functor_o.
+rewrite -[RHS](compE _ (E # _)).
+rewrite -functor_o.
+congr ((E # _) m).
+rewrite boolp.funeqE => x.
+by rewrite /= 2!bindretf.
+Qed.
+
+End proposition_28_stateFMT.
+
+Section proposition_28_errorFMT.
+
+Variables (E : functor) (M : monad) (aop : E.-aoperation M).
+Hypothesis naturality_k_type : forall (A : UU0) (m : k_type M A),
+  naturality_k_type m.
+
+Lemma proposition_28_errorFMT (Z : UU0) (t := errorFMT Z) :
+  hlifting aop t naturality_k_type = alifting aop (Lift t M).
+Proof.
+apply nattrans_ext => X.
+rewrite (hlifting_errorT aop naturality_k_type Z).
+rewrite boolp.funeqE => m.
+rewrite /alifting.
+rewrite psiE /= /bindX /liftX.
+rewrite 2!algebraic.
+congr (aop _ _).
+rewrite -[RHS](compE _ (E # _)).
+rewrite -functor_o.
+rewrite -[RHS](compE _ (E # _)).
+rewrite -functor_o.
+rewrite (_ : _ \o _ = id) ?functor_id //.
+rewrite boolp.funeqE => n /=.
+by rewrite 2!bindretf.
+Qed.
+
+End proposition_28_errorFMT.
 
 Section example_30.
 Variable Env : UU0.

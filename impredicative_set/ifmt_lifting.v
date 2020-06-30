@@ -424,14 +424,17 @@ apply nattrans_ext => X.
 rewrite (hlifting_errorT aop naturality_k_type Z).
 apply fun_ext => m.
 rewrite /alifting.
-rewrite psiE /= /bindX (*-liftXE*) /liftX /=.
+rewrite psiE /= /bindX /liftX.
 rewrite 2!algebraic.
 congr (aop _ _).
 rewrite -[RHS](compE _ (E # _)).
 rewrite -functor_o.
 rewrite -[RHS](compE _ (E # _)).
 rewrite -functor_o.
-Abort.
+rewrite (_ : _ \o _ = id) ?functor_id //.
+apply fun_ext => n /=.
+by rewrite 2!bindretf.
+Qed.
 
 End proposition_28_errorFMT.
 

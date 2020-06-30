@@ -1506,8 +1506,7 @@ have H : forall G, eenvMonadM E G # h = MEnv_functor E G # h.
   move=> H; apply fun_ext => m.
   rewrite /Actm /=.
   rewrite /Monad_of_ret_bind.Map /=.
-  rewrite /bindEnv /MEnv_fmap /retEnv /=.
-  apply fun_ext => s.
+  rewrite /bindEnv /MEnv_fmap /retEnv /=; apply fun_ext => s.
   by rewrite (_ : (fun a : A => _) = Ret \o h) // -fmapE.
 rewrite !H {H}.
 rewrite {1}/MEnv_functor /= {1}/Actm /=.
