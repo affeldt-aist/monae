@@ -438,6 +438,63 @@ Qed.
 
 End proposition_28_errorFMT.
 
+Section proposition_28_envFMT.
+
+Variables (E : functor) (M : monad) (aop : E.-aoperation M).
+Hypothesis naturality_k_type : forall (A : UU0) (m : k_type M A),
+  naturality_k_type m.
+
+Lemma proposition_28_envFMT (Env : UU0) (t := envFMT Env) :
+  hlifting aop t naturality_k_type = alifting aop (Lift t M).
+Proof.
+apply nattrans_ext => X.
+rewrite (hlifting_envT aop naturality_k_type Env).
+apply fun_ext => m.
+apply fun_ext => e.
+rewrite /alifting.
+rewrite psiE /= /bindEnv -liftEnvE /liftEnv.
+rewrite algebraic.
+congr (aop _ _).
+rewrite -[RHS](compE _ (E # _)).
+rewrite -functor_o.
+congr ((E # _) m).
+apply fun_ext => x.
+by rewrite /= bindretf.
+Qed.
+
+End proposition_28_envFMT.
+
+Section proposition_28_outputFMT.
+
+Variables (E : functor) (M : monad) (aop : E.-aoperation M).
+Hypothesis naturality_k_type : forall (A : UU0) (m : k_type M A),
+  naturality_k_type m.
+
+Lemma proposition_28_outputFMT (R : UU0) (t := outputFMT R) :
+  hlifting aop t naturality_k_type = alifting aop (Lift t M).
+Proof.
+apply nattrans_ext => X.
+rewrite (hlifting_outputT aop naturality_k_type R).
+apply fun_ext => m.
+rewrite /alifting.
+rewrite psiE /= /bindO -liftOE /liftO.
+rewrite 2!algebraic.
+congr (aop _ _).
+rewrite -[RHS](compE _ (E # _)).
+rewrite -functor_o.
+rewrite -[RHS](compE _ (E # _)).
+rewrite -functor_o.
+rewrite (_ : _ \o _ = id) ?functor_id //.
+apply fun_ext => n /=.
+rewrite 2!bindretf.
+symmetry.
+erewrite <- bindmret at 1.
+congr (n >>= _).
+by apply fun_ext; case.
+Qed.
+
+End proposition_28_outputFMT.
+
 Section example_30.
 Variable Env : UU0.
 Let E := imonad_model.EnvironmentOps.Local.func Env.
