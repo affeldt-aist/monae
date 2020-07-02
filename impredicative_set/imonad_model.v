@@ -403,7 +403,7 @@ Local Notation M := (ModelMonad.Environment.t E).
 (* usual get operation *)
 Definition ask : M E := EnvironmentOps.ask_op _ _ Ret.
 Lemma askE : ask = fun e => e. Proof. by []. Qed.
-(* TODO: complete with an interface for the environment monad and instantiate *)
+(* TODO: complete with an interface for the environment monad and instantiate, see Jaskelioff's PhD *)
 End modelenvironment.
 End ModelEnvironment.
 
