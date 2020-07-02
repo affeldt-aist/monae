@@ -1094,10 +1094,9 @@ Lemma theorem19 : lifting op e alifting.
 Proof.
 move=> X.
 apply fun_ext => Y.
-transitivity (e X (op X Y)) => //.
-rewrite /alifting compE psiE vcompE phiE.
-rewrite 3!compE.
-rewrite (_ : (E # Ret) ((E # e X) Y) = (E # (M # e X)) ((E # Ret) Y)); last first.
+rewrite /alifting !compE psiE vcompE phiE !compE.
+rewrite (_ : (E # Ret) ((E # e X) Y) =
+             (E # (M # e X)) ((E # Ret) Y)); last first.
   rewrite -[in LHS]compE -functor_o.
   rewrite -[in RHS]compE -functor_o.
   rewrite (natural RET).
@@ -1108,10 +1107,8 @@ rewrite (_ : op (N X) ((E # (M # e X)) ((E # Ret) Y)) =
   by rewrite (natural op).
 transitivity (e X (Join (op (M X) ((E # Ret) Y)))); last first.
   rewrite joinE monadMbind.
-  rewrite bindE.
-  rewrite -(compE _ (M # e X)).
+  rewrite bindE -(compE _ (M # e X)).
   by rewrite -natural.
-congr (e X _).
 by rewrite -[in LHS](phiK op).
 Qed.
 End theorem19.

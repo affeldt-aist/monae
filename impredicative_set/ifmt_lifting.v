@@ -193,16 +193,15 @@ Definition hlifting : E.-operation (t M) := op1 \v op2 \v op3.
 
 Lemma theorem27 : lifting_monadT op hlifting.
 Proof.
-rewrite /lifting_monadT => X.
-rewrite /hlifting.
+rewrite /lifting_monadT /hlifting => X.
 apply/esym.
 transitivity ((op1 \v op2) X \o op3 X \o E # Lift t M X).
   by rewrite (vassoc op1).
 rewrite -compA.
-transitivity ((op1 \v op2) X \o (
-  (E # Lift t (K_MonadT M) X) \o (E # Lift K_MonadT M X))).
-  congr (_ \o _).
-  by rewrite /op3 -functor_o -natural_hmap functor_o functor_app_naturalE.
+transitivity ((op1 \v op2) X \o
+  ((E # Lift t (K_MonadT M) X) \o (E # Lift K_MonadT M X))).
+  congr (_ \o _); rewrite /op3.
+  by rewrite -functor_o -natural_hmap functor_o functor_app_naturalE.
 transitivity (op1 X \o
   (op2 X \o E # Lift t (K_MonadT M) X) \o E # Lift K_MonadT M X).
   by rewrite vcompE -compA.

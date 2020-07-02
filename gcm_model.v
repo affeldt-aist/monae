@@ -420,7 +420,7 @@ rewrite funeqE => b; rewrite propeqE; split.
 - by case => b0 [a0 Xa0 <-{b0}] [a a0a <-{b}]; exists a => //; exists a0.
 Qed.
 
-Lemma free_semiCompSemiLattConvType_mor'_scsl_op_morph :
+Lemma free_semiCompSemiLattConvType_mor'_lub_op_morph :
   lub_op_morph free_semiCompSemiLattConvType_mor'.
 Proof.
 move=> /= X; apply necset_ext => /=; rewrite funeqE => b.
@@ -433,7 +433,7 @@ Definition free_semiCompSemiLattConvType_mor :
   {hom necset_semiCompSemiLattConvType A, necset_semiCompSemiLattConvType B} :=
   locked (@Hom.Pack CS _ _ _ free_semiCompSemiLattConvType_mor'
     (LubOpAffine.Class free_semiCompSemiLattConvType_mor'_affine
-                       free_semiCompSemiLattConvType_mor'_scsl_op_morph)).
+                       free_semiCompSemiLattConvType_mor'_lub_op_morph)).
 
 Lemma free_semiCompSemiLattConvType_morE (X : necset_convType A) :
   NECSet.mixinType (free_semiCompSemiLattConvType_mor X) = image_neset f X.
