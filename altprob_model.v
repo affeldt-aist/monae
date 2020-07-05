@@ -140,7 +140,7 @@ rewrite funeqE => /= X; rewrite propeqE; split.
 - case=> -> /=; by [exists u => //; left | exists v => //; right].
 Qed.
 
-Lemma affine_e1PD_alt T (x y : El (F1 (FId (U1 (P_delta_left T))))) :
+Lemma affine_e1PD_alt T (x y : el (F1 (FId (U1 (P_delta_left T))))) :
   (eps1 (P_delta_left T)) (x [+] y) =
   (eps1 (P_delta_left T)) x [+] (eps1 (P_delta_left T)) y.
 Proof.
@@ -244,7 +244,7 @@ transitivity (eps0'' (ConvFSDist.d p x1 x2)) => //.
 by rewrite eps0''_affine.
 Qed.
 
-Lemma affine_e1PD_conv T (x y : El (F1 (FId (U1 (P_delta_left T))))) p :
+Lemma affine_e1PD_conv T (x y : el (F1 (FId (U1 (P_delta_left T))))) p :
   (eps1 (P_delta_left T)) (x <|p|> y) =
   (eps1 (P_delta_left T)) x <|p|> (eps1 (P_delta_left T)) y.
 Proof.
