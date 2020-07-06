@@ -11,10 +11,11 @@ Require Import monae_lib.
 (*                                                                            *)
 (*            category == type of categories, a category C is implemented     *)
 (*                        with a universe a la Tarski, there is a realizer    *)
-(*                        function El that associates to each object A the    *)
-(*                        type El A of its elements; this corresponds to the  *)
+(*                        function el that associates to each object A the    *)
+(*                        type el A of its elements; this corresponds to the  *)
 (*                        definition of concrete categories                   *)
-(*          {hom A, B} == the hom-set of morphisms from A to B                *)
+(*          {hom A, B} == the hom-set of morphisms from A to B, where A and B *)
+(*                        are objects of a category C                         *)
 (*             [hom f] == morphism corresponding to the function f            *)
 (*       Type_category == the category corresponding to the Coq type Type     *)
 (*                  \O == functor composition                                 *)
@@ -78,36 +79,40 @@ Unset Printing Implicit Defensive.
 Module Category.
 (* universe a la Tarski *)
 Record mixin_of (obj : Type) : Type := Mixin {
-  el : obj -> Type ; (* "interpretation" operation, "realizer" *)
+  el : obj -> Type ; (* interpretation operation, "realizer" *)
 (*  _ : injective el ; (* NB: do we need this? *)*)
   inhom : forall A B, (el A -> el B) -> Prop ; (* predicate for morphisms *)
   _ : forall A, @inhom A A idfun ; (* id is in hom *)
   _ : forall A B C (f : el A -> el B) (g : el B -> el C),
-      inhom f -> inhom g -> inhom (g \o f) (* hom is closed under composition *) }.
+      inhom f -> inhom g -> inhom (g \o f) (* hom is closed by composition *) }.
 Structure type : Type := Pack { carrier : Type ; class : mixin_of carrier }.
 Module Exports.
 Notation category := type.
 Coercion carrier : category >-> Sortclass.
-Definition El (C : category) : C -> Type :=
+Definition el (C : category) : C -> Type :=
   let: Pack _ (Mixin x _ _ _) := C in x.
-Definition InHom (C : category) : forall (A B : C), (El A -> El B) -> Prop :=
+Definition InHom (C : category) : forall (A B : C), (el A -> el B) -> Prop :=
   let: Pack _ (Mixin _ x _ _) := C in x.
-Definition idfun_in_hom (C : category) : forall A : C, InHom (A:=A) id :=
-  let: Pack _ (Mixin _ _ f _) := C in f.
-Definition funcomp_in_hom (C : category) : forall (X Y Z : C)
-  (f : El X -> El Y) (g : El Y -> El Z), InHom f -> InHom g -> InHom (g \o f) :=
-  let: Pack _ (Mixin _ _ _ f) := C in f.
 End Exports.
 End Category.
 Export Category.Exports.
 
+Section category_lemmas.
+Variable C : category.
+Lemma idfun_in_hom (A : C) : @InHom _ A A id.
+Proof. by case: C A => ? [e i ? ?]. Qed.
+Lemma funcomp_in_hom (X Y Z : C) (f : el X -> el Y) (g : el Y -> el Z) :
+  InHom f -> InHom g -> InHom (g \o f).
+Proof. by case: C X Y Z f g => ? [e i ? ?]. Qed.
+End category_lemmas.
+
 Module Hom.
 Section ClassDef.
 Variables (C : category) (U V : C).
-Structure map (phUV : phant (El U -> El V)) :=
-  Pack {apply : El U -> El V; _ : InHom apply}.
+Structure map (phUV : phant (el U -> el V)) :=
+  Pack {apply : el U -> el V; _ : InHom apply}.
 Local Coercion apply : map >-> Funclass.
-Variables (phUV : phant (El U -> El V)) (f g : El U -> El V) (cF : map phUV).
+Variables (phUV : phant (el U -> el V)) (f g : el U -> el V) (cF : map phUV).
 Definition class := let: Pack _ c as cF' := cF return InHom cF' in c.
 Definition clone fA of phant_id g (apply cF) & phant_id fA class :=
   @Pack phUV f fA.
@@ -119,10 +124,10 @@ Add Printing Coercion apply.
 Notation "[ 'fn' f ]" := (apply f)
   (at level 0, format "[ 'fn'  f ]", only printing) : category_scope.
 Notation HomPack fA := (Pack (Phant _) fA).
-Notation "{ 'hom' U , V }" := (map (Phant (El U -> El V)))
+Notation "{ 'hom' U , V }" := (map (Phant (el U -> el V)))
   (at level 0, format "{ 'hom'  U ,  V }") : category_scope.
 Arguments map' : simpl never.
-Notation "{ 'hom' C ; U , V }" := (@map' C U V (Phant (El U -> El V)))
+Notation "{ 'hom' C ; U , V }" := (@map' C U V (Phant (el U -> el V)))
   (at level 0, format "{ 'hom'  C ;  U ,  V }") : category_scope.
 Notation "[ 'hom' f ]" := (@clone _ _ _ _ f f _ _ id id)
   (at level 0, format "[ 'hom'  f ]") : category_scope.
@@ -142,7 +147,7 @@ Section category_interface.
 Variable C : category.
 Implicit Types a b c : C.
 
-Lemma InHom_idfun c : InHom (@idfun (El c)).
+Lemma InHom_idfun c : InHom (@idfun (el c)).
 Proof. by case: C c => [? []]. Qed.
 Canonical homid0 c := HomPack (InHom_idfun c).
 
@@ -176,7 +181,7 @@ Lemma homcompA (a b c d : C) (h : {hom c, d}) (g : {hom b, c}) (f : {hom a, b}) 
 Proof. by move: f g h => [? ?] [? ?] [? ?]; apply hom_ext. Qed.
 
 Lemma homcompE (a b c : C) (g : {hom b, c}) (f : {hom a, b}) :
-  [hom g \o f] = g \o f :> (El a -> El c).
+  [hom g \o f] = g \o f :> (el a -> el c).
 Proof. by []. Qed.
 
 Lemma hom_compE (a b c : C) (g : {hom b, c}) (f : {hom a, b}) x :
@@ -189,7 +194,7 @@ Import comps_notation.
    homcompA, we can avoid the infinite sequence of redundunt compositions
    "_ \o id" or "id \o _" that pops out when we "rewrite !compA".*)
 Lemma hom_compA (a b c d : C) (h : {hom c, d}) (g : {hom b, c}) (f : {hom a, b}) :
-  (h \o g) \o f = [\o h, g, f] :> (El a -> El d).
+  (h \o g) \o f = [\o h, g, f] :> (el a -> el d).
 Proof. exact: compA. Qed.
 
 Example hom_compA' (a b c d : C) (h : {hom c, d}) (g : {hom b, c}) (f : {hom a, b}) :
@@ -242,7 +247,7 @@ Definition Type_category_mixin : Category.mixin_of Type :=
     (fun _ _ _ => True) (fun=> I) (fun _ _ _ _ _ _ _ => I).
 Canonical Type_category := Category.Pack Type_category_mixin.
 Definition hom_Type (a b : Type) (f : a -> b) : {hom a, b} :=
-  HomPack (I : InHom (f : El a -> El b)).
+  HomPack (I : InHom (f : el a -> el b)).
 End Type_as_a_category.
 
 Module FunctorLaws.
@@ -283,10 +288,10 @@ Proof. by case: F => [? []]. Qed.
 Lemma functor_o_hom : FunctorLaws.comp (Actm F).
 Proof. by case: F => [? []]. Qed.
 
-Lemma functor_id a : F # [hom idfun] = idfun :> (El (F a) -> El (F a)).
+Lemma functor_id a : F # [hom idfun] = idfun :> (el (F a) -> el (F a)).
 Proof. by rewrite functor_id_hom. Qed.
 Lemma functor_o a b c (g : {hom b, c}) (h : {hom a, b}) :
-  F # [hom g \o h] = F # g \o F # h :> (El (F a) -> El (F c)).
+  F # [hom g \o h] = F # g \o F # h :> (el (F a) -> el (F c)).
 Proof. by rewrite functor_o_hom. Qed.
 
 Lemma functor_ext (G : functor C D) (pm : Functor.acto F =1 Functor.acto G) :
@@ -738,13 +743,13 @@ Definition ret_naturality := naturality FId M ret.
 Definition join_naturality := naturality (M \O M) M join.
 
 Definition left_unit :=
-  forall a, join a \o ret (M a) = idfun :> (El (M a) -> El (M a)).
+  forall a, join a \o ret (M a) = idfun :> (el (M a) -> el (M a)).
 
 Definition right_unit :=
-  forall a, join a \o M # ret a = idfun :> (El (M a) -> El (M a)).
+  forall a, join a \o M # ret a = idfun :> (el (M a) -> el (M a)).
 
 Definition associativity :=
-  forall a, join a \o M # join a = join a \o join (M a) :> (El (M (M (M a))) -> El (M a)).
+  forall a, join a \o M # join a = join a \o join (M a) :> (el (M (M (M a))) -> el (M a)).
 End join_laws.
 End JoinLaws.
 
@@ -773,14 +778,14 @@ Fact associative_aux x y z (f : {hom x, M y}) (g : {hom y, M z}) :
   (fun w => (f w >>= g)) = (b g \o f).
 Proof. by []. Qed.
 
-Definition associative := forall A B C (m : El (M A)) (f : {hom A, M B}) (g : {hom B, M C}),
+Definition associative := forall A B C (m : el (M A)) (f : {hom A, M B}) (g : {hom B, M C}),
   (m >>= f) >>= g = m >>= [hom b g \o f].
 
 Definition left_neutral (r : forall A, {hom A, M A}) :=
   forall A B (f : {hom A, M B}), [hom (b f \o r A)] = f.
 
 Definition right_neutral (r : forall A, {hom A, M A}) :=
-  forall A (m : El (M A)), m >>= r _ = m.
+  forall A (m : el (M A)), m >>= r _ = m.
 End bindlaws.
 
 Section bindlaws_on_Type.
@@ -1035,7 +1040,7 @@ Let M' := Functor.Pack functor_mixin.
 Let ret' : forall A, {hom A, M' A} := ret.
 Definition join A : {hom M' (M' A), M' A} := bind [hom idfun].
 
-Let bind_fmap a b c (f : {hom a, b}) (m : El (M a)) (g : {hom b, M c}) :
+Let bind_fmap a b c (f : {hom a, b}) (m : el (M a)) (g : {hom b, M c}) :
   bind g (fmap f m) = bind [hom g \o f] m .
 Proof.
 rewrite bindA /=; congr (fun f => bind f m); apply hom_ext => /=.

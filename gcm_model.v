@@ -116,7 +116,7 @@ Definition choiceType_category_mixin : Category.mixin_of choiceType :=
     (fun _ _ _ => True) (fun=> I) (fun _ _ _ _ _ _ _ => I).
 Canonical choiceType_category := Category.Pack choiceType_category_mixin.
 Definition hom_choiceType (A B : choiceType) (f : A -> B) : {hom A, B} :=
-  HomPack (I : InHom (f : El A -> El B)).
+  HomPack (I : InHom (f : el A -> el B)).
 End choiceType_as_a_category.
 
 Section free_choiceType_functor.
@@ -141,7 +141,7 @@ Lemma free_choiceType_mor_comp_fun (a b c : Type) (g : {hom b, c})
 Proof. by rewrite free_choiceType_mor_comp. Qed.
 
 Let h (a b : CC) (f : {hom CC; a, b}) : {hom CT; Choice.sort a , Choice.sort b} :=
-  HomPack (I : InHom (FId # f : El (C:=CT) a -> El b)).
+  HomPack (I : InHom (FId # f : el (C:=CT) a -> el b)).
 Lemma h_id : FunctorLaws.id h. Proof. by move=> *; apply hom_ext. Qed.
 Lemma h_comp : FunctorLaws.comp h. Proof. by move=> *; apply hom_ext. Qed.
 Definition forget_choiceType : functor CC CT :=
@@ -420,7 +420,7 @@ rewrite funeqE => b; rewrite propeqE; split.
 - by case => b0 [a0 Xa0 <-{b0}] [a a0a <-{b}]; exists a => //; exists a0.
 Qed.
 
-Lemma free_semiCompSemiLattConvType_mor'_scsl_op_morph :
+Lemma free_semiCompSemiLattConvType_mor'_lub_op_morph :
   lub_op_morph free_semiCompSemiLattConvType_mor'.
 Proof.
 move=> /= X; apply necset_ext => /=; rewrite funeqE => b.
@@ -433,7 +433,7 @@ Definition free_semiCompSemiLattConvType_mor :
   {hom necset_semiCompSemiLattConvType A, necset_semiCompSemiLattConvType B} :=
   locked (@Hom.Pack CS _ _ _ free_semiCompSemiLattConvType_mor'
     (LubOpAffine.Class free_semiCompSemiLattConvType_mor'_affine
-                       free_semiCompSemiLattConvType_mor'_scsl_op_morph)).
+                       free_semiCompSemiLattConvType_mor'_lub_op_morph)).
 
 Lemma free_semiCompSemiLattConvType_morE (X : necset_convType A) :
   NECSet.mixinType (free_semiCompSemiLattConvType_mor X) = image_neset f X.

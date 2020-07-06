@@ -7,6 +7,10 @@ Require Import imonae_lib ihierarchy imonad_lib imonad_transformer.
 (* This file corresponds to the formalization of [Mauro Jaskelioff,           *)
 (* Modular Monad Transformers, ESOP 2009] (from Sect. 5, definition 23).      *)
 (*                                                                            *)
+(*              K_MonadT == codensity monad transformer                       *)
+(* uniform_sigma_lifting == Theorem: lifting of sigma-operations along        *)
+(*                          functorial monad transformers                     *)
+(*                                                                            *)
 (******************************************************************************)
 
 Set Implicit Arguments.
@@ -179,7 +183,7 @@ Qed.
 
 End k_op.
 
-Section theorem27.
+Section uniform_sigma_lifting.
 Variables (E : functor) (M : monad) (op : E.-operation M) (t : FMT).
 Hypothesis naturality_type : forall (A : UU0) (m : k_type M A),
   naturality_k_type m.
@@ -191,22 +195,21 @@ Let op3 : E \O t M ~> E \O t (K_MonadT M) :=
 
 Definition hlifting : E.-operation (t M) := op1 \v op2 \v op3.
 
-Lemma theorem27 : lifting_monadT op hlifting.
+Lemma uniform_sigma_lifting : lifting_monadT op hlifting.
 Proof.
-rewrite /lifting_monadT => X.
-rewrite /hlifting.
+rewrite /lifting_monadT /hlifting => X.
 apply/esym.
 transitivity ((op1 \v op2) X \o op3 X \o E # Lift t M X).
   by rewrite (vassoc op1).
 rewrite -compA.
-transitivity ((op1 \v op2) X \o (
-  (E # Lift t (K_MonadT M) X) \o (E # Lift K_MonadT M X))).
-  congr (_ \o _).
-  by rewrite /op3 -functor_o -natural_hmap functor_o functor_app_naturalE.
+transitivity ((op1 \v op2) X \o
+  ((E # Lift t (K_MonadT M) X) \o (E # Lift K_MonadT M X))).
+  congr (_ \o _); rewrite /op3.
+  by rewrite -functor_o -natural_hmap functor_o functor_app_naturalE.
 transitivity (op1 X \o
   (op2 X \o E # Lift t (K_MonadT M) X) \o E # Lift K_MonadT M X).
   by rewrite vcompE -compA.
-rewrite -theorem19.
+rewrite -uniform_algebric_lifting.
 transitivity (Lift t M X \o from naturality_type X \o (K_op op) X \o
   E # Lift K_MonadT M X).
   congr (_ \o _).
@@ -215,7 +218,7 @@ rewrite -2!compA.
 congr (_ \o _).
 by rewrite compA -K_opE.
 Qed.
-End theorem27.
+End uniform_sigma_lifting.
 
 Section example_29_stateT.
 Variables (E : functor) (M : monad) (op : E.-operation M).

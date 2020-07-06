@@ -5,8 +5,8 @@ Require Import monae_lib hierarchy monad_lib fail_lib state_lib monad_model.
 (******************************************************************************)
 (*                    Formalization of monad transformers                     *)
 (*                                                                            *)
-(* This file corresponds to the formalization of [Mauro Jaskelioff,           *)
-(* Modular Monad Transformers, ESOP 2009] (up to Sect. 5, Example 22). Up to  *)
+(* This file corresponds to the formalization of [Mauro Jaskelioff, Modular   *)
+(* Monad Transformers, ESOP 2009] (roughly, up to Sect. 5, Example 22). Up to *)
 (* Sect. 4, it is documented in [Célestine Sauvage, Reynald Affeldt, David    *)
 (* Nowak, Vers la formalisation en Coq des transformateurs de monades         *)
 (* modulaires, JFLA 2020]. From functorial monad transformers, this is work   *)
@@ -14,33 +14,16 @@ Require Import monae_lib hierarchy monad_lib fail_lib state_lib monad_model.
 (*                                                                            *)
 (*             monadM == monad morphism                                       *)
 (*             monadT == monad transformer                                    *)
+(*                       instances: stateT, errorT (exception), envT          *)
+(*                       (environment), outputT, contT (continuation)         *)
+(*            lifting == lifting of a sigma-operation along a monad morphism  *)
 (*   E .-aoperation M == algebraic E.-operation M                             *)
+(* uniform_algebric_lifting == Theorem: lifting of an algebraic operations    *)
+(*                       along a monad morphism                               *)
 (*                FMT == functorial monad transformer                         *)
+(*                       instances: errorFMT, stateFMT, envFMT, outputFMT     *)
 (*                                                                            *)
 (******************************************************************************)
-
-(* - Module monadM
-     monad morphism
-   - Module monadT.
-     monad transformer
-   - examples of monad transformers
-     - state monad transformer
-     - exception monad transformer
-     - continuation monad transformer
-       continuation_monad_transformer_examples
-   - Section instantiations_with_the_identity_monad
-   - Section calcul.
-     example using the model of callcc
-   - Module Lifting
-     Definition 14
-   - Module AOperation
-     Definition 15
-   - Section proposition17.
-   - Section theorem19.
-     algebraic lifting
-   - Section examples_of_lifting.
-   - Section examples_of_programs.
-*)
 
 Set Implicit Arguments.
 Unset Strict Implicit.
@@ -1077,7 +1060,7 @@ Qed.
 End bijection.
 End proposition17.
 
-Section theorem19.
+Section uniform_algebric_lifting.
 Variables (E : functor) (M : monad) (op : E.-aoperation M).
 Variables (N : monad) (e : monadM M N).
 
@@ -1087,14 +1070,13 @@ Lemma aliftingE :
   alifting = (fun X => Join \o e (N X) \o phi op (N X)) :> (_ ~~> _).
 Proof. by []. Qed.
 
-Lemma theorem19 : lifting op e alifting.
+Lemma uniform_algebric_lifting : lifting op e alifting.
 Proof.
 move=> X.
 rewrite boolp.funeqE => Y.
-transitivity (e X (op X Y)) => //.
-rewrite /alifting compE psiE vcompE phiE.
-rewrite 3!compE.
-rewrite (_ : (E # Ret) ((E # e X) Y) = (E # (M # e X)) ((E # Ret) Y)); last first.
+rewrite /alifting !compE psiE vcompE phiE !compE.
+rewrite (_ : (E # Ret) ((E # e X) Y) =
+             (E # (M # e X)) ((E # Ret) Y)); last first.
   rewrite -[in LHS]compE -functor_o.
   rewrite -[in RHS]compE -functor_o.
   rewrite (natural RET).
@@ -1105,13 +1087,11 @@ rewrite (_ : op (N X) ((E # (M # e X)) ((E # Ret) Y)) =
   by rewrite (natural op).
 transitivity (e X (Join (op (M X) ((E # Ret) Y)))); last first.
   rewrite joinE monadMbind.
-  rewrite bindE.
-  rewrite -(compE _ (M # e X)).
+  rewrite bindE -(compE _ (M # e X)).
   by rewrite -natural.
-congr (e X _).
 by rewrite -[in LHS](phiK op).
 Qed.
-End theorem19.
+End uniform_algebric_lifting.
 
 Section examples_of_lifting.
 

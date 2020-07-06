@@ -235,14 +235,14 @@ End State.
 continuation monad *)
 Module Cont.
 Section cont.
-Variable r : UU0.
+Variable r : UU0. (* the type of answers *)
 Definition acto := fun A : UU0 => (A -> r) -> r.
 Local Notation M := acto.
-Definition map (A B : UU0) (f : A -> B) (m : M A) : M B :=
+Definition actm (A B : UU0) (f : A -> B) (m : M A) : M B :=
   fun Br : B -> r => m (fun a : A => Br (f a)).
-Lemma map_id : FunctorLaws.id map.
+Lemma map_id : FunctorLaws.id actm.
 Proof. by move=> A; apply fun_ext => m; apply fun_ext. Qed.
-Lemma map_comp : FunctorLaws.comp map.
+Lemma map_comp : FunctorLaws.comp actm.
 Proof. by move=> *; apply fun_ext => m; apply fun_ext. Qed.
 Definition functor := Functor.Pack (Functor.Mixin map_id map_comp).
 Lemma naturality_ret : naturality FId functor (fun A a => fun k => k a).
