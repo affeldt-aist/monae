@@ -48,26 +48,26 @@ Definition retK (A : UU0) (a : A) : MK M A :=
 Definition bindK (A B : UU0) (m : MK M A) f : MK M B :=
   fun (C : UU0) (k : B -> M C) => m C (fun a : A => (f a) C k).
 
-Definition MK_fmap (A B : UU0) (f : A -> B) (m : MK M A) : MK M B :=
+Definition MK_map (A B : UU0) (f : A -> B) (m : MK M A) : MK M B :=
   fun (C : UU0) (k : B -> M C) => m C (fun a : A => k (f a)).
 
-Lemma MK_id : FunctorLaws.id MK_fmap.
+Lemma MK_map_i : FunctorLaws.id MK_map.
 Proof.
-move=> A; rewrite /MK_fmap boolp.funeqE => m /=.
+move=> A; rewrite /MK_map boolp.funeqE => m /=.
 apply FunctionalExtensionality.functional_extensionality_dep => B.
 rewrite boolp.funeqE => k.
 by rewrite -FunctionalExtensionality.eta_expansion.
 Qed.
 
-Lemma MK_comp : FunctorLaws.comp MK_fmap.
+Lemma MK_map_o : FunctorLaws.comp MK_map.
 Proof. by []. Qed.
 
-Definition MK_functor := Functor.Pack (Functor.Mixin MK_id MK_comp).
+Definition MK_functor := Functor.Pack (Functor.Mixin MK_map_i MK_map_o).
 
 Lemma naturality_retK : naturality FId MK_functor retK.
 Proof.
 move=> A B h.
-rewrite /MK_functor /Actm /= /MK_fmap /retK /=.
+rewrite /MK_functor /Actm /= /MK_map /retK /=.
 rewrite boolp.funeqE => a /=.
 by apply FunctionalExtensionality.functional_extensionality_dep.
 Qed.
@@ -75,7 +75,7 @@ Qed.
 Definition retK_natural : FId ~> MK_functor :=
   Natural.Pack (Natural.Mixin naturality_retK).
 
-Program Definition ecodensityM : monad :=
+Program Definition codensityTmonad : monad :=
   @Monad_of_ret_bind MK_functor retK_natural bindK _ _ _.
 Next Obligation.
 move=> A B a f; rewrite /bindK /=.
@@ -93,10 +93,10 @@ move=> A B C m f g; rewrite /bindK.
 by apply FunctionalExtensionality.functional_extensionality_dep.
 Qed.
 
-Definition liftK (A : UU0) (m : M A) : ecodensityM A :=
+Definition liftK (A : UU0) (m : M A) : codensityTmonad A :=
   fun (B : UU0) (k : A -> M B) => m >>= k.
 
-Program Definition codensityM : monadM M ecodensityM :=
+Program Definition codensityTmonadM : monadM M codensityTmonad :=
   locked (monadM.Pack (@monadM.Mixin _ _ liftK _ _)).
 Next Obligation.
 move=> A; rewrite /liftK /= /retK /=.
@@ -114,7 +114,7 @@ Qed.
 End codensity.
 
 Definition codensityT : monadT :=
-  MonadT.Pack (@MonadT.Mixin ecodensityM codensityM).
+  MonadT.Pack (@MonadT.Mixin codensityTmonad codensityTmonadM).
 
 Section kappa.
 Variables (M : monad) (E : functor) (op : E.-operation M).
@@ -165,7 +165,7 @@ Lemma from_component_liftK A : @from_component A \o Lift codensityT M A = id.
 Proof.
 rewrite boolp.funeqE => m /=.
 rewrite /from_component /= /Lift /=.
-rewrite /codensityM /=.
+rewrite /codensityTmonadM /=.
 (* TODO *) unlock => /=.
 rewrite /liftK /=.
 by rewrite bindmret.
@@ -207,7 +207,7 @@ Let op3 : E \O t M ~> E \O t (codensityT M) :=
 
 Definition slifting : E.-operation (t M) := op1 \v op2 \v op3.
 
-Lemma uniform_sigma_lifting : lifting_monadT op slifting.
+Theorem uniform_sigma_lifting : lifting_monadT op slifting.
 Proof.
 rewrite /lifting_monadT /slifting => X.
 apply/esym.

@@ -104,36 +104,36 @@ Definition retS (A : UU0) : A -> MS A := curry Ret.
 
 Definition bindS A B (m : MS A) f : MS B := fun s => m s >>= uncurry f.
 
-Definition MS_fmap (A B : UU0) (f : A -> B) (m : MS A) : MS B :=
+Definition MS_map (A B : UU0) (f : A -> B) (m : MS A) : MS B :=
   (M # (fun x => (f x.1, x.2))) \o m.
 
-Lemma MS_id : FunctorLaws.id MS_fmap.
+Lemma MS_map_i : FunctorLaws.id MS_map.
 Proof.
 move=> A; apply fun_ext => m.
-rewrite /MS_fmap; apply fun_ext => s.
+rewrite /MS_map; apply fun_ext => s.
 rewrite (_ : (fun x : A * S => _) = id) ?functor_id //.
 by apply fun_ext; case.
 Qed.
 
-Lemma MS_comp : FunctorLaws.comp MS_fmap.
+Lemma MS_map_o : FunctorLaws.comp MS_map.
 Proof.
-move=> A B C g h; rewrite /MS_fmap; apply fun_ext => m.
+move=> A B C g h; rewrite /MS_map; apply fun_ext => m.
 by apply fun_ext => s /=; rewrite -[RHS]compE -functor_o.
 Qed.
 
-Definition MS_functor := Functor.Pack (Functor.Mixin MS_id MS_comp).
+Definition MS_functor := Functor.Pack (Functor.Mixin MS_map_i MS_map_o).
 
 Lemma naturality_retS : naturality FId MS_functor retS.
 Proof.
 move=> A B h; rewrite /Actm /=; apply fun_ext => a /=.
-rewrite /MS_fmap /=; apply fun_ext => s /=.
+rewrite /MS_map /=; apply fun_ext => s /=.
 by rewrite /retS [in LHS]curryE (natural RET).
 Qed.
 
 Definition retS_natural : FId ~> MS_functor :=
   Natural.Pack (Natural.Mixin naturality_retS).
 
-Program Definition estateMonadM : monad :=
+Program Definition stateTmonad : monad :=
   @Monad_of_ret_bind MS_functor retS_natural bindS _ _ _.
 Next Obligation.
 by move=> A B a f; rewrite /bindS; apply fun_ext => s; rewrite bindretf.
@@ -147,10 +147,10 @@ move=> A B C m f g; rewrite /bindS; apply fun_ext => s.
 by rewrite bindA; bind_ext; case.
 Defined.
 
-Definition liftS A (m : M A) : estateMonadM A :=
+Definition liftS A (m : M A) : stateTmonad A :=
   fun s => m >>= (fun x => Ret (x, s)).
 
-Program Definition stateMonadM : monadM M estateMonadM :=
+Program Definition stateTmonadM : monadM M stateTmonad :=
   locked (monadM.Pack (@monadM.Mixin _ _ liftS _ _)).
 Next Obligation.
 move=> A.
@@ -165,12 +165,12 @@ Qed.
 
 End state_monad_transformer.
 
-Definition stateT S : monadT := MonadT.Pack (MonadT.Mixin (@stateMonadM S)).
+Definition stateT S : monadT := MonadT.Pack (MonadT.Mixin (stateTmonadM S)).
 
 Lemma liftSE S (M : monad) U (m : M U) : liftS m = Lift (stateT S) M U m.
 Proof.
 case: M m => [M [[f fi fo] [r j a b c]]] m.
-by rewrite /= /Lift /= /stateMonadM; unlock.
+by rewrite /= /Lift /= /stateTmonadM; unlock.
 Qed.
 
 Section exception_monad_transformer.
@@ -206,19 +206,19 @@ rewrite -[RHS]compE -functor_o /=; congr (_ # _).
 by apply fun_ext; case.
 Qed.
 
-Definition exceptionT_functor := Functor.Pack (Functor.Mixin MX_map_i MX_map_o).
+Definition MX_functor := Functor.Pack (Functor.Mixin MX_map_i MX_map_o).
 
-Lemma naturality_retX : naturality FId exceptionT_functor retX.
+Lemma naturality_retX : naturality FId MX_functor retX.
 Proof.
 move=> A B h; rewrite /retX; apply fun_ext => /= a.
 by rewrite /Actm /= /MX_map -[LHS]compE (natural RET).
 Qed.
 
-Definition retX_nat : FId ~> exceptionT_functor :=
+Definition retX_natural : FId ~> MX_functor :=
   Natural.Pack (Natural.Mixin naturality_retX).
 
-Program Definition eexceptionMonadM : monad :=
-  @Monad_of_ret_bind exceptionT_functor retX_nat bindX _ _ _.
+Program Definition errorTmonad : monad :=
+  @Monad_of_ret_bind MX_functor retX_natural bindX _ _ _.
 Next Obligation. by move=> A B a f; rewrite /bindX bindretf. Qed.
 Next Obligation.
 move=> A m; rewrite /bindX -[in RHS](bindmret m); by bind_ext; case.
@@ -228,10 +228,10 @@ move=> A B C m f g; rewrite /bindX bindA; bind_ext; case => //.
 by move=> z; rewrite bindretf.
 Qed.
 
-Definition liftX X (m : M X) : eexceptionMonadM X :=
-  m >>= (fun x => @RET eexceptionMonadM _ x).
+Definition liftX X (m : M X) : errorTmonad X :=
+  m >>= (@RET errorTmonad _).
 
-Program Definition exceptionMonadM : monadM M eexceptionMonadM :=
+Program Definition errorTmonadM : monadM M errorTmonad :=
   monadM.Pack (@monadM.Mixin _ _ liftX _ _).
 Next Obligation.
 by move=> A; apply fun_ext => a; rewrite /liftX /= bindretf.
@@ -244,7 +244,7 @@ Qed.
 
 End exception_monad_transformer.
 
-Definition errorT Z := MonadT.Pack (MonadT.Mixin (@exceptionMonadM Z)).
+Definition errorT Z := MonadT.Pack (MonadT.Mixin (@errorTmonadM Z)).
 
 Lemma liftXE Z (M : monad) U (m : M U) : liftX _ m = Lift (errorT Z) M U m.
 Proof. by []. Qed.
@@ -261,34 +261,34 @@ Definition retEnv (A : UU0) : A -> MEnv A := fun a r => Ret a.
 
 Definition bindEnv A B (m : MEnv A) f : MEnv B := fun r => m r >>= (fun a => f a r).
 
-Definition MEnv_fmap (A B : UU0) (f : A -> B) (m : MEnv A) : MEnv B :=
+Definition MEnv_map (A B : UU0) (f : A -> B) (m : MEnv A) : MEnv B :=
   (M # f) \o m.
 
-Lemma MEnv_id : FunctorLaws.id MEnv_fmap.
+Lemma MEnv_map_i : FunctorLaws.id MEnv_map.
 Proof.
 move=> A; apply fun_ext => m.
-by rewrite /MEnv_fmap functor_id compidf.
+by rewrite /MEnv_map functor_id compidf.
 Qed.
 
-Lemma MEnv_comp : FunctorLaws.comp MEnv_fmap.
+Lemma MEnv_map_o : FunctorLaws.comp MEnv_map.
 Proof.
-move=> A B C g h; rewrite /MEnv_fmap; apply fun_ext => m /=.
+move=> A B C g h; rewrite /MEnv_map; apply fun_ext => m /=.
 by rewrite [in RHS]compA -functor_o.
 Qed.
 
-Definition MEnv_functor := Functor.Pack (Functor.Mixin MEnv_id MEnv_comp).
+Definition MEnv_functor := Functor.Pack (Functor.Mixin MEnv_map_i MEnv_map_o).
 
-Lemma naturality_retE : naturality FId MEnv_functor retEnv.
+Lemma naturality_retEnv : naturality FId MEnv_functor retEnv.
 Proof.
 move=> A B h; rewrite /Actm /=; apply fun_ext => a /=.
-rewrite /MEnv_fmap /retEnv; apply fun_ext => r /=.
+rewrite /MEnv_map /retEnv; apply fun_ext => r /=.
 by rewrite -[LHS](compE _ Ret) natural FIdf.
 Qed.
 
 Definition retEnv_natural : FId ~> MEnv_functor :=
-  Natural.Pack (Natural.Mixin naturality_retE).
+  Natural.Pack (Natural.Mixin naturality_retEnv).
 
-Program Definition eenvMonadM : monad :=
+Program Definition envTmonad : monad :=
   @Monad_of_ret_bind MEnv_functor retEnv_natural bindEnv _ _ _.
 Next Obligation.
 by move=> A B a f; rewrite /bindEnv; apply fun_ext => r; rewrite bindretf.
@@ -302,10 +302,10 @@ move=> A B C m f g; rewrite /bindEnv; apply fun_ext => r.
 by rewrite bindA; bind_ext; case.
 Defined.
 
-Definition liftEnv A (m : M A) : eenvMonadM A :=
+Definition liftEnv A (m : M A) : envTmonad A :=
   fun r => m.
 
-Program Definition envMonadM : monadM M eenvMonadM :=
+Program Definition envTmonadM : monadM M envTmonad :=
   locked (monadM.Pack (@monadM.Mixin _ _ liftEnv _ _)).
 Next Obligation.
 by [].
@@ -318,12 +318,12 @@ Qed.
 
 End environment_monad_transformer.
 
-Definition envT E : monadT := MonadT.Pack (MonadT.Mixin (@envMonadM E)).
+Definition envT E : monadT := MonadT.Pack (MonadT.Mixin (envTmonadM E)).
 
 Lemma liftEnvE E (M : monad) U : @liftEnv _ _ _ = Lift (envT E) M U.
 Proof.
 case: M => [M [[f fi fo] [r j a b c]]].
-by rewrite /= /Lift /= /envMonadM; unlock.
+by rewrite /= /Lift /= /envTmonadM; unlock.
 Qed.
 
 (* traces monad transformer? *)
@@ -341,34 +341,34 @@ Definition bindO A B (m : MO A) (f : A -> MO B) : MO B :=
   m >>= (fun o => let: (x, w) := o in f x >>=
   (fun o' => let (x', w') := o' in Ret (x', w ++ w'))).
 
-Definition MO_fmap (A B : UU0) (f : A -> B) (m : MO A) : MO B :=
+Definition MO_map (A B : UU0) (f : A -> B) (m : MO A) : MO B :=
   (M # (fun x => (f x.1, x.2))) m.
 
-Lemma MO_id : FunctorLaws.id MO_fmap.
+Lemma MO_map_i : FunctorLaws.id MO_map.
 Proof.
 move=> A; apply fun_ext => m.
-rewrite /MO_fmap (_ : (fun _ => _) = id) ?functor_id//.
+rewrite /MO_map (_ : (fun _ => _) = id) ?functor_id//.
 by apply fun_ext; case.
 Qed.
 
-Lemma MO_comp : FunctorLaws.comp MO_fmap.
+Lemma MO_map_o : FunctorLaws.comp MO_map.
 Proof.
-move=> A B C g h; rewrite /MO_fmap; apply fun_ext => m /=.
+move=> A B C g h; rewrite /MO_map; apply fun_ext => m /=.
 by rewrite -[in RHS](compE _ (M # _)) -functor_o.
 Qed.
 
-Definition MO_functor := Functor.Pack (Functor.Mixin MO_id MO_comp).
+Definition MO_functor := Functor.Pack (Functor.Mixin MO_map_i MO_map_o).
 
 Lemma naturality_retO : naturality FId MO_functor retO.
 Proof.
 move=> A B h; rewrite /Actm /=; apply fun_ext => a /=.
-by rewrite /MO_fmap /retO -[LHS](compE _ Ret) natural FIdf.
+by rewrite /MO_map /retO -[LHS](compE _ Ret) natural FIdf.
 Qed.
 
 Definition retO_natural : FId ~> MO_functor :=
   Natural.Pack (Natural.Mixin naturality_retO).
 
-Program Definition eoutputMonadM : monad :=
+Program Definition outputTmonad : monad :=
   @Monad_of_ret_bind MO_functor retO_natural bindO _ _ _.
 Next Obligation.
 move=> A B a f; rewrite /bindO /= bindretf /=.
@@ -387,10 +387,10 @@ rewrite !bindA bindretf; bind_ext; case=> x'' w''.
 by rewrite bindretf catA.
 Defined.
 
-Definition liftO A (m : M A) : eoutputMonadM A :=
+Definition liftO A (m : M A) : outputTmonad A :=
   m >>= (fun x => Ret (x, [::])).
 
-Program Definition outputMonadM : monadM M eoutputMonadM :=
+Program Definition outputTmonadM : monadM M outputTmonad :=
   locked (monadM.Pack (@monadM.Mixin _ _ liftO _ _)).
 Next Obligation.
 move=> a; rewrite /liftO /= /retO; apply fun_ext => o /=.
@@ -406,12 +406,12 @@ Qed.
 
 End output_monad_transformer.
 
-Definition outputT R : monadT := MonadT.Pack (MonadT.Mixin (@outputMonadM R)).
+Definition outputT R : monadT := MonadT.Pack (MonadT.Mixin (outputTmonadM R)).
 
 Lemma liftOE R (M : monad) U : @liftO _ _ _ = Lift (outputT R) M U.
 Proof.
 case: M => [M [[f fi fo] [r j a b c]]].
-by rewrite /= /Lift /= /outputMonadM; unlock.
+by rewrite /= /Lift /= /outputTmonadM; unlock.
 Qed.
 
 Section continuation_monad_tranformer.
@@ -440,18 +440,18 @@ Defined.
 Lemma naturality_retC : naturality FId MC_functor retC.
 Proof. by []. Qed.
 
-Definition retC_nat : FId ~> MC_functor :=
+Definition retC_natural : FId ~> MC_functor :=
   Natural.Pack (Natural.Mixin naturality_retC).
 
-Program Definition econtMonadM : monad :=
-  @Monad_of_ret_bind MC_functor retC_nat bindC _ _ _.
+Program Definition contTmonad : monad :=
+  @Monad_of_ret_bind MC_functor retC_natural bindC _ _ _.
 Next Obligation. by []. Qed.
 Next Obligation. by []. Qed.
 Next Obligation. by []. Qed.
 
-Definition liftC A (x : M A) : econtMonadM A := fun k => x >>= k.
+Definition liftC A (x : M A) : contTmonad A := fun k => x >>= k.
 
-Program Definition contMonadM : monadM M econtMonadM  :=
+Program Definition contTmonadM : monadM M contTmonad :=
   monadM.Pack (@monadM.Mixin _ _ liftC  _ _).
 Next Obligation.
 move => A.
@@ -467,7 +467,7 @@ Qed.
 
 End continuation_monad_tranformer.
 
-Definition contT r := MonadT.Pack (MonadT.Mixin (@contMonadM r)).
+Definition contT r := MonadT.Pack (MonadT.Mixin (contTmonadM r)).
 
 Definition abortT r X (M : monad) A : contT r M A := fun _ : A -> M r => Ret X.
 Arguments abortT {r} _ {M} {A}.
@@ -666,7 +666,7 @@ rewrite /eq_rect (_ : K = erefl) //; exact/proof_irr.
 Qed.
 
 Lemma eq_rect_error_ret (E : UU0) (p : U := ModelMonad.Except.functor E)
-  (p' : U := exceptionT_functor E ModelMonad.identity)
+  (p' : U := MX_functor E ModelMonad.identity)
   (x : Q p') (h : p = p') : x = eq_rect p Q x p' h.
 Proof.
 have K : Q p' = Q p by [].
@@ -705,7 +705,7 @@ rewrite /eq_rect (_ : K = erefl) //; exact/proof_irr.
 Qed.
 
 Lemma eq_rect_bind_error E (p : U := ModelMonad.Except.functor E)
-  (p' : U := exceptionT_functor E ModelMonad.identity)
+  (p' : U := MX_functor E ModelMonad.identity)
   (x : Q p') (h : p = p') : x = eq_rect p Q x p' h.
 Proof.
 have K : Q p' = Q p by [].
@@ -729,13 +729,13 @@ Section instantiations_with_the_identity_monad.
 Lemma state_monad_stateT S :
   stateT S ModelMonad.identity = ModelMonad.State.t S.
 Proof.
-rewrite /= /estateMonadM /ModelMonad.State.t.
+rewrite /= /stateTmonadM /ModelMonad.State.t.
 have FG : MS_functor S ModelMonad.identity = ModelMonad.State.functor S.
   apply: functor_ext => /=.
   apply FunctionalExtensionality.functional_extensionality_dep => A.
   apply FunctionalExtensionality.functional_extensionality_dep => B.
   apply fun_ext => f; apply fun_ext => m; apply fun_ext => s.
-  by rewrite /MS_fmap /Actm /= /ModelMonad.State.map; destruct (m s).
+  by rewrite /MS_map /Actm /= /ModelMonad.State.map; destruct (m s).
 apply (@monad_of_ret_bind_ext _ _ _ _ _ _ FG) => /=.
   apply/natural_ext => A a /=; exact: eq_rect_state_ret _ (esym FG).
 set x := @bindS _ _; exact: (@eq_rect_bind_state S x (esym FG)).
@@ -744,8 +744,8 @@ Qed.
 Lemma error_monad_errorT (Z : UU0) :
   errorT Z ModelMonad.identity = ModelMonad.Except.t Z.
 Proof.
-rewrite /= /eexceptionMonadM /ModelMonad.Except.t.
-have FG : exceptionT_functor Z ModelMonad.identity = ModelMonad.Except.functor Z.
+rewrite /= /errorTmonadM /ModelMonad.Except.t.
+have FG : MX_functor Z ModelMonad.identity = ModelMonad.Except.functor Z.
   apply: functor_ext => /=.
   apply FunctionalExtensionality.functional_extensionality_dep => A.
   apply FunctionalExtensionality.functional_extensionality_dep => B.
@@ -759,7 +759,7 @@ Qed.
 Lemma cont_monad_contT r :
   contT r ModelMonad.identity = ModelMonad.Cont.t r.
 Proof.
-rewrite /= /econtMonadM /ModelMonad.Cont.t.
+rewrite /= /contTmonadM /ModelMonad.Cont.t.
 have FG : MC_functor r ModelMonad.identity = ModelMonad.Cont.functor r.
   apply: functor_ext => /=.
   apply FunctionalExtensionality.functional_extensionality_dep => A.
@@ -1128,7 +1128,7 @@ Definition aLCallcc : (ContOps.Acallcc.func r).-aoperation (stS M) :=
 Goal forall A (f : (stS M A -> r) -> stS M A),
   aLCallcc _ f = (fun s k => f (fun m => uncurry m (s, k)) s k) :> stS M A.
 move=> A f.
-by rewrite /aLCallcc /= /stS /= /stateT /= /stateMonadM /=; unlock.
+by rewrite /aLCallcc /= /stS /= /stateT /= /stateTmonadM /=; unlock.
 Abort.
 
 Definition usual_callccS (A B : UU0) (f : (A -> stS M B) -> stS M A) : stS M A :=
@@ -1139,7 +1139,7 @@ Lemma callccS_E A B f : @aLCallcc _
        f (fun x => (fun (_ : S) (_ : B * S -> r) => k (@RET (stS M) A x)) : stS M B)) =
   usual_callccS f.
 Proof.
-by rewrite /aLCallcc /= /stS /= /stateT /= /stateMonadM /=; unlock.
+by rewrite /aLCallcc /= /stS /= /stateT /= /stateTmonadM /=; unlock.
 Qed.
 
 End continuation_stateT.
@@ -1156,20 +1156,20 @@ refine (@MonadState.Mixin _ (stateT S M) (fun s => Ret (s, s))
 - move=> s s'.
   rewrite boolp.funeqE => s0.
   case: M => m [f [/= r j a b c]].
-  rewrite /Bind /Join /JOIN /estateMonadM /Monad_of_ret_bind /bindS /Actm /=.
+  rewrite /Bind /Join /JOIN /stateTmonad /Monad_of_ret_bind /bindS /Actm /=.
   by rewrite /Monad_of_ret_bind.Map bindretf /= /retS bindretf.
 - move=> s.
   rewrite boolp.funeqE => s0.
   case: M => m [f [/= r j a b c]].
-  rewrite /retS /Ret /RET /Bind /estateMonadM /Monad_of_ret_bind /Actm /=.
+  rewrite /retS /Ret /RET /Bind /stateTmonad /Monad_of_ret_bind /Actm /=.
   by rewrite /bindS /= /Monad_of_ret_bind.Map 4!bindretf.
 - rewrite boolp.funeqE => s.
   case: M => m [f [/= r j a b c]].
-  rewrite /Bind /Join /JOIN /= /estateMonadM /Monad_of_ret_bind /bindS /Actm /=.
+  rewrite /Bind /Join /JOIN /= /stateTmonad /Monad_of_ret_bind /bindS /Actm /=.
   by rewrite /Monad_of_ret_bind.Map bindretf /= /retS bindretf.
 - case: M => m [f [/= r j a b c]] A k.
   rewrite boolp.funeqE => s.
-  rewrite /Bind /Join /JOIN /= /bindS /estateMonadM /= /Monad_of_ret_bind.
+  rewrite /Bind /Join /JOIN /= /bindS /stateTmonad /= /Monad_of_ret_bind.
   rewrite /Actm /Monad_of_ret_bind.Map /= /Monad_of_ret_bind.Map /= /bindS /=.
   by rewrite !bindretf /= !bindretf.
 Qed.
@@ -1214,7 +1214,7 @@ refine (@MonadFail.Class _ _
                     _ )).
 move=> A B.
 case: M => m [f [/= r j a b c]] g.
-rewrite /Bind /= /bindX /= /eexceptionMonadM /Monad_of_ret_bind /= /Actm /=.
+rewrite /Bind /= /bindX /= /errorTmonad /Monad_of_ret_bind /= /Actm /=.
 by rewrite /Monad_of_ret_bind.Map /= /bindX /= !bindretf.
 Qed.
 
@@ -1334,7 +1334,6 @@ Proof.
 move=> M N t A.
 rewrite /hmapX.
 rewrite /Lift /= /liftX /=.
-rewrite -!FunctionalExtensionality.eta_expansion.
 rewrite /retX /=.
 rewrite /Bind /=.
 rewrite (_ : (fun x : A => Ret (inr x)) = Ret \o inr) //.
@@ -1373,11 +1372,11 @@ Proof.
 move=> A B h.
 rewrite /hmapS'.
 rewrite /=.
-have H : forall G, estateMonadM S G # h = MS_functor S G # h.
+have H : forall G, stateTmonad S G # h = MS_functor S G # h.
   move=> H; apply fun_ext => m.
   rewrite /Actm /=.
   rewrite /Monad_of_ret_bind.Map /=.
-  rewrite /bindS /MS_fmap /retS /=.
+  rewrite /bindS /MS_map /retS /=.
   apply fun_ext => s.
   set j := uncurry _.
   have -> : j = Ret \o (fun x : A * S => (h x.1, x.2)).
@@ -1385,7 +1384,7 @@ have H : forall G, estateMonadM S G # h = MS_functor S G # h.
   by rewrite -fmapE.
 rewrite !H {H}.
 rewrite {1}/MS_functor /= {1}/Actm /=.
-rewrite /MS_fmap; apply fun_ext => m; apply fun_ext => s /=.
+rewrite /MS_map; apply fun_ext => m; apply fun_ext => s /=.
 rewrite -(compE  _ (tau (A * S)%type)).
 by rewrite natural.
 Qed.
@@ -1442,7 +1441,7 @@ Proof.
 move=> M N t A.
 rewrite /hmapS /= /hmapS'.
 rewrite /Lift /=.
-rewrite /stateMonadM /=.
+rewrite /stateTmonadM /=.
 unlock.
 rewrite /=.
 rewrite /liftS /=.
@@ -1482,15 +1481,15 @@ Proof.
 move=> A B h.
 rewrite /hmapEnv'.
 rewrite /=.
-have H : forall G, eenvMonadM E G # h = MEnv_functor E G # h.
+have H : forall G, envTmonad E G # h = MEnv_functor E G # h.
   move=> H; apply fun_ext => m.
   rewrite /Actm /=.
   rewrite /Monad_of_ret_bind.Map /=.
-  rewrite /bindEnv /MEnv_fmap /retEnv /=; apply fun_ext => s.
+  rewrite /bindEnv /MEnv_map /retEnv /=; apply fun_ext => s.
   by rewrite (_ : (fun a : A => _) = Ret \o h) // -fmapE.
 rewrite !H {H}.
 rewrite {1}/MEnv_functor /= {1}/Actm /=.
-rewrite /MEnv_fmap; apply fun_ext => m; apply fun_ext => s /=.
+rewrite /MEnv_map; apply fun_ext => m; apply fun_ext => s /=.
 rewrite -(compE  _ (tau A)).
 by rewrite natural.
 Qed.
@@ -1546,7 +1545,7 @@ Proof.
 move=> M N t A.
 rewrite /hmapEnv /= /hmapEnv'.
 rewrite /Lift /=.
-rewrite /envMonadM /=.
+rewrite /envTmonadM /=.
 unlock.
 rewrite /=.
 rewrite /liftEnv /=.
@@ -1571,11 +1570,11 @@ Proof.
 move=> A B h.
 rewrite /hmapO'.
 rewrite /=.
-have H : forall G, eoutputMonadM R G # h = MO_functor R G # h.
+have H : forall G, outputTmonad R G # h = MO_functor R G # h.
   move=> H; apply fun_ext => m.
   rewrite /Actm /=.
   rewrite /Monad_of_ret_bind.Map /=.
-  rewrite /MO_fmap.
+  rewrite /MO_map.
   rewrite /bindO /retO /=.
   rewrite fmapE.
   congr (_ >>= _).
@@ -1583,7 +1582,7 @@ have H : forall G, eoutputMonadM R G # h = MO_functor R G # h.
   by rewrite bindretf cats0.
 rewrite !H {H}.
 rewrite {1}/MO_functor /= {1}/Actm /=.
-rewrite /MO_fmap; apply fun_ext => m /=.
+rewrite /MO_map; apply fun_ext => m /=.
 rewrite -[in LHS](compE  _ (tau _)).
 by rewrite natural.
 Qed.
@@ -1635,7 +1634,7 @@ Proof.
 move=> M N t A.
 rewrite /hmapO /= /hmapO'.
 rewrite /Lift /=.
-rewrite /outputMonadM /=.
+rewrite /outputTmonadM /=.
 unlock.
 rewrite /=.
 rewrite /liftO /=.
