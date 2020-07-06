@@ -248,15 +248,12 @@ assert (H :
   M_R X Y (fun (x : X) (y : Y) => f x = y) (g a)
     ((ModelMonad.State.t S # f \o g) a')).
 {
-  intros a a' Ha s s' Hs.
-  unfold S_R in Hs.
-  subst a' s'.
+  move=> a ? <- s ?; rewrite /S_R => <-.
   unfold comp, Actm.
   cbn.
   unfold ModelMonad.State.map, ModelMonad.State.bind, Monad_of_ret_bind.Map.
-  case (g a s).
-  intros x s'.
-  constructor; reflexivity.
+  rewrite /uncurry /prod_curry /=.
+  by case (g a s).
 }
 apply fun_ext => s0.
 assert (Hparam :=
@@ -265,7 +262,7 @@ assert (Hparam :=
 simple inversion Hparam as [x y Hxy s s' Hs Hx Hy].
 compute.
 compute in Hy.
-rewrite <- Hx, <- Hy.
+rewrite -Hx -Hy.
 unfold S_R in Hs.
 subst y s'.
 reflexivity.

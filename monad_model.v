@@ -284,13 +284,18 @@ Definition ret_component : FId ~~> M := fun A a => fun s => (a, s).
 Lemma naturality_ret : naturality FId functor ret_component.
 Proof. by move=> A B h; rewrite boolp.funeqE => a /=; rewrite boolp.funeqE. Qed.
 Definition ret : FId ~> functor := Natural.Pack (Natural.Mixin naturality_ret).
-Definition bind := fun A B (m : M A) (f : A -> M B) => fun s => uncurry f (m s).
+Definition bind := fun A B (m : M A) (f : A -> M B) => uncurry f \o m.
 Lemma left_neutral : @BindLaws.left_neutral functor bind ret.
 Proof. by move=> A B a f; rewrite boolp.funeqE. Qed.
 Lemma right_neutral : @BindLaws.right_neutral functor bind ret.
-Proof. by move=> A f; rewrite /bind boolp.funeqE => ?; case: f. Qed.
+Proof.
+by move=> A f; rewrite boolp.funeqE => s; rewrite /bind /=; case: (f s).
+Qed.
 Lemma associative : @BindLaws.associative functor bind.
-Proof. by move=> A B C a b c; rewrite /bind boolp.funeqE => ?; case: a. Qed.
+Proof.
+move=> A B C a b c; rewrite /bind compA; congr (_ \o _).
+by rewrite boolp.funeqE => -[].
+Qed.
 Definition t := Monad_of_ret_bind left_neutral right_neutral associative.
 End state.
 End State.
@@ -425,7 +430,7 @@ Module EnvironmentOps.
 
 Module Ask. Section ask. Variable E : UU0.
 Definition acto (X : UU0) := E -> X.
-Definition actm (X Y : UU0) (f : X -> Y) (t : acto X) : acto Y := fun e => f (t e).
+Definition actm (X Y : UU0) (f : X -> Y) (t : acto X) : acto Y := f \o t.
 Program Definition func := Functor.Pack (@Functor.Mixin _ actm _ _).
 Next Obligation. by []. Qed.
 Next Obligation. by []. Qed.
@@ -467,7 +472,7 @@ Local Notation M := (ModelMonad.Environment.t E).
 (* usual get operation *)
 Definition ask : M E := EnvironmentOps.ask_op _ _ Ret.
 Lemma askE : ask = fun e => e. Proof. by []. Qed.
-(* TODO: complete with an interface for the environment monad and instantiate *)
+(* TODO: complete with an interface for the environment monad and instantiate, see Jaskelioff's PhD *)
 End modelenvironment.
 End ModelEnvironment.
 
@@ -516,9 +521,10 @@ Arguments ExceptOps.handle_op {Z}.
 
 Module StateOps.
 
+(* NB: see also Module Ask *)
 Module Get. Section get. Variable S : UU0.
 Definition acto (X : UU0) := S -> X.
-Definition actm (X Y : UU0) (f : X -> Y) (t : acto X) : acto Y := fun s => f (t s).
+Definition actm (X Y : UU0) (f : X -> Y) (t : acto X) : acto Y := f \o t.
 Program Definition func := Functor.Pack (@Functor.Mixin _ actm _ _).
 Next Obligation. by move=> A; rewrite boolp.funeqE. Qed.
 Next Obligation. by move=> A B C g h; rewrite boolp.funeqE. Qed.
