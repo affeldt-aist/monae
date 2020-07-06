@@ -4,8 +4,13 @@ From mathcomp Require Import all_ssreflect.
 Require Import hierarchy monad_lib fmt_lifting monad_model.
 
 (******************************************************************************)
-(* Instantiations of Theorem 25 of [Mauro Jaskelioff, Modular Monad           *)
-(* Transformers, ESOP 2009].                                                  *)
+(* Instantiations of uniform lifting (Theorem 27 of [Mauro Jaskelioff,        *)
+(* Modular Monad Transformers, ESOP 2009]) with:                              *)
+(* - the identity monad (Module Identity)                                     *)
+(* - the exception monad (Module Exception)                                   *)
+(* - the option monad (Module Option)                                         *)
+(* - the list monad (Module List)                                             *)
+(* - the state monad (Module State)                                           *)
 (*                                                                            *)
 (* WARNING: see fmt_lifting.v                                                 *)
 (******************************************************************************)
@@ -16,22 +21,23 @@ Unset Universe Checking.
 
 Set Bullet Behavior "Strict Subproofs".
 
-(** The identity monad *)
+(******************************************************************************)
+
 Module Identity.
 
 Section Naturality.
 
-Variable A : Type.
+Variable A : UU0.
 
 Realizer A as A_R := (@eq A).
 
-Definition M (X : Type) : Type :=
+Definition M (X : UU0) : UU0 :=
 ltac:(
   let t := constr:(ModelMonad.identity X) in
   let t := eval cbn in t in
   exact t).
 
-Definition T : Type := k_type M A.
+Definition T : UU0 := MK M A.
 
 Parametricity T arity 2.
 
@@ -40,7 +46,7 @@ Variable m : T.
 Axiom param : T_R m m.
 
 Lemma naturality :
-naturality (exponential_F A \O ModelMonad.identity) ModelMonad.identity m.
+  naturality (exponential_F A \O ModelMonad.identity) ModelMonad.identity m.
 Proof.
 intros X Y f.
 rewrite boolp.funeqE => g.
@@ -57,23 +63,26 @@ End Naturality.
 
 End Identity.
 
-(** The exception monad *)
+Check uniform_sigma_lifting (M:=ModelMonad.identity) _ _ Identity.naturality.
+
+(******************************************************************************)
+
 Module Exception.
 
 Section Naturality.
 
-Variables E A : Type.
+Variables E A : UU0.
 
 Realizer E as E_R := (@eq E).
 Realizer A as A_R := (@eq A).
 
-Definition M (X : Type) : Type :=
+Definition M (X : UU0) : UU0 :=
 ltac:(
   let t := constr:(ModelMonad.Except.t E X) in
   let t := eval cbn in t in
   exact t).
 
-Definition T : Type := k_type M A.
+Definition T : UU0 := MK M A.
 
 Parametricity Recursive T arity 2.
 
@@ -108,16 +117,20 @@ End Naturality.
 
 End Exception.
 
-(** The option monad *)
+Check fun E =>
+  uniform_sigma_lifting (M:=ModelMonad.Except.t E) _ _ (Exception.naturality E).
+
+(******************************************************************************)
+
 Module Option.
 
 Section Naturality.
 
-Variable A : Type.
+Variable A : UU0.
 
-Definition M (X : Type) : Type := ModelMonad.option_monad X.
+Definition M (X : UU0) : UU0 := ModelMonad.option_monad X.
 
-Definition T : Type := k_type M A.
+Definition T : UU0 := MK M A.
 
 Variable m : T.
 
@@ -132,22 +145,25 @@ End Naturality.
 
 End Option.
 
-(** The list monad *)
+Check uniform_sigma_lifting (M:=ModelMonad.option_monad) _ _ Option.naturality.
+
+(******************************************************************************)
+
 Module List.
 
 Section Naturality.
 
-Variable A : Type.
+Variable A : UU0.
 
 Realizer A as A_R := (@eq A).
 
-Definition M (X : Type) : Type :=
+Definition M (X : UU0) : UU0 :=
 ltac:(
   let t := constr:(ModelMonad.ListMonad.t X) in
   let t := eval cbn in t in
   exact t).
 
-Definition T : Type := k_type M A.
+Definition T : UU0 := MK M A.
 
 Parametricity Recursive T arity 2.
 
@@ -193,23 +209,26 @@ End Naturality.
 
 End List.
 
-(** The state monad *)
+Check uniform_sigma_lifting (M:=ModelMonad.ListMonad.t) _ _ List.naturality.
+
+(******************************************************************************)
+
 Module State.
 
 Section Naturality.
 
-Variable S A : Type.
+Variable S A : UU0.
 
 Realizer S as S_R := (@eq S).
 Realizer A as A_R := (@eq A).
 
-Definition M X : Type :=
+Definition M X : UU0 :=
 ltac:(
   let t := constr:(ModelMonad.State.t S X) in
   let t := eval cbn in t in
   exact t).
 
-Definition T : Type := k_type M A.
+Definition T : UU0 := MK M A.
 
 Parametricity Recursive T arity 2.
 
@@ -257,14 +276,7 @@ End Naturality.
 
 End State.
 
-Check uniform_sigma_lifting (M:=ModelMonad.identity) _ _ Identity.naturality.
-
-Check fun E =>
-  uniform_sigma_lifting (M:=ModelMonad.Except.t E) _ _ (Exception.naturality E).
-
-Check uniform_sigma_lifting (M:=ModelMonad.option_monad) _ _ Option.naturality.
-
-Check uniform_sigma_lifting (M:=ModelMonad.ListMonad.t) _ _ List.naturality.
-
 Check fun S =>
   uniform_sigma_lifting (M:=ModelMonad.State.t S) _ _ (State.naturality S).
+
+(******************************************************************************)

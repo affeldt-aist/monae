@@ -4,8 +4,13 @@ From mathcomp Require Import all_ssreflect.
 Require Import imonae_lib ihierarchy imonad_lib ifmt_lifting imonad_model.
 
 (******************************************************************************)
-(* Instantiations of Theorem 25 of [Mauro Jaskelioff, Modular Monad           *)
-(* Transformers, ESOP 2009].                                                  *)
+(* Instantiations of uniform lifting (Theorem 27 of [Mauro Jaskelioff,        *)
+(* Modular Monad Transformers, ESOP 2009]) with:                              *)
+(* - the identity monad (Module Identity)                                     *)
+(* - the exception monad (Module Exception)                                   *)
+(* - the option monad (Module Option)                                         *)
+(* - the list monad (Module List)                                             *)
+(* - the state monad (Module State)                                           *)
 (*                                                                            *)
 (* WARNING: see ifmt_lifting.v                                                *)
 (******************************************************************************)
@@ -15,7 +20,8 @@ Local Open Scope monae_scope.
 Import Univ.
 Set Bullet Behavior "Strict Subproofs".
 
-(** The identity monad *)
+(******************************************************************************)
+
 Module Identity.
 
 Section Naturality.
@@ -30,7 +36,7 @@ ltac:(
   let t := eval cbn in t in
   exact t).
 
-Definition T : UU0 := k_type M A.
+Definition T : UU0 := MK M A.
 
 Parametricity T arity 2.
 
@@ -39,7 +45,7 @@ Variable m : T.
 Axiom param : T_R m m.
 
 Lemma naturality :
-naturality (exponential_F A \O ModelMonad.identity) ModelMonad.identity m.
+  naturality (exponential_F A \O ModelMonad.identity) ModelMonad.identity m.
 Proof.
 intros X Y f.
 apply fun_ext => g.
@@ -56,7 +62,10 @@ End Naturality.
 
 End Identity.
 
-(** The exception monad *)
+Check uniform_sigma_lifting (M:=ModelMonad.identity) _ _ Identity.naturality.
+
+(******************************************************************************)
+
 Module Exception.
 
 Section Naturality.
@@ -72,7 +81,7 @@ ltac:(
   let t := eval cbn in t in
   exact t).
 
-Definition T : UU0 := k_type M A.
+Definition T : UU0 := MK M A.
 
 Parametricity Recursive T arity 2.
 
@@ -107,7 +116,11 @@ End Naturality.
 
 End Exception.
 
-(** The option monad *)
+Check fun E =>
+  uniform_sigma_lifting (M:=ModelMonad.Except.t E) _ _ (Exception.naturality E).
+
+(******************************************************************************)
+
 Module Option.
 
 Section Naturality.
@@ -116,7 +129,7 @@ Variable A : UU0.
 
 Definition M (X : UU0) : UU0 := ModelMonad.option_monad X.
 
-Definition T : UU0 := k_type M A.
+Definition T : UU0 := MK M A.
 
 Variable m : T.
 
@@ -131,7 +144,10 @@ End Naturality.
 
 End Option.
 
-(** The list monad *)
+Check uniform_sigma_lifting (M:=ModelMonad.option_monad) _ _ Option.naturality.
+
+(******************************************************************************)
+
 Module List.
 
 Section Naturality.
@@ -146,7 +162,7 @@ ltac:(
   let t := eval cbn in t in
   exact t).
 
-Definition T : UU0 := k_type M A.
+Definition T : UU0 := MK M A.
 
 Parametricity Recursive T arity 2.
 
@@ -192,7 +208,10 @@ End Naturality.
 
 End List.
 
-(** The state monad *)
+Check uniform_sigma_lifting (M:=ModelMonad.ListMonad.t) _ _ List.naturality.
+
+(******************************************************************************)
+
 Module State.
 
 Section Naturality.
@@ -208,7 +227,7 @@ ltac:(
   let t := eval cbn in t in
   exact t).
 
-Definition T : UU0 := k_type M A.
+Definition T : UU0 := MK M A.
 
 Parametricity Recursive T arity 2.
 
@@ -255,15 +274,6 @@ Qed.
 End Naturality.
 
 End State.
-
-Check uniform_sigma_lifting (M:=ModelMonad.identity) _ _ Identity.naturality.
-
-Check fun E =>
-  uniform_sigma_lifting (M:=ModelMonad.Except.t E) _ _ (Exception.naturality E).
-
-Check uniform_sigma_lifting (M:=ModelMonad.option_monad) _ _ Option.naturality.
-
-Check uniform_sigma_lifting (M:=ModelMonad.ListMonad.t) _ _ List.naturality.
 
 Check fun S =>
   uniform_sigma_lifting (M:=ModelMonad.State.t S) _ _ (State.naturality S).
