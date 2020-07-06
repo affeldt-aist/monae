@@ -220,13 +220,18 @@ Definition ret_component : FId ~~> M := fun A a => fun s => (a, s).
 Lemma naturality_ret : naturality FId functor ret_component.
 Proof. by move=> A B h; apply fun_ext => a /=; apply fun_ext. Qed.
 Definition ret : FId ~> functor := Natural.Pack (Natural.Mixin naturality_ret).
-Definition bind := fun A B (m : M A) (f : A -> M B) => fun s => uncurry f (m s).
+Definition bind := fun A B (m : M A) (f : A -> M B) => uncurry f \o m.
 Lemma left_neutral : @BindLaws.left_neutral functor bind ret.
-Proof. by move=> A B a f; apply fun_ext. Qed.
+Proof. by move=> A B a f; rewrite boolp.funeqE. Qed.
 Lemma right_neutral : @BindLaws.right_neutral functor bind ret.
-Proof. by move=> A f; rewrite /bind; apply fun_ext => ?; case: f. Qed.
+Proof.
+by move=> A f; rewrite boolp.funeqE => s; rewrite /bind /=; case: (f s).
+Qed.
 Lemma associative : @BindLaws.associative functor bind.
-Proof. by move=> A B C a b c; rewrite /bind; apply fun_ext => ?; case: a. Qed.
+Proof.
+move=> A B C a b c; rewrite /bind compA; congr (_ \o _).
+by rewrite boolp.funeqE => -[].
+Qed.
 Definition t := Monad_of_ret_bind left_neutral right_neutral associative.
 End state.
 End State.
@@ -361,7 +366,7 @@ Module EnvironmentOps.
 
 Module Ask. Section ask. Variable E : UU0.
 Definition acto (X : UU0) := E -> X.
-Definition actm (X Y : UU0) (f : X -> Y) (t : acto X) : acto Y := fun e => f (t e).
+Definition actm (X Y : UU0) (f : X -> Y) (t : acto X) : acto Y := f \o t.
 Program Definition func := Functor.Pack (@Functor.Mixin _ actm _ _).
 Next Obligation. by []. Qed.
 Next Obligation. by []. Qed.
@@ -452,9 +457,10 @@ Arguments ExceptOps.handle_op {Z}.
 
 Module StateOps.
 
+(* NB: see also Module Ask *)
 Module Get. Section get. Variable S : UU0.
 Definition acto (X : UU0) := S -> X.
-Definition actm (X Y : UU0) (f : X -> Y) (t : acto X) : acto Y := fun s => f (t s).
+Definition actm (X Y : UU0) (f : X -> Y) (t : acto X) : acto Y := f \o t.
 Program Definition func := Functor.Pack (@Functor.Mixin _ actm _ _).
 Next Obligation. by move=> A; apply fun_ext. Qed.
 Next Obligation. by move=> A B C g h; apply fun_ext. Qed.
@@ -711,7 +717,7 @@ Compute (sum_break [:: Some 2; Some 6; None; Some 4]).
 *)
 
 (* example from Sect. 3.1 of [Wadler, 94] *)
-Goal Ret 1 +m (Callcc (fun f => Ret 10 +m (f 100)) : M _) = Ret (1 + 100).
+Goal Ret 1 +m (Callcc (fun f => Ret 10 +m (f 100))) = Ret (1 + 100) :> M _.
 Proof. by rewrite /addM bindretf; apply fun_ext. Abort.
 
 (* https://xavierleroy.org/mpri/2-4/transformations.pdf *)

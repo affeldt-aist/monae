@@ -1141,7 +1141,8 @@ Proof. by []. Qed.
 
 Lemma ret_nat : hierarchy.naturality hierarchy.FId m' ret.
 Proof. move=> ? ? ?; exact: (ret_naturality M). Qed.
-Definition _ret_nat : hierarchy.Natural.type hierarchy.FId m' := hierarchy.Natural.Pack (hierarchy.Natural.Mixin ret_nat).
+Definition _ret_nat : hierarchy.Natural.type hierarchy.FId m' :=
+  hierarchy.Natural.Pack (hierarchy.Natural.Mixin ret_nat).
 Lemma join_nat : hierarchy.naturality (hierarchy.FComp m' m') m' join.
 Proof.
 move=> A B h; apply funext=> x; rewrite /ret /Actm /= /f.
