@@ -257,14 +257,14 @@ End Naturality.
 
 End State.
 
-Check theorem27 (M:=ModelMonad.identity) _ _ Identity.naturality.
+Check uniform_sigma_lifting (M:=ModelMonad.identity) _ _ Identity.naturality.
 
 Check fun E =>
-  theorem27 (M:=ModelMonad.Except.t E) _ _ (Exception.naturality E).
+  uniform_sigma_lifting (M:=ModelMonad.Except.t E) _ _ (Exception.naturality E).
 
-Check theorem27 (M:=ModelMonad.option_monad) _ _ Option.naturality.
+Check uniform_sigma_lifting (M:=ModelMonad.option_monad) _ _ Option.naturality.
 
-Check theorem27 (M:=ModelMonad.ListMonad.t) _ _ List.naturality.
+Check uniform_sigma_lifting (M:=ModelMonad.ListMonad.t) _ _ List.naturality.
 
 Check fun S =>
-  theorem27 (M:=ModelMonad.State.t S) _ _ (State.naturality S).
+  uniform_sigma_lifting (M:=ModelMonad.State.t S) _ _ (State.naturality S).
