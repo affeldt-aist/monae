@@ -303,26 +303,23 @@ End mixing_choices.
 Definition coins23 {M : exceptProbMonad} : M bool :=
   Ret true <| (/ 2)%:pr |> (Ret false <| (/ 2)%:pr |> (Fail : M _)).
 
-Lemma H23 : (0 <= 2/3 <= 1)%R. Proof. split; lra. Qed.
-
 (* NB: notation for ltac:(split; fourier?)*)
 Lemma choiceA_compute {N : probMonad} (T F : bool) (f : bool -> N bool) :
   f T <|(/ 9)%:pr|> (f F <|(/ 8)%:pr|> (f F <|(/ 7)%:pr|> (f F <|(/ 6)%:pr|>
  (f T <|(/ 5)%:pr|> (f F <|(/ 4)%:pr|> (f F <|(/ 3)%:pr|> (f F <|(/ 2)%:pr|>
   f T))))))) = f F <|(/ 3)%:pr|> (f F <|(/ 2)%:pr|> f T) :> N _.
 Proof.
-have H34 : (0 <= 3/4 <= 1)%R by split; lra.
 have H27 : (0 <= 2/7 <= 1)%R by split; lra.
 have H721 : (0 <= 7/21 <= 1)%R by split; lra.
 have H2156 : (0 <= 21/56 <= 1)%R by split; lra.
 have H25 : (0 <= 2/5 <= 1)%R by split; lra.
-rewrite [in RHS](choiceA _ _ (/ 2)%:pr (@Prob.mk (2/3) H23)); last first.
+rewrite [in RHS](choiceA _ _ (/ 2)%:pr (/ 3).~%:pr); last first.
   by rewrite 3!probpK /= /onem; split; field.
 rewrite choicemm.
-rewrite [in LHS](choiceA (/ 3)%:pr (/ 2)%:pr (/ 2)%:pr (@Prob.mk (2/3) H23)); last first.
+rewrite [in LHS](choiceA (/ 3)%:pr (/ 2)%:pr (/ 2)%:pr (/ 3).~%:pr); last first.
   by rewrite 3!probpK /= /onem; split; field.
 rewrite choicemm.
-rewrite [in LHS](choiceA (/ 4)%:pr (@Prob.mk (2/3) H23) (/ 3)%:pr (@Prob.mk (3/4) H34)); last first.
+rewrite [in LHS](choiceA (/ 4)%:pr (/ 3).~%:pr (/ 3)%:pr (/ 4).~%:pr); last first.
   by rewrite 4!probpK /= /onem; split; field.
 rewrite choicemm.
 rewrite [in LHS](choiceA (/ 7)%:pr (/ 6)%:pr (/ 2)%:pr (@Prob.mk (2/7) H27)); last first.
@@ -330,20 +327,18 @@ rewrite [in LHS](choiceA (/ 7)%:pr (/ 6)%:pr (/ 2)%:pr (@Prob.mk (2/7) H27)); la
 rewrite choicemm.
 rewrite [in LHS](choiceA (/ 8)%:pr (@Prob.mk (2/7) H27) (@Prob.mk (7/21) H721) (@Prob.mk (21/56) H2156)); last first.
   by rewrite 4!probpK /= /onem; split; field.
-rewrite (choiceC (@Prob.mk (3/4) H34)).
-rewrite [in LHS](choiceA (/ 5)%:pr (probcplt (@Prob.mk (3/4) H34)) (/ 2)%:pr (@Prob.mk (2/5) H25)); last first.
+rewrite (choiceC (/ 4).~%:pr).
+rewrite [in LHS](choiceA (/ 5)%:pr (probcplt (/ 4).~%:pr) (/ 2)%:pr (@Prob.mk (2/5) H25)); last first.
   by rewrite 3!probpK /= /onem; split; field.
-rewrite choicemm.
-rewrite choicemm.
+rewrite 2!choicemm.
 rewrite (choiceC (@Prob.mk (2/5) H25)).
-rewrite [in LHS](choiceA (@Prob.mk (21/56) H2156) (probcplt (Prob.mk H25)) (/ 2)%:pr (Prob.mk H34)); last first.
+rewrite [in LHS](choiceA (@Prob.mk (21/56) H2156) (probcplt (Prob.mk H25)) (/ 2)%:pr (/ 4).~%:pr); last first.
   by rewrite 3!probpK /= /onem; split; field.
 rewrite choicemm.
-rewrite (choiceC (Prob.mk H34)).
-rewrite [in LHS](choiceA (/ 9)%:pr (probcplt (Prob.mk H34)) (/ 3)%:pr (/ 3)%:pr); last first.
+rewrite (choiceC (/ 4).~%:pr).
+rewrite [in LHS](choiceA (/ 9)%:pr (probcplt (/ 4).~%:pr) (/ 3)%:pr (/ 3)%:pr); last first.
   by rewrite 3!probpK /= /onem; split; field.
-rewrite choicemm choiceC.
-rewrite (@choice_ext (Prob.mk H23)) //= /onem; by field.
+by rewrite choicemm choiceC.
 Qed.
 
 Definition uFFT {M : probMonad} : M bool :=
@@ -357,26 +352,24 @@ rewrite uniform_cons.
 rewrite [in X in _ <| _ |> X](_ : _%:pr = (/ 2)%:pr)%R; last first.
   exact/prob_ext.
 rewrite uniform_singl //=.
-rewrite (choiceA _ _ (/ 2)%:pr (Prob.mk H23)); last first.
-  rewrite /= /onem; split; field.
-rewrite choicemm choiceC.
-rewrite (_ : (/ 3)%:pr = probcplt (Prob.mk H23)) //.
-apply prob_ext => /=; rewrite /onem; field.
+rewrite (choiceA _ _ (/ 2)%:pr (/ 3).~%:pr); last first.
+  by rewrite /= /onem; split; field.
+rewrite choicemm choiceC; congr (Ret true <| _ |> Ret false).
+by apply prob_ext => /=; rewrite onemK.
 Qed.
 
 Definition uTTF {M : probMonad} : M bool :=
   uniform true [:: true; true; false].
 
-Lemma uTTFE (M : probMonad) : uTTF = bcoin (@Prob.mk (2/3) H23) :> M _.
+Lemma uTTFE (M : probMonad) : uTTF = bcoin (/ 3).~%:pr :> M _.
 Proof.
 rewrite /uTTF /bcoin uniform_cons.
 rewrite (_ : _%:pr = (/ 3)%:pr)%R; last exact: prob_ext.
 rewrite uniform_cons.
 rewrite [in X in _ <| _ |> X](_ : _%:pr = (/ 2)%:pr)%R; last exact/prob_ext.
 rewrite uniform_singl //=.
-rewrite (choiceA _ _ (/ 2)%:pr (Prob.mk H23)); last first.
-  rewrite /= /onem; split; field.
-by rewrite choicemm choiceC.
+rewrite (choiceA _ _ (/ 2)%:pr (/ 3).~%:pr) ?choicemm //.
+by rewrite /= /onem; split; field.
 Qed.
 
 Lemma uniform_notin (M : probMonad) (A : eqType) (def : A) (s : seq A) B

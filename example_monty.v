@@ -25,6 +25,7 @@ Unset Strict Implicit.
 Unset Printing Implicit Defensive.
 
 Local Open Scope monae_scope.
+Local Open Scope reals_ext_scope.
 
 Module Set3.
 Section set3.
@@ -235,7 +236,7 @@ Qed.
 
 Lemma bcoin23E_pair {M : probMonad} def :
   uniform (def, def) (cp (enum X) (enum X)) >>= (fun hp => Ret (hp.1 != hp.2)) =
-  bcoin (Prob.mk H23) :> M _.
+  bcoin (/ 3).~%:pr :> M _.
 Proof.
 pose P := fun a b : X => a != b.
 transitivity
@@ -335,7 +336,7 @@ transitivity (uniform (def, def) (cp doors doors) >>= (fun hp =>
 by rewrite Set3.bcoin13E_pair // bindmret.
 Qed.
 
-Lemma play_switch : play switch = bcoin (Prob.mk H23).
+Lemma play_switch : play switch = bcoin (/ 3).~%:pr.
 Proof.
 rewrite {1}/play {1}/monty hide_pickE.
 transitivity (do hp <- uniform (def, def) (cp doors doors) : M _;
@@ -448,7 +449,7 @@ Qed.
 
 Lemma bcoin23E :
   arbitrary def doors >>= (fun h => uniform def doors >>= (fun p => Ret (h != p) : M _)) =
-  bcoin (@Prob.mk (2/3) H23) :> M _.
+  bcoin (/ 3).~%:pr :> M _.
 Proof.
 transitivity (arbitrary def doors >>= (fun h => uniform def doors >>=
     (fun p => Ret (h, p) >>= (fun x => Ret (x.1 != x.2) : M bool)))).
@@ -466,18 +467,15 @@ rewrite 3!K !(@Set3.uniform_unfold _ _ _ (fun a b => a != b)) !eqxx /=.
 rewrite Set3.a_neq_b Set3.b_neq_c Set3.a_neq_c eq_sym Set3.a_neq_b eq_sym.
 rewrite Set3.a_neq_c eq_sym Set3.b_neq_c choicemm.
 rewrite (@choiceC _ _ (/2)%:pr).
-rewrite (@choiceA _ _ _ _ (/ 2)%:pr (@Prob.mk _ H23)%:pr); last first.
+rewrite (@choiceA _ _ _ _ (/ 2)%:pr (/ 3).~%:pr); last first.
   by rewrite /onem /=; split; field.
 rewrite choicemm.
-rewrite (@choiceA _ _ _ _ (/ 2)%:pr (@Prob.mk _ H23)%:pr); last first.
+rewrite (@choiceA _ _ _ _ (/ 2)%:pr (/ 3).~%:pr); last first.
   by rewrite /onem /=; split; field.
-rewrite choicemm choiceC /onem /=.
-set X := (X in _ <| X |> _).
-have -> : X = @Prob.mk (2 / 3) H23 by apply prob_ext => /=; field.
-by rewrite 2!altmm /bcoin.
+by rewrite choicemm choiceC /= 2!altmm.
 Qed.
 
-Lemma monty_switch : play_n (switch def) = bcoin (@Prob.mk (2/3) H23).
+Lemma monty_switch : play_n (switch def) = bcoin (/ 3).~%:pr.
 Proof.
 rewrite {1}/play_n {1}/monty /switch.
 transitivity (hide_n >>= (fun h => (pick def : M _) >>= (fun p => tease_n h p
