@@ -648,7 +648,7 @@ Export MonadAlt.Exports.
 
 Section monadalt_lemmas.
 Variable (M : altMonad).
-Lemma alt_bindDl : BindLaws.left_distributive (@Bind M) [~p].
+Lemma alt_bindDl : BindLaws.left_distributive (@Bind M) (@Alt M).
 Proof. by case: M => m [? []]. Qed.
 Lemma altA : forall A, associative (@Alt M A).
 Proof. by case: M => m [? []]. Qed.
@@ -708,9 +708,9 @@ Export MonadNondet.Exports.
 
 Section nondet_lemmas.
 Variable (M : nondetMonad).
-Lemma altmfail : @BindLaws.right_id M (@Fail M) [~p].
+Lemma altmfail : @BindLaws.right_id M (@Fail M) (@Alt _).
 Proof. by case: M => m [[? ?] [? ? ?] [? ?]]. Qed.
-Lemma altfailm : @BindLaws.left_id M (@Fail M) [~p]. (* NB: not used? *)
+Lemma altfailm : @BindLaws.left_id M (@Fail M) (@Alt _). (* NB: not used? *)
 Proof. by case: M => m [[? ?] [? ? ?] [? ?]]. Qed.
 End nondet_lemmas.
 
@@ -1054,7 +1054,7 @@ Record mixin_of (M : nondetMonad) := Mixin {
   (* backtrackable state *)
   _ : BindLaws.right_zero (@Bind M) (@Fail _) ;
   (* composition distributes rightwards over choice *)
-  _ : BindLaws.right_distributive (@Bind M) [~p] }.
+  _ : BindLaws.right_distributive (@Bind M) (@Alt _) }.
 Record class_of (S : UU0) (M : UU0 -> UU0) := Class {
   base : MonadNondet.class_of M ;
   mixin_state : MonadState.mixin_of S (MonadFail.monadType (MonadNondet.failMonadType (MonadNondet.Pack base))) ;
