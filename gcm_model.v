@@ -448,13 +448,13 @@ Lemma free_semiCompSemiLattConvType_mor_id : FunctorLaws.id free_semiCompSemiLat
 Proof.
 move=> a; rewrite hom_ext funeqE=> /= x /=.
 apply necset_ext => /=.
-by rewrite free_semiCompSemiLattConvType_morE' /= image_idfun.
+by rewrite free_semiCompSemiLattConvType_morE' /= image_id.
 Qed.
 Lemma free_semiCompSemiLattConvType_mor_comp : FunctorLaws.comp free_semiCompSemiLattConvType_mor.
 Proof.
 move=> a b c [] g affine_g [] h affine_h; rewrite hom_ext funeqE => /= x /=.
 apply necset_ext => /=.
-rewrite 2!free_semiCompSemiLattConvType_morE' /= -imageA.
+rewrite 2!free_semiCompSemiLattConvType_morE' /= -image_comp.
 by rewrite free_semiCompSemiLattConvType_morE'.
 Qed.
 

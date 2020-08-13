@@ -86,7 +86,6 @@ Reserved Notation "f (o) g" (at level 11).
 Reserved Notation "m >> f" (at level 49).
 Reserved Notation "'fmap' f" (at level 4).
 Reserved Notation "x '[~]' y" (at level 50).
-Reserved Notation "'[~p]'".
 Reserved Notation "mx <| p |> my" (format "mx  <| p |>  my", at level 49).
 
 Notation "f ~~> g" := (forall A, f A -> g A) (at level 51, only parsing) : monae_scope.
@@ -637,7 +636,6 @@ Module Exports.
 Definition Alt M : forall T, acto M T -> acto M T -> acto M T :=
   let: Pack _ (Class _ (Mixin x _ _)) := M in x.
 Arguments Alt {M T} : simpl never.
-Notation "'[~p]'" := (@Alt _). (* prefix notation *)
 Notation "x '[~]' y" := (Alt x y).
 Notation altMonad := type.
 Coercion monadType : altMonad >-> monad.
