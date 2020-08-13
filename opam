@@ -21,8 +21,8 @@ install: [
   [make "install"]
 ]
 depends: [
-  "coq" { >= "8.11" & < "8.12~" }
-  "coq-infotheo" { >= "0.1.1" & < "0.2~" }
+  "coq" { >= "8.11" & < "8.13~" }
+  "coq-infotheo" { >= "0.1.2" & < "0.2~" }
   "coq-paramcoq" { >= "1.1.2" & < "1.2~" }
 ]
 synopsis: "Monae"
@@ -38,5 +38,5 @@ tags: [
   "keyword: probability"
   "keyword: nondeterminism"
   "logpath:monae"
-  "date:2020-06-12"
+  "date:2020-08-13"
 ]

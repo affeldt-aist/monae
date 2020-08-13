@@ -145,12 +145,11 @@ Module SetMonad.
 Section setmonad.
 Lemma map_id : FunctorLaws.id (@image).
 Proof.
-by move=> x; rewrite boolp.funeqE => y; rewrite classical_sets_ext.image_idfun.
+by move=> x; rewrite boolp.funeqE => y; rewrite image_id.
 Qed.
 Lemma map_comp : FunctorLaws.comp (@image).
 Proof.
-move=> A B C g h; rewrite boolp.funeqE => x /=.
-by rewrite classical_sets_ext.imageA.
+by move=> A B C g h; rewrite boolp.funeqE => x /=; rewrite image_comp.
 Qed.
 Definition functor := Functor.Pack (Functor.Mixin map_id map_comp).
 Lemma naturality_ret : naturality FId functor (@set1).

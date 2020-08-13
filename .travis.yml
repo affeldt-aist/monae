@@ -15,6 +15,7 @@ env:
   - CONTRIB_NAME="mone"
   matrix:
   - DOCKERIMAGE="mathcomp/mathcomp:1.11.0-coq-8.11"
+  - DOCKERIMAGE="mathcomp/mathcomp:1.11.0-coq-8.12"
 
 install: |
   # Prepare the COQ container
