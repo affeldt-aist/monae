@@ -1127,6 +1127,63 @@ Proof. by case: M s => ? [? []]. Qed.
 Local Close Scope type_scope.
 End staterun_lemmas.
 
+Axiom STRef : UU0 -> UU0 -> Type.
+
+Module MonadST.
+Record mixin_of (M : Type -> monad) := Mixin {
+  newSTRef : forall (B A : UU0), A -> M B (STRef B A) ;
+  readSTRef : forall (B A : UU0), STRef B A -> M B A ;
+  writeSTRef : forall (B A : UU0), STRef B A -> A -> M B unit ;
+  runST : forall (A : UU0), (forall (B : UU0), M B A) -> A
+  }.
+Record class_of (m : Type -> UU0 -> UU0) := Class {
+  base : forall (B : UU0), Monad.class_of (m B) ; mixin : mixin_of (fun (B : UU0) => Monad.Pack (base B)) }.
+Structure type := Pack { acto : Type -> UU0 -> UU0 ; class : class_of acto }.
+Definition monadType (B : UU0) (M : type) := Monad.Pack (base (class M) B).
+Module Exports.
+Definition NewSTRef (M : type) : forall (B A : UU0), A -> acto M B (STRef B A) :=
+  let: Pack _ (Class _ (Mixin x _ _ _)) := M in x.
+Arguments NewSTRef {M} : simpl never.
+Definition ReadSTRef (M : type) : forall (B A : UU0), STRef B A -> acto M B A :=
+  let: Pack _ (Class _ (Mixin _ x _ _)) := M in x.
+Arguments ReadSTRef {M} : simpl never.
+Definition WriteSTRef (M : type) : forall (B A : UU0), STRef B A -> A -> acto M B unit :=
+  let: Pack _ (Class _ (Mixin _ _ x _)) := M in x.
+Arguments WriteSTRef {M} : simpl never.
+Definition RunST (M : type) : forall (A : UU0), (forall (B : UU0), acto M B A) -> A :=
+  let: Pack _ (Class _ (Mixin _ _ _ x)) := M in x.
+Arguments RunST {M} : simpl never.
+Notation stMonad := type.
+Coercion monadType : stMonad >-> monad.
+Canonical monadType.
+End Exports.
+End MonadST.
+Export MonadST.Exports.
+
+Section monadST_example.
+Variable (M : stMonad).
+
+Fixpoint fibST' (B : UU0) n (x y : STRef B nat) : MonadST.acto M B nat :=
+  if n is m.+1 then
+    (do x' <- ReadSTRef B nat x ;
+     do y' <- ReadSTRef B nat y ;
+     WriteSTRef B nat x y' >>
+     WriteSTRef B nat y (x' + y')%nat >>
+   (fibST' m x y))%Do
+ else
+   @ReadSTRef M B nat x.
+
+Definition fibST n : nat :=
+  match n with
+  | O => O
+  | 1 => 1%N
+  | _ => RunST _ (fun B => do x <- NewSTRef B nat O ;
+                       do y <- NewSTRef B nat 1%N ;
+                       fibST' n x y)%Do
+  end.
+
+End monadST_example.
+
 Module MonadExceptStateRun.
 Section monadexceptstaterun.
 Variable S : UU0.
