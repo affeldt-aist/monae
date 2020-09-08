@@ -1163,15 +1163,47 @@ Export MonadST.Exports.
 Section monadST_example.
 Variable (M : stMonad).
 
-Fixpoint fibST' (B : UU0) n (x y : STRef B nat) : MonadST.acto M B nat :=
+Fixpoint sumST' (B : UU0) n (acc : STRef B nat) (f : nat -> nat -> nat) : MonadST.acto M B nat :=
   if n is m.+1 then
-    (do x' <- ReadSTRef x ;
-     do y' <- ReadSTRef y ;
-     WriteSTRef x y' >>
-     WriteSTRef y (x' + y')%nat >>
-   (fibST' m x y))%Do
- else
-   ReadSTRef x.
+    (do a <- ReadSTRef acc ;
+     WriteSTRef acc (f a m))%Do >>
+     sumST' m acc f
+  else
+    ReadSTRef acc.
+
+Definition sumST n : nat :=
+  RunST (fun B => (do acc <- NewSTRef 0; sumST' n acc addn)%Do).
+
+Lemma NewReadSTRef (B : UU0) (A : UU0) (a : A) :
+  NewSTRef a >>= ReadSTRef = Ret a :> MonadST.acto M B A.
+Admitted.
+
+Lemma RunSTRet (A : UU0) (a : A) :
+  RunST (fun B : UU0 => Ret a : MonadST.acto M B A) = a.
+Admitted.
+
+Lemma sumST'E (B : UU0) n (acc : STRef B nat) x :
+  ReadSTRef acc = Ret x :> MonadST.acto M B nat ->
+  sumST' n acc addn = Ret (x + \sum_(i < n) i).
+Proof.
+elim: n x => [x|n ih x accx].
+  by rewrite /sumST' big_ord0 => ->; rewrite addn0.
+rewrite /=.
+Abort.
+
+Lemma sumSTE n : sumST n = \sum_(i < n) i.
+Proof.
+elim: n => [|n ih].
+  rewrite big_ord0.
+  rewrite /sumST.
+  rewrite /sumST'.
+  rewrite -[RHS]RunSTRet.
+  congr RunST.
+  apply FunctionalExtensionality.functional_extensionality_dep => B.
+  by rewrite NewReadSTRef.
+rewrite big_ord_recr /= -ih.
+rewrite /sumST /=.
+Abort.
 
 Definition fibST n : nat :=
   match n with
