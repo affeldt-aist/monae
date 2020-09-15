@@ -14,6 +14,7 @@ Require Import imonae_lib ihierarchy.
 (*   Module monad_of_adjoint == derivation of a monad from an adjunction      *)
 (* Section composite_adjoint == composition of adjunctions                    *)
 (*            E.-operation M == sigma operation                               *)
+(*          E .-aoperation M == algebraic E.-operation M                      *)
 (*  Module Monad_of_ret_bind == construction of a monad from ret and bind     *)
 (*                                                                            *)
 (******************************************************************************)
@@ -22,6 +23,7 @@ Reserved Notation "A `2" (format "A `2", at level 3).
 Reserved Notation "f ^`2" (format "f ^`2", at level 3).
 Reserved Notation "F ## g" (at level 11).
 Reserved Notation "E .-operation M" (at level 2, format "E  .-operation  M").
+Reserved Notation "E .-aoperation M" (at level 2, format "E  .-aoperation  M").
 
 Set Implicit Arguments.
 Unset Strict Implicit.
@@ -335,6 +337,49 @@ End composite_adjoint.
 Definition operation (E : functor) (M : monad) := E \O M ~> M.
 Notation "E .-operation M" := (operation E M).
 
+Section algebraicity.
+Variables (E : functor) (M : monad).
+Definition algebraicity (op : E.-operation M) :=
+  forall (A B : UU0) (f : A -> M B) (t : E (M A)),
+    op A t >>= f = op B ((E # (fun m => m >>= f)) t).
+End algebraicity.
+
+Module AOperation.
+Section aoperation.
+Variables (E : functor) (M : monad).
+Record mixin_of (op : E \O M ~> M) := Mixin { _ : algebraicity op }.
+Record class_of (op : E \O M ~~> M) := Class {
+  base : Natural.mixin_of op ;
+  mixin : mixin_of (Natural.Pack base) }.
+Structure t := Pack { m : E \O M ~~> M ; class : class_of m }.
+Definition baseType (o : t) := Natural.Pack (base (class o)).
+End aoperation.
+Module Exports.
+Arguments m {E} {M}.
+Notation aoperation := t.
+Coercion baseType : aoperation >-> nattrans.
+Canonical baseType.
+End Exports.
+End AOperation.
+Export AOperation.Exports.
+
+Notation "E .-aoperation M" := (aoperation E M).
+
+Section algebraic_operation_interface.
+Variables (E : functor) (M : monad) (op : E.-aoperation M).
+Lemma algebraic : algebraicity op.
+Proof. by case: op => ? [? []]. Qed.
+Lemma aoperation_ext (f g : E.-aoperation M) :
+  f = g <-> forall a, (f a = g a :> (_ -> _)).
+Proof.
+split => [ -> // |]; move: f g => [f Hf] [g Hg] /= fg.
+have ? : f = g by exact: FunctionalExtensionality.functional_extensionality_dep.
+subst g; congr (AOperation.Pack _); exact/proof_irr.
+Qed.
+
+End algebraic_operation_interface.
+
+
 Module Monad_of_ret_bind.
 Section monad_of_ret_bind.
 Variable M : functor.
@@ -376,7 +421,7 @@ Qed.
 Lemma naturality_join : naturality (M' \O M') M' (fun A : UU0 => (bind (B:=A))^~ id).
 Proof.
 move=> A B h; apply fun_ext => mma.
-by rewrite /Actm 2!compE /Map bind_Map [in LHS] bindA.
+by rewrite /Actm 2!compE /Map bind_Map [in LHS]bindA.
 Qed.
 
 Definition join : M' \O M' ~> M' := Natural.Pack (Natural.Mixin naturality_join).
@@ -409,6 +454,24 @@ Definition Monad_of_ret_bind M ret bind a b c :=
 End Exports.
 End Monad_of_ret_bind.
 Export Monad_of_ret_bind.Exports.
+
+Lemma monad_of_ret_bind_ext (F G : functor) (RET1 : FId ~> F) (RET2 : FId ~> G)
+  (bind1 : forall A B : UU0, F A -> (A -> F B) -> F B)
+  (bind2 : forall A B : UU0, G A -> (A -> G B) -> G B) :
+  forall (FG : F = G),
+  RET1 = eq_rect _ (fun m => FId ~> m) RET2 _ ((*beuh*) (esym FG)) ->
+  bind1 = eq_rect _ (fun m : functor => forall A B : UU0, m A -> (A -> m B) -> m B) bind2 _ (esym FG) ->
+  forall H1 K1 H2 K2 H3 K3,
+  @Monad_of_ret_bind F RET1 bind1 H1 H2 H3 =
+  @Monad_of_ret_bind G RET2 bind2 K1 K2 K3.
+Proof.
+move=> FG; subst G; move=> HRET; subst RET1; move=> HBIND; subst bind1 => H1 K1 H2 K2 H3 K3.
+rewrite /Monad_of_ret_bind; congr Monad.Pack; simpl in *.
+have <- : H1 = K1 by exact/proof_irr.
+have <- : H2 = K2 by exact/proof_irr.
+have <- : H3 = K3 by exact/proof_irr.
+by [].
+Qed.
 
 (*
 (* monads on Type are strong monads *)

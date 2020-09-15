@@ -28,26 +28,26 @@ Require Import monae_lib.
 (*    Module BindLaws == bind laws of a monad                                 *)
 (*                                                                            *)
 (* Failure and nondeterministic monads:                                       *)
-(*          monadFail == failure monad                                        *)
-(*           monadAlt == monad with nondeterministic choice                   *)
-(*         monadAltCI == monadAlt + commutativity + idempotence               *)
-(*        monadNondet == monadFail + monadAlt                                 *)
-(*      monadCINondet == monadFail + monadAltCI                               *)
+(*          failMonad == failure monad                                        *)
 (*        failR0Monad == TODO                                                 *)
+(*           altMonad == monad with nondeterministic choice                   *)
 (*       prePlusMonad == TODO                                                 *)
 (*          plusMonad == TODO                                                 *)
-(*        monadExcept == monadFail + catch                                    *)
+(*         altCIMonad == monadAlt + commutativity + idempotence               *)
+(*        nondetMonad == monadFail + monadAlt                                 *)
+(*      nondetCIMonad == monadFail + monadAltCI                               *)
+(*        exceptMonad == monadFail + catch                                    *)
 (*                                                                            *)
 (* Control monads (wip):                                                      *)
 (*   contMonad, shiftresetMonad, jumpMonad                                    *)
 (*                                                                            *)
 (* State monads:                                                              *)
 (*       stateMonad S == state monad with a state of type S                   *)
-(* loopContStateMonad (wip)                                                   *)
+(*   failStateMonad S == monadFail + state                                    *)
 (*           runMonad == run interface                                        *)
 (*      stateRunMonad == monadState + run                                     *)
 (*   nondetStateMonad == TODO                                                 *)
-(*     loopStateMonad (wip)                                                   *)
+(*     loopStateMonad == (wip)                                                *)
 (*         arrayMonad == array monad                                          *)
 (*                                                                            *)
 (* Trace monads:                                                              *)
@@ -161,19 +161,17 @@ Notation "f \O g" := (FComp f g) : monae_scope.
 Section functorcomposition_lemmas.
 Lemma FCompId f : f \O FId = f.
 Proof.
-case: f => [? [???]]; congr (Functor.Pack (Functor.Mixin _ _));
-  exact/boolp.Prop_irrelevance.
+case: f => [? [???]]; congr (Functor.Pack (Functor.Mixin _ _)); exact/proof_irr.
 Qed.
 Lemma FIdComp f : FId \O f = f.
 Proof.
-case: f => [? [???]]; congr (Functor.Pack (Functor.Mixin _ _));
-  exact/boolp.Prop_irrelevance.
+case: f => [? [???]]; congr (Functor.Pack (Functor.Mixin _ _)); exact/proof_irr.
 Qed.
 Lemma FIdf (A B : UU0) (f : A -> B) : FId # f = f. Proof. by []. Qed.
 Lemma FCompA (f g h : functor) : (f \O g) \O h = f \O (g \O h).
 Proof.
 move: f g h => [f [???]] [g [???]] [h [???]].
-congr (Functor.Pack (Functor.Mixin  _ _)); exact/boolp.Prop_irrelevance.
+congr (Functor.Pack (Functor.Mixin  _ _)); exact/proof_irr.
 Qed.
 Lemma FCompE (f g : functor) (A B : UU0) (k : A -> B) :
   (f \O g) # k = f # (g # k).
@@ -206,6 +204,16 @@ End fcomp.
 Notation "f (o) g" := (fcomp f g) : mprog.
 Arguments fcomp : simpl never.
 
+Lemma functor_ext (F G : functor) :
+  forall (H : Functor.acto F = Functor.acto G),
+  Functor.actm (Functor.class G) =
+  eq_rect _ (fun m : UU0 -> UU0 => forall A B : UU0, (A -> B) -> m A -> m B) (Functor.actm (Functor.class F)) _ H  ->
+  G = F.
+Proof.
+move: F G => [F [HF1 HF2 HF3]] [G [HG1 HG2 HG3]] /= H; subst G => /= ?; subst HG1.
+congr (Functor.Pack (Functor.Mixin _ _)); exact/proof_irr.
+Defined.
+
 Definition naturality (M N : functor) (f : M ~~> N) :=
   forall (A B : UU0) (h : A -> B), (N # h) \o f A = f B \o (M # h).
 Arguments naturality : clear implicits.
@@ -231,9 +239,45 @@ Lemma nattrans_ext (f g : M ~> N) :
 Proof.
 split => [ -> // |]; move: f g => [f Hf] [g Hg] /= fg.
 have ? : f = g by exact: FunctionalExtensionality.functional_extensionality_dep.
-subst g; congr (Natural.Pack _); exact/boolp.Prop_irrelevance.
+subst g; congr (Natural.Pack _); exact/proof_irr.
 Qed.
 End natrans_lemmas.
+
+Require Import Logic.Eqdep.
+
+Lemma natural_ext (F G G' : functor) (t : F ~> G) (t' : F ~> G') :
+  forall (H : G = G'),
+  forall (K : forall X (x : F X), Natural.cpnt t' x = eq_rect _ (fun m : functor => m X) (Natural.cpnt t x) _ H),
+  t' = eq_rect _ (fun m => F ~> m) t _ H.
+Proof.
+move : t t' => [t t1] [t' t'1] /= H; subst G' => H /=.
+have ? : t = t'.
+  apply FunctionalExtensionality.functional_extensionality_dep => A.
+  apply FunctionalExtensionality.functional_extensionality => x.
+  rewrite H.
+  by rewrite -[in RHS]eq_rect_eq.
+subst t'.
+congr Natural.Pack; exact/proof_irr.
+Qed.
+
+Lemma natural_ext2 (F F' : functor) (t : F \O F ~> F) (t' : F' \O F' ~> F') :
+  forall (K : F = F'),
+  forall L : (forall X (x : (F' \O F') X),
+    Natural.cpnt t' x = eq_rect _ (fun m : functor => m X)
+      (Natural.cpnt t (eq_rect _ (fun m : functor => (m \O m) X) x _ (esym K)))
+      _ K),
+  t' = eq_rect _ (fun m => m \O m ~> m) t _ K.
+Proof.
+move: t t' => [t t1] [t' t'1] /= H L; subst F.
+rewrite -[in RHS]eq_rect_eq /=.
+have ? : t = t'.
+  apply FunctionalExtensionality.functional_extensionality_dep => A.
+  apply FunctionalExtensionality.functional_extensionality => x.
+  rewrite L.
+  by rewrite -[in RHS]eq_rect_eq.
+subst t'.
+congr Natural.Pack; exact/proof_irr.
+Qed.
 
 Module JoinLaws.
 Section join_laws.
@@ -1024,34 +1068,32 @@ Lemma getget (k : S -> S -> M S) :
 Proof. by case: M k => m [[[? ? ? ? []]]]. Qed.
 End state_lemmas.
 
-(* TODO : utility ? *)
-Module MonadContStateLoop.
-Record mixin_of (S : UU0) (M : stateMonad S) := Mixin {
-  foreach : nat -> nat -> (nat -> M unit) -> M unit ;
-  _ : forall m body, foreach m m body = Ret tt ;
-  _ : forall m n body, foreach (m.+1 + n) m body =
-     (body (m + n)) >> foreach (m + n) m body :> M unit
-}.
-Record class_of (S : UU0) (M : UU0 -> UU0) := Class {
-  base : MonadState.class_of S M ;
-  mixin_cont : MonadContinuation.mixin_of (Monad.Pack (MonadState.base base));
-  mixin_stateLoop : @mixin_of S (MonadState.Pack base)
-}.
+Module MonadFailState.
+Record mixin_of (M : failMonad) := Mixin {
+  _ : forall (A B : UU0) (m : M A), m >> Fail = Fail :> M B }.
+Record class_of (S : UU0) (m : UU0 -> UU0) := Class {
+  base : MonadFail.class_of m ;
+  mixin_state : MonadState.mixin_of S (Monad.Pack (MonadFail.base base)) ;
+  mixin_failState : mixin_of (MonadFail.Pack base) }.
 Structure type (S : UU0) := Pack { acto : UU0 -> UU0 ; class : class_of S acto }.
-Definition stateMonadType (S : UU0) (M : type S) : stateMonad S :=
-  MonadState.Pack (base (class M)).
+Definition failMonadType (S : UU0) (M : type S) : failMonad :=
+  MonadFail.Pack (base (class M)).
 Module Exports.
-Notation loopContStateMonad := type.
-Definition Foreach (S : UU0) (M : type S) : nat -> nat -> (nat -> acto M unit) -> acto M unit :=
-  let: Pack _ (Class _ _ (Mixin x _ _)) := M in x.
-Coercion stateMonadType : loopContStateMonad >-> stateMonad.
-Canonical stateMonadType.
-Definition cont_of_loop (S : UU0) (M : loopContStateMonad S) : contMonad :=
-  MonadContinuation.Pack (MonadContinuation.Class (mixin_cont (class M))).
-Canonical cont_of_loop.
+Notation failStateMonad := type.
+Coercion failMonadType : failStateMonad >-> failMonad.
+Canonical failMonadType.
+Definition state_of_failState (S : UU0) (M : type S) : stateMonad S :=
+  MonadState.Pack (MonadState.Class (mixin_state (class M))).
+Canonical state_of_failState.
 End Exports.
-End MonadContStateLoop.
-Export MonadContStateLoop.Exports.
+End MonadFailState.
+Export MonadFailState.Exports.
+
+Section failState_lemmas.
+Variables (S : UU0) (M : failStateMonad S).
+Lemma bindmfail0 (A B : UU0) (m : M A) : m >> Fail = Fail :> M B.
+Proof. by case: M m => ? [? ? []]. Qed.
+End failState_lemmas.
 
 Module MonadRun.
 Record mixin_of (S : UU0) (M : monad) := Mixin {
@@ -1586,3 +1628,4 @@ Proof. by case: M => m [? ? []]. Qed.
 Lemma bassert_symbols : bassert (Distinct M) \o Symbols = Symbols :> (nat -> M _).
 Proof. by case: M => m [? ? []]. Qed.
 End failfresh_lemmas.
+

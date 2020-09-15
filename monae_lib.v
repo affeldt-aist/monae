@@ -2,6 +2,8 @@ From mathcomp Require Import all_ssreflect.
 From mathcomp Require boolp.
 Require ProofIrrelevance.
 
+Definition proof_irr := boolp.Prop_irrelevance.
+
 Definition eq_rect_eq := @ProofIrrelevance.ProofIrrelevanceTheory.Eq_rect_eq.eq_rect_eq.
 
 (******************************************************************************)

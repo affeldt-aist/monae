@@ -14,15 +14,16 @@ proba_lib.v
 monad_composition.v
 monad_model.v
 proba_monad_model.v
+category.v
+gcm_model.v
+altprob_model.v
+monad_transformer.v
 example_spark.v
 example_nqueens.v
 example_relabeling.v
 example_quicksort.v
 example_monty.v
 smallstep.v
-category.v
-gcm_model.v
-altprob_model.v
-monad_transformer.v
+example_monad_transformer.v
 
 -R . monae

@@ -97,8 +97,8 @@ Structure t (m : monad) (u : monad) : Type := Pack {
 End MonadTrans.
 Arguments MonadTrans.lift {m} {u} _ {_}.
 Arguments MonadTrans.drop {m} {u} _ {_}.
-Notation "'Lift'" := MonadTrans.lift.
-Notation "'Drop'" := MonadTrans.drop.
+Local Notation "'Lift'" := MonadTrans.lift.
+Local Notation "'Drop'" := MonadTrans.drop.
 
 Module Tracer.
 Record class m (v : traceMonad unit) (mv : MonadTrans.t m v) : Type := Class {

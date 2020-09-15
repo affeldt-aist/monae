@@ -1,5 +1,5 @@
 From mathcomp Require Import all_ssreflect.
-Require Import imonae_lib ihierarchy imonad_lib ifail_lib istate_lib imonad_model.
+Require Import imonae_lib ihierarchy imonad_lib ifail_lib istate_lib.
 
 (******************************************************************************)
 (*                    Formalization of monad transformers                     *)
@@ -12,7 +12,6 @@ Require Import imonae_lib ihierarchy imonad_lib ifail_lib istate_lib imonad_mode
 (*                       instances: stateT, errorT (exception), envT          *)
 (*                       (environment), outputT, contT (continuation)         *)
 (*            lifting == lifting of a sigma-operation along a monad morphism  *)
-(*   E .-aoperation M == algebraic E.-operation M                             *)
 (* uniform_algebric_lifting == Theorem: lifting of an algebraic operations    *)
 (*                       along a monad morphism                               *)
 (*                FMT == functorial monad transformer                         *)
@@ -25,8 +24,6 @@ Unset Strict Implicit.
 Unset Printing Implicit Defensive.
 
 Local Open Scope monae_scope.
-
-Reserved Notation "E .-aoperation M" (at level 2, format "E  .-aoperation  M").
 
 Import Univ.
 
@@ -168,6 +165,35 @@ Proof.
 case: M m => [M [[f fi fo] [r j a b c]]] m.
 by rewrite /= /Lift /= /stateTmonadM; unlock.
 Qed.
+
+Definition stateMonad_of_stateT_mixin S (M : monad) :
+  MonadState.mixin_of S (stateT S M).
+Proof.
+refine (@MonadState.Mixin _ (stateT S M) (fun s => Ret (s, s))
+    (fun s' _ => Ret (tt, s')) _ _ _ _).
+- move=> s s'.
+  apply fun_ext => s0.
+  case: M => m [f [/= r j a b c]].
+  rewrite /Bind /Join /JOIN /stateTmonad /Monad_of_ret_bind /bindS /Actm /=.
+  by rewrite /Monad_of_ret_bind.Map bindretf /= /retS bindretf.
+- move=> s.
+  apply fun_ext => s0.
+  case: M => m [f [/= r j a b c]].
+  rewrite /retS /Ret /RET /Bind /stateTmonad /Monad_of_ret_bind /Actm /=.
+  by rewrite /bindS /= /Monad_of_ret_bind.Map 4!bindretf.
+- apply fun_ext => s.
+  case: M => m [f [/= r j a b c]].
+  rewrite /Bind /Join /JOIN /= /stateTmonad /Monad_of_ret_bind /bindS /Actm /=.
+  by rewrite /Monad_of_ret_bind.Map bindretf /= /retS bindretf.
+- case: M => m [f [/= r j a b c]] A k.
+  apply fun_ext => s.
+  rewrite /Bind /Join /JOIN /= /bindS /stateTmonad /= /Monad_of_ret_bind.
+  rewrite /Actm /Monad_of_ret_bind.Map /= /Monad_of_ret_bind.Map /= /bindS /=.
+  by rewrite !bindretf /= !bindretf.
+Qed.
+
+Canonical stateMonad_of_stateT S M :=
+  MonadState.Pack (MonadState.Class (stateMonad_of_stateT_mixin S M)).
 
 Section exception_monad_transformer.
 
@@ -576,222 +602,20 @@ End sum.
 
 End continuation_monad_transformer_examples.
 
-Lemma functor_ext (F G : functor) :
-  forall (H : Functor.acto F = Functor.acto G),
-  Functor.actm (Functor.class G) =
-  eq_rect _ (fun m : UU0 -> UU0 => forall A B : UU0, (A -> B) -> m A -> m B) (Functor.actm (Functor.class F)) _ H  ->
-  G = F.
-Proof.
-move: F G => [F [HF1 HF2 HF3]] [G [HG1 HG2 HG3]] /= H; subst G => /= ?; subst HG1.
-congr (Functor.Pack (Functor.Mixin _ _)); exact/proof_irr.
-Defined.
+(*******************)
+(* TODO: lift laws *)
+(*******************)
 
-Require Import Logic.Eqdep.
-
-Lemma natural_ext (F G G' : functor) (t : F ~> G) (t' : F ~> G') :
-  forall (H : G = G'),
-  forall (K : forall X (x : F X), Natural.cpnt t' x = eq_rect _ (fun m : functor => m X) (Natural.cpnt t x) _ H),
-  t' = eq_rect _ (fun m => F ~> m) t _ H.
+Lemma bindLfailf (M : failMonad) S T U (m : stateT S M U) :
+  Lift (stateT S) M T Fail >> m = Lift (stateT S) M U Fail.
 Proof.
-move : t t' => [t t1] [t' t'1] /= H; subst G' => H /=.
-have ? : t = t'.
-  apply FunctionalExtensionality.functional_extensionality_dep => A.
-  apply FunctionalExtensionality.functional_extensionality => x.
-  rewrite H.
-  by rewrite -[in RHS]eq_rect_eq.
-subst t'.
-congr Natural.Pack; exact/proof_irr.
+rewrite -!liftSE /liftS; apply fun_ext => s.
+rewrite bindfailf {1}/Bind /= /bindS /=.
+rewrite [X in _ X s](_ : _ = (fun _ => Fail)); last first.
+  by apply fun_ext => s'; rewrite bindfailf.
+rewrite (_ : _ _ s = Fail) ?bindfailf //.
+by rewrite /Actm /= /Monad_of_ret_bind.Map /= /bindS bindfailf.
 Qed.
-
-Lemma natural_ext2 (F F' : functor) (t : F \O F ~> F) (t' : F' \O F' ~> F') :
-  forall (K : F = F'),
-  forall L : (forall X (x : (F' \O F') X),
-    Natural.cpnt t' x = eq_rect _ (fun m : functor => m X)
-      (Natural.cpnt t (eq_rect _ (fun m : functor => (m \O m) X) x _ (esym K)))
-      _ K),
-  t' = eq_rect _ (fun m => m \O m ~> m) t _ K.
-Proof.
-move: t t' => [t t1] [t' t'1] /= H L; subst F.
-rewrite -[in RHS]eq_rect_eq /=.
-have ? : t = t'.
-  apply FunctionalExtensionality.functional_extensionality_dep => A.
-  apply FunctionalExtensionality.functional_extensionality => x.
-  rewrite L.
-  by rewrite -[in RHS]eq_rect_eq.
-subst t'.
-congr Natural.Pack; exact/proof_irr.
-Qed.
-
-Lemma monad_of_ret_bind_ext (F G : functor) (RET1 : FId ~> F) (RET2 : FId ~> G)
-  (bind1 : forall A B : UU0, F A -> (A -> F B) -> F B)
-  (bind2 : forall A B : UU0, G A -> (A -> G B) -> G B) :
-  forall (FG : F = G),
-  RET1 = eq_rect _ (fun m => FId ~> m) RET2 _ ((*beuh*) (esym FG)) ->
-  bind1 = eq_rect _ (fun m : functor => forall A B : UU0, m A -> (A -> m B) -> m B) bind2 _ (esym FG) ->
-  forall H1 K1 H2 K2 H3 K3,
-  @Monad_of_ret_bind F RET1 bind1 H1 H2 H3 =
-  @Monad_of_ret_bind G RET2 bind2 K1 K2 K3.
-Proof.
-move=> FG; subst G; move=> HRET; subst RET1; move=> HBIND; subst bind1 => H1 K1 H2 K2 H3 K3.
-rewrite /Monad_of_ret_bind; congr Monad.Pack; simpl in *.
-have <- : H1 = K1 by exact/proof_irr.
-have <- : H2 = K2 by exact/proof_irr.
-have <- : H3 = K3 by exact/proof_irr.
-by [].
-Qed.
-
-(* result of a discussion with Maxime and Enrico on 2019-09-12 *)
-Section eq_rect_ret.
-Variable X : UU0.
-Let U  : UU1 := functor.
-Let Q : U -> UU0 := Functor.acto^~ X.
-
-Lemma eq_rect_ret (p p' : U) (K : Q p' = Q p) (x : Q p') (h : p = p') :
-  x = eq_rect p Q (eq_rect _ (fun X : UU0 => id X) x _ K) p' h.
-Proof.
-rewrite /eq_rect; destruct h; rewrite (_ : K = erefl) //; exact/proof_irr.
-Qed.
-
-Lemma eq_rect_state_ret S (p := ModelMonad.State.functor S : U)
-  (p' := MS_functor S ModelMonad.identity : U)
-  (x : Q p') (h : p = p') : x = eq_rect p Q x p' h.
-Proof.
-have K : Q p' = Q p by [].
-rewrite {2}(_ : x = eq_rect _ (fun x : UU0 => x) x _ K) //; first exact: eq_rect_ret.
-rewrite /eq_rect (_ : K = erefl) //; exact/proof_irr.
-Qed.
-
-Lemma eq_rect_error_ret (E : UU0) (p : U := ModelMonad.Except.functor E)
-  (p' : U := MX_functor E ModelMonad.identity)
-  (x : Q p') (h : p = p') : x = eq_rect p Q x p' h.
-Proof.
-have K : Q p' = Q p by [].
-rewrite {2}(_ : x = eq_rect _ (fun x : UU0 => x) x _ K) //; first exact: eq_rect_ret.
-rewrite /eq_rect (_ : K = erefl) //; exact/proof_irr.
-Qed.
-
-Lemma eq_rect_cont_ret r (p : U := ModelMonad.Cont.functor r)
-  (p' : U := MC_functor r ModelMonad.identity)
-  (x : Q p') (h : p = p') : x = eq_rect p Q x p' h.
-Proof.
-have K : Q p' = Q p by [].
-rewrite {2}(_ : x = eq_rect _ (fun x : UU0 => x) x _ K) //; first exact: eq_rect_ret.
-rewrite /eq_rect (_ : K = erefl) //; exact/proof_irr.
-Qed.
-
-End eq_rect_ret.
-
-Section eq_rect_bind.
-Let U : Type := functor.
-Let Q : U -> Type := fun F => forall A B, Functor.acto F A -> (A -> Functor.acto F B) -> Functor.acto F B.
-
-Lemma eq_rect_bind (p p' : U) (K : Q p' = Q p) (x : Q p') (h : p = p') :
-  x = eq_rect p Q (eq_rect _ id x _ K) p' h.
-Proof.
-rewrite /eq_rect; destruct h; rewrite (_ : K = erefl) //; exact/proof_irr.
-Qed.
-
-Lemma eq_rect_bind_state S (p : U := ModelMonad.State.functor S)
-  (p' : U := MS_functor S ModelMonad.identity)
-  (x : Q p') (h : p = p') : x = eq_rect p Q x p' h.
-Proof.
-have K : Q p' = Q p by [].
-rewrite {2}(_ : x = eq_rect _ id x _ K); first exact: eq_rect_bind.
-rewrite /eq_rect (_ : K = erefl) //; exact/proof_irr.
-Qed.
-
-Lemma eq_rect_bind_error E (p : U := ModelMonad.Except.functor E)
-  (p' : U := MX_functor E ModelMonad.identity)
-  (x : Q p') (h : p = p') : x = eq_rect p Q x p' h.
-Proof.
-have K : Q p' = Q p by [].
-rewrite {2}(_ : x = eq_rect _ id x _ K) //; first exact: eq_rect_bind.
-rewrite /eq_rect (_ : K = erefl) //; exact/proof_irr.
-Qed.
-
-Lemma eq_rect_bind_cont S (p : U := ModelMonad.Cont.functor S)
-  (p' : U := MC_functor S ModelMonad.identity)
-  (x : Q p') (h : p = p') : x = eq_rect p Q x p' h.
-Proof.
-have K : Q p' = Q p by [].
-rewrite {2}(_ : x = eq_rect _ id x _ K) //; first exact: eq_rect_bind.
-rewrite /eq_rect (_ : K = erefl) //; exact/proof_irr.
-Qed.
-
-End eq_rect_bind.
-
-Section instantiations_with_the_identity_monad.
-
-Lemma state_monad_stateT S :
-  stateT S ModelMonad.identity = ModelMonad.State.t S.
-Proof.
-rewrite /= /stateTmonadM /ModelMonad.State.t.
-have FG : MS_functor S ModelMonad.identity = ModelMonad.State.functor S.
-  apply: functor_ext => /=.
-  apply FunctionalExtensionality.functional_extensionality_dep => A.
-  apply FunctionalExtensionality.functional_extensionality_dep => B.
-  apply fun_ext => f; apply fun_ext => m; apply fun_ext => s.
-  by rewrite /MS_map /Actm /= /ModelMonad.State.map; destruct (m s).
-apply (@monad_of_ret_bind_ext _ _ _ _ _ _ FG) => /=.
-  apply/natural_ext => A a /=; exact: eq_rect_state_ret _ (esym FG).
-set x := @bindS _ _; exact: (@eq_rect_bind_state S x (esym FG)).
-Qed.
-
-Lemma error_monad_errorT (Z : UU0) :
-  errorT Z ModelMonad.identity = ModelMonad.Except.t Z.
-Proof.
-rewrite /= /errorTmonadM /ModelMonad.Except.t.
-have FG : MX_functor Z ModelMonad.identity = ModelMonad.Except.functor Z.
-  apply: functor_ext => /=.
-  apply FunctionalExtensionality.functional_extensionality_dep => A.
-  apply FunctionalExtensionality.functional_extensionality_dep => B.
-  apply fun_ext => f; apply fun_ext => m.
-  by rewrite /MX_map /Actm /= /ModelMonad.Except.map; destruct m.
-apply (@monad_of_ret_bind_ext _ _ _ _ _ _ FG) => /=.
-  apply/natural_ext => A a /=; exact: (eq_rect_error_ret _ (esym FG)).
-set x := @bindX _ _; exact: (@eq_rect_bind_error Z x (esym FG)).
-Qed.
-
-Lemma cont_monad_contT r :
-  contT r ModelMonad.identity = ModelMonad.Cont.t r.
-Proof.
-rewrite /= /contTmonadM /ModelMonad.Cont.t.
-have FG : MC_functor r ModelMonad.identity = ModelMonad.Cont.functor r.
-  apply: functor_ext => /=.
-  apply FunctionalExtensionality.functional_extensionality_dep => A.
-  apply FunctionalExtensionality.functional_extensionality_dep => B.
-  by apply fun_ext => f; apply fun_ext => m.
-apply (@monad_of_ret_bind_ext _ _ _ _ _ _ FG) => /=.
-  apply/natural_ext => A a /=; exact: (@eq_rect_cont_ret A r _ (esym FG)).
-set x := @bindC _ _; exact: (@eq_rect_bind_cont r x (esym FG)).
-Qed.
-
-End instantiations_with_the_identity_monad.
-
-Section calcul.
-
-Let contTi := @contT^~ ModelMonad.identity.
-Let callcci := ModelCont.callcc.
-
-Definition break_if_none (m : monad) (break : _) (acc : nat) (x : option nat) : m nat :=
-  if x is Some x then Ret (x + acc) else break acc.
-
-Definition sum_until_none (xs : seq (option nat)) : contTi nat nat :=
-  callcci (fun break : nat -> contTi nat nat => foldM (break_if_none break) 0 xs).
-
-Goal sum_until_none [:: Some 2; Some 6; None; Some 4] = @^~ 8.
-by cbv.
-Abort.
-
-Definition calcul : contTi nat nat :=
-  (contTi _ # (fun x => 8 + x))
-  (callcci (fun k : _ -> contTi nat _ => (k 5) >>= (fun y => Ret (y + 4)))).
-
-Goal calcul = @^~ 13.
-by cbv.
-Abort.
-
-End calcul.
 
 Section lifting.
 Variables (E : functor) (M : monad) (op : E.-operation M)
@@ -805,159 +629,6 @@ Variables (E : functor) (M : monad) (op : E.-operation M)
           (t : monadT).
 Definition lifting_monadT := lifting op (Lift t M).
 End liftingt.
-
-Section algebraicity.
-Variables (E : functor) (M : monad).
-Definition algebraicity (op : E.-operation M) :=
-  forall (A B : UU0) (f : A -> M B) (t : E (M A)),
-    op A t >>= f = op B ((E # (fun m => m >>= f)) t).
-End algebraicity.
-
-Module AOperation.
-Section aoperation.
-Variables (E : functor) (M : monad).
-Record mixin_of (op : E \O M ~> M) := Mixin { _ : algebraicity op }.
-Record class_of (op : E \O M ~~> M) := Class {
-  base : Natural.mixin_of op ;
-  mixin : mixin_of (Natural.Pack base) }.
-Structure t := Pack { m : E \O M ~~> M ; class : class_of m }.
-Definition baseType (o : t) := Natural.Pack (base (class o)).
-End aoperation.
-Module Exports.
-Arguments m {E} {M}.
-Notation aoperation := t.
-Coercion baseType : aoperation >-> nattrans.
-Canonical baseType.
-End Exports.
-End AOperation.
-Export AOperation.Exports.
-
-Notation "E .-aoperation M" := (aoperation E M).
-
-Section algebraic_operation_interface.
-Variables (E : functor) (M : monad) (op : E.-aoperation M).
-Lemma algebraic : algebraicity op.
-Proof. by case: op => ? [? []]. Qed.
-Lemma aoperation_ext (f g : E.-aoperation M) :
-  f = g <-> forall a, (f a = g a :> (_ -> _)).
-Proof.
-split => [ -> // |]; move: f g => [f Hf] [g Hg] /= fg.
-have ? : f = g by exact: FunctionalExtensionality.functional_extensionality_dep.
-subst g; congr (AOperation.Pack _); exact/proof_irr.
-Qed.
-
-End algebraic_operation_interface.
-
-Section algebraic_operation_examples.
-
-Lemma algebraic_empty : algebraicity ListOps.empty_op.
-Proof. by []. Qed.
-
-Lemma algebraic_append : algebraicity ListOps.append_op.
-Proof.
-move=> A B f [t1 t2] /=.
-rewrite !bindE /= /ModelMonad.ListMonad.bind /= /Actm /=.
-rewrite /Monad_of_ret_bind.Map /=.
-rewrite /ModelMonad.ListMonad.bind /= /ModelMonad.ListMonad.ret /=.
-by rewrite -flatten_cat -map_cat /= -flatten_cat -map_cat.
-Qed.
-
-Lemma algebraic_output L : algebraicity (@OutputOps.output_op L).
-Proof.
-move=> A B f [w [x w']].
-rewrite bindE /= /OutputOps.output /= bindE /= !cats0.
-by case: f => x' w''; rewrite catA.
-Qed.
-
-(* NB: flush is not algebraic *)
-Lemma algebraic_flush L : algebraicity (@OutputOps.flush_op L).
-Proof.
-move=> A B f [x w].
-rewrite /OutputOps.flush_op /=.
-rewrite /OutputOps.flush /=.
-rewrite /Actm /=.
-rewrite bindE /=.
-rewrite /OutputOps.Flush.actm.
-rewrite bindE /=.
-rewrite cats0.
-case: f => x' w'.
-Abort.
-
-Lemma algebraic_throw Z : algebraicity (@ExceptOps.throw_op Z).
-Proof. by []. Qed.
-
-Definition throw_aop Z : (ExceptOps.Throw.func Z).-aoperation (ModelMonad.Except.t Z) :=
-  AOperation.Pack (AOperation.Class (AOperation.Mixin (@algebraic_throw Z))).
-
-(* NB: handle is not algebraic *)
-Lemma algebraic_handle Z : algebraicity (@ExceptOps.handle_op Z).
-Proof.
-move=> A B f t.
-rewrite /ExceptOps.handle_op /=.
-rewrite /ExceptOps.handle /=.
-rewrite /uncurry /prod_curry.
-case: t => -[z//|a] g /=.
-rewrite bindE /=.
-case: (f a) => // z.
-rewrite bindE /=.
-rewrite /ModelMonad.Except.bind /=.
-rewrite /Actm /=.
-rewrite /Monad_of_ret_bind.Map /=.
-rewrite /ModelMonad.Except.bind /=.
-case: (g z) => [z0|a0].
-Abort.
-
-Lemma algebraic_ask E : algebraicity (@EnvironmentOps.ask_op E).
-Proof. by []. Qed.
-
-(* NB: local is not algebraic *)
-Lemma algebraic_local E : algebraicity (@EnvironmentOps.local_op E).
-Proof.
-move=> A B f t.
-rewrite /EnvironmentOps.local_op /=.
-rewrite /EnvironmentOps.local /=.
-apply fun_ext => e /=.
-rewrite bindE /=.
-rewrite /ModelMonad.Environment.bind /=.
-rewrite /Actm /=.
-rewrite /Monad_of_ret_bind.Map /=.
-rewrite /ModelMonad.Environment.bind /=.
-rewrite /ModelMonad.Environment.ret /=.
-rewrite /EnvironmentOps.Local.actm /=.
-case: t => /= ee m.
-rewrite bindE /=.
-rewrite /ModelMonad.Environment.bind /=.
-rewrite /Actm /=.
-rewrite /Monad_of_ret_bind.Map /=.
-rewrite /ModelMonad.Environment.bind /=.
-rewrite /ModelMonad.Environment.ret /=.
-Abort.
-
-Lemma algebraic_get S : algebraicity (@StateOps.get_op S).
-Proof. by []. Qed.
-
-Definition get_aop S : (StateOps.Get.func S).-aoperation (ModelMonad.State.t S) :=
-  AOperation.Pack (AOperation.Class (AOperation.Mixin (@algebraic_get S))).
-
-Lemma algebraic_put S : algebraicity (@StateOps.put_op S).
-Proof. by move=> ? ? ? []. Qed.
-
-Definition put_aop S : (StateOps.Put.func S).-aoperation (ModelMonad.State.t S) :=
-  AOperation.Pack (AOperation.Class (AOperation.Mixin (@algebraic_put S))).
-
-Lemma algebraicity_abort r : algebraicity (ContOps.abort_op r).
-Proof. by []. Qed.
-
-Definition abort_aop r : (ContOps.Abort.func r).-aoperation (ModelMonad.Cont.t r) :=
-  AOperation.Pack (AOperation.Class (AOperation.Mixin (@algebraicity_abort r))).
-
-Lemma algebraicity_callcc r : algebraicity (ContOps.acallcc_op r).
-Proof. by []. Qed.
-
-Definition callcc_aop r : (ContOps.Acallcc.func r).-aoperation (ModelMonad.Cont.t r) :=
-  AOperation.Pack (AOperation.Class (AOperation.Mixin (@algebraicity_callcc r))).
-
-End algebraic_operation_examples.
 
 Section proposition17.
 
@@ -1091,140 +762,6 @@ transitivity (e X (Join (op (M X) ((E # Ret) Y)))); last first.
 by rewrite -[in LHS](phiK op).
 Qed.
 End uniform_algebric_lifting.
-
-Section examples_of_algebraic_lifting.
-
-Section state_errorT.
-Let M S : monad := ModelState.state S.
-
-Definition aLGet {Z S} : (StateOps.Get.func S).-aoperation (errorT Z (M S)) :=
-  alifting (get_aop S) (Lift (errorT Z) (M S)).
-
-Definition aLPut {Z S} : (StateOps.Put.func S).-operation (errorT Z (M S)) :=
-  alifting (put_aop S) (Lift (errorT Z) (M S)).
-
-Goal forall Z (S : UU0) X (k : S -> errorT Z (M S) X), aLGet _ k = StateOps.get_op _ k.
-by [].
-Abort.
-
-Goal forall Z S, aLGet _ Ret = Lift (errorT Z) (M S) _ (@ModelState.get S).
-by [].
-Abort.
-
-End state_errorT.
-
-Section continuation_stateT.
-Variable (r S : UU0).
-Let M : monad := ModelCont.t r.
-Let stS : monadT := stateT S.
-
-Definition aLCallcc : (ContOps.Acallcc.func r).-aoperation (stS M) :=
-  alifting (callcc_aop r) (Lift stS M).
-
-Goal forall A (f : (stS M A -> r) -> stS M A),
-  aLCallcc _ f = (fun s k => f (fun m => uncurry m (s, k)) s k) :> stS M A.
-move=> A f.
-by rewrite /aLCallcc /= /stS /= /stateT /= /stateTmonadM /=; unlock.
-Abort.
-
-Definition usual_callccS (A B : UU0) (f : (A -> stS M B) -> stS M A) : stS M A :=
-  fun s k => f (fun x _ _ => k (x, s)) s k.
-
-Lemma callccS_E A B f : @aLCallcc _
-    (fun k : stS M A -> r =>
-       f (fun x => (fun (_ : S) (_ : B * S -> r) => k (@RET (stS M) A x)) : stS M B)) =
-  usual_callccS f.
-Proof.
-by rewrite /aLCallcc /= /stS /= /stateT /= /stateTmonadM /=; unlock.
-Qed.
-
-End continuation_stateT.
-
-End examples_of_algebraic_lifting.
-
-Section example_stateT.
-
-Definition stateMonad_of_stateT_mixin S (M : monad) :
-  MonadState.mixin_of S (stateT S M).
-Proof.
-refine (@MonadState.Mixin _ (stateT S M) (fun s => Ret (s, s))
-    (fun s' _ => Ret (tt, s')) _ _ _ _).
-- move=> s s'.
-  rewrite boolp.funeqE => s0.
-  case: M => m [f [/= r j a b c]].
-  rewrite /Bind /Join /JOIN /stateTmonad /Monad_of_ret_bind /bindS /Actm /=.
-  by rewrite /Monad_of_ret_bind.Map bindretf /= /retS bindretf.
-- move=> s.
-  rewrite boolp.funeqE => s0.
-  case: M => m [f [/= r j a b c]].
-  rewrite /retS /Ret /RET /Bind /stateTmonad /Monad_of_ret_bind /Actm /=.
-  by rewrite /bindS /= /Monad_of_ret_bind.Map 4!bindretf.
-- rewrite boolp.funeqE => s.
-  case: M => m [f [/= r j a b c]].
-  rewrite /Bind /Join /JOIN /= /stateTmonad /Monad_of_ret_bind /bindS /Actm /=.
-  by rewrite /Monad_of_ret_bind.Map bindretf /= /retS bindretf.
-- case: M => m [f [/= r j a b c]] A k.
-  rewrite boolp.funeqE => s.
-  rewrite /Bind /Join /JOIN /= /bindS /stateTmonad /= /Monad_of_ret_bind.
-  rewrite /Actm /Monad_of_ret_bind.Map /= /Monad_of_ret_bind.Map /= /bindS /=.
-  by rewrite !bindretf /= !bindretf.
-Qed.
-
-Canonical stateMonad_of_stateT S M :=
-  MonadState.Pack (MonadState.Class (stateMonad_of_stateT_mixin S M)).
-
-Lemma bindLfailf (M : failMonad) S T U (m : stateT S M U) :
-  Lift (stateT S) M T Fail >> m = Lift (stateT S) M U Fail.
-Proof.
-rewrite -!liftSE /liftS boolp.funeqE => s.
-rewrite bindfailf {1}/Bind /= /bindS /=.
-rewrite [X in _ X s](_ : _ = (fun _ => Fail)); last first.
-  by rewrite boolp.funeqE => s'; rewrite bindfailf.
-rewrite (_ : _ _ s = Fail) ?bindfailf //.
-by rewrite /Actm /= /Monad_of_ret_bind.Map /= /bindS bindfailf.
-Qed.
-
-Variable M : failMonad.
-Let N : monad := stateT nat M.
-
-Let incr : N unit := Get >>= (Put \o succn).
-Let prog T : N unit := incr >> Lift (stateT nat) M T Fail >> incr.
-
-Goal forall T, prog T = Lift (stateT nat) M unit Fail.
-Proof.
-move=> T; rewrite /prog.
-rewrite bindA.
-rewrite bindLfailf.
-Abort.
-
-End example_stateT.
-
-Section example_errorT.
-
-Definition failMonad_of_errorT_mixin (M : monad) :
-  MonadFail.class_of (errorT unit M).
-Proof.
-refine (@MonadFail.Class _ _
-  (@MonadFail.Mixin (errorT unit M)
-                    (fun B => Ret (@inl _ B tt))
-                    _ )).
-move=> A B.
-case: M => m [f [/= r j a b c]] g.
-rewrite /Bind /= /bindX /= /errorTmonad /Monad_of_ret_bind /= /Actm /=.
-by rewrite /Monad_of_ret_bind.Map /= /bindX /= !bindretf.
-Qed.
-
-Canonical failMonad_of_errorT M := MonadFail.Pack (failMonad_of_errorT_mixin M).
-
-Definition LGet S (M : stateMonad S) := Lift (errorT unit) M S (@Get S M).
-Definition LPut S (M : stateMonad S) := Lift (errorT unit) M unit \o (@Put S M).
-
-Variable M : stateMonad nat.
-Let N : monad := errorT unit M.
-Let incr : N unit := LGet M >>= (LPut M \o succn).
-Let prog T : N unit := incr >> (Fail : _ T) >> incr.
-
-End example_errorT.
 
 Definition natural_hmap_lift (t : monadT)
     (h : forall (M N : monad), (M ~> N) -> (t M ~> t N)) :=

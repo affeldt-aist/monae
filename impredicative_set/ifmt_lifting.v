@@ -477,6 +477,8 @@ Qed.
 
 End slifting_alifting_coincide.
 
+Require Import imonad_model.
+
 (* example 30 *)
 Section slifting_local.
 Variable Env : UU0.
