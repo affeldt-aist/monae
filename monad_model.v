@@ -1217,20 +1217,25 @@ Next Obligation. move=> A /= m; rewrite boolp.funeqE => s; by rewrite fset0U. Qe
 Next Obligation. move=> A /= m; rewrite boolp.funeqE => s; by rewrite fsetU0. Qed.
 End nondet.
 
-Section nondetstate.
-
+Section failR0monad.
 Variable S : choiceType.
 Local Obligation Tactic := try by [].
-Program Definition nondetstate : nondetStateMonad S :=
-  @MonadNondetState.Pack _ _
-    (@MonadNondetState.Class _ _ (MonadNondet.class (nondetbase S))
-      (MonadState.mixin (MonadState.class (_state S))) (@MonadNondetState.Mixin _ _ _)).
+Program Definition failR0base : failR0Monad :=
+  @MonadFailR0.Pack _ (@MonadFailR0.Class _ (MonadNondet.base (MonadNondet.class (nondetbase S))) (@MonadFailR0.Mixin _ _)).
 Next Obligation.
 move=> A B /= g; rewrite !BindE /=; rewrite boolp.funeqE => s; apply/fsetP => /= sa.
 apply/idP/idP/bigfcupP'.
 case => /= SA /imfsetP[/= bs bsgs ->{SA}].
 by rewrite (@in_fset0 [choiceType of convex_choice.choice_of_Type A * convex_choice.choice_of_Type S]).
 Qed.
+End failR0monad.
+
+Section preplusmonad.
+
+Variable S : choiceType.
+Local Obligation Tactic := try by [].
+Program Definition preplusbase : prePlusMonad :=
+  @MonadPrePlus.Pack _ (@MonadPrePlus.Class _ (@MonadNondet.class (nondetbase S)) (MonadFailR0.mixin (@MonadFailR0.class (failR0base S))) (@MonadPrePlus.Mixin _ _)).
 Next Obligation.
 move=> A B /= m k1 k2; rewrite boolp.funeqE => s; rewrite !BindE /=; apply/fsetP => /= bs.
 apply/bigfcupP'/idP.
@@ -1247,6 +1252,16 @@ apply/bigfcupP'/idP.
     apply/imfsetP; by exists sa.
   by apply/fsetUP; right.
 Qed.
+
+End preplusmonad.
+
+Section nondetstate.
+
+Variable S : choiceType.
+Definition nondetstate : nondetStateMonad S :=
+  @MonadNondetState.Pack _ _
+    (@MonadNondetState.Class _ _ (MonadPrePlus.class (preplusbase S))
+      (MonadState.mixin (MonadState.class (_state S)))).
 
 End nondetstate.
 
