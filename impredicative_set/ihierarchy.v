@@ -1055,31 +1055,22 @@ Proof. by case: M k => m [[[? ? ? ? []]]]. Qed.
 End state_lemmas.
 
 Module MonadFailState.
-Record mixin_of (M : failMonad) := Mixin {
-  _ : forall (A B : UU0) (m : M A), m >> Fail = Fail :> M B }.
 Record class_of (S : UU0) (m : UU0 -> UU0) := Class {
-  base : MonadFail.class_of m ;
-  mixin_state : MonadState.mixin_of S (Monad.Pack (MonadFail.base base)) ;
-  mixin_failState : mixin_of (MonadFail.Pack base) }.
+  base : MonadFailR0.class_of m ;
+  mixin_state : MonadState.mixin_of S (Monad.Pack (MonadFail.base (MonadFailR0.base base))) }.
 Structure type (S : UU0) := Pack { acto : UU0 -> UU0 ; class : class_of S acto }.
-Definition failMonadType (S : UU0) (M : type S) : failMonad :=
-  MonadFail.Pack (base (class M)).
+Definition failR0MonadType (S : UU0) (M : type S) : failR0Monad :=
+  MonadFailR0.Pack (base (class M)).
 Module Exports.
 Notation failStateMonad := type.
-Coercion failMonadType : failStateMonad >-> failMonad.
-Canonical failMonadType.
+Coercion failR0MonadType : failStateMonad >-> failR0Monad.
+Canonical failR0MonadType.
 Definition state_of_failState (S : UU0) (M : type S) : stateMonad S :=
   MonadState.Pack (MonadState.Class (mixin_state (class M))).
 Canonical state_of_failState.
 End Exports.
 End MonadFailState.
 Export MonadFailState.Exports.
-
-Section failState_lemmas.
-Variables (S : UU0) (M : failStateMonad S).
-Lemma bindmfail0 (A B : UU0) (m : M A) : m >> Fail = Fail :> M B.
-Proof. by case: M m => ? [? ? []]. Qed.
-End failState_lemmas.
 
 Module MonadRun.
 Record mixin_of (S : UU0) (M : monad) := Mixin {

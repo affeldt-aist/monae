@@ -21,7 +21,7 @@ Proof.
 move=> T; rewrite /prog.
 rewrite bindA.
 rewrite bindfailf.
-by rewrite bindmfail0.
+by rewrite bindmfail.
 Abort.
 
 End failStateMonad.
