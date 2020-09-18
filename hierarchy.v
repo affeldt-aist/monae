@@ -33,6 +33,9 @@ Require Import monae_lib.
 (*         monadAltCI == monadAlt + commutativity + idempotence               *)
 (*        monadNondet == monadFail + monadAlt                                 *)
 (*      monadCINondet == monadFail + monadAltCI                               *)
+(*        failR0Monad == TODO                                                 *)
+(*       prePlusMonad == TODO                                                 *)
+(*          plusMonad == TODO                                                 *)
 (*        monadExcept == monadFail + catch                                    *)
 (*                                                                            *)
 (* Control monads (wip):                                                      *)
@@ -43,7 +46,7 @@ Require Import monae_lib.
 (* loopContStateMonad (wip)                                                   *)
 (*           runMonad == run interface                                        *)
 (*      stateRunMonad == monadState + run                                     *)
-(*   nondetStateMonad == nondetMonad + stateMonad                             *)
+(*   nondetStateMonad == TODO                                                 *)
 (*     loopStateMonad (wip)                                                   *)
 (*         arrayMonad == array monad                                          *)
 (*                                                                            *)
@@ -743,6 +746,73 @@ Qed.
 
 End nondet_big.
 
+Module MonadFailR0.
+Record mixin_of (M : failMonad) := Mixin {
+  _ : BindLaws.right_zero (@Bind M) (@Fail _) }.
+Record class_of (M : UU0 -> UU0) := Class {
+  base : MonadFail.class_of M ;
+  mixin : mixin_of (MonadFail.Pack base) }.
+Structure type := Pack { acto : UU0 -> UU0 ; class : class_of acto }.
+Definition failR0MonadType (M : type) := MonadFail.Pack (base (class M)).
+Module Exports.
+Notation failR0Monad := type.
+Coercion failR0MonadType : failR0Monad >-> failMonad.
+Canonical failR0MonadType.
+End Exports.
+End MonadFailR0.
+Export MonadFailR0.Exports.
+
+Section failR0_lemmas.
+Variable (M : failR0Monad).
+Lemma bindmfail : BindLaws.right_zero (@Bind M) (@Fail _).
+Proof. by case: M => m [? [? ?]]. Qed.
+End failR0_lemmas.
+
+Module MonadPrePlus.
+Record mixin_of (M : nondetMonad) := Mixin {
+  _ : BindLaws.right_distributive (@Bind M) (@Alt _) }.
+Record class_of (M : UU0 -> UU0) := Class {
+  base : MonadNondet.class_of M ;
+  mixin_failR0 : MonadFailR0.mixin_of (MonadFail.Pack (MonadNondet.base base)) ;
+  mixin : mixin_of (MonadNondet.Pack base) }.
+Structure type := Pack { acto : UU0 -> UU0 ; class : class_of acto }.
+Definition prePlusMonadType (M : type) := MonadNondet.Pack (base (class M)).
+Definition failR0MonadType (M : type) := MonadFailR0.Pack (MonadFailR0.Class (mixin_failR0 (class M))).
+Module Exports.
+Notation prePlusMonad := type.
+Coercion prePlusMonadType : prePlusMonad >-> nondetMonad.
+Canonical prePlusMonadType.
+Coercion failR0MonadType : prePlusMonad >-> failR0Monad.
+Canonical failR0MonadType.
+End Exports.
+End MonadPrePlus.
+Export MonadPrePlus.Exports.
+
+Section pre_plus_lemmas.
+Variable (M : prePlusMonad).
+Lemma alt_bindDr : BindLaws.right_distributive (@Bind M) (@Alt _).
+Proof. by case: M => m [? ? []]. Qed.
+End pre_plus_lemmas.
+
+Module MonadPlus.
+Record class_of (M : UU0 -> UU0) := Class {
+  base : MonadCINondet.class_of M ;
+  mixin_failR0 : MonadFailR0.mixin_of (MonadCINondet.Pack base) ;
+  mixin_preplus : MonadPrePlus.mixin_of (MonadCINondet.Pack base) }.
+Structure type := Pack { acto : UU0 -> UU0 ; class : class_of acto }.
+Definition plusMonadType (M : type) := MonadCINondet.Pack (base (class M)).
+Definition preplus_of_plus (M : type) :=
+  MonadPrePlus.Pack (@MonadPrePlus.Class _ (MonadCINondet.base (base (class M)))(*IMP*) (mixin_failR0 (class M)) (mixin_preplus (class M))).
+Module Exports.
+Notation plusMonad := type.
+Coercion plusMonadType : plusMonad >-> nondetCIMonad.
+Canonical plusMonadType.
+Coercion preplus_of_plus : plusMonad >-> prePlusMonad.
+Canonical preplus_of_plus.
+End Exports.
+End MonadPlus.
+Export MonadPlus.Exports.
+
 Module MonadExcept.
 Record mixin_of (M : failMonad) := Mixin {
   catch : forall A, M A -> M A -> M A ;
@@ -1048,36 +1118,36 @@ Proof. by case: M => m [? ? []]. Qed.
 End staterun_lemmas.
 
 Module MonadNondetState.
-Record mixin_of (M : nondetMonad) := Mixin {
+(*Record mixin_of (M : nondetMonad) := Mixin {
   (* backtrackable state *)
   _ : BindLaws.right_zero (@Bind M) (@Fail _) ;
   (* composition distributes rightwards over choice *)
-  _ : BindLaws.right_distributive (@Bind M) (@Alt _) }.
+  _ : BindLaws.right_distributive (@Bind M) (@Alt _) }.*)
 Record class_of (S : UU0) (M : UU0 -> UU0) := Class {
-  base : MonadNondet.class_of M ;
-  mixin_state : MonadState.mixin_of S (MonadFail.monadType (MonadNondet.failMonadType (MonadNondet.Pack base))) ;
-  mixin_nondetState : mixin_of (MonadNondet.Pack base)
+  base : MonadPrePlus.class_of M ;
+  mixin_state : MonadState.mixin_of S (MonadFail.monadType (MonadNondet.failMonadType (MonadPrePlus.Pack base)))
+(*  mixin_nondetState : mixin_of (MonadNondet.Pack base)*)
 }.
 Structure type (S : UU0) := Pack { acto : UU0 -> UU0 ; class : class_of S acto }.
-Definition nondetMonadType (S : UU0) (M : type S) := MonadNondet.Pack (base (class M)).
+Definition prePlusMonadType (S : UU0) (M : type S) := MonadPrePlus.Pack (base (class M)).
 Definition stateMonadType (S : UU0) (M : type S) :=
   MonadState.Pack (MonadState.Class (mixin_state (class M))).
 Module Exports.
 Notation nondetStateMonad := type.
-Coercion nondetMonadType : nondetStateMonad >-> nondetMonad.
-Canonical nondetMonadType.
+Coercion prePlusMonadType : nondetStateMonad >-> prePlusMonad.
+Canonical prePlusMonadType.
 Canonical stateMonadType.
 End Exports.
 End MonadNondetState.
 Export MonadNondetState.Exports.
 
-Section nondetstate_lemmas.
+(*Section nondetstate_lemmas.
 Variables (S : UU0) (M : nondetStateMonad S).
 Lemma bindmfail : BindLaws.right_zero (@Bind M) (@Fail _).
 Proof. by case: M => m [? ? [? ?]]. Qed.
 Lemma alt_bindDr : BindLaws.right_distributive (@Bind M) (@Alt _).
 Proof. by case: M => m [? ? []]. Qed.
-End nondetstate_lemmas.
+End nondetstate_lemmas.*)
 
 (* NB: this is experimental, may disappear, see rather foreah in
 monad_transformer because it is more general *)

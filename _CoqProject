@@ -17,6 +17,7 @@ proba_monad_model.v
 example_spark.v
 example_nqueens.v
 example_relabeling.v
+example_quicksort.v
 example_monty.v
 smallstep.v
 category.v
