@@ -4,6 +4,7 @@ From mathcomp Require boolp.
 From mathcomp Require Import classical_sets.
 From infotheo Require convex_choice classical_sets_ext.
 Require Import monae_lib hierarchy monad_lib fail_lib state_lib trace_lib.
+Require Import monad_transformer.
 
 (******************************************************************************)
 (*                       Models for various monads                            *)
@@ -41,6 +42,10 @@ Require Import monae_lib hierarchy monad_lib fail_lib state_lib trace_lib.
 (*                                                                            *)
 (* ModelBacktrackableState (from scratch using fsets, i.e., redefinition of   *)
 (* monad state monad fail monad alt monad nondet monad nondetstate monad)     *)
+(*                                                                            *)
+(* Equality between monads from the hierarchy and their counterparts built    *)
+(* using monad transformers and the identity monad:                           *)
+(* - state_monad_stateT, error_monad_errorT, cont_monad_contT                 *)
 (*                                                                            *)
 (* references:                                                                *)
 (* - Wadler, P. Monads and composable continuations. LISP and Symbolic        *)
@@ -354,6 +359,8 @@ Definition empty A : unit -> M A := fun _ => @nil A.
 Lemma naturality_empty : naturality (Empty.func \O M) M empty.
 Proof. by move=> A B h; rewrite boolp.funeqE. Qed.
 Definition empty_op : Empty.func.-operation M := Natural.Pack (Natural.Mixin naturality_empty).
+Lemma algebraic_empty : algebraicity empty_op.
+Proof. by []. Qed.
 
 Definition append A : (M A * M A)%type -> M A :=
   fun x => let: (s1, s2) := x in (s1 ++ s2).
@@ -365,6 +372,14 @@ rewrite /ModelMonad.ListMonad.bind /= /ModelMonad.ListMonad.ret /=.
 by rewrite map_cat flatten_cat.
 Qed.
 Definition append_op : Append.func.-operation M := Natural.Pack (Natural.Mixin naturality_append).
+Lemma algebraic_append : algebraicity append_op.
+Proof.
+move=> A B f [t1 t2] /=.
+rewrite !bindE /= /ModelMonad.ListMonad.bind /= /Actm /=.
+rewrite /Monad_of_ret_bind.Map /=.
+rewrite /ModelMonad.ListMonad.bind /= /ModelMonad.ListMonad.ret /=.
+by rewrite -flatten_cat -map_cat /= -flatten_cat -map_cat.
+Qed.
 
 End ListOps.
 
@@ -391,7 +406,8 @@ Section outputops.
 Variable L : UU0.
 Local Notation M := (ModelMonad.Output.t L).
 
-Definition output (A : UU0) : (seq L * M A) -> M A := fun m => let: (x, w') := m.2 in (x, m.1 ++ w'). (*NB: w'++m.1 in the esop paper*)
+Definition output (A : UU0) : (seq L * M A) -> M A :=
+  fun m => let: (x, w') := m.2 in (x, m.1 ++ w'). (*NB: w'++m.1 in the esop paper*)
 Lemma naturality_output : naturality (Output.func L \O M) M output.
 Proof.
 move=> A B h; rewrite boolp.funeqE; case => w [x w'] /=.
@@ -399,12 +415,32 @@ by rewrite /output /= cats0 /Actm /= /Monad_of_ret_bind.Map /= cats0.
 Qed.
 Definition output_op : (Output.func L).-operation M :=
   Natural.Pack (Natural.Mixin naturality_output).
+Lemma algebraic_output : algebraicity output_op.
+Proof.
+move=> A B f [w [x w']].
+rewrite bindE /= /output /= bindE /= !cats0.
+by case: f => x' w''; rewrite catA.
+Qed.
 
 Definition flush A : M A -> M A := fun m => let: (x, _) := m in (x, [::]).
 (* performing a computation in a modified environment *)
 Lemma naturality_flush : naturality (Flush.func \O M) M flush.
 Proof. by move=> A B h; rewrite boolp.funeqE; case. Qed.
 Definition flush_op : Flush.func.-operation M := Natural.Pack (Natural.Mixin naturality_flush).
+(* NB: flush is not algebraic *)
+Lemma algebraic_flush : algebraicity flush_op.
+Proof.
+move=> A B f [x w].
+rewrite /flush_op /=.
+rewrite /flush /=.
+rewrite /Actm /=.
+rewrite bindE /=.
+rewrite /OutputOps.Flush.actm.
+rewrite bindE /=.
+rewrite cats0.
+case: f => x' w'.
+Abort.
+
 End outputops.
 
 End OutputOps.
@@ -451,7 +487,10 @@ Local Notation M := (ModelMonad.Environment.t E).
 Definition ask A : (E -> M A) -> M A := fun f s => f s s. (* reading the environment *)
 Lemma naturality_ask : naturality (Ask.func E \O M) M ask.
 Proof. by []. Qed.
-Definition ask_op : (Ask.func E).-operation M := Natural.Pack (Natural.Mixin naturality_ask).
+Definition ask_op : (Ask.func E).-operation M :=
+  Natural.Pack (Natural.Mixin naturality_ask).
+Lemma algebraic_ask : algebraicity ask_op.
+Proof. by []. Qed.
 
 Definition local A : (E -> E) * M A -> M A := fun x s => let: (e, t) := x in t (e s).
 (* performing a computation in a modified environment *)
@@ -459,6 +498,28 @@ Lemma naturality_local : naturality (Local.func E \O M) M local.
 Proof. by move=> A B h; rewrite boolp.funeqE; case. Qed.
 Definition local_op : (Local.func E).-operation M :=
   Natural.Pack (Natural.Mixin naturality_local).
+(* NB: local is not algebraic *)
+Lemma algebraic_local : algebraicity local_op.
+Proof.
+move=> A B f t.
+rewrite /local_op /=.
+rewrite /local /=.
+rewrite boolp.funeqE => e /=.
+rewrite bindE /=.
+rewrite /ModelMonad.Environment.bind /=.
+rewrite /Actm /=.
+rewrite /Monad_of_ret_bind.Map /=.
+rewrite /ModelMonad.Environment.bind /=.
+rewrite /ModelMonad.Environment.ret /=.
+rewrite /EnvironmentOps.Local.actm /=.
+case: t => /= ee m.
+rewrite bindE /=.
+rewrite /ModelMonad.Environment.bind /=.
+rewrite /Actm /=.
+rewrite /Monad_of_ret_bind.Map /=.
+rewrite /ModelMonad.Environment.bind /=.
+rewrite /ModelMonad.Environment.ret /=.
+Abort.
 
 End environmentops.
 End EnvironmentOps.
@@ -503,6 +564,10 @@ Lemma naturality_throw : naturality (Throw.func Z \O M) M throw.
 Proof. by []. Qed.
 Definition throw_op : (Throw.func Z).-operation M :=
   Natural.Pack (Natural.Mixin naturality_throw).
+Lemma algebraic_throw : algebraicity throw_op.
+Proof. by []. Qed.
+Definition throw_aop : (Throw.func Z).-aoperation (ModelMonad.Except.t Z) :=
+  AOperation.Pack (AOperation.Class (AOperation.Mixin algebraic_throw)).
 
 Definition handle A (m : M A) (h : Z -> M A) : M A :=
   match m with inl z => h z | inr x => inr x end.
@@ -511,6 +576,23 @@ Lemma naturality_handle :
 Proof. by move=> A B h; rewrite boolp.funeqE; case; case. Qed.
 Definition handle_op : (Handle.func Z).-operation M :=
   Natural.Pack (Natural.Mixin naturality_handle).
+(* NB: handle is not algebraic *)
+Lemma algebraic_handle : algebraicity handle_op.
+Proof.
+move=> A B f t.
+rewrite /handle_op /=.
+rewrite /handle /=.
+rewrite /uncurry /prod_curry.
+case: t => -[z//|a] g /=.
+rewrite bindE /=.
+case: (f a) => // z.
+rewrite bindE /=.
+rewrite /ModelMonad.Except.bind /=.
+rewrite /Actm /=.
+rewrite /Monad_of_ret_bind.Map /=.
+rewrite /ModelMonad.Except.bind /=.
+case: (g z) => [z0|a0].
+Abort.
 
 End exceptops.
 End ExceptOps.
@@ -547,7 +629,12 @@ Proof.
 move=> A B h; rewrite boolp.funeqE => /= m /=.
 by rewrite boolp.funeqE => s; rewrite FCompE.
 Qed.
-Definition get_op : (Get.func S).-operation M := Natural.Pack (Natural.Mixin naturality_get).
+Definition get_op : (Get.func S).-operation M :=
+  Natural.Pack (Natural.Mixin naturality_get).
+Lemma algebraic_get : algebraicity get_op.
+Proof. by []. Qed.
+Definition get_aop : (Get.func S).-aoperation (ModelMonad.State.t S) :=
+  AOperation.Pack (AOperation.Class (AOperation.Mixin algebraic_get)).
 
 Definition put A (s : S) (m : M A) : M A := fun _ => m s.
 Lemma naturality_put :
@@ -556,7 +643,12 @@ Proof.
 move=> A B h.
 by rewrite boolp.funeqE => /=; case => s m /=; rewrite boolp.funeqE.
 Qed.
-Definition put_op : (Put.func S).-operation M := Natural.Pack (Natural.Mixin naturality_put).
+Definition put_op : (Put.func S).-operation M :=
+  Natural.Pack (Natural.Mixin naturality_put).
+Lemma algebraic_put : algebraicity put_op.
+Proof. by move=> ? ? ? []. Qed.
+Definition put_aop : (Put.func S).-aoperation (ModelMonad.State.t S) :=
+  AOperation.Pack (AOperation.Class (AOperation.Mixin algebraic_put)).
 
 End stateops.
 End StateOps.
@@ -593,6 +685,10 @@ Lemma naturality_abort : naturality (Abort.func r \O M) M abort.
 Proof. by []. Qed.
 Definition abort_op : (Abort.func r).-operation M :=
   Natural.Pack (Natural.Mixin naturality_abort).
+Lemma algebraicity_abort : algebraicity abort_op.
+Proof. by []. Qed.
+Definition abort_aop : (Abort.func r).-aoperation (ModelMonad.Cont.t r) :=
+  AOperation.Pack (AOperation.Class (AOperation.Mixin algebraicity_abort)).
 
 (* alebgraic call/cc *)
 Definition acallcc A (f : (M A -> r) -> M A) : M A :=
@@ -601,6 +697,11 @@ Lemma naturality_acallcc : naturality (Acallcc.func r \O M) M acallcc.
 Proof. by []. Qed.
 Definition acallcc_op : (Acallcc.func r).-operation M :=
   Natural.Pack (Natural.Mixin naturality_acallcc).
+Lemma algebraicity_callcc : algebraicity acallcc_op.
+Proof. by []. Qed.
+Definition callcc_aop : (Acallcc.func r).-aoperation (ModelMonad.Cont.t r) :=
+  AOperation.Pack (AOperation.Class (AOperation.Mixin algebraicity_callcc)).
+
 End contops.
 End ContOps.
 
@@ -1266,3 +1367,207 @@ Definition nondetstate : nondetStateMonad S :=
 End nondetstate.
 
 End ModelBacktrackableState.
+
+
+(* result of a discussion with Maxime and Enrico on 2019-09-12 *)
+Section eq_rect_ret.
+Variable X : UU0.
+Let U  : UU1 := functor.
+Let Q : U -> UU0 := Functor.acto^~ X.
+
+Lemma eq_rect_ret (p p' : U) (K : Q p' = Q p) (x : Q p') (h : p = p') :
+  x = eq_rect p Q (eq_rect _ (fun X : UU0 => id X) x _ K) p' h.
+Proof.
+rewrite /eq_rect; destruct h; rewrite (_ : K = erefl) //; exact/proof_irr.
+Qed.
+
+Lemma eq_rect_state_ret S (p := ModelMonad.State.functor S : U)
+  (p' := MS_functor S ModelMonad.identity : U)
+  (x : Q p') (h : p = p') : x = eq_rect p Q x p' h.
+Proof.
+have K : Q p' = Q p by [].
+rewrite {2}(_ : x = eq_rect _ (fun x : UU0 => x) x _ K) //; first exact: eq_rect_ret.
+rewrite /eq_rect (_ : K = erefl) //; exact/proof_irr.
+Qed.
+
+Lemma eq_rect_error_ret (E : UU0) (p : U := ModelMonad.Except.functor E)
+  (p' : U := MX_functor E ModelMonad.identity)
+  (x : Q p') (h : p = p') : x = eq_rect p Q x p' h.
+Proof.
+have K : Q p' = Q p by [].
+rewrite {2}(_ : x = eq_rect _ (fun x : UU0 => x) x _ K) //; first exact: eq_rect_ret.
+rewrite /eq_rect (_ : K = erefl) //; exact/proof_irr.
+Qed.
+
+Lemma eq_rect_cont_ret r (p : U := ModelMonad.Cont.functor r)
+  (p' : U := MC_functor r ModelMonad.identity)
+  (x : Q p') (h : p = p') : x = eq_rect p Q x p' h.
+Proof.
+have K : Q p' = Q p by [].
+rewrite {2}(_ : x = eq_rect _ (fun x : UU0 => x) x _ K) //; first exact: eq_rect_ret.
+rewrite /eq_rect (_ : K = erefl) //; exact/proof_irr.
+Qed.
+
+End eq_rect_ret.
+
+Section eq_rect_bind.
+Let U : Type := functor.
+Let Q : U -> Type := fun F => forall A B, Functor.acto F A -> (A -> Functor.acto F B) -> Functor.acto F B.
+
+Lemma eq_rect_bind (p p' : U) (K : Q p' = Q p) (x : Q p') (h : p = p') :
+  x = eq_rect p Q (eq_rect _ id x _ K) p' h.
+Proof.
+rewrite /eq_rect; destruct h; rewrite (_ : K = erefl) //; exact/proof_irr.
+Qed.
+
+Lemma eq_rect_bind_state S (p : U := ModelMonad.State.functor S)
+  (p' : U := MS_functor S ModelMonad.identity)
+  (x : Q p') (h : p = p') : x = eq_rect p Q x p' h.
+Proof.
+have K : Q p' = Q p by [].
+rewrite {2}(_ : x = eq_rect _ id x _ K); first exact: eq_rect_bind.
+rewrite /eq_rect (_ : K = erefl) //; exact/proof_irr.
+Qed.
+
+Lemma eq_rect_bind_error E (p : U := ModelMonad.Except.functor E)
+  (p' : U := MX_functor E ModelMonad.identity)
+  (x : Q p') (h : p = p') : x = eq_rect p Q x p' h.
+Proof.
+have K : Q p' = Q p by [].
+rewrite {2}(_ : x = eq_rect _ id x _ K) //; first exact: eq_rect_bind.
+rewrite /eq_rect (_ : K = erefl) //; exact/proof_irr.
+Qed.
+
+Lemma eq_rect_bind_cont S (p : U := ModelMonad.Cont.functor S)
+  (p' : U := MC_functor S ModelMonad.identity)
+  (x : Q p') (h : p = p') : x = eq_rect p Q x p' h.
+Proof.
+have K : Q p' = Q p by [].
+rewrite {2}(_ : x = eq_rect _ id x _ K) //; first exact: eq_rect_bind.
+rewrite /eq_rect (_ : K = erefl) //; exact/proof_irr.
+Qed.
+
+End eq_rect_bind.
+
+Section instantiations_with_the_identity_monad.
+
+Lemma state_monad_stateT S :
+  stateT S ModelMonad.identity = ModelMonad.State.t S.
+Proof.
+rewrite /= /stateTmonadM /ModelMonad.State.t.
+have FG : MS_functor S ModelMonad.identity = ModelMonad.State.functor S.
+  apply: functor_ext => /=.
+  apply FunctionalExtensionality.functional_extensionality_dep => A.
+  apply FunctionalExtensionality.functional_extensionality_dep => B.
+  rewrite boolp.funeqE => f; rewrite boolp.funeqE => m; rewrite boolp.funeqE => s.
+  by rewrite /MS_map /Actm /= /ModelMonad.State.map; destruct (m s).
+apply (@monad_of_ret_bind_ext _ _ _ _ _ _ FG) => /=.
+  apply/natural_ext => A a /=; exact: eq_rect_state_ret _ (esym FG).
+set x := @bindS _ _; exact: (@eq_rect_bind_state S x (esym FG)).
+Qed.
+
+Lemma error_monad_errorT (Z : UU0) :
+  errorT Z ModelMonad.identity = ModelMonad.Except.t Z.
+Proof.
+rewrite /= /errorTmonadM /ModelMonad.Except.t.
+have FG : MX_functor Z ModelMonad.identity = ModelMonad.Except.functor Z.
+  apply: functor_ext => /=.
+  apply FunctionalExtensionality.functional_extensionality_dep => A.
+  apply FunctionalExtensionality.functional_extensionality_dep => B.
+  rewrite boolp.funeqE => f; rewrite boolp.funeqE => m.
+  by rewrite /MX_map /Actm /= /ModelMonad.Except.map; destruct m.
+apply (@monad_of_ret_bind_ext _ _ _ _ _ _ FG) => /=.
+  apply/natural_ext => A a /=; exact: (eq_rect_error_ret _ (esym FG)).
+set x := @bindX _ _; exact: (@eq_rect_bind_error Z x (esym FG)).
+Qed.
+
+Lemma cont_monad_contT r :
+  contT r ModelMonad.identity = ModelMonad.Cont.t r.
+Proof.
+rewrite /= /contTmonadM /ModelMonad.Cont.t.
+have FG : MC_functor r ModelMonad.identity = ModelMonad.Cont.functor r.
+  apply: functor_ext => /=.
+  apply FunctionalExtensionality.functional_extensionality_dep => A.
+  apply FunctionalExtensionality.functional_extensionality_dep => B.
+  by rewrite boolp.funeqE => f; rewrite boolp.funeqE => m.
+apply (@monad_of_ret_bind_ext _ _ _ _ _ _ FG) => /=.
+  apply/natural_ext => A a /=; exact: (@eq_rect_cont_ret A r _ (esym FG)).
+set x := @bindC _ _; exact: (@eq_rect_bind_cont r x (esym FG)).
+Qed.
+
+End instantiations_with_the_identity_monad.
+
+Section monad_transformer_calcul.
+
+Let contTi := @contT^~ ModelMonad.identity.
+Let callcci := ModelCont.callcc.
+
+Definition break_if_none (m : monad) (break : _) (acc : nat) (x : option nat) : m nat :=
+  if x is Some x then Ret (x + acc) else break acc.
+
+Definition sum_until_none (xs : seq (option nat)) : contTi nat nat :=
+  callcci (fun break : nat -> contTi nat nat => foldM (break_if_none break) 0 xs).
+
+Goal sum_until_none [:: Some 2; Some 6; None; Some 4] = @^~ 8.
+by cbv.
+Abort.
+
+Definition calcul : contTi nat nat :=
+  (contTi _ # (fun x => 8 + x))
+  (callcci (fun k : _ -> contTi nat _ => (k 5) >>= (fun y => Ret (y + 4)))).
+
+Goal calcul = @^~ 13.
+by cbv.
+Abort.
+
+End monad_transformer_calcul.
+
+Section examples_of_algebraic_lifting.
+
+Section state_errorT.
+Let M S : monad := ModelState.state S.
+
+Definition aLGet {Z S} : (StateOps.Get.func S).-aoperation (errorT Z (M S)) :=
+  alifting (StateOps.get_aop S) (Lift (errorT Z) (M S)).
+
+Definition aLPut {Z S} : (StateOps.Put.func S).-operation (errorT Z (M S)) :=
+  alifting (StateOps.put_aop S) (Lift (errorT Z) (M S)).
+
+Goal forall Z (S : UU0) X (k : S -> errorT Z (M S) X), aLGet _ k = StateOps.get_op _ k.
+by [].
+Abort.
+
+Goal forall Z S, aLGet _ Ret = Lift (errorT Z) (M S) _ (@ModelState.get S).
+by [].
+Abort.
+
+End state_errorT.
+
+Section continuation_stateT.
+Variable (r S : UU0).
+Let M : monad := ModelCont.t r.
+Let stS : monadT := stateT S.
+
+Definition aLCallcc : (ContOps.Acallcc.func r).-aoperation (stS M) :=
+  alifting (ContOps.callcc_aop r) (Lift stS M).
+
+Goal forall A (f : (stS M A -> r) -> stS M A),
+  aLCallcc _ f = (fun s k => f (fun m => uncurry m (s, k)) s k) :> stS M A.
+move=> A f.
+by rewrite /aLCallcc /= /stS /= /stateT /= /stateTmonadM /=; unlock.
+Abort.
+
+Definition usual_callccS (A B : UU0) (f : (A -> stS M B) -> stS M A) : stS M A :=
+  fun s k => f (fun x _ _ => k (x, s)) s k.
+
+Lemma callccS_E A B f : @aLCallcc _
+    (fun k : stS M A -> r =>
+       f (fun x => (fun (_ : S) (_ : B * S -> r) => k (@RET (stS M) A x)) : stS M B)) =
+  usual_callccS f.
+Proof.
+by rewrite /aLCallcc /= /stS /= /stateT /= /stateTmonadM /=; unlock.
+Qed.
+
+End continuation_stateT.
+
+End examples_of_algebraic_lifting.

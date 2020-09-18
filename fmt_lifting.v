@@ -483,6 +483,8 @@ Qed.
 
 End slifting_alifting_coincide.
 
+Require Import monad_model.
+
 (* example 30 *)
 Section slifting_local.
 Variable Env : UU0.

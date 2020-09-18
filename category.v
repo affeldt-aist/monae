@@ -140,7 +140,7 @@ Local Open Scope category_scope.
 Lemma hom_ext (C : category) (a b : C) (f g : {hom a, b}) : f = g <-> f = g :> (_ -> _).
 Proof.
 move: f g => [f Hf] [g Hg] /=; split => [[]//|fg /=].
-by rewrite fg in Hf *; rewrite (Prop_irrelevance Hf Hg).
+by rewrite fg in Hf *; rewrite (proof_irr _ Hf Hg).
 Qed.
 
 Section category_interface.
@@ -311,10 +311,10 @@ have pp : ff = fg.
   apply functional_extensionality_dep=> f.
   move: (p A B f).
   have -> // : pm = (fun _ => erefl).
-  exact: Prop_irrelevance.
+  exact: proof_irr.
 rewrite {p}.
 move: idf cf idg cg; rewrite pp => *.
-congr (Functor.Pack (Functor.Mixin _ _)); exact/Prop_irrelevance.
+congr (Functor.Pack (Functor.Mixin _ _)); exact/proof_irr.
 Qed.
 End functor_lemmas.
 
@@ -363,18 +363,18 @@ Variables (C0 C1 C2 C3 : category).
 Lemma FCompId (F : functor C0 C1) : F \O FId = F.
 Proof.
 case: F => ? [???]; congr (Functor.Pack (Functor.Mixin _ _));
-  exact/Prop_irrelevance.
+  exact/proof_irr.
 Qed.
 Lemma FIdComp (F : functor C0 C1) : FId \O F = F.
 Proof.
 case: F => ? [???]; congr (Functor.Pack (Functor.Mixin _ _));
-  exact/Prop_irrelevance.
+  exact/proof_irr.
 Qed.
 Lemma FCompA (F : functor C2 C3) (G : functor C1 C2) (H : functor C0 C1) :
   (F \O G) \O H = F \O (G \O H).
 Proof.
 move: F G H => [f [???]] [g [???]] [h [???]].
-congr (Functor.Pack (Functor.Mixin  _ _)); exact/Prop_irrelevance.
+congr (Functor.Pack (Functor.Mixin  _ _)); exact/proof_irr.
 Qed.
 Lemma FCompE (F : functor C1 C2) (G : functor C0 C1) a b (k : {hom a, b}) :
   (F \O G) # k = F # (G # k).
@@ -419,7 +419,7 @@ Proof.
 split => [ -> // |]; move: f g => [f Hf] [g Hg] /= fg''.
 have fg' : forall a, f a = g a :> {hom _, _} by move=> a; rewrite hom_ext fg''.
 move: (functional_extensionality_dep fg') => fg.
-by rewrite fg in Hf *; rewrite (Prop_irrelevance Hf Hg).
+by rewrite fg in Hf *; rewrite (proof_irr _ Hf Hg).
 Qed.
 
 End natural_transformation_lemmas.
@@ -635,7 +635,7 @@ Proof. by apply hom_ext; rewrite /hom_inv homfunK /= functor_id compfid. Qed.
 Lemma ext (B : F -| G) : eta A = eta B -> eps A = eps B -> A = B.
 Proof.
 move: A B => [? ? ? ?] [? ? ? ?] /= ? ?; subst.
-congr mk; exact/Prop_irrelevance.
+congr mk; exact/proof_irr.
 Qed.
 
 (*
