@@ -74,17 +74,18 @@ Definition assoc_inv {A B C : Type} : A * (B * C) -> (A * B) * C :=
 Section relation_statetrace_state_trace.
 Variables (S T : UU0) (MN : stateTraceRunMonad S T).
 
-Lemma stGet_Get (M : stateRunMonad S) s :
+(* TODO(david) *)
+Fail Lemma stGet_Get (M : stateRunMonad S) s :
   Run (stGet : MN _) s = assoc (Run (Get : M _) s.1, s.2).
-Proof. by rewrite runget runstget; case: s. Qed.
+(*Proof. by rewrite runget runstget; case: s. Qed.*)
 
-Lemma stPut_Put (M : stateRunMonad S) s s' :
+Fail Lemma stPut_Put (M : stateRunMonad S) s s' :
   Run (stPut s' : MN _) s = assoc (Run (Put s' : M _) s.1, s.2).
-Proof. by rewrite runput runstput. Qed.
+(*Proof. by rewrite runput runstput. Qed.*)
 
-Lemma stMark_Mark (M : traceRunMonad T) s t :
+Fail Lemma stMark_Mark (M : traceRunMonad T) s t :
   Run (stMark t : MN _) s = let x := Run (Mark t : M _) s.2 in (x.1, (s.1, x.2)).
-Proof. by rewrite runtmark runstmark. Qed.
+(*Proof. by rewrite runtmark runstmark. Qed.*)
 
 End relation_statetrace_state_trace.
 

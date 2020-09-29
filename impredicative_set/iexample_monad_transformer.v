@@ -13,11 +13,11 @@ Import Univ.
 Section example_stateT.
 
 Section failStateMonad.
-Variables M : failStateMonad nat.
+Variables M : failStateRunMonad nat.
 Let incr : M unit := Get >>= (Put \o succn).
-Let prog (B : UU0) : M unit := incr >> @Fail M B >> incr.
+Let prog (B : UU0) : M unit := incr >> @Fail _ B >> incr.
 
-Goal forall T, prog T = Fail.
+Goal forall T, prog T = @Fail _ _.
 Proof.
 move=> T; rewrite /prog.
 rewrite bindA.
@@ -28,6 +28,7 @@ Abort.
 End failStateMonad.
 
 Section stateTfailMonad.
+
 Lemma bindLmfail (M := ModelMonad.option_monad) S T U (m : stateT S M U)
     (FAIL := @ExceptOps.throw unit T tt) :
   m >> Lift (stateT S) M T FAIL = Lift (stateT S) M T FAIL.
@@ -64,6 +65,7 @@ Abort.
 End test.
 
 Section test2.
+
 Let M : failMonad := ModelFail.option.
 Let N : monad := stateT nat M.
 Let FAIL T := @ExceptOps.throw unit T tt.
@@ -77,6 +79,7 @@ move=> T; rewrite /prog.
 rewrite bindLmfail.
 by rewrite bindLfailf.
 Abort.
+
 End test2.
 
 Section test3.
@@ -114,6 +117,8 @@ Definition runStateT {S A : UU0} {M : monad} (m : stateT S M A) (s : S) :
 M (A*S)%type :=
 m s.
 
+(*failStateRunMonad*)
+
 Lemma runStateTFun {S A : UU0} {M : monad} (m : stateT S M A) (s : S) :
 @runStateT _ _ M (fun s => m s) s = m s.
 Proof.
@@ -131,7 +136,15 @@ Lemma runStateTBind
 runStateT (m >>= f) s =
 runStateT m s >>= fun a_s' => runStateT (f (fst a_s')) (snd a_s').
 Proof.
-Admitted.
+rewrite /runStateT.
+rewrite {1}/Bind /Actm /= /bindS /=.
+rewrite /Monad_of_ret_bind.Map /=.
+rewrite /retS.
+rewrite bindA.
+congr (_ >>= _).
+apply fun_ext => -[a s'] /=.
+by rewrite bindretf.
+Qed.
 
 Lemma runStateTGet (S : UU0) (M : monad) (s : S) :
 @runStateT _ _ M Get s = Ret (s, s).
@@ -221,6 +234,7 @@ End FastProduct.
 
 (* The following example illustrates how the state is backtracked when a
    failure is catched. *)
+
 Goal
 runStateT (
   Put 1 >>

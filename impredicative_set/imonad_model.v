@@ -923,7 +923,7 @@ Definition mk {S T : UU0} : runMonad (S * seq T)%type.
 set m := @ModelMonad.State.t (S * seq T)%type.
 refine (@MonadRun.Pack _ _ (@MonadRun.Class _ _ (Monad.class m)
   (@MonadRun.Mixin _ m
-  (fun A m (s : S * seq T) => m s) (* run *) _ _))).
+  (fun A m (s : S * seq T) => Some (m s)) (* run *) _ _))).
 by [].
 move=> A B m0 f s.
 rewrite !bindE /=.
