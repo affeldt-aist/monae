@@ -109,7 +109,229 @@ End test3.
 
 End stateTfailMonad.
 
+Variable M : failMonad. (* because of the run fail law *)
+
+Variable S : UU0.
+
+Variable N : exceptStateRunMonad S M.
+
+(* Could replace M with three different monads *)
+Definition mapStateT2
+  {A : UU0}
+  (f : M (A*S)%type -> M (A*S)%type -> M (A*S)%type) (m1 m2 : N A) : N A :=
+Liftme (fun s => f (RunStateT m1 s) (RunStateT m2 s)).
+
+Definition evalStateT {A : UU0} (m : N A) (s : S) : M A :=
+RunStateT m s >>= fun a_s' => Ret (a_s'.1).
+
+Lemma RunStateTBind
+  (A B : UU0) (m : N A) (f : A -> N B) (s : S) :
+RunStateT (m >>= f) s =
+RunStateT m s >>= fun a_s' => RunStateT (f (fst a_s')) (snd a_s').
+Proof.
+(*rewrite /runStateT.
+rewrite {1}/Bind /Actm /= /bindS /=.
+rewrite /Monad_of_ret_bind.Map /=.
+rewrite /retS.
+rewrite bindA.
+congr (_ >>= _).
+apply fun_ext => -[a s'] /=.
+by rewrite bindretf.
+Qed.*) Admitted.
+
+Lemma RunStateTLiftme (A : UU0) s (f : S -> M (A * S)%type) :
+  @RunStateT _ _ N _ (Liftme f) s = f s :> M _.
+Admitted.
+
+Lemma RunStateTRet (A : UU0) (a : A) (s : S) :
+@RunStateT _ _ _ _ (Ret a : N _) s = Ret (a, s) :> M _.
+Admitted.
+
+Lemma RunStateTGet (s : S) :
+  @RunStateT _ _ N _ Get s = Ret (s, s).
+Admitted.
+
+Lemma RunStateTPut (s' s : S) :
+@RunStateT _ _ N _ (Put s' : N _) s = Ret (tt, s').
+Proof.
+Admitted.
+
+Lemma RunStateTfail (A : UU0) (s : S) :
+  @RunStateT S M N A (Fail : N A) s = @Fail M _ :> M (A * S)%type.
+Proof.
+Admitted.
+
 End example_stateT.
+
+Section FastProduct.
+
+Variable M : exceptMonad.
+
+Variable N : exceptStateRunMonad nat M.
+
+Program Fixpoint fastProductRec (xs : list nat) : N unit :=
+match xs with
+| nil => Ret tt
+| cons 0 _ => Fail
+| cons x.+1 xs' => Get >>= fun r => Put (r * x.+1) >> fastProductRec xs'
+end.
+
+Definition fastProduct (xs : list nat) : N nat :=
+mapStateT2 Catch (Put 1 >> fastProductRec xs >> Get) (Ret 0).
+
+Definition runE := (RunStateTLiftme, RunStateTBind, RunStateTRet, RunStateTPut,RunStateTGet).
+
+Lemma fastProductCorrect (xs : list nat) (s : nat) :
+  evalStateT (fastProduct xs) s = Ret (product xs).
+Proof.
+assert (Hgen : forall n,
+  evalStateT (mapStateT2 Catch ((Put n >> fastProductRec xs) >> Get)
+     (Ret 0)) s = Ret (n * product xs)).
+{
+  induction xs as [ | [ | x] xs IH]; intro n.
+  - rewrite muln1 bindA bindretf putget.
+    rewrite /evalStateT.
+    rewrite /mapStateT2.
+    rewrite !runE.
+    rewrite bindretf.
+    rewrite !runE.
+    rewrite catchret.
+    by rewrite bindretf.
+  - rewrite muln0.
+    rewrite /evalStateT.
+    rewrite /mapStateT2.
+    rewrite !runE.
+    rewrite bindretf /=.
+    rewrite RunStateTfail.
+    rewrite bindfailf.
+    rewrite catchfailm.
+    by rewrite bindretf.
+  - rewrite /evalStateT.
+    rewrite /mapStateT2.
+    rewrite runE.
+    rewrite runE.
+    rewrite runE.
+    rewrite runE.
+    rewrite runE.
+    rewrite bindretf /=.
+    rewrite runE.
+    rewrite runE.
+    rewrite bindretf /=.
+    rewrite 2!runE bindretf /=.
+    have {IH} := IH (n * x.+1).
+    rewrite /evalStateT /mapStateT2.
+    rewrite 4!runE.
+    rewrite runE bindretf /= => IH.
+    rewrite IH.
+    rewrite mulnA.
+(*    rewrite putget.
+    rewrite 2!bindA.
+    rewrite bindretf.
+    rewrite -2!bindA.
+    rewrite putput.
+    by rewrite IH mulnA.*)
+    done.
+}
+by rewrite Hgen mul1n.
+Admitted.
+
+
+End FastProduct.
+
+
+
+
+
+Definition runMonad_of_stateT_mixin S (M : runMonad S) :
+  @MonadRun.mixin_of S (stateT S M).
+Admitted.
+
+Canonical run_of_stateT S M :=
+  MonadRun.Pack (MonadRun.Class (@runMonad_of_stateT_mixin S M)).
+
+Definition failRunMonad_of_stateT_class S (M : failRunMonad S) :
+  @MonadFailRun.class_of S (stateT S M).
+Admitted.
+
+Canonical failRun_of_stateT S M :=
+  MonadFailRun.Pack (@failRunMonad_of_stateT_class S M).
+
+Definition failStateRun_of_stateT_class S (M : failRunMonad S) :
+  @MonadFailStateRun.class_of S (stateT S M).
+Admitted.
+
+Canonical failStateRun_of_stateT S M :=
+  @MonadFailStateRun.Pack _ _ (@failStateRun_of_stateT_class S M).
+
+(* TODO(rei):
+shouldn't
+stateMonad_of_stateT_mixin
+use the models? *)
+
+Section FastProduct.
+
+Local Obligation Tactic := idtac.
+(*Local Set Bullet Behavior "Strict Subproofs".*)
+
+Variable M : (*exceptMonad*)failRunMonad nat.
+Let N := failStateRun_of_stateT (*stateT nat*) M.
+
+Fixpoint fastProductRec (xs : list nat) : N unit :=
+match xs with
+| nil => Ret tt
+| cons 0 _ => Lift (stateT nat) M unit Fail
+| cons (S x) xs' => Get >>= fun r => Put (r * S x) >> fastProductRec xs'
+end.
+
+Definition evalFastProduct (xs : list nat) : nat -> nat :=
+  fun s => if Run (Put 1 >> fastProductRec xs >> Get) s is Some (x, _) then x else 0.
+(*  mapStateT2 (*Catch*) (fun s1 s2 => if s1 is Some x then Some x else s2)
+    (Put 1 >> fastProductRec xs >> Get) (Ret 0).*)
+
+(*Require Import Arith.
+Import Nat.*)
+
+Lemma evalFastProductCorrect (xs : list nat) (s : nat) :
+  evalFastProduct xs s = product xs.
+Proof.
+assert (Hgen : forall n,
+  (if Run (Put n >> fastProductRec xs >> Get) s is Some (x, _) then x else 0)
+  = n * product xs).
+{
+  induction xs as [ | [ | x] xs IH]; intro n.
+  - rewrite muln1 bindA bindretf putget.
+    by rewrite runbind runput runret.
+  - rewrite muln0.
+    rewrite 2!runbind.
+    rewrite runput.
+    simpl fastProductRec.
+    set m := Lift _ _ _ _.
+    rewrite (_ : m = (fun=> @Fail _ _)); last first.
+    + rewrite {}/m.
+      rewrite -liftSE.
+      rewrite /liftS.
+      rewrite boolp.funeqE => m.
+      by rewrite bindfailf.
+    + replace (@Run _ N _ (fun=> Fail) n)
+       with (@Run _ N unit Fail n).
+      * by rewrite runfail.
+      * admit.
+  - simpl fastProductRec.
+    rewrite -bindA.
+    rewrite putget.
+    rewrite 2!bindA.
+    rewrite bindretf.
+    rewrite -2!bindA.
+    rewrite putput.
+    by rewrite IH mulnA.
+}
+rewrite /evalFastProduct.
+by rewrite Hgen mul1n.
+Admitted.
+
+End FastProduct.
+
+Module runStateT.
 
 (* The [runStateT] primitive and its laws.
    To be moved with the definition of the state monad transformer. *)
@@ -325,3 +547,5 @@ Goal
 Proof.
 reflexivity.
 Qed.
+
+End runStateT.

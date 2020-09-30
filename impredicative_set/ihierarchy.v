@@ -1054,23 +1054,34 @@ Lemma getget (k : S -> S -> M S) :
 Proof. by case: M k => m [[[? ? ? ? []]]]. Qed.
 End state_lemmas.
 
-(*Module MonadFailState.
-Record class_of (S : UU0) (m : UU0 -> UU0) := Class {
-  base : MonadFailR0.class_of m ;
-  mixin_state : MonadState.mixin_of S (Monad.Pack (MonadFail.base (MonadFailR0.base base))) }.
-Structure type (S : UU0) := Pack { acto : UU0 -> UU0 ; class : class_of S acto }.
-Definition failR0MonadType (S : UU0) (M : type S) : failR0Monad :=
-  MonadFailR0.Pack (base (class M)).
+Module MonadExceptStateRun.
+Record mixin_of (S : UU0) (N : monad) (M : UU0 -> UU0) := Mixin {
+  runStateT(*TODO: rename*) : forall (A : UU0), M A -> S -> N (A * S)%type ;
+  liftme : forall (A : UU0), (S -> N (A * S)%type) -> M A 
+}.
+Record class_of (S : UU0) (N : monad) (m : UU0 -> UU0) := Class {
+  base : MonadExcept.class_of m ;
+  mixin : mixin_of S N m ;
+  mixin_state : MonadState.mixin_of S (Monad.Pack (MonadFail.base (MonadExcept.base base))) }.
+Structure type (S : UU0) (N : monad) := Pack { acto : UU0 -> UU0 ; class : class_of S N acto }.
+Definition exceptMonadType (S : UU0) (N : monad) (M : type S N) : exceptMonad :=
+  MonadExcept.Pack (base (class M)).
 Module Exports.
-Notation failStateMonad := type.
-Coercion failR0MonadType : failStateMonad >-> failR0Monad.
-Canonical failR0MonadType.
-Definition state_of_failState (S : UU0) (M : type S) : stateMonad S :=
+Notation exceptStateRunMonad := type.
+Definition RunStateT (S : UU0) (N : monad) (M : exceptStateRunMonad S N) : forall A : UU0, acto M A -> S -> N (A * S)%type :=
+  let: Pack _ (Class _ (Mixin x _) _) := M in x.
+Arguments RunStateT {S N M A} : simpl never.
+Definition Liftme (S : UU0) (N : monad) (M : exceptStateRunMonad S N) : forall A : UU0, (S -> N (A * S)%type) -> acto M A :=
+  let: Pack _ (Class _ (Mixin _ x) _) := M in x.
+Arguments Liftme {S N M A} : simpl never.
+Coercion exceptMonadType : exceptStateRunMonad >-> exceptMonad.
+Canonical exceptMonadType.
+Definition state_of_exceptStateRun (S : UU0) (N : monad) (M : type S N) : stateMonad S :=
   MonadState.Pack (MonadState.Class (mixin_state (class M))).
-Canonical state_of_failState.
+Canonical state_of_exceptStateRun.
 End Exports.
-End MonadFailState.
-Export MonadFailState.Exports.*)                
+End MonadExceptStateRun.
+Export MonadExceptStateRun.Exports.
 
 Module MonadRun.
 Record mixin_of (S : UU0) (M : monad) := Mixin {
@@ -1160,7 +1171,7 @@ Export MonadFailRun.Exports.
 
 Section failrun_lemmas.
 Variables (S : UU0) (M : failRunMonad S).
-Lemma runfail : forall s, Run (Fail : M S) s = None.
+Lemma runfail : forall S' s, Run (Fail : M S') s = None.
 Proof. by case: M => m [? ? []]. Qed.
 End failrun_lemmas.
 
