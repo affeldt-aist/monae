@@ -49,7 +49,7 @@ End statetrace_program_equivalence_example.
 
 Section statetrace_example.
 Local Open Scope do_notation.
-Variables (T : Type) (M : stateTraceMonad Z T).
+Variables (T : UU0) (M : stateTraceMonad Z T).
 Variables (log0 log1 : T).
 
 Definition monadtrace_example (m0 m1 m2 : M nat) : M nat :=
@@ -69,19 +69,31 @@ Definition assoc {A B C : Type} : (A * B) * C -> A * (B * C) :=
 Definition assoc_inv {A B C : Type} : A * (B * C) -> (A * B) * C :=
   fun x => ((x.1, x.2.1), x.2.2).
 
+Definition assoc_opt
+  {A B C : Type} (x : option (A * B) * C) : option (A * (B * C)) :=
+match x with
+| (None, _) => None
+| (Some (a, b), c) => Some (a, (b, c))
+end.
+
 Section relation_statetrace_state_trace.
-Variables (S T : Type) (MN : stateTraceRunMonad S T).
+Variables (S T : UU0) (MN : stateTraceRunMonad S T).
 
 Lemma stGet_Get (M : stateRunMonad S) s :
-  Run (stGet : MN _) s = assoc (Run (Get : M _) s.1, s.2).
+Run (stGet : MN _) s = assoc_opt (Run (Get : M _) s.1, s.2).
 Proof. by rewrite runget runstget; case: s. Qed.
 
 Lemma stPut_Put (M : stateRunMonad S) s s' :
-  Run (stPut s' : MN _) s = assoc (Run (Put s' : M _) s.1, s.2).
+  Run (stPut s' : MN _) s = assoc_opt (Run (Put s' : M _) s.1, s.2).
 Proof. by rewrite runput runstput. Qed.
 
 Lemma stMark_Mark (M : traceRunMonad T) s t :
-  Run (stMark t : MN _) s = let x := Run (Mark t : M _) s.2 in (x.1, (s.1, x.2)).
+  Run (stMark t : MN _) s =
+let x := Run (Mark t : M _) s.2 in
+match x with
+| None => None
+| Some x => Some (x.1, (s.1, x.2))
+end.
 Proof. by rewrite runtmark runstmark. Qed.
 
 End relation_statetrace_state_trace.
@@ -101,10 +113,10 @@ Local Notation "'Drop'" := MonadTrans.drop.
 Module Tracer.
 Record class m (v : traceMonad unit) (mv : MonadTrans.t m v) : Type := Class {
   (* NB: see also monad_transformer.v *)
-  lift_ret : forall A (a : A), Lift mv (Ret a) = Ret a :> v A ;
+  lift_ret : forall (A : UU0) (a : A), Lift mv (Ret a) = Ret a :> v A ;
   lift_bind : forall A B (m0 : m A) (f : A -> m B),
     Lift mv (m0 >>= f) = Lift mv m0 >>= (@MonadTrans.lift _ _ mv _ \o f) :> v B ;
-  drop_ret : forall A (a : A), Drop mv (Ret a) = Ret a :> m A ;
+  drop_ret : forall (A : UU0) (a : A), Drop mv (Ret a) = Ret a :> m A ;
   drop_bind : forall A B (m0 : v B) (f : B -> v A),
     Drop mv (m0 >>= f) = Drop mv m0 >>= (@MonadTrans.drop _ _ mv _ \o f) :> m A ;
   drop_mark : Drop mv (Mark tt) = Ret tt

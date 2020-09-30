@@ -153,7 +153,7 @@ Section safe_reification.
 
 Variable M : stateRunMonad (seq Z)`2.
 
-Lemma run_safe2 crs updowns : Run (safe2 crs : M _) updowns = safe1 updowns crs.
+Lemma run_safe2 crs updowns : Run (safe2 crs : M _) updowns = Some (safe1 updowns crs).
 Proof.
 rewrite safe2E runbind runget; case: safe1 => a b.
 by rewrite runbind runput runret.

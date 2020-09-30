@@ -1062,7 +1062,7 @@ Structure type (S : UU0) := Pack { acto : UU0 -> UU0 ; class : class_of S acto }
 Definition failR0MonadType (S : UU0) (M : type S) : failR0Monad :=
   MonadFailR0.Pack (base (class M)).
 Module Exports.
-  Notation failStateMonad := type.
+Notation failStateMonad := type.
 Coercion failR0MonadType : failStateMonad >-> failR0Monad.
 Canonical failR0MonadType.
 Definition state_of_failState (S : UU0) (M : type S) : stateMonad S :=
