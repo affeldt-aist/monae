@@ -19,7 +19,7 @@ Require Import hierarchy monad_lib state_lib trace_lib monad_model.
 (*   Examples of programs using traces and their small-step and denotational  *)
 (* semantics.                                                                 *)
 (*                                                                            *)
-(* reference:                                                                *)
+(* reference:                                                                 *)
 (* - R. Affeldt, D. Nowak, T. Saikawa, A Hierarchy of Monadic Effects for     *)
 (* Program Verification using Equational Reasoning, MPC 2019                  *)
 (******************************************************************************)
@@ -444,7 +444,7 @@ Variable M : stateTraceRunMonad S T.
 
 Lemma denote_prefix_preserved A (m : M A) :
   stateTrace_sub m -> forall s s' l1 l a,
-  Run m (s, l1) = (a, (s', l)) ->
+  Run m (s, l1) = Some (a, (s', l)) ->
   exists l2, l = l1 ++ l2.
 Proof.
 case=> p <-{m}.
@@ -456,12 +456,15 @@ induction p as [ A a | A B p IHp g IHg | A b p1 IHp1 p2 IHp2 |
   by move: Heq; rewrite runret => -[].
 - rewrite runbind in Heq.
   case_eq (Run (denote M _ p) (s, l1)).
-  intros a (s0, l0) Hp.
-  rewrite Hp in Heq.
-  move/IHp : Hp => [l2 Hp].
-  move/IHg : Heq => [l2' Heq].
-  exists (l2 ++ l2').
-  by rewrite Heq Hp catA.
+  + intros (a, (s0, l0)) Hp.
+    rewrite Hp in Heq.
+    move/IHp : Hp => [l2 Hp].
+    move/IHg : Heq => [l2' Heq].
+    exists (l2 ++ l2').
+    by rewrite Heq Hp catA.
+  + intro Hp.
+    rewrite Hp in Heq.
+    discriminate Heq.
 - destruct b; [ eapply IHp1 | eapply IHp2 ]; exact Heq.
 - revert s l1 Heq.
   induction n as [ | n' IH ]; intros s l1 Heq.
@@ -470,13 +473,16 @@ induction p as [ A a | A B p IHp g IHg | A b p1 IHp1 p2 IHp2 |
     by move: Heq; rewrite runret => -[].
   + rewrite runbind in Heq.
     case_eq (Run (denote M _ p) (s, l1)).
-    intros a (s0, l0) Hp.
-    move: (IHp _ _ _ _ _ Hp) => [l2 ?].
-    subst l0.
-    rewrite Hp in Heq.
-    move: (IH _ _ Heq) => [l3 ?].
-    exists (l2 ++ l3).
-    by rewrite catA.
+    * intros (a, (s0, l0)) Hp.
+      move: (IHp _ _ _ _ _ Hp) => [l2 ?].
+      subst l0.
+      rewrite Hp in Heq.
+      move: (IH _ _ Heq) => [l3 ?].
+      exists (l2 ++ l3).
+      by rewrite catA.
+    * intro Hp.
+      rewrite Hp in Heq.
+      discriminate Heq.
 - revert s l1 Heq.
   induction fuel as [ | fuel' IH ]; intros s l1 Heq.
   + exists [].
@@ -486,13 +492,16 @@ induction p as [ A a | A B p IHp g IHg | A b p1 IHp1 p2 IHp2 |
     destruct (c (s, l1).1).
     * rewrite runbind in Heq.
       case_eq (Run (denote M _ p) (s, l1)).
-      intros a (s0, l0) Hp.
-      move: (IHp _ _ _ _ _ Hp) => [l2 ?].
-      subst l0.
-      rewrite Hp in Heq.
-      move: (IH _ _ Heq) => [l3 ?].
-      exists (l2 ++ l3).
-      by rewrite catA.
+     -- intros (a ,(s0, l0)) Hp.
+        move: (IHp _ _ _ _ _ Hp) => [l2 ?].
+        subst l0.
+        rewrite Hp in Heq.
+        move: (IH _ _ Heq) => [l3 ?].
+        exists (l2 ++ l3).
+        by rewrite catA.
+     -- intro Hp.
+        rewrite Hp in Heq.
+        discriminate Heq.
     * exists [].
       rewrite cats0.
       by move: Heq; rewrite runret => -[].
@@ -510,7 +519,10 @@ Lemma denote_prefix_independent A (m : M A) :
   stateTrace_sub m -> forall s l1 l2,
   Run m (s, l1 ++ l2) =
   let res := Run m (s, l2) in
-  (res.1, (res.2.1, l1 ++ res.2.2)).
+  match res with
+  | None => None
+  | Some res => Some (res.1, (res.2.1, l1 ++ res.2.2))
+  end.
 Proof.
 intros [ p Hp ] s l1 l2.
 subst m.
@@ -519,8 +531,9 @@ elim: p s l1 l2 => /= {A} [A a|A B p1 IH1 p2 IH2|A b p1 IH1 p2 IH2|
 - by rewrite !runret.
 - rewrite [in LHS]runbind [in LHS]IH1.
   rewrite [in RHS]runbind.
-  case: (Run (denote M _ p1) (s, l2)) => a' [s' l'] /=.
-  by rewrite IH2.
+  case: (Run (denote M _ p1) (s, l2)) => [[a' [s' l']] | ] /=.
+  + by rewrite IH2.
+  + reflexivity.
 - by case: ifPn => _; [rewrite IH1|rewrite IH2].
 - revert s l2.
   induction n as [ | n' IH ]; intros s l2.
@@ -529,8 +542,9 @@ elim: p s l1 l2 => /= {A} [A a|A B p1 IH1 p2 IH2|A b p1 IH1 p2 IH2|
     rewrite IHp.
     clear IHp.
     case_eq (Run (denote M _ p) (s, l2)).
-    intros a (s0, l0) Hp.
-    exact: IH.
+    * intros (a, (s0, l0)) Hp.
+      exact: IH.
+    * reflexivity.
 - revert s l2.
   induction fuel as [ | fuel' IH ]; intros s l2.
   + by rewrite !runret.
@@ -541,8 +555,9 @@ elim: p s l1 l2 => /= {A} [A a|A B p1 IH1 p2 IH2|A b p1 IH1 p2 IH2|
       rewrite IHp.
       clear IHp.
       case_eq (Run (denote M _ p) (s, l2)).
-      intros a (s0, l0) Hp.
-      exact: IH.
+     -- intros (a, (s0, l0)) Hp.
+        exact: IH.
+     -- reflexivity.
     * by rewrite !runret.
 - by rewrite !runstget.
 - by rewrite !runstput.
@@ -553,7 +568,10 @@ Lemma denote_continuation_prefix_independent (m : M _) :
   continuation_sub m -> forall s l1 l2,
   Run m (s, l1 ++ l2) =
   let res := Run m (s, l2) in
-  (res.1, (res.2.1, l1 ++ res.2.2)).
+  match res with
+  | None => None
+  | Some res => Some (res.1, (res.2.1, l1 ++ res.2.2))
+  end.
 Proof.
 intros [ k Hk ].
 subst m.
@@ -561,8 +579,9 @@ elim: k => // [A a s l1 l2|A p k IH s l1 l2].
 by rewrite !runret.
 rewrite /= !runbind.
 rewrite denote_prefix_independent /=; [ | now exists p ].
-destruct (Run (denote M _ p) (s, l2)) as [ a (s', l) ].
-by rewrite IH.
+destruct (Run (denote M _ p) (s, l2)) as [ (a, (s', l)) | ].
+- by rewrite IH.
+- reflexivity.
 Qed.
 
 Lemma step_None_correct s s' k k' l :
@@ -668,21 +687,22 @@ Qed.
 Proposition step_star_correct
   (s s' : S) (A : Type) (a : A) (p : program A) (l : list T) :
   step_star (s, p `; stop A) l (s', stop A a) ->
-  Run (denote M _ p) (s, []) = (a, (s', l)).
+  Run (denote M _ p) (s, []) = Some (a, (s', l)).
 Proof.
 intro Hss.
 apply step_star_correct_gen with (l := []) in Hss.
 move: Hss.
 rewrite /= runret runbind.
-destruct (Run (denote M _ p) (s, [])) as [a'' [s'' l'']].
-rewrite runret => -[Heq3 <- <-].
-apply inj_pair2 in Heq3.
-by rewrite Heq3.
+destruct (Run (denote M _ p) (s, [])) as [[a'' [s'' l'']] | ].
+- rewrite runret => -[Heq3 <- <-].
+  apply inj_pair2 in Heq3.
+  by rewrite Heq3.
+- discriminate.
 Qed.
 
 Lemma step_star_complete_gen
   (s s' : S) (A : Type) (a : A) (p : program A) (l1 l2 : list T) f :
-  Run (denote M _ p) (s, l1) = (a, (s', l1 ++ l2)) ->
+  Run (denote M _ p) (s, l1) = Some (a, (s', l1 ++ l2)) ->
   step_star (s, p `; f) l2 (s', f a).
 Proof.
 revert s s' a l1 l2 f.
@@ -699,7 +719,7 @@ induction p as [ A a | A B p IHp g IHg | A b p1 IHp1 p2 IHp2 |
   + move: Heq.
     rewrite runbind.
     case_eq (Run (denote M _ p) (s, l1)).
-    intros a (s0, l0) Hp Heq.
+    intros (a, (s0, l0)) Hp Heq.
     move: (denote_prefix_preserved ltac:(now eexists) Hp) => [l3 Hl3].
     rewrite Hl3 in Hp.
     apply IHp with (f := (fun a => g a `; f)) in Hp.
@@ -714,6 +734,7 @@ induction p as [ A a | A B p IHp g IHg | A b p1 IHp1 p2 IHp2 |
     eapply step_star_transitive.
     * exact Hp.
     * exact Heq.
+    * discriminate.
 - destruct b; [
     eapply ss_step_None; [
       apply s_cond_true
@@ -731,20 +752,23 @@ induction p as [ A a | A B p IHp g IHg | A b p1 IHp1 p2 IHp2 |
     eapply ss_step_None; [ apply s_repeat_O | apply ss_refl ].
   + rewrite runbind in Heq.
     case_eq (Run (denote M _ p) (s, l1)).
-    intros a (s0, l0) Hp.
-    rewrite Hp in Heq.
-    move: (denote_prefix_preserved ltac:(now eexists) Hp) => [l3 Hl3].
-    rewrite Hl3 {l0 Hl3} in Hp, Heq.
-    specialize (IHp _ _ _ _ _ (fun _ => p_repeat n' p `; f) Hp).
-    assert (Heq':
-     Run (denote M _ (p_repeat n' p)) (s0, l1 ++ l3) = (a', (s', l1 ++ l2)))
-     by apply Heq.
-    move: (denote_prefix_preserved ltac:(now eexists) Heq') => [l4 Hl4].
-    rewrite Hl4 in Heq.
-    eapply ss_step_None; [ apply s_repeat_S | ].
-    have -> : l2 = l3 ++ l4.
-      by move/(congr1 (drop (size l1))) : Hl4; rewrite -catA ?drop_size_cat.
-    eapply step_star_transitive; [ eexact IHp | eapply IHn; eexact Heq ].
+    * intros (a, (s0, l0)) Hp.
+      rewrite Hp in Heq.
+      move: (denote_prefix_preserved ltac:(now eexists) Hp) => [l3 Hl3].
+      rewrite Hl3 {l0 Hl3} in Hp, Heq.
+      specialize (IHp _ _ _ _ _ (fun _ => p_repeat n' p `; f) Hp).
+      assert (Heq':
+       Run (denote M _ (p_repeat n' p)) (s0, l1 ++ l3) = Some (a', (s', l1 ++ l2)))
+       by apply Heq.
+      move: (denote_prefix_preserved ltac:(now eexists) Heq') => [l4 Hl4].
+      rewrite Hl4 in Heq.
+      eapply ss_step_None; [ apply s_repeat_S | ].
+      have -> : l2 = l3 ++ l4.
+        by move/(congr1 (drop (size l1))) : Hl4; rewrite -catA ?drop_size_cat.
+      eapply step_star_transitive; [ eexact IHp | eapply IHn; eexact Heq ].
+    * intro Hp.
+      rewrite Hp in Heq.
+      discriminate.
 - revert s l1 l2 Heq.
   induction fuel as [ | fuel' IHn ]; intros s l1 l2 Heq.
   + rewrite runret in Heq.
@@ -757,20 +781,23 @@ induction p as [ A a | A B p IHp g IHg | A b p1 IHp1 p2 IHp2 |
     case_eq (c s); [ intro Htrue | intro Hfalse ].
     * rewrite Htrue runbind in Heq.
       case_eq (Run (denote M _ p) (s, l1)).
-      intros a (s0, l0) Hp.
-      rewrite Hp in Heq.
-      move: (denote_prefix_preserved ltac:(now eexists) Hp) => [l3 Hl3].
-      rewrite Hl3 {l0 Hl3} in Hp, Heq.
-      specialize (IHp _ _ _ _ _ (fun _ => p_while fuel' c p `; f) Hp).
-      assert (Heq':
-       Run (denote M _ (p_while fuel' c p)) (s0, l1 ++ l3) = (a', (s', l1 ++ l2)))
-       by apply Heq.
-      move: (denote_prefix_preserved ltac:(now eexists) Heq') => [l4 Hl4].
-      rewrite Hl4 in Heq.
-      eapply ss_step_None; [ apply s_while_true; exact Htrue | ].
-      have -> : l2 = l3 ++ l4.
-        by move/(congr1 (drop (size l1))) : Hl4; rewrite -catA ?drop_size_cat.
-      eapply step_star_transitive; [ eexact IHp | eapply IHn; eexact Heq ].
+     -- intros (a, (s0, l0)) Hp.
+        rewrite Hp in Heq.
+        move: (denote_prefix_preserved ltac:(now eexists) Hp) => [l3 Hl3].
+        rewrite Hl3 {l0 Hl3} in Hp, Heq.
+        specialize (IHp _ _ _ _ _ (fun _ => p_while fuel' c p `; f) Hp).
+        assert (Heq':
+         Run (denote M _ (p_while fuel' c p)) (s0, l1 ++ l3) = Some (a', (s', l1 ++ l2)))
+         by apply Heq.
+        move: (denote_prefix_preserved ltac:(now eexists) Heq') => [l4 Hl4].
+        rewrite Hl4 in Heq.
+        eapply ss_step_None; [ apply s_while_true; exact Htrue | ].
+        have -> : l2 = l3 ++ l4.
+          by move/(congr1 (drop (size l1))) : Hl4; rewrite -catA ?drop_size_cat.
+        eapply step_star_transitive; [ eexact IHp | eapply IHn; eexact Heq ].
+     -- intro Hp.
+        rewrite Hp in Heq.
+        discriminate.
     * move: Heq; rewrite Hfalse runret.
       move=> [<- <-] /(congr1 (drop (size l1))).
       rewrite drop_size_cat // drop_size => <-.
@@ -791,7 +818,7 @@ Qed.
 
 Proposition step_star_complete
   (s s' : S) (A : Type) (a : A) (p : program A) (l : list T) :
-  Run (denote M _ p) (s, []) = (a, (s', l)) ->
+  Run (denote M _ p) (s, []) = Some (a, (s', l)) ->
   step_star (s, p `; stop A) l (s', stop A a).
 Proof.
 intro Hp.
