@@ -47,7 +47,6 @@ Lemma FunaltDr (A B : Type) (x y : gcm A) (k : A -> gcm B) :
 Proof.
 apply necset_ext => /=.
 rewrite -(image_FSDistfmap (x [+] y) (fun x : choice_of_Type A => k x)).
-rewrite -FunctionalExtensionality.eta_expansion.
 rewrite image_preserves_convex_hull'; last exact: FSDistfmap_affine.
 congr hull; rewrite funeqE => /= d; rewrite propeqE; split.
 - case => d' [x0] -[->{x0} xd' <-{d}|->{x0} xd' <-{d}].

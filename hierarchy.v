@@ -1,7 +1,6 @@
 Ltac typeof X := type of X.
 
 Require Import ssrmatching Reals.
-Require FunctionalExtensionality.
 From mathcomp Require Import all_ssreflect.
 From mathcomp Require boolp.
 From infotheo Require Import Reals_ext.
@@ -238,7 +237,7 @@ Lemma nattrans_ext (f g : M ~> N) :
   f = g <-> forall a, (f a = g a :> (_ -> _)).
 Proof.
 split => [ -> // |]; move: f g => [f Hf] [g Hg] /= fg.
-have ? : f = g by exact: FunctionalExtensionality.functional_extensionality_dep.
+have ? : f = g by exact: fun_ext_dep.
 subst g; congr (Natural.Pack _); exact/proof_irr.
 Qed.
 End natrans_lemmas.
@@ -252,10 +251,8 @@ Lemma natural_ext (F G G' : functor) (t : F ~> G) (t' : F ~> G') :
 Proof.
 move : t t' => [t t1] [t' t'1] /= H; subst G' => H /=.
 have ? : t = t'.
-  apply FunctionalExtensionality.functional_extensionality_dep => A.
-  apply FunctionalExtensionality.functional_extensionality => x.
-  rewrite H.
-  by rewrite -[in RHS]eq_rect_eq.
+  apply fun_ext_dep => A; apply fun_ext_dep => x.
+  by rewrite H -[in RHS]eq_rect_eq.
 subst t'.
 congr Natural.Pack; exact/proof_irr.
 Qed.
@@ -271,10 +268,8 @@ Proof.
 move: t t' => [t t1] [t' t'1] /= H L; subst F.
 rewrite -[in RHS]eq_rect_eq /=.
 have ? : t = t'.
-  apply FunctionalExtensionality.functional_extensionality_dep => A.
-  apply FunctionalExtensionality.functional_extensionality => x.
-  rewrite L.
-  by rewrite -[in RHS]eq_rect_eq.
+  apply fun_ext_dep => A; apply fun_ext_dep => x.
+  by rewrite L -[in RHS]eq_rect_eq.
 subst t'.
 congr Natural.Pack; exact/proof_irr.
 Qed.

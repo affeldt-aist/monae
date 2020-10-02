@@ -814,7 +814,7 @@ Lemma natural_hmapX' (F G : monad) (tau : F ~> G) :
   naturality (T F) (T G) (hmapX' tau).
 Proof.
 move=> A B h.
-rewrite /hmapX' -2!FunctionalExtensionality.eta_expansion.
+rewrite /hmapX'.
 have H : forall G, errorT X G # h = MX_map h.
   move=> E; rewrite boolp.funeqE => m /=.
   rewrite /Actm /= /Monad_of_ret_bind.Map /MX_map /= /bindX /= fmapE.

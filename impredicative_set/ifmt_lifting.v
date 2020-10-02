@@ -48,9 +48,8 @@ Definition MK_map (A B : UU0) (f : A -> B) (m : MK M A) : MK M B :=
 Lemma MK_map_i : FunctorLaws.id MK_map.
 Proof.
 move=> A; rewrite /MK_map; apply fun_ext => m /=.
-apply FunctionalExtensionality.functional_extensionality_dep => B.
-apply fun_ext => k.
-by rewrite -FunctionalExtensionality.eta_expansion.
+apply fun_ext_dep => B.
+by apply fun_ext => k.
 Qed.
 
 Lemma MK_map_o : FunctorLaws.comp MK_map.
@@ -62,8 +61,7 @@ Lemma naturality_retK : naturality FId MK_functor retK.
 Proof.
 move=> A B h.
 rewrite /MK_functor /Actm /= /MK_map /retK /=.
-apply fun_ext => a /=.
-by apply FunctionalExtensionality.functional_extensionality_dep.
+by apply fun_ext => a /=; exact: fun_ext_dep.
 Qed.
 
 Definition retK_natural : FId ~> MK_functor :=
@@ -73,19 +71,13 @@ Program Definition codensityTmonad : monad :=
   @Monad_of_ret_bind MK_functor retK_natural bindK _ _ _.
 Next Obligation.
 move=> A B a f; rewrite /bindK /=.
-apply FunctionalExtensionality.functional_extensionality_dep => C.
-by apply fun_ext.
+by apply fun_ext_dep => C; apply fun_ext.
 Qed.
 Next Obligation.
-move=> A m.
-rewrite /bindK /retK.
-apply FunctionalExtensionality.functional_extensionality_dep => C.
-by apply fun_ext.
+move=> A m; rewrite /bindK /retK.
+by apply fun_ext_dep => C; apply fun_ext.
 Qed.
-Next Obligation.
-move=> A B C m f g; rewrite /bindK.
-by apply FunctionalExtensionality.functional_extensionality_dep.
-Qed.
+Next Obligation. by move=> A B C m f g; rewrite /bindK; exact: fun_ext_dep. Qed.
 
 Definition liftK (A : UU0) (m : M A) : codensityTmonad A :=
   fun (B : UU0) (k : A -> M B) => m >>= k.
@@ -94,14 +86,12 @@ Program Definition codensityTmonadM : monadM M codensityTmonad :=
   locked (monadM.Pack (@monadM.Mixin _ _ liftK _ _)).
 Next Obligation.
 move=> A; rewrite /liftK /= /retK /=.
-apply fun_ext => a.
-apply FunctionalExtensionality.functional_extensionality_dep => B /=.
+apply fun_ext => a; apply fun_ext_dep => B /=.
 by apply fun_ext => b; rewrite bindretf.
 Qed.
 Next Obligation.
 move=> A B m f; rewrite /liftK.
-apply FunctionalExtensionality.functional_extensionality_dep => C /=.
-apply fun_ext => g.
+apply fun_ext_dep => C /=; apply fun_ext => g.
 by rewrite bindA.
 Qed.
 
@@ -121,8 +111,7 @@ Lemma natural_kappa' : naturality _ _ kappa'.
 Proof.
 move=> A B h; rewrite /kappa'; apply fun_ext => ea; rewrite [in RHS]/=.
 transitivity (fun B0 (k : B -> M B0) => op B0 ((E # (k \o h)) ea)) => //.
-apply FunctionalExtensionality.functional_extensionality_dep => C.
-by apply fun_ext => D; rewrite functor_o.
+by apply fun_ext_dep => C; apply fun_ext => D; rewrite functor_o.
 Qed.
 
 Definition kappa := Natural.Pack (Natural.Mixin natural_kappa').
@@ -254,8 +243,7 @@ rewrite (psikE op).
 rewrite 2!functor_app_naturalE.
 rewrite /=.
 congr (from_component _).
-apply FunctionalExtensionality.functional_extensionality_dep => A.
-apply fun_ext => f.
+apply fun_ext_dep => A; apply fun_ext => f.
 rewrite {1}/psi' /=.
 rewrite /bindS /=.
 rewrite -liftSE /liftS /=.
@@ -293,9 +281,7 @@ rewrite 2!vcompE.
 set h := Hmap _.
 rewrite /=.
 congr (from_component (psi' _ _)).
-apply FunctionalExtensionality.functional_extensionality_dep => A.
-apply fun_ext => B.
-apply FunctionalExtensionality.functional_extensionality_dep => C.
+apply fun_ext_dep => A; apply fun_ext => B; apply fun_ext_dep => C.
 rewrite /=.
 rewrite /psi'.
 rewrite /retK /= /bindK /=.
@@ -329,8 +315,7 @@ rewrite (psikE op).
 rewrite 2!functor_app_naturalE.
 rewrite /=.
 congr (from_component _).
-apply FunctionalExtensionality.functional_extensionality_dep => A.
-apply fun_ext => f.
+apply fun_ext_dep => A; apply fun_ext => f.
 rewrite {1}/psi' /=.
 rewrite /bindEnv /=.
 rewrite -liftEnvE /liftEnv /=.
@@ -365,8 +350,7 @@ rewrite (psikE op).
 rewrite 2!functor_app_naturalE.
 rewrite /=.
 congr (from_component _).
-apply FunctionalExtensionality.functional_extensionality_dep => A.
-apply fun_ext => f.
+apply fun_ext_dep => A; apply fun_ext => f.
 rewrite {1}/psi' /=.
 rewrite /bindO /=.
 rewrite -liftOE /liftO /=.

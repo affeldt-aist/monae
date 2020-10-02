@@ -740,10 +740,7 @@ Local Notation M := ModelMonad.option_monad.
 Definition handle : forall A, M A -> M A -> M A :=
   fun A m1 m2 => @ExceptOps.handle_op unit _ (m1, (fun _ => m2)).
 Lemma handleE : handle = (fun A m m' => if m is inr x then m else m').
-Proof.
-apply FunctionalExtensionality.functional_extensionality_dep => A.
-rewrite boolp.funeqE; by case.
-Qed.
+Proof. by apply fun_ext_dep => A; rewrite boolp.funeqE; case. Qed.
 Program Definition except_class := @MonadExcept.Class _
   ModelFail.option_class (@MonadExcept.Mixin _ handle _ _ _ _).
 Next Obligation. by case => //; case. Qed.
@@ -1456,9 +1453,7 @@ Lemma state_monad_stateT S :
 Proof.
 rewrite /= /stateTmonadM /ModelMonad.State.t.
 have FG : MS_functor S ModelMonad.identity = ModelMonad.State.functor S.
-  apply: functor_ext => /=.
-  apply FunctionalExtensionality.functional_extensionality_dep => A.
-  apply FunctionalExtensionality.functional_extensionality_dep => B.
+  apply: functor_ext => /=; apply fun_ext_dep => A; apply fun_ext_dep => B.
   rewrite boolp.funeqE => f; rewrite boolp.funeqE => m; rewrite boolp.funeqE => s.
   by rewrite /MS_map /Actm /= /ModelMonad.State.map; destruct (m s).
 apply (@monad_of_ret_bind_ext _ _ _ _ _ _ FG) => /=.
@@ -1471,9 +1466,7 @@ Lemma error_monad_errorT (Z : UU0) :
 Proof.
 rewrite /= /errorTmonadM /ModelMonad.Except.t.
 have FG : MX_functor Z ModelMonad.identity = ModelMonad.Except.functor Z.
-  apply: functor_ext => /=.
-  apply FunctionalExtensionality.functional_extensionality_dep => A.
-  apply FunctionalExtensionality.functional_extensionality_dep => B.
+  apply: functor_ext => /=; apply fun_ext_dep => A; apply fun_ext_dep => B.
   rewrite boolp.funeqE => f; rewrite boolp.funeqE => m.
   by rewrite /MX_map /Actm /= /ModelMonad.Except.map; destruct m.
 apply (@monad_of_ret_bind_ext _ _ _ _ _ _ FG) => /=.
@@ -1486,9 +1479,7 @@ Lemma cont_monad_contT r :
 Proof.
 rewrite /= /contTmonadM /ModelMonad.Cont.t.
 have FG : MC_functor r ModelMonad.identity = ModelMonad.Cont.functor r.
-  apply: functor_ext => /=.
-  apply FunctionalExtensionality.functional_extensionality_dep => A.
-  apply FunctionalExtensionality.functional_extensionality_dep => B.
+  apply: functor_ext => /=; apply fun_ext_dep => A; apply fun_ext_dep => B.
   by rewrite boolp.funeqE => f; rewrite boolp.funeqE => m.
 apply (@monad_of_ret_bind_ext _ _ _ _ _ _ FG) => /=.
   apply/natural_ext => A a /=; exact: (@eq_rect_cont_ret A r _ (esym FG)).

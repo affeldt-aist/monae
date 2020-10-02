@@ -7,6 +7,8 @@ Definition proof_irr := @ProofIrrelevance.proof_irrelevance.
 
 Definition eq_rect_eq := @ProofIrrelevance.ProofIrrelevanceTheory.Eq_rect_eq.eq_rect_eq.
 
+Definition fun_ext_dep := @FunctionalExtensionality.functional_extensionality_dep.
+
 (******************************************************************************)
 (*      Shared notations and easy definitions/lemmas of general interest      *)
 (******************************************************************************)

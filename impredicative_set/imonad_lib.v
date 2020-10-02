@@ -33,7 +33,7 @@ Local Open Scope monae_scope.
 
 Import Univ.
 
-Definition liftM2 {M : monad} A B C (oplus : A -> B -> C) m1 m2 : M C :=
+Definition liftM2 {M : monad} (A B C : UU0) (oplus : A -> B -> C) m1 m2 : M C :=
   m1 >>= (fun x1 => m2 >>= (fun x2 => Ret (oplus x1 x2))).
 
 Definition Squaring (A : UU0) := (A * A)%type.
@@ -376,12 +376,11 @@ Lemma aoperation_ext (f g : E.-aoperation M) :
   f = g <-> forall a, (f a = g a :> (_ -> _)).
 Proof.
 split => [ -> // |]; move: f g => [f Hf] [g Hg] /= fg.
-have ? : f = g by exact: FunctionalExtensionality.functional_extensionality_dep.
+have ? : f = g by exact: fun_ext_dep.
 subst g; congr (AOperation.Pack _); exact/proof_irr.
 Qed.
 
 End algebraic_operation_interface.
-
 
 Module Monad_of_ret_bind.
 Section monad_of_ret_bind.

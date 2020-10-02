@@ -19,9 +19,6 @@ Import Order.TTheory.
 Local Open Scope monae_scope.
 Local Open Scope tuple_ext_scope.
 
-Definition liftM2 {M : monad} A (oplus : A -> A -> A) m1 m2 : M A :=
-  m1 >>= (fun x1 => m2 >>= (fun x2 => Ret (oplus x1 x2))).
-
 Fixpoint splits {M : plusMonad} A (s : seq A) : M (seq A * seq A)%type :=
   if s isn't x :: xs then Ret ([::], [::])  else
     splits xs >>= (fun '(ys, zs) => Ret (x :: ys, zs) [~]
@@ -79,7 +76,7 @@ Proof.
 rewrite {1}/qperm Fix_eq; first by rewrite /=; bind_ext => -[].
 move=> s f g H; rewrite /qperm'; case: s f g H => // h t f g H.
 bind_ext => -[a b] /=; rewrite /liftM2 H (_ : f = g) //.
-apply FunctionalExtensionality.functional_extensionality_dep => s.
+apply fun_ext_dep => s.
 by rewrite boolp.funeqE=> p; exact: H.
 Qed.
 
