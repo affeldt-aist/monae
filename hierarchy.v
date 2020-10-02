@@ -1205,7 +1205,17 @@ rewrite big_ord_recr /= -ih.
 rewrite /sumST /=.
 Abort.
 
-Definition fibST n : nat :=
+Fixpoint fibST' (B : UU0) n (x y : STRef B nat) : MonadST.acto M B nat :=
+  if n is m.+1 then
+    (do x' <- ReadSTRef x ;
+     do y' <- ReadSTRef y ;
+     WriteSTRef x y' >>
+     WriteSTRef y (x' + y')%nat >>
+   (fibST' m x y))%Do
+ else
+   ReadSTRef x.
+
+Fixpoint fibST n : nat :=
   match n with
   | O => O
   | 1 => 1%N
