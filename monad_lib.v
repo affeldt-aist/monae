@@ -32,6 +32,9 @@ Unset Printing Implicit Defensive.
 
 Local Open Scope monae_scope.
 
+Definition liftM2 {M : monad} A B C (oplus : A -> B -> C) m1 m2 : M C :=
+  m1 >>= (fun x1 => m2 >>= (fun x2 => Ret (oplus x1 x2))).
+
 Definition Squaring (A : UU0) := (A * A)%type.
 Notation "A `2" := (Squaring A).
 Definition squaring_f (A B : UU0) (f : A -> B) : A`2 -> B`2 := fun x => (f x.1, f x.2).

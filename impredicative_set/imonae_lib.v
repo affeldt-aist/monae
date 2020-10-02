@@ -15,7 +15,7 @@ Set Implicit Arguments.
 Unset Strict Implicit.
 Unset Printing Implicit Defensive.
 
-(* notations common to ihierarchy.v and category.v *)
+(* notations common to ihierarchy.v and ../category.v *)
 
 Reserved Notation "m >>= f" (at level 49).
 Reserved Notation "'do' x <- m ; e"
