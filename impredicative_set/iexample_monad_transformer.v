@@ -124,6 +124,15 @@ Liftme (fun s => f (RunStateT m1 s) (RunStateT m2 s)).
 Definition evalStateT {A : UU0} (m : N A) (s : S) : M A :=
 RunStateT m s >>= fun a_s' => Ret (a_s'.1).
 
+(* TODO: Move the following law into the hierarchy *)
+Lemma RunStateTLiftme (A : UU0) s (f : S -> M (A * S)%type) :
+  @RunStateT _ _ N _ (Liftme f) s = f s :> M _.
+Admitted.
+
+Lemma RunStateTRet (A : UU0) (a : A) (s : S) :
+@RunStateT _ _ _ _ (Ret a : N _) s = Ret (a, s) :> M _.
+Admitted.
+
 Lemma RunStateTBind
   (A B : UU0) (m : N A) (f : A -> N B) (s : S) :
 RunStateT (m >>= f) s =
@@ -137,14 +146,7 @@ rewrite bindA.
 congr (_ >>= _).
 apply fun_ext => -[a s'] /=.
 by rewrite bindretf.
-Qed.*) Admitted.
-
-Lemma RunStateTLiftme (A : UU0) s (f : S -> M (A * S)%type) :
-  @RunStateT _ _ N _ (Liftme f) s = f s :> M _.
-Admitted.
-
-Lemma RunStateTRet (A : UU0) (a : A) (s : S) :
-@RunStateT _ _ _ _ (Ret a : N _) s = Ret (a, s) :> M _.
+*)
 Admitted.
 
 Lemma RunStateTGet (s : S) :
@@ -156,7 +158,7 @@ Lemma RunStateTPut (s' s : S) :
 Proof.
 Admitted.
 
-Lemma RunStateTfail (A : UU0) (s : S) :
+Lemma RunStateTFail (A : UU0) (s : S) :
   @RunStateT S M N A (Fail : N A) s = @Fail M _ :> M (A * S)%type.
 Proof.
 Admitted.
@@ -179,7 +181,9 @@ end.
 Definition fastProduct (xs : list nat) : N nat :=
 mapStateT2 Catch (Put 1 >> fastProductRec xs >> Get) (Ret 0).
 
+(*
 Definition runE := (RunStateTLiftme, RunStateTBind, RunStateTRet, RunStateTPut,RunStateTGet).
+*)
 
 Lemma fastProductCorrect (xs : list nat) (s : nat) :
   evalStateT (fastProduct xs) s = Ret (product xs).
@@ -187,6 +191,36 @@ Proof.
 assert (Hgen : forall n,
   evalStateT (mapStateT2 Catch ((Put n >> fastProductRec xs) >> Get)
      (Ret 0)) s = Ret (n * product xs)).
+{
+  induction xs as [ | [ | x] xs IH]; cbn; intro n.
+  - rewrite -> muln1.
+    rewrite bindA bindretf putget.
+    unfold mapStateT2, evalStateT.
+    rewrite RunStateTLiftme RunStateTBind RunStateTPut bindretf RunStateTRet
+     RunStateTRet catchret bindretf.
+    reflexivity.
+  - rewrite -> muln0.
+    unfold mapStateT2, evalStateT.
+    rewrite RunStateTLiftme RunStateTBind RunStateTBind RunStateTPut bindretf
+     RunStateTFail bindfailf catchfailm RunStateTRet bindretf.
+    reflexivity.
+  - rewrite <- bindA.
+    rewrite putget bindA bindA bindretf.
+    rewrite <- bindA, <- bindA, putput, IH.
+(* TODO: Replace the following rewriting rules for arithmetic by their
+         counterpart in Mathcomp *)
+Require Import Arith.
+Import Nat.
+    rewrite <- mult_n_Sm, mult_comm, mul_add_distr_l, mul_add_distr_l,
+     plus_comm, mult_comm, (mult_comm (product xs)), mult_assoc.
+    reflexivity.
+}
+rewrite Hgen.
+cbn.
+by rewrite <- plus_n_O.
+(* TODO: Remove the following old attempt that was not using putget and
+         putput *)
+(*
 {
   induction xs as [ | [ | x] xs IH]; intro n.
   - rewrite muln1 bindA bindretf putget.
@@ -202,7 +236,7 @@ assert (Hgen : forall n,
     rewrite /mapStateT2.
     rewrite !runE.
     rewrite bindretf /=.
-    rewrite RunStateTfail.
+    rewrite RunStateTFail.
     rewrite bindfailf.
     rewrite catchfailm.
     by rewrite bindretf.
@@ -233,15 +267,14 @@ assert (Hgen : forall n,
     done.
 }
 by rewrite Hgen mul1n.
-Admitted.
+*)
+Qed.
 
 
 End FastProduct.
 
-
-
-
-
+(* TODO: Remove the following old attempts *)
+(*
 Definition runMonad_of_stateT_mixin S (M : runMonad S) :
   @MonadRun.mixin_of S (stateT S M).
 Admitted.
@@ -453,22 +486,26 @@ by rewrite <- plus_n_O.
 Qed.
 
 End FastProduct.
+*)
 
 (* The following example illustrates how the state is backtracked when a
    failure is catched. *)
 
+(* TODO : Have this example typecheck *)
+(*
 Goal
-runStateT (
+RunStateT (
   Put 1 >>
   mapStateT2 Catch (Put 2 >> Lift (stateT _) ModelExcept.t _ Fail) Get) 0 =
 inr (1, 1).
 Proof.
-rewrite runStateTBind runStateTPut bindretf.
+rewrite RunStateTBind RunStateTPut bindretf.
 unfold mapStateT2.
-rewrite runStateTFun runStateTBind runStateTPut bindretf runStateTLfail
- catchfailm runStateTGet.
+rewrite RunStateTLiftme RunStateTBind RunStateTPut bindretf RunStateTLfail
+ catchfailm RunStateTGet.
 reflexivity.
 Qed.
+*)
 
 (* The following fail-state monad is such that it does not backtrack the
    state. *)
@@ -547,5 +584,3 @@ Goal
 Proof.
 reflexivity.
 Qed.
-
-End runStateT.
