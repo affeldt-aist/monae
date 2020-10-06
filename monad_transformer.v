@@ -10,13 +10,14 @@ Require Import monae_lib hierarchy monad_lib fail_lib state_lib.
 (*                                                                            *)
 (*             monadM == monad morphism                                       *)
 (*             monadT == monad transformer                                    *)
-(*                       instances: stateT, errorT (exception), envT          *)
-(*                       (environment), outputT, contT (continuation)         *)
+(*                       instances: stateT, exceptT, envT (environment),      *)
+(*                       outputT, contT (continuation)                        *)
+(*         mapStateT2 == standard utility function                            *)
 (*            lifting == lifting of a sigma-operation along a monad morphism  *)
 (* uniform_algebric_lifting == Theorem: lifting of an algebraic operations    *)
 (*                       along a monad morphism                               *)
 (*                FMT == functorial monad transformer                         *)
-(*                       instances: errorFMT, stateFMT, envFMT, outputFMT     *)
+(*                       instances: exceptFMT, stateFMT, envFMT, outputFMT    *)
 (*                                                                            *)
 (******************************************************************************)
 
@@ -159,6 +160,11 @@ End state_monad_transformer.
 
 Definition stateT S : monadT := MonadT.Pack (MonadT.Mixin (stateTmonadM S)).
 
+Definition mapStateT2 (A S : UU0) (N1 N2 N3 : monad)
+    (f : N1 (A * S)%type -> N2 (A * S)%type -> N3 (A * S)%type)
+    (m1 : stateT S N1 A) (m2 : stateT S N2 A) : stateT S N3 A :=
+  fun s => f (m1 s) (m2 s).
+
 Lemma liftSE S (M : monad) U (m : M U) : liftS m = Lift (stateT S) M U m.
 Proof.
 case: M m => [M [[f fi fo] [r j a b c]]] m.
@@ -189,7 +195,7 @@ refine (@MonadState.Mixin _ (stateT S M) (fun s => Ret (s, s))
   rewrite /Bind /Join /JOIN /= /bindS /stateTmonad /= /Monad_of_ret_bind.
   rewrite /Actm /Monad_of_ret_bind.Map /= /Monad_of_ret_bind.Map /= /bindS /=.
   by rewrite !bindretf /= !bindretf.
-Qed.
+Defined.
 
 Canonical stateMonad_of_stateT S M :=
   MonadState.Pack (MonadState.Class (stateMonad_of_stateT_mixin S M)).
@@ -238,7 +244,7 @@ Qed.
 Definition retX_natural : FId ~> MX_functor :=
   Natural.Pack (Natural.Mixin naturality_retX).
 
-Program Definition errorTmonad : monad :=
+Program Definition exceptTmonad : monad :=
   @Monad_of_ret_bind MX_functor retX_natural bindX _ _ _.
 Next Obligation. by move=> A B a f; rewrite /bindX bindretf. Qed.
 Next Obligation.
@@ -249,10 +255,10 @@ move=> A B C m f g; rewrite /bindX bindA; bind_ext; case => //.
 by move=> z; rewrite bindretf.
 Qed.
 
-Definition liftX X (m : M X) : errorTmonad X :=
-  m >>= (@RET errorTmonad _).
+Definition liftX X (m : M X) : exceptTmonad X :=
+  m >>= (@RET exceptTmonad _).
 
-Program Definition errorTmonadM : monadM M errorTmonad :=
+Program Definition exceptTmonadM : monadM M exceptTmonad :=
   monadM.Pack (@monadM.Mixin _ _ liftX _ _).
 Next Obligation.
 by move=> A; rewrite boolp.funeqE => a; rewrite /liftX /= bindretf.
@@ -265,10 +271,25 @@ Qed.
 
 End exception_monad_transformer.
 
-Definition errorT Z := MonadT.Pack (MonadT.Mixin (@errorTmonadM Z)).
+Definition exceptT Z := MonadT.Pack (MonadT.Mixin (@exceptTmonadM Z)).
 
-Lemma liftXE Z (M : monad) U (m : M U) : liftX _ m = Lift (errorT Z) M U m.
+Lemma liftXE Z (M : monad) U (m : M U) : liftX _ m = Lift (exceptT Z) M U m.
 Proof. by []. Qed.
+
+Definition failMonad_of_exceptT_mixin (M : monad) :
+  MonadFail.class_of (exceptT unit M).
+Proof.
+refine (@MonadFail.Class _ _
+  (@MonadFail.Mixin (exceptT unit M)
+                    (fun B => Ret (@inl _ B tt))
+                    _ )).
+move=> A B.
+case: M => m [f [/= r j a b c]] g.
+rewrite /Bind /= /bindX /= /exceptTmonad /Monad_of_ret_bind /= /Actm /=.
+by rewrite /Monad_of_ret_bind.Map /= /bindX /= !bindretf.
+Qed.
+
+Canonical failMonad_of_exceptT M := MonadFail.Pack (failMonad_of_exceptT_mixin M).
 
 Section environment_monad_transformer.
 
@@ -583,7 +604,7 @@ elim: n => [|n ih].
   rewrite -[RHS]bindmret.
   bind_ext.
   by case.
-  rewrite /sum -add1n loop1 /liftC bindA; bind_ext => m.
+rewrite /sum -add1n loop1 /liftC bindA; bind_ext => m.
 rewrite -/(sum n) {}ih -bindA putget bindA bindretf putput.
 congr Put.
 rewrite add0n (addnC 1).
@@ -804,9 +825,9 @@ Lemma natural_hmap (T : FMT) : natural_hmap_lift (Hmap T).
 Proof. by case: T => [? []]. Qed.
 End fmt_lemmas.
 
-Section error_FMT.
+Section exceptFMT.
 Variable X : UU0.
-Let T : monadT := errorT X.
+Let T : monadT := exceptT X.
 Let hmapX' (F G : monad) (tau : F ~> G) (A : UU0) (t : T F A) : T G A :=
   tau _ t.
 
@@ -815,12 +836,12 @@ Lemma natural_hmapX' (F G : monad) (tau : F ~> G) :
 Proof.
 move=> A B h.
 rewrite /hmapX'.
-have H : forall G, errorT X G # h = MX_map h.
+have eXh : forall G, exceptT X G # h = MX_map h.
   move=> E; rewrite boolp.funeqE => m /=.
   rewrite /Actm /= /Monad_of_ret_bind.Map /MX_map /= /bindX /= fmapE.
   congr (_ >>= _).
   by rewrite boolp.funeqE; case.
-by rewrite 2!H /MX_map /= natural.
+by rewrite 2!eXh /MX_map /= natural.
 Qed.
 
 Definition hmapX (F G : monad) (tau : F ~> G) : T F ~> T G :=
@@ -883,13 +904,13 @@ rewrite compidf.
 by rewrite natural.
 Qed.
 
-Program Definition errorFMT : FMT := @Fmt.Pack (errorT X)
+Program Definition exceptFMT : FMT := @Fmt.Pack (exceptT X)
   (@Fmt.Class _ (fun M N nt => hmapX nt) monadMret_hmapX
     monadMbind_hmapX _ hmapX_v hmapX_lift).
 
-End error_FMT.
+End exceptFMT.
 
-Lemma liftFMTXE X (M : monad) U : @liftX _ _ _ = Lift (errorFMT X) M U.
+Lemma liftFMTXE X (M : monad) U : @liftX _ _ _ = Lift (exceptFMT X) M U.
 Proof. by []. Qed.
 
 Section Fmt_stateT.

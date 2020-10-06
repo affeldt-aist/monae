@@ -11,7 +11,7 @@ Require Import imonae_lib ihierarchy imonad_lib imonad_transformer.
 (* uniform_sigma_lifting == Theorem: lifting of sigma-operations along        *)
 (*                          functorial monad transformers                     *)
 (*       slifting_stateT == lifting of a sigma-operation along stateT         *)
-(*       slifting_errorT == lifting of a sigma-operation along errorT         *)
+(*      slifting_exceptT == lifting of a sigma-operation along exceptT        *)
 (*         slifting_envT == lifting of a sigma-operation along envT           *)
 (*      slifting_outputT == lifting of a sigma-operation along outputT        *)
 (*   slifting_alifting_* == Lemmas: slifting and alifting of algebraic        *)
@@ -265,13 +265,13 @@ Qed.
 
 End slifting_stateT.
 
-Section slifting_errorT.
+Section slifting_exceptT.
 Variable Z : UU0.
 
-Let op' Y : (E \O errorFMT Z M) Y -> errorFMT Z M Y := @op _.
+Let op' Y : (E \O exceptFMT Z M) Y -> exceptFMT Z M Y := @op _.
 
-Lemma slifting_errorT (X : UU0) :
-  (slifting op (errorFMT Z) naturality_MK) X = @op' X.
+Lemma slifting_exceptT (X : UU0) :
+  (slifting op (exceptFMT Z) naturality_MK) X = @op' X.
 Proof.
 apply fun_ext => emx.
 rewrite /op'.
@@ -292,7 +292,7 @@ rewrite -(compE (E # _)).
 by rewrite -functor_o.
 Qed.
 
-End slifting_errorT.
+End slifting_exceptT.
 
 Section slifting_envT.
 Variable Env : UU0.
@@ -400,11 +400,11 @@ apply fun_ext => x.
 by rewrite /= 2!bindretf.
 Qed.
 
-Lemma slifting_alifting_errorFMT (Z : UU0) (t := errorFMT Z) :
+Lemma slifting_alifting_exceptFMT (Z : UU0) (t := exceptFMT Z) :
   slifting aop t naturality_MK = alifting aop (Lift t M).
 Proof.
 apply nattrans_ext => X.
-rewrite (slifting_errorT aop naturality_MK Z).
+rewrite (slifting_exceptT aop naturality_MK Z).
 apply fun_ext => m.
 rewrite /alifting.
 rewrite psiE /= /bindX /liftX.
@@ -503,23 +503,23 @@ by apply fun_ext => -[].
 Qed.
 End slifting_local_stateT.
 
-Section slifting_local_errorT.
+Section slifting_local_exceptT.
 Variable Z : UU0.
-Definition local_errorT (X : UU0) (f : Env -> Env) (t : errorFMT Z M X)
-    : errorFMT Z M X
+Definition local_exceptT (X : UU0) (f : Env -> Env) (t : exceptFMT Z M X)
+    : exceptFMT Z M X
   := fun e => t (f e).
 
-Let local_errorT' (X : UU0) : (E \O errorFMT Z M) X -> (errorFMT Z M) X :=
-  uncurry (@local_errorT X).
+Let local_exceptT' (X : UU0) : (E \O exceptFMT Z M) X -> (exceptFMT Z M) X :=
+  uncurry (@local_exceptT X).
 
-Lemma local_errorTE (X : UU0) :
-  (slifting local (errorFMT Z) naturality_MK) X = @local_errorT' X.
+Lemma local_exceptTE (X : UU0) :
+  (slifting local (exceptFMT Z) naturality_MK) X = @local_exceptT' X.
 Proof.
-rewrite slifting_errorT.
+rewrite slifting_exceptT.
 by apply fun_ext => -[].
 Qed.
 
-End slifting_local_errorT.
+End slifting_local_exceptT.
 
 Section slifting_local_envT.
 Variable Z : UU0.
@@ -558,7 +558,7 @@ End slifting_local_outputT.
 End slifting_local.
 
 (* example 31 *)
-Section slifting_handle. (* error monad with Z = unit *)
+Section slifting_handle. (* except monad with Z = unit *)
 Let E := imonad_model.ExceptOps.Handle.func unit.
 Let M := imonad_model.ModelExcept.t.
 Let handle : E.-operation M := @imonad_model.ExceptOps.handle_op unit.
@@ -585,24 +585,24 @@ by apply fun_ext.
 Qed.
 End slifting_handle_stateT.
 
-Section slifting_handle_errorT.
+Section slifting_handle_exceptT.
 Variable Z : UU0.
-Definition handle_errorT (X : UU0) (t : errorFMT Z M X) (h : unit -> errorFMT Z M X)
-  : errorFMT Z M X := match t with
+Definition handle_exceptT (X : UU0) (t : exceptFMT Z M X) (h : unit -> exceptFMT Z M X)
+  : exceptFMT Z M X := match t with
     | inl z(*unit*) => h z
     | inr x => inr x
     end.
 
-Let handle_errorT' (X : UU0) : (E \O errorFMT Z M) X -> (errorFMT Z M) X :=
-  uncurry (@handle_errorT X).
+Let handle_exceptT' (X : UU0) : (E \O exceptFMT Z M) X -> (exceptFMT Z M) X :=
+  uncurry (@handle_exceptT X).
 
-Lemma handle_errorTE (X : UU0) :
-  (slifting handle (errorFMT Z) naturality_MK) X = @handle_errorT' X.
+Lemma handle_exceptTE (X : UU0) :
+  (slifting handle (exceptFMT Z) naturality_MK) X = @handle_exceptT' X.
 Proof.
-rewrite slifting_errorT.
+rewrite slifting_exceptT.
 by apply fun_ext.
 Qed.
-End slifting_handle_errorT.
+End slifting_handle_exceptT.
 
 Section slifting_handle_envT.
 Variable Z : UU0.
@@ -664,19 +664,19 @@ Lemma flush_stateTE (X : UU0) :
 Proof. by rewrite slifting_stateT. Qed.
 End slifting_flush_stateT.
 
-Section slifting_flush_errorT.
+Section slifting_flush_exceptT.
 Variable Z : UU0.
-Definition flush_errorT (X : UU0) (t : errorFMT Z M X) (h : Z -> errorFMT Z M X)
-    : errorFMT Z M X :=
+Definition flush_exceptT (X : UU0) (t : exceptFMT Z M X) (h : Z -> exceptFMT Z M X)
+    : exceptFMT Z M X :=
   let: (c, _) := t in (c, [::]).
 
-Let flush_errorT' (X : UU0) : (E \O errorFMT Z M) X -> (errorFMT Z M) X :=
+Let flush_exceptT' (X : UU0) : (E \O exceptFMT Z M) X -> (exceptFMT Z M) X :=
   fun c => let : (x, _) := c in (x, [::]).
 
-Lemma flush_errorTE (X : UU0) :
-  (slifting flush (errorFMT Z) naturality_MK) X = @flush_errorT' X.
-Proof. by rewrite slifting_errorT. Qed.
-End slifting_flush_errorT.
+Lemma flush_exceptTE (X : UU0) :
+  (slifting flush (exceptFMT Z) naturality_MK) X = @flush_exceptT' X.
+Proof. by rewrite slifting_exceptT. Qed.
+End slifting_flush_exceptT.
 
 Section slifting_flush_envT.
 Variable Z : UU0.

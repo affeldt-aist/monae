@@ -79,24 +79,24 @@ match x with
 end.
 
 Section relation_statetrace_state_trace.
-Variables (S T : UU0) (MN : stateTraceRunMonad S T).
+Variables (S T : UU0) (MN : stateTraceReifyMonad S T).
 
-Lemma stGet_Get (M : stateRunMonad S) s :
-Run (stGet : MN _) s = assoc_opt (Run (Get : M _) s.1, s.2).
-Proof. by rewrite runget runstget; case: s. Qed.
+Lemma stGet_Get (M : stateReifyMonad S) s :
+  Reify (stGet : MN _) s = assoc_opt (Reify (Get : M _) s.1, s.2).
+Proof. by rewrite reifyget reifystget; case: s. Qed.
 
-Lemma stPut_Put (M : stateRunMonad S) s s' :
-  Run (stPut s' : MN _) s = assoc_opt (Run (Put s' : M _) s.1, s.2).
-Proof. by rewrite runput runstput. Qed.
+Lemma stPut_Put (M : stateReifyMonad S) s s' :
+  Reify (stPut s' : MN _) s = assoc_opt (Reify (Put s' : M _) s.1, s.2).
+Proof. by rewrite reifyput reifystput. Qed.
 
-Lemma stMark_Mark (M : traceRunMonad T) s t :
-  Run (stMark t : MN _) s =
-let x := Run (Mark t : M _) s.2 in
+Lemma stMark_Mark (M : traceReifyMonad T) s t :
+  Reify (stMark t : MN _) s =
+let x := Reify (Mark t : M _) s.2 in
 match x with
 | None => None
 | Some x => Some (x.1, (s.1, x.2))
 end.
-Proof. by rewrite runtmark runstmark. Qed.
+Proof. by rewrite reifytmark reifystmark. Qed.
 
 End relation_statetrace_state_trace.
 

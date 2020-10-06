@@ -170,38 +170,16 @@ Variable m : T.
 
 Axiom param : T_R m m.
 
-Lemma naturality :
-naturality
-  (exponential_F A \O ModelMonad.ListMonad.t)
-  ModelMonad.ListMonad.t m.
+Lemma naturality : naturality
+  (exponential_F A \O ModelMonad.ListMonad.t) ModelMonad.ListMonad.t m.
 Proof.
-intros X Y f.
-apply fun_ext => g.
-unfold comp at 1 2.
-assert (H :
-  forall a a' : A, a = a' ->
-  M_R X Y (fun (x : X) (y : Y) => f x = y) (g a)
-    (((ModelMonad.ListMonad.t # f) \o g) a')).
-{
-  intros a a' Ha.
-  subst a'.
-  unfold comp.
-  case (g a); cbn; [constructor | ].
-  intros x lx.
-  constructor; [reflexivity | ].
-  induction lx as [ | x' lx' IH]; [constructor | ].
-  constructor; [reflexivity | exact IH].
-}
-assert (Hparam :=
-  param X Y (fun x y => f x = y) g ((ModelMonad.ListMonad.t # f) \o g) H).
-transitivity (m Y ((ModelMonad.ListMonad.t # f) \o g)); [ | reflexivity].
-induction Hparam as [ | x y Hf mx my IH Hmap].
-- reflexivity.
-- unfold Actm.
-  unfold Actm in Hmap.
-  cbn in *.
-  rewrite <- Hmap, Hf.
-  reflexivity.
+move=> X Y f /=; apply fun_ext => g.
+rewrite [RHS](_ : _ = m Y ((ModelMonad.ListMonad.t # f) \o g)) //.
+have : list_R X Y (fun x y => f x = y) (m X g) (m Y ((ModelMonad.ListMonad.t # f) \o g)).
+  apply: param.
+  by rewrite /A_R /comp => a _ <-; elim: (g a) => [|? ? ?]; constructor.
+rewrite /comp; elim=> //= x y fxy mx my _.
+by rewrite /Actm /= => <-; rewrite -fxy.
 Qed.
 
 End Naturality.

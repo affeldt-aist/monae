@@ -28,10 +28,10 @@ Require Import monae_lib.
 (*                                                                            *)
 (* Failure and nondeterministic monads:                                       *)
 (*          failMonad == failure monad                                        *)
-(*        failR0Monad == TODO                                                 *)
+(*        failR0Monad == fail is right zero of bind                           *)
 (*           altMonad == monad with nondeterministic choice                   *)
-(*       prePlusMonad == TODO                                                 *)
-(*          plusMonad == TODO                                                 *)
+(*       prePlusMonad == nondeterminism + failR0 + distributivity             *)
+(*          plusMonad == preplusMonad + commutativity and idempotence         *)
 (*         altCIMonad == monadAlt + commutativity + idempotence               *)
 (*        nondetMonad == monadFail + monadAlt                                 *)
 (*      nondetCIMonad == monadFail + monadAltCI                               *)
@@ -41,19 +41,21 @@ Require Import monae_lib.
 (*   contMonad, shiftresetMonad, jumpMonad                                    *)
 (*                                                                            *)
 (* State monads:                                                              *)
-(*       stateMonad S == state monad with a state of type S                   *)
-(*           runMonad == run interface                                        *)
-(*      stateRunMonad == monadState + run                                     *)
-(*  failStateRunMonad == stateRunMonad + fail                                 *)
-(*   nondetStateMonad == TODO                                                 *)
-(*     loopStateMonad == (wip)                                                *)
-(*         arrayMonad == array monad                                          *)
+(*         stateMonad S == state monad with a state of type S                 *)
+(*        stateRunMonad == state + runStateT                                  *)
+(*  exceptStateRunMonad == stateRun + except                                  *)
+(*           reifyMonad == reify interface                                    *)
+(*      stateReifyMonad == monadState + reify                                 *)
+(*  failStateReifyMonad == stateReify + fail                                  *)
+(*     nondetStateMonad == backtrackable state                                *)
+(*           arrayMonad == array monad                                        *)
+(*       loopStateMonad == (wip)                                              *)
 (*                                                                            *)
 (* Trace monads:                                                              *)
-(*         traceMonad == trace monad                                          *)
-(*      traceRunMonad == traceMonad + run                                     *)
-(*    stateTraceMonad == state + trace                                        *)
-(* stateTraceRunMonad == stateTraceMonad + run                                *)
+(*            traceMonad == trace monad                                       *)
+(*       traceReifyMonad == trace + reify                                     *)
+(*       stateTraceMonad == state + trace                                     *)
+(*  stateTraceReifyMonad == stateTrace + reify                                *)
 (*                                                                            *)
 (* Probability monads:                                                        *)
 (*         probaMonad == probabilistic choice and bind left-distributes over  *)
@@ -1058,171 +1060,247 @@ Lemma putget s : Put s >> Get = Put s >> Ret s :> M _.
 Proof. by case: M => m [[[? ? ? ? []]]]. Qed.
 Lemma getputskip : Get >>= Put = skip :> M _.
 Proof.  by case: M => m [[[? ? ? ? []]]]. Qed.
-Lemma getget (k : S -> S -> M S) :
+Lemma getget (A : UU0) (k : S -> S -> M A) :
  (Get >>= (fun s => Get >>= k s)) = (Get >>= fun s => k s s).
 Proof. by case: M k => m [[[? ? ? ? []]]]. Qed.
 End state_lemmas.
 
-(*Module MonadFailState.
-Record class_of (S : UU0) (m : UU0 -> UU0) := Class {
-  base : MonadFailR0.class_of m ;
-  mixin_state : MonadState.mixin_of S (Monad.Pack (MonadFail.base (MonadFailR0.base base))) }.
-Structure type (S : UU0) := Pack { acto : UU0 -> UU0 ; class : class_of S acto }.
-Definition failR0MonadType (S : UU0) (M : type S) : failR0Monad :=
-  MonadFailR0.Pack (base (class M)).
+Module MonadStateRun.
+Local Open Scope type_scope.
+Record mixin_of (S : UU0) (N : monad) (M : stateMonad S) := Mixin {
+  runStateT : forall A : UU0, M A -> S -> N (A * S) ;
+  _ : forall (A : UU0) (a : A) (s : S), runStateT (Ret a) s = Ret (a, s) ;
+  _ : forall (A B : UU0) (m : M A) (f : A -> M B) (s : S),
+    runStateT (m >>= f) s = runStateT m s >>= fun x => runStateT (f x.1) x.2 ;
+  _ : forall s : S, runStateT Get s = Ret (s, s) ;
+  _ : forall s' s : S, runStateT (Put s') s = Ret (tt, s') }.
+Record class_of (S : UU0) (N : monad) (m : UU0 -> UU0) := Class {
+  base : MonadState.class_of S m ;
+  mixin : @mixin_of S N (MonadState.Pack base) }.
+Structure type (S : UU0) (N : monad) := Pack {
+  acto : UU0 -> UU0 ; class : class_of S N acto }.
+Definition stateMonadType (S : UU0) (N : monad) (M : type S N) : stateMonad S :=
+  MonadState.Pack (base (class M)).
 Module Exports.
-Notation failStateMonad := type.
-Coercion failR0MonadType : failStateMonad >-> failR0Monad.
-Canonical failR0MonadType.
-Definition state_of_failState (S : UU0) (M : type S) : stateMonad S :=
-  MonadState.Pack (MonadState.Class (mixin_state (class M))).
-Canonical state_of_failState.
+Notation stateRunMonad := type.
+Definition RunStateT (S : UU0) (N : monad) (M : stateRunMonad S N)
+    : forall A : UU0, acto M A -> S -> N (A * S) :=
+  let: Pack _ (Class _ (Mixin x _ _ _ _)) := M in x.
+Arguments RunStateT {S N M A} : simpl never.
+Coercion stateMonadType : stateRunMonad >-> stateMonad.
+Canonical stateMonadType.
 End Exports.
-End MonadFailState.
-Export MonadFailState.Exports.*)                
+Local Close Scope type_scope.
+End MonadStateRun.
+Export MonadStateRun.Exports.
 
-Module MonadRun.
+Section staterun_lemmas.
+Local Open Scope type_scope.
+Variables (S : UU0) (N : monad) (M : stateRunMonad S N).
+Lemma RunStateTRet (A : UU0) (a : A) (s : S) :
+  RunStateT (Ret a : M _) s = Ret (a, s).
+Proof. by case: M => ? [? []]. Qed.
+Lemma RunStateTBind (A B : UU0) (m : M A) (f : A -> M B) (s : S) :
+  RunStateT (m >>= f) s = RunStateT m s >>= fun x => RunStateT (f x.1) x.2.
+Proof. by case: M m f => ? [? []]. Qed.
+Lemma RunStateTGet (s : S) : RunStateT (Get : M _) s = Ret (s, s).
+Proof. by case: M s => ? [? []]. Qed.
+Lemma RunStateTPut (s' s : S) : RunStateT (Put s' : M _) s = Ret (tt, s').
+Proof. by case: M s => ? [? []]. Qed.
+Local Close Scope type_scope.
+End staterun_lemmas.
+
+Module MonadExceptStateRun.
+Section monadexceptstaterun.
+Variable S : UU0.
+Record mixin_of (N : exceptMonad) (M : stateRunMonad S N)
+    (fail : forall A : UU0, M A)
+    (catch : forall A : UU0, M A -> M A -> M A) := Mixin {
+  _ : forall (A : UU0) (s : S), RunStateT (@fail A) s = @Fail N _ ;
+  _ : forall (A : UU0) (s : S) (m1 m2 : M A),
+      RunStateT (catch _ m1 m2) s = Catch (RunStateT m1 s) (RunStateT m2 s) }.
+Record class_of (N : exceptMonad) (m : UU0 -> UU0) := Class {
+  base : MonadExcept.class_of m ;
+  mixin_state : MonadState.mixin_of S (Monad.Pack (MonadFail.base (MonadExcept.base base))) ;
+  mixin_stateRun : MonadStateRun.mixin_of
+    (Monad.Pack (MonadFail.base (MonadFail.class N)))
+    (MonadState.Pack (MonadState.Class mixin_state)) ;
+  mixin : @mixin_of N (MonadStateRun.Pack (MonadStateRun.Class mixin_stateRun))
+    (@Fail (MonadFail.Pack (MonadExcept.base base)))
+    (@Catch (MonadExcept.Pack base)) }.
+Structure type (N : exceptMonad) := Pack {
+  acto : UU0 -> UU0 ; class : class_of N acto }.
+Definition exceptMonadType (N : exceptMonad) (M : type N) : exceptMonad :=
+  MonadExcept.Pack (base (class M)).
+End monadexceptstaterun.
+Module Exports.
+Notation exceptStateRunMonad := type.
+Coercion exceptMonadType : exceptStateRunMonad >-> exceptMonad.
+Canonical exceptMonadType.
+Definition state_of_exceptStateRun (S : UU0) (N : exceptMonad) (M : type S N) : stateMonad S :=
+  MonadState.Pack (MonadState.Class (mixin_state (class M))).
+Canonical state_of_exceptStateRun.
+Coercion state_of_exceptStateRun : exceptStateRunMonad >-> stateMonad.
+Definition stateRun_of_exceptStateRun (S : UU0) (N : exceptMonad) (M : type S N) : stateRunMonad S N :=
+  MonadStateRun.Pack (MonadStateRun.Class (mixin_stateRun (class M))).
+Canonical stateRun_of_exceptStateRun.
+Coercion stateRun_of_exceptStateRun : exceptStateRunMonad >-> stateRunMonad.
+End Exports.
+End MonadExceptStateRun.
+Export MonadExceptStateRun.Exports.
+
+Section exceptstaterun_lemmas.
+Variables (S : UU0) (N : exceptMonad) (M : exceptStateRunMonad S N).
+Lemma RunStateTFail (A : UU0) (s : S) :
+  RunStateT (Fail : M _) s = Fail :> N (A * S)%type.
+Proof. by case: M s => ? [? ? ? []]. Qed.
+Lemma RunStateTCatch (A : UU0) (s : S) (m1 m2 : M A) :
+  RunStateT (Catch m1 m2) s = Catch (RunStateT m1 s) (RunStateT m2 s).
+Proof. by case: M s m1 m2 => ? [? ? ? []]. Qed.
+End exceptstaterun_lemmas.
+
+Module MonadReify.
 Record mixin_of (S : UU0) (M : monad) := Mixin {
-  run : forall A : UU0, M A -> S -> option (A * S) ;
-  _ : forall (A : UU0) (a : A) s, run (Ret a) s = Some (a, s) ;
+  reify : forall A : UU0, M A -> S -> option (A * S) ;
+  _ : forall (A : UU0) (a : A) s, reify (Ret a) s = Some (a, s) ;
   _ : forall (A B : UU0) (m : M A) (f : A -> M B) s,
-      run (m >>= f) s = if run m s is Some (a', s') then run (f a') s' else None}.
+      reify (m >>= f) s = if reify m s is Some (a', s') then reify (f a') s' else None}.
 Record class_of (S : UU0) (M : UU0 -> UU0) := Class {
   base : Monad.class_of M ;
   mixin : mixin_of S (Monad.Pack base) }.
 Structure type (S : UU0) := Pack { acto : UU0 -> UU0 ; class : class_of S acto }.
 Definition monadType (S : UU0) (M : type S) := Monad.Pack (base (class M)).
 Module Exports.
-Definition Run (S : UU0) (M : type S) : forall A : UU0, acto M A -> S -> option (A * S) :=
+Definition Reify (S : UU0) (M : type S) : forall A : UU0, acto M A -> S -> option (A * S) :=
   let: Pack _ (Class _ (Mixin x _ _)) := M in x.
-Arguments Run {S M A} : simpl never.
-Notation runMonad := type.
-Coercion monadType : runMonad >-> monad.
+Arguments Reify {S M A} : simpl never.
+Notation reifyMonad := type.
+Coercion monadType : reifyMonad >-> monad.
 Canonical monadType.
 End Exports.
-End MonadRun.
-Export MonadRun.Exports.
+End MonadReify.
+Export MonadReify.Exports.
 
-Section run_lemmas.
-Variables (S : UU0) (M : runMonad S).
-Lemma runret : forall (A : UU0) (a : A) s, Run (Ret a : M _) s = Some (a, s).
+Section reify_lemmas.
+Variables (S : UU0) (M : reifyMonad S).
+Lemma reifyret : forall (A : UU0) (a : A) s, Reify (Ret a : M _) s = Some (a, s).
 Proof. by case: M => m [? []]. Qed.
-Lemma runbind : forall (A B : UU0) (m : M A) (f : A -> M B) s,
-  Run (m >>= f) s = if Run m s is Some (a', s') then Run (f a') s' else None.
+Lemma reifybind : forall (A B : UU0) (m : M A) (f : A -> M B) s,
+  Reify (m >>= f) s = if Reify m s is Some (a', s') then Reify (f a') s' else None.
 Proof. by case: M => m [? []]. Qed.
-End run_lemmas.
+End reify_lemmas.
 
-Module MonadStateRun.
-Record mixin_of (S : UU0) (M : runMonad S) (get : M S) (put : S -> M unit) : UU0
+Module MonadStateReify.
+Record mixin_of (S : UU0) (M : reifyMonad S) (get : M S) (put : S -> M unit) : UU0
   := Mixin {
-  _ : forall s, Run get s = Some (s, s) ;
-  _ : forall s s', Run (put s') s = Some (tt, s') }.
+  _ : forall s, Reify get s = Some (s, s) ;
+  _ : forall s s', Reify (put s') s = Some (tt, s') }.
 Record class_of (S : UU0) (M : UU0 -> UU0) := Class {
-  base : MonadRun.class_of S M ;
-  mixin_state : MonadState.mixin_of S (Monad.Pack (MonadRun.base base)) ;
-  mixin_stateRun : @mixin_of S (MonadRun.Pack base)
+  base : MonadReify.class_of S M ;
+  mixin_state : MonadState.mixin_of S (Monad.Pack (MonadReify.base base)) ;
+  mixin_stateReify : @mixin_of S (MonadReify.Pack base)
     (@Get _ (MonadState.Pack (MonadState.Class mixin_state))) (@Put _ (MonadState.Pack (MonadState.Class mixin_state))) ;
 }.
 Structure type (S : UU0) := Pack { acto : UU0 -> UU0 ; class : class_of S acto }.
-Definition runMonadType (S : UU0) (M : type S) := MonadRun.Pack (base (class M)).
-Definition state_of_stateRun (S : UU0) (M : type S) :=
+Definition reifyMonadType (S : UU0) (M : type S) := MonadReify.Pack (base (class M)).
+Definition state_of_stateReify (S : UU0) (M : type S) :=
   MonadState.Pack (MonadState.Class (mixin_state (class M))).
 Module Exports.
-Notation stateRunMonad := type.
-Coercion runMonadType : stateRunMonad >-> runMonad.
-Canonical runMonadType.
-Coercion state_of_stateRun : stateRunMonad >-> stateMonad.
-Canonical state_of_stateRun.
+Notation stateReifyMonad := type.
+Coercion reifyMonadType : stateReifyMonad >-> reifyMonad.
+Canonical reifyMonadType.
+Coercion state_of_stateReify : stateReifyMonad >-> stateMonad.
+Canonical state_of_stateReify.
 End Exports.
-End MonadStateRun.
-Export MonadStateRun.Exports.
+End MonadStateReify.
+Export MonadStateReify.Exports.
 
-Section staterun_lemmas.
-Variables (S : UU0) (M : stateRunMonad S).
-Lemma runget : forall s, Run (Get : M _) s = Some (s, s).
+Section statereify_lemmas.
+Variables (S : UU0) (M : stateReifyMonad S).
+Lemma reifyget : forall s, Reify (Get : M _) s = Some (s, s).
 Proof. by case: M => m [? ? []]. Qed.
-Lemma runput : forall s s', Run (Put s' : M _) s = Some (tt, s').
+Lemma reifyput : forall s s', Reify (Put s' : M _) s = Some (tt, s').
 Proof. by case: M => m [? ? []]. Qed.
-End staterun_lemmas.
+End statereify_lemmas.
 
-Module MonadFailRun.
-Record mixin_of (S : UU0) (M : runMonad S) (fail : forall S' : UU0, M S') : UU0 := Mixin {
-  _ : forall S' (s : S), Run (fail S') s = None }.
+Module MonadFailReify.
+Record mixin_of (S : UU0) (M : reifyMonad S) (fail : forall S' : UU0, M S') : UU0 := Mixin {
+  _ : forall S' (s : S), Reify (fail S') s = None }.
 Record class_of (S : UU0) (M : UU0 -> UU0) := Class {
-  base : MonadRun.class_of S M ;
-  mixin_fail : MonadFail.mixin_of (Monad.Pack (MonadRun.base base)) ;
-  mixin_failrun : @mixin_of S (MonadRun.Pack base) (@Fail (MonadFail.Pack (MonadFail.Class mixin_fail)))
+  base : MonadReify.class_of S M ;
+  mixin_fail : MonadFail.mixin_of (Monad.Pack (MonadReify.base base)) ;
+  mixin_failreify : @mixin_of S (MonadReify.Pack base) (@Fail (MonadFail.Pack (MonadFail.Class mixin_fail)))
  }.
 Structure type (S : UU0) := Pack { acto : UU0 -> UU0 ; class : class_of S acto }.
-Definition failRunMonadType (S : UU0) (M : type S) := MonadRun.Pack (base (class M)).
-Definition fail_of_failRun (S : UU0) (M : type S) :=
+Definition failReifyMonadType (S : UU0) (M : type S) := MonadReify.Pack (base (class M)).
+Definition fail_of_failReify (S : UU0) (M : type S) :=
   MonadFail.Pack (MonadFail.Class (mixin_fail (class M))).
 Module Exports.
-Notation failRunMonad := type.
-Coercion failRunMonadType : failRunMonad >-> runMonad.
-Canonical failRunMonadType.
-Coercion fail_of_failRun : failRunMonad >-> failMonad.
-Canonical fail_of_failRun.
+Notation failReifyMonad := type.
+Coercion failReifyMonadType : failReifyMonad >-> reifyMonad.
+Canonical failReifyMonadType.
+Coercion fail_of_failReify : failReifyMonad >-> failMonad.
+Canonical fail_of_failReify.
 End Exports.
-End MonadFailRun.
-Export MonadFailRun.Exports.
+End MonadFailReify.
+Export MonadFailReify.Exports.
 
-Section failrun_lemmas.
-Variables (S : UU0) (M : failRunMonad S).
-Lemma runfail : forall s, Run (Fail : M S) s = None.
+Section failreify_lemmas.
+Variables (S : UU0) (M : failReifyMonad S).
+Lemma reifyfail : forall S' s, Reify (Fail : M S') s = None.
 Proof. by case: M => m [? ? []]. Qed.
-End failrun_lemmas.
+End failreify_lemmas.
 
-Module MonadFailFailR0Run.
+Module MonadFailFailR0Reify.
 Record class_of (S : UU0) (M : UU0 -> UU0) := Class {
-  base : MonadFailRun.class_of S M ;
-  mixin_failR0 : MonadFailR0.mixin_of (MonadFail.Pack (MonadFail.Class (MonadFailRun.mixin_fail base))) }.
+  base : MonadFailReify.class_of S M ;
+  mixin_failR0 : MonadFailR0.mixin_of (MonadFail.Pack (MonadFail.Class (MonadFailReify.mixin_fail base))) }.
 Structure type (S : UU0) := Pack { acto : UU0 -> UU0 ; class : class_of S acto }.
-Definition failFailR0RunMonadType (S : UU0) (M : type S) := MonadFailRun.Pack (base (class M)).
-Definition failR0_of_failFailR0Run (S : UU0) (M : type S) :=
+Definition failFailR0ReifyMonadType (S : UU0) (M : type S) := MonadFailReify.Pack (base (class M)).
+Definition failR0_of_failFailR0Reify (S : UU0) (M : type S) :=
   @MonadFailR0.Pack _ (MonadFailR0.Class (mixin_failR0 (class M))).
 Module Exports.
-Notation failFailR0RunMonad := type.
-Coercion failFailR0RunMonadType : failFailR0RunMonad >-> failRunMonad.
-Canonical failFailR0RunMonadType.
-Coercion failR0_of_failFailR0Run : failFailR0RunMonad >-> failR0Monad.
-Canonical failR0_of_failFailR0Run.
+Notation failFailR0ReifyMonad := type.
+Coercion failFailR0ReifyMonadType : failFailR0ReifyMonad >-> failReifyMonad.
+Canonical failFailR0ReifyMonadType.
+Coercion failR0_of_failFailR0Reify : failFailR0ReifyMonad >-> failR0Monad.
+Canonical failR0_of_failFailR0Reify.
 End Exports.
-End MonadFailFailR0Run.
-Export MonadFailFailR0Run.Exports.
+End MonadFailFailR0Reify.
+Export MonadFailFailR0Reify.Exports.
 
-Module MonadFailStateRun.
+Module MonadFailStateReify.
 Record class_of (S : UU0) (M : UU0 -> UU0) := Class {
-  base : MonadStateRun.class_of S M ;
-  mixin_fail : MonadFail.mixin_of (Monad.Pack (MonadRun.base (MonadStateRun.base base))) ;
-  mixin_failRun : @MonadFailRun.mixin_of S (MonadRun.Pack (MonadStateRun.base base)) (@Fail (MonadFail.Pack (MonadFail.Class mixin_fail))) ;
+  base : MonadStateReify.class_of S M ;
+  mixin_fail : MonadFail.mixin_of (Monad.Pack (MonadReify.base (MonadStateReify.base base))) ;
+  mixin_failReify : @MonadFailReify.mixin_of S (MonadReify.Pack (MonadStateReify.base base)) (@Fail (MonadFail.Pack (MonadFail.Class mixin_fail))) ;
   mixin_failR0 : @MonadFailR0.mixin_of (MonadFail.Pack (MonadFail.Class mixin_fail)) ;
  }.
 Structure type (S : UU0) := Pack { acto : UU0 -> UU0 ; class : class_of S acto }.
-Definition failStateMonadType (S : UU0) (M : type S) := MonadStateRun.Pack (base (class M)).
-Definition fail_of_failStateRun (S : UU0) (M : type S) :=
+Definition failStateMonadType (S : UU0) (M : type S) := MonadStateReify.Pack (base (class M)).
+Definition fail_of_failStateReify (S : UU0) (M : type S) :=
   MonadFail.Pack (MonadFail.Class (mixin_fail (class M))).
-Definition failRun_of_failStateRun (S : UU0) (M : type S) :=
-  MonadFailRun.Pack (MonadFailRun.Class (mixin_failRun (class M))).
-Definition failR0_of_failStateRun (S : UU0) (M : type S) :=
+Definition failReify_of_failStateReify (S : UU0) (M : type S) :=
+  MonadFailReify.Pack (MonadFailReify.Class (mixin_failReify (class M))).
+Definition failR0_of_failStateReify (S : UU0) (M : type S) :=
   MonadFailR0.Pack (MonadFailR0.Class (mixin_failR0 (class M))).
-Definition failFailR0_of_failStateRun (S : UU0) (M : type S) :=
-  MonadFailFailR0Run.Pack (@MonadFailFailR0Run.Class _ _ (MonadFailRun.class (failRun_of_failStateRun M)) (mixin_failR0 (class M))).
+Definition failFailR0_of_failStateReify (S : UU0) (M : type S) :=
+  MonadFailFailR0Reify.Pack (@MonadFailFailR0Reify.Class _ _ (MonadFailReify.class (failReify_of_failStateReify M)) (mixin_failR0 (class M))).
 Module Exports.
-Notation failStateRunMonad := type.
-Coercion failStateMonadType : failStateRunMonad >-> stateRunMonad.
+Notation failStateReifyMonad := type.
+Coercion failStateMonadType : failStateReifyMonad >-> stateReifyMonad.
 Canonical failStateMonadType.
-Coercion fail_of_failStateRun : failStateRunMonad >-> failMonad.
-Canonical fail_of_failStateRun.
-Coercion failRun_of_failStateRun : failStateRunMonad >-> failRunMonad.
-Canonical failRun_of_failStateRun.
-Coercion failR0_of_failStateRun : failStateRunMonad >-> failR0Monad.
-Canonical failR0_of_failStateRun.
-Coercion failFailR0_of_failStateRun : failStateRunMonad >-> failFailR0RunMonad.
-Canonical failFailR0_of_failStateRun.
+Coercion fail_of_failStateReify : failStateReifyMonad >-> failMonad.
+Canonical fail_of_failStateReify.
+Coercion failReify_of_failStateReify : failStateReifyMonad >-> failReifyMonad.
+Canonical failReify_of_failStateReify.
+Coercion failR0_of_failStateReify : failStateReifyMonad >-> failR0Monad.
+Canonical failR0_of_failStateReify.
+Coercion failFailR0_of_failStateReify : failStateReifyMonad >-> failFailR0ReifyMonad.
+Canonical failFailR0_of_failStateReify.
 End Exports.
-End MonadFailStateRun.
-Export MonadFailStateRun.Exports.
+End MonadFailStateReify.
+Export MonadFailStateReify.Exports.
 
 Module MonadNondetState.
 (*Record mixin_of (M : nondetMonad) := Mixin {
@@ -1371,32 +1449,32 @@ End Exports.
 End MonadTrace.
 Export MonadTrace.Exports.
 
-Module MonadTraceRun.
-Record mixin_of (T : UU0) (M : runMonad (seq T)) (mark : T -> M unit) :=
-  Mixin {_ : forall t l, Run (mark t) l = Some (tt, rcons l t)}.
+Module MonadTraceReify.
+Record mixin_of (T : UU0) (M : reifyMonad (seq T)) (mark : T -> M unit) :=
+  Mixin {_ : forall t l, Reify (mark t) l = Some (tt, rcons l t)}.
 Record class_of (T : UU0) (M : UU0 -> UU0) := Class {
   base : MonadTrace.class_of T M ;
-  mixin_run : MonadRun.mixin_of _ (Monad.Pack (MonadTrace.base base)) ;
-  mixin_traceRUn : @mixin_of _ (MonadRun.Pack (MonadRun.Class mixin_run))
+  mixin_run : MonadReify.mixin_of _ (Monad.Pack (MonadTrace.base base)) ;
+  mixin_traceReify : @mixin_of _ (MonadReify.Pack (MonadReify.Class mixin_run))
     (@Mark _ (MonadTrace.Pack base)) }.
 Structure type (T : UU0) := Pack { acto : UU0 -> UU0 ; class : class_of T acto }.
 Definition traceMonadType (T : UU0) (M : type T) := MonadTrace.Pack (base (class M)).
-Definition runMonadType (T : UU0) (M : type T) :=
-  MonadRun.Pack (MonadRun.Class (mixin_run (class M))).
+Definition reifyMonadType (T : UU0) (M : type T) :=
+  MonadReify.Pack (MonadReify.Class (mixin_run (class M))).
 Module Exports.
-Notation traceRunMonad := type.
-Coercion traceMonadType : traceRunMonad >-> traceMonad.
+Notation traceReifyMonad := type.
+Coercion traceMonadType : traceReifyMonad >-> traceMonad.
 Canonical traceMonadType.
-Canonical runMonadType.
+Canonical reifyMonadType.
 End Exports.
-End MonadTraceRun.
-Export MonadTraceRun.Exports.
+End MonadTraceReify.
+Export MonadTraceReify.Exports.
 
-Section tracerun_lemmas.
-Variables (T : UU0) (M : traceRunMonad T).
-Lemma runtmark : forall s t, Run (Mark t : M _) s = Some (tt, rcons s t).
+Section tracereify_lemmas.
+Variables (T : UU0) (M : traceReifyMonad T).
+Lemma reifytmark : forall s t, Reify (Mark t : M _) s = Some (tt, rcons s t).
 Proof. by case: M => m [? ? []]. Qed.
-End tracerun_lemmas.
+End tracereify_lemmas.
 
 Module MonadStateTrace.
 Record mixin_of (S T : UU0) (M : monad) := Mixin {
@@ -1406,7 +1484,7 @@ Record mixin_of (S T : UU0) (M : monad) := Mixin {
   _ : forall s s', st_put s >> st_put s' = st_put s' ;
   _ : forall s, st_put s >> st_get = st_put s >> Ret s ;
   _ : st_get >>= st_put = skip ;
-  _ : forall k : S -> S -> M S,
+  _ : forall (A : UU0) (k : S -> S -> M A),
       st_get >>= (fun s => st_get >>= k s) = st_get >>= fun s => k s s ;
   _ : forall s e, st_put s >> st_mark e = st_mark e >> st_put s ;
   _ : forall e (k : _ -> M S), st_get >>= (fun v => st_mark e >> k v) =
@@ -1442,7 +1520,7 @@ Lemma st_putget s : stPut s >> stGet = stPut s >> Ret s :> M _.
 Proof. by case: M => m [? []]. Qed.
 Lemma st_getputskip : stGet >>= stPut = skip :> M _.
 Proof. by case: M => m [? []]. Qed.
-Lemma st_getget (k : S -> S -> M S) :
+Lemma st_getget (A : UU0) (k : S -> S -> M A) :
   stGet >>= (fun s => stGet >>= k s) = stGet >>= fun s => k s s.
 Proof. by case: M k => m [? []]. Qed.
 Lemma st_putmark s e : stPut s >> stMark e = stMark e >> stPut s :> M _.
@@ -1452,18 +1530,18 @@ Lemma st_getmark e (k : S -> M S) :
 Proof. by case: M k => m [? []]. Qed.
 End statetrace_lemmas.
 
-Module MonadStateTraceRun.
-Record mixin_of (S T : UU0) (M : runMonad (S * seq T)%type) (st_get : M S)
+Module MonadStateTraceReify.
+Record mixin_of (S T : UU0) (M : reifyMonad (S * seq T)%type) (st_get : M S)
   (st_put : S -> M unit) (st_mark : T -> M unit) := Mixin {
-  _ : forall s l, Run st_get (s, l) = Some (s, (s, l)) ;
-  _ : forall s l s', Run (st_put s') (s, l) = Some (tt, (s', l)) ;
-  _ : forall t s l, Run (st_mark t) (s, l) = Some (tt, (s, rcons l t))
+  _ : forall s l, Reify st_get (s, l) = Some (s, (s, l)) ;
+  _ : forall s l s', Reify (st_put s') (s, l) = Some (tt, (s', l)) ;
+  _ : forall t s l, Reify (st_mark t) (s, l) = Some (tt, (s, rcons l t))
 }.
 Record class_of (S T : UU0) (M : UU0 -> UU0) := Class {
   base : MonadStateTrace.class_of S T M ;
-  mixin_run : MonadRun.mixin_of (S * seq T)%type
+  mixin_reify : MonadReify.mixin_of (S * seq T)%type
     (Monad.Pack (MonadStateTrace.base base)) ;
-  mixin_stateTraceRun : @mixin_of _ _ (MonadRun.Pack (MonadRun.Class mixin_run))
+  mixin_stateTraceReify : @mixin_of _ _ (MonadReify.Pack (MonadReify.Class mixin_reify))
     (@stGet _ _ (MonadStateTrace.Pack base))
     (@stPut _ _ (MonadStateTrace.Pack base))
     (@stMark _ _ (MonadStateTrace.Pack base)) ;
@@ -1472,27 +1550,27 @@ Structure type (S T : UU0) := Pack {
   acto : UU0 -> UU0 ; class : class_of S T acto }.
 Definition stateTraceMonadType (S T : UU0) (M : type T S) :=
   MonadStateTrace.Pack (base (class M)).
-Definition runMonadType (S T : UU0) (M : type S T) :=
-  MonadRun.Pack (MonadRun.Class (mixin_run (class M))).
+Definition reifyMonadType (S T : UU0) (M : type S T) :=
+  MonadReify.Pack (MonadReify.Class (mixin_reify (class M))).
 Module Exports.
-Notation stateTraceRunMonad := type.
-Coercion stateTraceMonadType (S T : UU0) (M : stateTraceRunMonad S T) : stateTraceMonad S T
+Notation stateTraceReifyMonad := type.
+Coercion stateTraceMonadType (S T : UU0) (M : stateTraceReifyMonad S T) : stateTraceMonad S T
   := stateTraceMonadType M.
 Canonical stateTraceMonadType.
-Canonical runMonadType.
+Canonical reifyMonadType.
 End Exports.
-End MonadStateTraceRun.
-Export MonadStateTraceRun.Exports.
+End MonadStateTraceReify.
+Export MonadStateTraceReify.Exports.
 
-Section statetracerun_lemmas.
-Variables (S T : UU0) (M : stateTraceRunMonad S T).
-Lemma runstget : forall s, Run (stGet : M _) s = Some (s.1, s).
+Section statetracereify_lemmas.
+Variables (S T : UU0) (M : stateTraceReifyMonad S T).
+Lemma reifystget : forall s, Reify (stGet : M _) s = Some (s.1, s).
 Proof. by case: M => m [? ? [? ? ?]] []. Qed.
-Lemma runstput : forall s s', Run (stPut s' : M _) s = Some (tt, (s', s.2)).
+Lemma reifystput : forall s s', Reify (stPut s' : M _) s = Some (tt, (s', s.2)).
 Proof. by case: M => m [? ? [? ? ?]] []. Qed.
-Lemma runstmark : forall t s, Run (stMark t : M _) s = Some (tt, (s.1, rcons s.2 t)).
+Lemma reifystmark : forall t s, Reify (stMark t : M _) s = Some (tt, (s.1, rcons s.2 t)).
 Proof. by case: M => m [? ? [? ? ?]] t []. Qed.
-End statetracerun_lemmas.
+End statetracereify_lemmas.
 
 Module MonadProb.
 Local Open Scope reals_ext_scope.
@@ -1693,4 +1771,3 @@ Proof. by case: M => m [? ? []]. Qed.
 Lemma bassert_symbols : bassert (Distinct M) \o Symbols = Symbols :> (nat -> M _).
 Proof. by case: M => m [? ? []]. Qed.
 End failfresh_lemmas.
-

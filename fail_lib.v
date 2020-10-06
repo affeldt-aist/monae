@@ -34,32 +34,32 @@ Section monadalt_lemmas.
 Variable (M : altMonad).
 
 (* TODO: name ok? *)
-Lemma naturality_nondeter (A B : Type) (f : A -> B) (p q : M _):
+Lemma naturality_nondeter (A B : UU0) (f : A -> B) (p q : M _):
   (M # f) (p [~] q) = (M # f) p [~] (M # f) q.
 Proof. by rewrite 3!fmapE alt_bindDl. Qed.
 
-Lemma alt_fmapDl (A B : Type) (f : A -> B) (m1 m2 : M A) :
+Lemma alt_fmapDl (A B : UU0) (f : A -> B) (m1 m2 : M A) :
   (M # f) (m1 [~] m2) = (M # f) m1 [~] (M # f) m2.
 Proof. by rewrite 3!fmapE alt_bindDl. Qed.
 
 End monadalt_lemmas.
 
-Lemma fmap_fail {A B : Type} (M : failMonad) (f : A -> B) : (M # f) Fail = Fail.
+Lemma fmap_fail {A B : UU0} (M : failMonad) (f : A -> B) : (M # f) Fail = Fail.
 Proof. by rewrite fmapE bindfailf. Qed.
 
 Lemma well_founded_size A : well_founded (fun x y : seq A => size x < size y).
 Proof. by apply: (@Wf_nat.well_founded_lt_compat _ size) => ? ? /ltP. Qed.
 
-Definition bassert_hylo {M : failMonad} (A B : Type)
+Definition bassert_hylo {M : failMonad} (A B : UU0)
   (f : B -> M (A * B)%type) (p : pred B) (r : forall p f, B -> B -> bool) :=
   forall b, f b = bassert (fun z => r p f z.2 b) (f b).
 
-Definition bassert_size {M : failMonad} (A B : Type)
+Definition bassert_size {M : failMonad} (A B : UU0)
   (f : seq B -> M (A * seq B)%type) :=
   @bassert_hylo M _ _ f predT (fun _ _ x y => size x < size y).
 
 Section foldM.
-Variables (M : monad) (T R : Type) (f : R -> T -> M R).
+Variables (M : monad) (T R : UU0) (f : R -> T -> M R).
 Fixpoint foldM z s : M _ := if s is x :: s' then f z x >>= (fun y => foldM y s') else (Ret z).
 End foldM.
 
@@ -68,7 +68,7 @@ Section unfoldM.
 Local Open Scope mprog.
 
 Section unfoldM_monad.
-Variables (M : monad) (A B : Type).
+Variables (M : monad) (A B : UU0).
 Variable (r : B -> B -> bool).
 Hypothesis wfr : well_founded r.
 Variables (p : pred B) (f : B -> M (A * B)%type).
@@ -87,7 +87,7 @@ Definition unfoldM := Fix wfr (fun _ => _ _) unfoldM'.
 End unfoldM_monad.
 
 Section unfoldM_failMonad.
-Variables (M : failMonad) (A B' : Type).
+Variables (M : failMonad) (A B' : UU0).
 Let B := seq B'.
 Notation unfoldM := (@unfoldM M A _ _ (@well_founded_size B')).
 Variables (p : pred B) (f : B -> M (A * B)%type).
@@ -115,7 +115,7 @@ Arguments unfoldM : simpl never.
 
 (* section 5.1, mu2019tr3 *)
 Section hyloM.
-Variables (M : failMonad) (A B C : Type).
+Variables (M : failMonad) (A B C : UU0).
 Variables (op : A -> M C -> M C) (e : C) (p : pred B) (f : B -> M (A * B)%type).
 Variable seed : forall (p : pred B) (f : B -> M (A * B)%type), B -> B -> bool.
 
@@ -154,7 +154,7 @@ Arguments hyloM {M} {A} {B} {C} _ _ _ _ _.
 
 Section arbitrary.
 
-Variables (M : altMonad) (A : Type) (def : A).
+Variables (M : altMonad) (A : UU0) (def : A).
 
 Definition arbitrary : seq A -> M A :=
   foldr1 (Ret def) (fun x y => x [~] y) \o map Ret.
@@ -162,18 +162,18 @@ Definition arbitrary : seq A -> M A :=
 End arbitrary.
 Arguments arbitrary {M} {A}.
 
-Lemma arbitrary1 (N : altMonad) (T : Type) (def : T) h :
+Lemma arbitrary1 (N : altMonad) (T : UU0) (def : T) h :
   arbitrary def [:: h] = Ret h :> N T.
 Proof. by []. Qed.
 
 Section arbitrary_lemmas.
 Variables (M : altCIMonad).
 
-Lemma arbitrary2 (T : Type) (def : T) h t :
+Lemma arbitrary2 (T : UU0) (def : T) h t :
   arbitrary def [:: h; t] = Ret h [~] Ret t :> M _.
 Proof. by rewrite /arbitrary /= altC. Qed.
 
-Lemma arbitrary_cons (T : Type) (def : T) h t : 0 < size t ->
+Lemma arbitrary_cons (T : UU0) (def : T) h t : 0 < size t ->
   arbitrary def (h :: t) = Ret h [~] arbitrary def t :> M _.
 Proof.
 move: def h; elim: t => // a [//|b [|c t]] ih def h _.
@@ -184,7 +184,7 @@ move: def h; elim: t => // a [//|b [|c t]] ih def h _.
   by rewrite altCA.
 Qed.
 
-Lemma arbitrary_naturality (T U : Type) (a : T) (b : U) (f : T -> U) :
+Lemma arbitrary_naturality (T U : UU0) (a : T) (b : U) (f : T -> U) :
   forall x, 0 < size x -> (M # f \o arbitrary a) x = (arbitrary b \o map f) x.
 Proof.
 elim=> // x [_ _ | x' xs /(_ isT)].
@@ -194,7 +194,7 @@ rewrite [in RHS]compE [in RHS]/= [in RHS](arbitrary_cons b) // [in LHS]compE.
 by rewrite [in LHS]arbitrary_cons // fmapE /= alt_bindDl bindretf /= ih.
 Qed.
 
-Lemma mpair_arbitrary_base_case (T : Type) a x (y : seq T) :
+Lemma mpair_arbitrary_base_case (T : UU0) a x (y : seq T) :
   (0 < size y)%nat ->
   arbitrary (a, a) (cp [:: x] y) = mpair (arbitrary a [:: x], arbitrary a y) :> M _.
 Proof.
@@ -206,7 +206,7 @@ transitivity (do z <- Ret x; do y' <- arbitrary a y; Ret (z, y') : M _)%Do.
 by [].
 Qed.
 
-Lemma arbitrary_cat (T : Type) (a : T) s t :
+Lemma arbitrary_cat (T : UU0) (a : T) s t :
   let m := size s in let n := size t in
   0 < m -> 0 < n ->
   arbitrary a (s ++ t) = arbitrary a s [~] arbitrary a t :> M _.
@@ -220,7 +220,7 @@ rewrite IH // altA; congr (_ [~] _).
 by rewrite [in RHS]arbitrary_cons.
 Qed.
 
-Lemma mpair_arbitrary (T : Type) a (x y : seq T) :
+Lemma mpair_arbitrary (T : UU0) a (x y : seq T) :
   0 < size x -> 0 < size y ->
   mpair (arbitrary a x, arbitrary a y) = arbitrary (a, a) (cp x y) :> M (T * T)%type.
 Proof.
@@ -240,7 +240,7 @@ rewrite -alt_bindDl.
 by rewrite -arbitrary_cat.
 Qed.
 
-Lemma arbitrary_inde (T : Type) a (s : seq T) {U} (m : M U) :
+Lemma arbitrary_inde (T : UU0) a (s : seq T) {U} (m : M U) :
   0 < size s -> arbitrary a s >> m = m.
 Proof.
 elim: s a m => // h [_ a m _|h' t ih a m _].
@@ -254,7 +254,7 @@ Arguments arbitrary_naturality {M T U}.
 Section subsequences_of_a_list.
 Local Open Scope mprog.
 
-Variables (M : altMonad) (A : Type).
+Variables (M : altMonad) (A : UU0).
 
 Fixpoint subs (s : seq A) : M (seq A) :=
   if s isn't h :: t then Ret [::] else
@@ -296,21 +296,21 @@ Section permutation_and_insertion.
 Variable M : altMonad.
 Local Open Scope mprog.
 
-Fixpoint insert {A : Type} (a : A) (s : seq A) : M (seq A) :=
+Fixpoint insert {A : UU0} (a : A) (s : seq A) : M (seq A) :=
   if s isn't h :: t then Ret [:: a] else
   Ret (a :: h :: t) [~] fmap (cons h) (insert a t).
 Arguments insert : simpl never.
 
-Lemma insertE (A : Type) (a : A) s :
+Lemma insertE (A : UU0) (a : A) s :
   insert a s = if s isn't h :: t then Ret [:: a] else
   Ret (a :: h :: t) [~] fmap (cons h) (insert a t).
 Proof. by case: s. Qed.
 
-Fixpoint perm {A : Type} (s : seq A) : M (seq A) :=
+Fixpoint perm {A : UU0} (s : seq A) : M (seq A) :=
   if s isn't h :: t then Ret [::] else perm t >>= insert h.
 
 (* see also netys2017 *)
-Lemma insert_map (A B : Type) (f : A -> B) (a : A) :
+Lemma insert_map (A B : UU0) (f : A -> B) (a : A) :
   insert (f a) \o map f = map f (o) insert a :> (_ -> M _).
 Proof.
 rewrite boolp.funeqE; elim => [|y xs IH].
@@ -325,7 +325,7 @@ by rewrite fmap_oE -(fcompE (map f)) -IH [RHS]/= insertE.
 Qed.
 
 (* lemma 3.3 in mu2019tr2 *)
-Lemma perm_o_map (A B : Type) (f : A -> B) :
+Lemma perm_o_map (A B : UU0) (f : A -> B) :
   perm \o map f = map f (o) perm :> (seq A -> M (seq B)).
 Proof.
 rewrite boolp.funeqE; elim => [/=|x xs IH].
@@ -343,7 +343,7 @@ Hypothesis altmm : forall A, idempotent (@Alt _ A : M A -> M A -> M A).
 
 Local Open Scope mprog.
 
-Variables (A : Type) (p : pred A).
+Variables (A : UU0) (p : pred A).
 
 Lemma filter_insertN a : ~~ p a ->
   forall s, (filter p (o) insert a) s = Ret (filter p s) :> M _.
@@ -403,7 +403,7 @@ End perm_filter.
 
 (* mu2019tr2, Sect. 3, see also netsys2017 *)
 Section altci_insert.
-Variables (M : altCIMonad) (A : Type) (a : A).
+Variables (M : altCIMonad) (A : UU0) (a : A).
 Local Open Scope mprog.
 
 Lemma insert_rcons a' s :
@@ -441,7 +441,7 @@ by rewrite bindfailf.
 Abort.
 
 Section nondet_insert.
-Variables (M : nondetMonad) (A : Type).
+Variables (M : nondetMonad) (A : UU0).
 Implicit Types s : seq A.
 
 Lemma insert_Ret a s : exists m, insert a s = Ret (a :: s) [~] m :> M _.
