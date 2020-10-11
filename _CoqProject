@@ -25,5 +25,7 @@ example_quicksort.v
 example_monty.v
 smallstep.v
 example_monad_transformer.v
+quasi_convex_space.v
+
 
 -R . monae
