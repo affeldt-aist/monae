@@ -1296,8 +1296,6 @@ Definition funQuasiConvMixin := QuasiConvexSpace.Mixin avg1 avgC avgA.
 Canonical funQuasiConvType := QuasiConvexSpace.Pack (QuasiConvexSpace.Class funQuasiConvMixin).
 End fun_convex_space.
 
-From mathcomp Require Import topology.
-
 (* TODO: move to topology? *)
 Section depfun.
 Variable (I : Type) (T : I -> choiceType).
