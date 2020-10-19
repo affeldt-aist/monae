@@ -587,16 +587,15 @@ Qed.
 
 End properties_of_Symbols.
 
+Definition swap {S : eqType} {I : eqType} {M : arrayMonad S I} (i j : I) : M unit :=
+  (do x <- aGet i ;
+   do y <- aGet j ;
+   aPut i y >>
+   aPut j x)%Do.
+
 Section monadarray_example.
 Local Open Scope do_notation.
-
-Variables (M : arrayMonad nat bool_eqType).
-
-Definition swap : M unit :=
-  do x <- aGet false ;
-  do y <- aGet true ;
-  aPut false y >>
-  aPut true x.
+Variable M : arrayMonad nat bool_eqType.
 
 Definition does_swap (m : M unit) :=
   (do x <- aGet false ;
@@ -607,7 +606,7 @@ Definition does_swap (m : M unit) :=
    Ret ((x == y') && (y == x'))).
 
 Lemma swapP (m : M unit) :
-  does_swap swap = swap >> Ret true.
+  does_swap (swap false true) = swap false true >> Ret true.
 Proof.
 rewrite /swap /does_swap.
 transitivity (
