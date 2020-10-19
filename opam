@@ -22,14 +22,13 @@ install: [
 ]
 depends: [
   "coq" { >= "8.11" & < "8.13~" }
-  "coq-infotheo" { >= "0.1.2" & < "0.2~" }
+  "coq-infotheo" { >= "0.1.2" & <= "0.2" }
   "coq-paramcoq" { >= "1.1.2" & < "1.2~" }
 ]
-synopsis: "Monae"
+synopsis: "Monads and equational reasoning in Coq"
 description: """
-This repository contains a formalization of monads including several
-models, examples of monadic equational reasoning, and an application
-to program semantics.
+This Coq library contains a hierarchy of monads with their laws used
+in several examples of monadic equational reasoning.
 """
 tags: [
   "category:Computer Science/Semantics"
