@@ -282,10 +282,10 @@ Qed.
 
 Lemma coinarb_spec p : coinarb p = arb.
 Proof.
-rewrite [in LHS]/coinarb [in LHS]/bcoin.
+rewrite /coinarb /bcoin.
 rewrite prob_bindDl.
-rewrite 2!bindretf.
-rewrite /arb !alt_bindDl !bindretf !eqxx.
+rewrite !bindretf.
+rewrite /arb !alt_bindDl !bindretf eqxx.
 by rewrite eq_sym altC choicemm.
 Qed.
 

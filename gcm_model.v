@@ -197,13 +197,13 @@ Import category.
 Local Notation CC := choiceType_category.
 Local Notation CV := convType_category.
 
+(* NB: FSDistfmap_affine already defined in infotheo/necset.v *)
+Let FSDistfmap_affine (A B : choiceType) (f : {hom A, B}) :=
+  fun x y t => ConvFSDist.bind_left_distr t x y (fun a => FSDist1.d (f a)).
 (* morphism part of FSDist *)
 Definition free_convType_mor (A B : choiceType) (f : {hom A, B}) :
-  {hom FSDist_convType A, FSDist_convType B}.
-refine (@Hom.Pack CV _ _ _ (FSDistfmap f) _).
-(* TODO: try to use a variant of FSDistfmap_affine? *)
-exact: (fun x y t => ConvFSDist.bind_left_distr t x y (fun a : A => FSDist1.d (f a))).
-Defined.
+  {hom FSDist_convType A, FSDist_convType B} :=
+  @Hom.Pack CV _ _ _ (FSDistfmap f) (FSDistfmap_affine f).
 
 Lemma mem_finsupp_free_convType_mor (A B : choiceType) (f : A -> B) (d : {dist A}) (x : finsupp d) :
   f (fsval x) \in finsupp ((free_convType_mor (hom_choiceType f)) d).
