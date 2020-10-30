@@ -174,7 +174,7 @@ Lemma arbitrary2 (T : UU0) (def : T) h t :
   arbitrary def [:: h; t] = Ret h [~] Ret t :> M _.
 Proof. by rewrite /arbitrary /= altC. Qed.
 
-Lemma arbitrary_cons (T :UU0) (def : T) h t : 0 < size t ->
+Lemma arbitrary_cons (T : UU0) (def : T) h t : 0 < size t ->
   arbitrary def (h :: t) = Ret h [~] arbitrary def t :> M _.
 Proof.
 move: def h; elim: t => // a [//|b [|c t]] ih def h _.

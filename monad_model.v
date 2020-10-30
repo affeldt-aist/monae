@@ -15,7 +15,7 @@ Require Import monad_transformer.
 (* identity                                                                   *)
 (* ListMonad.t                                                                *)
 (* SetMonad.t (used classical_sets)                                           *)
-(* Except.t (exception or error monad)                                        *)
+(* Except.t (exception monad)                                                 *)
 (*   option_monad                                                             *)
 (* Output.t                                                                   *)
 (* Environment.t                                                              *)
@@ -38,14 +38,17 @@ Require Import monad_transformer.
 (* ModelNondet                                                                *)
 (* ModelStateTrace                                                            *)
 (* ModelCont                                                                  *)
-(* ModelStateTraceRun                                                         *)
+(* ModelStateTraceReify                                                       *)
 (*                                                                            *)
 (* ModelBacktrackableState (from scratch using fsets, i.e., redefinition of   *)
 (* monad state monad fail monad alt monad nondet monad nondetstate monad)     *)
 (*                                                                            *)
 (* Equality between monads from the hierarchy and their counterparts built    *)
 (* using monad transformers and the identity monad:                           *)
-(* - state_monad_stateT, error_monad_errorT, cont_monad_contT                 *)
+(* - state_monad_stateT, except_monad_exceptT, cont_monad_contT               *)
+(*                                                                            *)
+(* ModelMonadStateRun                                                         *)
+(* ModelMonadExceptStateRun                                                   *)
 (*                                                                            *)
 (* references:                                                                *)
 (* - Wadler, P. Monads and composable continuations. LISP and Symbolic        *)
@@ -61,10 +64,6 @@ Local Open Scope monae_scope.
 Section classical_sets_extra.
 Local Open Scope classical_set_scope.
 
-Lemma bigset1U A B a (f : A -> set B) : bigsetU [set a] f = f a.
-Proof.
-rewrite boolp.funeqE => b; rewrite boolp.propeqE; split => [[a' <-] //| ?]; by exists a.
-Qed.
 Lemma bigsetU1 A (s : set A) : bigsetU s (@set1 A) = s.
 Proof.
 rewrite boolp.funeqE => b; rewrite boolp.propeqE; split.
@@ -167,7 +166,7 @@ Qed.
 Definition ret : FId ~> functor := Natural.Pack (Natural.Mixin naturality_ret).
 Lemma left_neutral :
   @BindLaws.left_neutral functor (fun A B => @bigsetU B A) ret.
-Proof.  move=> ? ? ? ?; exact: bigset1U. Qed.
+Proof.  move=> ? ? ? ?; exact: classical_sets_ext.bigcup_set1. Qed.
 Lemma right_neutral :
   @BindLaws.right_neutral functor (fun A B => @bigsetU B A) ret.
 Proof. move=> ? ?; exact: bigsetU1. Qed.
@@ -1034,13 +1033,13 @@ Next Obligation. by case: ifPn => //; rewrite ltnNge leq_addr. Qed.
 End modelstateloop.
 End ModelStateLoop.
 
-Module ModelRun.
+Module ModelReify.
 
-Definition mk {S T : UU0} : runMonad (S * seq T).
-set m := @ModelMonad.State.t (S * seq T).
-refine (@MonadRun.Pack _ _ (@MonadRun.Class _ _ (Monad.class m)
-  (@MonadRun.Mixin _ m
-  (fun A m (s : S * seq T) => m s) (* run *) _ _))).
+Definition mk {S T : UU0} : reifyMonad (S * seq T)%type.
+set m := @ModelMonad.State.t (S * seq T)%type.
+refine (@MonadReify.Pack _ _ (@MonadReify.Class _ _ (Monad.class m)
+  (@MonadReify.Mixin _ m
+  (fun A m (s : S * seq T) => Some (m s)) (* reify *) _ _))).
 by [].
 move=> A B m0 f s.
 rewrite !bindE /=.
@@ -1052,25 +1051,25 @@ rewrite /ModelMonad.State.ret /=.
 by destruct (m0 s).
 Defined.
 
-End ModelRun.
+End ModelReify.
 
-Module ModelStateTraceRun.
+Module ModelStateTraceReify.
 
 Definition mk {S T} :
-  stateTraceRunMonad S T.
+  stateTraceReifyMonad S T.
 refine (let stm := @ModelStateTrace.mk S T in
-        let run := @ModelRun.mk S T in
-@MonadStateTraceRun.Pack S T (fun A => S * seq T -> A * (S * seq T))
-  (@MonadStateTraceRun.Class S T (fun A => S * seq T -> A * (S * seq T))
+        let reify := @ModelReify.mk S T in
+@MonadStateTraceReify.Pack S T (fun A => S * seq T -> A * (S * seq T))
+  (@MonadStateTraceReify.Class S T (fun A => S * seq T -> A * (S * seq T))
     (MonadStateTrace.class stm)
-    (MonadRun.mixin (MonadRun.class run))
-    (@MonadStateTraceRun.Mixin _ _ run _ _ _ _ _ _))).
+    (MonadReify.mixin (MonadReify.class reify))
+    (@MonadStateTraceReify.Mixin _ _ reify _ _ _ _ _ _))).
 by [].
 by [].
 by [].
 Defined.
 
-End ModelStateTraceRun.
+End ModelStateTraceReify.
 
 Module ModelBacktrackableState.
 Local Open Scope fset_scope.
@@ -1448,7 +1447,7 @@ End eq_rect_bind.
 
 Section instantiations_with_the_identity_monad.
 
-Lemma state_monad_stateT S :
+Lemma stateT_id_ModelState S :
   stateT S ModelMonad.identity = ModelMonad.State.t S.
 Proof.
 rewrite /= /stateTmonadM /ModelMonad.State.t.
@@ -1461,10 +1460,10 @@ apply (@monad_of_ret_bind_ext _ _ _ _ _ _ FG) => /=.
 set x := @bindS _ _; exact: (@eq_rect_bind_state S x (esym FG)).
 Qed.
 
-Lemma error_monad_errorT (Z : UU0) :
-  errorT Z ModelMonad.identity = ModelMonad.Except.t Z.
+Lemma exceptT_id_ModelExcept (Z : UU0) :
+  exceptT Z ModelMonad.identity = ModelMonad.Except.t Z.
 Proof.
-rewrite /= /errorTmonadM /ModelMonad.Except.t.
+rewrite /= /exceptTmonadM /ModelMonad.Except.t.
 have FG : MX_functor Z ModelMonad.identity = ModelMonad.Except.functor Z.
   apply: functor_ext => /=; apply fun_ext_dep => A; apply fun_ext_dep => B.
   rewrite boolp.funeqE => f; rewrite boolp.funeqE => m.
@@ -1474,7 +1473,7 @@ apply (@monad_of_ret_bind_ext _ _ _ _ _ _ FG) => /=.
 set x := @bindX _ _; exact: (@eq_rect_bind_error Z x (esym FG)).
 Qed.
 
-Lemma cont_monad_contT r :
+Lemma contT_id_ModelCont r :
   contT r ModelMonad.identity = ModelMonad.Cont.t r.
 Proof.
 rewrite /= /contTmonadM /ModelMonad.Cont.t.
@@ -1515,24 +1514,24 @@ End monad_transformer_calcul.
 
 Section examples_of_algebraic_lifting.
 
-Section state_errorT.
+Section state_exceptT.
 Let M S : monad := ModelState.state S.
 
-Definition aLGet {Z S} : (StateOps.Get.func S).-aoperation (errorT Z (M S)) :=
-  alifting (StateOps.get_aop S) (Lift (errorT Z) (M S)).
+Definition aLGet {Z S} : (StateOps.Get.func S).-aoperation (exceptT Z (M S)) :=
+  alifting (StateOps.get_aop S) (Lift (exceptT Z) (M S)).
 
-Definition aLPut {Z S} : (StateOps.Put.func S).-operation (errorT Z (M S)) :=
-  alifting (StateOps.put_aop S) (Lift (errorT Z) (M S)).
+Definition aLPut {Z S} : (StateOps.Put.func S).-operation (exceptT Z (M S)) :=
+  alifting (StateOps.put_aop S) (Lift (exceptT Z) (M S)).
 
-Goal forall Z (S : UU0) X (k : S -> errorT Z (M S) X), aLGet _ k = StateOps.get_op _ k.
+Goal forall Z (S : UU0) X (k : S -> exceptT Z (M S) X), aLGet _ k = StateOps.get_op _ k.
 by [].
 Abort.
 
-Goal forall Z S, aLGet _ Ret = Lift (errorT Z) (M S) _ (@ModelState.get S).
+Goal forall Z S, aLGet _ Ret = Lift (exceptT Z) (M S) _ (@ModelState.get S).
 by [].
 Abort.
 
-End state_errorT.
+End state_exceptT.
 
 Section continuation_stateT.
 Variable (r S : UU0).
@@ -1562,3 +1561,67 @@ Qed.
 End continuation_stateT.
 
 End examples_of_algebraic_lifting.
+
+Module ModelMonadStateRun.
+Section modelmonadstaterun.
+Variable S : UU0.
+Let N : monad := ModelExcept.t.
+Definition M : stateMonad S := stateMonad_of_stateT(*stateT*) S N.
+
+Local Obligation Tactic := idtac.
+Program Definition t : stateRunMonad S N :=
+  @MonadStateRun.Pack S N (MS S N) (@MonadStateRun.Class S N _
+    (MonadState.Class (@MonadState.Mixin S _ (@Get _ M) (@Put _ M) _ _ _ _))
+    (@MonadStateRun.Mixin S N _
+      (fun A : UU0 => id) (*runStateT*)
+      _ _ _ _)).
+Next Obligation. move=> s s'; exact: (putput (stateMonad_of_stateT S N)). Qed.
+Next Obligation. move=> s; exact: (putget (stateMonad_of_stateT S N)). Qed.
+Next Obligation. exact: (getputskip (stateMonad_of_stateT S N)). Qed.
+Next Obligation. exact: (@getget _ (stateMonad_of_stateT S N)). Qed.
+Next Obligation. by []. Qed.
+Next Obligation.
+move=> A M m f s /=; rewrite /t_obligation_5.
+rewrite /Bind /bindS /= /ModelMonad.Except.bind /= /Actm /=.
+rewrite /Monad_of_ret_bind.Map /= /ModelMonad.Except.bind /=.
+by case: (m s) => // -[].
+Qed.
+Next Obligation. by []. Qed.
+Next Obligation. by []. Qed.
+
+End modelmonadstaterun.
+End ModelMonadStateRun.
+
+Module ModelMonadExceptStateRun.
+Section modelmonadexceptstaterun.
+Variable S : UU0.
+Let N : exceptMonad := ModelExcept.t.
+Definition M : stateRunMonad S N := ModelMonadStateRun.t S.
+
+Local Obligation Tactic := idtac.
+Program Definition t : exceptStateRunMonad S N :=
+  @MonadExceptStateRun.Pack S N (MS S N)
+    (@MonadExceptStateRun.Class S N (MS S N)
+       (@MonadExcept.Class (MS S N) _ _)
+       (MonadState.mixin (MonadState.class (ModelMonadStateRun.t S)))
+       (MonadStateRun.mixin (MonadStateRun.class M))
+       (MonadExceptStateRun.Mixin _ _)).
+Next Obligation.
+pose X : forall A : UU0, M A := fun A => liftS (@Fail N _).
+by refine (@MonadFail.Class _ _ (@MonadFail.Mixin _ X _)).
+Defined.
+Next Obligation.
+set f := fun A : UU0 => mapStateT2 (@Catch N (A * S)%type).
+refine (@MonadExcept.Mixin (MonadFail.Pack t_obligation_1) f _ _ _ _).
+by move=> A x; rewrite /f /mapStateT2 boolp.funeqE => s; rewrite catchmfail.
+by move=> A x; rewrite /f /mapStateT2 boolp.funeqE => s; rewrite catchfailm.
+by move=> A; rewrite /f /mapStateT2 => a b c; rewrite boolp.funeqE => s; rewrite catchA.
+by move=> A x y; rewrite /f /mapStateT2 boolp.funeqE => s; rewrite catchret.
+Defined.
+Next Obligation. by []. Defined.
+Next Obligation. by []. Defined.
+Next Obligation. by []. Defined.
+Next Obligation. by []. Defined.
+
+End modelmonadexceptstaterun.
+End ModelMonadExceptStateRun.

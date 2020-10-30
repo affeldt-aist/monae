@@ -25,7 +25,7 @@ Unset Printing Implicit Defensive.
 
 Local Open Scope monae_scope.
 
-Lemma putgetput (S : Type) {M : stateMonad S} x {B} (k : _ -> M B) :
+Lemma putgetput (S : UU0) {M : stateMonad S} x {B} (k : _ -> M B) :
   Put x >> Get >>= (fun x' => k x') = Put x >> k x :> M _.
 Proof. by rewrite putget bindA bindretf. Qed.
 
@@ -35,7 +35,7 @@ Definition overwrite {A S} {M : stateMonad S} s a : M A :=
 Definition protect {A S} {M : stateMonad S} (n : M A) :=
   Get >>= (fun ini => n >>= overwrite ini).
 
-Lemma protect_put_ret {A S} {M : stateMonad S} (s : S) (a : A) :
+Lemma protect_put_ret {A S : UU0} {M : stateMonad S} (s : S) (a : A) :
   protect (Put s >> Ret a) = Ret a :> M _.
 Proof.
 rewrite /protect.
@@ -82,7 +82,7 @@ by rewrite add0n addn0 /= addnAC addnA.
 Qed.
 End stateloop_examples.
 
-Lemma getput_prepend (S : Type) (M : nondetStateMonad S) A (m : M A) :
+Lemma getput_prepend (S : UU0) (M : nondetStateMonad S) A (m : M A) :
   m = Get >>= (fun x => Put x >> m).
 Proof. by rewrite -{2}(bindskipf m) -bindA getputskip 2!bindskipf. Qed.
 
@@ -245,7 +245,7 @@ elim: x m n f => [{}A a m n f <-| B0 {}A n0 H0 n1 H1 m n2 f <- |
 Qed.
 
 Section loop.
-Variables (A S : Type) (M : stateMonad S) (op : S -> A -> S).
+Variables (A S : UU0) (M : stateMonad S) (op : S -> A -> S).
 Local Open Scope mprog.
 
 Definition opmul x m : M _ :=
@@ -299,8 +299,8 @@ Arguments scanlM {A S M}.
 
 Section section43.
 
-Variables (S : Type) (M : nondetStateMonad S).
-Variables (A : Type) (op : S -> A -> S) (ok : pred S).
+Variables (S : UU0) (M : nondetStateMonad S).
+Variables (A : UU0) (op : S -> A -> S) (ok : pred S).
 
 Lemma assert_all_scanl s (xs : seq A) :
   assert (all ok \o scanl op s) xs =

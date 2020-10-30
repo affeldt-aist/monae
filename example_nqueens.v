@@ -151,12 +151,12 @@ Arguments start2 {M}.
 
 Section safe_reification.
 
-Variable M : stateRunMonad (seq Z)`2.
+Variable M : stateReifyMonad (seq Z)`2.
 
-Lemma run_safe2 crs updowns : Run (safe2 crs : M _) updowns = safe1 updowns crs.
+Lemma reify_safe2 crs updowns : Reify (safe2 crs : M _) updowns = Some (safe1 updowns crs).
 Proof.
-rewrite safe2E runbind runget; case: safe1 => a b.
-by rewrite runbind runput runret.
+rewrite safe2E reifybind reifyget; case: safe1 => a b.
+by rewrite reifybind reifyput reifyret.
 Qed.
 
 End safe_reification.
