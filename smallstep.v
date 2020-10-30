@@ -1,3 +1,5 @@
+(* monae: Monadic equational reasoning in Coq                                 *)
+(* Copyright (C) 2020 monae authors, license: LGPL-2.1-or-later               *)
 Require Import Eqdep JMeq List ssreflect.
 Import ListNotations.
 From mathcomp Require Import ssreflect ssrfun ssrbool eqtype ssrnat seq.
