@@ -1,3 +1,5 @@
+(* monae: Monadic equational reasoning in Coq                                 *)
+(* Copyright (C) 2020 monae authors, license: LGPL-2.1-or-later               *)
 From mathcomp Require Import all_ssreflect.
 Require Import imonae_lib ihierarchy imonad_lib ifail_lib istate_lib.
 

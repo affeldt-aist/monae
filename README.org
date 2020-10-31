@@ -45,10 +45,7 @@ This library has been applied to other formalizations:
 - [[proba_monad_model.v][proba_monad_model.v]]: concrete model of the probability monad
 - [[gcm_model.v][gcm_model.v]]: model of the geometrically convex monad
 - [[altprob_model.v][altprob_model.v]]: model of a monad that mixes non-deterministic choice and probabilistic choice
-- [[example_spark.v][example_spark.v]]: example of Spark aggregation
-- [[example_nqueens.v][example_nqueens.v]]: example of the n-queens puzzle
-- [[example_relabeling.v][example_relabeling.v]]: example of tree relabeling
-- [[example_monty.v][example_monty.v]]: examples of Monty Hall problem
+- example_*.v: various examples (Spark aggregation, the n-queens puzzle, tree relabeling,  Monty Hall problem, monad transformers, etc.)
 - [[smallstep.v][smallstep.v]]: semantics for an imperative language, with equivalence operational semantics/denotation and sample imperative programs
 
 ** Installation
@@ -62,14 +59,14 @@ This library has been applied to other formalizations:
 
 *** Last stable version:
 
-Version 0.1.2:
+Version 0.2:
 3. ~opam install coq-monae~
 
 **** Requirements
 
 - [[https://coq.inria.fr][Coq]] 8.11 or 8.12
 - [[https://github.com/math-comp/math-comp][Mathematical Components library]] 1.11.0
-- [[https://github.com/affeldt-aist/infotheo][infotheo]] 0.1.2 or 0.2
+- [[https://github.com/affeldt-aist/infotheo][infotheo]] 0.2
   + which requires [[https://github.com/math-comp/analysis][MathComp-Analysis]] 0.3.2
     * which requires
       - [[https://github.com/math-comp/finmap][finmap]] 1.5.0
@@ -110,8 +107,12 @@ Once infotheo is installed:
 
 ** License
 
-GNU GPLv3
+LGPL-2.1-or-later
 
-** Reference
-   [[https://staff.aist.go.jp/reynald.affeldt/bib/bib_en.html#affeldt2019mpc][MPC 2019 paper]]
+(Before version 0.2, monae was distributed under the terms of the
+~GPL-3.0-or-later~ license.)
+
+** References
+- [[https://staff.aist.go.jp/reynald.affeldt/bib/bib_en.html#affeldt2019mpc][MPC 2019 paper]]
+- [[https://arxiv.org/abs/2003.09993][A Trustful Monad for Axiomatic Reasoning with Probability and Nondeterminism]] (arXiv 2020)
 

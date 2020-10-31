@@ -1,3 +1,5 @@
+(* monae: Monadic equational reasoning in Coq                                 *)
+(* Copyright (C) 2020 monae authors, license: LGPL-2.1-or-later               *)
 From mathcomp Require Import all_ssreflect.
 From mathcomp Require boolp.
 Require Import monae_lib hierarchy monad_lib.

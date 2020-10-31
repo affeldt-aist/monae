@@ -1,3 +1,5 @@
+(* monae: Monadic equational reasoning in Coq                                 *)
+(* Copyright (C) 2020 monae authors, license: LGPL-2.1-or-later               *)
 Declare ML Module "paramcoq".
 
 From mathcomp Require Import all_ssreflect.
@@ -21,23 +23,26 @@ Unset Universe Checking.
 
 Set Bullet Behavior "Strict Subproofs".
 
+Lemma Actm_exponenial_FE (M : monad) (X Y : UU0) (f : X -> Y) :
+  forall A eX, ((exponential_F A \O M) # f) eX = M # f \o eX.
+Proof. by []. Qed.
+
 (******************************************************************************)
 
 Module Identity.
-
-Section Naturality.
-
+Section identity_naturality.
 Variable A : UU0.
 
 Realizer A as A_R := (@eq A).
 
-Definition M (X : UU0) : UU0 :=
-ltac:(
-  let t := constr:(ModelMonad.identity X) in
+Let M := ModelMonad.identity.
+
+Definition Mi (X : UU0) : UU0 := ltac:(
+  let t := constr:(M X) in
   let t := eval cbn in t in
   exact t).
 
-Definition T : UU0 := MK M A.
+Definition T : UU0 := MK Mi A.
 
 Parametricity T arity 2.
 
@@ -45,44 +50,34 @@ Variable m : T.
 
 Axiom param : T_R m m.
 
-Lemma naturality :
-  naturality (exponential_F A \O ModelMonad.identity) ModelMonad.identity m.
+Lemma naturality : naturality (exponential_F A \O M) M m.
 Proof.
-intros X Y f.
-rewrite boolp.funeqE => g.
-unfold comp at 1 2.
-apply
-  (param X Y (fun x y => (ModelMonad.identity # f) x = y) g
-    (ModelMonad.identity # f \o g)).
-intros a1 a2 Ha.
-rewrite Ha.
-reflexivity.
+move=> X Y f; rewrite boolp.funeqE => eX.
+by apply (param X Y (fun x y => (M # f) x = y)) => a _ <-.
 Qed.
 
-End Naturality.
-
+End identity_naturality.
 End Identity.
 
-Check uniform_sigma_lifting (M:=ModelMonad.identity) _ _ Identity.naturality.
+Check uniform_sigma_lifting (M := ModelMonad.identity) _ _ Identity.naturality.
 
 (******************************************************************************)
 
 Module Exception.
+Section exception_naturality.
+Variables Z A : UU0.
 
-Section Naturality.
-
-Variables E A : UU0.
-
-Realizer E as E_R := (@eq E).
+Realizer Z as Z_R := (@eq Z).
 Realizer A as A_R := (@eq A).
 
-Definition M (X : UU0) : UU0 :=
-ltac:(
-  let t := constr:(ModelMonad.Except.t E X) in
+Let M := ModelMonad.Except.t Z.
+
+Definition Me (X : UU0) : UU0 := ltac:(
+  let t := constr:(M X) in
   let t := eval cbn in t in
   exact t).
 
-Definition T : UU0 := MK M A.
+Definition T : UU0 := MK Me A.
 
 Parametricity Recursive T arity 2.
 
@@ -90,80 +85,56 @@ Variable m : T.
 
 Axiom param : T_R m m.
 
-Program Lemma naturality :
-naturality
-  (exponential_F A \O ModelMonad.Except.t E) (ModelMonad.Except.t E) m.
+Lemma naturality : naturality (exponential_F A \O M) M m.
 Proof.
-intros X Y f.
-rewrite boolp.funeqE => g.
-unfold comp at 1 2.
-assert (H :
-  forall a a' : A, a = a' ->
-  M_R X Y (fun (x : X) (y : Y) => f x = y) (g a)
-    (((ModelMonad.Except.t E # f) \o g) a')).
-{
-  intros a a' Ha.
-  subst a'.
-  unfold comp.
-  case (g a); cbn; intro; constructor; reflexivity.
-}
-assert (Hparam :=
-  param X Y (fun x y => f x = y) g (ModelMonad.Except.t E # f \o g) H).
-transitivity (m Y ((ModelMonad.Except.t E # f) \o g)); [ | reflexivity].
-destruct Hparam; compute; congruence.
+move=> X Y f; rewrite boolp.funeqE => eX.
+set rhs := RHS.
+have : Me_R X Y (fun x y => f x = y) (m X eX) rhs.
+  apply: param => a _ <-; rewrite Actm_exponenial_FE compE.
+  by case: (eX a) => [e|x]; constructor.
+by rewrite compE; case=> [a _ <-|x _ <-].
 Qed.
 
-End Naturality.
-
+End exception_naturality.
 End Exception.
 
-Check fun E =>
-  uniform_sigma_lifting (M:=ModelMonad.Except.t E) _ _ (Exception.naturality E).
+Check fun Z => uniform_sigma_lifting
+  (M := ModelMonad.Except.t Z) _ _ (Exception.naturality Z).
 
 (******************************************************************************)
 
 Module Option.
-
-Section Naturality.
-
+Section option_naturality.
 Variable A : UU0.
 
-Definition M (X : UU0) : UU0 := ModelMonad.option_monad X.
+Let M := ModelMonad.option_monad.
 
-Definition T : UU0 := MK M A.
+Variable m : MK M A.
 
-Variable m : T.
+Lemma naturality : naturality (exponential_F A \O M) M m.
+Proof. exact: Exception.naturality. Qed.
 
-Lemma naturality :
-naturality
-  (exponential_F A \O ModelMonad.option_monad) ModelMonad.option_monad m.
-Proof.
-apply Exception.naturality.
-Qed.
-
-End Naturality.
-
+End option_naturality.
 End Option.
 
-Check uniform_sigma_lifting (M:=ModelMonad.option_monad) _ _ Option.naturality.
+Check uniform_sigma_lifting (M := ModelMonad.option_monad) _ _ Option.naturality.
 
 (******************************************************************************)
 
 Module List.
-
-Section Naturality.
-
+Section list_naturality.
 Variable A : UU0.
 
 Realizer A as A_R := (@eq A).
 
-Definition M (X : UU0) : UU0 :=
-ltac:(
-  let t := constr:(ModelMonad.ListMonad.t X) in
+Let M := ModelMonad.ListMonad.t.
+
+Definition Ml (X : UU0) : UU0 := ltac:(
+  let t := constr:(M X) in
   let t := eval cbn in t in
   exact t).
 
-Definition T : UU0 := MK M A.
+Definition T : UU0 := MK Ml A.
 
 Parametricity Recursive T arity 2.
 
@@ -171,64 +142,38 @@ Variable m : T.
 
 Axiom param : T_R m m.
 
-Lemma naturality :
-naturality
-  (exponential_F A \O ModelMonad.ListMonad.t)
-  ModelMonad.ListMonad.t m.
+Lemma naturality : naturality (exponential_F A \O M) M m.
 Proof.
-intros X Y f.
-rewrite boolp.funeqE => g.
-unfold comp at 1 2.
-assert (H :
-  forall a a' : A, a = a' ->
-  M_R X Y (fun (x : X) (y : Y) => f x = y) (g a)
-    (((ModelMonad.ListMonad.t # f) \o g) a')).
-{
-  intros a a' Ha.
-  subst a'.
-  unfold comp.
-  case (g a); cbn; [constructor | ].
-  intros x lx.
-  constructor; [reflexivity | ].
-  induction lx as [ | x' lx' IH]; [constructor | ].
-  constructor; [reflexivity | exact IH].
-}
-assert (Hparam :=
-  param X Y (fun x y => f x = y) g ((ModelMonad.ListMonad.t # f) \o g) H).
-transitivity (m Y ((ModelMonad.ListMonad.t # f) \o g)); [ | reflexivity].
-induction Hparam as [ | x y Hf mx my IH Hmap].
-- reflexivity.
-- unfold Actm.
-  unfold Actm in Hmap.
-  cbn in *.
-  rewrite <- Hmap, Hf.
-  reflexivity.
+move=> X Y f /=; rewrite boolp.funeqE => eX.
+set rhs := RHS.
+have : Ml_R X Y (fun x y => f x = y) (m X eX) rhs.
+  apply: param => a _ <-; rewrite Actm_exponenial_FE compE.
+  by elim: (eX a) => [|? ? ?]; constructor.
+by rewrite compE; elim => // x _ <- l _ _ <-.
 Qed.
 
-End Naturality.
-
+End list_naturality.
 End List.
 
-Check uniform_sigma_lifting (M:=ModelMonad.ListMonad.t) _ _ List.naturality.
+Check uniform_sigma_lifting (M := ModelMonad.ListMonad.t) _ _ List.naturality.
 
 (******************************************************************************)
 
 Module State.
-
-Section Naturality.
-
+Section state_naturality.
 Variable S A : UU0.
 
 Realizer S as S_R := (@eq S).
 Realizer A as A_R := (@eq A).
 
-Definition M X : UU0 :=
-ltac:(
-  let t := constr:(ModelMonad.State.t S X) in
+Let M := ModelMonad.State.t S.
+
+Definition Ms X : UU0 := ltac:(
+  let t := constr:(M X) in
   let t := eval cbn in t in
   exact t).
 
-Definition T : UU0 := MK M A.
+Definition T : UU0 := MK Ms A.
 
 Parametricity Recursive T arity 2.
 
@@ -236,44 +181,30 @@ Variable m : T.
 
 Axiom param : T_R m m.
 
-Lemma naturality :
-naturality
-  (exponential_F A \O ModelMonad.State.t S)
-  (ModelMonad.State.t S) m.
+Lemma Actm_ModelMonadStateE' (X Y : UU0) (f : X -> Y) (eX : (exponential_F A \O M) X) a (s : S):
+  (M # f \o eX) a s = let (x, y) := eX a s in (f x, y).
+Proof. by []. Qed.
+
+Lemma Actm_ModelMonadStateE (X Y : UU0) (f : X -> Y) (eX : A -> S -> (X * S)) (s : S)
+  (mX : (A -> Ms X) -> Ms X) :
+  (M # f \o mX) eX s = (let (x, y) := mX eX s in (f x, y)).
+Proof. by []. Qed.
+
+Lemma naturality : naturality (exponential_F A \O M) M m.
 Proof.
-intros X Y f.
-rewrite boolp.funeqE => g.
-unfold comp at 1 2.
-assert (H :
-  forall a a' : A, a = a' ->
-  M_R X Y (fun (x : X) (y : Y) => f x = y) (g a)
-    ((ModelMonad.State.t S # f \o g) a')).
-{
-  move=> a ? <- s ?; rewrite /S_R => <-.
-  unfold comp, Actm.
-  cbn.
-  unfold ModelMonad.State.map, ModelMonad.State.bind, Monad_of_ret_bind.Map.
-  rewrite /uncurry /prod_curry /=.
-  by case (g a s).
-}
-rewrite boolp.funeqE => s0.
-assert (Hparam :=
-  param X Y (fun x y => f x = y) g ((ModelMonad.State.t S # f) \o g)
-    H s0 s0 (erefl s0)).
-simple inversion Hparam as [x y Hxy s s' Hs Hx Hy].
-compute.
-compute in Hy.
-rewrite -Hx -Hy.
-unfold S_R in Hs.
-subst y s'.
-reflexivity.
+move=> X Y f; rewrite boolp.funeqE => eX.
+set rhs := RHS.
+have H : Ms_R X Y (fun x y => f x = y) (m X eX) rhs.
+  apply param => // a _ <- s1 _ <-.
+  rewrite Actm_exponenial_FE Actm_ModelMonadStateE'.
+  by case: (eX a) => x s2; exact: prod_R_pair_R.
+rewrite boolp.funeqE => s.
+have {}H : prod_R X Y (fun x y => f x = y) S S S_R (m X eX s) (rhs s) by exact: H.
+inversion H as [x y fxy s1 s2 s12 xs1 ys2].
+by rewrite Actm_ModelMonadStateE -xs1 fxy s12.
 Qed.
-
-End Naturality.
-
+End state_naturality.
 End State.
 
-Check fun S =>
-  uniform_sigma_lifting (M:=ModelMonad.State.t S) _ _ (State.naturality S).
-
-(******************************************************************************)
+Check fun S => uniform_sigma_lifting
+  (M := ModelMonad.State.t S) _ _ (State.naturality S).
