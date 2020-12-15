@@ -166,7 +166,7 @@ Qed.
 Definition ret : FId ~> functor := Natural.Pack (Natural.Mixin naturality_ret).
 Lemma left_neutral :
   @BindLaws.left_neutral functor (fun A B => @bigsetU B A) ret.
-Proof.  move=> ? ? ? ?; exact: classical_sets_ext.bigcup_set1. Qed.
+Proof.  move=> ? ? ? ?; exact: bigcup_set1. Qed.
 Lemma right_neutral :
   @BindLaws.right_neutral functor (fun A B => @bigsetU B A) ret.
 Proof. move=> ? ?; exact: bigsetU1. Qed.
@@ -788,7 +788,7 @@ Lemma setUDl : @BindLaws.left_distributive ModelMonad.SetMonad.functor (fun I A 
 Proof.
 move=> A B /= p q r; rewrite boolp.funeqE => b; rewrite boolp.propeqE; split.
 move=> -[a [?|?] ?]; by [left; exists a | right; exists a].
-rewrite /setU => -[[a ? ?]|[a ? ?]]; exists a; tauto.
+by rewrite /setU => -[[a ? ?]|[a ? ?]]; exists a => //; [left|right].
 Qed.
 
 Section set.
@@ -838,8 +838,9 @@ Local Obligation Tactic := idtac.
 Program Definition set_class := @MonadNondet.Class _
   ModelFail.set_class (MonadAlt.mixin ModelAlt.set_class) _.
 Next Obligation.
-apply: MonadNondet.Mixin => //= A p; rewrite boolp.funeqE => a;
-  rewrite boolp.propeqE; rewrite /Fail /= /set0 /setU; split; tauto.
+by apply: MonadNondet.Mixin => //= A p; rewrite boolp.funeqE => a;
+  rewrite boolp.propeqE; rewrite /Fail /= /set0 /setU; split=> [[] // |pa];
+  [right|left].
 Qed.
 Definition set := MonadNondet.Pack list_class.
 End set.

@@ -311,7 +311,7 @@ rewrite /necset_convType.pre_pre_conv /=.
 Local Open Scope convex_scope.
 set mk1d := fun b : choice_of_Type bool => FSDist1.d b.
 move/(f_equal (fun x : FSDist.t _ -> _ => x (mk1d true <|p|> mk1d false))).
-set tmp := ex _.
+rewrite /mkset; set tmp := ex _.
 move=> Heq.
 have: tmp -> tmp by [].
 rewrite {2}Heq /tmp {Heq tmp}.

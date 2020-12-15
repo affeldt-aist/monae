@@ -1,0 +1,7 @@
+; This file was generated from `meta.yml`, please do not edit manually.
+; Follow the instructions on https://github.com/coq-community/templates to regenerate.
+
+(coq.theory
+ (name monae)
+ (package coq-monae)
+ (synopsis "Monads and equational reasoning in Coq"))
