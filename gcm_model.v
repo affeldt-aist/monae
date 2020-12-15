@@ -504,7 +504,7 @@ move=> F.
 rewrite /eps1''.
 transitivity (|_| (lub_op @` ((fun X : necset_semiCompSemiLattType L => (X : neset _)) @` F))%:ne); last first.
 - congr (|_| _).
-  apply/neset_ext/eqEsubset => x [] x0 Fx0 <-.
+  apply/neset_ext; rewrite eqEsubset; split => x [] x0 Fx0 <-.
   + by case: Fx0 => x1 Fx1 <-; exists x1.
   + by exists x0 => // ; exists x0.
 transitivity (|_| (hull (\bigcup_(x in F) x))%:ne);
@@ -518,8 +518,7 @@ move=> X Y p.
 rewrite /affine_function_at /eps1''.
 transitivity (|_| (X :<| p |>: Y)%:ne); last by rewrite lub_op_conv_setD.
 congr (|_| _%:ne); apply/neset_ext => /=.
-rewrite conv_setE necset_convType.convE.
-apply eqEsubset=> u.
+rewrite conv_setE necset_convType.convE eqEsubset; split=> u.
 - case=> x [] y [] xX [] yY ->.
   exists x; first by rewrite -in_setE.
   by rewrite conv_pt_setE; exists y; first by rewrite -in_setE.
@@ -555,7 +554,7 @@ Definition eta1'' (C : convType) (x : C) : necset_convType C := necset1 x.
 Lemma eta1''_affine (C : convType) : affine_function (@eta1'' C).
 Proof.
 move=> a b p; rewrite /affine_function_at /eta1'' /=.
-apply/necset_ext/eqEsubset=> x /=.
+apply/necset_ext; rewrite eqEsubset; split=> x /=.
 - move->; rewrite necset_convType.convE.
   by exists a, b; rewrite !asboolE /necset1 /=.
 - rewrite necset_convType.convE => -[] a0 [] b0.
@@ -585,12 +584,11 @@ Proof.
 move=> c; apply funext=> x /=; apply/necset_ext=> /=.
 rewrite eps1E eta1E' /= free_semiCompSemiLattConvType_morE' /= /eta1'' /=.
 rewrite -[in RHS](hull_cset x); congr hull.
-apply/eqEsubset=> a /=.
+rewrite eqEsubset; split=> a /=.
 - case=> y [] b xb <-.
   by rewrite necset1E => ->.
 - move=> xa.
-  exists (necset1 a); last by rewrite necset1E.
-  by exists a.
+  by exists (necset1 a); [exists a | rewrite necset1E].
 Qed.
 Lemma triR1 : TriangularLaws.right eta1 eps1.
 Proof.
@@ -720,8 +718,7 @@ rewrite -(bigcup_image
             (fun x => if x \in necset_join.F1join0 X then NECSet.car x else set0) idfun).
 simpl.
 congr hull.
-rewrite /bigsetU.
-apply/eqEsubset => y [i Xi iy].
+rewrite /bigsetU eqEsubset; split => y [i Xi iy].
 - exists i; last exact: iy.
   exists i => //.
   by move/asboolP : Xi; rewrite asboolE -in_setE => ->.
