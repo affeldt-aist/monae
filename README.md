@@ -86,7 +86,7 @@ This library has been applied to other formalizations:
 
 ![Available monads](./hier.png "Available Monads")
 
-## FIles.
+## Files
 
  - [monae_lib.v](./monae_lib.v): simple additions to base libraries
 - [hierarchy.v](./hierarchy.v): hierarchy of monadic effects
