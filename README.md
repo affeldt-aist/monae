@@ -27,14 +27,14 @@ in several examples of monadic equational reasoning.
 - License: [LGPL-2.1-or-later](LICENSE)
 - Compatible Coq versions: Coq 8.11 to 8.12
 - Additional dependencies:
-  - [MathComp ssreflect 1.11](https://math-comp.github.io)
-  - [MathComp fingroup 1.11](https://math-comp.github.io)
-  - [MathComp algebra 1.11](https://math-comp.github.io)
-  - [MathComp solvable 1.11](https://math-comp.github.io)
-  - [MathComp field 1.11](https://math-comp.github.io)
-  - [MathComp analysis 0.3.4](https://github.com/math-comp/analysis)
-  - [Infotheo 0.2.1](https://github.com/affeldt-aist/infotheo)
-  - [Paramcoq 0.1.2](https://github.com/coq-community/paramcoq)
+  - [MathComp ssreflect](https://math-comp.github.io)
+  - [MathComp fingroup](https://math-comp.github.io)
+  - [MathComp algebra](https://math-comp.github.io)
+  - [MathComp solvable](https://math-comp.github.io)
+  - [MathComp field](https://math-comp.github.io)
+  - [MathComp analysis](https://github.com/math-comp/analysis)
+  - [Infotheo](https://github.com/affeldt-aist/infotheo)
+  - [Paramcoq](https://github.com/coq-community/paramcoq)
 - Coq namespace: `monae`
 - Related publication(s):
   - [A hierarchy of monadic effects for program verification using equational reasoning](https://staff.aist.go.jp/reynald.affeldt/documents/monae.pdf) doi:[10.1007/978-3-030-33636-3_9](https://doi.org/10.1007/978-3-030-33636-3_9)
