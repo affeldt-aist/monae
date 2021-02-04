@@ -86,7 +86,7 @@ Record mixin_of (obj : Type) : Type := Mixin {
   inhom : forall A B, (el A -> el B) -> Prop ; (* predicate for morphisms *)
   _ : forall A, @inhom A A idfun ; (* idfun is in inhom *)
   _ : forall A B C (f : el A -> el B) (g : el B -> el C),
-      inhom f -> inhom g -> inhom (g \o f) (* inhom is closed by composition *) }.
+      inhom f -> inhom g -> inhom (g \o f) (* inhom is closed under composition *) }.
 Structure type : Type := Pack { carrier : Type ; class : mixin_of carrier }.
 Module Exports.
 Notation category := type.
