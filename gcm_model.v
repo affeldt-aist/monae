@@ -351,7 +351,7 @@ Import category.
 Definition semiCompSemiLattConvType_category_mixin :
     Category.mixin_of semiCompSemiLattConvType :=
   @Category.Mixin semiCompSemiLattConvType (fun U : semiCompSemiLattConvType => U)
-  LubAffine.class_of lub_affine_id_proof lub_affine_comp_proof.
+  BiglubAffine.class_of biglub_affine_id_proof biglub_affine_comp_proof.
 Canonical semiCompSemiLattConvType_category :=
   Category.Pack semiCompSemiLattConvType_category_mixin.
 End semiCompSemiLattConvType_as_a_category.
@@ -422,8 +422,8 @@ rewrite funeqE => b; rewrite propeqE; split.
 - by case => b0 [a0 Xa0 <-{b0}] [a a0a <-{b}]; exists a => //; exists a0.
 Qed.
 
-Lemma free_semiCompSemiLattConvType_mor'_lub_morph :
-  lub_morph free_semiCompSemiLattConvType_mor'.
+Lemma free_semiCompSemiLattConvType_mor'_biglub_morph :
+  biglub_morph free_semiCompSemiLattConvType_mor'.
 Proof.
 move=> /= X; apply necset_ext => /=; rewrite funeqE => b.
 rewrite image_preserves_convex_hull'; last by case: f.
@@ -434,8 +434,8 @@ Qed.
 Definition free_semiCompSemiLattConvType_mor :
   {hom necset_semiCompSemiLattConvType A, necset_semiCompSemiLattConvType B} :=
   locked (@Hom.Pack CS _ _ _ free_semiCompSemiLattConvType_mor'
-    (LubAffine.Class free_semiCompSemiLattConvType_mor'_affine
-                     free_semiCompSemiLattConvType_mor'_lub_morph)).
+    (BiglubAffine.Class free_semiCompSemiLattConvType_mor'_affine
+                     free_semiCompSemiLattConvType_mor'_biglub_morph)).
 
 Lemma free_semiCompSemiLattConvType_morE (X : necset_convType A) :
   NECSet.mixinType (free_semiCompSemiLattConvType_mor X) = image_neset f X.
@@ -473,7 +473,7 @@ Proof. by rewrite /Actm /= free_semiCompSemiLattConvType_mor_comp. Qed.
 
 Let m2 : CS -> CV := id.
 Let h2 := fun (a b : CS) (f : {hom CS; a, b}) =>
-  @Hom.Pack CV a b _ f (LubAffine.base (Hom.class f)) : {hom CV; m2 a , m2 b}.
+  @Hom.Pack CV a b _ f (BiglubAffine.base (Hom.class f)) : {hom CV; m2 a , m2 b}.
 Lemma h2_id : FunctorLaws.id h2. Proof. by move=> *; apply hom_ext. Qed.
 Lemma h2_comp : FunctorLaws.comp h2. Proof. by move=> *; apply hom_ext. Qed.
 Definition forget_semiCompSemiLattConvType : functor CS CV :=
@@ -498,24 +498,24 @@ Local Notation CS := semiCompSemiLattConvType_category.
 Definition eps1'' {L : semiCompSemiLattConvType}
   (X : necset_semiCompSemiLattConvType L) : L := |_| X.
 
-Lemma eps1''_lub_morph L : lub_morph (@eps1'' L).
+Lemma eps1''_biglub_morph L : biglub_morph (@eps1'' L).
 Proof.
 move=> F.
 rewrite /eps1''.
-transitivity (|_| (lub_op @` ((fun X : necset_semiCompSemiLattType L => (X : neset _)) @` F))%:ne); last first.
+transitivity (|_| (biglub @` ((fun X : necset_semiCompSemiLattType L => (X : neset _)) @` F))%:ne); last first.
 - congr (|_| _).
   apply/neset_ext; rewrite eqEsubset; split => x [] x0 Fx0 <-.
   + by case: Fx0 => x1 Fx1 <-; exists x1.
   + by exists x0 => // ; exists x0.
 transitivity (|_| (hull (\bigcup_(x in F) x))%:ne);
   first by congr (|_| _); apply neset_ext.
-by rewrite lub_hull lub_bigcup.
+by rewrite biglub_hull biglub_bigcup.
 Qed.
 
 Lemma eps1''_affine L : affine_function (@eps1'' L).
 Proof.
 move=> X Y p; rewrite /affine_function_at /eps1''.
-transitivity (|_| (X :<| p |>: Y)%:ne); last by rewrite lub_conv_setD.
+transitivity (|_| (X :<| p |>: Y)%:ne); last by rewrite biglub_conv_setD.
 congr (|_| _%:ne); apply/neset_ext => /=.
 rewrite conv_setE necset_convType.convE eqEsubset; split=> u.
 - case=> x [] y [] xX [] yY ->.
@@ -535,7 +535,7 @@ Qed.
 
 Definition eps1' : F1 \O U1 ~~> FId :=
   fun L => @Hom.Pack CS _ _ _ (@eps1'' L)
-    (LubAffine.Class (@eps1''_affine L) (@eps1''_lub_morph L)).
+    (BiglubAffine.Class (@eps1''_affine L) (@eps1''_biglub_morph L)).
 
 Lemma eps1'_natural : naturality _ _ eps1'.
 Proof. by move=> K L f; rewrite eps1''_natural. Qed.
@@ -590,7 +590,7 @@ rewrite eqEsubset; split=> a /=.
   by exists (necset1 a); [exists a | rewrite necset1E].
 Qed.
 Lemma triR1 : TriangularLaws.right eta1 eps1.
-Proof. by move=> c; apply funext=> /= x; by rewrite eps1E eta1E /= lub1. Qed.
+Proof. by move=> c; apply funext=> /= x; by rewrite eps1E eta1E /= biglub1. Qed.
 End eps1_eta1.
 
 Section join1.

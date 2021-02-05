@@ -35,7 +35,7 @@ Definition alt A (x y : gcm A) : gcm A := x [+] y.
 Definition choice p A (x y : gcm A) : gcm A := x <| p |> y.
 
 Lemma altA A : associative (@alt A).
-Proof. by move=> x y z; rewrite /alt lub_binaryA. Qed.
+Proof. by move=> x y z; rewrite /alt lubA. Qed.
 
 Lemma image_FSDistfmap A B (x : gcm A) (k : choice_of_Type A -> gcm B) :
   FSDistfmap k @` x = (gcm # k) x.
@@ -94,7 +94,7 @@ Lemma affine_F1e0U1PD_alt T (u v : gcm (gcm T)) :
   (F1 # eps0 (U1 (P_delta_left T)))%category (u [+] v) =
   (F1 # eps0 (U1 (P_delta_left T)))%category u [+] (F1 # eps0 (U1 (P_delta_left T)))%category v.
 Proof.
-rewrite [in LHS]/lub_binary -lub_hull.
+rewrite [in LHS]/lub -biglub_hull.
 have huv : NECSet.class_of (hull [set u; v]).
   apply: (NECSet.Class (CSet.Class (hull_is_convex _)) (NESet.Mixin _)).
   rewrite hull_eq0; apply/eqP => /(congr1 (fun x => x u)).
@@ -103,7 +103,7 @@ have @UV : necset_semiCompSemiLattConvType (F1 ((F0 \O U0) (U1 (P_delta_left T))
 transitivity (|_| ((F1 # eps0 (U1 (P_delta_left T)))%category @` UV)%:ne).
   rewrite -(apply_affine (F1 # eps0 (U1 (P_delta_left T)))%category UV).
   congr (_ _); congr (|_| _); exact/neset_ext.
-rewrite [in RHS]/lub_binary.
+rewrite [in RHS]/lub.
 transitivity (|_| (hull ((F1 # eps0 (U1 (P_delta_left T)))%category @` [set u; v]))%:ne).
   congr (|_| _%:ne); apply/neset_ext => /=.
   have /image_preserves_convex_hull' : affine_function (F1 # eps0 (U1 (P_delta_left T)))%category.
@@ -133,7 +133,7 @@ transitivity (|_| (hull ((F1 # eps0 (U1 (P_delta_left T)))%category @` [set u; v
       transitivity (eps0'' (ConvFSDist.d p x1 x2)) => //.
       by rewrite eps0''_affine.
   exact.
-rewrite lub_hull; congr (|_| _%:ne).
+rewrite biglub_hull; congr (|_| _%:ne).
 apply/neset_ext => /=.
 rewrite /free_semiCompSemiLattConvType_mor /=; unlock; rewrite /free_semiCompSemiLattConvType_mor' /=.
 rewrite funeqE => /= X; rewrite propeqE; split.
@@ -145,9 +145,9 @@ Lemma affine_e1PD_alt T (x y : el (F1 (FId (U1 (P_delta_left T))))) :
   (eps1 (P_delta_left T)) (x [+] y) =
   (eps1 (P_delta_left T)) x [+] (eps1 (P_delta_left T)) y.
 Proof.
-rewrite /lub_binary eps1E -lub_setU.
+rewrite /lub eps1E -biglub_setU.
 transitivity (|_| (hull (\bigcup_(x0 in [set x; y]) x0))%:ne); last first.
-  rewrite lub_hull /=; apply/necset_ext => /=; congr hull.
+  rewrite biglub_hull /=; apply/necset_ext => /=; congr hull.
   rewrite [in RHS]setU_bigsetU; apply classical_sets_ext.eq_bigcup => //.
   rewrite /bigsetU /= funeqE => /= X; rewrite propeqE; split.
   - case => /= x0 [] <- x0X; by [exists x0 => //; left | exists x0 => //; right].
@@ -176,9 +176,9 @@ Definition P_delta_monadAltMixin : MonadAlt.mixin_of gcm :=
 Definition gcmA : altMonad := MonadAlt.Pack (MonadAlt.Class P_delta_monadAltMixin).
 
 Lemma altxx A : idempotent (@Alt gcmA A).
-Proof. by move=> x; rewrite /Alt /= /alt lub_binaryxx. Qed.
+Proof. by move=> x; rewrite /Alt /= /alt lubxx. Qed.
 Lemma altC A : commutative (@Alt gcmA A).
-Proof. by move=> a b; rewrite /Alt /= /alt /= lub_binaryC. Qed.
+Proof. by move=> a b; rewrite /Alt /= /alt /= lubC. Qed.
 
 Definition P_delta_monadAltCIMixin : MonadAltCI.class_of gcmA :=
   MonadAltCI.Class (MonadAltCI.Mixin altxx altC).
@@ -249,7 +249,7 @@ Lemma affine_e1PD_conv T (x y : el (F1 (FId (U1 (P_delta_left T))))) p :
   (eps1 (P_delta_left T)) (x <|p|> y) =
   (eps1 (P_delta_left T)) x <|p|> (eps1 (P_delta_left T)) y.
 Proof.
-rewrite eps1E -lub_conv_setD; congr (|_| _); apply/neset_ext => /=.
+rewrite eps1E -biglub_conv_setD; congr (|_| _); apply/neset_ext => /=.
 by rewrite -necset_convType.conv_conv_set.
 Qed.
 
@@ -278,7 +278,7 @@ Definition gcmp : probMonad :=
 
 Lemma choicealtDr A (p : prob) :
   right_distributive (fun x y : gcmACI A => x <| p |> y) Alt.
-Proof. by move=> x y z; rewrite /choice lub_binaryDr. Qed.
+Proof. by move=> x y z; rewrite /choice lubDr. Qed.
 
 Definition P_delta_monadAltProbMixin : @MonadAltProb.mixin_of gcmACI choice :=
   MonadAltProb.Mixin choicealtDr.
