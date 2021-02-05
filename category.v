@@ -80,14 +80,14 @@ Unset Printing Implicit Defensive.
 (* Our categories are always concrete; morphisms are just functions. *)
 Module Category.
 (* universe a la Tarski *)
-Record mixin_of (obj : Type) : Type := Mixin {
+Record mixin_of (obj : Type) := Mixin {
   el : obj -> Type ; (* interpretation operation, "realizer" *)
 (*  _ : injective el ; (* NB: do we need this? *)*)
   inhom : forall A B, (el A -> el B) -> Prop ; (* predicate for morphisms *)
   _ : forall A, @inhom A A idfun ; (* idfun is in inhom *)
   _ : forall A B C (f : el A -> el B) (g : el B -> el C),
       inhom f -> inhom g -> inhom (g \o f) (* inhom is closed under composition *) }.
-Structure type : Type := Pack { carrier : Type ; class : mixin_of carrier }.
+Structure type := Pack { carrier : Type ; class : mixin_of carrier }.
 Module Exports.
 Notation category := type.
 Coercion carrier : category >-> Sortclass.
@@ -263,11 +263,11 @@ End def.
 End FunctorLaws.
 
 Module Functor.
-Record mixin_of (C D : category) (M : C -> D) : Type := Mixin {
+Record mixin_of (C D : category) (M : C -> D) := Mixin {
   actm : forall A B, {hom A, B} -> {hom M A, M B} ;
   _ : FunctorLaws.id actm ;
   _ : FunctorLaws.comp actm }.
-Structure type (C D : category) : Type :=
+Structure type (C D : category) :=
   Pack { acto : C -> D ; class : mixin_of acto }.
 Module Exports.
 Section exports.
@@ -830,7 +830,7 @@ End bind_lemmas.
 Module Monad.
 Section monad.
 Variable (C : category).
-Record mixin_of (M : functor C C) : Type := Mixin {
+Record mixin_of (M : functor C C) := Mixin {
   ret : forall A, {hom A, M A} ;
   join : forall A, {hom M (M A), M A} ;
   _ : JoinLaws.ret_naturality ret ;
@@ -840,7 +840,7 @@ Record mixin_of (M : functor C C) : Type := Mixin {
   _ : JoinLaws.associativity join }.
 Record class_of (M : C -> C) := Class {
   base : Functor.mixin_of M ; mixin : mixin_of (Functor.Pack base) }.
-Structure type : Type := Pack { acto : C -> C ; class : class_of acto }.
+Structure type := Pack { acto : C -> C ; class : class_of acto }.
 Definition baseType (M : type) := Functor.Pack (base (class M)).
 End monad.
 Module Exports.
