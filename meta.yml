@@ -1,4 +1,4 @@
-fullname: Monadic effects and equational reasonig in Coq
+fullname: Monadic effects and equational reasoning in Coq
 shortname: monae
 organization: affeldt-aist
 opam_name: coq-monae
@@ -112,7 +112,7 @@ publications:
 build: |-
   ## Building and installation instructions
 
-  The easiest way to install the latest released version of Monadic effects and equational reasonig in Coq
+  The easiest way to install the latest released version of Monadic effects and equational reasoning in Coq
   is via [OPAM](https://opam.ocaml.org/doc/Install.html):
   
   ```shell

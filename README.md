@@ -2,7 +2,7 @@
 This file was generated from `meta.yml`, please do not edit manually.
 Follow the instructions on https://github.com/coq-community/templates to regenerate.
 --->
-# Monadic effects and equational reasonig in Coq
+# Monadic effects and equational reasoning in Coq
 
 [![Docker CI][docker-action-shield]][docker-action-link]
 
@@ -42,7 +42,7 @@ in several examples of monadic equational reasoning.
 
 ## Building and installation instructions
 
-The easiest way to install the latest released version of Monadic effects and equational reasonig in Coq
+The easiest way to install the latest released version of Monadic effects and equational reasoning in Coq
 is via [OPAM](https://opam.ocaml.org/doc/Install.html):
 
 ```shell

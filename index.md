@@ -1,7 +1,7 @@
 ---
 # This file was generated from `meta.yml`, please do not edit manually.
 # Follow the instructions on https://github.com/coq-community/templates to regenerate.
-title: Monadic effects and equational reasonig in Coq
+title: Monadic effects and equational reasoning in Coq
 lang: en
 header-includes:
   - |
@@ -18,7 +18,7 @@ header-includes:
 
 ## About
 
-Welcome to the Monadic effects and equational reasonig in Coq project website!
+Welcome to the Monadic effects and equational reasoning in Coq project website!
 
 This Coq library contains a hierarchy of monads with their laws used
 in several examples of monadic equational reasoning.
@@ -27,7 +27,7 @@ This is an open source project, licensed under the LGPL-2.1-or-later.
 
 ## Get the code
 
-The current stable release of Monadic effects and equational reasonig in Coq can be [downloaded from GitHub](https://github.com/affeldt-aist/monae/releases).
+The current stable release of Monadic effects and equational reasoning in Coq can be [downloaded from GitHub](https://github.com/affeldt-aist/monae/releases).
 
 ## Documentation
 
