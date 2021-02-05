@@ -285,6 +285,11 @@ rewrite [in RHS](@choice_ext p); last by rewrite /= onemK.
 by rewrite {1}/bcoin prob_bindDl 2!bindretf eqxx /=.
 Qed.
 
+Lemma arbcoin_spec_convexity q :
+  p < q < p.~%:pr ->
+  arbcoin p = (bcoin p : M _) [~] bcoin p.~%:pr [~] bcoin q.
+Abort.
+
 Lemma coinarb_spec p : coinarb p = arb.
 Proof.
 rewrite /coinarb /bcoin.
