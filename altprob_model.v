@@ -94,7 +94,7 @@ Lemma affine_F1e0U1PD_alt T (u v : gcm (gcm T)) :
   (F1 # eps0 (U1 (P_delta_left T)))%category (u [+] v) =
   (F1 # eps0 (U1 (P_delta_left T)))%category u [+] (F1 # eps0 (U1 (P_delta_left T)))%category v.
 Proof.
-rewrite [in LHS]/lub_binary -lub_op_hull.
+rewrite [in LHS]/lub_binary -lub_hull.
 have huv : NECSet.class_of (hull [set u; v]).
   apply: (NECSet.Class (CSet.Class (hull_is_convex _)) (NESet.Mixin _)).
   rewrite hull_eq0; apply/eqP => /(congr1 (fun x => x u)).
@@ -133,7 +133,7 @@ transitivity (|_| (hull ((F1 # eps0 (U1 (P_delta_left T)))%category @` [set u; v
       transitivity (eps0'' (ConvFSDist.d p x1 x2)) => //.
       by rewrite eps0''_affine.
   exact.
-rewrite lub_op_hull; congr (|_| _%:ne).
+rewrite lub_hull; congr (|_| _%:ne).
 apply/neset_ext => /=.
 rewrite /free_semiCompSemiLattConvType_mor /=; unlock; rewrite /free_semiCompSemiLattConvType_mor' /=.
 rewrite funeqE => /= X; rewrite propeqE; split.
@@ -145,9 +145,9 @@ Lemma affine_e1PD_alt T (x y : el (F1 (FId (U1 (P_delta_left T))))) :
   (eps1 (P_delta_left T)) (x [+] y) =
   (eps1 (P_delta_left T)) x [+] (eps1 (P_delta_left T)) y.
 Proof.
-rewrite /lub_binary eps1E -lub_op_setU.
+rewrite /lub_binary eps1E -lub_setU.
 transitivity (|_| (hull (\bigcup_(x0 in [set x; y]) x0))%:ne); last first.
-  rewrite lub_op_hull /=; apply/necset_ext => /=; congr hull.
+  rewrite lub_hull /=; apply/necset_ext => /=; congr hull.
   rewrite [in RHS]setU_bigsetU; apply classical_sets_ext.eq_bigcup => //.
   rewrite /bigsetU /= funeqE => /= X; rewrite propeqE; split.
   - case => /= x0 [] <- x0X; by [exists x0 => //; left | exists x0 => //; right].
@@ -249,7 +249,7 @@ Lemma affine_e1PD_conv T (x y : el (F1 (FId (U1 (P_delta_left T))))) p :
   (eps1 (P_delta_left T)) (x <|p|> y) =
   (eps1 (P_delta_left T)) x <|p|> (eps1 (P_delta_left T)) y.
 Proof.
-rewrite eps1E -lub_op_conv_setD; congr (|_| _); apply/neset_ext => /=.
+rewrite eps1E -lub_conv_setD; congr (|_| _); apply/neset_ext => /=.
 by rewrite -necset_convType.conv_conv_set.
 Qed.
 
@@ -306,11 +306,11 @@ move: Heq.
 rewrite !gcm_retE.
 rewrite /Choice /= /Conv /= /necset_convType.conv /=.
 unlock.
-move/(f_equal (@NECSet.car _)) => /=.
+move/(congr1 (@NECSet.car _)) => /=.
 rewrite /necset_convType.pre_pre_conv /=.
 Local Open Scope convex_scope.
 set mk1d := fun b : choice_of_Type bool => FSDist1.d b.
-move/(f_equal (fun x : FSDist.t _ -> _ => x (mk1d true <|p|> mk1d false))).
+move/(congr1 (fun x : FSDist.t _ -> _ => x (mk1d true <|p|> mk1d false))).
 rewrite /mkset; set tmp := ex _.
 move=> Heq.
 have: tmp -> tmp by [].
@@ -322,7 +322,7 @@ case.
   split; by [|apply/asboolP].
 move=> x [] y.
 rewrite 2!in_setE 2!necset1E => -[] -> [] ->.
-move/(f_equal (fun x : {dist (choice_of_Type bool)} => x true)) => /=.
+move/(congr1 (fun x : {dist (choice_of_Type bool)} => x true)) => /=.
 rewrite /Conv /= !ConvFSDist.dE !FSDist1.dE !inE !eqxx.
 case/boolP: ((true : choice_of_Type bool) == false) => [/eqP//|].
 by rewrite !mulR1 !mulR0 !addR0 => _ ?; apply prob_ext.
