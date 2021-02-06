@@ -94,7 +94,7 @@ Lemma affine_F1e0U1PD_alt T (u v : gcm (gcm T)) :
   (F1 # eps0 (U1 (P_delta_left T)))%category (u [+] v) =
   (F1 # eps0 (U1 (P_delta_left T)))%category u [+] (F1 # eps0 (U1 (P_delta_left T)))%category v.
 Proof.
-rewrite [in LHS]/lub -biglub_hull.
+rewrite [in LHS]/lub; cbn; rewrite lub_binaryE -biglub_hull.
 have huv : NECSet.class_of (hull [set u; v]).
   apply: (NECSet.Class (CSet.Class (hull_is_convex _)) (NESet.Mixin _)).
   rewrite hull_eq0; apply/eqP => /(congr1 (fun x => x u)).
@@ -145,7 +145,7 @@ Lemma affine_e1PD_alt T (x y : el (F1 (FId (U1 (P_delta_left T))))) :
   (eps1 (P_delta_left T)) (x [+] y) =
   (eps1 (P_delta_left T)) x [+] (eps1 (P_delta_left T)) y.
 Proof.
-rewrite /lub eps1E -biglub_setU.
+rewrite /lub; cbn; rewrite !lub_binaryE eps1E -biglub_setU.
 transitivity (|_| (hull (\bigcup_(x0 in [set x; y]) x0))%:ne); last first.
   rewrite biglub_hull /=; apply/necset_ext => /=; congr hull.
   rewrite [in RHS]setU_bigsetU; apply classical_sets_ext.eq_bigcup => //.
