@@ -259,7 +259,7 @@ End free_convType_functor.
 
 (*
   eps0 is the counit of the adjunction (free_convType -| forget_convType), and
-  it is just Convn (p.164).
+  it is essentially Convn (p.164).
 *)
 Section eps0_eta0.
 Import category.
