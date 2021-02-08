@@ -148,7 +148,7 @@ Proof.
 rewrite /lub; cbn; rewrite !lub_binaryE eps1E -biglub_setU.
 transitivity (|_| (hull (\bigcup_(x0 in [set x; y]) x0))%:ne); last first.
   rewrite biglub_hull /=; apply/necset_ext => /=; congr hull.
-  rewrite [in RHS]setU_bigsetU; apply classical_sets_ext.eq_bigcup => //.
+  rewrite -[in RHS]classical_sets_ext.bigcupsetU2E; apply classical_sets_ext.eq_bigcup => //.
   rewrite /bigsetU /= funeqE => /= X; rewrite propeqE; split.
   - case => /= x0 [] <- x0X; by [exists x0 => //; left | exists x0 => //; right].
   - case => x0 [] -> ?; by [exists x => //; left | exists y => //; right].
