@@ -261,9 +261,14 @@ Definition altProb_semiLattConvClass :=
          (prob_mixin (MonadAltProb.probMonadType M) T)
          altProb_semiLattConvMixin.
 Definition altProb_semiLattConvType := Pack altProb_semiLattConvClass.
+
+Import convex_choice ConvexSpace.
 Definition altProb_convType :=
-  convex_choice.ConvexSpace.Pack
-    (convex_choice.ConvexSpace.Class (prob_mixin (MonadAltProb.probMonadType M) T)).
+  ConvexSpace.Pack
+    (ConvexSpace.Class (prob_mixin (MonadAltProb.probMonadType M) T)).
+Canonical altProb_convType.
+Lemma choice_conv p (x y : M T) : Choice p T x y = Conv p x y.
+Proof. reflexivity. Qed.
 End altprob_semilattconvtype.
 Canonical altProb_semiLattConvType.
 Canonical altProb_convType.
@@ -347,9 +352,6 @@ Import convex_choice necset ScaledConvex.
 Local Open Scope latt_scope.
 Local Open Scope convex_scope.
 Local Open Scope R_scope.
-
-Lemma choice_conv T p (x y : M T) : Choice p T x y = Conv p x y.
-Proof. reflexivity. Qed.
 
 Lemma arbcoin_spec_convexity (p q :prob) :
   p < q < p.~%:pr ->
