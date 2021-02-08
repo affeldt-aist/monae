@@ -10,12 +10,15 @@ Require Import monae_lib hierarchy monad_lib fail_lib.
 (******************************************************************************)
 (*             Definitions and lemmas for probability monads                  *)
 (*                                                                            *)
-(* uniform                                                                    *)
-(* mpair_uniform:                                                             *)
+(* uniform s == uniform choice from a sequence s with a probMonad             *)
+(* mpair_uniform ==                                                           *)
 (*   uniform choices are independent, in the sense that choosing              *)
 (*   consecutively from two uniform distributions is equivalent to choosing   *)
 (*   simultaneously from their cartesian product                              *)
 (* bcoin p == a biased coin with probability p                                *)
+(* Sample programs:                                                           *)
+(*   arbcoin == arbitrary choice followed by probabilistic choice             *)
+(*   coinarb == probabilistic choice followed by arbitrary choice             *)
 (*                                                                            *)
 (******************************************************************************)
 
@@ -392,3 +395,40 @@ rewrite 2!prob_bindDl; congr (_ <| _ |> _).
   rewrite 2!bindretf ifF //; apply/negbTE/H; by rewrite mem_head.
 by rewrite IH // => a ta; rewrite H // in_cons ta orbT.
 Qed.
+
+Lemma choice_halfC A (M : probMonad) (a b : M A) :
+  a <| (/ 2)%:pr |> b = b <| (/ 2)%:pr |> a.
+Proof.
+rewrite choiceC (_ : (_.~)%:pr = (/ 2)%:pr) //.
+by apply prob_ext => /=; rewrite /onem; lra.
+Qed.
+
+Lemma choice_halfACA A (M : probMonad) (a b c d : M A) :
+  (a <| (/ 2)%:pr |> b) <| (/ 2)%:pr |> (c <| (/ 2)%:pr |> d) =
+  (a <| (/ 2)%:pr |> c) <| (/ 2)%:pr |> (b <| (/ 2)%:pr |> d).
+Proof. exact: (@convex_choice.convACA probConvex). Qed.
+
+Section keimel_plotkin_instance.
+Variables (M : altProbMonad) (A : Type).
+Variables (p q : M A).
+
+Lemma keimel_plotkin_instance :
+  (forall T p, right_distributive (fun a b : M T => a [~] b) (fun a b => a <| p |> b)) ->
+  p <| (/ 2)%:pr |> q = (p <| (/ 2)%:pr |> q) <| (/ 2)%:pr |> (p [~] q).
+Proof.
+move=> altDr.
+rewrite /right_distributive in altDr.
+have altDl : (forall T p, left_distributive (fun a b : M T => a [~] b) (fun a b => a <| p |> b)).
+  by move=> T r a b c; rewrite altC altDr (altC a) (altC b).
+rewrite -[LHS](altmm (p <| (/ 2)%:pr |> q)).
+transitivity (
+  ((p [~] p) <| (/ 2)%:pr|> (q [~] p)) <| (/ 2)%:pr |> ((p [~] q) <| (/ 2)%:pr |> (q [~] q))
+).
+  by rewrite altDr altDl altDl.
+rewrite 2!altmm (altC q).
+rewrite (choice_halfC (p [~] q)).
+rewrite choice_halfACA.
+by rewrite choicemm.
+Qed.
+
+End keimel_plotkin_instance.
