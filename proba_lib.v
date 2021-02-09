@@ -417,8 +417,7 @@ Lemma keimel_plotkin_instance :
   p <| (/ 2)%:pr |> q = (p <| (/ 2)%:pr |> q) <| (/ 2)%:pr |> (p [~] q).
 Proof.
 move=> altDr.
-rewrite /right_distributive in altDr.
-have altDl : (forall T p, left_distributive (fun a b : M T => a [~] b) (fun a b => a <| p |> b)).
+have altDl : forall T p, left_distributive (fun a b : M T => a [~] b) (fun a b => a <| p |> b).
   by move=> T r a b c; rewrite altC altDr (altC a) (altC b).
 rewrite -[LHS](altmm (p <| (/ 2)%:pr |> q)).
 transitivity (
