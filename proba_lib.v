@@ -359,7 +359,7 @@ Lemma magnified_weight_proof (p q r : prob) :
 Proof.
 case => pq qr.
 have rp : 0 < r - p by rewrite subR_gt0; apply (ltR_trans pq).
-have rp' : r - p != 0 by apply/eqP/gtR_eqF.
+have rp' : r - p != 0 by apply gtR_eqF.
 have rq : 0 < r - q by rewrite subR_gt0.
 split; first by apply divR_ge0 => //; apply ltRW.
 rewrite divRE -(leR_pmul2r rp).
@@ -378,7 +378,7 @@ Lemma magnify_conv (T : convType) (p q r : prob) (x y : T) (H : p < q < r) :
 Proof.
 case: (H) => pq qr.
 have rp : 0 < r - p by rewrite subR_gt0; apply (ltR_trans pq).
-have rp' : r - p != 0 by apply/eqP/gtR_eqF.
+have rp' : r - p != 0 by apply gtR_eqF.
 apply S1_inj; rewrite ![in LHS]S1_conv !convptE.
 rewrite !scalept_addpt !scalept_comp //.
 rewrite [in X in X +' (_ +' _)]addptC addptA addptC !addptA -scalept_addR //.
@@ -408,6 +408,24 @@ rewrite !bindretf.
 rewrite /arb !alt_bindDl !bindretf eqxx.
 by rewrite eq_sym altC choicemm.
 Qed.
+
+Lemma alt_absorbs_choice T (x y : M T) p : x [~] y = x [~] y [~] x <|p|> y.
+Proof.
+have H: x [~] y = (x [~] y [~] x <|p|> y) [~] y <|p|> x by
+      rewrite -[in LHS](choicemm p (x [~] y)) choiceDl 2!choiceDr 2!choicemm altCA altC (altAC x).
+rewrite {1}H.
+have {2}<-: x [~] y [~] (x [~] y [~] x <|p|> y) = x [~] y [~] x <|p|> y
+    by rewrite altA altmm.
+rewrite [in RHS]altC.
+have <-: x [~] y [~] x <|p|> y [~] (x [~] y [~] x <|p|> y [~] y <|p|> x) =
+         (x [~] y [~] x <|p|> y [~] y <|p|> x)
+  by rewrite altA altmm.
+by rewrite -H.
+Qed.
+
+Lemma coinarb_spec_convexity' p w : coinarb p =
+  (Ret false : M _) [~] (Ret true : M _) [~] (bcoin w : M _).
+Proof. by rewrite coinarb_spec /arb /bcoin choiceC -(alt_absorbs_choice) altC. Qed.
 
 Lemma coinarb_spec_convexity p w : coinarb p =
   (bcoin w : M _) [~] (Ret false : M _) [~] (Ret true : M _) [~] bcoin w.~%:pr.

@@ -1679,6 +1679,9 @@ Variable (M : altProbMonad).
 Lemma choiceDr : forall (A : Type) p,
   right_distributive (fun x y : M A => x <| p |> y) (fun x y => x [~] y).
 Proof. by case: M => m [? ? []]. Qed.
+Lemma choiceDl A p :
+  left_distributive (fun x y : M A => x <| p |> y) (fun x y => x [~] y).
+Proof. by move=> x y z;  rewrite !(choiceC p) choiceDr. Qed.
 End altprob_lemmas.
 
 Module MonadExceptProb.
