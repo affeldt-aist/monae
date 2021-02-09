@@ -2,7 +2,7 @@
 (* Copyright (C) 2020 monae authors, license: LGPL-2.1-or-later               *)
 Require Import Reals Lra.
 From mathcomp Require Import all_ssreflect.
-From mathcomp Require boolp.
+From mathcomp Require boolp Rstruct.
 From infotheo Require Import ssrR Reals_ext proba.
 From infotheo Require convex_choice necset.
 Require Import monae_lib hierarchy monad_lib fail_lib.
@@ -348,50 +348,55 @@ by rewrite {1}/bcoin prob_bindDl 2!bindretf eqxx /=.
 Qed.
 
 Section arbcoin_spec_convexity.
-Import convex_choice necset ScaledConvex.
+Import Rstruct convex_choice necset ScaledConvex.
 Local Open Scope latt_scope.
 Local Open Scope convex_scope.
 Local Open Scope R_scope.
 
-Lemma arbcoin_spec_convexity (p q :prob) :
+(* TODO? : move magnified_weight to infotheo.convex *)
+Lemma magnified_weight_proof (p q r : prob) :
+  p < q < r -> 0 <= (r - q) / (r - p) <= 1.
+Proof.
+case => pq qr.
+have rp : 0 < r - p by rewrite subR_gt0; apply (ltR_trans pq).
+have rp' : r - p != 0 by apply/eqP/gtR_eqF.
+have rq : 0 < r - q by rewrite subR_gt0.
+split; first by apply divR_ge0 => //; apply ltRW.
+rewrite divRE -(leR_pmul2r rp).
+by rewrite mulRAC -mulRA mulRV // mulR1 mul1R leR_add2l; apply/Ropp_le_contravar/ltRW.
+Qed.
+
+Definition magnified_weight (p q r : prob) (H : p < q < r) : prob :=
+  Prob.mk (magnified_weight_proof H).
+
+Local Notation m := magnified_weight.
+Local Notation "x +' y" := (addpt x y) (at level 50).
+Local Notation "a *' x" := (scalept a x) (at level 40).
+
+Lemma magnify_conv (T : convType) (p q r : prob) (x y : T) (H : p < q < r) :
+  (x <|p|> y) <|magnified_weight H|> (x <|r|> y) = x <|q|> y.
+Proof.
+case: (H) => pq qr.
+have rp : 0 < r - p by rewrite subR_gt0; apply (ltR_trans pq).
+have rp' : r - p != 0 by apply/eqP/gtR_eqF.
+apply S1_inj; rewrite ![in LHS]S1_conv !convptE.
+rewrite !scalept_addpt !scalept_comp //.
+rewrite [in X in X +' (_ +' _)]addptC addptA addptC !addptA -scalept_addR //.
+rewrite -!addptA -scalept_addR //.
+have-> : (m H).~ * r.~ + m H * p.~ = (m H * p + (m H).~ * r).~ by rewrite /onem; ring.
+suff-> : m H * p + (m H).~ * r = q by rewrite S1_conv convptE addptC.
+rewrite /m /= /onem.
+rewrite mulRDl mul1R addRCA -Rmult_opp_opp -mulRDr (addRC (- p)) addR_opp.
+by rewrite mulNR mulRAC -mulRA mulRV // mulR1; ring.
+Qed.
+
+Lemma arbcoin_spec_convexity (p q : prob) :
   p < q < p.~%:pr ->
   arbcoin p = (bcoin p : M _) [~] bcoin p.~%:pr [~] bcoin q.
 Proof.
-case=> pq qpo.
-have Hp : p - p.~ < 0 by rewrite subR_lt0; apply (ltR_trans pq).
-have Hp' : p - p.~ != 0 by move/ltR_eqF/eqP: Hp.
-have Hp'' : p - p.~ <> 0 by move/eqP: Hp'.
-have Hp''' : 0 < p.~ - p by rewrite subR_gt0 -subR_lt0.
-rewrite arbcoin_spec !alt_lub. 
-set r' := (p + q - 1) / (p - p.~)%R.
-have Hr : (0 <= r' <= 1)%R.
-- rewrite /r'; split.
-  + rewrite divRE -Rmult_opp_opp Ropp_inv_permute // -divRE !oppRB.
-    apply divR_ge0 => //.
-    by move: qpo; rewrite -subR_gt0 /= /onem -subRD; apply ltRW.
-  + have ->: p + q - 1 = p - (1 - p) + q - p by ring.
-    rewrite -addR_opp -addRA divRDl divRR //.
-    rewrite -subr_le0 -addR_opp -addRAC addR_opp subRR add0R.
-    apply ltRW; fold (Rgt 0 ((q + - p) / (p - p.~))); rewrite oppR_gt0'.
-    rewrite -Ropp_div_den //.
-    apply divR_gt0; last by rewrite oppR_lt0' oppRK.
-    by rewrite subR_gt0.
-set r := Prob.mk Hr.
-rewrite {1}(lub_absorbs_conv _ _ r) /=.
-suff->: ((bcoin p <|r|> bcoin (p.~)%:pr) : M bool) = bcoin q by done.
-rewrite /bcoin !choice_conv.
-rewrite -convC.
-Local Notation "x +' y" := (addpt x y) (at level 50).
-Local Notation "a *' x" := (scalept a x) (at level 40).
-apply (@S1_inj (altProb_convType M bool)); rewrite ![in LHS]S1_conv !convptE.
-rewrite !scalept_addpt !scalept_comp //.
-rewrite addptA addptC !addptA -scalept_addR //.
-rewrite -!addptA -scalept_addR // /=.
-have-> : r' * p.~ + r'.~ * p = (r'.~ * p.~ + r' * p).~ by rewrite /onem; ring.
-suff-> : r'.~ * p.~ + r' * p = q by rewrite S1_conv convptE.
-rewrite mulRDr 2!mulRDl !mulR1 !mul1R.
-have-> : 1 + - r' + (- p + - r' * - p) + r' * p = 1 - p + r' * (p - (1 - p)) by ring.
-by rewrite /r' divRE mulRAC -mulRA mulRV //; ring.
+move=> H.
+rewrite arbcoin_spec !alt_lub.
+by rewrite {1}(lub_absorbs_conv _ _ (magnified_weight H)) magnify_conv.
 Qed.
 End arbcoin_spec_convexity.
 
