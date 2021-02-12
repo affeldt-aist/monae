@@ -338,13 +338,8 @@ Definition coinarb p : M bool :=
 Lemma arbcoin_spec p :
   arbcoin p = (bcoin p : M _) [~] bcoin p.~%:pr.
 Proof.
-rewrite /arbcoin /arb.
-rewrite alt_bindDl.
-rewrite 2!bindretf.
-rewrite bindmret; congr (_ [~] _).
-rewrite [in RHS]/bcoin choiceC.
-rewrite [in RHS](@choice_ext p); last by rewrite /= onemK.
-by rewrite {1}/bcoin prob_bindDl 2!bindretf eqxx /=.
+rewrite /arbcoin /arb alt_bindDl 2!bindretf bindmret; congr (_ [~] _).
+by rewrite /bcoin choiceC prob_bindDl 2!bindretf eqxx.
 Qed.
 
 Section arbcoin_spec_convexity.
@@ -422,6 +417,9 @@ have <-: x [~] y [~] x <|p|> y [~] (x [~] y [~] x <|p|> y [~] y <|p|> x) =
   by rewrite altA altmm.
 by rewrite -H.
 Qed.
+
+Corollary arb_spec_convexity p : arb = (arb : M _) [~] bcoin p.
+Proof. exact: alt_absorbs_choice. Qed.
 
 Lemma coinarb_spec_convexity' p w : coinarb p =
   (Ret false : M _) [~] (Ret true : M _) [~] (bcoin w : M _).
