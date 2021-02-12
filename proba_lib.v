@@ -276,13 +276,8 @@ Definition coinarb p : M bool :=
 Lemma arbcoin_spec p :
   arbcoin p = (bcoin p : M _) [~] bcoin p.~%:pr.
 Proof.
-rewrite /arbcoin /arb.
-rewrite alt_bindDl.
-rewrite 2!bindretf.
-rewrite bindmret; congr (_ [~] _).
-rewrite [in RHS]/bcoin choiceC.
-rewrite [in RHS](@choice_ext p); last by rewrite /= onemK.
-by rewrite {1}/bcoin prob_bindDl 2!bindretf eqxx /=.
+rewrite /arbcoin /arb alt_bindDl 2!bindretf bindmret; congr (_ [~] _).
+by rewrite [in RHS]/bcoin choiceC -?probK {1}/bcoin prob_bindDl 2!bindretf eqxx.
 Qed.
 
 Lemma coinarb_spec p : coinarb p = arb.
