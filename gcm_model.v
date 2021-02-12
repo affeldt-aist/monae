@@ -5,7 +5,7 @@ From mathcomp Require Import all_ssreflect.
 From mathcomp Require Import boolp classical_sets.
 From mathcomp Require Import finmap.
 From infotheo Require Import Reals_ext classical_sets_ext Rbigop ssrR ssr_ext.
-From infotheo Require Import fdist fsdist convex_choice necset.
+From infotheo Require Import fdist fsdist convex necset.
 Require Import monae_lib.
 Require category.
 

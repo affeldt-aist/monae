@@ -3,7 +3,7 @@
 From mathcomp Require Import all_ssreflect.
 From mathcomp Require boolp.
 From infotheo Require Import Reals_ext ssr_ext fsdist.
-From infotheo Require convex_choice.
+From infotheo Require convex.
 Require Import monae_lib hierarchy monad_lib proba_lib.
 
 (******************************************************************************)
@@ -13,7 +13,7 @@ Require Import monae_lib hierarchy monad_lib proba_lib.
 Local Open Scope monae_scope.
 Local Open Scope proba_scope.
 
-Notation choice_of_Type := convex_choice.choice_of_Type.
+Notation choice_of_Type := convex.choice_of_Type.
 
 Module MonadProbModel.
 Local Obligation Tactic := idtac.

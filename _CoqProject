@@ -28,4 +28,3 @@ smallstep.v
 example_monad_transformer.v
 
 -R . monae
--R ../infotheo infotheo
