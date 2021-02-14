@@ -36,6 +36,7 @@ Related publications, if any, are listed below.
 
 - [A hierarchy of monadic effects for program verification using equational reasoning](https://staff.aist.go.jp/reynald.affeldt/documents/monae.pdf) doi:[10.1007/978-3-030-33636-3_9](https://doi.org/10.1007/978-3-030-33636-3_9)
 - [A Trustful Monad for Axiomatic Reasoning with Probability and Nondeterminism](https://arxiv.org/abs/2003.09993) 
+- [Extending Equational Monadic Reasoning with Monad Transformers](https://arxiv.org/abs/2011.03463) 
 
 ## Help and contact
 
