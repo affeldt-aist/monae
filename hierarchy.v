@@ -1627,7 +1627,7 @@ Lemma prob_bindDl p : BindLaws.left_distributive (@Bind M) (Choice p).
 Proof. by case: M => m [? []]. Qed.
 End prob_lemmas.
 Arguments choiceA {M} {A} _ _ _ _ {mx} {my} {mz}.
-Arguments choiceC {M} {A} _ {mx} {my}.
+Arguments choiceC {M} {A} _ _ _.
 
 Module MonadProbDr.
 Record mixin_of (M : probMonad) := Mixin {
@@ -1679,6 +1679,9 @@ Variable (M : altProbMonad).
 Lemma choiceDr : forall (A : Type) p,
   right_distributive (fun x y : M A => x <| p |> y) (fun x y => x [~] y).
 Proof. by case: M => m [? ? []]. Qed.
+Lemma choiceDl A p :
+  left_distributive (fun x y : M A => x <| p |> y) (fun x y => x [~] y).
+Proof. by move=> x y z;  rewrite !(choiceC p) choiceDr. Qed.
 End altprob_lemmas.
 
 Module MonadExceptProb.

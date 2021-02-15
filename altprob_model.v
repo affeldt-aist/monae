@@ -4,7 +4,7 @@ Require Import Reals.
 From mathcomp Require Import all_ssreflect.
 From mathcomp Require Import boolp classical_sets.
 From mathcomp Require Import finmap.
-From infotheo Require Import Reals_ext Rbigop ssrR fdist fsdist convex_choice.
+From infotheo Require Import Reals_ext Rbigop ssrR fdist fsdist convex.
 From infotheo Require Import necset.
 Require category.
 Require Import monae_lib hierarchy monad_lib proba_lib monad_model gcm_model.
@@ -35,7 +35,7 @@ Definition alt A (x y : gcm A) : gcm A := x [+] y.
 Definition choice p A (x y : gcm A) : gcm A := x <| p |> y.
 
 Lemma altA A : associative (@alt A).
-Proof. by move=> x y z; rewrite /alt lub_binaryA. Qed.
+Proof. by move=> x y z; rewrite /alt lubA. Qed.
 
 Lemma image_FSDistfmap A B (x : gcm A) (k : choice_of_Type A -> gcm B) :
   FSDistfmap k @` x = (gcm # k) x.
@@ -94,7 +94,7 @@ Lemma affine_F1e0U1PD_alt T (u v : gcm (gcm T)) :
   (F1 # eps0 (U1 (P_delta_left T)))%category (u [+] v) =
   (F1 # eps0 (U1 (P_delta_left T)))%category u [+] (F1 # eps0 (U1 (P_delta_left T)))%category v.
 Proof.
-rewrite [in LHS]/lub_binary -lub_op_hull.
+rewrite [in LHS]lubE -biglub_hull.
 have huv : NECSet.class_of (hull [set u; v]).
   apply: (NECSet.Class (CSet.Class (hull_is_convex _)) (NESet.Mixin _)).
   rewrite hull_eq0; apply/eqP => /(congr1 (fun x => x u)).
@@ -103,7 +103,7 @@ have @UV : necset_semiCompSemiLattConvType (F1 ((F0 \O U0) (U1 (P_delta_left T))
 transitivity (|_| ((F1 # eps0 (U1 (P_delta_left T)))%category @` UV)%:ne).
   rewrite -(apply_affine (F1 # eps0 (U1 (P_delta_left T)))%category UV).
   congr (_ _); congr (|_| _); exact/neset_ext.
-rewrite [in RHS]/lub_binary.
+rewrite [in RHS]/lub.
 transitivity (|_| (hull ((F1 # eps0 (U1 (P_delta_left T)))%category @` [set u; v]))%:ne).
   congr (|_| _%:ne); apply/neset_ext => /=.
   have /image_preserves_convex_hull' : affine_function (F1 # eps0 (U1 (P_delta_left T)))%category.
@@ -133,7 +133,7 @@ transitivity (|_| (hull ((F1 # eps0 (U1 (P_delta_left T)))%category @` [set u; v
       transitivity (eps0'' (ConvFSDist.d p x1 x2)) => //.
       by rewrite eps0''_affine.
   exact.
-rewrite lub_op_hull; congr (|_| _%:ne).
+rewrite biglub_hull; congr (|_| _%:ne).
 apply/neset_ext => /=.
 rewrite /free_semiCompSemiLattConvType_mor /=; unlock; rewrite /free_semiCompSemiLattConvType_mor' /=.
 rewrite funeqE => /= X; rewrite propeqE; split.
@@ -145,10 +145,11 @@ Lemma affine_e1PD_alt T (x y : el (F1 (FId (U1 (P_delta_left T))))) :
   (eps1 (P_delta_left T)) (x [+] y) =
   (eps1 (P_delta_left T)) x [+] (eps1 (P_delta_left T)) y.
 Proof.
-rewrite /lub_binary eps1E -lub_op_setU.
+rewrite !lubE eps1E -biglub_setU.
 transitivity (|_| (hull (\bigcup_(x0 in [set x; y]) x0))%:ne); last first.
-  rewrite lub_op_hull /=; apply/necset_ext => /=; congr hull.
-  rewrite [in RHS]setU_bigsetU; apply classical_sets_ext.eq_bigcup => //.
+  rewrite biglub_hull /=; apply/necset_ext => /=; congr hull.
+  rewrite -[in RHS]classical_sets_ext.bigcupsetU2E.
+  apply classical_sets_ext.eq_bigcup => //.
   rewrite /bigsetU /= funeqE => /= X; rewrite propeqE; split.
   - case => /= x0 [] <- x0X; by [exists x0 => //; left | exists x0 => //; right].
   - case => x0 [] -> ?; by [exists x => //; left | exists y => //; right].
@@ -159,7 +160,8 @@ Lemma bindaltDl : BindLaws.left_distributive (@hierarchy.Bind gcm) alt.
 Proof.
 move=> A B x y k.
 rewrite !hierarchy.bindE /alt FunaltDr.
-suff -> : forall T (u v : gcm (gcm T)), hierarchy.Join (u [+] v : gcm (gcm T)) = hierarchy.Join u [+] hierarchy.Join v by [].
+suff -> : forall T (u v : gcm (gcm T)),
+  hierarchy.Join (u [+] v : gcm (gcm T)) = hierarchy.Join u [+] hierarchy.Join v by [].
 move=> T u v.
 rewrite /= /Monad_of_category_monad.join /=.
 rewrite HCompId HIdComp !HCompId !HIdComp.
@@ -176,9 +178,9 @@ Definition P_delta_monadAltMixin : MonadAlt.mixin_of gcm :=
 Definition gcmA : altMonad := MonadAlt.Pack (MonadAlt.Class P_delta_monadAltMixin).
 
 Lemma altxx A : idempotent (@Alt gcmA A).
-Proof. by move=> x; rewrite /Alt /= /alt lub_binaryxx. Qed.
+Proof. by move=> x; rewrite /Alt /= /alt lubxx. Qed.
 Lemma altC A : commutative (@Alt gcmA A).
-Proof. by move=> a b; rewrite /Alt /= /alt /= lub_binaryC. Qed.
+Proof. by move=> a b; rewrite /Alt /= /alt /= lubC. Qed.
 
 Definition P_delta_monadAltCIMixin : MonadAltCI.class_of gcmA :=
   MonadAltCI.Class (MonadAltCI.Mixin altxx altC).
@@ -249,7 +251,7 @@ Lemma affine_e1PD_conv T (x y : el (F1 (FId (U1 (P_delta_left T))))) p :
   (eps1 (P_delta_left T)) (x <|p|> y) =
   (eps1 (P_delta_left T)) x <|p|> (eps1 (P_delta_left T)) y.
 Proof.
-rewrite eps1E -lub_op_conv_setD; congr (|_| _); apply/neset_ext => /=.
+rewrite eps1E -biglub_conv_setD; congr (|_| _); apply/neset_ext => /=.
 by rewrite -necset_convType.conv_conv_set.
 Qed.
 
@@ -278,7 +280,7 @@ Definition gcmp : probMonad :=
 
 Lemma choicealtDr A (p : prob) :
   right_distributive (fun x y : gcmACI A => x <| p |> y) Alt.
-Proof. by move=> x y z; rewrite /choice lub_binaryDr. Qed.
+Proof. by move=> x y z; rewrite /choice lubDr. Qed.
 
 Definition P_delta_monadAltProbMixin : @MonadAltProb.mixin_of gcmACI choice :=
   MonadAltProb.Mixin choicealtDr.
@@ -306,11 +308,11 @@ move: Heq.
 rewrite !gcm_retE.
 rewrite /Choice /= /Conv /= /necset_convType.conv /=.
 unlock.
-move/(f_equal (@NECSet.car _)) => /=.
+move/(congr1 (@NECSet.car _)) => /=.
 rewrite /necset_convType.pre_pre_conv /=.
 Local Open Scope convex_scope.
 set mk1d := fun b : choice_of_Type bool => FSDist1.d b.
-move/(f_equal (fun x : FSDist.t _ -> _ => x (mk1d true <|p|> mk1d false))).
+move/(congr1 (fun x : FSDist.t _ -> _ => x (mk1d true <|p|> mk1d false))).
 rewrite /mkset; set tmp := ex _.
 move=> Heq.
 have: tmp -> tmp by [].
@@ -322,7 +324,7 @@ case.
   split; by [|apply/asboolP].
 move=> x [] y.
 rewrite 2!in_setE 2!necset1E => -[] -> [] ->.
-move/(f_equal (fun x : {dist (choice_of_Type bool)} => x true)) => /=.
+move/(congr1 (fun x : {dist (choice_of_Type bool)} => x true)) => /=.
 rewrite /Conv /= !ConvFSDist.dE !FSDist1.dE !inE !eqxx.
 case/boolP: ((true : choice_of_Type bool) == false) => [/eqP//|].
 by rewrite !mulR1 !mulR0 !addR0 => _ ?; apply prob_ext.

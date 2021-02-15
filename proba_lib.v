@@ -2,20 +2,23 @@
 (* Copyright (C) 2020 monae authors, license: LGPL-2.1-or-later               *)
 Require Import Reals Lra.
 From mathcomp Require Import all_ssreflect.
-From mathcomp Require boolp.
+From mathcomp Require boolp Rstruct.
 From infotheo Require Import ssrR Reals_ext proba.
-From infotheo Require convex_choice.
+From infotheo Require convex necset.
 Require Import monae_lib hierarchy monad_lib fail_lib.
 
 (******************************************************************************)
 (*             Definitions and lemmas for probability monads                  *)
 (*                                                                            *)
-(* uniform                                                                    *)
-(* mpair_uniform:                                                             *)
+(* uniform s == uniform choice from a sequence s with a probMonad             *)
+(* mpair_uniform ==                                                           *)
 (*   uniform choices are independent, in the sense that choosing              *)
 (*   consecutively from two uniform distributions is equivalent to choosing   *)
 (*   simultaneously from their cartesian product                              *)
 (* bcoin p == a biased coin with probability p                                *)
+(* Sample programs:                                                           *)
+(*   arbcoin == arbitrary choice followed by probabilistic choice             *)
+(*   coinarb == probabilistic choice followed by arbitrary choice             *)
 (*                                                                            *)
 (******************************************************************************)
 
@@ -33,19 +36,17 @@ Section convex.
 Variable M : probMonad.
 Variable A : Type.
 
-Import fdist convex_choice ConvexSpace.
-
-Definition prob_mixin : mixin_of (choice_of_Type (M A)).
-apply (@Mixin _ (fun p (a b : choice_of_Type (M A)) => Choice p A a b)).
+Definition prob_mixin : convex.ConvexSpace.mixin_of (convex.choice_of_Type (M A)).
+apply (@convex.ConvexSpace.Mixin _ (fun p (a b : convex.choice_of_Type (M A)) => Choice p A a b)).
 - apply choice1.
 - apply choicemm.
 - apply choiceC.
 - move=> p q a b c.
   apply (choiceA p q).
-  by rewrite -p_is_rs s_of_pqE onemK.
+  by rewrite -fdist.p_is_rs fdist.s_of_pqE onemK.
 Defined.
 
-Definition probConvex := Pack (Class prob_mixin).
+Definition probConvex := convex.ConvexSpace.Pack (convex.ConvexSpace.Class prob_mixin).
 End convex.
 
 Arguments probConvex {M} {A}.
@@ -208,6 +209,51 @@ rewrite [in RHS](_ : Prob.mk _ = probinvn m) //.
 by apply prob_ext => /=; rewrite /divRnnm div1R.
 Qed.
 
+Section altci_semilatttype.
+Import necset SemiLattice.
+Variable M : altCIMonad.
+Variable T : Type.
+Definition altCI_semiLattClass :=
+  @Class
+    (convex.choice_of_Type (M T))
+    _
+    (@Mixin
+       _
+       (fun (x y : convex.choice_of_Type (M T)) => x [~] y)
+       (@altC M T) (@altA M T) (@altmm M T)).
+Definition altCI_semiLattType := Pack altCI_semiLattClass.
+
+Local Open Scope latt_scope.
+Lemma alt_lub (x y : altCI_semiLattType) : x [~] y = x [+] y.
+Proof. reflexivity. Qed.
+End altci_semilatttype.
+
+Section altprob_semilattconvtype.
+Import necset.SemiLattConvType.
+Variable M : altProbMonad.
+Variable T : Type.
+Definition altProb_semiLattConvMixin :
+  @mixin_of (altCI_semiLattType M T)
+            (fun p (x y : convex.choice_of_Type (M T)) => x <| p |> y).
+Proof. by refine (Mixin _); exact: choiceDr. Defined.
+Definition altProb_semiLattConvClass :=
+  @Class (M T)
+         (altCI_semiLattClass M T)
+         (prob_mixin (MonadAltProb.probMonadType M) T)
+         altProb_semiLattConvMixin.
+Definition altProb_semiLattConvType := Pack altProb_semiLattConvClass.
+
+Import convex ConvexSpace.
+Definition altProb_convType :=
+  ConvexSpace.Pack
+    (ConvexSpace.Class (prob_mixin (MonadAltProb.probMonadType M) T)).
+Canonical altProb_convType.
+Lemma choice_conv p (x y : M T) : Choice p T x y = Conv p x y.
+Proof. reflexivity. Qed.
+End altprob_semilattconvtype.
+Canonical altProb_semiLattConvType.
+Canonical altProb_convType.
+
 (* TODO(rei): incipit of section 5 of gibbonsUTP2012 on the model of MonadAltProb *)
 
 Section convexity_property.
@@ -257,7 +303,7 @@ rewrite /two_coins /two_coins' /bcoin.
 rewrite prob_bindDl.
 rewrite !bindretf.
 rewrite !(prob_bindDl,bindretf).
-apply (@convex_choice.convACA probConvex).
+apply (@convex.convACA probConvex).
 Qed.
 End prob_only.
 
@@ -273,14 +319,62 @@ Definition coinarb p : M bool :=
 Lemma arbcoin_spec p :
   arbcoin p = (bcoin p : M _) [~] bcoin p.~%:pr.
 Proof.
-rewrite /arbcoin /arb.
-rewrite alt_bindDl.
-rewrite 2!bindretf.
-rewrite bindmret; congr (_ [~] _).
-rewrite [in RHS]/bcoin choiceC.
-rewrite [in RHS](@choice_ext p); last by rewrite /= onemK.
-by rewrite {1}/bcoin prob_bindDl 2!bindretf eqxx /=.
+rewrite /arbcoin /arb alt_bindDl 2!bindretf bindmret; congr (_ [~] _).
+by rewrite /bcoin choiceC prob_bindDl 2!bindretf eqxx.
 Qed.
+
+Section arbcoin_spec_convexity.
+Import Rstruct convex necset ScaledConvex.
+Local Open Scope latt_scope.
+Local Open Scope convex_scope.
+Local Open Scope R_scope.
+
+(* TODO? : move magnified_weight to infotheo.convex *)
+Lemma magnified_weight_proof (p q r : prob) :
+  p < q < r -> 0 <= (r - q) / (r - p) <= 1.
+Proof.
+case => pq qr.
+have rp : 0 < r - p by rewrite subR_gt0; apply (ltR_trans pq).
+have rp' : r - p != 0 by apply/gtR_eqF.
+have rq : 0 < r - q by rewrite subR_gt0.
+split; first by apply divR_ge0 => //; apply ltRW.
+rewrite divRE -(leR_pmul2r rp).
+by rewrite mulRAC -mulRA mulRV // mulR1 mul1R leR_add2l; apply/Ropp_le_contravar/ltRW.
+Qed.
+
+Definition magnified_weight (p q r : prob) (H : p < q < r) : prob :=
+  Prob.mk (magnified_weight_proof H).
+
+Local Notation m := magnified_weight.
+Local Notation "x +' y" := (addpt x y) (at level 50).
+Local Notation "a *' x" := (scalept a x) (at level 40).
+
+Lemma magnify_conv (T : convType) (p q r : prob) (x y : T) (H : p < q < r) :
+  (x <|p|> y) <|magnified_weight H|> (x <|r|> y) = x <|q|> y.
+Proof.
+case: (H) => pq qr.
+have rp : 0 < r - p by rewrite subR_gt0; apply (ltR_trans pq).
+have rp' : r - p != 0 by apply/gtR_eqF.
+apply S1_inj; rewrite ![in LHS]S1_conv !convptE.
+rewrite !scalept_addpt !scalept_comp //.
+rewrite [in X in X +' (_ +' _)]addptC addptA addptC !addptA -scalept_addR //.
+rewrite -!addptA -scalept_addR //.
+have-> : (m H).~ * r.~ + m H * p.~ = (m H * p + (m H).~ * r).~ by rewrite /onem; ring.
+suff-> : m H * p + (m H).~ * r = q by rewrite S1_conv convptE addptC.
+rewrite /m /= /onem.
+rewrite mulRDl mul1R addRCA -Rmult_opp_opp -mulRDr (addRC (- p)) addR_opp.
+by rewrite mulNR mulRAC -mulRA mulRV // mulR1; ring.
+Qed.
+
+Lemma arbcoin_spec_convexity (p q : prob) :
+  p < q < p.~%:pr ->
+  arbcoin p = (bcoin p : M _) [~] bcoin p.~%:pr [~] bcoin q.
+Proof.
+move=> H.
+rewrite arbcoin_spec !alt_lub.
+by rewrite {1}(lub_absorbs_conv _ _ (magnified_weight H)) magnify_conv.
+Qed.
+End arbcoin_spec_convexity.
 
 Lemma coinarb_spec p : coinarb p = arb.
 Proof.
@@ -290,6 +384,27 @@ rewrite !bindretf.
 rewrite /arb !alt_bindDl !bindretf eqxx.
 by rewrite eq_sym altC choicemm.
 Qed.
+
+Lemma alt_absorbs_choice T (x y : M T) p : x [~] y = x [~] y [~] x <|p|> y.
+Proof.
+have H: x [~] y = (x [~] y [~] x <|p|> y) [~] y <|p|> x by
+      rewrite -[in LHS](choicemm p (x [~] y)) choiceDl 2!choiceDr 2!choicemm altCA altC (altAC x).
+rewrite {1}H.
+have {2}<-: x [~] y [~] (x [~] y [~] x <|p|> y) = x [~] y [~] x <|p|> y
+    by rewrite altA altmm.
+rewrite [in RHS]altC.
+have <-: x [~] y [~] x <|p|> y [~] (x [~] y [~] x <|p|> y [~] y <|p|> x) =
+         (x [~] y [~] x <|p|> y [~] y <|p|> x)
+  by rewrite altA altmm.
+by rewrite -H.
+Qed.
+
+Corollary arb_spec_convexity p : arb = (arb : M _) [~] bcoin p.
+Proof. exact: alt_absorbs_choice. Qed.
+
+Lemma coinarb_spec_convexity' p w : coinarb p =
+  (Ret false : M _) [~] (Ret true : M _) [~] (bcoin w : M _).
+Proof. by rewrite coinarb_spec /arb /bcoin choiceC -(alt_absorbs_choice) altC. Qed.
 
 Lemma coinarb_spec_convexity p w : coinarb p =
   (bcoin w : M _) [~] (Ret false : M _) [~] (Ret true : M _) [~] bcoin w.~%:pr.
@@ -392,3 +507,39 @@ rewrite 2!prob_bindDl; congr (_ <| _ |> _).
   rewrite 2!bindretf ifF //; apply/negbTE/H; by rewrite mem_head.
 by rewrite IH // => a ta; rewrite H // in_cons ta orbT.
 Qed.
+
+Lemma choice_halfC A (M : probMonad) (a b : M A) :
+  a <| (/ 2)%:pr |> b = b <| (/ 2)%:pr |> a.
+Proof.
+rewrite choiceC (_ : (_.~)%:pr = (/ 2)%:pr) //.
+by apply prob_ext => /=; rewrite /onem; lra.
+Qed.
+
+Lemma choice_halfACA A (M : probMonad) (a b c d : M A) :
+  (a <| (/ 2)%:pr |> b) <| (/ 2)%:pr |> (c <| (/ 2)%:pr |> d) =
+  (a <| (/ 2)%:pr |> c) <| (/ 2)%:pr |> (b <| (/ 2)%:pr |> d).
+Proof. exact: (@convex.convACA probConvex). Qed.
+
+Section keimel_plotkin_instance.
+Variables (M : altProbMonad) (A : Type).
+Variables (p q : M A).
+
+Lemma keimel_plotkin_instance :
+  (forall T p, right_distributive (fun a b : M T => a [~] b) (fun a b => a <| p |> b)) ->
+  p <| (/ 2)%:pr |> q = (p <| (/ 2)%:pr |> q) <| (/ 2)%:pr |> (p [~] q).
+Proof.
+move=> altDr.
+have altDl : forall T p, left_distributive (fun a b : M T => a [~] b) (fun a b => a <| p |> b).
+  by move=> T r a b c; rewrite altC altDr (altC a) (altC b).
+rewrite -[LHS](altmm (p <| (/ 2)%:pr |> q)).
+transitivity (
+  ((p [~] p) <| (/ 2)%:pr|> (q [~] p)) <| (/ 2)%:pr |> ((p [~] q) <| (/ 2)%:pr |> (q [~] q))
+).
+  by rewrite altDr altDl altDl.
+rewrite 2!altmm (altC q).
+rewrite (choice_halfC (p [~] q)).
+rewrite choice_halfACA.
+by rewrite choicemm.
+Qed.
+
+End keimel_plotkin_instance.

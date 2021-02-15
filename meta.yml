@@ -33,43 +33,37 @@ license:
   file: LICENSE
 
 supported_coq_versions:
-  text: Coq 8.11 to 8.12
-  opam: '{ (>= "8.11" & < "8.13~") | (= "dev") }'
+  text: Coq 8.13
+  opam: '{ (>= "8.13" & < "8.14~") | (= "dev") }'
 
 tested_coq_opam_versions:
-- version: '1.11.0-coq-8.11'
-  repo: 'mathcomp/mathcomp'
-- version: '1.11.0-coq-8.12'
-  repo: 'mathcomp/mathcomp'
-- version: '1.12.0-coq-8.11'
-  repo: 'mathcomp/mathcomp'
-- version: '1.12.0-coq-8.12'
+- version: '1.12.0-coq-8.13'
   repo: 'mathcomp/mathcomp'
 
 dependencies:
 - opam:
     name: coq-mathcomp-ssreflect
-    version: '{ (>= "1.11.0" & < "1.13~") }'
+    version: '{ (>= "1.12.0" & < "1.13~") }'
   description: |-
     [MathComp ssreflect](https://math-comp.github.io)
 - opam:
     name: coq-mathcomp-fingroup
-    version: '{ (>= "1.11.0" & < "1.13~") }'
+    version: '{ (>= "1.12.0" & < "1.13~") }'
   description: |-
     [MathComp fingroup](https://math-comp.github.io)
 - opam:
     name: coq-mathcomp-algebra
-    version: '{ (>= "1.11.0" & < "1.13~") }'
+    version: '{ (>= "1.12.0" & < "1.13~") }'
   description: |-
     [MathComp algebra](https://math-comp.github.io)
 - opam:
     name: coq-mathcomp-solvable
-    version: '{ (>= "1.11.0" & < "1.13~") }'
+    version: '{ (>= "1.12.0" & < "1.13~") }'
   description: |-
     [MathComp solvable](https://math-comp.github.io)
 - opam:
     name: coq-mathcomp-field
-    version: '{ (>= "1.11.0" & < "1.13~") }'
+    version: '{ (>= "1.12.0" & < "1.13~") }'
   description: |-
     [MathComp field](https://math-comp.github.io)
 - opam:
@@ -79,7 +73,7 @@ dependencies:
     [MathComp analysis](https://github.com/math-comp/analysis)
 - opam:
     name: coq-infotheo
-    version: '{ >= "0.2.1" & < "0.3~"}'
+    version: '{ >= "0.3" & < "0.4~"}'
   description: |-
     [Infotheo](https://github.com/affeldt-aist/infotheo)
 - opam:
@@ -102,6 +96,8 @@ publications:
   pub_doi: 10.1007/978-3-030-33636-3_9
 - pub_url: https://arxiv.org/abs/2003.09993
   pub_title: A Trustful Monad for Axiomatic Reasoning with Probability and Nondeterminism
+- pub_url: https://arxiv.org/abs/2011.03463
+  pub_title: Extending Equational Monadic Reasoning with Monad Transformers
 
 #make_target: [
 #  [make "-j%{jobs}%"]
@@ -120,7 +116,7 @@ build: |-
   opam install coq-monae
   ```
 
-  To instead build and install manually, do:
+  To instead build and install manually (with GNU `make`), do:
   ``` shell
   git clone https://github.com/affeldt-aist/monae.git
   cd monae
@@ -151,7 +147,7 @@ documentation: |-
   - formalization of monad composition [Jones and Duponcheel, Composing Monads, Yale RR 1993] (Sections 2 and 3)
   - formalization of monad transformers [Jaskelioff, Modular Monad Transformers, ESOP 2009] (up to Sect. 4)
     + completed with details from [Jaskelioff, Lifting of Operations in Modular Monadic Semantics, PhD 2009]
-    + see directory `impredicative_set` for the formalization of [Jaskelioff, Modular Monad Transformers, ESOP 2009] up to Sect. 5
+    + see directory `impredicative_set` for the formalization of [Jaskelioff, Modular Monad Transformers, ESOP 2009] (from Sect. 5)
   - formalization of the geometrically convex monad (main reference:
     [Cheung, Distributive Interaction of Algebraic Effects, PhD Thesis, U. Oxford, 2017])
 
@@ -159,7 +155,7 @@ documentation: |-
 
   ## Files
 
-   - [monae_lib.v](./monae_lib.v): simple additions to base libraries
+  - [monae_lib.v](./monae_lib.v): simple additions to base libraries
   - [hierarchy.v](./hierarchy.v): hierarchy of monadic effects
   - [monad_lib.v](./monad_lib.v): basic lemmas about monads
   - [category.v](./category.v): formalization of categories (generalization of ~hierarchy.v~)

@@ -25,7 +25,7 @@ in several examples of monadic equational reasoning.
   - Celestine Sauvage
   - Kazunari Tanaka
 - License: [LGPL-2.1-or-later](LICENSE)
-- Compatible Coq versions: Coq 8.11 to 8.12
+- Compatible Coq versions: Coq 8.13
 - Additional dependencies:
   - [MathComp ssreflect](https://math-comp.github.io)
   - [MathComp fingroup](https://math-comp.github.io)
@@ -39,6 +39,7 @@ in several examples of monadic equational reasoning.
 - Related publication(s):
   - [A hierarchy of monadic effects for program verification using equational reasoning](https://staff.aist.go.jp/reynald.affeldt/documents/monae.pdf) doi:[10.1007/978-3-030-33636-3_9](https://doi.org/10.1007/978-3-030-33636-3_9)
   - [A Trustful Monad for Axiomatic Reasoning with Probability and Nondeterminism](https://arxiv.org/abs/2003.09993) 
+  - [Extending Equational Monadic Reasoning with Monad Transformers](https://arxiv.org/abs/2011.03463) 
 
 ## Building and installation instructions
 
@@ -50,7 +51,7 @@ opam repo add coq-released https://coq.inria.fr/opam/released
 opam install coq-monae
 ```
 
-To instead build and install manually, do:
+To instead build and install manually (with GNU `make`), do:
 ``` shell
 git clone https://github.com/affeldt-aist/monae.git
 cd monae
@@ -80,7 +81,7 @@ This library has been applied to other formalizations:
 - formalization of monad composition [Jones and Duponcheel, Composing Monads, Yale RR 1993] (Sections 2 and 3)
 - formalization of monad transformers [Jaskelioff, Modular Monad Transformers, ESOP 2009] (up to Sect. 4)
   + completed with details from [Jaskelioff, Lifting of Operations in Modular Monadic Semantics, PhD 2009]
-  + see directory `impredicative_set` for the formalization of [Jaskelioff, Modular Monad Transformers, ESOP 2009] up to Sect. 5
+  + see directory `impredicative_set` for the formalization of [Jaskelioff, Modular Monad Transformers, ESOP 2009] (from Sect. 5)
 - formalization of the geometrically convex monad (main reference:
   [Cheung, Distributive Interaction of Algebraic Effects, PhD Thesis, U. Oxford, 2017])
 
@@ -88,7 +89,7 @@ This library has been applied to other formalizations:
 
 ## Files
 
- - [monae_lib.v](./monae_lib.v): simple additions to base libraries
+- [monae_lib.v](./monae_lib.v): simple additions to base libraries
 - [hierarchy.v](./hierarchy.v): hierarchy of monadic effects
 - [monad_lib.v](./monad_lib.v): basic lemmas about monads
 - [category.v](./category.v): formalization of categories (generalization of ~hierarchy.v~)
