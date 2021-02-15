@@ -1,8 +1,8 @@
 (* monae: Monadic equational reasoning in Coq                                 *)
 (* Copyright (C) 2020 monae authors, license: LGPL-2.1-or-later               *)
 From mathcomp Require Import all_ssreflect.
-Require Import imonae_lib ihierarchy imonad_lib ifail_lib istate_lib
- imonad_transformer imonad_model.
+Require Import imonae_lib ihierarchy imonad_lib ifail_lib istate_lib.
+Require Import imonad_transformer.
 
 (******************************************************************************)
 (*               Examples of programs using monad transformers                *)
@@ -16,12 +16,16 @@ Local Open Scope monae_scope.
 
 Import Univ.
 
+(******************************************************************************)
+(* reference:                                                                 *)
+(* - R. Affeldt, D. Nowak, Extending Equational Monadic Reasoning with Monad  *)
+(* Transformers, https://arxiv.org/abs/2011.03463                             *)
+(******************************************************************************)
 Definition evalStateT (N : monad) (S : UU0) (M : stateRunMonad S N)
     {A : UU0} (m : M A) (s : S) : N A :=
   RunStateT m s >>= fun x => Ret x.1.
 
-Section FastProduct_def.
-
+Section FastProduct.
 Variables (N : exceptMonad) (M : exceptStateRunMonad nat N).
 
 Fixpoint fastProductRec l : M unit :=
@@ -30,13 +34,6 @@ Fixpoint fastProductRec l : M unit :=
   | 0 :: _ => Fail
   | n.+1 :: l' => Get >>= fun m => Put (m * n.+1) >> fastProductRec l'
   end.
-
-End FastProduct_def.
-Arguments fastProductRec {N M}.
-
-Section FastProduct.
-
-Variables (N : exceptMonad) (M : exceptStateRunMonad nat N).
 
 Definition fastProduct l : M _ :=
   Catch (Put 1 >> fastProductRec l >> Get) (Ret 0 : M _).
@@ -135,7 +132,6 @@ Proof.
 reflexivity.
 Qed.
 End PersistentState.
-
 
 Section incr_fail_incr.
 

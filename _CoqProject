@@ -25,6 +25,6 @@ example_quicksort.v
 example_array.v
 example_monty.v
 smallstep.v
-example_monad_transformer.v
+example_transformer.v
 
 -R . monae
