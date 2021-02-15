@@ -75,3 +75,33 @@ Definition prob_class : MonadProb.class_of (fun A : Type => {dist (choice_of_Typ
 Definition prob : probMonad := MonadProb.Pack prob_class.
 
 End MonadProbModel.
+
+Module MonadProbDrModel.
+
+Local Obligation Tactic := idtac.
+
+Require Import Reals.
+From mathcomp Require Import finmap.
+From infotheo Require Import Rbigop.
+Local Open Scope R_scope.
+
+Local Open Scope proba_scope.
+
+Definition probDr_mixin : MonadProbDr.mixin_of MonadProbModel.prob.
+refine (MonadProbDr.Mixin _) => p A B m k1 k2.
+rewrite 3!(@MonadProbModel.BindE (choice_of_Type A) (choice_of_Type B)).
+apply/FSDist_ext => b /=.
+rewrite FSDistBind.dE /=.
+case: ifPn.
+  move=> /bigfcupP[/= dB].
+  rewrite andbT => /imfsetP[a /= /imfsetP[/= a' a'm aa']]; move: a'm; rewrite -{}aa' {a'} => ma ->{dB} bk1k2.
+  rewrite /Choice /= ConvFSDist.dE /= !FSDistBind.dE /=.
+  case: ifPn => bk1.
+    case: ifPn => bk2.
+      admit.
+    admit.
+  admit.
+move=> bk1k2.
+Abort.
+
+End MonadProbDrModel.
