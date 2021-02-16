@@ -11,8 +11,11 @@ Require Import monae_lib hierarchy monad_lib monad_transformer.
 (* Modular Monad Transformers, ESOP 2009] (from Sect. 5, definition 23).      *)
 (*                                                                            *)
 (*            codensityT == codensity monad transformer                       *)
-(* uniform_sigma_lifting == Theorem: lifting of sigma-operations along        *)
-(*                          functorial monad transformers                     *)
+(*              slifting == definition of a sigma-operation using a           *)
+(*                          sigma-operation and a functorial monad            *)
+(*                          transformer                                       *)
+(* uniform_sigma_lifting == Theorem: given a functiorial monad transformer t, *)
+(*                          slifting is a lifting along Lift t                *)
 (*       slifting_stateT == lifting of a sigma-operation along stateT         *)
 (*      slifting_exceptT == lifting of a sigma-operation along exceptT        *)
 (*         slifting_envT == lifting of a sigma-operation along envT           *)
@@ -212,7 +215,7 @@ transitivity ((op1 \v op2) X \o
 transitivity (op1 X \o
   (op2 X \o E # Lift t (codensityT M) X) \o E # Lift codensityT M X).
   by rewrite vcompE -compA.
-rewrite -uniform_algebric_lifting.
+rewrite -uniform_algebraic_lifting.
 transitivity (Lift t M X \o from naturality_MK X \o (psik op) X \o
   E # Lift codensityT M X).
   congr (_ \o _).

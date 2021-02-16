@@ -9,16 +9,30 @@ Require Import imonae_lib ihierarchy imonad_lib ifail_lib istate_lib.
 (* This file corresponds to the formalization of [Mauro Jaskelioff, Modular   *)
 (* Monad Transformers, ESOP 2009] (roughly, up to Sect. 5, Example 22).       *)
 (*                                                                            *)
-(*             monadM == monad morphism                                       *)
-(*             monadT == monad transformer                                    *)
-(*                       instances: stateT, exceptT, envT (environment),      *)
-(*                       outputT, contT (continuation)                        *)
+(* Module MonadMLaws  == laws of monad morphisms                              *)
+(*             monadM == type of monad morphisms                              *)
+(*             monadT == type of monad transformers, i.e., functions t of     *)
+(*                       type monad -> monad equipped with an operator Lift   *)
+(*                       such that for any monad M Lift t M is a monad        *)
+(*                       morphism from M to t M                               *)
+(*                       instances:                                           *)
+(*                       - stateT: the state monad transformer                *)
+(*                       - exceptT: the exception monad transformer           *)
+(*                       - envT: environment                                  *)
+(*                       - outputT                                            *)
+(*                       - contT: continuation                                *)
 (*         mapStateT2 == standard utility function                            *)
 (*            lifting == lifting of a sigma-operation along a monad morphism  *)
-(* uniform_algebric_lifting == Theorem: lifting of an algebraic operations    *)
-(*                       along a monad morphism                               *)
+(*           alifting == algebraic operation defined using an algebraic       *)
+(*                       operation op and a monad morphism e                  *)
+(* uniform_algebraic_lifting == Theorem: alifting is a lifting                *)
+(*                                                                            *)
 (*                FMT == functorial monad transformer                         *)
-(*                       instances: exceptFMT, stateFMT, envFMT, outputFMT    *)
+(*                       instances:                                           *)
+(*                       - exceptFMT                                          *)
+(*                       - stateFMT                                           *)
+(*                       - envFMT                                             *)
+(*                       - outputFMT                                          *)
 (*                                                                            *)
 (******************************************************************************)
 
@@ -209,8 +223,10 @@ Local Obligation Tactic := idtac.
 
 Variables (Z : UU0) (* the type of exceptions *) (M : monad).
 
+(* action on objects of the transformed monad *)
 Definition MX := fun X : UU0 => M (Z + X)%type.
 
+(* unit and bind operator of the transformed monad *)
 Definition retX X x : MX X := Ret (inr x).
 
 Definition bindX X Y (t : MX X) (f : X -> MX Y) : MX Y :=
@@ -753,7 +769,7 @@ Qed.
 End bijection.
 End proposition17.
 
-Section uniform_algebric_lifting.
+Section uniform_algebraic_lifting.
 Variables (E : functor) (M : monad) (op : E.-aoperation M).
 Variables (N : monad) (e : monadM M N).
 
@@ -763,7 +779,7 @@ Lemma aliftingE :
   alifting = (fun X => Join \o e (N X) \o phi op (N X)) :> (_ ~~> _).
 Proof. by []. Qed.
 
-Theorem uniform_algebric_lifting : lifting op e alifting.
+Theorem uniform_algebraic_lifting : lifting op e alifting.
 Proof.
 move=> X.
 apply fun_ext => Y.
@@ -784,7 +800,7 @@ transitivity (e X (Join (op (M X) ((E # Ret) Y)))); last first.
   by rewrite -natural.
 by rewrite -[in LHS](phiK op).
 Qed.
-End uniform_algebric_lifting.
+End uniform_algebraic_lifting.
 
 Definition natural_hmap_lift (t : monadT)
     (h : forall (M N : monad), (M ~> N) -> (t M ~> t N)) :=

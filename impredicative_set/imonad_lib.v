@@ -1,3 +1,5 @@
+(* monae: Monadic equational reasoning in Coq                                 *)
+(* Copyright (C) 2020 monae authors, license: LGPL-2.1-or-later               *)
 Ltac typeof X := type of X.
 
 Require Import ssrmatching.
@@ -8,12 +10,14 @@ Require Import imonae_lib ihierarchy.
 (*  Properties and examples of functors, natural transformations, and monads  *)
 (*                                                                            *)
 (*                    s \h g == horizontal composition                        *)
-(*                    F ## n == application of functor F to natural           *)
+(*                    F ## n == application of the functor F to the natural   *)
 (*                              transformation n                              *)
 (*                    F -| G == adjoint functors                              *)
 (*   Module monad_of_adjoint == derivation of a monad from an adjunction      *)
 (* Section composite_adjoint == composition of adjunctions                    *)
-(*            E.-operation M == sigma operation                               *)
+(*            E.-operation M == sigma operation for a monad M given a         *)
+(*                              functor E                                     *)
+(*           algebraicity op == the operation op is algebraic                 *)
 (*          E .-aoperation M == algebraic E.-operation M                      *)
 (*  Module Monad_of_ret_bind == construction of a monad from ret and bind     *)
 (*                                                                            *)

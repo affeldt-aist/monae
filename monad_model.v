@@ -9,46 +9,50 @@ Require Import monad_transformer.
 (******************************************************************************)
 (*                       Models for various monads                            *)
 (*                                                                            *)
-(* Sample models for the monads in monad.v, fail_monad.v, state_monad.v,      *)
-(* trace_monad.v.                                                             *)
+(* Sample models for monads in hierarchy.v (see also other *_model.v files).  *)
+(* As for naming, we tend to use the identifier acto for the actions on       *)
+(* objects and actm for the actions on morphisms.                             *)
 (*                                                                            *)
-(* identity                                                                   *)
-(* ListMonad.t                                                                *)
-(* SetMonad.t (used classical_sets)                                           *)
-(* Except.t (exception monad)                                                 *)
-(*   option_monad                                                             *)
-(* Output.t                                                                   *)
-(* Environment.t                                                              *)
-(* State.t                                                                    *)
-(* Cont.t                                                                     *)
+(* Models of monads (to be used to build models of interfaces):               *)
+(* identity           == identity monad                                       *)
+(* Module ListMonad   == defines the type ListMonad.t of list monads          *)
+(* Module SetMonad    == defines the type SetMonad.t of set monads using      *)
+(*                        using classical_sets                                *)
+(* Module Except      == defines the type Except.t of exception monads        *)
+(* option_monad       == option monad, i.e., Except.t unit                    *)
+(* Module Output      == defines the type Output.t of output monads           *)
+(* Module Environment == defines the type Environment.t of environment monads *)
+(* Module State       == defines the type State.t of state monads             *)
+(* Module Cont        == define the type Cont.t of continuation monads        *)
 (*                                                                            *)
-(* Sigma-operations:                                                          *)
-(* ListOps                                                                    *)
-(* OutputOps                                                                  *)
-(* EnvironmentOps                                                             *)
-(* ExceptOps                                                                  *)
-(* StateOps                                                                   *)
-(* ContOps                                                                    *)
+(* Sigma-operations (with algebraicity proofs):                               *)
+(* Module ListOps        == empty and append operations                       *)
+(* Module OutputOps      == output and flush operations                       *)
+(* Module EnvironmentOps == ask and local operations                          *)
+(* Module ExceptOps      == throw and handle operations                       *)
+(* Module StateOps       == get and put operations                            *)
+(* Module ContOps        == abort and (algebraic) callcc operations           *)
 (*                                                                            *)
-(* ModelFail                                                                  *)
-(* ModelExcept                                                                *)
-(* ModelState                                                                 *)
-(* ModelAlt                                                                   *)
-(* ModelAltCI                                                                 *)
-(* ModelNondet                                                                *)
-(* ModelStateTrace                                                            *)
-(* ModelCont                                                                  *)
-(* ModelStateTraceReify                                                       *)
-(*                                                                            *)
-(* ModelBacktrackableState (from scratch using fsets, i.e., redefinition of   *)
-(* monad state monad fail monad alt monad nondet monad nondetstate monad)     *)
+(* Models of interfaces:                                                      *)
+(* Module ModelFail               == models of failMonad                      *)
+(* Module ModelExcept             == model of exceptMonad                     *)
+(* Module ModelState              == model of stateMonad                      *)
+(* Module ModelAlt                == models of altMonad                       *)
+(* Module ModelAltCI              == model of altCIMonad                      *)
+(* Module ModelNondet             == models of nondetMonad                    *)
+(* Module ModelStateTrace         == model of stateTraceMonad                 *)
+(* Module ModelCont               == model of contMonad                       *)
+(* Module ModelStateTraceReify    == model of stateTraceReifyMonad            *)
+(* Module ModelBacktrackableState == from the ground up using fsets, i.e.,    *)
+(*                                   redefinition of monad state-fail-alt-    *)
+(*                                   nondet-nondetstate monad                 *)
 (*                                                                            *)
 (* Equality between monads from the hierarchy and their counterparts built    *)
 (* using monad transformers and the identity monad:                           *)
-(* - state_monad_stateT, except_monad_exceptT, cont_monad_contT               *)
+(* - stateT_id_ModelState, exceptT_id_ModelExcept, contT_id_ModelCont         *)
 (*                                                                            *)
-(* ModelMonadStateRun                                                         *)
-(* ModelMonadExceptStateRun                                                   *)
+(* Module ModelMonadStateRun       == model of stateRunMonad                  *)
+(* Module ModelMonadExceptStateRun == model of exceptStateRunMonad            *)
 (*                                                                            *)
 (* references:                                                                *)
 (* - Wadler, P. Monads and composable continuations. LISP and Symbolic        *)
@@ -61,38 +65,31 @@ Unset Printing Implicit Defensive.
 
 Local Open Scope monae_scope.
 
-Section classical_sets_extra.
+(* TODO *)
+Section PR_to_classical_sets.
 Local Open Scope classical_set_scope.
 
-Lemma bigsetU1 A (s : set A) : bigsetU s (@set1 A) = s.
-Proof.
-rewrite boolp.funeqE => b; rewrite boolp.propeqE; split.
-- by move=> -[a ?]; rewrite /set1 => ->.
-- by move=> ?; rewrite /bigsetU; exists b.
-Qed.
 Lemma bigsetUA A B C (s : set A) (f : A -> set B) (g : B -> set C) :
-  bigsetU (bigsetU s f) g = bigsetU s (fun x => bigsetU (f x) g).
+  \bigcup_(i in \bigcup_(i in s) f i) g i = \bigcup_(x in s) \bigcup_(i in f x) g i.
 Proof.
 rewrite boolp.funeqE => c; rewrite boolp.propeqE.
-split => [[b [a' aa' ?] ?]|[a' aa' [b ? ?]]].
-by exists a' => //; exists b.
-by exists b => //; exists a'.
+split => [[b [a' aa' ?] ?]|[a' aa' [b ? ?]]];
+  by [exists a' => //; exists b | exists b => //; exists a'].
 Qed.
 
-End classical_sets_extra.
+End PR_to_classical_sets.
 
-Section PR.
+(* TODO *)
+Section PR_to_fset.
 Local Open Scope fset_scope.
-Section ImfsetTh.
-Variables (key : unit) (K V : choiceType).
-Variable (f : K -> V).
+Variables (K V : choiceType) (f : K -> V).
+
 Lemma imfset_set1 x : f @` [fset x] = [fset f x].
 Proof.
 apply/fsetP => y.
 by apply/imfsetP/fset1P=> [[x' /fset1P-> //]| ->]; exists x; rewrite ?fset11.
 Qed.
-End ImfsetTh.
-Section BigOps.
+
 Variables (T : choiceType) (I : eqType) (r : seq I).
 (* In order to avoid "&& true" popping up everywhere, *)
 (*  we prepare a specialized version of bigfcupP *)
@@ -106,14 +103,14 @@ rewrite big_seq_cond; elim/big_rec: _ => [|i _ /andP[ri Pi] _ /fsetUP[|//]].
   by rewrite in_fset0.
 by exists i; rewrite ?ri.
 Qed.
-End BigOps.
-End PR.
+End PR_to_fset.
 
 Module ModelMonad.
 
 Section identity.
 Local Obligation Tactic := by [].
-Definition identity_functor : FId ~> FId := Natural.Pack (Natural.Mixin (@natural_id FId)).
+Definition identity_functor : FId ~> FId :=
+  Natural.Pack (Natural.Mixin (@natural_id FId)).
 Program Definition identity := @Monad_of_ret_bind _ identity_functor
   (fun A B (a : id A) (f : A -> id B) => f a) _ _ _.
 End identity.
@@ -169,7 +166,7 @@ Lemma left_neutral :
 Proof.  move=> ? ? ? ?; exact: bigcup_set1. Qed.
 Lemma right_neutral :
   @BindLaws.right_neutral functor (fun A B => @bigsetU B A) ret.
-Proof. move=> ? ?; exact: bigsetU1. Qed.
+Proof. by move=> ? ?; rewrite classical_sets_ext.bigcup_of_singleton image_id. Qed.
 Lemma associative :
   @BindLaws.associative functor (fun A B => @bigsetU B A).
 Proof. move=> ? ? ? ? ? ?; exact: bigsetUA. Qed.
@@ -267,7 +264,7 @@ End Environment.
 
 Module State.
 Section state.
-Variable S : UU0.
+Variable S : UU0. (* type of states *)
 Definition acto := fun A : UU0 => S -> A * S.
 Local Notation M := acto.
 Definition map (A B : UU0) (f : A -> B) (m : M A) : M B :=
@@ -1364,7 +1361,6 @@ Definition nondetstate : nondetStateMonad S :=
 End nondetstate.
 
 End ModelBacktrackableState.
-
 
 (* result of a discussion with Maxime and Enrico on 2019-09-12 *)
 Section eq_rect_ret.

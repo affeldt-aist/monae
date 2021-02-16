@@ -22,9 +22,9 @@ Unset Printing Implicit Defensive.
 
 Reserved Notation "m >>= f" (at level 49).
 Reserved Notation "'do' x <- m ; e"
-  (at level 60, x ident, m at level 200, e at level 60).
+  (at level 60, x name, m at level 200, e at level 60).
 Reserved Notation "'do' x : T <- m ; e"
-  (at level 60, x ident, m at level 200, e at level 60).
+  (at level 60, x name, m at level 200, e at level 60).
 Reserved Notation "m >=> n" (at level 50).
 Reserved Notation "n <=< m" (at level 50).
 Reserved Notation "F # g" (at level 11).
