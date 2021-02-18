@@ -285,17 +285,6 @@ Definition two_coins : M (bool * bool)%type :=
 Definition two_coins' : M (bool * bool)%type :=
   (do a <- bcoin q; (do b <- bcoin p; Ret (b, a) : M _))%Do.
 
-(* TODO: move to Reals_ext.v? *)
-(* Not needed here anymore *)
-Lemma prob_invp : (0 <= 1 / (1+p) <= 1)%R.
-Proof.
-split.
-- apply divR_ge0 => //; exact: addR_gt0wl.
-- rewrite leR_pdivr_mulr ?mul1R; last exact: addR_gt0wl.
-  by rewrite addRC -leR_subl_addr subRR.
-Qed.
-Definition Prob_invp := Prob.mk_ prob_invp.
-
 Lemma two_coinsE : two_coins = two_coins'.
 Proof.
 rewrite /two_coins /two_coins' /bcoin.
@@ -342,7 +331,7 @@ by rewrite mulRAC -mulRA mulRV // mulR1 mul1R leR_add2l; apply/Ropp_le_contravar
 Qed.
 
 Definition magnified_weight (p q r : prob) (H : p < q < r) : prob :=
-  Prob.mk_ (magnified_weight_proof H).
+  Eval hnf in Prob.mk_ (magnified_weight_proof H).
 
 Local Notation m := magnified_weight.
 Local Notation "x +' y" := (addpt x y) (at level 50).
