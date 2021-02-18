@@ -243,37 +243,34 @@ Local Open Scope proba_monad_scope.
 
 (* An example that probabilistic choice in this model is not trivial:
    we can distinguish different probabilities. *)
+Section move_to_somewhere.
+Local Open Scope convex_scope.
+Local Open Scope classical_set_scope.
+(* move to necset.v *)
+Lemma conv_cset1 (A : convType) (p : prob) (x y : A) :
+  [set x] :<|p|>: [set y] = [set x <|p|> y].
+Proof.
+rewrite eqEsubset; split=> u; last by move->; apply conv_in_conv_set.
+by case/conv_in_conv_set'=> x' [] y' [] -> [] -> ->.
+Qed.
+(* move to classical_set_ext.v *)
+Lemma eq_set1 (T : Type) (x y : T) : [set x] = [set y] -> x = y.
+Proof. by case/seteqP; move/(_ x)/(_ erefl) ->. Qed.
+End move_to_somewhere.
+
 Example gcmAP_choice_nontrivial (p q : prob) :
   p <> q ->
   Ret true <|p|> Ret false <> Ret true <|q|> Ret false :> gcmAP bool.
 Proof.
-move/eqP => pq.
-apply/eqP.
-apply: contra pq => /eqP Heq.
-apply/eqP.
-move: Heq.
-rewrite !gcm_retE.
-rewrite /Choice /= /Conv /= /necset_convType.conv /=.
-unlock.
-move/(congr1 (@NECSet.car _)) => /=.
-rewrite /necset_convType.pre_pre_conv /=.
-Local Open Scope convex_scope.
-set mk1d := fun b : choice_of_Type bool => FSDist1.d b.
-move/(congr1 (fun x : FSDist.t _ -> _ => x (mk1d true <|p|> mk1d false))).
-rewrite /mkset; set tmp := ex _.
-move=> Heq.
-have: tmp -> tmp by [].
-rewrite {2}Heq /tmp {Heq tmp}.
-case.
-  exists (mk1d true).
-  exists (mk1d false).
-  split; first by apply/asboolP.
-  split; by [|apply/asboolP].
-move=> x [] y.
-rewrite 2!in_setE 2!necset1E => -[] -> [] ->.
-move/(congr1 (fun x : {dist (choice_of_Type bool)} => x true)) => /=.
-rewrite /Conv /= !ConvFSDist.dE !FSDist1.dE !inE !eqxx.
-case/boolP: ((true : choice_of_Type bool) == false) => [/eqP//|].
-by rewrite !mulR1 !mulR0 !addR0 => _ ?; exact/val_inj.
+apply contra_not.
+rewrite !gcm_retE /Choice /= /Conv /=.
+move/(congr1 (@NECSet.car _)).
+rewrite !necset_convType.convE !conv_cset1 /=.
+move/(@eq_set1 _ (Conv _ _ _))/(congr1 (@FSDist.f (choice_of_Type bool)))/fsfunP/(_ true).
+rewrite !ConvFSDist.dE !FSDist1.dE /=.
+set bt := _ \in _; have-> : bt = true by apply/fset1P.
+set bf := _ \in _; have-> : bf = false by apply/fset1P.
+rewrite !mulR1 !mulR0 !addR0.
+exact: val_inj.
 Qed.
 End examples.
