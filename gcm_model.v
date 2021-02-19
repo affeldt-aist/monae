@@ -719,3 +719,45 @@ rewrite /bigsetU eqEsubset; split => y [i Xi iy].
 Qed.
 End gcm_opsE.
 End P_delta_category_monad.
+
+
+Require proba_monad_model.
+Section probMonad_out_of_F0U0.
+Import category.
+Definition M' := proba_monad_model.MonadProbModel.prob.
+Let Aprob := adj_comp AC A0.
+Let Mprob := Monad_of_adjoint Aprob.
+Definition M := Monad_of_category_monad Mprob.
+
+Lemma F0U0_prob (T : Type) : M T = M' T.
+Proof. by []. Qed.
+
+Import comps_notation.
+Lemma F0U0_prob_join (T : Type) : (@JOIN M T) = (@JOIN M' T).
+Proof.
+apply funext=> t /=.
+rewrite Monad_of_category_monad.joinE.
+rewrite /Join /=.
+rewrite HCompId HIdComp /= epsCE.
+(*
+Here we have (FSDistfmap idfun) in the goal but
+it cannot be rewritten using FSDistfmap_id. Why?
+FSDistfmap_id : forall A : choiceType, FSDistfmap id = id
+*)
+rewrite eps0_correct. (* eps0 is join *)
+rewrite /FSDistjoin /=.
+rewrite /FSDistfmap /=.
+rewrite FSDistBindA /=.
+congr FSDistBind.d => /=.
+apply funext=> x /=.
+by rewrite FSDistBind1f.
+Qed.
+
+Lemma F0U0_prob_ret (T : Type) : (@RET M T)  = (@RET M' T).
+Proof.
+apply funext=> t /=.
+rewrite /Monad_of_category_monad.ret /=.
+rewrite /proba_monad_model.MonadProbModel.ret' /=.
+by rewrite HCompId HIdComp /= eta0E etaCE.
+Qed.
+End probMonad_out_of_F0U0.
