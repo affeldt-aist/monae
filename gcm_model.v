@@ -720,44 +720,37 @@ Qed.
 End gcm_opsE.
 End P_delta_category_monad.
 
-
 Require proba_monad_model.
 Section probMonad_out_of_F0U0.
 Import category.
-Definition M' := proba_monad_model.MonadProbModel.prob.
-Let Aprob := adj_comp AC A0.
-Let Mprob := Monad_of_adjoint Aprob.
-Definition M := Monad_of_category_monad Mprob.
+(* probability monad built directly *)
+Definition M := proba_monad_model.MonadProbModel.prob.
+(* probability monad built using adjunctions *)
+Definition N := Monad_of_category_monad
+  (Monad_of_adjoint (adj_comp AC A0)).
 
-Lemma F0U0_prob (T : Type) : M T = M' T.
+Lemma actmE T : N T = M T.
 Proof. by []. Qed.
 
-Import comps_notation.
-Lemma F0U0_prob_join (T : Type) : (@JOIN M T) = (@JOIN M' T).
+Import comps_notation hierarchy.
+Local Open Scope monae_scope.
+Lemma JoinE T :
+  (Join : (N \O N) T -> N T) = (Join : (M \O M) T -> M T).
 Proof.
-apply funext=> t /=.
+apply funext => t /=.
 rewrite Monad_of_category_monad.joinE.
-rewrite /Join /=.
-rewrite HCompId HIdComp /= epsCE.
-(*
-Here we have (FSDistfmap idfun) in the goal but
-it cannot be rewritten using FSDistfmap_id. Why?
-FSDistfmap_id : forall A : choiceType, FSDistfmap id = id
-*)
-rewrite eps0_correct. (* eps0 is join *)
-rewrite /FSDistjoin /=.
-rewrite /FSDistfmap /=.
-rewrite FSDistBindA /=.
-congr FSDistBind.d => /=.
-apply funext=> x /=.
-by rewrite FSDistBind1f.
+rewrite [in LHS]/= HCompId HIdComp [X in _ (X t)]/= epsCE.
+(* TODO: rewrite with FSDistfmap_id *)
+rewrite eps0_correct.
+rewrite /FSDistjoin /FSDistfmap /= FSDistBindA /=.
+congr FSDistBind.d.
+by apply funext => x; rewrite FSDistBind1f.
 Qed.
 
-Lemma F0U0_prob_ret (T : Type) : (@RET M T)  = (@RET M' T).
+Lemma RetE T : (Ret : FId T -> N T) = (Ret : FId T -> M T).
 Proof.
-apply funext=> t /=.
+apply funext => t /=.
 rewrite /Monad_of_category_monad.ret /=.
-rewrite /proba_monad_model.MonadProbModel.ret' /=.
-by rewrite HCompId HIdComp /= eta0E etaCE.
+by rewrite HCompId HIdComp [X in _ (X t)]/= eta0E etaCE.
 Qed.
 End probMonad_out_of_F0U0.
