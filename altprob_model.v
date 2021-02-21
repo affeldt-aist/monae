@@ -44,41 +44,38 @@ rewrite /Actm /= /category.Monad_of_category_monad.f /= /category.id_f /=.
 by rewrite/free_semiCompSemiLattConvType_mor /=; unlock.
 Qed.
 
+Section funalt_funchoice.
+Import category.
+Import comps_notation.
+Local Notation F1 := free_semiCompSemiLattConvType.
+Local Notation F0 := free_convType.
+Local Notation FC := free_choiceType.
+Local Notation UC := forget_choiceType.
+Local Notation U0 := forget_convType.
+Local Notation U1 := forget_semiCompSemiLattConvType.
 Lemma FunaltDr (A B : Type) (x y : gcm A) (k : A -> gcm B) :
   (gcm # k) (x [+] y) = (gcm # k) x [+] (gcm # k) y.
 Proof.
-apply necset_ext => /=.
-rewrite -(image_FSDistfmap (x [+] y) (fun x : choice_of_Type A => k x)).
-rewrite image_preserves_convex_hull'; last exact: FSDistfmap_affine.
-congr hull; rewrite funeqE => /= d; rewrite propeqE; split.
-- case => d' [x0] -[->{x0} xd' <-{d}|->{x0} xd' <-{d}].
-  + exists ((gcm # k) x); [by left | rewrite -image_FSDistfmap; by exists d'].
-  + exists ((gcm # k) y); [by right | rewrite -image_FSDistfmap; by exists d'].
-- case => /= D -[->{D}|->{D}]; rewrite -image_FSDistfmap.
-  + case=> d' xd' <-{d}; exists d' => //; exists x => //; by left.
-  + case=> d' xd' <-{d}; exists d' => //; exists y => //; by right.
+rewrite /hierarchy.Functor.Exports.Actm /=.
+rewrite /Monad_of_category_monad.f /=.
+case: (free_semiCompSemiLattConvType_mor
+        (free_convType_mor (free_choiceType_mor (hom_Type k))))=> f /= [] Haf Hbf.
+rewrite Hbf lubE.
+congr biglub.
+apply neset_ext=> /=.
+by rewrite image_setU !image_set1.
 Qed.
 
 Lemma FunpchoiceDr (A B : Type) (x y : gcm A) (k : A -> gcm B) p :
   (gcm # k) (x <|p|> y) = (gcm # k) x <|p|> (gcm # k) y.
 Proof.
-apply necset_ext => /=.
-rewrite -[in LHS]image_FSDistfmap funeqE => d; rewrite propeqE; split.
-- move=> -[d'].
-  rewrite necset_convType.convE => -[x0 [y0 [x0x [y0y ->{d'}]]]] <-{d}.
-  rewrite necset_convType.convE /=.
-  exists (FSDistfmap (k : choice_of_Type _ -> _ ) x0),
-     (FSDistfmap (k : choice_of_Type _ -> _ ) y0); split.
-  by rewrite in_setE -image_FSDistfmap; exists x0 => //; rewrite -in_setE.
-  split; last exact: ConvFSDist.bind_left_distr.
-  by rewrite in_setE -image_FSDistfmap; exists y0 => //; rewrite -in_setE.
-- rewrite necset_convType.convE => -[/= d1 [d2]].
-  rewrite in_setE -image_FSDistfmap => -[] [z1 xz1 <-{d1}].
-  rewrite in_setE -image_FSDistfmap => -[] [z2 xz2 <-{d2}].
-  move=> ->{d}; exists (z1 <|p|> z2); last exact: ConvFSDist.bind_left_distr.
-  rewrite -in_setE necset_convType.convE; apply/asboolP; exists z1, z2.
-  by rewrite !in_setE.
+rewrite /hierarchy.Functor.Exports.Actm /=.
+rewrite /Monad_of_category_monad.f /=.
+case: (free_semiCompSemiLattConvType_mor
+        (free_convType_mor (free_choiceType_mor (hom_Type k))))=> f /= [] Haf Hbf.
+by apply Haf.
 Qed.
+End funalt_funchoice.
 
 Section bindaltDl.
 Import category.
@@ -94,66 +91,22 @@ Lemma affine_F1e0U1PD_alt T (u v : gcm (gcm T)) :
   (F1 # eps0 (U1 (P_delta_left T)))%category (u [+] v) =
   (F1 # eps0 (U1 (P_delta_left T)))%category u [+] (F1 # eps0 (U1 (P_delta_left T)))%category v.
 Proof.
-rewrite [in LHS]lubE -biglub_hull.
-have huv : NECSet.class_of (hull [set u; v]).
-  apply: (NECSet.Class (CSet.Class (hull_is_convex _)) (NESet.Mixin _)).
-  rewrite hull_eq0; apply/eqP => /(congr1 (fun x => x u)).
-  by rewrite propeqE => -[X _]; apply X; left.
-have @UV : necset_semiCompSemiLattConvType (F1 ((F0 \O U0) (U1 (P_delta_left T)))) := NECSet.Pack huv.
-transitivity (|_| ((F1 # eps0 (U1 (P_delta_left T)))%category @` UV)%:ne).
-  rewrite -(apply_affine (F1 # eps0 (U1 (P_delta_left T)))%category UV).
-  congr (_ _); congr (|_| _); exact/neset_ext.
-rewrite [in RHS]/lub.
-transitivity (|_| (hull ((F1 # eps0 (U1 (P_delta_left T)))%category @` [set u; v]))%:ne).
-  congr (|_| _%:ne); apply/neset_ext => /=.
-  have /image_preserves_convex_hull' : affine_function (F1 # eps0 (U1 (P_delta_left T)))%category.
-    move=> a b p; rewrite /affine_function_at => /=.
-    rewrite /free_semiCompSemiLattConvType_mor /=; unlock; rewrite /free_semiCompSemiLattConvType_mor' /=.
-    apply/necset_ext => /=; rewrite funeqE => X; rewrite propeqE; split.
-    - case=> D.
-      rewrite /Conv /= necset_convType.convE => -[x0 [y0 [x0a [y0a]]]] ->{D} <-{X}.
-      rewrite /Conv /= necset_convType.convE.
-      exists ((eps0 (necset_semiCompSemiLattConvType (FSDist_convType (choice_of_Type T)))) x0),
-        ((eps0 (necset_semiCompSemiLattConvType (FSDist_convType (choice_of_Type T)))) y0).
-      split.
-        by rewrite in_setE /=; exists x0 => //; rewrite -in_setE.
-      split.
-        by rewrite in_setE /=; exists y0 => //; rewrite -in_setE.
-      rewrite !eps0E.
-      transitivity (eps0'' (ConvFSDist.d p x0 y0)) => //.
-      by rewrite eps0''_affine.
-    - rewrite /Conv /= necset_convType.convE => -[x0 [y0 []]].
-      rewrite in_setE /= => -[] x1 ax1 <-{x0} [].
-      rewrite in_setE /= => -[] x2 bx2 <-{y0} ->.
-      rewrite /Conv /= necset_convType.convE; exists (x1 <|p|> x2).
-      exists x1, x2.
-      split; first by rewrite in_setE.
-      split => //; by rewrite in_setE.
-      rewrite eps0E.
-      transitivity (eps0'' (ConvFSDist.d p x1 x2)) => //.
-      by rewrite eps0''_affine.
-  exact.
-rewrite biglub_hull; congr (|_| _%:ne).
-apply/neset_ext => /=.
-rewrite /free_semiCompSemiLattConvType_mor /=; unlock; rewrite /free_semiCompSemiLattConvType_mor' /=.
-rewrite funeqE => /= X; rewrite propeqE; split.
-- case => /= x0 -[|] -> <- /=; by [left | right].
-- case=> -> /=; by [exists u => //; left | exists v => //; right].
+case: ((F1 # eps0 (U1 (P_delta_left T)))%category)=> f /= [] Haf Hbf.
+rewrite !lubE Hbf.
+congr biglub.
+apply neset_ext=> /=.
+by rewrite image_setU !image_set1.
 Qed.
 
 Lemma affine_e1PD_alt T (x y : el (F1 (FId (U1 (P_delta_left T))))) :
   (eps1 (P_delta_left T)) (x [+] y) =
   (eps1 (P_delta_left T)) x [+] (eps1 (P_delta_left T)) y.
 Proof.
-rewrite !lubE eps1E -biglub_setU.
-transitivity (|_| (hull (\bigcup_(x0 in [set x; y]) x0))%:ne); last first.
-  rewrite biglub_hull /=; apply/necset_ext => /=; congr hull.
-  rewrite -[in RHS]classical_sets_ext.bigcupsetU2E.
-  apply classical_sets_ext.eq_bigcup => //.
-  rewrite /bigsetU /= funeqE => /= X; rewrite propeqE; split.
-  - case => /= x0 [] <- x0X; by [exists x0 => //; left | exists x0 => //; right].
-  - case => x0 [] -> ?; by [exists x => //; left | exists y => //; right].
-congr (|_| _%:ne); exact/neset_ext.
+case: (eps1 (P_delta_left T))=> f /= [] Haf Hbf.
+rewrite !lubE Hbf.
+congr biglub.
+apply neset_ext=> /=.
+by rewrite image_setU !image_set1.
 Qed.
 
 Lemma bindaltDl : BindLaws.left_distributive (@hierarchy.Bind gcm) alt.
@@ -226,25 +179,8 @@ Lemma affine_F1e0U1PD_conv T (u v : gcm (gcm T)) p :
   ((F1 # eps0 (U1 (P_delta_left T))) (u <|p|> v) =
    (F1 # eps0 (U1 (P_delta_left T))) u <|p|> (F1 # eps0 (U1 (P_delta_left T))) v)%category.
 Proof.
-rewrite /Conv /= /free_semiCompSemiLattConvType_mor /=; unlock.
-rewrite /free_semiCompSemiLattConvType_mor' /=; apply/necset_ext => /=.
-rewrite funeqE => /= X; rewrite propeqE; split.
-  case => /= d0.
-  rewrite necset_convType.convE => -[/= d1 [d2 [d1u [d2v ->{d0}]]]] <-{X}.
-  rewrite necset_convType.convE; exists (eps0'' d1), (eps0'' d2); split.
-    rewrite in_setE /=; exists d1; by [rewrite -in_setE | rewrite eps0E].
-  split.
-    rewrite in_setE /=; exists d2; by [rewrite -in_setE | rewrite eps0E].
-  rewrite !eps0E.
-  transitivity (eps0'' (ConvFSDist.d p d1 d2)) => //.
-  by rewrite eps0''_affine.
-rewrite necset_convType.convE => -[/= d1 [d2 []]].
-rewrite in_setE /= => -[x1 ux1 <-{d1}] -[].
-rewrite in_setE /= => -[x2 ux2 <-{d2}] ->{X}.
-exists (x1 <|p|> x2); first by rewrite necset_convType.convE; exists x1, x2; rewrite 2!in_setE.
-rewrite !eps0E.
-transitivity (eps0'' (ConvFSDist.d p x1 x2)) => //.
-by rewrite eps0''_affine.
+case: ((F1 # eps0 (U1 (P_delta_left T)))%category)=> f /= [] Haf Hbf.
+by apply: Haf.
 Qed.
 
 Lemma affine_e1PD_conv T (x y : el (F1 (FId (U1 (P_delta_left T))))) p :
@@ -256,6 +192,7 @@ by rewrite -necset_convType.conv_conv_set.
 Qed.
 
 Lemma bindchoiceDl p : BindLaws.left_distributive (@hierarchy.Bind gcm) (@choice p).
+Proof.
 move=> A B x y k.
 rewrite !hierarchy.bindE /choice FunpchoiceDr.
 suff -> : forall T (u v : gcm (gcm T)), hierarchy.Join (u <|p|> v : gcm (gcm T)) = hierarchy.Join u <|p|> hierarchy.Join v by [].
