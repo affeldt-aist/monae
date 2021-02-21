@@ -719,3 +719,38 @@ rewrite /bigsetU eqEsubset; split => y [i Xi iy].
 Qed.
 End gcm_opsE.
 End P_delta_category_monad.
+
+Require proba_monad_model.
+Section probMonad_out_of_F0U0.
+Import category.
+(* probability monad built directly *)
+Definition M := proba_monad_model.MonadProbModel.prob.
+(* probability monad built using adjunctions *)
+Definition N := Monad_of_category_monad
+  (Monad_of_adjoint (adj_comp AC A0)).
+
+Lemma actmE T : N T = M T.
+Proof. by []. Qed.
+
+Import comps_notation hierarchy.
+Local Open Scope monae_scope.
+Lemma JoinE T :
+  (Join : (N \O N) T -> N T) = (Join : (M \O M) T -> M T).
+Proof.
+apply funext => t /=.
+rewrite Monad_of_category_monad.joinE.
+rewrite [in LHS]/= HCompId HIdComp [X in _ (X t)]/= epsCE.
+(* TODO: rewrite with FSDistfmap_id *)
+rewrite eps0_correct.
+rewrite /FSDistjoin /FSDistfmap /= FSDistBindA /=.
+congr FSDistBind.d.
+by apply funext => x; rewrite FSDistBind1f.
+Qed.
+
+Lemma RetE T : (Ret : FId T -> N T) = (Ret : FId T -> M T).
+Proof.
+apply funext => t /=.
+rewrite /Monad_of_category_monad.ret /=.
+by rewrite HCompId HIdComp [X in _ (X t)]/= eta0E etaCE.
+Qed.
+End probMonad_out_of_F0U0.
