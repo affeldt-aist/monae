@@ -638,7 +638,8 @@ Import category.
 Definition AC := AdjointFunctors.mk triLC triRC.
 Definition A0 := AdjointFunctors.mk triL0 triR0.
 Definition A1 := AdjointFunctors.mk triL1 triR1.
-Definition Agcm := adj_comp AC (adj_comp A0 A1).
+Definition Aprob := adj_comp AC A0.
+Definition Agcm := adj_comp Aprob A1.
 Definition Mgcm := Monad_of_adjoint Agcm.
 Definition gcm := Monad_of_category_monad Mgcm.
 
@@ -649,11 +650,21 @@ Lemma gcm_retE (T : Type) (x : choice_of_Type T) :
   Ret x = necset1 (FSDist1.d x) :> gcm T.
 Proof.
 rewrite /= /Monad_of_category_monad.ret /= /Hom.apply /=.
-rewrite !HCompId !HIdComp /= !HCompId !HIdComp /=.
+rewrite !HCompId !HIdComp /=.
 rewrite /id_f /= /etaC.
 unlock => /=.
 by rewrite eta0E eta1E.
 Qed.
+
+Section move_to_classical_sets_ext.
+Lemma eq_bigcup_cond :
+forall (T U : Type) (P Q : set U) (X Y : U -> set T),
+P = Q -> (forall i, P i -> X i = Y i) -> \bigcup_(i in P) X i = \bigcup_(i in Q) Y i.
+Proof.
+move=> ? ? P Q X Y pq XY.
+by rewrite eqEsubset; split=> x; case=> j; rewrite -?pq=> ?; rewrite -?XY // => ?; eexists j; rewrite -?pq // -XY //.
+Qed.
+End move_to_classical_sets_ext.
 
 Local Notation F1 := free_semiCompSemiLattConvType.
 Local Notation F0 := free_convType.
@@ -668,27 +679,19 @@ Import category.
 Local Open Scope convex_scope.
 apply/necset_ext.
 rewrite /= /Monad_of_category_monad.join /= !HCompId !HIdComp eps1E.
-have -> : (AdjComp.F F0 F1 #
-  epsC (AdjComp.G U0 U1 {necset {dist (choice_of_Type T)}}))%category = idfun :> (_ -> _).
-  by rewrite -[in RHS]functor_id; congr Actm; apply/hom_ext; rewrite epsCE.
-have -> : (F1 # eps0 (U1 {necset {dist (choice_of_Type T)}}))%category =
-        @necset_join.F1join0 _ :> (_ -> _).
-  apply funext=> x; apply necset_ext.
-  rewrite /= /necset_join.F1join0' /=.
+rewrite functor_o NEqE functor_id compfid.
+rewrite 2!VCompE_nat HCompId HIdComp.
+set E := epsC _; have->: E = (homid0 _) by apply/hom_ext; rewrite epsCE.
+rewrite functor_id_hom homfunK.
+rewrite !functor_o functor_id !compfid /=.
+set F1J := free_semiCompSemiLattConvType_mor _.
+have-> : F1J = @necset_join.F1join0 _ :> (_ -> _).
+- apply funext=> x; apply necset_ext=> /=.
+  rewrite /F1J /= /necset_join.F1join0' /=.
   rewrite /free_semiCompSemiLattConvType_mor; unlock=> /=.
-  by rewrite eps0E.
-rewrite -(bigcup_image
-            _ _ _ _
-            (fun x => if x \in necset_join.F1join0 X then NECSet.car x else set0) idfun).
-simpl.
-congr hull.
-rewrite /bigsetU eqEsubset; split => y [i Xi iy].
-- exists i; last exact: iy.
-  exists i => //.
-  by move/asboolP : Xi; rewrite asboolE -in_setE => ->.
-- move: Xi iy => [z] /asboolP; rewrite asboolE -in_setE => Xz.
-  rewrite Xz => <- zy.
-  by exists z => //; exact/asboolP.
+  by rewrite eps0E /=.
+congr hull; apply eq_bigcup_cond=> //= x nXx.
+by case/boolP: (x \in necset_join.F1join0 X)=> [|/negP]; rewrite in_setE.
 Qed.
 End gcm_opsE.
 End P_delta_category_monad.
@@ -699,8 +702,7 @@ Import category.
 (* probability monad built directly *)
 Definition M := proba_monad_model.MonadProbModel.prob.
 (* probability monad built using adjunctions *)
-Definition N := Monad_of_category_monad
-  (Monad_of_adjoint (adj_comp AC A0)).
+Definition N := Monad_of_category_monad (Monad_of_adjoint Aprob).
 
 Lemma actmE T : N T = M T.
 Proof. by []. Qed.

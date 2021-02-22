@@ -109,6 +109,11 @@ apply neset_ext=> /=.
 by rewrite image_setU !image_set1.
 Qed.
 
+Local Notation F1o := necset_semiCompSemiLattConvType.
+Local Notation F0o := FSDist_convType.
+Local Notation FCo := choice_of_Type.
+Local Notation F1m := free_semiCompSemiLattConvType_mor.
+Local Notation F0m := free_convType_mor.
 Lemma bindaltDl : BindLaws.left_distributive (@hierarchy.Bind gcm) alt.
 Proof.
 move=> A B x y k.
@@ -117,11 +122,11 @@ suff -> : forall T (u v : gcm (gcm T)),
   hierarchy.Join (u [+] v : gcm (gcm T)) = hierarchy.Join u [+] hierarchy.Join v by [].
 move=> T u v.
 rewrite /= /Monad_of_category_monad.join /=.
-rewrite HCompId HIdComp !HCompId !HIdComp.
-have-> : ((F1 \O F0) # epsC (U0 (U1 (P_delta_left T))))%category = idfun :> (_ -> _).
-  have -> : epsC (U0 (U1 (P_delta_left T))) =
-            [NEq _, _] _ by rewrite hom_ext /= epsCE.
-  by rewrite functor_id.
+rewrite HCompId HIdComp /AdjComp.Eps. 
+do 3 rewrite VCompE_nat homfunK functor_o !compE.
+rewrite !functor_id HCompId HIdComp.
+rewrite (_ : epsC (U0 (U1 (F1o (F0o (FCo T))))) = [NEq _, _] _) ?hom_ext ?epsCE //.
+rewrite NEqE !functor_id_hom.
 by rewrite affine_F1e0U1PD_alt affine_e1PD_alt.
 Qed.
 End bindaltDl.
@@ -191,6 +196,11 @@ rewrite eps1E -biglub_conv_setD; congr (|_| _); apply/neset_ext => /=.
 by rewrite -necset_convType.conv_conv_set.
 Qed.
 
+Local Notation F1o := necset_semiCompSemiLattConvType.
+Local Notation F0o := FSDist_convType.
+Local Notation FCo := choice_of_Type.
+Local Notation F1m := free_semiCompSemiLattConvType_mor.
+Local Notation F0m := free_convType_mor.
 Lemma bindchoiceDl p : BindLaws.left_distributive (@hierarchy.Bind gcm) (@choice p).
 Proof.
 move=> A B x y k.
@@ -198,11 +208,11 @@ rewrite !hierarchy.bindE /choice FunpchoiceDr.
 suff -> : forall T (u v : gcm (gcm T)), hierarchy.Join (u <|p|> v : gcm (gcm T)) = hierarchy.Join u <|p|> hierarchy.Join v by [].
 move=> T u v.
 rewrite /= /Monad_of_category_monad.join /=.
-rewrite HCompId HIdComp !HCompId !HIdComp.
-have-> : ((F1 \O F0) # epsC (U0 (U1 (P_delta_left T))))%category = idfun :> (_ -> _).
-  have -> : epsC (U0 (U1 (P_delta_left T))) =
-            [NEq _, _] _ by rewrite hom_ext /= epsCE.
-  by rewrite functor_id.
+rewrite HCompId HIdComp /AdjComp.Eps. 
+do 3 rewrite VCompE_nat homfunK functor_o !compE.
+rewrite !functor_id HCompId HIdComp.
+rewrite (_ : epsC (U0 (U1 (F1o (F0o (FCo T))))) = [NEq _, _] _) ?hom_ext ?epsCE //.
+rewrite NEqE !functor_id_hom.
 by rewrite affine_F1e0U1PD_conv affine_e1PD_conv.
 Qed.
 End bindchoiceDl.
