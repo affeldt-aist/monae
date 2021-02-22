@@ -35,7 +35,7 @@ depends: [
 
 tags: [
   "keyword:monae"
-  "keyword:effect"
+  "keyword:effects"
   "keyword:probability"
   "keyword:nondeterminism"
   "logpath:monae"

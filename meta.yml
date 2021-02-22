@@ -86,9 +86,12 @@ namespace: monae
 
 keywords:
 - name: monae
-- name: effect
+- name: effects
 - name: probability
 - name: nondeterminism
+
+#date:
+#- 2021-02-21
 
 publications:
 - pub_url: https://staff.aist.go.jp/reynald.affeldt/documents/monae.pdf
