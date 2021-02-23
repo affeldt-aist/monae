@@ -160,22 +160,28 @@ Local Notation CC := choiceType_category.
 Local Notation CT := Type_category.
 Local Notation FC := free_choiceType.
 Local Notation UC := forget_choiceType.
-Definition epsC'' {T : choiceType} : FC T -> T := idfun.
-Definition epsC' : FC \O UC ~~> FId :=
-  fun T => @Hom.Pack CC _ _ _ (@epsC'' T) I.
+
+Let epsC'' {T : choiceType} : FC T -> T := idfun.
+
+Let epsC' : FC \O UC ~~> FId := fun T => @Hom.Pack CC _ _ _ (@epsC'' T) I.
+
 Lemma epsC'_natural : naturality _ _ epsC'.
 Proof. by []. Qed.
-Definition epsC : FC \O UC ~> FId :=
-  locked (Natural.Pack (Natural.Mixin epsC'_natural)).
+
+Definition epsC : FC \O UC ~> FId := locked
+  (Natural.Pack (Natural.Mixin epsC'_natural)).
+
 Lemma epsCE (T : choiceType) : epsC T = idfun :> (_ -> _).
 Proof. by rewrite /epsC; unlock. Qed.
 
-Definition etaC': FId ~~> UC \O FC :=
-  fun _ => @Hom.Pack CT _ _ _ idfun I.
+Let etaC' : FId ~~> UC \O FC := fun _ => @Hom.Pack CT _ _ _ idfun I.
+
 Lemma etaC'_natural : naturality _ _ etaC'.
 Proof. by []. Qed.
-Definition etaC: FId ~> UC \O FC :=
-  locked (Natural.Pack (Natural.Mixin etaC'_natural)).
+
+Definition etaC : FId ~> UC \O FC := locked
+  (Natural.Pack (Natural.Mixin etaC'_natural)).
+
 Lemma etaCE (T : Type) : etaC T = idfun :> (_ -> _).
 Proof. by rewrite /etaC; unlock. Qed.
 
@@ -188,9 +194,12 @@ End epsC_etaC.
 
 Section convType_as_a_category.
 Import category.
-Definition convType_category_mixin : Category.mixin_of convType :=
-  @Category.Mixin convType (fun A : convType => A) AffineFunction.axiom
-    affine_function_id_proof affine_function_comp_proof'.
+Local Obligation Tactic := idtac.
+Program Definition convType_category_mixin : Category.mixin_of convType :=
+  @Category.Mixin convType (fun A : convType => A) Affine.axiom idfun_is_affine _.
+Next Obligation.
+by move=> ? ? ? f g af ag; exact: (comp_is_affine (Affine ag) (Affine af)).
+Qed.
 Canonical convType_category := Category.Pack convType_category_mixin.
 End convType_as_a_category.
 
@@ -199,23 +208,21 @@ Import category.
 Local Notation CC := choiceType_category.
 Local Notation CV := convType_category.
 
-(* NB: FSDistfmap_affine already defined in infotheo/necset.v *)
-Let FSDistfmap_affine (A B : choiceType) (f : {hom A, B}) :=
-  fun x y t => ConvFSDist.bind_left_distr t x y (fun a => FSDist1.d (f a)).
 (* morphism part of FSDist *)
 Definition free_convType_mor (A B : choiceType) (f : {hom A, B}) :
   {hom FSDist_convType A, FSDist_convType B} :=
-  @Hom.Pack CV _ _ _ (FSDistfmap f) (FSDistfmap_affine f).
+  @Hom.Pack CV _ _ _ (FSDistfmap f)
+    (fun t x y => ConvFSDist.bind_left_distr t x y (fun a => FSDist1.d (f a))).
+    (* NB: FSDistfmap_affine already defined in infotheo/necset.v *)
 
-Lemma mem_finsupp_free_convType_mor (A B : choiceType) (f : A -> B) (d : {dist A}) (x : finsupp d) :
+Lemma mem_finsupp_free_convType_mor (A B : choiceType) (f : A -> B)
+    (d : {dist A}) (x : finsupp d) :
   f (fsval x) \in finsupp ((free_convType_mor (hom_choiceType f)) d).
 Proof.
 rewrite /= FSDistBind.supp imfset_id.
 apply/bigfcupP; exists (FSDist1.d (f (fsval x))).
-- rewrite andbT.
-  apply (in_imfset _ (fun x => FSDist1.d (f x))) => /=.
-  exact/fsvalP.
-- rewrite mem_finsupp FSDist1.dE inE eqxx; exact/eqP/R1_neq_R0.
+- by rewrite andbT; exact/in_imfset/fsvalP.
+- by rewrite mem_finsupp FSDist1.dE inE eqxx; exact/eqP/R1_neq_R0.
 Qed.
 
 (* free_convType_mor induces maps between supports *)
@@ -263,6 +270,12 @@ End free_convType_functor.
 *)
 Section eps0_eta0.
 Import category.
+
+Fact hom_affine (A B : convType) (f : {hom A, B}) : affine f.
+Proof. by case: f. Qed.
+Canonical Affine_hom_affine (A B : convType) (f : {hom A, B}) :=
+  Affine (hom_affine f).
+
 Import ScaledConvex.
 Local Open Scope fset_scope.
 Local Open Scope R_scope.
@@ -272,45 +285,33 @@ Local Notation U0 := forget_convType.
 Local Notation CC := choiceType_category.
 Local Notation CV := convType_category.
 
-Definition eps0'' {C : convType} (d : {dist C}) : C := Convn_of_FSDist d.
+Let eps0' : F0 \O U0 ~~> FId :=
+  fun a => @Hom.Pack CV _ _ _ _ (@Convn_of_FSDist_affine (FId a)).
 
-Lemma eps0''_affine (C : convType) : affine_function (@eps0'' C).
-Proof. exact: Convn_of_FSDist_affine. Qed.
-
-Lemma eps0''_natural (C D : convType) (f : {hom C, D}) :
-  f \o eps0'' = eps0'' \o (F0 \O U0) # f.
+Let eps0'_natural : naturality _ _ eps0'.
 Proof.
-rewrite FCompE /= /id_f /eps0''; apply funext => d /=.
-rewrite Convn_of_FSDist_FSDistfmap //; by case: f.
+move=> C D f; rewrite FCompE /= /id_f; apply funext => d /=.
+by rewrite Convn_of_FSDist_FSDistfmap.
 Qed.
 
-Definition eps0' : F0 \O U0 ~~> FId :=
-  fun a => @Hom.Pack CV _ _ _ eps0'' (eps0''_affine (C := FId a)).
+Definition eps0 : F0 \O U0 ~> FId := locked
+  (Natural.Pack (Natural.Mixin eps0'_natural)).
 
-Lemma eps0'E (C : convType) (d : {dist C}) : eps0' C d = Convn_of_FSDist d.
-Proof. by []. Qed.
-
-Lemma eps0'_natural : naturality _ _ eps0'.
-Proof. by move=> C D f; rewrite eps0''_natural. Qed.
-
-Definition eps0 : F0 \O U0 ~> FId :=
-  locked (Natural.Pack (Natural.Mixin eps0'_natural)).
-
-Lemma eps0E (C : convType) : eps0 C = Convn_of_FSDist (C:=C) :> (_ -> _).
+Lemma eps0E (C : convType) : eps0 C = @Convn_of_FSDist C :> (_ -> _).
 Proof. by rewrite /eps0; unlock. Qed.
 
-Definition eta0' : FId ~~> U0 \O F0 :=
-  fun C => @Hom.Pack CC _ _ _ (fun x : C => FSDist1.d x) I.
+Let eta0' : FId ~~> U0 \O F0 :=
+  fun C => @Hom.Pack CC _ _ _ (fun x => FSDist1.d x) I.
+
 Lemma eta0'_natural : naturality _ _ eta0'.
 Proof.
 by move=> a b h; rewrite funeqE=> x; rewrite FIdf /eta0' /= FSDistfmap1.
 Qed.
 
-Definition eta0 : FId ~> U0 \O F0 :=
-  locked (Natural.Pack (Natural.Mixin eta0'_natural)).
-Lemma eta0E' : eta0 = Natural eta0'_natural.
-Proof. by rewrite /eta0; unlock. Qed.
-Lemma eta0E (T : choiceType) : eta0 T = (@FSDist1.d _) :> (_ -> _).
+Definition eta0 : FId ~> U0 \O F0 := locked
+  (Natural.Pack (Natural.Mixin eta0'_natural)).
+
+Lemma eta0E (T : choiceType) : eta0 T = @FSDist1.d _ :> (_ -> _).
 Proof. by rewrite /eta0; unlock. Qed.
 
 Import comps_notation.
@@ -323,7 +324,7 @@ by move=> c; apply funext=> x /=; rewrite eps0E eta0E triangular_laws_left0.
 Qed.
 Lemma triR0 : TriangularLaws.right eta0 eps0.
 Proof.
-move=> c; by rewrite eps0E eta0E funeqE => a /=; rewrite Convn_of_FSDist_FSDist1.
+by move=> c; rewrite eps0E eta0E funeqE => a /=; rewrite Convn_of_FSDist_FSDist1.
 Qed.
 End eps0_eta0.
 
@@ -334,39 +335,43 @@ Import ScaledConvex.
 Local Open Scope R_scope.
 Variables (A : choiceType) (D : {dist {dist A}}).
 
-Let eps0''_correct  : eps0'' D = FSDistjoin D.
+Lemma eps0_correct : eps0 _ D = FSDistjoin D.
 Proof.
-apply FSDist_ext => a; rewrite -[LHS]Scaled1RK /eps0''.
-rewrite (S1_proj_Convn_finType (FSDist_eval_affine a)) big_scaleR.
+rewrite /eps0; unlock=> /=; apply FSDist_ext => a; rewrite -[LHS]Scaled1RK.
+rewrite (S1_proj_Convn_finType (Affine (FSDist_eval_affine a))) big_scaleR.
 rewrite FSDistjoinE big_seq_fsetE; apply eq_bigr => -[d dD] _.
 by rewrite (scaleR_scalept _ (FDist.ge0 _ _)) fdist_of_FSDistE Scaled1RK.
 Qed.
 
-Lemma eps0_correct : eps0 _ D = FSDistjoin D.
-Proof. rewrite /eps0; unlock=> /=; exact: eps0''_correct. Qed.
 End eps0_correct.
 
 Section semiCompSemiLattConvType_as_a_category.
 Import category.
-Definition semiCompSemiLattConvType_category_mixin :
+Local Obligation Tactic := idtac.
+Program Definition semiCompSemiLattConvType_category_mixin :
     Category.mixin_of semiCompSemiLattConvType :=
   @Category.Mixin semiCompSemiLattConvType (fun U : semiCompSemiLattConvType => U)
-  BiglubAffine.class_of biglub_affine_id_proof biglub_affine_comp_proof.
+  BiglubAffine.class_of idfun_is_biglub_affine _.
+Next Obligation.
+move=> A B C f g bf bg.
+exact: (comp_is_biglub_affine (BiglubAffine bg) (BiglubAffine bf)(*TODO: notation?*)).
+Qed.
 Canonical semiCompSemiLattConvType_category :=
   Category.Pack semiCompSemiLattConvType_category_mixin.
 End semiCompSemiLattConvType_as_a_category.
 
 Local Open Scope classical_set_scope.
-
 Local Open Scope latt_scope.
 
-Section apply_affine.
+Section hom_biglubmorph.
 Import category.
-Lemma apply_affine (K L : semiCompSemiLattConvType) (f : {hom K , L})
-  (X : necset_semiCompSemiLattConvType K) :
-  f (|_| X) = |_| (f @` X)%:ne.
-Proof. by case: f => f [? /= ->]. Qed.
-End apply_affine.
+Local Open Scope convex_scope.
+Fact hom_biglubmorph (K L : semiCompSemiLattConvType) (f : {hom K , L}) :
+  biglubmorph f.
+Proof. by move=> X; case: f => f [?]. Qed.
+Canonical BiglubMorph_hom_biglubmorph (A B : semiCompSemiLattConvType)
+  (f : {hom A, B}) := BiglubMorph (hom_biglubmorph f).
+End hom_biglubmorph.
 
 Section free_semiCompSemiLattConvType_functor.
 Import category.
@@ -374,27 +379,24 @@ Local Open Scope convex_scope.
 Local Notation CV := convType_category.
 Local Notation CS := semiCompSemiLattConvType_category.
 
-Lemma hom_affine_function (A B : convType) (f : {hom A, B}) : affine_function f.
-Proof. by case: f. Qed.
-
 (* the morphism part of necset *)
 Section free_semiCompSemiLattConvType_mor.
 Variables (A B : convType) (f : {hom A , B}).
 
-Definition free_semiCompSemiLattConvType_mor' (X : necset_convType A) :
-  necset_convType B :=
-  NECSet.Pack (NECSet.Class
-    (CSet.Class (is_convex_set_image' (hom_affine_function f) X))
+Definition free_semiCompSemiLattConvType_mor' (X : necset A) :
+  necset B := NECSet.Pack (NECSet.Class
+    (CSet.Class (is_convex_set_image [affine of f] X))
     (NESet.Mixin (neset_image_neq0 _ _))).
 
 (* the results of free_semiCompSemiLattConvType_mor are
    semiLattConvType-morphisms, i.e., are
    affine and preserve semilatt operations *)
 Lemma free_semiCompSemiLattConvType_mor'_affine :
-  affine_function free_semiCompSemiLattConvType_mor'.
+  affine free_semiCompSemiLattConvType_mor'.
 Proof.
-move=> a0 a1 p; apply necset_ext => /=; rewrite predeqE => b0; split.
-- case=> a; rewrite necset_convType.convE => -[a0' [a1' [H0 [H1 ->{a}]]]] <-{b0}.
+move=> p a0 a1; apply necset_ext => /=; rewrite predeqE => b0; split.
+- case=> a.
+  rewrite necset_convType.convE => -[a0' [a1' [H0 [H1 ->{a}]]]] <-{b0}.
   rewrite necset_convType.convE; exists (f a0'); exists (f a1'); split.
     by rewrite in_setE /=; exists a0' => //; rewrite -in_setE.
   split; last by case: f => f' /= Hf; rewrite Hf.
@@ -409,26 +411,22 @@ Qed.
 
 Lemma bigsetU_affine (X : neset (necset A)) :
   (f @` (\bigcup_(x in X) x) =
-   \bigcup_(x in free_semiCompSemiLattConvType_mor' @` X) x)%classic.
+    \bigcup_(x in free_semiCompSemiLattConvType_mor' @` X) x)%classic.
 Proof.
 rewrite funeqE => b; rewrite propeqE; split.
 - case => a [x Xx xa] <-{b}.
-  have Hf : affine_function f by case: f.
-  exists (NECSet.Pack
-            (NECSet.Class
-               (CSet.Class (@is_convex_set_image' _ _ f Hf x))
-               (NESet.Mixin (neset_image_neq0 f x)))) => /=; last by exists a.
+  exists (NECSet.Pack (NECSet.Class
+      (CSet.Class (is_convex_set_image [affine of f] x))
+      (NESet.Mixin (neset_image_neq0 f x)))) => /=; last by exists a.
   by exists x => //=; exact/necset_ext.
 - by case => b0 [a0 Xa0 <-{b0}] [a a0a <-{b}]; exists a => //; exists a0.
 Qed.
 
 Lemma free_semiCompSemiLattConvType_mor'_biglub_morph :
-  biglub_morph free_semiCompSemiLattConvType_mor'.
+  biglubmorph free_semiCompSemiLattConvType_mor'.
 Proof.
 move=> /= X; apply necset_ext => /=; rewrite funeqE => b.
-rewrite image_preserves_convex_hull'; last by case: f.
-congr (hull _ b) => {b}.
-exact: bigsetU_affine.
+by rewrite image_preserves_convex_hull bigsetU_affine.
 Qed.
 
 Definition free_semiCompSemiLattConvType_mor :
@@ -437,22 +435,27 @@ Definition free_semiCompSemiLattConvType_mor :
     (BiglubAffine.Class free_semiCompSemiLattConvType_mor'_affine
                      free_semiCompSemiLattConvType_mor'_biglub_morph)).
 
-Lemma free_semiCompSemiLattConvType_morE (X : necset_convType A) :
+Lemma free_semiCompSemiLattConvType_morE (X : necset A) :
   NECSet.mixinType (free_semiCompSemiLattConvType_mor X) = image_neset f X.
-Proof. by rewrite /free_semiCompSemiLattConvType_mor; unlock; apply neset_ext. Qed.
+Proof.
+by rewrite /free_semiCompSemiLattConvType_mor; unlock; apply neset_ext.
+Qed.
 
-Lemma free_semiCompSemiLattConvType_morE' (X : necset_convType A) :
+Lemma free_semiCompSemiLattConvType_morE' (X : necset A) :
   NESet.car (NECSet.mixinType (free_semiCompSemiLattConvType_mor X)) = image_neset f X.
 Proof. by rewrite /free_semiCompSemiLattConvType_mor; unlock. Qed.
 End free_semiCompSemiLattConvType_mor.
 
-Lemma free_semiCompSemiLattConvType_mor_id : FunctorLaws.id free_semiCompSemiLattConvType_mor.
+Lemma free_semiCompSemiLattConvType_mor_id :
+  FunctorLaws.id free_semiCompSemiLattConvType_mor.
 Proof.
 move=> a; rewrite hom_ext funeqE=> /= x /=.
 apply necset_ext => /=.
 by rewrite free_semiCompSemiLattConvType_morE' /= image_id.
 Qed.
-Lemma free_semiCompSemiLattConvType_mor_comp : FunctorLaws.comp free_semiCompSemiLattConvType_mor.
+
+Lemma free_semiCompSemiLattConvType_mor_comp :
+  FunctorLaws.comp free_semiCompSemiLattConvType_mor.
 Proof.
 move=> a b c [] g affine_g [] h affine_h; rewrite hom_ext funeqE => /= x /=.
 apply necset_ext => /=.
@@ -495,10 +498,10 @@ Local Notation U1 := forget_semiCompSemiLattConvType.
 Local Notation CV := convType_category.
 Local Notation CS := semiCompSemiLattConvType_category.
 
-Definition eps1'' {L : semiCompSemiLattConvType}
+Let eps1'' {L : semiCompSemiLattConvType}
   (X : necset_semiCompSemiLattConvType L) : L := |_| X.
 
-Lemma eps1''_biglub_morph L : biglub_morph (@eps1'' L).
+Lemma eps1''_biglubmorph L : biglubmorph (@eps1'' L).
 Proof.
 move=> F.
 rewrite /eps1''.
@@ -507,15 +510,15 @@ transitivity (|_| (biglub @` ((fun X : necset_semiCompSemiLattType L => (X : nes
   apply/neset_ext; rewrite eqEsubset; split => x [] x0 Fx0 <-.
   + by case: Fx0 => x1 Fx1 <-; exists x1.
   + by exists x0 => // ; exists x0.
-transitivity (|_| (hull (\bigcup_(x in F) x))%:ne);
-  first by congr (|_| _); apply neset_ext.
+transitivity (|_| (hull (\bigcup_(x in F) x))%:ne).
+  by congr (|_| _); apply neset_ext.
 by rewrite biglub_hull biglub_bigcup.
 Qed.
 
-Lemma eps1''_affine L : affine_function (@eps1'' L).
+Lemma eps1''_affine L : affine (@eps1'' L).
 Proof.
-move=> X Y p; rewrite /affine_function_at /eps1''.
-transitivity (|_| (X :<| p |>: Y)%:ne); last by rewrite biglub_conv_setD.
+move=> X Y p; rewrite /eps1''.
+rewrite -biglub_conv_setD.
 congr (|_| _%:ne); apply/neset_ext => /=.
 rewrite conv_setE necset_convType.convE eqEsubset; split=> u.
 - case=> x [] y [] xX [] yY ->.
@@ -525,54 +528,46 @@ rewrite conv_setE necset_convType.convE eqEsubset; split=> u.
   by exists x, y; rewrite !in_setE.
 Qed.
 
-Lemma eps1''_natural (K L : semiCompSemiLattConvType) (f : {hom K , L}) :
-  f \o eps1'' = eps1'' \o (F1 \O U1) # f.
-Proof.
-rewrite FCompE /= /id_f.
-rewrite funeqE => X /=; rewrite apply_affine.
-congr (|_| _); by rewrite free_semiCompSemiLattConvType_morE.
-Qed.
-
-Definition eps1' : F1 \O U1 ~~> FId :=
+Let eps1' : F1 \O U1 ~~> FId :=
   fun L => @Hom.Pack CS _ _ _ (@eps1'' L)
-    (BiglubAffine.Class (@eps1''_affine L) (@eps1''_biglub_morph L)).
+    (BiglubAffine.Class (@eps1''_affine L) (@eps1''_biglubmorph L)).
 
 Lemma eps1'_natural : naturality _ _ eps1'.
-Proof. by move=> K L f; rewrite eps1''_natural. Qed.
+Proof.
+move=> K L f /=; rewrite funeqE => X /=.
+rewrite biglub_morph; congr (|_| _).
+by rewrite free_semiCompSemiLattConvType_morE.
+Qed.
 
-Definition eps1 : F1 \O U1 ~> FId :=
-  locked (Natural.Pack (Natural.Mixin eps1'_natural)).
+Definition eps1 : F1 \O U1 ~> FId := locked
+  (Natural.Pack (Natural.Mixin eps1'_natural)).
 
-Lemma eps1E': eps1 = Natural eps1'_natural.
-Proof. by rewrite /eps1; unlock. Qed.
 Lemma eps1E (L : semiCompSemiLattConvType) :
   eps1 L = (fun X => |_| X) :> (_ -> _).
 Proof. by rewrite /eps1; unlock. Qed.
 
-Definition eta1'' (C : convType) (x : C) : necset_convType C := necset1 x.
-Lemma eta1''_affine (C : convType) : affine_function (@eta1'' C).
+Lemma necset1_affine (C : convType) : affine (@necset1 C).
 Proof.
-move=> a b p; rewrite /affine_function_at /eta1'' /=.
-apply/necset_ext; rewrite eqEsubset; split=> x /=.
+move=> p a b /=; apply/necset_ext; rewrite eqEsubset; split=> x /=.
 - move->; rewrite necset_convType.convE.
-  by exists a, b; rewrite !asboolE /necset1 /=.
+  by exists a, b; rewrite !asboolE.
 - rewrite necset_convType.convE => -[] a0 [] b0.
   by rewrite !asboolE /necset1 /= => -[] -> [] -> ->.
 Qed.
-Definition eta1' : FId ~~> U1 \O F1 :=
-  fun C => @Hom.Pack CV _ _ _ (@eta1'' C) (@eta1''_affine C).
+
+Let eta1' : FId ~~> U1 \O F1 :=
+  fun C => @Hom.Pack CV _ _ _ (@necset1 C) (@necset1_affine C).
+
 Lemma eta1'_natural : naturality _ _ eta1'.
 Proof.
 move=> a b h; rewrite funeqE=> x; apply necset_ext => /=.
 by rewrite /eta1' /= /id_f free_semiCompSemiLattConvType_morE'/= image_set1.
 Qed.
-Definition eta1 : FId ~> U1 \O F1 :=
-  locked (Natural.Pack (Natural.Mixin eta1'_natural)).
-Lemma eta1E' : eta1 = Natural eta1'_natural.
-Proof. by rewrite /eta1; unlock. Qed.
-Lemma eta1E (C : convType) : eta1 C = (@necset1 _) :> (_ -> _).
-Proof. by rewrite /eta1; unlock. Qed.
-Lemma eta1E'' (C : convType) (x : C) : eta1 C x = necset1 x.
+
+Definition eta1 : FId ~> U1 \O F1 := locked
+  (Natural.Pack (Natural.Mixin eta1'_natural)).
+
+Lemma eta1E (C : convType) : eta1 C = @necset1 _ :> (_ -> _).
 Proof. by rewrite /eta1; unlock. Qed.
 
 Import comps_notation.
@@ -580,17 +575,15 @@ Lemma necset1E (T : convType) (t : T) : necset1 t = [set t] :> set T.
 Proof. by []. Qed.
 Lemma triL1 : TriangularLaws.left eta1 eps1.
 Proof.
-move=> c; apply funext=> x /=; apply/necset_ext=> /=.
-rewrite eps1E eta1E' /= free_semiCompSemiLattConvType_morE' /= /eta1'' /=.
+move=> c; apply funext => x /=; apply/necset_ext => /=.
+rewrite eps1E /= free_semiCompSemiLattConvType_morE' /=.
 rewrite -[in RHS](hull_cset x); congr hull.
-rewrite eqEsubset; split=> a /=.
-- case=> y [] b xb <-.
-  by rewrite necset1E => ->.
-- move=> xa.
-  by exists (necset1 a); [exists a | rewrite necset1E].
+rewrite eqEsubset eta1E; split=> a.
+- by case=> y [] b xb <-; rewrite necset1E => ->.
+- by move=> xa; exists (necset1 a); [exists a | rewrite necset1E].
 Qed.
 Lemma triR1 : TriangularLaws.right eta1 eps1.
-Proof. by move=> c; apply funext=> /= x; by rewrite eps1E eta1E /= biglub1. Qed.
+Proof. by move=> c; apply funext=> /= x; rewrite eps1E eta1E /= biglub1. Qed.
 End eps1_eta1.
 
 Section join1.
@@ -615,16 +608,13 @@ Definition join1 (s : necset (necset_convType C)) : necset C :=
   NECSet.Pack (NECSet.Class (CSet.Class (hull_is_convex _))
                             (NESet.Mixin (join1'_neq0 s))).
 
-Lemma eps1''_correct (s : necset (necset_convType C)) : eps1'' s = join1 s.
+Lemma eps1_correct (s : necset (necset_convType C)) : @eps1 _ s = join1 s.
 Proof.
-rewrite /eps1'' /join1 /=; apply/necset_ext => /=; congr (hull _).
+rewrite eps1E; apply/necset_ext => /=; congr (hull _).
 rewrite /bigsetU; rewrite funeqE => c; rewrite propeqE; split.
 - by case=> X sX Xc; exists X => //; rewrite -in_setE in sX; rewrite sX.
 - by case=> X sX; rewrite -in_setE in sX; rewrite sX => Xc; exists X => //; rewrite -in_setE.
 Qed.
-
-Lemma eps1_correct (s : necset (necset_convType C)) : eps1 _ s = join1 s.
-Proof. rewrite /eps1; unlock=> /=; exact: eps1''_correct. Qed.
 
 End join1.
 
