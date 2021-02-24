@@ -118,23 +118,26 @@ Definition choiceType_category_mixin : Category.mixin_of choiceType :=
     (fun _ _ _ => True) (fun=> I) (fun _ _ _ _ _ _ _ => I).
 Canonical choiceType_category := Category.Pack choiceType_category_mixin.
 Definition hom_choiceType (A B : choiceType) (f : A -> B) : {hom A, B} :=
-  HomPack (I : InHom (f : el A -> el B)).
+  HomPack A B f I.
 End choiceType_as_a_category.
+
+Notation CC := choiceType_category.
 
 Section free_choiceType_functor.
 Import category.
 Local Notation m := choice_of_Type.
-Local Notation CC := choiceType_category.
-Local Notation CT := Type_category.
 
 Definition free_choiceType_mor (T U : CT) (f : {hom T, U}) :
   {hom m T, m U} := hom_choiceType (f : m T -> m U).
+
 Lemma free_choiceType_mor_id : FunctorLaws.id free_choiceType_mor.
 Proof. by move=> a; rewrite hom_ext. Qed.
+
 Lemma free_choiceType_mor_comp : FunctorLaws.comp free_choiceType_mor.
 Proof. by move=> a b c g h; rewrite hom_ext. Qed.
-Definition free_choiceType : functor CT CC :=
-  Functor.Pack (Functor.Mixin free_choiceType_mor_id free_choiceType_mor_comp).
+
+Definition free_choiceType : {functor CT -> CC} :=
+  Functor free_choiceType_mor_id free_choiceType_mor_comp.
 
 Lemma free_choiceType_mor_comp_fun (a b c : Type) (g : {hom b, c})
       (h : {hom a, b}):
@@ -142,45 +145,43 @@ Lemma free_choiceType_mor_comp_fun (a b c : Type) (g : {hom b, c})
   (free_choiceType_mor g) \o (free_choiceType_mor h) :> (_ -> _).
 Proof. by rewrite free_choiceType_mor_comp. Qed.
 
-Let h (a b : CC) (f : {hom CC; a, b}) : {hom CT; Choice.sort a , Choice.sort b} :=
-  HomPack (I : InHom (FId # f : el (C:=CT) a -> el b)).
+Let h (a b : CC) (f : {hom a, b}) : {hom CT; a, b} :=
+  HomPack (a : CT) (b : _) (FId # f) I.
+
 Lemma h_id : FunctorLaws.id h. Proof. by move=> *; apply hom_ext. Qed.
+
 Lemma h_comp : FunctorLaws.comp h. Proof. by move=> *; apply hom_ext. Qed.
-Definition forget_choiceType : functor CC CT :=
-  Functor.Pack (Functor.Mixin h_id h_comp).
+
+Definition forget_choiceType : {functor CC -> CT} := Functor h_id h_comp.
+
 Lemma forget_choiceTypeE :
   (forall a : CC, forget_choiceType a = a)
-  /\ (forall a b (f : {hom CC; a , b}), forget_choiceType # f = f :> (a -> b)).
+  /\ (forall (a b : CC) (f : {hom CC; a , b}), forget_choiceType # f = f :> (a -> b)).
 Proof. by []. Qed.
+
 End free_choiceType_functor.
 
 Section epsC_etaC.
 Import category.
-Local Notation CC := choiceType_category.
-Local Notation CT := Type_category.
 Local Notation FC := free_choiceType.
 Local Notation UC := forget_choiceType.
 
-Let epsC'' {T : choiceType} : FC T -> T := idfun.
-
-Let epsC' : FC \O UC ~~> FId := fun T => @Hom.Pack CC _ _ _ (@epsC'' T) I.
+Let epsC' : FC \O UC ~~> FId := fun A : CC => HomPack ((FC \O UC) A) (FId A) idfun I.
 
 Lemma epsC'_natural : naturality _ _ epsC'.
 Proof. by []. Qed.
 
-Definition epsC : FC \O UC ~> FId := locked
-  (Natural.Pack (Natural.Mixin epsC'_natural)).
+Definition epsC : FC \O UC ~> FId := locked (Natural epsC'_natural).
 
 Lemma epsCE (T : choiceType) : epsC T = idfun :> (_ -> _).
 Proof. by rewrite /epsC; unlock. Qed.
 
-Let etaC' : FId ~~> UC \O FC := fun _ => @Hom.Pack CT _ _ _ idfun I.
+Let etaC' : FId ~~> UC \O FC := fun (_ : CT) => HomPack (FId _) ((UC \O FC) _) idfun I.
 
 Lemma etaC'_natural : naturality _ _ etaC'.
 Proof. by []. Qed.
 
-Definition etaC : FId ~> UC \O FC := locked
-  (Natural.Pack (Natural.Mixin etaC'_natural)).
+Definition etaC : FId ~> UC \O FC := locked (Natural etaC'_natural).
 
 Lemma etaCE (T : Type) : etaC T = idfun :> (_ -> _).
 Proof. by rewrite /etaC; unlock. Qed.
@@ -203,21 +204,17 @@ Qed.
 Canonical convType_category := Category.Pack convType_category_mixin.
 End convType_as_a_category.
 
+Notation CV := convType_category.
+
 Section free_convType_functor.
 Import category.
-Local Notation CC := choiceType_category.
-Local Notation CV := convType_category.
 
-(* morphism part of FSDist *)
-Definition free_convType_mor (A B : choiceType) (f : {hom A, B}) :
-  {hom FSDist_convType A, FSDist_convType B} :=
-  @Hom.Pack CV _ _ _ (FSDistfmap f)
-    (fun t x y => ConvFSDist.bind_left_distr t x y (fun a => FSDist1.d (f a))).
-    (* NB: FSDistfmap_affine already defined in infotheo/necset.v *)
+Definition free_convType_mor (A B : CC) (f : {hom A, B}) : {hom {dist A}, {dist B}} :=
+  HomPack {dist A} {dist B} (FSDistfmap f) (FSDistfmap_affine f).
 
-Lemma mem_finsupp_free_convType_mor (A B : choiceType) (f : A -> B)
+Lemma mem_finsupp_free_convType_mor (A B : CC) (f : A -> B)
     (d : {dist A}) (x : finsupp d) :
-  f (fsval x) \in finsupp ((free_convType_mor (hom_choiceType f)) d).
+  f (fsval x) \in finsupp (free_convType_mor (hom_choiceType f) d).
 Proof.
 rewrite /= FSDistBind.supp imfset_id.
 apply/bigfcupP; exists (FSDist1.d (f (fsval x))).
@@ -227,7 +224,7 @@ Qed.
 
 (* free_convType_mor induces maps between supports *)
 Definition free_convType_mor_supp
-  (A B : choiceType) (f : A -> B(*{hom A , B}*)) (d : {dist A}) (x : finsupp d)
+  (A B : CC) (f : A -> B(*{hom A , B}*)) (d : {dist A}) (x : finsupp d)
   : [finType of finsupp ((free_convType_mor (hom_choiceType f)) d)] :=
   FSetSub (mem_finsupp_free_convType_mor f x).
 Global Arguments free_convType_mor_supp [A B] f d.
@@ -242,25 +239,23 @@ Qed.
 Lemma free_convType_mor_comp : FunctorLaws.comp free_convType_mor.
 Proof. by move=> a b c g h; rewrite hom_ext /= FSDistfmap_comp. Qed.
 
-Definition free_convType : functor CC CV :=
-  Functor.Pack (Functor.Mixin free_convType_mor_id free_convType_mor_comp).
+Definition free_convType : {functor CC -> CV} :=
+  Functor free_convType_mor_id free_convType_mor_comp.
 
-Lemma free_convType_mor_comp_fun (A B C : choiceType) (g : {hom B, C})
-      (h : {hom A, B}):
+Lemma free_convType_mor_comp_fun (A B C : CC) (g : {hom B, C}) (h : {hom A, B}) :
   free_convType_mor [hom g \o h] =
   (free_convType_mor g) \o (free_convType_mor h) :> (_ -> _).
 Proof. by rewrite free_convType_mor_comp. Qed.
 
 Let m1 : CV -> CC := idfun.
-Let h1 := fun (a b : CV) (f : {hom CV; a, b}) =>
-  @Hom.Pack CC a b _ f I : {hom CC; m1 a , m1 b}.
+Let h1 := fun (a b : CV) (f : {hom CV; a, b}) => HomPack (m1 a) (m1 b) f I.
 Lemma h1_id : FunctorLaws.id h1. Proof. by move=> *; apply hom_ext. Qed.
 Lemma h1_comp : FunctorLaws.comp h1. Proof. by move=> *; apply hom_ext. Qed.
-Definition forget_convType : functor CV CC :=
-  Functor.Pack (Functor.Mixin h1_id h1_comp).
+Definition forget_convType : {functor CV -> CC} :=
+  Functor h1_id h1_comp.
 Lemma forget_convTypeE :
   (forall a : CV, forget_convType a = a)
-  /\ (forall a b (f : {hom CV; a , b}), forget_convType # f = f :> (a -> b)).
+  /\ (forall (a b : CV) (f : {hom CV; a , b}), forget_convType # f = f :> (a -> b)).
 Proof. by []. Qed.
 End free_convType_functor.
 
@@ -282,11 +277,9 @@ Local Open Scope R_scope.
 Local Open Scope convex_scope.
 Local Notation F0 := free_convType.
 Local Notation U0 := forget_convType.
-Local Notation CC := choiceType_category.
-Local Notation CV := convType_category.
 
 Let eps0' : F0 \O U0 ~~> FId :=
-  fun a => @Hom.Pack CV _ _ _ _ (@Convn_of_FSDist_affine (FId a)).
+  fun a => HomPack ((F0 \O U0) a) (FId a) (@Convn_of_FSDist a) (@Convn_of_FSDist_affine (FId a)).
 
 Let eps0'_natural : naturality _ _ eps0'.
 Proof.
@@ -294,22 +287,20 @@ move=> C D f; rewrite FCompE /= /id_f; apply funext => d /=.
 by rewrite Convn_of_FSDist_FSDistfmap.
 Qed.
 
-Definition eps0 : F0 \O U0 ~> FId := locked
-  (Natural.Pack (Natural.Mixin eps0'_natural)).
+Definition eps0 : F0 \O U0 ~> FId := locked (Natural eps0'_natural).
 
 Lemma eps0E (C : convType) : eps0 C = @Convn_of_FSDist C :> (_ -> _).
 Proof. by rewrite /eps0; unlock. Qed.
 
 Let eta0' : FId ~~> U0 \O F0 :=
-  fun C => @Hom.Pack CC _ _ _ (fun x => FSDist1.d x) I.
+  fun T => HomPack (FId T) ((U0 \O F0) T) (fun x => FSDist1.d x) I.
 
 Lemma eta0'_natural : naturality _ _ eta0'.
 Proof.
 by move=> a b h; rewrite funeqE=> x; rewrite FIdf /eta0' /= FSDistfmap1.
 Qed.
 
-Definition eta0 : FId ~> U0 \O F0 := locked
-  (Natural.Pack (Natural.Mixin eta0'_natural)).
+Definition eta0 : FId ~> U0 \O F0 := locked (Natural eta0'_natural).
 
 Lemma eta0E (T : choiceType) : eta0 T = @FSDist1.d _ :> (_ -> _).
 Proof. by rewrite /eta0; unlock. Qed.
@@ -360,6 +351,8 @@ Canonical semiCompSemiLattConvType_category :=
   Category.Pack semiCompSemiLattConvType_category_mixin.
 End semiCompSemiLattConvType_as_a_category.
 
+Notation CS := semiCompSemiLattConvType_category.
+
 Local Open Scope classical_set_scope.
 Local Open Scope latt_scope.
 
@@ -376,15 +369,13 @@ End hom_biglubmorph.
 Section free_semiCompSemiLattConvType_functor.
 Import category.
 Local Open Scope convex_scope.
-Local Notation CV := convType_category.
-Local Notation CS := semiCompSemiLattConvType_category.
 
 (* the morphism part of necset *)
 Section free_semiCompSemiLattConvType_mor.
 Variables (A B : convType) (f : {hom A , B}).
 
-Definition free_semiCompSemiLattConvType_mor' (X : necset A) :
-  necset B := NECSet.Pack (NECSet.Class
+Definition free_semiCompSemiLattConvType_mor' (X : {necset A}) : {necset B} :=
+  NECSet.Pack (NECSet.Class
     (CSet.Class (is_convex_set_image [affine of f] X))
     (NESet.Mixin (neset_image_neq0 _ _))).
 
@@ -430,10 +421,12 @@ by rewrite image_preserves_convex_hull bigsetU_affine.
 Qed.
 
 Definition free_semiCompSemiLattConvType_mor :
-  {hom necset_semiCompSemiLattConvType A, necset_semiCompSemiLattConvType B} :=
-  locked (@Hom.Pack CS _ _ _ free_semiCompSemiLattConvType_mor'
+  {hom {necset A}, {necset B}} :=
+  locked (HomPack
+    {necset A} {necset B}
+    free_semiCompSemiLattConvType_mor'
     (BiglubAffine.Class free_semiCompSemiLattConvType_mor'_affine
-                     free_semiCompSemiLattConvType_mor'_biglub_morph)).
+                       free_semiCompSemiLattConvType_mor'_biglub_morph)).
 
 Lemma free_semiCompSemiLattConvType_morE (X : necset A) :
   NECSet.mixinType (free_semiCompSemiLattConvType_mor X) = image_neset f X.
@@ -463,9 +456,9 @@ rewrite 2!free_semiCompSemiLattConvType_morE' /= -image_comp.
 by rewrite free_semiCompSemiLattConvType_morE'.
 Qed.
 
-Definition free_semiCompSemiLattConvType : functor CV CS :=
-  Functor.Pack (Functor.Mixin free_semiCompSemiLattConvType_mor_id
-                              free_semiCompSemiLattConvType_mor_comp).
+Definition free_semiCompSemiLattConvType : {functor CV -> CS} :=
+  Functor free_semiCompSemiLattConvType_mor_id
+          free_semiCompSemiLattConvType_mor_comp.
 
 Local Notation F1 := free_semiCompSemiLattConvType.
 
@@ -475,17 +468,16 @@ Lemma free_semiCompSemiLattConvType_mor_comp_fun (a b c : convType)
 Proof. by rewrite /Actm /= free_semiCompSemiLattConvType_mor_comp. Qed.
 
 Let m2 : CS -> CV := id.
-Let h2 := fun (a b : CS) (f : {hom CS; a, b}) =>
-  @Hom.Pack CV a b _ f (BiglubAffine.base (Hom.class f)) : {hom CV; m2 a , m2 b}.
+Let h2 := fun (a b : CS) (f : {hom CS; a, b}) => HomPack (m2 a) (m2 b) f (BiglubAffine.base (Hom.class f)).
 Lemma h2_id : FunctorLaws.id h2. Proof. by move=> *; apply hom_ext. Qed.
 Lemma h2_comp : FunctorLaws.comp h2. Proof. by move=> *; apply hom_ext. Qed.
-Definition forget_semiCompSemiLattConvType : functor CS CV :=
-  Functor.Pack (Functor.Mixin h2_id h2_comp).
+Definition forget_semiCompSemiLattConvType : {functor CS -> CV} :=
+  Functor h2_id h2_comp.
 
 Local Notation U1 := forget_semiCompSemiLattConvType.
 
 Lemma forget_semiCompSemiLattConvTypeE : (forall a : CS, forget_convType a = a)
-  /\ (forall a b (f : {hom CS; a , b}), U1 # f = f :> (a -> b)).
+  /\ (forall (a b : CS) (f : {hom CS; a , b}), U1 # f = f :> (a -> b)).
 Proof. by []. Qed.
 End free_semiCompSemiLattConvType_functor.
 
@@ -495,18 +487,15 @@ Local Open Scope classical_set_scope.
 Local Open Scope convex_scope.
 Local Notation F1 := free_semiCompSemiLattConvType.
 Local Notation U1 := forget_semiCompSemiLattConvType.
-Local Notation CV := convType_category.
-Local Notation CS := semiCompSemiLattConvType_category.
+Implicit Types L : semiCompSemiLattConvType.
 
-Let eps1'' {L : semiCompSemiLattConvType}
-  (X : necset_semiCompSemiLattConvType L) : L := |_| X.
+Let eps1'' L := (fun X : {necset L} => |_| X).
 
 Lemma eps1''_biglubmorph L : biglubmorph (@eps1'' L).
 Proof.
 move=> F.
-rewrite /eps1''.
-transitivity (|_| (biglub @` ((fun X : necset_semiCompSemiLattType L => (X : neset _)) @` F))%:ne); last first.
-- congr (|_| _).
+transitivity (|_| (biglub @` ((fun X : {necset L} => (X : neset _)) @` F))%:ne); last first.
+  congr (|_| _).
   apply/neset_ext; rewrite eqEsubset; split => x [] x0 Fx0 <-.
   + by case: Fx0 => x1 Fx1 <-; exists x1.
   + by exists x0 => // ; exists x0.
@@ -517,8 +506,7 @@ Qed.
 
 Lemma eps1''_affine L : affine (@eps1'' L).
 Proof.
-move=> X Y p; rewrite /eps1''.
-rewrite -biglub_conv_setD.
+move=> X Y p; rewrite -biglub_conv_setD.
 congr (|_| _%:ne); apply/neset_ext => /=.
 rewrite conv_setE necset_convType.convE eqEsubset; split=> u.
 - case=> x [] y [] xX [] yY ->.
@@ -529,7 +517,7 @@ rewrite conv_setE necset_convType.convE eqEsubset; split=> u.
 Qed.
 
 Let eps1' : F1 \O U1 ~~> FId :=
-  fun L => @Hom.Pack CS _ _ _ (@eps1'' L)
+  fun L => HomPack ((F1 \O U1) L) (FId L) (@eps1'' L)
     (BiglubAffine.Class (@eps1''_affine L) (@eps1''_biglubmorph L)).
 
 Lemma eps1'_natural : naturality _ _ eps1'.
@@ -539,8 +527,7 @@ rewrite biglub_morph; congr (|_| _).
 by rewrite free_semiCompSemiLattConvType_morE.
 Qed.
 
-Definition eps1 : F1 \O U1 ~> FId := locked
-  (Natural.Pack (Natural.Mixin eps1'_natural)).
+Definition eps1 : F1 \O U1 ~> FId := locked (Natural eps1'_natural).
 
 Lemma eps1E (L : semiCompSemiLattConvType) :
   eps1 L = (fun X => |_| X) :> (_ -> _).
@@ -556,23 +543,24 @@ move=> p a b /=; apply/necset_ext; rewrite eqEsubset; split=> x /=.
 Qed.
 
 Let eta1' : FId ~~> U1 \O F1 :=
-  fun C => @Hom.Pack CV _ _ _ (@necset1 C) (@necset1_affine C).
+  fun C => HomPack (FId C) ((U1 \O F1) C) (@necset1 C) (@necset1_affine C).
 
 Lemma eta1'_natural : naturality _ _ eta1'.
 Proof.
-move=> a b h; rewrite funeqE=> x; apply necset_ext => /=.
-by rewrite /eta1' /= /id_f free_semiCompSemiLattConvType_morE'/= image_set1.
+move=> a b h; rewrite funeqE => x; apply necset_ext => /=.
+by rewrite free_semiCompSemiLattConvType_morE' /= image_set1.
 Qed.
 
-Definition eta1 : FId ~> U1 \O F1 := locked
-  (Natural.Pack (Natural.Mixin eta1'_natural)).
+Definition eta1 : FId ~> U1 \O F1 := locked (Natural eta1'_natural).
 
 Lemma eta1E (C : convType) : eta1 C = @necset1 _ :> (_ -> _).
 Proof. by rewrite /eta1; unlock. Qed.
 
 Import comps_notation.
+
 Lemma necset1E (T : convType) (t : T) : necset1 t = [set t] :> set T.
 Proof. by []. Qed.
+
 Lemma triL1 : TriangularLaws.left eta1 eps1.
 Proof.
 move=> c; apply funext => x /=; apply/necset_ext => /=.
@@ -582,8 +570,10 @@ rewrite eqEsubset eta1E; split=> a.
 - by case=> y [] b xb <-; rewrite necset1E => ->.
 - by move=> xa; exists (necset1 a); [exists a | rewrite necset1E].
 Qed.
+
 Lemma triR1 : TriangularLaws.right eta1 eps1.
 Proof. by move=> c; apply funext=> /= x; rewrite eps1E eta1E /= biglub1. Qed.
+
 End eps1_eta1.
 
 Section join1.
@@ -592,11 +582,11 @@ Local Open Scope convex_scope.
 Local Open Scope classical_set_scope.
 Variable C : convType.
 
-Definition join1' (s : necset (necset_convType C)) : {convex_set C} :=
+Definition join1' (s : necset {necset C}) : {convex_set C} :=
   CSet.Pack (CSet.Class
     (hull_is_convex (classical_sets.bigsetU s (fun x => if x \in s then (x : set _) else cset0 _)))).
 
-Lemma join1'_neq0 (s : necset (necset_convType C)) : join1' s != set0 :> set _.
+Lemma join1'_neq0 (s : necset {necset C}) : join1' s != set0 :> set _.
 Proof.
 rewrite hull_eq0 set0P.
 case/set0P: (neset_neq0 s) => y.
@@ -604,11 +594,11 @@ case/set0P: (neset_neq0 y) => x yx sy.
 by exists x; exists y => //; move: sy; rewrite -in_setE => ->.
 Qed.
 
-Definition join1 (s : necset (necset_convType C)) : necset C :=
+Definition join1 (s : necset {necset C}) : necset C :=
   NECSet.Pack (NECSet.Class (CSet.Class (hull_is_convex _))
                             (NESet.Mixin (join1'_neq0 s))).
 
-Lemma eps1_correct (s : necset (necset_convType C)) : @eps1 _ s = join1 s.
+Lemma eps1_correct (s : necset {necset C}) : @eps1 _ s = join1 s.
 Proof.
 rewrite eps1E; apply/necset_ext => /=; congr (hull _).
 rewrite /bigsetU; rewrite funeqE => c; rewrite propeqE; split.
@@ -620,7 +610,6 @@ End join1.
 
 Section P_delta_functor.
 Import category.
-Local Notation CT := Type_category.
 
 Definition P_delta_left :=
   free_semiCompSemiLattConvType \O free_convType \O free_choiceType.
@@ -631,7 +620,7 @@ Definition P_delta_right :=
 (* action on objects *)
 Definition P_delta_acto (T : Type) : Type := P_delta_left T.
 
-Definition P_delta : functor CT CT := P_delta_right \O P_delta_left.
+Definition P_delta : {functor CT -> CT} := P_delta_right \O P_delta_left.
 
 Lemma P_deltaE (A B : Type) (f : {hom A, B}) :
   P_delta # f = P_delta_left # f :> (_ -> _).
@@ -677,23 +666,18 @@ Variable T : Type.
 Variable X : gcm (gcm T).
 Lemma gcm_joinE : Join X = necset_join X.
 Import category.
+Local Open Scope convex_scope.
 apply/necset_ext.
 rewrite /= /Monad_of_category_monad.join /= !HCompId !HIdComp eps1E.
-have-> : (AdjComp.F F0 F1
-                # epsC
-                    (AdjComp.G U0 U1
-                       (necset_semiCompSemiLattConvType
-                          (FSDist_convType (choice_of_Type T)))))%category = idfun :> (_ -> _).
-- by rewrite -[in RHS]functor_id; congr Actm; apply/hom_ext; rewrite epsCE.
-have-> : (F1
-              # eps0
-              (U1
-                 (necset_semiCompSemiLattConvType (FSDist_convType (choice_of_Type T)))))%category =
-         @necset_join.F1join0 _ :> (_ -> _).
-- apply funext=> x; apply necset_ext.
+have -> : (AdjComp.F F0 F1 #
+  epsC (AdjComp.G U0 U1 {necset {dist (choice_of_Type T)}}))%category = idfun :> (_ -> _).
+  by rewrite -[in RHS]functor_id; congr Actm; apply/hom_ext; rewrite epsCE.
+have -> : (F1 # eps0 (U1 {necset {dist (choice_of_Type T)}}))%category =
+        @necset_join.F1join0 _ :> (_ -> _).
+  apply funext=> x; apply necset_ext.
   rewrite /= /necset_join.F1join0' /=.
   rewrite /free_semiCompSemiLattConvType_mor; unlock=> /=.
-  by rewrite eps0E /=.
+  by rewrite eps0E.
 rewrite -(bigcup_image
             _ _ _ _
             (fun x => if x \in necset_join.F1join0 X then NECSet.car x else set0) idfun).
