@@ -64,7 +64,7 @@ Proof. by []. Qed.
 
 Lemma choice_ext (q p : prob) (M : probMonad) A (m1 m2 : M A) :
   p = q :> R -> m1 <| p |> m2 = m1 <| q |> m2.
-Proof. by move/prob_ext => ->. Qed.
+Proof. by move/val_inj => ->. Qed.
 
 Lemma uniform_cons (M : probMonad) (A : Type) (def : A) h s :
   uniform def (h :: s) = Ret h <| (/ IZR (Z_of_nat (size (h :: s))))%:pr |> uniform def s :> M A.
@@ -94,17 +94,17 @@ Lemma uniform_cat (M : probMonad) (A : Type) (a : A) s t :
 Proof.
 elim: s t => [t m n|s1 s2 IH t m n].
   rewrite cat0s uniform_nil /= [X in _ <| X |> _](_ : _ = 0%:pr) ?choice0 //.
-  by apply prob_ext => /=; rewrite /divRnnm div0R.
+  by apply val_inj; rewrite /= /divRnnm div0R.
 case/boolP : (m.-1 + n == 0)%nat => [{IH}|] m1n0.
   have s20 : s2 = [::] by move: m1n0; rewrite {}/m /=; case: s2.
   have t0 : t = [::] by move: m1n0; rewrite {}/n /= addnC; case: t.
   subst s2 t.
   rewrite cats0 (_ : Prob.mk _ = 1%:pr) ?choice1 //.
-  by apply prob_ext => /=; rewrite /divRnnm div1R invR1.
+  by apply val_inj; rewrite /= /divRnnm div1R invR1.
 rewrite cat_cons uniform_cons uniform_cons.
 set pv := ((/ _)%R).
 set v : prob := @Prob.mk pv _.
-set u := @Prob.mk (INR (size s2) / INR (size s2 + size t))%R (prob_divRnnm _ _).
+set u := @Prob.mk_ (INR (size s2) / INR (size s2 + size t))%R (prob_divRnnm _ _).
 rewrite -[RHS](choiceA v u).
   by rewrite -IH.
 split.
@@ -158,7 +158,7 @@ move/(_ isT) => IH _.
 rewrite compE [in RHS]compE [in LHS]uniform_cons [in RHS]uniform_cons.
 set p := (@Prob.mk (/ IZR (Z.of_nat (size _)))%R _ in X in _ = X).
 rewrite (_ : @Prob.mk (/ _)%R _ = p); last first.
-  by apply prob_ext => /=; rewrite size_map.
+  by apply val_inj; rewrite /= size_map.
 move: IH; rewrite 2!compE => ->.
 by rewrite [in RHS]fmapE prob_bindDl bindretf fmapE; congr Choice.
 Qed.
@@ -188,12 +188,11 @@ pose n := size y.
 pose l := size (cp xxs y).
 rewrite (_ : size _ = n); last by rewrite size_map.
 rewrite (_ : Prob.mk _ = probdivRnnm n l); last first.
-  rewrite -/(cp _ _) -/l.
-  by apply prob_ext => /=.
+  by rewrite -/(cp _ _) -/l; exact/val_inj.
 pose m := size xxs.
 have lmn : (l = m * n)%nat by rewrite /l /m /n size_allpairs.
-rewrite (_ : probdivRnnm _ _ = @Prob.mk (/ (INR (1 + m))) (prob_invn _))%R; last first.
-  apply prob_ext => /=.
+rewrite (_ : probdivRnnm _ _ = @Prob.mk_ (/ (INR (1 + m))) (prob_invn _))%R; last first.
+  apply val_inj => /=.
   rewrite lmn /divRnnm -mulSn mult_INR {1}/Rdiv Rinv_mult_distr; last 2 first.
     by rewrite INR_eq0.
     by rewrite INR_eq0; apply/eqP; rewrite -lt0n.
@@ -206,7 +205,7 @@ rewrite {1}/cp [in X in uniform _ X]/= cats0 => ->.
 rewrite -prob_bindDl.
 rewrite [in RHS]/mpair uniform_cat.
 rewrite [in RHS](_ : Prob.mk _ = probinvn m) //.
-by apply prob_ext => /=; rewrite /divRnnm div1R.
+by apply val_inj; rewrite /= /divRnnm div1R.
 Qed.
 
 Section altci_semilatttype.
@@ -295,7 +294,7 @@ split.
 - rewrite leR_pdivr_mulr ?mul1R; last exact: addR_gt0wl.
   by rewrite addRC -leR_subl_addr subRR.
 Qed.
-Definition Prob_invp := Prob.mk prob_invp.
+Definition Prob_invp := Prob.mk_ prob_invp.
 
 Lemma two_coinsE : two_coins = two_coins'.
 Proof.
@@ -343,7 +342,7 @@ by rewrite mulRAC -mulRA mulRV // mulR1 mul1R leR_add2l; apply/Ropp_le_contravar
 Qed.
 
 Definition magnified_weight (p q r : prob) (H : p < q < r) : prob :=
-  Prob.mk (magnified_weight_proof H).
+  Prob.mk_ (magnified_weight_proof H).
 
 Local Notation m := magnified_weight.
 Local Notation "x +' y" := (addpt x y) (at level 50).
@@ -439,17 +438,17 @@ rewrite choicemm.
 rewrite [in LHS](choiceA (/ 4)%:pr (/ 3).~%:pr (/ 3)%:pr (/ 4).~%:pr); last first.
   by rewrite 4!probpK /= /onem; split; field.
 rewrite choicemm.
-rewrite [in LHS](choiceA (/ 7)%:pr (/ 6)%:pr (/ 2)%:pr (@Prob.mk (2/7) H27)); last first.
+rewrite [in LHS](choiceA (/ 7)%:pr (/ 6)%:pr (/ 2)%:pr (@Prob.mk_ (2/7) H27)); last first.
   by rewrite 4!probpK /= /onem; split; field.
 rewrite choicemm.
-rewrite [in LHS](choiceA (/ 8)%:pr (@Prob.mk (2/7) H27) (@Prob.mk (7/21) H721) (@Prob.mk (21/56) H2156)); last first.
-  by rewrite 4!probpK /= /onem; split; field.
+rewrite [in LHS](choiceA (/ 8)%:pr (@Prob.mk_ (2/7) H27) (@Prob.mk_ (7/21) H721) (@Prob.mk_ (21/56) H2156)); last first.
+  by rewrite 3!probpK /= /onem; split; field.
 rewrite (choiceC (/ 4).~%:pr).
-rewrite [in LHS](choiceA (/ 5)%:pr (probcplt (/ 4).~%:pr) (/ 2)%:pr (@Prob.mk (2/5) H25)); last first.
+rewrite [in LHS](choiceA (/ 5)%:pr (probcplt (/ 4).~%:pr) (/ 2)%:pr (@Prob.mk_ (2/5) H25)); last first.
   by rewrite 3!probpK /= /onem; split; field.
 rewrite 2!choicemm.
-rewrite (choiceC (@Prob.mk (2/5) H25)).
-rewrite [in LHS](choiceA (@Prob.mk (21/56) H2156) (probcplt (Prob.mk H25)) (/ 2)%:pr (/ 4).~%:pr); last first.
+rewrite (choiceC (@Prob.mk_ (2/5) H25)).
+rewrite [in LHS](choiceA (@Prob.mk_ (21/56) H2156) (probcplt (Prob.mk_ H25)) (/ 2)%:pr (/ 4).~%:pr); last first.
   by rewrite 3!probpK /= /onem; split; field.
 rewrite choicemm.
 rewrite (choiceC (/ 4).~%:pr).
@@ -464,15 +463,14 @@ Definition uFFT {M : probMonad} : M bool :=
 Lemma uFFTE (M : probMonad) : uFFT = bcoin (/ 3)%:pr :> M _.
 Proof.
 rewrite /uFFT /bcoin uniform_cons.
-rewrite (_ : _%:pr = (/ 3)%:pr)%R; last exact/prob_ext.
+rewrite (_ : _%:pr = (/ 3)%:pr)%R; last exact/val_inj.
 rewrite uniform_cons.
-rewrite [in X in _ <| _ |> X](_ : _%:pr = (/ 2)%:pr)%R; last first.
-  exact/prob_ext.
+rewrite [in X in _ <| _ |> X](_ : _%:pr = (/ 2)%:pr)%R; last exact/val_inj.
 rewrite uniform_singl //=.
 rewrite (choiceA _ _ (/ 2)%:pr (/ 3).~%:pr); last first.
   by rewrite /= /onem; split; field.
 rewrite choicemm choiceC; congr (Ret true <| _ |> Ret false).
-by apply prob_ext => /=; rewrite onemK.
+by apply val_inj; rewrite /= onemK.
 Qed.
 
 Definition uTTF {M : probMonad} : M bool :=
@@ -481,9 +479,9 @@ Definition uTTF {M : probMonad} : M bool :=
 Lemma uTTFE (M : probMonad) : uTTF = bcoin (/ 3).~%:pr :> M _.
 Proof.
 rewrite /uTTF /bcoin uniform_cons.
-rewrite (_ : _%:pr = (/ 3)%:pr)%R; last exact: prob_ext.
+rewrite (_ : _%:pr = (/ 3)%:pr)%R; last exact/val_inj.
 rewrite uniform_cons.
-rewrite [in X in _ <| _ |> X](_ : _%:pr = (/ 2)%:pr)%R; last exact/prob_ext.
+rewrite [in X in _ <| _ |> X](_ : _%:pr = (/ 2)%:pr)%R; last exact/val_inj.
 rewrite uniform_singl //=.
 rewrite (choiceA _ _ (/ 2)%:pr (/ 3).~%:pr) ?choicemm //.
 by rewrite /= /onem; split; field.
@@ -500,7 +498,7 @@ elim: s => [//|h t IH _ H].
 rewrite uniform_cons.
 case/boolP : (t == [::]) => [/eqP -> {IH}|t0].
   rewrite uniform_nil.
-  rewrite (_ : _%:pr = 1%:pr); last by apply prob_ext => /=; rewrite Rinv_1.
+  rewrite (_ : _%:pr = 1%:pr); last by apply val_inj; rewrite /= Rinv_1.
   rewrite choice1.
   rewrite 2!bindretf ifF //; apply/negbTE/H; by rewrite mem_head.
 rewrite 2!prob_bindDl; congr (_ <| _ |> _).
@@ -512,7 +510,7 @@ Lemma choice_halfC A (M : probMonad) (a b : M A) :
   a <| (/ 2)%:pr |> b = b <| (/ 2)%:pr |> a.
 Proof.
 rewrite choiceC (_ : (_.~)%:pr = (/ 2)%:pr) //.
-by apply prob_ext => /=; rewrite /onem; lra.
+by apply val_inj; rewrite /= /onem; lra.
 Qed.
 
 Lemma choice_halfACA A (M : probMonad) (a b c d : M A) :

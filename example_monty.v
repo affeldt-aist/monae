@@ -539,7 +539,7 @@ transitivity (uniform def [:: h; d] >>= (fun t => if t == h then Fail else Ret t
   move: (Set3.filter1_another card_door hp); rewrite -/doors -Hd => -[] -> //.
   by rewrite uniform2.
 rewrite uniform_cons (_ : _%:pr = (/ 2)%:pr)%R; last first.
-  by apply prob_ext => /=; lra.
+  by apply val_inj => /=; lra.
 rewrite uniform_singl // [head _ _]/= prob_bindDl 2!bindretf eqxx ifF //.
 by apply/negbTE/(Set3.head_filter card_door); rewrite inE eqxx.
 Qed.
