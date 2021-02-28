@@ -3,7 +3,7 @@
 From mathcomp Require Import all_ssreflect.
 From mathcomp Require boolp.
 From infotheo Require Import Reals_ext ssr_ext fsdist.
-From infotheo Require convex.
+From infotheo Require Import convex.
 Require Import monae_lib hierarchy monad_lib proba_lib.
 
 (******************************************************************************)
@@ -17,6 +17,8 @@ Notation choice_of_Type := convex.choice_of_Type.
 
 Module MonadProbModel.
 Local Obligation Tactic := idtac.
+
+Set Printing All.
 
 Definition ret' : forall A, A -> {dist (choice_of_Type A)} :=
   fun A a => FSDist1.d (a : choice_of_Type A).

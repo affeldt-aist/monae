@@ -153,16 +153,16 @@ Lemma choiceA A (p q r s : prob) (x y z : gcm A) :
 Proof.
 case=> H1 H2.
 case/boolP : (r == 0%:pr) => r0.
-  have p0 : p = 0%:pr by apply/prob_ext => /=; rewrite H1 (eqP r0) mul0R.
-  rewrite p0 choice0 (eqP r0) choice0 (_ : q = s) //; apply/prob_ext => /=.
+  have p0 : p = 0%:pr by apply/val_inj; rewrite /= H1 (eqP r0) mul0R.
+  rewrite p0 choice0 (eqP r0) choice0 (_ : q = s) //; apply/val_inj => /=.
   by move: H2; rewrite p0 onem0 mul1R => /(congr1 onem); rewrite !onemK.
 case/boolP : (s == 0%:pr) => s0.
-  have p0 : p = 0%:pr by apply/prob_ext => /=; rewrite H1 (eqP s0) mulR0.
-  rewrite p0 (eqP s0) 2!choice0 (_ : q = 0%:pr) ?choice0 //; apply/prob_ext.
+  have p0 : p = 0%:pr by apply/val_inj; rewrite /= H1 (eqP s0) mulR0.
+  rewrite p0 (eqP s0) 2!choice0 (_ : q = 0%:pr) ?choice0 //; apply/val_inj.
   move: H2; rewrite p0 onem0 mul1R (eqP s0) onem0 => /(congr1 onem).
   by rewrite onemK onem1.
 rewrite /choice convA (@r_of_pq_is_r _ _ r s) //; congr ((_ <| _ |> _) <| _ |> _).
-by apply/prob_ext; rewrite s_of_pqE -H2 onemK.
+by apply/val_inj; rewrite /= s_of_pqE -H2 onemK.
 Qed.
 
 Section bindchoiceDl.
@@ -264,6 +264,6 @@ rewrite 2!in_setE 2!necset1E => -[] -> [] ->.
 move/(congr1 (fun x : {dist (choice_of_Type bool)} => x true)) => /=.
 rewrite /Conv /= !ConvFSDist.dE !FSDist1.dE !inE !eqxx.
 case/boolP: ((true : choice_of_Type bool) == false) => [/eqP//|].
-by rewrite !mulR1 !mulR0 !addR0 => _ ?; apply prob_ext.
+by rewrite !mulR1 !mulR0 !addR0 => _ ?; exact/val_inj.
 Qed.
 End examples.
