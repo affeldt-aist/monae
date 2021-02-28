@@ -30,10 +30,8 @@ Definition bind : forall A B, {dist (choice_of_Type A)} ->
 Definition functor : functor.
 apply: (@Functor.Pack (fun A => {dist (choice_of_Type A)}) _).
 apply (@Functor.Mixin _ (fun A B => @FSDistfmap (choice_of_Type A) (choice_of_Type B))).
-move=> A.
-exact: (FSDistfmap_id (choice_of_Type A)).
-move=> A B C g h.
-exact: (@FSDistfmap_comp (choice_of_Type A) (choice_of_Type B) (choice_of_Type C)).
+  by move=> A; exact: (FSDistfmap_id _).
+by move=> A B C g h; exact: FSDistfmap_comp.
 Defined.
 
 Lemma naturality_ret' : naturality FId functor ret'.
