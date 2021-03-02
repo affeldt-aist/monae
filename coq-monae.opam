@@ -20,7 +20,9 @@ build: [
   [make "sect5"]
   [make "-C" "impredicative_set"]
 ]
-install: [make "install"]
+install: [
+  [make "install_full"]
+]
 depends: [
   "coq" { (>= "8.13" & < "8.14~") | (= "dev") }
   "coq-mathcomp-ssreflect" { (>= "1.12.0" & < "1.13~") }

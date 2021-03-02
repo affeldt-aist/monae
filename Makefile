@@ -15,6 +15,9 @@ _CoqProject Makefile: ;
 
 .PHONY: all clean
 
+install_full: install
+	cd impredicative_set; make install
+
 # This last entry is only to support work-in-progress.
 
 COQ5 = coqc -w -notation-overridden -R . monae

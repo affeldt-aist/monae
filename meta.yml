@@ -107,6 +107,8 @@ publications:
 #  [make "sect5"]
 #  [make "-C" "impredicative_set"]
 #]
+#
+#install: [ [make "install_full"] ]
 
 build: |-
   ## Building and installation instructions
