@@ -792,7 +792,7 @@ Section set.
 Local Obligation Tactic := idtac.
 Program Definition set_class := @MonadAlt.Class _ _
   (@MonadAlt.Mixin ModelMonad.SetMonad.t (@setU) _ _).
-Next Obligation. exact: setUA. Qed.
+Next Obligation. by move=> ?; exact: setUA. Qed.
 Next Obligation.
 rewrite /BindLaws.left_distributive /= => A B m1 m2 k.
 rewrite !bindE /Join /= /Monad_of_ret_bind.join /=.
@@ -810,8 +810,8 @@ Section set.
 Local Obligation Tactic := idtac.
 Program Definition set_class := @MonadAltCI.Class _
   ModelAlt.set_class (@MonadAltCI.Mixin _ (@setU) _ _).
-Next Obligation. exact: setUid. Qed.
-Next Obligation. exact: setUC. Qed.
+Next Obligation. by move=> ?; exact: setUid. Qed.
+Next Obligation. by move=> ?; exact: setUC. Qed.
 Definition set := MonadAltCI.Pack set_class.
 End set.
 
