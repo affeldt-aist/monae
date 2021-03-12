@@ -7,6 +7,7 @@ From mathcomp Require Import all_ssreflect.
 From mathcomp Require boolp.
 From infotheo Require Import Reals_ext.
 Require Import monae_lib.
+From HB Require Import structures.
 
 (******************************************************************************)
 (*        A formalization of monadic effects over the category Set            *)
@@ -127,36 +128,30 @@ Definition comp := forall (A B C : UU0) (g : B -> C) (h : A -> B),
 End def.
 End FunctorLaws.
 
-Module Functor.
-Record mixin_of (M : UU0 -> UU0) := Mixin {
-  actm : forall (A B : UU0), (A -> B) -> M A -> M B ;
-  _ : FunctorLaws.id actm ;
-  _ : FunctorLaws.comp actm }.
-Structure type := Pack { acto : UU0 -> UU0 ; class : mixin_of acto }.
-Module Exports.
-Definition Actm (F : type) : forall (A B : UU0), (A -> B) -> acto F A -> acto F B :=
-  let: Pack _ (Mixin actm _ _) := F in actm.
-Arguments Actm _ [A] [B] : simpl never.
-Notation "F # g" := (Actm F g) : monae_scope.
-Notation "'fmap' f" := (_ # f) : mprog.
-Notation functor := type.
-Coercion acto : functor >-> Funclass.
-End Exports.
-End Functor.
-Export Functor.Exports.
+HB.mixin Record isFunctor (M : UU0 -> UU0) := {
+  actm : forall A B : UU0, (A -> B) -> M A -> M B ;
+  functor_id : FunctorLaws.id actm ;
+  functor_o : FunctorLaws.comp actm }.
 
-Section functor_lemmas.
-Variable F : functor.
-Lemma functor_id : FunctorLaws.id (Actm F). Proof. by case: F => [? []]. Qed.
-Lemma functor_o : FunctorLaws.comp (Actm F). Proof. by case: F => [? []]. Qed.
-End functor_lemmas.
+HB.structure Definition Functor := {M of isFunctor M}.
+Notation functor := Functor.type.
+
+Definition acto (f : functor) : UU0 -> UU0 := Functor.sort f.
+
+Notation "F # g" := (@actm F _ _ g) : monae_scope.
+Notation "'fmap' f" := (_ # f) : mprog.
 
 Section functorid.
 Definition id_f (A B : UU0) (f : A -> B) := f.
 Lemma id_id : FunctorLaws.id id_f. Proof. by []. Qed.
 Lemma id_comp : FunctorLaws.comp id_f. Proof. by []. Qed.
-Definition FId : functor := Functor.Pack (Functor.Mixin id_id id_comp).
 End functorid.
+
+HB.instance Definition FId_mixin :=
+  @isFunctor.Build idfun id_f id_id id_comp.
+
+(* TODO: virer ca *)
+Definition FId := [the functor of idfun].
 
 Section functorcomposition.
 Variables f g : functor.
@@ -170,8 +165,12 @@ Proof.
 rewrite /FunctorLaws.comp => A B C g' h; rewrite /functorcomposition.
 rewrite boolp.funeqE => m; by rewrite [in RHS]compE 2!functor_o.
 Qed.
-Definition FComp : functor :=
-  Functor.Pack (Functor.Mixin functorcomposition_id functorcomposition_comp).
+HB.instance Definition FComp_mixin :=
+  @isFunctor.Build (f \o g) functorcomposition
+    functorcomposition_id functorcomposition_comp.
+
+(* TODO: essayer de virer ca *)
+Definition FComp := [the functor of f \o g].
 End functorcomposition.
 
 Notation "f \O g" := (FComp f g) : monae_scope.
@@ -179,17 +178,20 @@ Notation "f \O g" := (FComp f g) : monae_scope.
 Section functorcomposition_lemmas.
 Lemma FCompId f : f \O FId = f.
 Proof.
-case: f => [? [???]]; congr (Functor.Pack (Functor.Mixin _ _)); exact/proof_irr.
+case: f => M [[? ? ?]]; congr (Functor.Pack (Functor.Class _)).
+by congr (isFunctor.Axioms_ _); exact/proof_irr.
 Qed.
 Lemma FIdComp f : FId \O f = f.
 Proof.
-case: f => [? [???]]; congr (Functor.Pack (Functor.Mixin _ _)); exact/proof_irr.
+case: f => M [[? ? ?]]; congr (Functor.Pack (Functor.Class _)).
+by congr (isFunctor.Axioms_ _); exact/proof_irr.
 Qed.
 Lemma FIdf (A B : UU0) (f : A -> B) : FId # f = f. Proof. by []. Qed.
 Lemma FCompA (f g h : functor) : (f \O g) \O h = f \O (g \O h).
 Proof.
-move: f g h => [f [???]] [g [???]] [h [???]].
-congr (Functor.Pack (Functor.Mixin  _ _)); exact/proof_irr.
+move: f g h => [f [[? ? ?]]] [g [[? ? ?]]] [h [[? ? ?]]].
+congr (Functor.Pack (Functor.Class _)).
+by congr (isFunctor.Axioms_ _); exact/proof_irr.
 Qed.
 Lemma FCompE (f g : functor) (A B : UU0) (k : A -> B) :
   (f \O g) # k = f # (g # k).
@@ -223,27 +225,47 @@ Notation "f (o) g" := (fcomp f g) : mprog.
 Arguments fcomp : simpl never.
 
 Lemma functor_ext (F G : functor) :
-  forall (H : Functor.acto F = Functor.acto G),
-  Functor.actm (Functor.class G) =
-  eq_rect _ (fun m : UU0 -> UU0 => forall A B : UU0, (A -> B) -> m A -> m B) (Functor.actm (Functor.class F)) _ H  ->
+  forall (H : acto F = acto G),
+  @actm G =
+  eq_rect _ (fun m : UU0 -> UU0 => forall A B : UU0, (A -> B) -> m A -> m B) (@actm F) _ H  ->
   G = F.
 Proof.
-move: F G => [F [HF1 HF2 HF3]] [G [HG1 HG2 HG3]] /= H; subst G => /= ?; subst HG1.
-congr (Functor.Pack (Functor.Mixin _ _)); exact/proof_irr.
+move: F G => [F [[HF1 HF2 HF3]]] [G [[HG1 HG2 HG3]]] /= H.
+subst F => /= H.
+congr (Functor.Pack (Functor.Class _)).
+have ? : HG1 = HF1.
+  rewrite /actm /= in H.
+  apply fun_ext_dep => x.
+  apply fun_ext_dep => y.
+  apply fun_ext_dep => z.
+  by move/(congr1 (fun i => i x y z)) : H.
+subst HG1.
+congr (isFunctor.Axioms_ _); exact/proof_irr.
 Defined.
 
 Definition naturality (M N : functor) (f : M ~~> N) :=
   forall (A B : UU0) (h : A -> B), (N # h) \o f A = f B \o (M # h).
 Arguments naturality : clear implicits.
 
+(*HB.mixin Record isNatural (M N : functor) (f : M ~~> N) := {
+  natural : naturality M N f
+}.
+
+#[infer(M), infer(N)]
+(* TODO: need to add one line of code, see https://github.com/math-comp/hierarchy-builder/blob/0af7531ecacf591f97f663dc2fad5033c8ca61fe/HB/structure.elpi#L542-L544 *)
+HB.structure Definition nattrans (M N : functor) := {f of isNatural M N f}.*)
+
 Module Natural.
 Record mixin_of (M N : functor) (f : M ~~> N) := Mixin { _ : naturality M N f }.
 Structure type (M N : functor) := Pack
   { cpnt : M ~~> N ; mixin : mixin_of cpnt }.
+Definition type_of (M N : functor) (phM : @phantom (UU0 -> UU0) M) (phN : @phantom (UU0 -> UU0) N) :=
+  @type M N.
 Module Exports.
 Notation nattrans := type.
 Coercion cpnt : type >-> Funclass.
-Notation "f ~> g" := (nattrans f g) : monae_scope.
+Notation "f ~> g" := (@type_of _ _ (@Phantom (UU0 -> UU0) f) (@Phantom (UU0 -> UU0) g)) : monae_scope.
+Identity Coercion type_of_type : type_of >-> type.
 End Exports.
 End Natural.
 Export Natural.Exports.
@@ -266,7 +288,7 @@ Require Import Logic.Eqdep.
 Lemma natural_ext (F G G' : functor) (t : F ~> G) (t' : F ~> G') :
   forall (H : G = G'),
   forall (K : forall X (x : F X), Natural.cpnt t' x = eq_rect _ (fun m : functor => m X) (Natural.cpnt t x) _ H),
-  t' = eq_rect _ (fun m => F ~> m) t _ H.
+  t' = eq_rect _ (fun m : functor => F ~> m) t _ H.
 Proof.
 move : t t' => [t t1] [t' t'1] /= H; subst G' => H /=.
 have ? : t = t'.
@@ -308,43 +330,18 @@ Definition associativity :=
 End join_laws.
 End JoinLaws.
 
-Module Monad.
-Record mixin_of (M : functor) := Mixin {
-  ret : FId ~> M ;
-  join : M \O M ~> M ;
-  _ : JoinLaws.left_unit ret join ;
-  _ : JoinLaws.right_unit ret join ;
-  _ : JoinLaws.associativity join }.
-Record class_of (M : UU0 -> UU0) := Class {
-  base : Functor.mixin_of M ; mixin : mixin_of (Functor.Pack base) }.
-Structure type := Pack { acto : UU0 -> UU0 ; class : class_of acto }.
-Definition functorType (M : type) := Functor.Pack (base (class M)).
-Module Exports.
-Definition RET (M : type) : FId ~> functorType M :=
-  let: Pack _ (Class _ (Mixin ret _ _ _ _)) := M in ret.
-Arguments RET {M} : simpl never.
-Definition JOIN (M : type) : functorType M \O functorType M ~> functorType M :=
-  let: Pack _ (Class _ (Mixin _ join _ _ _)) := M in join.
-Arguments JOIN {M} : simpl never.
-Notation monad := type.
-Coercion functorType : monad >-> functor.
-Canonical functorType.
-End Exports.
-End Monad.
-Export Monad.Exports.
+HB.mixin Record isMonad (M : UU0 -> UU0) of Functor M := {
+  ret : idfun ~> M ;
+  join : M \o M ~> M ;
+  joinretM : JoinLaws.left_unit ret join ;
+  joinMret : JoinLaws.right_unit ret join ;
+  joinA : JoinLaws.associativity join }.
 
-Notation Ret := (@RET _ _).
-Notation Join := (@JOIN _ _).
+HB.structure Definition Monad := {M of isMonad M &}.
+Notation monad := Monad.type.
 
-Section monad_interface.
-Variable M : monad.
-Lemma joinretM : JoinLaws.left_unit (@RET M) (@JOIN M).
-Proof. by case: M => ? [? []]. Qed.
-Lemma joinMret : JoinLaws.right_unit (@RET M) (@JOIN M).
-Proof. by case: M => ? [? []]. Qed.
-Lemma joinA : JoinLaws.associativity (@JOIN M).
-Proof. by case: M => ? [? []]. Qed.
-End monad_interface.
+Notation Ret := (@ret _ _).
+Notation Join := (@join _ _).
 
 Module BindLaws.
 Section bindlaws.
@@ -411,7 +408,7 @@ move=> A B C m f g; rewrite /bind.
 rewrite [LHS](_ : _ = ((@join _ \o (F # g \o @join _) \o F # f) m)) //.
 rewrite (natural join) (compA (@join C)) -joinA -(compE (@join _)).
 transitivity ((@join _ \o F # (@join _ \o (F # g \o f))) m) => //.
-by rewrite -2!compA functor_o FCompE -[in LHS](functor_o F).
+by rewrite -2!compA functor_o FCompE -[in LHS](@functor_o F).
 Qed.
 
 End from_join_laws_to_bind_laws.
@@ -424,9 +421,9 @@ Arguments Bind {A B} : simpl never.
 Local Notation "m >>= f" := (Bind m f).
 Lemma bindE (A B : UU0) : forall x (f : A -> M B), x >>= f = Join ((M # f) x).
 Proof. by []. Qed.
-Lemma bindretf : BindLaws.left_neutral (@Bind) (@RET _).
+Lemma bindretf : BindLaws.left_neutral (@Bind) (@ret _).
 Proof. apply: bindretf_derived; exact: joinretM. Qed.
-Lemma bindmret : BindLaws.right_neutral (@Bind) (@RET _).
+Lemma bindmret : BindLaws.right_neutral (@Bind) (@ret _).
 Proof. apply: bindmret_derived; exact: joinMret. Qed.
 Lemma bindA : BindLaws.associative (@Bind).
 Proof. apply bindA_derived; exact: joinA. Qed.
@@ -459,7 +456,7 @@ Lemma sequence_cons (M : monad) A h (t : seq (M A)) :
   (sequence (h :: t) = do x <- h ; do vs <- sequence t ; Ret (x :: vs))%Do.
 Proof. by []. Qed.
 
-Definition skip M := @RET M _ tt.
+Definition skip M := @ret M _ tt.
 Arguments skip {M} : simpl never.
 
 Ltac bind_ext :=
@@ -570,7 +567,7 @@ Lemma bind_kleisli (A B C : UU0) m (f : A -> M B) (g : B -> M C) :
 Proof. by rewrite bindA; bind_ext => a; rewrite /kleisli !compE join_fmap. Qed.
 
 Lemma ret_kleisli (A B : UU0) (k : A -> M B) : Ret >=> k = k.
-Proof. by rewrite /kleisli -compA (natural RET) FIdf compA joinretM. Qed.
+Proof. by rewrite /kleisli -compA (natural ret) FIdf compA joinretM. Qed.
 
 Local Open Scope mprog.
 Lemma fcomp_kleisli (A B C D : UU0) (f : A -> B) (g : C -> M A) (h : D -> M C) :
@@ -589,32 +586,19 @@ End kleisli.
 Notation "m <=< n" := (kleisli m n) : monae_scope.
 Notation "m >=> n" := (kleisli n m) : monae_scope.
 
-Module MonadFail.
-Record mixin_of (M : monad) := Mixin {
-  fail : forall A : UU0, M A ;
+HB.mixin Record isMonadFail (M : UU0 -> UU0) of Monad M := {
+  fail : forall A : UU0, M A;
   (* exceptions are left-zeros of sequential composition *)
-  _ : BindLaws.left_zero (@Bind M) fail (* fail A >>= f = fail B *)
+  bindfailf : BindLaws.left_zero (@Bind [the monad of M]) fail (* fail A >>= f = fail B *)
 }.
-Record class_of (M : UU0 -> UU0) := Class {
-  base : Monad.class_of M ; mixin : mixin_of (Monad.Pack base) }.
-Structure type := Pack { acto : UU0 -> UU0 ; class : class_of acto }.
-Definition monadType (M : type) := Monad.Pack (base (class M)).
-Module Exports.
-Definition Fail (M : type) : forall A, acto M A :=
-  let: Pack _ (Class _ (Mixin x _)) := M in x.
-Arguments Fail {M A} : simpl never.
-Notation failMonad := type.
-Coercion monadType : failMonad >-> monad.
-Canonical monadType.
-End Exports.
-End MonadFail.
-Export MonadFail.Exports.
 
-Section fail_lemmas.
-Variable (M : failMonad).
-Lemma bindfailf : BindLaws.left_zero (@Bind M) (@Fail _).
-Proof. by case : M => m [? []]. Qed.
-End fail_lemmas.
+HB.structure Definition MonadFail := {M of isMonadFail M & }.
+Notation failMonad := MonadFail.type.
+
+Arguments bindfailf [_].
+
+Definition Fail (M : failMonad) := @fail M.
+Arguments Fail {_} {_}.
 
 Section guard_assert.
 Variable M : failMonad.
@@ -680,121 +664,62 @@ End guard_assert.
 Arguments assert {M} {A}.
 Arguments guard {M}.
 
-Module MonadAlt.
-Record mixin_of (M : monad) := Mixin {
-  alt : forall T : UU0, M T -> M T -> M T
-        where "a [~] b" := (alt a b) (* infix notation *) ;
-  _ : forall T : UU0, associative (@alt T) ;
+HB.mixin Record isMonadAlt (M : UU0 -> UU0) of Monad M := {
+  alt : forall T : UU0, M T -> M T -> M T ;
+  altA : forall T : UU0, associative (@alt T) ;
   (* composition distributes leftwards over choice *)
-  _ : BindLaws.left_distributive (@Bind M) alt }.
+  alt_bindDl : BindLaws.left_distributive (@Bind [the monad of M]) alt
 (* in general, composition does not distribute rightwards over choice *)
 (* NB: no bindDr to accommodate both angelic and demonic interpretations of nondeterminism *)
-Record class_of (M : UU0 -> UU0) := Class {
-  base : Monad.class_of M ; mixin : mixin_of (Monad.Pack base) }.
-Structure type := Pack { acto : UU0 -> UU0 ; class : class_of acto }.
-Definition monadType (M : type) := Monad.Pack (base (class M)).
-Module Exports.
-Definition Alt M : forall T, acto M T -> acto M T -> acto M T :=
-  let: Pack _ (Class _ (Mixin x _ _)) := M in x.
-Arguments Alt {M T} : simpl never.
-Notation "x '[~]' y" := (Alt x y).
-Notation altMonad := type.
-Coercion monadType : altMonad >-> monad.
-Canonical monadType.
-End Exports.
-End MonadAlt.
-Export MonadAlt.Exports.
+}.
 
-Section monadalt_lemmas.
-Variable (M : altMonad).
-Lemma alt_bindDl : BindLaws.left_distributive (@Bind M) (@Alt M).
-Proof. by case: M => m [? []]. Qed.
-Lemma altA : forall A, associative (@Alt M A).
-Proof. by case: M => m [? []]. Qed.
-End monadalt_lemmas.
+HB.structure Definition MonadAlt := {M of isMonadAlt M & }.
 
-Module MonadAltCI.
-Record mixin_of (M : UU0 -> UU0) (op : forall A, M A -> M A -> M A) :=
-  Mixin { _ : forall A : UU0, idempotent (op A) ;
-          _ : forall A : UU0, commutative (op A) }.
-Record class_of (M : UU0 -> UU0) := Class {
-  base : MonadAlt.class_of M ;
-  mixin : mixin_of (@Alt (MonadAlt.Pack base)) }.
-Structure type := Pack { acto : UU0 -> UU0 ; class : class_of acto }.
-Definition altMonadType (M : type) := MonadAlt.Pack (base (class M)).
-Module Exports.
-Notation altCIMonad := type.
-Coercion altMonadType : altCIMonad >-> altMonad.
-Canonical altMonadType.
-End Exports.
-End MonadAltCI.
-Export MonadAltCI.Exports.
+Notation "a [~] b" := (@alt _ _ a b). (* infix notation *)
+
+Notation altMonad := MonadAlt.type.
+
+Definition Alt (M : altMonad) T := @alt M T.
+Arguments Alt {M} {T}.
+
+HB.mixin Record isMonadAltCI (M : UU0 -> UU0) of MonadAlt M := {
+  altmm : forall A : UU0, idempotent (@alt [the altMonad of M] A) ;
+  altC : forall A : UU0, commutative (@alt [the altMonad of M] A)
+}.
+
+HB.structure Definition MonadAltCI := {M of isMonadAltCI M & }.
+Notation altCIMonad := MonadAltCI.type.
+
+Arguments altC {_} {_}.
 
 Section altci_lemmas.
 Variable (M : altCIMonad).
-Lemma altmm : forall A, idempotent (@Alt _ A : M A -> M A -> M A).
-Proof. by case: M => m [? []]. Qed.
-Lemma altC : forall A, commutative (@Alt _ A : M A -> M A -> M A).
-Proof. by case: M => m [? []]. Qed.
 Lemma altCA A : @left_commutative (M A) (M A) (fun x y => x [~] y).
-Proof. move=> x y z. by rewrite altA altC altA altC (altC z). Qed.
+Proof. by move=> x y z; rewrite altA altC altA altC (altC x). Qed.
 Lemma altAC A : @right_commutative (M A) (M A) (fun x y => x [~] y).
 Proof. move=> x y z; by rewrite altC altA (altC x). Qed.
 Lemma altACA A : @interchange (M A) (fun x y => x [~] y) (fun x y => x [~] y).
 Proof. move=> x y z t; rewrite !altA; congr (_ [~] _); by rewrite altAC. Qed.
 End altci_lemmas.
 
-Module MonadNondet.
-Record mixin_of (M : failMonad) (a : forall A, M A -> M A -> M A) :=
-  Mixin { _ : @BindLaws.left_id M (@Fail M) a ;
-          _ : @BindLaws.right_id M (@Fail M) a }.
-Record class_of (M : UU0 -> UU0) := Class {
-  base : MonadFail.class_of M ;
-  mixin_alt : MonadAlt.mixin_of (Monad.Pack (MonadFail.base base)) ;
-  mixin_nondet : @mixin_of (MonadFail.Pack base) (MonadAlt.alt mixin_alt) }.
-Structure type := Pack { acto : UU0 -> UU0 ; class : class_of acto }.
-Definition failMonadType (M : type) := MonadFail.Pack (base (class M)).
-Definition altMonadType (M : type) :=
-  MonadAlt.Pack (MonadAlt.Class (mixin_alt (class M))).
-Module Exports.
-Notation nondetMonad := type.
-Coercion failMonadType : nondetMonad >-> failMonad.
-Canonical failMonadType.
-Canonical altMonadType.
-End Exports.
-End MonadNondet.
-Export MonadNondet.Exports.
+HB.mixin Record isMonadNondet (M : UU0 -> UU0) of MonadFail M & MonadAlt M := {
+  altfailm : @BindLaws.left_id [the functor of M] (@Fail [the failMonad of M]) (@alt [the altMonad of M]);
+  altmfail : @BindLaws.right_id [the functor of M] (@Fail [the failMonad of M]) (@alt [the altMonad of M])
+}.
 
-Section nondet_lemmas.
-Variable (M : nondetMonad).
-Lemma altmfail : @BindLaws.right_id M (@Fail M) (@Alt _).
-Proof. by case: M => m [[? ?] [? ? ?] [? ?]]. Qed.
-Lemma altfailm : @BindLaws.left_id M (@Fail M) (@Alt _). (* NB: not used? *)
-Proof. by case: M => m [[? ?] [? ? ?] [? ?]]. Qed.
-End nondet_lemmas.
+HB.structure Definition MonadNondet := {M of isMonadNondet M & }.
+Notation nondetMonad := MonadNondet.type.
 
-Module MonadCINondet.
-Record class_of (m : UU0 -> UU0) := Class {
-  base : MonadNondet.class_of m ;
-  mixin : MonadAltCI.mixin_of
-    (@Alt (MonadAlt.Pack (MonadAlt.Class (MonadNondet.mixin_alt base)))) }.
-Structure type := Pack { acto : UU0 -> UU0 ; class : class_of acto }.
-Definition nondetMonadType (M : type) := MonadNondet.Pack (base (class M)).
-Definition altCIMonadType (M : type) :=
-  MonadAltCI.Pack (MonadAltCI.Class (mixin (class M))).
-Module Exports.
-Notation nondetCIMonad := type.
-Coercion nondetMonadType : nondetCIMonad >-> nondetMonad.
-Canonical nondetMonadType.
-Canonical altCIMonadType.
-End Exports.
-End MonadCINondet.
-Export MonadCINondet.Exports.
+HB.mixin Record isMonadCINondet (M : UU0 -> UU0) of MonadNondet M & MonadAltCI M := {
+}.
+
+HB.structure Definition MonadCINondet := {M of isMonadCINondet M & }.
+Notation nondetCIMonad := MonadCINondet.type.
 
 Section nondet_big.
 Variables (M : nondetMonad) (A : UU0).
 Canonical alt_monoid :=
-  Monoid.Law (@altA (MonadNondet.altMonadType M) A) (@altfailm _ _) (@altmfail _ _).
+  Monoid.Law (@altA M A) (@altfailm _ _) (@altmfail _ _).
 
 Lemma test_bigop n : \big[Alt/Fail]_(i < n) (Fail : M A) = Fail.
 Proof.
@@ -1072,14 +997,14 @@ Export MonadState.Exports.
 Section state_lemmas.
 Variables (S : UU0) (M : stateMonad S).
 Lemma putput s s' : Put s >> Put s' = Put s' :> M _.
-Proof. by case: M => m [[[? ? ? ? []]]]. Qed.
+Proof. by case: M => m [? [? ? ? ?]]. Qed.
 Lemma putget s : Put s >> Get = Put s >> Ret s :> M _.
-Proof. by case: M => m [[[? ? ? ? []]]]. Qed.
+Proof. by case: M => m [? [? ? ? ?]]. Qed.
 Lemma getputskip : Get >>= Put = skip :> M _.
-Proof.  by case: M => m [[[? ? ? ? []]]]. Qed.
+Proof. by case: M => m [? [? ? ? ?]]. Qed.
 Lemma getget (A : UU0) (k : S -> S -> M A) :
  (Get >>= (fun s => Get >>= k s)) = (Get >>= fun s => k s s).
-Proof. by case: M k => m [[[? ? ? ? []]]]. Qed.
+Proof. by case: M k => m [? [? ? ? ?]]. Qed.
 End state_lemmas.
 
 Module MonadStateRun.

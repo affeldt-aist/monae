@@ -28,3 +28,5 @@ smallstep.v
 example_transformer.v
 
 -R . monae
+-R ../hierarchy-builder HB
+
