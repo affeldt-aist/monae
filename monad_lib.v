@@ -6,6 +6,7 @@ Require Import ssrmatching.
 From mathcomp Require Import all_ssreflect.
 From mathcomp Require boolp.
 Require Import monae_lib hierarchy.
+From HB Require Import structures.
 
 (******************************************************************************)
 (*  Properties and examples of functors, natural transformations, and monads  *)
@@ -46,26 +47,29 @@ Lemma squaring_f_id : FunctorLaws.id squaring_f.
 Proof. by move=> A /=; rewrite boolp.funeqE => -[x1 x2]. Qed.
 Lemma squaring_f_comp : FunctorLaws.comp squaring_f.
 Proof. by move=> A B C g h /=; rewrite boolp.funeqE => -[x1 x2]. Qed.
-Definition squaring : functor :=
-  Functor.Pack (Functor.Mixin squaring_f_id squaring_f_comp).
+HB.instance Definition squaring_mixin :=
+  @isFunctor.Build Squaring squaring_f squaring_f_id squaring_f_comp.
+Definition squaring : functor := [the functor of Squaring].
 Notation "f ^`2" := (squaring # f).
 Lemma squaringE (A B : UU0) (f : A -> B) x : (f ^`2) x = (f x.1, f x.2).
 Proof. by []. Qed.
 
 Section curry_functor.
-Definition curry_M (X : UU0) : UU0 -> UU0 := fun B => (X * B)%type.
-Definition curry_f (X A B : UU0) (f : A -> B) : curry_M X A -> curry_M X B :=
+Variable X : UU0.
+Definition curry_M : UU0 -> UU0 := fun B => (X * B)%type.
+Definition curry_f (A B : UU0) (f : A -> B) : curry_M A -> curry_M B :=
   fun x : X * A => (x.1, f x.2).
-Lemma curry_f_id X : FunctorLaws.id (@curry_f X).
+Lemma curry_f_id : FunctorLaws.id curry_f.
 Proof.
 by rewrite /FunctorLaws.id => A; rewrite /curry_f boolp.funeqE; case.
 Qed.
-Lemma curry_f_comp X : FunctorLaws.comp (@curry_f X).
+Lemma curry_f_comp : FunctorLaws.comp curry_f.
 Proof.
 by rewrite /FunctorLaws.comp => A B C g h; rewrite /curry_f boolp.funeqE; case.
 Qed.
-Definition curry_F X : functor :=
-  Functor.Pack (Functor.Mixin (curry_f_id X) (curry_f_comp X)).
+HB.instance Definition curry_F_mixin :=
+  @isFunctor.Build curry_M curry_f curry_f_id curry_f_comp.
+Fail Definition curry_F : functor := [the functor of curry_f].
 End curry_functor.
 
 Section uncurry_functor.
@@ -82,8 +86,9 @@ Proof.
 rewrite /FunctorLaws.comp => A B C g h; rewrite /uncurry_f boolp.funeqE => ?.
 by rewrite compE compA.
 Qed.
-Definition uncurry_F X : functor :=
-  Functor.Pack (Functor.Mixin (uncurry_f_id X) (uncurry_f_comp X)).
+HB.instance Definition uncurry_F_mixin X :=
+  @isFunctor.Build (@uncurry_M X) (@uncurry_f X) (uncurry_f_id X) (uncurry_f_comp X).
+Fail Definition uncurry_F X : functor := [the functor of (@uncurry_f X)].
 End uncurry_functor.
 
 Section exponential_functor.
@@ -94,8 +99,10 @@ Definition exponential_f (X Y : UU0) (f : X -> Y) :
 Lemma exponential_f_id : FunctorLaws.id exponential_f. Proof. by []. Qed.
 Lemma exponential_f_comp : FunctorLaws.comp exponential_f.
 Proof. by []. Qed.
-Definition exponential_F : functor :=
-  Functor.Pack (Functor.Mixin exponential_f_id exponential_f_comp).
+HB.instance Definition exponential_F :=
+  @isFunctor.Build exponential_M exponential_f exponential_f_id exponential_f_comp.
+Fail Definition exponential_F : functor :=
+  [the functor of exponential_f].
 End exponential_functor.
 
 Lemma fmap_oE (M : functor) (A B C : UU0) (f : A -> B) (g : C -> A) (m : M C) :
@@ -146,7 +153,7 @@ Definition fun_app_nt : S \O F ~~> S \O G :=
   fun (A : UU0) => S # (nt A).
 Lemma natural_fun_app_nt : naturality (S \O F) (S \O G) fun_app_nt.
 Proof.
-by move=> *; rewrite /fun_app_nt 2!FCompE -2!(functor_o S) natural.
+by move=> *; rewrite /fun_app_nt 2!FCompE -2!(@functor_o S) natural.
 Qed.
 Definition functor_app_natural : (S \O F) ~> (S \O G) :=
   Natural.Pack (Natural.Mixin natural_fun_app_nt).
