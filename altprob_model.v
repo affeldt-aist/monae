@@ -1,11 +1,10 @@
 (* monae: Monadic equational reasoning in Coq                                 *)
 (* Copyright (C) 2020 monae authors, license: LGPL-2.1-or-later               *)
 Require Import Reals.
-From mathcomp Require Import all_ssreflect.
+From mathcomp Require Import all_ssreflect finmap.
 From mathcomp Require Import boolp classical_sets.
-From mathcomp Require Import finmap.
-From infotheo Require Import Reals_ext Rbigop ssrR fdist fsdist convex.
-From infotheo Require Import necset.
+From infotheo Require Import classical_sets_ext Reals_ext Rbigop ssrR fdist.
+From infotheo Require Import fsdist convex necset.
 Require category.
 Require Import monae_lib hierarchy monad_lib proba_lib monad_model gcm_model.
 
@@ -114,6 +113,7 @@ Local Notation F0o := FSDist_convType.
 Local Notation FCo := choice_of_Type.
 Local Notation F1m := free_semiCompSemiLattConvType_mor.
 Local Notation F0m := free_convType_mor.
+
 Lemma bindaltDl : BindLaws.left_distributive (@hierarchy.Bind gcm) alt.
 Proof.
 move=> A B x y k.
@@ -122,7 +122,7 @@ suff -> : forall T (u v : gcm (gcm T)),
   hierarchy.Join (u [+] v : gcm (gcm T)) = hierarchy.Join u [+] hierarchy.Join v by [].
 move=> T u v.
 rewrite /= /Monad_of_category_monad.join /=.
-rewrite HCompId HIdComp /AdjComp.Eps. 
+rewrite HCompId HIdComp /AdjComp.Eps.
 do 3 rewrite VCompE_nat homfunK functor_o !compE.
 rewrite !functor_id HCompId HIdComp.
 rewrite (_ : epsC (U0 (U1 (F1o (F0o (FCo T))))) = [NEq _, _] _) ?hom_ext ?epsCE //.
@@ -201,6 +201,7 @@ Local Notation F0o := FSDist_convType.
 Local Notation FCo := choice_of_Type.
 Local Notation F1m := free_semiCompSemiLattConvType_mor.
 Local Notation F0m := free_convType_mor.
+
 Lemma bindchoiceDl p : BindLaws.left_distributive (@hierarchy.Bind gcm) (@choice p).
 Proof.
 move=> A B x y k.
@@ -208,7 +209,7 @@ rewrite !hierarchy.bindE /choice FunpchoiceDr.
 suff -> : forall T (u v : gcm (gcm T)), hierarchy.Join (u <|p|> v : gcm (gcm T)) = hierarchy.Join u <|p|> hierarchy.Join v by [].
 move=> T u v.
 rewrite /= /Monad_of_category_monad.join /=.
-rewrite HCompId HIdComp /AdjComp.Eps. 
+rewrite HCompId HIdComp /AdjComp.Eps.
 do 3 rewrite VCompE_nat homfunK functor_o !compE.
 rewrite !functor_id HCompId HIdComp.
 rewrite (_ : epsC (U0 (U1 (F1o (F0o (FCo T))))) = [NEq _, _] _) ?hom_ext ?epsCE //.
@@ -243,34 +244,16 @@ Local Open Scope proba_monad_scope.
 
 (* An example that probabilistic choice in this model is not trivial:
    we can distinguish different probabilities. *)
-Section move_to_somewhere.
-Local Open Scope convex_scope.
-Local Open Scope classical_set_scope.
-(* move to necset.v *)
-Lemma conv_cset1 (A : convType) (p : prob) (x y : A) :
-  [set x] :<|p|>: [set y] = [set x <|p|> y].
-Proof.
-rewrite eqEsubset; split=> u; last by move->; apply conv_in_conv_set.
-by case/conv_in_conv_set'=> x' [] y' [] -> [] -> ->.
-Qed.
-(* move to classical_set_ext.v *)
-Lemma eq_set1 (T : Type) (x y : T) : [set x] = [set y] -> x = y.
-Proof. by case/seteqP; move/(_ x)/(_ erefl) ->. Qed.
-End move_to_somewhere.
-
 Example gcmAP_choice_nontrivial (p q : prob) :
   p <> q ->
   Ret true <|p|> Ret false <> Ret true <|q|> Ret false :> gcmAP bool.
 Proof.
 apply contra_not.
-rewrite !gcm_retE /Choice /= /Conv /=.
-move/(congr1 (@NECSet.car _)).
+rewrite !gcm_retE /Choice /= /Conv /= => /(congr1 (@NECSet.car _)).
 rewrite !necset_convType.convE !conv_cset1 /=.
-move/(@eq_set1 _ (Conv _ _ _))/(congr1 (@FSDist.f (choice_of_Type bool)))/fsfunP/(_ true).
+move/(@set1_inj _ (Conv _ _ _))/(congr1 (@FSDist.f _))/fsfunP/(_ true).
 rewrite !ConvFSDist.dE !FSDist1.dE /=.
-set bt := _ \in _; have-> : bt = true by apply/fset1P.
-set bf := _ \in _; have-> : bf = false by apply/fset1P.
-rewrite !mulR1 !mulR0 !addR0.
-exact: val_inj.
+rewrite !(@in_fset1 (choice_of_Type bool)) eqxx /= ifF; last exact/negbTE/eqP.
+by rewrite !mulR1 !mulR0 !addR0; exact: val_inj.
 Qed.
 End examples.
