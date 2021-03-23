@@ -51,6 +51,9 @@ opam repo add coq-released https://coq.inria.fr/opam/released
 opam install coq-monae
 ```
 
+It installs two directories in `coq/user-contrib`: `monae` and
+`monaeImpredicativeSet`.
+
 To instead build and install manually (with GNU `make`), do:
 ``` shell
 git clone https://github.com/affeldt-aist/monae.git
