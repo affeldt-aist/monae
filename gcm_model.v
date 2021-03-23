@@ -386,18 +386,13 @@ Lemma free_semiCompSemiLattConvType_mor'_affine :
   affine free_semiCompSemiLattConvType_mor'.
 Proof.
 move=> p a0 a1; apply necset_ext => /=; rewrite predeqE => b0; split.
-- case=> a.
-  rewrite necset_convType.convE => -[a0' [a1' [H0 [H1 ->{a}]]]] <-{b0}.
-  rewrite necset_convType.convE; exists (f a0'); exists (f a1'); split.
-    by rewrite in_setE /=; exists a0' => //; rewrite -in_setE.
-  split; last by case: f => f' /= Hf; rewrite Hf.
-  by rewrite in_setE /=; exists a1' => //; rewrite -in_setE.
-- rewrite necset_convType.convE => -[b0' [b1']].
-  rewrite !in_setE /= => -[[a0' H0] <-{b0'}] -[[a1' h1] <-{b1'}] ->{b0}.
-  exists (a0' <|p|> a1').
-  rewrite necset_convType.convE; exists a0', a1'; split; first by rewrite in_setE.
-  by split => //; rewrite in_setE.
-  by case: f => f' /= Hf; rewrite Hf.
+- rewrite !necset_convType.convE.
+  case=> a [] a0' a0a0'; rewrite conv_pt_setE=> -[] a1' a1a1' <- <- /=.
+  by case: f=> f' /= ->; apply conv_in_conv_set; apply imageP.
+
+- rewrite !necset_convType.convE /= => /conv_in_conv_set' [] x [] y [] [] a0' a0a0' <- [] [] a1' a1a1' <- ->.
+  rewrite affine_image_conv_set /=.
+  by apply conv_in_conv_set; apply imageP.
 Qed.
 
 Lemma bigsetU_affine (X : neset (necset A)) :
@@ -505,14 +500,9 @@ Qed.
 
 Lemma eps1''_affine L : affine (@eps1'' L).
 Proof.
-move=> X Y p; rewrite -biglub_conv_setD.
+move=> p X Y; rewrite -biglub_conv_setD.
 congr (|_| _%:ne); apply/neset_ext => /=.
-rewrite conv_setE necset_convType.convE eqEsubset; split=> u.
-- case=> x [] y [] xX [] yY ->.
-  exists x; first by rewrite -in_setE.
-  by rewrite conv_pt_setE; exists y; first by rewrite -in_setE.
-- case=> x Xx; rewrite conv_pt_setE => -[] y Yy <-.
-  by exists x, y; rewrite !in_setE.
+by rewrite necset_convType.convE.
 Qed.
 
 Let eps1' : F1 \O U1 ~~> FId :=
@@ -536,9 +526,9 @@ Lemma necset1_affine (C : convType) : affine (@necset1 C).
 Proof.
 move=> p a b /=; apply/necset_ext; rewrite eqEsubset; split=> x /=.
 - move->; rewrite necset_convType.convE.
-  by exists a, b; rewrite !asboolE.
-- rewrite necset_convType.convE => -[] a0 [] b0.
-  by rewrite !asboolE /necset1 /= => -[] -> [] -> ->.
+  by apply conv_in_conv_set.
+- rewrite necset_convType.convE /necset1 /=.
+  by case/conv_in_conv_set'=> a0 [] b0 [] -> [] -> ->.
 Qed.
 
 Let eta1' : FId ~~> U1 \O F1 :=

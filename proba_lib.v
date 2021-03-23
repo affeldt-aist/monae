@@ -104,7 +104,7 @@ case/boolP : (m.-1 + n == 0)%nat => [{IH}|] m1n0.
 rewrite cat_cons uniform_cons uniform_cons.
 set pv := ((/ _)%R).
 set v : prob := @Prob.mk pv _.
-set u := @Prob.mk_ (INR (size s2) / INR (size s2 + size t))%R (prob_divRnnm _ _).
+set u := @Prob.mk (INR (size s2) / INR (size s2 + size t))%R (prob_divRnnm _ _).
 rewrite -[RHS](choiceA v u).
   by rewrite -IH.
 split.
@@ -191,7 +191,7 @@ rewrite (_ : Prob.mk _ = probdivRnnm n l); last first.
   by rewrite -/(cp _ _) -/l; exact/val_inj.
 pose m := size xxs.
 have lmn : (l = m * n)%nat by rewrite /l /m /n size_allpairs.
-rewrite (_ : probdivRnnm _ _ = @Prob.mk_ (/ (INR (1 + m))) (prob_invn _))%R; last first.
+rewrite (_ : probdivRnnm _ _ = @Prob.mk (/ (INR (1 + m))) (prob_invn _))%R; last first.
   apply val_inj => /=.
   rewrite lmn /divRnnm -mulSn mult_INR {1}/Rdiv Rinv_mult_distr; last 2 first.
     by rewrite INR_eq0.
@@ -414,10 +414,10 @@ Lemma choiceA_compute {N : probMonad} (T F : bool) (f : bool -> N bool) :
  (f T <|(/ 5)%:pr|> (f F <|(/ 4)%:pr|> (f F <|(/ 3)%:pr|> (f F <|(/ 2)%:pr|>
   f T))))))) = f F <|(/ 3)%:pr|> (f F <|(/ 2)%:pr|> f T) :> N _.
 Proof.
-have H27 : (0 <= 2/7 <= 1)%R by split; lra.
-have H721 : (0 <= 7/21 <= 1)%R by split; lra.
-have H2156 : (0 <= 21/56 <= 1)%R by split; lra.
-have H25 : (0 <= 2/5 <= 1)%R by split; lra.
+have H27 : (0 <b= 2/7 <b= 1)%R by apply/leR2P; split; lra.
+have H721 : (0 <b= 7/21 <b= 1)%R by apply/leR2P; split; lra.
+have H2156 : (0 <b= 21/56 <b= 1)%R by apply/leR2P; split; lra.
+have H25 : (0 <b= 2/5 <b= 1)%R by apply/leR2P; split; lra.
 rewrite [in RHS](choiceA _ _ (/ 2)%:pr (/ 3).~%:pr); last first.
   by rewrite 3!probpK /= /onem; split; field.
 rewrite choicemm.
@@ -427,17 +427,20 @@ rewrite choicemm.
 rewrite [in LHS](choiceA (/ 4)%:pr (/ 3).~%:pr (/ 3)%:pr (/ 4).~%:pr); last first.
   by rewrite 4!probpK /= /onem; split; field.
 rewrite choicemm.
-rewrite [in LHS](choiceA (/ 7)%:pr (/ 6)%:pr (/ 2)%:pr (@Prob.mk_ (2/7) H27)); last first.
+rewrite [in LHS](choiceA (/ 7)%:pr (/ 6)%:pr (/ 2)%:pr (@Prob.mk (2/7) H27)); last first.
   by rewrite 4!probpK /= /onem; split; field.
 rewrite choicemm.
-rewrite [in LHS](choiceA (/ 8)%:pr (@Prob.mk_ (2/7) H27) (@Prob.mk_ (7/21) H721) (@Prob.mk_ (21/56) H2156)); last first.
-  by rewrite 3!probpK /= /onem; split; field.
+
+rewrite [in LHS](choiceA (/ 8)%:pr (@Prob.mk (2/7) H27) (@Prob.mk (7/21) H721) (@Prob.mk (21/56) H2156)); last first.
+  rewrite 4!probpK probpK // probpK // probpK //.
+  rewrite /= /onem; first by split; field.
+  by rewrite addR_opp; apply onem_prob.
 rewrite (choiceC (/ 4).~%:pr).
-rewrite [in LHS](choiceA (/ 5)%:pr (probcplt (/ 4).~%:pr) (/ 2)%:pr (@Prob.mk_ (2/5) H25)); last first.
+rewrite [in LHS](choiceA (/ 5)%:pr (probcplt (/ 4).~%:pr) (/ 2)%:pr (@Prob.mk (2/5) H25)); last first.
   by rewrite 3!probpK /= /onem; split; field.
 rewrite 2!choicemm.
-rewrite (choiceC (@Prob.mk_ (2/5) H25)).
-rewrite [in LHS](choiceA (@Prob.mk_ (21/56) H2156) (probcplt (Prob.mk_ H25)) (/ 2)%:pr (/ 4).~%:pr); last first.
+rewrite (choiceC (@Prob.mk (2/5) H25)).
+rewrite [in LHS](choiceA (@Prob.mk (21/56) H2156) (probcplt (Prob.mk H25)) (/ 2)%:pr (/ 4).~%:pr); last first.
   by rewrite 3!probpK /= /onem; split; field.
 rewrite choicemm.
 rewrite (choiceC (/ 4).~%:pr).
