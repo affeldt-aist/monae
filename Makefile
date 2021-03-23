@@ -1,9 +1,12 @@
+SUB = impredicative_set
+
 all: Makefile.coq
 	$(MAKE) -f Makefile.coq all
+	$(MAKE) -C $(SUB) all
 
 clean: Makefile.coq
 	$(MAKE) -f Makefile.coq cleanall
-	rm -f Makefile.coq Makefile.coq.conf
+	$(MAKE) -C $(SUB) clean
 
 Makefile.coq: _CoqProject
 	coq_makefile -f _CoqProject -o Makefile.coq
@@ -15,8 +18,9 @@ _CoqProject Makefile: ;
 
 .PHONY: all clean
 
-install_full: install
-	cd impredicative_set; make install
+install_full: all
+	$(MAKE) install
+	$(MAKE) -C impredicative_set install
 
 # This last entry is only to support work-in-progress.
 
@@ -27,4 +31,4 @@ sect5: all
 	$(COQ5) parametricity_codensity.v
 
 clean5:
-	rm -f *.vo
+	rm -f *.vo *.glob *.vok *.vos
