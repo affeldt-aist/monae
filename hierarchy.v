@@ -729,112 +729,39 @@ Qed.
 
 End nondet_big.
 
-Module MonadFailR0.
-Record mixin_of (M : failMonad) := Mixin {
-  _ : BindLaws.right_zero (@Bind M) (@Fail _) }.
-Record class_of (M : UU0 -> UU0) := Class {
-  base : MonadFail.class_of M ;
-  mixin : mixin_of (MonadFail.Pack base) }.
-Structure type := Pack { acto : UU0 -> UU0 ; class : class_of acto }.
-Definition failR0MonadType (M : type) := MonadFail.Pack (base (class M)).
-Module Exports.
-Notation failR0Monad := type.
-Coercion failR0MonadType : failR0Monad >-> failMonad.
-Canonical failR0MonadType.
-End Exports.
-End MonadFailR0.
-Export MonadFailR0.Exports.
+HB.mixin Record isMonadFailR0 (M : UU0 -> UU0) of MonadFail M := {
+  bindmfail : BindLaws.right_zero (@Bind [the monad of M]) (@Fail _)
+}.
 
-Section failR0_lemmas.
-Variable (M : failR0Monad).
-Lemma bindmfail : BindLaws.right_zero (@Bind M) (@Fail _).
-Proof. by case: M => m [? [? ?]]. Qed.
-End failR0_lemmas.
+HB.structure Definition MonadFailR0 := {M of isMonadFailR0 M & }.
+Notation failR0Monad := MonadFailR0.type.
 
-Module MonadPrePlus.
-Record mixin_of (M : nondetMonad) := Mixin {
-  _ : BindLaws.right_distributive (@Bind M) (@Alt _) }.
-Record class_of (M : UU0 -> UU0) := Class {
-  base : MonadNondet.class_of M ;
-  mixin_failR0 : MonadFailR0.mixin_of (MonadFail.Pack (MonadNondet.base base)) ;
-  mixin : mixin_of (MonadNondet.Pack base) }.
-Structure type := Pack { acto : UU0 -> UU0 ; class : class_of acto }.
-Definition prePlusMonadType (M : type) := MonadNondet.Pack (base (class M)).
-Definition failR0MonadType (M : type) := MonadFailR0.Pack (MonadFailR0.Class (mixin_failR0 (class M))).
-Module Exports.
-Notation prePlusMonad := type.
-Coercion prePlusMonadType : prePlusMonad >-> nondetMonad.
-Canonical prePlusMonadType.
-Coercion failR0MonadType : prePlusMonad >-> failR0Monad.
-Canonical failR0MonadType.
-End Exports.
-End MonadPrePlus.
-Export MonadPrePlus.Exports.
+HB.mixin Record isMonadPrePlus (M : UU0 -> UU0) of MonadNondet M & MonadFailR0 M := {
+  alt_bindDr : BindLaws.right_distributive (@Bind [the monad of M]) (@Alt _)
+}.
 
-Section pre_plus_lemmas.
-Variable (M : prePlusMonad).
-Lemma alt_bindDr : BindLaws.right_distributive (@Bind M) (@Alt _).
-Proof. by case: M => m [? ? []]. Qed.
-End pre_plus_lemmas.
+HB.structure Definition MonadPrePlus := {M of isMonadPrePlus M & }.
+Notation prePlusMonad := MonadPrePlus.type.
 
-Module MonadPlus.
-Record class_of (M : UU0 -> UU0) := Class {
-  base : MonadCINondet.class_of M ;
-  mixin_failR0 : MonadFailR0.mixin_of (MonadCINondet.Pack base) ;
-  mixin_preplus : MonadPrePlus.mixin_of (MonadCINondet.Pack base) }.
-Structure type := Pack { acto : UU0 -> UU0 ; class : class_of acto }.
-Definition plusMonadType (M : type) := MonadCINondet.Pack (base (class M)).
-Definition preplus_of_plus (M : type) :=
-  MonadPrePlus.Pack (@MonadPrePlus.Class _ (MonadCINondet.base (base (class M)))(*IMP*) (mixin_failR0 (class M)) (mixin_preplus (class M))).
-Module Exports.
-Notation plusMonad := type.
-Coercion plusMonadType : plusMonad >-> nondetCIMonad.
-Canonical plusMonadType.
-Coercion preplus_of_plus : plusMonad >-> prePlusMonad.
-Canonical preplus_of_plus.
-End Exports.
-End MonadPlus.
-Export MonadPlus.Exports.
+HB.mixin Record isMonadPlus (M : UU0 -> UU0) of MonadCINondet M & MonadFailR0 M & MonadPrePlus M := {
+}.
 
-Module MonadExcept.
-Record mixin_of (M : failMonad) := Mixin {
+HB.structure Definition MonadPlus := {M of isMonadPlus M & }.
+Notation plusMonad := MonadPlus.type.
+
+HB.mixin Record isMonadExcept (M : UU0 -> UU0) of MonadFail M := {
   catch : forall A, M A -> M A -> M A ;
   (* monoid *)
-  _ : forall A, right_id Fail (@catch A) ;
-  _ : forall A, left_id Fail (@catch A) ;
-  _ : forall A, associative (@catch A) ;
+  catchmfail : forall A, right_id Fail (@catch A) ;
+  catchfailm : forall A, left_id Fail (@catch A) ;
+  catchA : forall A, associative (@catch A) ;
   (* unexceptional bodies need no handler *)
-  _ : forall A x, @left_zero (M A) (M A) (Ret x) (@catch A)
-  (* NB: left-zero of sequential composition inherited from failMonad *) }.
-Record class_of (M : UU0 -> UU0) := Class {
-  base : MonadFail.class_of M ;
-  mixin : mixin_of (MonadFail.Pack base) }.
-Structure type := Pack { acto : UU0 -> UU0 ; class : class_of acto }.
-Definition failMonadType M := MonadFail.Pack (base (class M)).
-Definition monadType M := Monad.Pack (MonadFail.base (base (class M))).
-Module Exports.
-Definition Catch (M : type) : forall A, acto M A -> acto M A -> acto M A :=
-  let: Pack _ (Class _ (Mixin x _ _ _ _)) := M in x.
-Arguments Catch {M A} : simpl never.
-Notation exceptMonad := type.
-Coercion failMonadType : exceptMonad >-> failMonad.
-Canonical failMonadType.
-Canonical monadType.
-End Exports.
-End MonadExcept.
-Export MonadExcept.Exports.
+  catchret : forall A x, @left_zero (M A) (M A) (Ret x) (@catch A)
+  (* NB: left-zero of sequential composition inherited from failMonad *)
+}.
 
-Section except_lemmas.
-Variables (M : exceptMonad).
-Lemma catchfailm : forall A, left_id Fail (@Catch M A).
-Proof. by case: M => m [? []]. Qed.
-Lemma catchmfail : forall A, right_id Fail (@Catch M A). (* NB: not used? *)
-Proof. by case: M => m [? []]. Qed.
-Lemma catchret : forall A x, left_zero (Ret x) (@Catch M A).
-Proof. by case: M => m [? []]. Qed.
-Lemma catchA : forall A, associative (@Catch M A). (* NB: not used? *)
-Proof. by case: M => m [? []]. Qed.
-End except_lemmas.
+HB.structure Definition MonadExcept := {M of isMonadExcept M & }.
+Notation exceptMonad := MonadExcept.type.
 
 Module MonadContinuation.
 (* NB: interface is wip *)
