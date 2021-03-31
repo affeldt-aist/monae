@@ -37,7 +37,7 @@ Variable M : probMonad.
 Variable A : Type.
 
 Definition prob_mixin : convex.ConvexSpace.mixin_of (convex.choice_of_Type (M A)).
-apply (@convex.ConvexSpace.Mixin _ (fun p (a b : convex.choice_of_Type (M A)) => Choice p A a b)).
+apply (@convex.ConvexSpace.Mixin _ (fun p (a b : convex.choice_of_Type (M A)) => choice p A a b)).
 - apply choice1.
 - apply choicemm.
 - apply choiceC.

@@ -81,6 +81,11 @@ dependencies:
     version: '{ >= "1.1.2" & < "1.2~" }'
   description: |-
     [Paramcoq](https://github.com/coq-community/paramcoq)
+- opam:
+    name: coq-hierarchy-builder
+    version: '{ >= "1.1.0" }'
+  description: |-
+    [Hierarchy Builder](https://github.com/math-comp/hierarchy-builder)
 
 namespace: monae
 

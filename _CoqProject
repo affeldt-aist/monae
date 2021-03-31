@@ -29,5 +29,4 @@ example_transformer.v
 category_ext.v
 
 -R . monae
--R ../hierarchy-builder HB
 
