@@ -4,7 +4,9 @@ Require Import ZArith.
 From mathcomp Require Import all_ssreflect.
 From mathcomp Require boolp.
 From infotheo Require Import ssrZ.
-Require Import monae_lib hierarchy monad_lib fail_lib.
+Require Import monae_lib.
+From HB Require Import structures.
+Require Import hierarchy monad_lib fail_lib.
 
 (******************************************************************************)
 (*              Definitions and lemmas about state monads                     *)
@@ -28,29 +30,29 @@ Unset Printing Implicit Defensive.
 Local Open Scope monae_scope.
 
 Lemma putgetput (S : UU0) {M : stateMonad S} x {B} (k : _ -> M B) :
-  Put x >> Get >>= (fun x' => k x') = Put x >> k x :> M _.
+  put x >> get >>= (fun x' => k x') = put x >> k x :> M _.
 Proof. by rewrite putget bindA bindretf. Qed.
 
 Definition overwrite {A S} {M : stateMonad S} s a : M A :=
-  Put s >> Ret a.
+  put s >> Ret a.
 
 Definition protect {A S} {M : stateMonad S} (n : M A) :=
-  Get >>= (fun ini => n >>= overwrite ini).
+  get >>= (fun ini => n >>= overwrite ini).
 
 Lemma protect_put_ret {A S : UU0} {M : stateMonad S} (s : S) (a : A) :
-  protect (Put s >> Ret a) = Ret a :> M _.
+  protect (put s >> Ret a) = Ret a :> M _.
 Proof.
 rewrite /protect.
 rewrite_ bindA.
 rewrite_ bindretf.
 rewrite /overwrite.
 Inf rewrite -bindA.
-rewrite_ putput.
+rewrite_ (@putput _ M) (* TODO: do we need M here? *).
 by rewrite -bindA getputskip bindskipf.
 Qed.
 
 Example test_nonce0 (M : stateMonad nat) : M nat :=
-  Get >>= (fun s => Put s.+1 >> Ret s).
+  get >>= (fun s => put s.+1 >> Ret s).
 (*Reset test_nonce0.
 Fail Check test_nonce0.*)
 

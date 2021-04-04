@@ -15,14 +15,8 @@ description: """
 This Coq library contains a hierarchy of monads with their laws used
 in several examples of monadic equational reasoning."""
 
-build: [
-  [make "-j%{jobs}%"]
-  [make "sect5"]
-  [make "-C" "impredicative_set"]
-]
-install: [
-  [make "install_full"]
-]
+build: [make "-j%{jobs}%" ]
+install: [make "full_install"]
 depends: [
   "coq" { (>= "8.13" & < "8.14~") | (= "dev") }
   "coq-mathcomp-ssreflect" { (>= "1.12.0" & < "1.13~") }
@@ -33,6 +27,7 @@ depends: [
   "coq-mathcomp-analysis" { (>= "0.3.6" & < "0.4~") }
   "coq-infotheo" { >= "0.3.1" & < "0.4~"}
   "coq-paramcoq" { >= "1.1.2" & < "1.2~" }
+  "coq-hierarchy-builder" { >= "1.1.0" }
 ]
 
 tags: [

@@ -5,8 +5,9 @@ Ltac typeof X := type of X.
 Require Import ssrmatching.
 From mathcomp Require Import all_ssreflect.
 From mathcomp Require boolp.
-Require Import monae_lib hierarchy.
+Require Import monae_lib.
 From HB Require Import structures.
+Require Import hierarchy.
 
 (******************************************************************************)
 (*  Properties and examples of functors, natural transformations, and monads  *)
@@ -48,7 +49,7 @@ Proof. by move=> A /=; rewrite boolp.funeqE => -[x1 x2]. Qed.
 Lemma squaring_f_comp : FunctorLaws.comp squaring_f.
 Proof. by move=> A B C g h /=; rewrite boolp.funeqE => -[x1 x2]. Qed.
 HB.instance Definition squaring_mixin :=
-  @isFunctor.Build Squaring squaring_f squaring_f_id squaring_f_comp.
+  isFunctor.Build Squaring squaring_f_id squaring_f_comp.
 Definition squaring : functor := [the functor of Squaring].
 Notation "f ^`2" := (squaring # f).
 Lemma squaringE (A B : UU0) (f : A -> B) x : (f ^`2) x = (f x.1, f x.2).

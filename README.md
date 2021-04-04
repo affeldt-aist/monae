@@ -35,6 +35,7 @@ in several examples of monadic equational reasoning.
   - [MathComp analysis](https://github.com/math-comp/analysis)
   - [Infotheo](https://github.com/affeldt-aist/infotheo)
   - [Paramcoq](https://github.com/coq-community/paramcoq)
+  - [Hierarchy Builder](https://github.com/math-comp/hierarchy-builder)
 - Coq namespace: `monae`
 - Related publication(s):
   - [A hierarchy of monadic effects for program verification using equational reasoning](https://staff.aist.go.jp/reynald.affeldt/documents/monae.pdf) doi:[10.1007/978-3-030-33636-3_9](https://doi.org/10.1007/978-3-030-33636-3_9)
