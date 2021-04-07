@@ -707,13 +707,10 @@ HB.mixin Record isMonadNondet (M : UU0 -> UU0) of MonadFail M & MonadAlt M := {
   altmfail : @BindLaws.right_id [the functor of M] (@fail [the failMonad of M]) (@alt [the altMonad of M])
 }.
 
-HB.structure Definition MonadNondet := {M of isMonadNondet M & }.
+HB.structure Definition MonadNondet := {M of isMonadNondet M & MonadFail M}.
 Notation nondetMonad := MonadNondet.type.
 
-HB.mixin Record isMonadCINondet (M : UU0 -> UU0) of MonadNondet M & MonadAltCI M := {
-}.
-
-HB.structure Definition MonadCINondet := {M of isMonadCINondet M & }.
+HB.structure Definition MonadCINondet := {M of MonadAltCI M & MonadNondet M}.
 Notation nondetCIMonad := MonadCINondet.type.
 
 Section nondet_big.
@@ -743,10 +740,7 @@ HB.mixin Record isMonadPrePlus (M : UU0 -> UU0) of MonadNondet M & MonadFailR0 M
 HB.structure Definition MonadPrePlus := {M of isMonadPrePlus M & }.
 Notation prePlusMonad := MonadPrePlus.type.
 
-HB.mixin Record isMonadPlus (M : UU0 -> UU0) of MonadCINondet M & MonadPrePlus M := {
-}.
-
-HB.structure Definition MonadPlus := {M of isMonadPlus M & }.
+HB.structure Definition MonadPlus := {M of MonadCINondet M & MonadPrePlus M}.
 Notation plusMonad := MonadPlus.type.
 
 HB.mixin Record isMonadExcept (M : UU0 -> UU0) of MonadFail M := {
@@ -845,10 +839,14 @@ Notation stateMonad := MonadState.type.
 (*Definition Put (S : UU0) (M : stateMonad S) := @put S M.*)
 (*Definition Get (S : UU0) (M : stateMonad S) := @get S M.*)
 
-HB.mixin Record isMonadNondetState (S : UU0) (M : UU0 -> UU0) of MonadPrePlus M & MonadState S M := {
-}.
-
-HB.structure Definition MonadNondetState (S : UU0) := { M of isMonadNondetState S M & }.
+(*Section nondetstate_lemmas.
+Variables (S : UU0) (M : nondetStateMonad S).
+Lemma bindmfail : BindLaws.right_zero (@Bind M) (@Fail _).
+Proof. by case: M => m [? ? [? ?]]. Qed.
+Lemma alt_bindDr : BindLaws.right_distributive (@Bind M) (@Alt _).
+Proof. by case: M => m [? ? []]. Qed.
+End nondetstate_lemmas.*)
+HB.structure Definition MonadNondetState (S : UU0) := { M of MonadPrePlus M & MonadState S M }.
 Notation nondetStateMonad := MonadNondetState.type.
 
 HB.mixin Record isMonadStateRun (S : UU0) (N : monad)
@@ -873,7 +871,7 @@ HB.mixin Record isMonadExceptStateRun (S : UU0) (N : exceptMonad)
   runStateTcatch : forall (A : UU0) (s : S) (m1 m2 : M A),
     runStateT (@catch [the exceptMonad of M] _ m1 m2) s = @catch N _ (runStateT m1 s) (runStateT m2 s) }.
 
-Fail HB.structure Definition MonadExceptStateRun (S : UU0) (N : exceptMonad) :=
+HB.structure Definition MonadExceptStateRun (S : UU0) (N : exceptMonad) :=
   {M of isMonadExceptStateRun S N M & }.
 Fail Notation exceptStateRunMonad := MonadExceptStateRun.type.
 
@@ -952,20 +950,11 @@ HB.mixin Record isMonadFailReify (S : UU0) (M : UU0 -> UU0) of MonadReify S M & 
 HB.structure Definition MonadFailReify (S : UU0) := {M of isMonadFailReify S M & }.
 Notation failReifyMonad := MonadFailReify.type.
 
-HB.mixin Record isMonadFailFailR0Reify (S : UU0) (M : UU0 -> UU0) of MonadFailReify S M & MonadFailR0 M := {
-}.
-
-HB.structure Definition MonadFailFailR0Reify (S : UU0) := {M of isMonadFailFailR0Reify S M & }.
+HB.structure Definition MonadFailFailR0Reify (S : UU0) := {M of MonadFailReify S M & MonadFailR0 M}.
 Notation failFailR0ReifyMonad := MonadFailFailR0Reify.type.
 
-(* TODO xxx
-HB.mixin Record isMonadFailStateReify (S : UU0) (M : UU0 -> UU0) of MonadStateReify S M & MonadFail M &
-  MonadFailReify S M & MonadFailR0 M := {
-}.
-
-HB.structure Definition MonadFailStateReify (S : UU0) := {M of isMonadFailStateReify S M & }.
-Notation failStateReifyMonad := MonadFailStateReify.type.
-*)
+Fail HB.structure Definition MonadFailStateReify (S : UU0) := {M of MonadStateReify S M & MonadFailFailR0Reify S M}.
+Fail Notation failStateReifyMonad := MonadFailStateReify.type.
 
 (*Module MonadFailStateReify.
 Record class_of (S : UU0) (M : UU0 -> UU0) := Class {
@@ -999,14 +988,6 @@ Canonical failFailR0_of_failStateReify.
 End Exports.
 End MonadFailStateReify.
 Export MonadFailStateReify.Exports.*)
-
-(*Section nondetstate_lemmas.
-Variables (S : UU0) (M : nondetStateMonad S).
-Lemma bindmfail : BindLaws.right_zero (@Bind M) (@Fail _).
-Proof. by case: M => m [? ? [? ?]]. Qed.
-Lemma alt_bindDr : BindLaws.right_distributive (@Bind M) (@Alt _).
-Proof. by case: M => m [? ? []]. Qed.
-End nondetstate_lemmas.*)
 
 (* NB: this is experimental, may disappear, see rather foreah in
 monad_transformer because it is more general *)
@@ -1074,159 +1055,57 @@ Variables (T : UU0) (M : traceReifyMonad T).
 Lemma reifytmark : forall s t, Reify (Mark t : M _) s = Some (tt, rcons s t).
 Proof. by case: M => m [? ? []]. Qed.
 End tracereify_lemmas.
+*)
 
-Module MonadStateTrace.
-Record mixin_of (S T : UU0) (M : monad) := Mixin {
+HB.mixin Record isMonadStateTrace (S T : UU0) (M : UU0 -> UU0) of Monad M := {
   st_get : M S ;
   st_put : S -> M unit ;
   st_mark : T -> M unit ;
-  _ : forall s s', st_put s >> st_put s' = st_put s' ;
-  _ : forall s, st_put s >> st_get = st_put s >> Ret s ;
-  _ : st_get >>= st_put = skip ;
-  _ : forall (A : UU0) (k : S -> S -> M A),
+  st_putput : forall s s', st_put s >> st_put s' = st_put s' ;
+  st_putget : forall s, st_put s >> st_get = st_put s >> Ret s ;
+  st_getputskip : st_get >>= st_put = skip ;
+  st_getget : forall (A : UU0) (k : S -> S -> M A),
       st_get >>= (fun s => st_get >>= k s) = st_get >>= fun s => k s s ;
-  _ : forall s e, st_put s >> st_mark e = st_mark e >> st_put s ;
-  _ : forall e (k : _ -> M S), st_get >>= (fun v => st_mark e >> k v) =
+  st_putmark : forall s e, st_put s >> st_mark e = st_mark e >> st_put s ;
+  st_getmark : forall e (k : _ -> M S), st_get >>= (fun v => st_mark e >> k v) =
                          st_mark e >> st_get >>= k
 }.
-Record class_of (S T : UU0) (M : UU0 -> UU0) := Class {
-  base : Monad.class_of M ;
-  mixin : mixin_of S T (Monad.Pack base) }.
-Structure type (S T : UU0) := Pack { acto : UU0 -> UU0 ; class : class_of S T acto }.
-Definition monadType (S T : UU0) (M : type S T) := Monad.Pack (base (class M)).
-Module Exports.
-Definition stGet (S T : UU0) (M : type S T) : acto M S :=
-  let: Pack _ (Class _ (Mixin x _ _ _ _ _ _ _ _)) := M in x.
-Arguments stGet {S T M} : simpl never.
-Definition stPut S T (M : type S T) : S -> acto M unit :=
-  let: Pack _ (Class _ (Mixin _ x _ _ _ _ _ _ _)) := M in x.
-Arguments stPut {S T M} : simpl never.
-Definition stMark S T (M : type S T) : T -> acto M unit :=
-  let: Pack _ (Class _ (Mixin _ _ x _ _ _ _ _ _)) := M in x.
-Arguments stMark {S T M} : simpl never.
-Notation stateTraceMonad := type.
-Coercion monadType : stateTraceMonad >-> monad.
-Canonical monadType.
-End Exports.
-End MonadStateTrace.
-Export MonadStateTrace.Exports.
+HB.structure Definition MonadStateTrace (S T : UU0) :=
+  {M of isMonadStateTrace S T M}.
+Notation stateTraceMonad := MonadStateTrace.type.
 
-Section statetrace_lemmas.
-Variables (S T : UU0) (M : stateTraceMonad S T).
-Lemma st_putput s s' : stPut s >> stPut s' = stPut s' :> M _.
-Proof. by case: M => m [? []]. Qed.
-Lemma st_putget s : stPut s >> stGet = stPut s >> Ret s :> M _.
-Proof. by case: M => m [? []]. Qed.
-Lemma st_getputskip : stGet >>= stPut = skip :> M _.
-Proof. by case: M => m [? []]. Qed.
-Lemma st_getget (A : UU0) (k : S -> S -> M A) :
-  stGet >>= (fun s => stGet >>= k s) = stGet >>= fun s => k s s.
-Proof. by case: M k => m [? []]. Qed.
-Lemma st_putmark s e : stPut s >> stMark e = stMark e >> stPut s :> M _.
-Proof. by case: M => m [? []]. Qed.
-Lemma st_getmark e (k : S -> M S) :
-  stGet >>= (fun v => stMark e >> k v) = stMark e >> stGet >>= k.
-Proof. by case: M k => m [? []]. Qed.
-End statetrace_lemmas.
-
-Module MonadStateTraceReify.
-Record mixin_of (S T : UU0) (M : reifyMonad (S * seq T)%type) (st_get : M S)
-  (st_put : S -> M unit) (st_mark : T -> M unit) := Mixin {
-  _ : forall s l, Reify st_get (s, l) = Some (s, (s, l)) ;
-  _ : forall s l s', Reify (st_put s') (s, l) = Some (tt, (s', l)) ;
-  _ : forall t s l, Reify (st_mark t) (s, l) = Some (tt, (s, rcons l t))
+HB.mixin Record isMonadStateTraceReify (S T : UU0) (M : UU0 -> UU0) of MonadReify (S * seq T)%type M & MonadStateTrace S T M := {
+  reifystget : forall s l, reify (@st_get _ _ [the stateTraceMonad S T of M]) (s, l) = Some (s, (s, l)) ;
+  reifystput : forall s l s', reify (@st_put _ _ [the stateTraceMonad S T of M] s') (s, l) = Some (tt, (s', l)) ;
+  reifystmark_ : forall t s l, reify (@st_mark _ _ [the stateTraceMonad S T of M] t) (s, l) = Some (tt, (s, rcons l t))
 }.
-Record class_of (S T : UU0) (M : UU0 -> UU0) := Class {
-  base : MonadStateTrace.class_of S T M ;
-  mixin_reify : MonadReify.mixin_of (S * seq T)%type
-    (Monad.Pack (MonadStateTrace.base base)) ;
-  mixin_stateTraceReify : @mixin_of _ _ (MonadReify.Pack (MonadReify.Class mixin_reify))
-    (@stGet _ _ (MonadStateTrace.Pack base))
-    (@stPut _ _ (MonadStateTrace.Pack base))
-    (@stMark _ _ (MonadStateTrace.Pack base)) ;
-}.
-Structure type (S T : UU0) := Pack {
-  acto : UU0 -> UU0 ; class : class_of S T acto }.
-Definition stateTraceMonadType (S T : UU0) (M : type T S) :=
-  MonadStateTrace.Pack (base (class M)).
-Definition reifyMonadType (S T : UU0) (M : type S T) :=
-  MonadReify.Pack (MonadReify.Class (mixin_reify (class M))).
-Module Exports.
-Notation stateTraceReifyMonad := type.
-Coercion stateTraceMonadType (S T : UU0) (M : stateTraceReifyMonad S T) : stateTraceMonad S T
-  := stateTraceMonadType M.
-Canonical stateTraceMonadType.
-Canonical reifyMonadType.
-End Exports.
-End MonadStateTraceReify.
-Export MonadStateTraceReify.Exports.
+HB.structure Definition MonadStateTraceReify (S T : UU0) := {M of isMonadStateTraceReify S T M}.
+Notation stateTraceReifyMonad := MonadStateTraceReify.type.
 
-Section statetracereify_lemmas.
-Variables (S T : UU0) (M : stateTraceReifyMonad S T).
-Lemma reifystget : forall s, Reify (stGet : M _) s = Some (s.1, s).
-Proof. by case: M => m [? ? [? ? ?]] []. Qed.
-Lemma reifystput : forall s s', Reify (stPut s' : M _) s = Some (tt, (s', s.2)).
-Proof. by case: M => m [? ? [? ? ?]] []. Qed.
-Lemma reifystmark : forall t s, Reify (stMark t : M _) s = Some (tt, (s.1, rcons s.2 t)).
-Proof. by case: M => m [? ? [? ? ?]] t []. Qed.
-End statetracereify_lemmas.
-
-Module MonadProb.
 Local Open Scope reals_ext_scope.
-Record mixin_of (M : monad) := Mixin {
-  choice : forall (p : prob) (T : Type), M T -> M T -> M T
-           where "a <| p |> b" := (choice p a b) ;
+HB.mixin Record isMonadProb (M : UU0 -> UU0) of Monad M := {
+  choice : forall (p : prob) (T : Type), M T -> M T -> M T ;
   (* identity axioms *)
-  _ : forall (T : Type) (a b : M T), a <| 0%:pr |> b = b ;
-  _ : forall (T : Type) (a b : M T), a <| 1%:pr |> b = a ;
+  choice0 : forall (T : Type) (a b : M T), choice 0%:pr _ a b = b ;
+  choice1 : forall (T : Type) (a b : M T), choice 1%:pr _ a b = a ;
   (* skewed commutativity *)
-  _ : forall (T : Type) p (a b : M T), a <| p |> b = b <| p.~%:pr |> a ;
-  _ : forall (T : Type) p, idempotent (@choice p T) ;
+  choiceC : forall (T : Type) p (a b : M T), choice p _ a b = choice (p.~ %:pr) _ b a ;
+  choicemm : forall (T : Type) p, idempotent (@choice p T) ;
   (* quasi associativity *)
-  _ : forall (T : Type) (p q r s : prob) (a b c : M T),
+  choiceA : forall (T : Type) (p q r s : prob) (a b c : M T),
     (p = r * s :> R /\ s.~ = p.~ * q.~)%R ->
-    a <| p |> (b <| q |> c) = (a <| r |> b) <| s |> c ;
+    choice p _ a (choice q _ b c) = choice s _ (choice r _ a b) c ;
   (* composition distributes leftwards over [probabilistic] choice *)
-  _ : forall p, BindLaws.left_distributive (@Bind M) (choice p) }.
-Record class_of (M : Type -> Type) := Class {
-  base : Monad.class_of M ; mixin : mixin_of (Monad.Pack base) }.
-Structure type := Pack { acto : Type -> Type ; class : class_of acto }.
-Definition monadType (M : type) := Monad.Pack (MonadProb.base (class M)).
-Module Exports.
-Definition Choice (M : type) : forall p T, acto M T -> acto M T -> acto M T :=
-  let: Pack _ (Class _ (Mixin x _ _ _ _ _ _ )) := M in x.
-Arguments Choice {M} : simpl never.
-Notation "a <| p |> b" := (Choice p _ a b) : proba_monad_scope.
-Notation probMonad := type.
-Coercion monadType : probMonad >-> monad.
-Canonical monadType.
-End Exports.
-End MonadProb.
-Export MonadProb.Exports.
+  prob_bindDl : forall p, BindLaws.left_distributive (@Bind [the monad of M]) (choice p)
+}.
 
-Section prob_lemmas.
-Local Open Scope proba_monad_scope.
-Local Open Scope reals_ext_scope.
-Variable (M : probMonad).
-Lemma choicemm : forall A p, idempotent (@Choice M p A).
-Proof. by case: M => m [? []]. Qed.
-Lemma choice0 : forall A (mx my : M A), mx <| 0%:pr |> my = my.
-Proof. by case: M => m [? []]. Qed.
-Lemma choice1 : forall A (mx my : M A), mx <| 1%:pr |> my = mx.
-Proof. by case: M => m [? []]. Qed.
-Lemma choiceA A : forall (p q r s : prob) (mx my mz : M A),
-    (p = r * s :> R /\ s.~ = p.~ * q.~)%R ->
-    mx <| p |> (my <| q |> mz) = (mx <| r |> my) <| s |> mz.
-Proof. by case: M A => m [? []]. Qed.
-Lemma choiceC : forall A (p : prob) (mx my : M A), mx <| p |> my = my <| p.~%:pr |> mx.
-Proof. by case: M => m [? []]. Qed.
-Lemma prob_bindDl p : BindLaws.left_distributive (@Bind M) (Choice p).
-Proof. by case: M => m [? []]. Qed.
-End prob_lemmas.
-Arguments choiceA {M} {A} _ _ _ _ {mx} {my} {mz}.
-Arguments choiceC {M} {A} _ _ _.
+HB.structure Definition MonadProb := {M of isMonadProb M & }.
+Notation "a <| p |> b" := (choice p _ a b).
+Notation probMonad := MonadProb.type.
+Arguments choiceA {_} {_} _ _ _ _ {_} {_} {_}.
+Arguments choiceC {_} {_} _ _ _.
 
-Module MonadProbDr.
+(*Module MonadProbDr.
 Record mixin_of (M : probMonad) := Mixin {
   (* composition distributes rightwards over [probabilistic] choice *)
   (* WARNING: this should not be asserted as an axiom in conjunction with distributivity of <||> over [] *)
