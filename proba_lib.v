@@ -104,9 +104,9 @@ case/boolP : (m.-1 + n == 0)%nat => [{IH}|] m1n0.
 rewrite cat_cons uniform_cons uniform_cons.
 set pv := ((/ _)%R).
 set v : prob := @Prob.mk pv _.
-set u := @Prob.mk_ (INR (size s2) / INR (size s2 + size t))%R (prob_divRnnm _ _).
+set u := @Prob.mk (INR (size s2) / INR (size s2 + size t))%R (prob_divRnnm _ _).
 rewrite -[RHS](choiceA v u).
-  by rewrite -IH.
+  by rewrite IH.
 split.
   rewrite 3!probpK -INR_IZR_INZ.
   rewrite (_ : INR _ = INR m) // mulRA mulVR; last by rewrite INR_eq0'.
@@ -160,7 +160,7 @@ set p := (@Prob.mk (/ IZR (Z.of_nat (size _)))%R _ in X in _ = X).
 rewrite (_ : @Prob.mk (/ _)%R _ = p); last first.
   by apply val_inj; rewrite /= size_map.
 move: IH; rewrite 2!compE => ->.
-by rewrite [in RHS]fmapE prob_bindDl bindretf fmapE; congr Choice.
+by rewrite [in RHS]fmapE prob_bindDl bindretf fmapE.
 Qed.
 Arguments uniform_naturality {M A B}.
 
@@ -191,7 +191,7 @@ rewrite (_ : Prob.mk _ = probdivRnnm n l); last first.
   by rewrite -/(cp _ _) -/l; exact/val_inj.
 pose m := size xxs.
 have lmn : (l = m * n)%nat by rewrite /l /m /n size_allpairs.
-rewrite (_ : probdivRnnm _ _ = @Prob.mk_ (/ (INR (1 + m))) (prob_invn _))%R; last first.
+rewrite (_ : probdivRnnm _ _ = @Prob.mk (/ (1 + m)%:R) (prob_invn _))%R; last first.
   apply val_inj => /=.
   rewrite lmn /divRnnm -mulSn mult_INR {1}/Rdiv Rinv_mult_distr; last 2 first.
     by rewrite INR_eq0.
@@ -238,16 +238,16 @@ Proof. by refine (Mixin _); exact: choiceDr. Defined.
 Definition altProb_semiLattConvClass :=
   @Class (M T)
          (altCI_semiLattClass M T)
-         (prob_mixin (MonadAltProb.probMonadType M) T)
+         (prob_mixin M T)
          altProb_semiLattConvMixin.
 Definition altProb_semiLattConvType := Pack altProb_semiLattConvClass.
 
 Import convex ConvexSpace.
 Definition altProb_convType :=
   ConvexSpace.Pack
-    (ConvexSpace.Class (prob_mixin (MonadAltProb.probMonadType M) T)).
+    (ConvexSpace.Class (prob_mixin M T)).
 Canonical altProb_convType.
-Lemma choice_conv p (x y : M T) : Choice p T x y = Conv p x y.
+Lemma choice_conv p (x y : M T) : choice p T x y = @Conv altProb_convType(*NB: was not needed before hb*) p x y.
 Proof. reflexivity. Qed.
 End altprob_semilattconvtype.
 Canonical altProb_semiLattConvType.
@@ -398,15 +398,15 @@ Lemma coinarb_spec_convexity p w : coinarb p =
   (bcoin w : M _) [~] (Ret false : M _) [~] (Ret true : M _) [~] bcoin w.~%:pr.
 Proof.
 rewrite coinarb_spec [in LHS]/arb [in LHS](convexity _ _ w) 2!choicemm.
-rewrite [in LHS]altC -(altA _ (Ret false)) altCA -2![in RHS]altA; congr (_ [~] _).
-rewrite -altA altCA; congr (_ [~] _).
-by rewrite /bcoin choiceC altC.
+rewrite -/(bcoin w) -altA altCA -!altA; congr (_ [~] _).
+rewrite altA altC; congr (_ [~] (_ [~] _)).
+by rewrite choiceC.
 Qed.
 
 End mixing_choices.
 
 Definition coins23 {M : exceptProbMonad} : M bool :=
-  Ret true <| (/ 2)%:pr |> (Ret false <| (/ 2)%:pr |> (Fail : M _)).
+  Ret true <| (/ 2)%:pr |> (Ret false <| (/ 2)%:pr |> fail).
 
 (* NB: notation for ltac:(split; fourier?)*)
 Lemma choiceA_compute {N : probMonad} (T F : bool) (f : bool -> N bool) :
@@ -420,6 +420,7 @@ have H2156 : (0 <= 21/56 <= 1)%R by split; lra.
 have H25 : (0 <= 2/5 <= 1)%R by split; lra.
 rewrite [in RHS](choiceA _ _ (/ 2)%:pr (/ 3).~%:pr); last first.
   by rewrite 3!probpK /= /onem; split; field.
+
 rewrite choicemm.
 rewrite [in LHS](choiceA (/ 3)%:pr (/ 2)%:pr (/ 2)%:pr (/ 3).~%:pr); last first.
   by rewrite 3!probpK /= /onem; split; field.
@@ -431,7 +432,7 @@ rewrite [in LHS](choiceA (/ 7)%:pr (/ 6)%:pr (/ 2)%:pr (@Prob.mk_ (2/7) H27)); l
   by rewrite 4!probpK /= /onem; split; field.
 rewrite choicemm.
 rewrite [in LHS](choiceA (/ 8)%:pr (@Prob.mk_ (2/7) H27) (@Prob.mk_ (7/21) H721) (@Prob.mk_ (21/56) H2156)); last first.
-  by rewrite 3!probpK /= /onem; split; field.
+  by rewrite probpK /= /onem; split; field.
 rewrite (choiceC (/ 4).~%:pr).
 rewrite [in LHS](choiceA (/ 5)%:pr (probcplt (/ 4).~%:pr) (/ 2)%:pr (@Prob.mk_ (2/5) H25)); last first.
   by rewrite 3!probpK /= /onem; split; field.

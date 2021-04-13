@@ -691,6 +691,7 @@ HB.structure Definition MonadAltCI := {M of isMonadAltCI M & }.
 Notation altCIMonad := MonadAltCI.type.
 
 Arguments altC {_} {_}.
+Arguments altmm {_} {_}.
 
 Section altci_lemmas.
 Variable (M : altCIMonad).
@@ -836,6 +837,7 @@ HB.mixin Record isMonadState (S : UU0) (M : UU0 -> UU0) of Monad M := {
 
 HB.structure Definition MonadState (S : UU0) := {M of isMonadState S M & }.
 Notation stateMonad := MonadState.type.
+
 (*Definition Put (S : UU0) (M : stateMonad S) := @put S M.*)
 (*Definition Get (S : UU0) (M : stateMonad S) := @get S M.*)
 
@@ -846,7 +848,18 @@ Proof. by case: M => m [? ? [? ?]]. Qed.
 Lemma alt_bindDr : BindLaws.right_distributive (@Bind M) (@Alt _).
 Proof. by case: M => m [? ? []]. Qed.
 End nondetstate_lemmas.*)
-HB.structure Definition MonadNondetState (S : UU0) := { M of MonadPrePlus M & MonadState S M }.
+
+
+
+(*NB: explicit join newly added*)
+HB.structure Definition MonadFailState (S : UU0) :=
+  {M of isMonadFail M & isMonadState S M}.
+Notation failStateMonad := MonadFailState.type.
+
+
+
+HB.structure Definition MonadNondetState (S : UU0) :=
+  { M of MonadPrePlus M & MonadState S M }.
 Notation nondetStateMonad := MonadNondetState.type.
 
 HB.mixin Record isMonadStateRun (S : UU0) (N : monad)
@@ -873,56 +886,7 @@ HB.mixin Record isMonadExceptStateRun (S : UU0) (N : exceptMonad)
 
 HB.structure Definition MonadExceptStateRun (S : UU0) (N : exceptMonad) :=
   {M of isMonadExceptStateRun S N M & }.
-Fail Notation exceptStateRunMonad := MonadExceptStateRun.type.
-
-(*Module MonadExceptStateRun.
-Section monadexceptstaterun.
-Variable S : UU0.
-Record mixin_of (N : exceptMonad) (M : stateRunMonad S N)
-    (fail : forall A : UU0, M A)
-    (catch : forall A : UU0, M A -> M A -> M A) := Mixin {
-  _ : forall (A : UU0) (s : S), RunStateT (@fail A) s = @Fail N _ ;
-  _ : forall (A : UU0) (s : S) (m1 m2 : M A),
-      RunStateT (catch _ m1 m2) s = Catch (RunStateT m1 s) (RunStateT m2 s) }.
-Record class_of (N : exceptMonad) (m : UU0 -> UU0) := Class {
-  base : MonadExcept.class_of m ;
-  mixin_state : MonadState.mixin_of S (Monad.Pack (MonadFail.base (MonadExcept.base base))) ;
-  mixin_stateRun : MonadStateRun.mixin_of
-    (Monad.Pack (MonadFail.base (MonadFail.class N)))
-    (MonadState.Pack (MonadState.Class mixin_state)) ;
-  mixin : @mixin_of N (MonadStateRun.Pack (MonadStateRun.Class mixin_stateRun))
-    (@Fail (MonadFail.Pack (MonadExcept.base base)))
-    (@Catch (MonadExcept.Pack base)) }.
-Structure type (N : exceptMonad) := Pack {
-  acto : UU0 -> UU0 ; class : class_of N acto }.
-Definition exceptMonadType (N : exceptMonad) (M : type N) : exceptMonad :=
-  MonadExcept.Pack (base (class M)).
-End monadexceptstaterun.
-Module Exports.
-Notation exceptStateRunMonad := type.
-Coercion exceptMonadType : exceptStateRunMonad >-> exceptMonad.
-Canonical exceptMonadType.
-Definition state_of_exceptStateRun (S : UU0) (N : exceptMonad) (M : type S N) : stateMonad S :=
-  MonadState.Pack (MonadState.Class (mixin_state (class M))).
-Canonical state_of_exceptStateRun.
-Coercion state_of_exceptStateRun : exceptStateRunMonad >-> stateMonad.
-Definition stateRun_of_exceptStateRun (S : UU0) (N : exceptMonad) (M : type S N) : stateRunMonad S N :=
-  MonadStateRun.Pack (MonadStateRun.Class (mixin_stateRun (class M))).
-Canonical stateRun_of_exceptStateRun.
-Coercion stateRun_of_exceptStateRun : exceptStateRunMonad >-> stateRunMonad.
-End Exports.
-End MonadExceptStateRun.
-Export MonadExceptStateRun.Exports.
-
-Section exceptstaterun_lemmas.
-Variables (S : UU0) (N : exceptMonad) (M : exceptStateRunMonad S N).
-Lemma RunStateTFail (A : UU0) (s : S) :
-  RunStateT (Fail : M _) s = Fail :> N (A * S)%type.
-Proof. by case: M s => ? [? ? ? []]. Qed.
-Lemma RunStateTCatch (A : UU0) (s : S) (m1 m2 : M A) :
-  RunStateT (Catch m1 m2) s = Catch (RunStateT m1 s) (RunStateT m2 s).
-Proof. by case: M s m1 m2 => ? [? ? ? []]. Qed.
-End exceptstaterun_lemmas.*)
+Notation exceptStateRunMonad := MonadExceptStateRun.type.
 
 HB.mixin Record isMonadReify (S : UU0) (M : UU0 -> UU0) of Monad M := {
   reify : forall A : UU0, M A -> S -> option (A * S)%type ;
@@ -953,10 +917,12 @@ Notation failReifyMonad := MonadFailReify.type.
 HB.structure Definition MonadFailFailR0Reify (S : UU0) := {M of MonadFailReify S M & MonadFailR0 M}.
 Notation failFailR0ReifyMonad := MonadFailFailR0Reify.type.
 
+(* TODO *)
 Fail HB.structure Definition MonadFailStateReify (S : UU0) := {M of MonadStateReify S M & MonadFailFailR0Reify S M}.
 Fail Notation failStateReifyMonad := MonadFailStateReify.type.
 
-(*Module MonadFailStateReify.
+(*
+Module MonadFailStateReify.
 Record class_of (S : UU0) (M : UU0 -> UU0) := Class {
   base : MonadStateReify.class_of S M ;
   mixin_fail : MonadFail.mixin_of (Monad.Pack (MonadReify.base (MonadStateReify.base base))) ;
@@ -989,7 +955,7 @@ End Exports.
 End MonadFailStateReify.
 Export MonadFailStateReify.Exports.*)
 
-(* NB: this is experimental, may disappear, see rather foreah in
+(* NB: this is experimental, may disappear, see rather foreach in
 monad_transformer because it is more general *)
 HB.mixin Record isMonadStateLoop (S : UU0) (M : UU0 -> UU0) of MonadState S M := {
   foreach : nat -> nat -> (nat -> M unit) -> M unit ;
@@ -1019,7 +985,8 @@ HB.mixin Record isMonadArray (S : UU0) (I : eqType) (M : UU0 -> UU0) of Monad M 
     aget j >>= (fun v => aput i u >> k v)
 }.
 
-HB.structure Definition MonadArray (S : UU0) (I : eqType) := {M of isMonadArray S I M }.
+HB.structure Definition MonadArray (S : UU0) (I : eqType) :=
+  {M of isMonadArray S I M }.
 Notation arrayMonad := MonadArray.type.
 
 HB.mixin Record isMonadTrace (T : UU0) (M : UU0 -> UU0) of Monad M := {
@@ -1029,33 +996,10 @@ HB.mixin Record isMonadTrace (T : UU0) (M : UU0 -> UU0) of Monad M := {
 HB.structure Definition MonadTrace (T : UU0) := {M of isMonadTrace T M & }.
 Notation traceMonad := MonadTrace.type.
 
-(*`Module MonadTraceReify.
-Record mixin_of (T : UU0) (M : reifyMonad (seq T)) (mark : T -> M unit) :=
-  Mixin {_ : forall t l, Reify (mark t) l = Some (tt, rcons l t)}.
-Record class_of (T : UU0) (M : UU0 -> UU0) := Class {
-  base : MonadTrace.class_of T M ;
-  mixin_run : MonadReify.mixin_of _ (Monad.Pack (MonadTrace.base base)) ;
-  mixin_traceReify : @mixin_of _ (MonadReify.Pack (MonadReify.Class mixin_run))
-    (@Mark _ (MonadTrace.Pack base)) }.
-Structure type (T : UU0) := Pack { acto : UU0 -> UU0 ; class : class_of T acto }.
-Definition traceMonadType (T : UU0) (M : type T) := MonadTrace.Pack (base (class M)).
-Definition reifyMonadType (T : UU0) (M : type T) :=
-  MonadReify.Pack (MonadReify.Class (mixin_run (class M))).
-Module Exports.
-Notation traceReifyMonad := type.
-Coercion traceMonadType : traceReifyMonad >-> traceMonad.
-Canonical traceMonadType.
-Canonical reifyMonadType.
-End Exports.
-End MonadTraceReify.
-Export MonadTraceReify.Exports.
-
-Section tracereify_lemmas.
-Variables (T : UU0) (M : traceReifyMonad T).
-Lemma reifytmark : forall s t, Reify (Mark t : M _) s = Some (tt, rcons s t).
-Proof. by case: M => m [? ? []]. Qed.
-End tracereify_lemmas.
-*)
+HB.mixin Record isMonadTraceReify (T : UU0) (M : UU0 -> UU0) of
+    MonadReify (seq T) M & MonadTrace T M := {
+  reifytmark : forall t l, reify (@mark _ [the traceMonad T of M] t) l = Some (tt, rcons l t)
+}.
 
 HB.mixin Record isMonadStateTrace (S T : UU0) (M : UU0 -> UU0) of Monad M := {
   st_get : M S ;
@@ -1094,7 +1038,9 @@ HB.mixin Record isMonadProb (M : UU0 -> UU0) of Monad M := {
   (* quasi associativity *)
   choiceA : forall (T : Type) (p q r s : prob) (a b c : M T),
     (p = r * s :> R /\ s.~ = p.~ * q.~)%R ->
-    choice p _ a (choice q _ b c) = choice s _ (choice r _ a b) c ;
+    let bc := (choice q _ b c) in (*NB: needed to preserve the notation in the resulting choiceA lemma, report? *)
+    let ab := (choice r _ a b) in
+    choice p _ a bc = choice s _ ab c;
   (* composition distributes leftwards over [probabilistic] choice *)
   prob_bindDl : forall p, BindLaws.left_distributive (@Bind [the monad of M]) (choice p)
 }.
@@ -1104,85 +1050,38 @@ Notation "a <| p |> b" := (choice p _ a b).
 Notation probMonad := MonadProb.type.
 Arguments choiceA {_} {_} _ _ _ _ {_} {_} {_}.
 Arguments choiceC {_} {_} _ _ _.
+Arguments choicemm {_} {_} _.
 
-(*Module MonadProbDr.
-Record mixin_of (M : probMonad) := Mixin {
+HB.mixin Record isMonadProbDr (M : UU0 -> UU0) of MonadProb M := {
   (* composition distributes rightwards over [probabilistic] choice *)
-  (* WARNING: this should not be asserted as an axiom in conjunction with distributivity of <||> over [] *)
-  prob_bindDr : forall p, BindLaws.right_distributive (@Bind M) (Choice p) (* NB: not used *)
-} .
-Record class_of (m : Type -> Type) := Class {
-  base : MonadProb.class_of m ;
-  mixin : mixin_of (MonadProb.Pack base) }.
-Structure type := Pack { acto : Type -> Type; class : class_of acto }.
-Definition probMonadType (M : type) := MonadProb.Pack (base (class M)).
-Module Exports.
-Notation probDrMonad := type.
-Coercion probMonadType : probDrMonad >-> probMonad.
-Canonical probMonadType.
-End Exports.
-End MonadProbDr.
-Export MonadProbDr.Exports.
+  (* WARNING: this should not be asserted as an axiom in conjunction with
+     distributivity of <||> over [] *)
+  prob_bindDr : forall p, BindLaws.right_distributive (@Bind [the monad of M]) (choice p) (* NB: not used *)
+}.
 
-Module MonadAltProb.
-Record mixin_of (M : altCIMonad) (f : prob -> forall T : Type, M T -> M T -> M T)
-  := Mixin {_ : forall T p, right_distributive (f p T) (fun a b => a [~] b) }.
-Record class_of (M : Type -> Type) := Class {
-  base : MonadAltCI.class_of M ;
-  mixin_prob : MonadProb.mixin_of
-    (Monad.Pack (MonadAlt.base (MonadAltCI.base base))) ;
-  mixin_altProb : @mixin_of (MonadAltCI.Pack base)
-                            (@MonadProb.choice _ mixin_prob) }.
-Structure type := Pack { acto : Type -> Type ; class : class_of acto }.
-Definition altCIMonadType (M : type) := MonadAltCI.Pack (base (class M)).
-Definition altMonadType (M : type) :=
-  MonadAlt.Pack (MonadAltCI.base (base (class M))).
-Definition probMonadType (M : type) :=
-  MonadProb.Pack (MonadProb.Class (mixin_prob (class M))).
-Module Exports.
-Notation altProbMonad := type.
-Coercion altCIMonadType : altProbMonad >-> altCIMonad.
-Canonical altCIMonadType.
-Canonical probMonadType.
-Canonical altMonadType.
-End Exports.
-End MonadAltProb.
-Export MonadAltProb.Exports.
+HB.structure Definition MonadProbDr := {M of isMonadProbDr M & }.
+Notation probDrMonad := MonadProbDr.type.
+
+HB.mixin Record isMonadAltProb (M : UU0 -> UU0) of MonadAltCI M & MonadProb M := {
+  choiceDr : forall T p, right_distributive (@choice [the probMonad of M] p T) (fun a b => a [~] b)
+}.
+HB.structure Definition MonadAltProb := {M of isMonadAltProb M}.
+Notation altProbMonad := MonadAltProb.type.
 
 Section altprob_lemmas.
 Local Open Scope proba_monad_scope.
 Variable (M : altProbMonad).
-Lemma choiceDr : forall (A : Type) p,
-  right_distributive (fun x y : M A => x <| p |> y) (fun x y => x [~] y).
-Proof. by case: M => m [? ? []]. Qed.
 Lemma choiceDl A p :
   left_distributive (fun x y : M A => x <| p |> y) (fun x y => x [~] y).
-Proof. by move=> x y z;  rewrite !(choiceC p) choiceDr. Qed.
+Proof. by move=> x y z; rewrite !(choiceC p) choiceDr. Qed.
 End altprob_lemmas.
 
-Module MonadExceptProb.
-Record mixin_of (M : exceptMonad) (a : prob -> forall A : Type, M A -> M A -> M A) := Mixin {
-  catchDl : forall (A : Type) w, left_distributive (@Catch M A) (fun x y => a w A x y)
-    (* NB: not used? *)}.
-Record class_of (M : Type -> Type) := Class {
-  base : MonadExcept.class_of M ;
-  mixin_prob : MonadProb.mixin_of (Monad.Pack (MonadFail.base (MonadExcept.base base))) ;
-  mixin_exceptProb : @mixin_of (MonadExcept.Pack base)
-    (@Choice (MonadProb.Pack (MonadProb.Class mixin_prob)))
+HB.mixin Record isMonadExceptProb (M : UU0 -> UU0) of MonadExcept M & MonadProb M := {
+  catchDl : forall (A : UU0) w, left_distributive (@catch [the exceptMonad of M] A) (fun x y => choice w A x y)
 }.
-Structure type := Pack { acto : Type -> Type ; class : class_of acto }.
-Definition exceptMonadType (M : type) := MonadExcept.Pack (base (class M)).
-Definition probMonadType M :=
-  MonadProb.Pack (MonadProb.Class (mixin_prob (class M))).
-Module Exports.
-Notation exceptProbMonad := type.
-Coercion exceptMonadType : exceptProbMonad >-> exceptMonad.
-Canonical exceptMonadType.
-Canonical probMonadType.
-End Exports.
-End MonadExceptProb.
-Export MonadExceptProb.Exports.
-*)
+
+HB.structure Definition MonadExceptProb := {M of isMonadExceptProb M}.
+Notation exceptProbMonad := MonadExceptProb.type.
 
 HB.mixin Record isMonadFresh (S : eqType) (M : UU0 -> UU0) of Monad M := {
   fresh : M S
