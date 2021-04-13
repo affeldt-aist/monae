@@ -20,8 +20,8 @@ Local Open Scope monae_scope.
 Module Comp.
 Section comp.
 Variables (M N : monad).
-Lemma naturality_ret : naturality FId (M \O N) ((@RET M) \h (@RET N)).
-Proof. by move=> A B h; rewrite -(natural ((@RET M) \h (@RET N))). Qed.
+Lemma naturality_ret : naturality FId (M \O N) ((@ret M) \h (@ret N)).
+Proof. by move=> A B h; rewrite -(natural ((@ret M) \h (@ret N))). Qed.
 Definition ret : FId ~> M \O N := Natural.Pack (Natural.Mixin naturality_ret).
 End comp.
 End Comp.
@@ -53,7 +53,7 @@ transitivity (
   by [].
 rewrite -functor_o Hprod1.
 rewrite functor_o compA /JOIN FCompE -(FCompE M M).
-rewrite -(natural Monad.Exports.JOIN).
+rewrite -(natural join).
 by rewrite -compA.
 Qed.
 
@@ -66,7 +66,7 @@ move=> A; rewrite /JOIN'.
 rewrite /=.
 rewrite /CRet.
 rewrite compA.
-rewrite -(compA Join (M # prod) Ret) (natural RET).
+rewrite -(compA Join (M # prod) Ret) (natural ret).
 by rewrite compA (compA Join) joinretM compidf Hprod2.
 Qed.
 
@@ -76,7 +76,7 @@ move=> A.
 rewrite /JOIN' /=.
 rewrite -compA.
 rewrite FCompE.
-rewrite -(functor_o M).
+rewrite -(@functor_o M).
 by rewrite Hprod3 joinMret.
 Qed.
 
@@ -122,7 +122,7 @@ Proof.
 move=> A B g; apply/esym; rewrite {1}/JOIN -compA Hdorp1.
 rewrite compA.
 rewrite (FCompE M N (N # g)).
-rewrite -(functor_o M).
+rewrite -(@functor_o M).
 rewrite -natural.
 by rewrite functor_o.
 Qed.
@@ -132,7 +132,7 @@ Definition JOIN' := Natural.Pack (Natural.Mixin join_naturality).
 Lemma JOIN_ret : JoinLaws.left_unit (@CRet M N) (@JOIN').
 Proof.
 move=> A; rewrite /JOIN -compA Hdorp2.
-rewrite -(functor_o M).
+rewrite -(@functor_o M).
 by rewrite joinretM functor_id.
 Qed.
 
@@ -140,7 +140,7 @@ Lemma JOIN_fmap_ret : JoinLaws.right_unit (@CRet M N) (@JOIN').
 Proof.
 move=> A; rewrite /JOIN /Comp.ret.
 rewrite -(compA (M # Join) dorp).
-rewrite (functor_o (M \O N)).
+rewrite (@functor_o (M \O N)).
 rewrite (compA dorp) Hdorp3.
 rewrite compidf -functor_o.
 by rewrite joinMret functor_id.
@@ -150,7 +150,7 @@ Lemma JOIN_fmap_JOIN : JoinLaws.associativity (@JOIN').
 Proof.
 move=> A; rewrite {1 2}/JOIN'.
 rewrite FCompE.
-rewrite (functor_o N).
+rewrite (@functor_o N).
 rewrite -compA.
 rewrite functor_o.
 rewrite (compA dorp).
@@ -182,10 +182,10 @@ Proof.
 rewrite /JOIN.
 rewrite natural.
 rewrite -(compA Join) FCompE.
-by rewrite -(functor_o M).
+by rewrite -(@functor_o M).
 Qed.
 
-Let prod A := M # (@Monad.Exports.JOIN _ A) \o (@swap _).
+Let prod A := M # (join A) \o (@swap _).
 Arguments prod {A}.
 Let dorp A := Join \o M # (@swap A).
 Arguments dorp {A}.
@@ -213,18 +213,20 @@ by rewrite -natural functor_o -compA.
 Qed.
 
 Lemma prod2 : Prod.prod2 (@prod).
-Proof. by move=> A; rewrite /prod -compA Hswap2 -(functor_o M) joinretM functor_id. Qed.
+Proof.
+by move=> A; rewrite /prod -compA Hswap2 -(@functor_o M) joinretM functor_id.
+Qed.
 
 Lemma prod3 : Prod.prod3 (@prod).
 Proof.
 move=> A; rewrite /prod /Comp.ret.
-rewrite (functor_o N) (compA (M # Join \o swap)) -(compA (_ # Join)) Hswap3.
-by rewrite (natural RET) -compA joinMret compfid.
+rewrite (@functor_o N) (compA (M # Join \o swap)) -(compA (_ # Join)) Hswap3.
+by rewrite (natural ret) -compA joinMret compfid.
 Qed.
 
 Lemma prod4 : Prod.prod4 (@prod).
 Proof.
-move=> A; rewrite {1}/Prod.JOIN -JOIN_prod JOIN_dorp {1}/prod (functor_o N).
+move=> A; rewrite {1}/Prod.JOIN -JOIN_prod JOIN_dorp {1}/prod (@functor_o N).
 rewrite (compA (M # Join \o swap)) -(compA (_ # Join)) Hswap1.
 rewrite (compA (M # Join)) -functor_o joinA functor_o.
 rewrite -compA -(compA (_ # Join)) (compA (M # Join) swap) -/prod Hswap4.
@@ -234,29 +236,29 @@ Qed.
 Lemma dorp1 : Dorp.dorp1 (@dorp).
 Proof.
 move=> A B g; rewrite {1}/dorp -compA.
-rewrite -(functor_o M).
+rewrite -(@functor_o M).
 by rewrite Hswap1 functor_o (compA Join) -natural -compA.
 Qed.
 
 Lemma dorp2 : Dorp.dorp2 (@dorp).
 Proof.
 move=> A; rewrite /dorp /Comp.ret (compA (Join \o M # swap)) -(compA Join).
-by rewrite (natural RET) (compA Join) joinretM compidf Hswap2.
+by rewrite (natural ret) (compA Join) joinretM compidf Hswap2.
 Qed.
 
 Lemma dorp3 : Dorp.dorp3 (@dorp).
 Proof.
 move=> A; rewrite /dorp -compA.
-by rewrite -(functor_o M) Hswap3 joinMret.
+by rewrite -(@functor_o M) Hswap3 joinMret.
 Qed.
 
 Lemma dorp4 : Dorp.dorp4 (@dorp).
 Proof.
 move=> A; rewrite {1}/dorp {1}/Dorp.JOIN -JOIN_dorp JOIN_prod.
 rewrite (compA (Join \o M # swap)) -(compA Join).
-rewrite (natural Monad.Exports.JOIN).
+rewrite (natural join).
 rewrite (compA Join Join) -joinA -2!compA FCompE.
-rewrite -(functor_o M) -(functor_o M).
+rewrite -(@functor_o M) -(@functor_o M).
 by rewrite compA -/dorp -Hswap4 functor_o compA -JOINE JOIN_dorp.
 Qed.
 
@@ -333,23 +335,23 @@ Section distributivelaw.
 Variables S T : monad.
 Record t := mk {
   f : S \O T ~> T \O S ;
-  unit1 : IV (f \v (@RET S \h NId T)) = VI (NId T \h @RET S) ;
-  unit2 : VI (f \v (NId S \h @RET T)) = IV (@RET T \h NId S) ;
+  unit1 : IV (f \v (@ret S \h NId T)) = VI (NId T \h @ret S) ;
+  unit2 : VI (f \v (NId S \h @ret T)) = IV (@ret T \h NId S) ;
   multiplication1 :
-    AV (f \v (@JOIN S \h NId T)) =
-    (NId T \h @JOIN S) \v VA ((f \h NId S) \v VA' (NId S \h f)) ;
+    AV (f \v (@join S \h NId T)) =
+    (NId T \h @join S) \v VA ((f \h NId S) \v VA' (NId S \h f)) ;
   multiplication2 :
-    AV' (f \v (NId S \h @JOIN T)) =
-    (@JOIN T \h NId S) \v VA' ((NId T \h f) \v VA (f \h NId T))
+    AV' (f \v (NId S \h @join T)) =
+    (@join T \h NId S) \v VA' ((NId T \h f) \v VA (f \h NId T))
 }.
 End distributivelaw.
 End DistributiveLaw.
-Coercion DistributiveLaw.f : DistributiveLaw.t >-> nattrans.
+Coercion DistributiveLaw.f : DistributiveLaw.t >-> Natural.type_of.
 
 (* TODO *)
 Definition beck (S T : monad) (f : DistributiveLaw.t S T) : monad.
 have @join : (T \O S) \O (T \O S) ~> T \O S.
-  apply: (VComp ((@JOIN T) \h (@JOIN S)) _).
+  apply: (VComp ((@join T) \h (@join S)) _).
   apply VA.
   apply AV.
   apply HComp.
@@ -359,7 +361,7 @@ have @join : (T \O S) \O (T \O S) ~> T \O S.
   apply HComp.
   exact: f.
   exact: NId.
-apply: (Monad.Pack (@Monad.Class _ _ (@Monad.Mixin _ (Comp.ret T S) join _ _ _))).
+apply: (Monad.Pack (Monad.Class (isMonad.Axioms_ (Comp.ret T S) join _ _ _))).
 move=> A.
 rewrite /join.
 Abort.
