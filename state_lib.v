@@ -444,7 +444,7 @@ Definition promote_assert (M : failMonad) A
 Local Close Scope mprog.
 
 Lemma promote_assert_sufficient_condition (M : failMonad) A :
-  BindLaws.right_zero (@Bind M) (@fail _) ->
+  BindLaws.right_zero (@bind M) (@fail _) ->
   forall (p : segment_closed.t A) q, promotable p q ->
   promote_assert M p q.
 Proof.
@@ -580,12 +580,12 @@ rewrite [in RHS]compE [in X in _ = _ X]/= squaringE symbolsS.
 rewrite [in RHS]compE -/(fmap _ _) fmap_bind bindA; bind_ext => a.
 rewrite 2![in LHS]compE [in LHS]fmap_bind [in LHS]bindA [in RHS]bindA.
 (* TODO(rei): bind_ext? *)
-congr Bind; rewrite boolp.funeqE => s.
+congr bind; rewrite boolp.funeqE => s.
 rewrite [in RHS]bindretf [in RHS]fcompE [in RHS]fmap_bind.
 rewrite [in LHS]fcompE [in LHS]bind_fmap [in LHS]bindA.
 rewrite_ bindretf.
 rewrite_ fcompE.
-rewrite_ fmapE.
+rewrite_ (@fmapE M).
 by rewrite_ bindretf.
 Qed.
 

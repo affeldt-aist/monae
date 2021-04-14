@@ -361,7 +361,7 @@ have @join : (T \O S) \O (T \O S) ~> T \O S.
   apply HComp.
   exact: f.
   exact: NId.
-apply: (Monad.Pack (Monad.Class (isMonad.Axioms_ (Comp.ret T S) join _ _ _))).
+apply: (Monad.Pack (Monad.Class (isMonad.Axioms_ (Comp.ret T S) join _ _ _ _ _ _))).
 move=> A.
 rewrite /join.
 Abort.
