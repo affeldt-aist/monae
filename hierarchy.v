@@ -147,8 +147,7 @@ Lemma id_id : FunctorLaws.id id_f. Proof. by []. Qed.
 Lemma id_comp : FunctorLaws.comp id_f. Proof. by []. Qed.
 End functorid.
 
-HB.instance Definition FId_mixin :=
-  @isFunctor.Build idfun id_f id_id id_comp.
+HB.instance Definition _ := isFunctor.Build idfun id_id id_comp.
 
 (* TODO: virer ca *)
 Definition FId := [the functor of idfun].
@@ -165,9 +164,8 @@ Proof.
 rewrite /FunctorLaws.comp => A B C g' h; rewrite /functorcomposition.
 rewrite boolp.funeqE => m; by rewrite [in RHS]compE 2!functor_o.
 Qed.
-HB.instance Definition FComp_mixin :=
-  @isFunctor.Build (f \o g) functorcomposition
-    functorcomposition_id functorcomposition_comp.
+HB.instance Definition _ :=
+  isFunctor.Build (f \o g) functorcomposition_id functorcomposition_comp.
 
 (* TODO: essayer de virer ca *)
 Definition FComp := [the functor of f \o g].
@@ -391,20 +389,20 @@ Hypothesis joinretM : JoinLaws.left_unit ret join.
 Hypothesis joinMret : JoinLaws.right_unit ret join.
 Hypothesis joinA : JoinLaws.associativity join.
 
-Let bind (A B : UU0) (m : F A) (f : A -> F B) : F B := join _ ((F # f) m).
+Definition bind_of_join (A B : UU0) (m : F A) (f : A -> F B) : F B := join _ ((F # f) m).
 
-Lemma bindretf_derived : BindLaws.left_neutral bind ret.
+Lemma bindretf_derived : BindLaws.left_neutral bind_of_join ret.
 Proof.
-move=> A B a f; rewrite /bind -(compE (@join _)) -(compE _ (@ret _)) -compA.
+move=> A B a f; rewrite /bind_of_join -(compE (@join _)) -(compE _ (@ret _)) -compA.
 by rewrite (natural ret) compA joinretM compidf.
 Qed.
 
-Lemma bindmret_derived : BindLaws.right_neutral bind ret.
-Proof. by move=> A m; rewrite /bind -(compE (@join _)) joinMret. Qed.
+Lemma bindmret_derived : BindLaws.right_neutral bind_of_join ret.
+Proof. by move=> A m; rewrite /bind_of_join -(compE (@join _)) joinMret. Qed.
 
-Lemma bindA_derived : BindLaws.associative bind.
+Lemma bindA_derived : BindLaws.associative bind_of_join.
 Proof.
-move=> A B C m f g; rewrite /bind.
+move=> A B C m f g; rewrite /bind_of_join.
 rewrite [LHS](_ : _ = ((@join _ \o (F # g \o @join _) \o F # f) m)) //.
 rewrite (natural join) (compA (@join C)) -joinA -(compE (@join _)).
 transitivity ((@join _ \o F # (@join _ \o (F # g \o f))) m) => //.
@@ -416,7 +414,7 @@ End from_join_laws_to_bind_laws.
 Section monad_lemmas.
 Variable M : monad.
 
-Definition Bind A B (x : M A) (f : A -> M B) : M B := Join ((M # f) x).
+Definition Bind A B (x : M A) (f : A -> M B) : M B := @bind_of_join M (@join M) A B x f.
 Arguments Bind {A B} : simpl never.
 Local Notation "m >>= f" := (Bind m f).
 Lemma bindE (A B : UU0) : forall x (f : A -> M B), x >>= f = Join ((M # f) x).

@@ -89,14 +89,14 @@ End monadM_lemmas.
 Canonical monadM_nt (M N : monad) (e : monadM M N) : M ~> N :=
   Natural.Pack (Natural.Mixin (natural_monadM e)).
 
-(*HB.mixin Record isMonadT (T : monad -> monad) := {
+HB.mixin Record isMonadT (T : monad -> monad) := {
   liftT : forall M : monad, monadM M (T M)
 }.
 HB.structure Definition MonadT := {T of isMonadT T}.
 Notation monadT := MonadT.type.
-Definition Lift (s : monadT) (M : monad) := @liftT s M.*)
+Definition Lift (s : monadT) (M : monad) := @liftT s M.
 
-Module MonadT.
+(*Module MonadT.
 Record mixin_of (T : monad -> monad) := Mixin {
   liftT : forall M : monad, monadM M (T M) }.
 Record t := Pack {m : monad -> monad ; class : mixin_of m}.
@@ -108,12 +108,9 @@ Definition Lift (T : t) : forall M : monad, monadM M (m T M) :=
 Arguments Lift _ _ : simpl never.
 End Exports.
 End MonadT.
-Export MonadT.Exports.
+Export MonadT.Exports.*)
 
 Section state_monad_transformer.
-
-Local Obligation Tactic := idtac.
-
 Variables (S : UU0) (M : monad).
 
 Definition MS := fun A : UU0 => S -> M (A * S)%type.
@@ -127,8 +124,7 @@ Definition MS_map (A B : UU0) (f : A -> B) (m : MS A) : MS B :=
 
 Lemma MS_map_i : FunctorLaws.id MS_map.
 Proof.
-move=> A; rewrite boolp.funeqE => m.
-rewrite /MS_map boolp.funeqE => s.
+move=> A; rewrite boolp.funeqE => m; rewrite /MS_map boolp.funeqE => s.
 rewrite (_ : (fun x : A * S => _) = id) ?functor_id //.
 by rewrite boolp.funeqE; case.
 Qed.
@@ -139,7 +135,7 @@ move=> A B C g h; rewrite /MS_map boolp.funeqE => m.
 by rewrite boolp.funeqE => s /=; rewrite -[RHS]compE -functor_o.
 Qed.
 
-HB.instance Definition MS_functor := isFunctor.Build MS MS_map_i MS_map_o.
+HB.instance Definition _ := isFunctor.Build MS MS_map_i MS_map_o.
 
 Lemma naturality_retS : naturality FId [the functor of MS] retS.
 Proof.
@@ -148,22 +144,31 @@ rewrite /MS_map /= boolp.funeqE => s /=.
 by rewrite /retS [in LHS]curryE (natural ret).
 Qed.
 
-Definition retS_natural : FId ~> MS :=
+Canonical retS_natural : FId ~> MS :=
   Natural.Pack (Natural.Mixin naturality_retS).
 
-Program Definition stateTmonad : monad :=
-  @Monad_of_ret_bind [the functor of MS] retS_natural bindS _ _ _.
-Next Obligation.
+Let bindretf : BindLaws.left_neutral bindS retS_natural.
+Proof.
 by move=> A B a f; rewrite /bindS boolp.funeqE => s; rewrite bindretf.
-Defined.
-Next Obligation.
+Qed.
+
+Let bindmret : BindLaws.right_neutral bindS retS_natural.
+Proof.
 move=> A m; rewrite /bindS boolp.funeqE => s.
-rewrite -[in RHS](bindmret (m s)); by bind_ext; case.
-Defined.
-Next Obligation.
+by rewrite -[in RHS](bindmret (m s)); bind_ext; case.
+Qed.
+
+Let bindA : BindLaws.associative bindS.
+Proof.
 move=> A B C m f g; rewrite /bindS boolp.funeqE => s.
 by rewrite bindA; bind_ext; case.
-Defined.
+Qed.
+
+(* TODO: should be HB.instance*)
+HB.instance Definition stateTmonad_mixin :=
+  Monad_of_ret_bind.Build MS bindretf bindmret bindA.
+
+Definition stateTmonad : monad := Monad.Pack (Monad.Class stateTmonad_mixin).
 
 Definition liftS A (m : M A) : stateTmonad A :=
   fun s => m >>= (fun x => Ret (x, s)).

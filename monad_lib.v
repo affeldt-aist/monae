@@ -48,7 +48,7 @@ Lemma squaring_f_id : FunctorLaws.id squaring_f.
 Proof. by move=> A /=; rewrite boolp.funeqE => -[x1 x2]. Qed.
 Lemma squaring_f_comp : FunctorLaws.comp squaring_f.
 Proof. by move=> A B C g h /=; rewrite boolp.funeqE => -[x1 x2]. Qed.
-HB.instance Definition squaring_mixin :=
+HB.instance Definition _ :=
   isFunctor.Build Squaring squaring_f_id squaring_f_comp.
 Definition squaring : functor := [the functor of Squaring].
 Notation "f ^`2" := (squaring # f).
@@ -68,7 +68,7 @@ Lemma curry_f_comp : FunctorLaws.comp curry_f.
 Proof.
 by rewrite /FunctorLaws.comp => A B C g h; rewrite /curry_f boolp.funeqE; case.
 Qed.
-HB.instance Definition curry_F_mixin :=
+HB.instance Definition _ :=
   @isFunctor.Build curry_M curry_f curry_f_id curry_f_comp.
 Definition curry_F : functor := [the functor of curry_M].
 End curry_functor.
@@ -87,9 +87,9 @@ Proof.
 rewrite /FunctorLaws.comp => A B C g h; rewrite /uncurry_f boolp.funeqE => ?.
 by rewrite compE compA.
 Qed.
-HB.instance Definition uncurry_F_mixin X :=
-  @isFunctor.Build (@uncurry_M X) (@uncurry_f X) (uncurry_f_id X) (uncurry_f_comp X).
-Definition uncurry_F X : functor := [the functor of (@uncurry_M X)].
+HB.instance Definition _ X :=
+  isFunctor.Build (@uncurry_M X) (uncurry_f_id X) (uncurry_f_comp X).
+Definition uncurry_F X : functor := [the functor of @uncurry_M X].
 End uncurry_functor.
 
 Section exponential_functor.
@@ -100,7 +100,7 @@ Definition exponential_f (X Y : UU0) (f : X -> Y) :
 Lemma exponential_f_id : FunctorLaws.id exponential_f. Proof. by []. Qed.
 Lemma exponential_f_comp : FunctorLaws.comp exponential_f.
 Proof. by []. Qed.
-HB.instance Definition exponential_F_mixin :=
+HB.instance Definition _ :=
   @isFunctor.Build exponential_M exponential_f exponential_f_id exponential_f_comp.
 Definition exponential_F : functor := [the functor of exponential_M].
 End exponential_functor.
@@ -391,6 +391,9 @@ Qed.
 
 End algebraic_operation_interface.
 
+Definition join_of_bind (F : functor)
+  (b : forall (A B : UU0), F A -> (A -> F B) -> F B) := (fun A : UU0 => (b _ A)^~ id).
+
 HB.factory Record Monad_of_ret_bind (M : UU0 -> UU0) of isFunctor M := {
   ret : idfun ~> M ;
   bind : forall (A B : UU0), M A -> (A -> M B) -> M B ;
@@ -398,9 +401,9 @@ HB.factory Record Monad_of_ret_bind (M : UU0 -> UU0) of isFunctor M := {
   bindmret : BindLaws.right_neutral bind ret ;
   bindA : BindLaws.associative bind
 }.
-HB.builders Context (M : UU0 -> UU0) of Monad_of_ret_bind M.
+HB.builders Context M of Monad_of_ret_bind M.
 
-Definition Map (A B : UU0) (f : A -> B) (m : M A) := bind m (@ret B \o f).
+Let Map (A B : UU0) (f : A -> B) (m : M A) := bind m (@ret B \o f).
 
 Lemma Map_id : FunctorLaws.id Map.
 Proof. by move=> A; rewrite boolp.funeqE => m; rewrite /Map bindmret. Qed.
@@ -412,7 +415,7 @@ rewrite /Map compE bindA; congr bind.
 by rewrite boolp.funeqE => a; rewrite bindretf.
 Qed.
 
-HB.instance Definition func_mixin := @isFunctor.Build M Map Map_id Map_o.
+Definition func_mixin := isFunctor.Build M Map_id Map_o.
 Let M' := Functor.Pack (Functor.Class func_mixin).
 
 Lemma MapE (A B : UU0) (f : A -> B) m : (M' # f) m = bind m (ret B \o f).
@@ -432,36 +435,38 @@ Proof.
 rewrite /Map bindA; congr bind; by rewrite boolp.funeqE => ?; rewrite bindretf.
 Qed.
 
-Lemma naturality_join : naturality (M' \O M') M' (fun A : UU0 => (bind (B:=A))^~ id).
+Lemma naturality_join : naturality (M' \O M') M' (join_of_bind bind).
 Proof.
 move=> A B h; rewrite boolp.funeqE => mma.
-by rewrite !compE /= bind_Map MapE bindA.
+by rewrite !compE /= /join_of_bind bind_Map MapE bindA.
 Qed.
 
 Definition join : M' \O M' ~> M' := Natural.Pack (Natural.Mixin naturality_join).
 
 Let bindE (A B : UU0) m (f : A -> M' B) : bind m f = join _ ((M' # f) m).
-Proof. by rewrite /join /= bind_Map. Qed.
+Proof. by rewrite /join /= /join_of_bind bind_Map. Qed.
 
 Lemma joinretM : JoinLaws.left_unit ret' join.
 Proof.
 rewrite /join => A; rewrite boolp.funeqE => ma /=.
-by rewrite bindretf. Qed.
+by rewrite /join_of_bind bindretf.
+Qed.
 
 Lemma joinMret : JoinLaws.right_unit ret' join.
 Proof.
 rewrite /join => A; rewrite boolp.funeqE => ma /=.
-by rewrite bind_Map compidf bindmret.
+by rewrite /join_of_bind bind_Map compidf bindmret.
 Qed.
 
 Lemma joinA : JoinLaws.associativity join.
 Proof.
 move=> A; rewrite boolp.funeqE => mmma.
-by rewrite /join /= bind_Map compidf bindA.
+by rewrite /join /= /join_of_bind bind_Map compidf bindA.
 Qed.
 
-HB.instance Definition monad_mixin := @isMonad.Build M' ret' join joinretM joinMret joinA.
+HB.instance Definition _ := isMonad.Build M' joinretM joinMret joinA.
 HB.end.
+
 
 (*Module Monad_of_ret_bind.
 Section monad_of_ret_bind.
