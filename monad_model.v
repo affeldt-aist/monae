@@ -113,8 +113,16 @@ Section identity.
 Local Obligation Tactic := by [].
 Definition identity_functor : FId ~> FId :=
   Natural.Pack (Natural.Mixin (@natural_id FId)).
-Program Definition identity := @Monad_of_ret_bind _ identity_functor
-  (fun A B (a : id A) (f : A -> id B) => f a) _ _ _.
+Let bind := fun A B (a : FId A) (f : A -> FId B) => f a.
+Let ret := fun A (a : id A) => a.
+Let fmapE : forall (A B : UU0) (f : A -> B) (m : FId A),
+    ([the functor of FId] # f) m = @bind _ _ m (@ret _ \o f).
+Proof. by []. Qed.
+Let H0 : BindLaws.left_neutral bind identity_functor. Proof. by []. Qed.
+Let H1 : BindLaws.right_neutral bind identity_functor. Proof. by []. Qed.
+Let H2 : BindLaws.associative bind. Proof. by []. Qed.
+HB.instance Definition _ := @Monad_of_ret_bind.Build idfun identity_functor
+  bind fmapE H0 H1 H2.
 End identity.
 
 Module ListMonad.
@@ -139,6 +147,7 @@ Proof.
 move=> A B C; elim => // h t; rewrite /bind => ih f g.
 by rewrite /= map_cat flatten_cat /= ih.
 Qed.
+xxx
 Definition t := Monad_of_ret_bind left_neutral right_neutral associative.
 End ListMonad.
 

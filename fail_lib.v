@@ -710,7 +710,7 @@ rewrite /addM.
 rewrite bindretf.
 transitivity ((Ret (10 + (10 + 100))) >>= (fun y => Ret (1 + y)) : M _); last first.
   by rewrite bindretf.
-congr (Bind _ _).
+congr (bind _ _).
 rewrite shiftreset3.
 rewrite (_ : do x <- Ret 10; _ = do y <- shift (@^~ 100) : M _; Ret (10 + (10 + y)))%Do; last first.
   by rewrite bindretf.
@@ -725,7 +725,7 @@ rewrite /addM.
 rewrite bindretf.
 transitivity (Ret 100 >>= (fun y => Ret (1 + y)) : M _); last first.
   by rewrite bindretf.
-congr (Bind _ _). (* TODO : bind_ext casse *)
+congr (bind _ _). (* TODO : bind_ext casse *)
 rewrite (shiftreset2 _ _).
 by rewrite bindretf.
 Qed.

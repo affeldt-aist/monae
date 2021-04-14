@@ -147,49 +147,61 @@ Qed.
 Canonical retS_natural : FId ~> MS :=
   Natural.Pack (Natural.Mixin naturality_retS).
 
-Let bindretf : BindLaws.left_neutral bindS retS_natural.
+Let bindSretf : BindLaws.left_neutral bindS retS_natural.
 Proof.
 by move=> A B a f; rewrite /bindS boolp.funeqE => s; rewrite bindretf.
 Qed.
 
-Let bindmret : BindLaws.right_neutral bindS retS_natural.
+Let bindSmret : BindLaws.right_neutral bindS retS_natural.
 Proof.
 move=> A m; rewrite /bindS boolp.funeqE => s.
 by rewrite -[in RHS](bindmret (m s)); bind_ext; case.
 Qed.
 
-Let bindA : BindLaws.associative bindS.
+Let bindSA : BindLaws.associative bindS.
 Proof.
 move=> A B C m f g; rewrite /bindS boolp.funeqE => s.
 by rewrite bindA; bind_ext; case.
 Qed.
 
-(* TODO: should be HB.instance*)
-HB.instance Definition stateTmonad_mixin :=
-  Monad_of_ret_bind.Build MS bindretf bindmret bindA.
+Lemma MS_mapE : forall (A B : UU0) (f : A -> B) (m : MS A),
+  ([the functor of MS] # f) m = bindS m (@retS_natural _ \o f).
+Proof.
+move=> A B f m; rewrite /bindS boolp.funeqE => s.
+rewrite (_ : _ # f = MS_map f) // /MS_map [LHS]/= fmapE; congr bind .
+by rewrite boolp.funeqE => -[].
+Qed.
 
-Definition stateTmonad : monad := Monad.Pack (Monad.Class stateTmonad_mixin).
+HB.instance Definition _ :=
+  Monad_of_ret_bind.Build MS MS_mapE bindSretf bindSmret bindSA.
 
-Definition liftS A (m : M A) : stateTmonad A :=
-  fun s => m >>= (fun x => Ret (x, s)).
+(*Definition stateTmonad : monad := Monad.Pack stateTmonad_mixin.*)
 
-Program Definition stateTmonadM : monadM M stateTmonad :=
-  locked (monadM.Pack (@monadM.Mixin _ _ liftS _ _)).
-Next Obligation.
-move=> A.
-rewrite /liftS boolp.funeqE => a /=; rewrite boolp.funeqE => s /=.
+Definition liftS A (m : M A) : MS A := fun s => m >>= (fun x => Ret (x, s)).
+
+Lemma H0 : MonadMLaws.ret liftS.
+Proof.
+move=> A; rewrite /liftS boolp.funeqE => /= a; rewrite boolp.funeqE => s /=.
 by rewrite bindretf.
 Qed.
-Next Obligation.
-move=> A B m f; rewrite /liftS boolp.funeqE => s.
-rewrite [in RHS]/Bind [in RHS]/Join /= /Monad_of_ret_bind.join /= /bindS !bindA.
-bind_ext => a; by rewrite !bindretf.
+
+Lemma H1 : MonadMLaws.bind liftS.
+Proof.
+move=> A B m f; rewrite {1}/liftS; rewrite boolp.funeqE => s.
+rewrite [in LHS]bindA.
+transitivity (Builders_13.Super.bind (liftS m s) (uncurry (liftS (A:=B) \o f))) => //.
+rewrite [in RHS]bindA.
+bind_ext => a.
+by rewrite [in RHS]bindretf.
 Qed.
+
+Definition stateTmonadM : monadM M [the monad of MS] :=
+  monadM.Pack (@monadM.Mixin _ _ liftS H0 H1).
 
 End state_monad_transformer.
 
-(*Definition stateT S : monadT := MonadT.Pack (MonadT.Class (isMonadT.Build _ (stateTmonadM S))).*)
-Definition stateT S : monadT := MonadT.Pack (MonadT.Mixin (stateTmonadM S)).
+
+Definition stateT S : monadT := MonadT.Pack (MonadT.Class (isMonadT.Build _ (stateTmonadM S))).
 
 Definition mapStateT2 (A S : UU0) (N1 N2 N3 : monad)
     (f : N1 (A * S)%type -> N2 (A * S)%type -> N3 (A * S)%type)
@@ -197,41 +209,58 @@ Definition mapStateT2 (A S : UU0) (N1 N2 N3 : monad)
   fun s => f (m1 s) (m2 s).
 
 Lemma liftSE S (M : monad) U (m : M U) : liftS m = Lift (stateT S) M U m.
+Proof. by []. Qed.
+
+Section stateMonad_of_stateT.
+Variables (S : UU0) (M : monad).
+
+Let Put : S -> S -> M (unit * S)%type := fun s _ : S => @ret M (unit * S)%type (pair tt s).
+Let Get : S -> M (S * S)%type := fun s : S => @ret M (S * S)%type (s, s).
+
+Let H0 (s s' : S) : @bind (stateT S M) _ _ (Put s) (fun=> Put s') = Put s'.
 Proof.
-case: M m => [M [[f fi fo] [r j a b c]]] m.
-by rewrite /= /Lift /= /stateTmonadM; unlock.
+rewrite bindE /= /join_of_bind /= /bindS /=; rewrite boolp.funeqE => s0 /=.
+by rewrite bind_fmap {1}/Put bindretf.
 Qed.
 
-Let Put S (M : monad) := (fun s _ : S => @ret M (unit * S)%type (pair tt s)).
-Let Get S (M : monad) := (fun s : S => @ret M (S * S)%type (s, s)).
+Let H1 (s : S) : @bind (stateT S M) _ _ (Put s) (fun=> Get) =
+                 @bind (stateT S M) _ _ (Put s) (fun=> ret S s).
+Proof.
+rewrite boolp.funeqE => s0.
+rewrite !bindE /= /join_of_bind /= /bindS /=.
+by rewrite !bind_fmap /= 2!bindretf.
+Qed.
 
-Definition stateMonad_of_stateT_mixin S (M : monad) :
+Let H2 : @bind (stateT S M) _ _ Get Put = skip.
+Proof.
+rewrite boolp.funeqE => s.
+rewrite !bindE /= /join_of_bind /= /bindS /=.
+by rewrite bind_fmap bindretf.
+Qed.
+
+Let H3 (A : UU0) (k : S -> S -> stateT S M A) :
+  @bind (stateT S M) _ _ Get (fun s => @bind (stateT S M) _ _ Get (k s)) =
+  @bind (stateT S M) _ _ Get (fun s => k s s).
+Proof.
+rewrite boolp.funeqE => s.
+rewrite !bindE !MS_mapE /bindS /= /join_of_bind /= /bindS /=.
+rewrite !bindretf /=.
+by rewrite bindE /= /join_of_bind /= /bindS bind_fmap bindretf.
+Qed.
+
+HB.instance Definition _ := @isMonadState.Build S (stateT S M) Get Put H0 H1 H2 H3.
+
+End stateMonad_of_stateT.
+
+(*Definition stateMonad_of_stateT_mixin S (M : monad) :
   isMonadState S (stateT S M).
 Proof.
-refine (@isMonadState.Build _ (stateT S M) (Get M) (Put M) _ _ _ _).
-- move=> s s'.
-  rewrite boolp.funeqE => s0.
-  case: M => m [f [/= r j a b c]].
-  rewrite /Bind /Join /stateTmonad /Monad_of_ret_bind /bindS /actm /=.
-  by rewrite /Monad_of_ret_bind.Map bindretf /= /retS bindretf.
-- move=> s.
-  rewrite boolp.funeqE => s0.
-  case: M => m [f [/= r j a b c]].
-  rewrite /retS /Ret /Bind /stateTmonad /Monad_of_ret_bind /actm /=.
-  by rewrite /bindS /= /Monad_of_ret_bind.Map 4!bindretf.
-- rewrite boolp.funeqE => s.
-  case: M => m [f [/= r j a b c]].
-  rewrite /Bind /Join /= /stateTmonad /Monad_of_ret_bind /bindS /actm /=.
-  by rewrite /Monad_of_ret_bind.Map bindretf /= /retS bindretf.
-- case: M => m [f [/= r j a b c]] A k.
-  rewrite boolp.funeqE => s.
-  rewrite /Bind /Join /= /bindS /stateTmonad /= /Monad_of_ret_bind.
-  rewrite /actm /Monad_of_ret_bind.Map /= /Monad_of_ret_bind.Map /= /bindS /=.
-  by rewrite !bindretf /= !bindretf.
-Qed.
+xxxx
 
 Canonical stateMonad_of_stateT S M :=
-  MonadState.Pack (MonadState.Class (stateMonad_of_stateT_mixin S M)).
+  MonadState.Pack (MonadState.Class (stateMonad_of_stateT_mixin S M)).*)
+
+(* TODO urgent xxx
 
 Section exception_monad_transformer.
 
@@ -656,6 +685,8 @@ End sum.
 
 End continuation_monad_transformer_examples.
 
+*) (*END TODO urgent*)
+
 (*******************)
 (* TODO: lift laws *)
 (*******************)
@@ -664,11 +695,11 @@ Lemma bindLfailf (M : failMonad) S T U (m : stateT S M U) :
   Lift (stateT S) M T fail >> m = Lift (stateT S) M U fail.
 Proof.
 rewrite -!liftSE /liftS boolp.funeqE => s.
-rewrite bindfailf {1}/Bind /= /bindS /=.
-rewrite [X in _ X s](_ : _ = (fun _ => fail)); last first.
-  by rewrite boolp.funeqE => s'; rewrite bindfailf.
-rewrite (_ : _ _ s = fail) ?bindfailf //.
-by rewrite /actm /= /Monad_of_ret_bind.Map /= /bindS bindfailf.
+rewrite bindfailf.
+set x := (X in bind X _ = _).
+rewrite (_ : x = fail); last first.
+  by rewrite /x bindfailf.
+by rewrite bindfailf.
 Qed.
 
 Section lifting.
@@ -704,13 +735,17 @@ Definition psi0 (n : E ~> M) : E.-operation M := Natural.Pack (Natural.Mixin (na
 Lemma algebraic_psi0 (n : E ~> M) : algebraicity (psi0 n).
 Proof.
 move=> A B g t.
-rewrite bindE /Bind.
+rewrite bindE.
 rewrite -(compE (M # g)).
 rewrite compA.
 rewrite /=.
 rewrite -[in X in _ = Join X]compE.
 rewrite -[in RHS](natural n).
-transitivity (Join ((M # (Join \o (M # g))) (n (M A) t))) => //.
+transitivity (Join ((M # (Join \o (M # g))) (n (M A) t))); last first.
+  rewrite -(compE _ (n (M A)) t).
+  congr (Join ((M # _ \o _ ) t)).
+  rewrite boolp.funeqE => ma.
+  by rewrite bindE.
 rewrite -[in X in Join X = _]compE.
 rewrite (natural join).
 rewrite functor_o.
@@ -773,11 +808,10 @@ rewrite psiE phiE boolp.funeqE => m /=.
 rewrite -(compE (op _)) joinE (algebraic op).
 rewrite -(compE (E # _)) -functor_o.
 rewrite -(compE (op _)).
-rewrite /Bind.
-rewrite (_ : (fun _ => Join _) = Join \o (M # id)) //.
-rewrite -(compA Join).
-rewrite functor_id.
-rewrite compidf.
+set x := _^~ id.
+rewrite (_ : x = Join); last first.
+  rewrite boolp.funeqE => mma.
+  by rewrite /x bindE functor_id (*TODO: lemma*).
 by rewrite joinretM functor_id compfid.
 Qed.
 
@@ -859,6 +893,7 @@ Lemma natural_hmap (T : FMT) : natural_hmap_lift (Hmap T).
 Proof. by case: T => [? []]. Qed.
 End fmt_lemmas.
 
+(* TODO: urgent xxx 
 Section exceptFMT.
 Variable X : UU0.
 Let T : monadT := exceptT X.
@@ -946,7 +981,7 @@ End exceptFMT.
 
 Lemma liftFMTXE X (M : monad) U : @liftX _ _ _ = Lift (exceptFMT X) M U.
 Proof. by []. Qed.
-
+*)
 Section Fmt_stateT.
 Variable S : UU0.
 Let T : monadT := stateT S.
@@ -959,8 +994,9 @@ Proof.
 move=> A B h.
 rewrite /hmapS'.
 rewrite /=.
-have H : forall G, stateTmonad S G # h = [the functor of MS S G] # h.
-  move=> H; rewrite boolp.funeqE => m.
+have H : forall G, [the monad of stateT S G] # h = [the functor of MS S G] # h.
+  done.
+(*  move=> H; rewrite boolp.funeqE => m.
   rewrite /actm /=.
   rewrite /Monad_of_ret_bind.Map /=.
   rewrite /bindS /MS_map /retS /=.
@@ -968,7 +1004,7 @@ have H : forall G, stateTmonad S G # h = [the functor of MS S G] # h.
   set j := uncurry _.
   have -> : j = Ret \o (fun x : A * S => (h x.1, x.2)).
     by rewrite boolp.funeqE; case.
-  by rewrite -fmapE.
+  by rewrite -fmapE. *)
 rewrite !H {H}.
 rewrite /= {1}/actm /=.
 rewrite /MS_map boolp.funeqE => m; rewrite boolp.funeqE => s /=.
@@ -992,28 +1028,8 @@ Let monadMbind_hmapS (F G : monad) (e : monadM F G) :
 Proof.
 move=> A B m f.
 rewrite /hmapS /= boolp.funeqE => s.
-rewrite !bindE /= /bindS /=.
-rewrite !monadMbind /=.
-rewrite !bindA /=.
-congr (_ >>= _).
-rewrite boolp.funeqE; case => a s'.
-rewrite /retS /=.
-rewrite bindretf.
-rewrite -(compE _ Ret).
-rewrite /uncurry /prod_curry.
-rewrite -bind_fmap.
-rewrite monadMret.
-rewrite -(compE _ Ret).
-rewrite natural.
-rewrite FIdf.
-rewrite bindE.
-rewrite -(compE _ Ret).
-rewrite -(compE _ (_ \o _)).
-rewrite natural.
-rewrite compA.
-rewrite joinretM.
-rewrite FIdf.
-by rewrite compidf.
+rewrite /hmapS' /= 2!bindE /= /join_of_bind /bindS /= 2!bind_fmap.
+by rewrite monadMbind.
 Qed.
 
 Let hmapS_NId (M : monad) : hmapS (NId M) = NId (T M).
@@ -1032,22 +1048,35 @@ rewrite /stateTmonadM /=.
 unlock.
 rewrite /=.
 rewrite /liftS /=.
-rewrite /Bind /=.
 rewrite boolp.funeqE => ma /=.
 rewrite boolp.funeqE => s /=.
+rewrite ![in LHS]bindE ![in LHS]fmapE ![in LHS]bindE.
 rewrite 2!(_ : (fun x : A => Ret (x, s)) = Ret \o (fun x => (x, s))) //.
 rewrite functor_o.
-rewrite -(compE Join).
-rewrite compA.
+rewrite -(compE Join (_ \o _)).
+rewrite (compA Join (M # _)).
 rewrite joinMret.
 rewrite compidf.
 rewrite functor_o.
-rewrite -(compE Join).
 rewrite compA.
 rewrite joinMret.
 rewrite compidf.
 rewrite -(compE _ (t A)).
-by rewrite natural.
+rewrite -(compE (t _)).
+rewrite -natural.
+
+rewrite /=.
+rewrite ![in RHS]bindE ![in RHS]fmapE ![in RHS]bindE.
+rewrite functor_o.
+rewrite -(compE Join (_ \o _)).
+rewrite (compA Join (N # _)).
+rewrite joinMret.
+rewrite compidf.
+rewrite functor_o.
+rewrite compA.
+rewrite joinMret.
+rewrite compidf.
+by rewrite -(compE _ (t A)).
 Qed.
 
 Program Definition stateFMT : FMT := @Fmt.Pack T
@@ -1056,6 +1085,7 @@ Program Definition stateFMT : FMT := @Fmt.Pack T
 
 End Fmt_stateT.
 
+(* TODO: urgent
 Section Fmt_envT.
 Variable E : UU0.
 Let T : monadT := envT E.
@@ -1236,3 +1266,4 @@ Program Definition outputFMT : FMT := @Fmt.Pack T
     monadMbind_hmapO _ hmapO_v hmapO_lift).
 
 End Fmt_outputT.
+*)

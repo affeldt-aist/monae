@@ -331,6 +331,11 @@ End JoinLaws.
 HB.mixin Record isMonad (M : UU0 -> UU0) of Functor M := {
   ret : idfun ~> M ;
   join : M \o M ~> M ;
+  bind : forall (A B : UU0), M A -> (A -> M B) -> M B ;
+  fmapE : forall (A B : UU0) (f : A -> B) (m : M A),
+    ([the functor of M] # f) m = bind _ _ m (@ret _ \o f);
+  bindE : forall (A B : UU0) (f : A -> M B) (m : M A),
+    bind _ _ m f = join _ (([the functor of M] # f) m) ;
   joinretM : JoinLaws.left_unit ret join ;
   joinMret : JoinLaws.right_unit ret join ;
   joinA : JoinLaws.associativity join }.
@@ -389,7 +394,8 @@ Hypothesis joinretM : JoinLaws.left_unit ret join.
 Hypothesis joinMret : JoinLaws.right_unit ret join.
 Hypothesis joinA : JoinLaws.associativity join.
 
-Definition bind_of_join (A B : UU0) (m : F A) (f : A -> F B) : F B := join _ ((F # f) m).
+Definition bind_of_join (A B : UU0) (m : F A) (f : A -> F B) : F B :=
+  join _ ((F # f) m).
 
 Lemma bindretf_derived : BindLaws.left_neutral bind_of_join ret.
 Proof.
@@ -413,18 +419,42 @@ End from_join_laws_to_bind_laws.
 
 Section monad_lemmas.
 Variable M : monad.
-
-Definition Bind A B (x : M A) (f : A -> M B) : M B := @bind_of_join M (@join M) A B x f.
-Arguments Bind {A B} : simpl never.
-Local Notation "m >>= f" := (Bind m f).
-Lemma bindE (A B : UU0) : forall x (f : A -> M B), x >>= f = Join ((M # f) x).
-Proof. by []. Qed.
-Lemma bindretf : BindLaws.left_neutral (@Bind) (@ret _).
-Proof. apply: bindretf_derived; exact: joinretM. Qed.
-Lemma bindmret : BindLaws.right_neutral (@Bind) (@ret _).
-Proof. apply: bindmret_derived; exact: joinMret. Qed.
-Lemma bindA : BindLaws.associative (@Bind).
-Proof. apply bindA_derived; exact: joinA. Qed.
+Local Notation M' := (Monad.sort M).
+(*Definition Bind A B (x : M A) (f : A -> M B) : M B := @bind_of_join M (@join M) A B x f.
+Arguments Bind {A B} : simpl never.*)
+Local Notation "m >>= f" := (bind _ _ m f).
+(*Lemma bindE (A B : UU0) : forall x (f : A -> M B), x >>= f = Join ((M' # f) x).
+Proof. by []. Qed.*)
+Lemma bindretf : BindLaws.left_neutral (@bind M) (@ret _).
+Proof.
+move: (@bindretf_derived M ret join joinretM).
+rewrite (_ : bind_of_join _ = bind) //.
+apply fun_ext_dep => A.
+apply fun_ext_dep => B.
+apply fun_ext_dep => m.
+apply fun_ext_dep => f.
+by rewrite bindE.
+Qed.
+Lemma bindmret : BindLaws.right_neutral (@bind M) (@ret _).
+Proof.
+move: (@bindmret_derived M ret join joinMret).
+rewrite (_ : bind_of_join _ = bind) //.
+apply fun_ext_dep => A.
+apply fun_ext_dep => B.
+apply fun_ext_dep => m.
+apply fun_ext_dep => f.
+by rewrite bindE.
+Qed.
+Lemma bindA : BindLaws.associative (@bind M).
+Proof.
+move: (@bindA_derived M join joinA).
+rewrite (_ : bind_of_join _ = bind) //.
+apply fun_ext_dep => A.
+apply fun_ext_dep => B.
+apply fun_ext_dep => m.
+apply fun_ext_dep => f.
+by rewrite bindE.
+Qed.
 
 (*Lemma bindE' (A B : Type) : Bind = fun x (f : A -> M B) => Join ((M # f) x).
 Proof. by []. Qed.*)
@@ -435,13 +465,13 @@ Proof. by rewrite compA joinMret. Qed.*)
 (*Lemma joinA' A C (f:C->_) : @Join M A \o (M # @Join M A \o f) = @Join M A \o (@Join M (M A) \o f).
 Proof. by rewrite compA joinA. Qed.*)
 End monad_lemmas.
-Arguments Bind {M A B} : simpl never.
+Arguments bind {s A B} : simpl never.
 
-Notation "'do' x <- m ; e" := (Bind m (fun x => e)) : do_notation.
-Notation "'do' x : T <- m ; e" := (Bind m (fun x : T => e)) (only parsing) : do_notation.
+Notation "'do' x <- m ; e" := (bind m (fun x => e)) : do_notation.
+Notation "'do' x : T <- m ; e" := (bind m (fun x : T => e)) (only parsing) : do_notation.
 Delimit Scope do_notation with Do.
-Notation "m >>= f" := (Bind m f) : monae_scope.
-Notation "m >> f" := (Bind m (fun _ => f)) : monae_scope.
+Notation "m >>= f" := (bind m f) : monae_scope.
+Notation "m >> f" := (bind m (fun _ => f)) : monae_scope.
 
 Fixpoint sequence (M : monad) A (s : seq (M A)) : M (seq A) :=
   (if s isn't h :: t then Ret [::] else
@@ -458,11 +488,11 @@ Definition skip M := @ret M _ tt.
 Arguments skip {M} : simpl never.
 
 Ltac bind_ext :=
-  let congr_ext m := ltac:(congr (Bind m); rewrite boolp.funeqE) in
+  let congr_ext m := ltac:(congr (bind m); rewrite boolp.funeqE) in
   match goal with
-    | |- @Bind _ _ _ ?m ?f1 = @Bind _ _ _ ?m ?f2 =>
+    | |- @bind _ _ _ ?m ?f1 = @bind _ _ _ ?m ?f2 =>
       congr_ext m
-    | |- @Bind _ _ _ ?m1 ?f1 = @Bind _ _ _ ?m2 ?f2 =>
+    | |- @bind _ _ _ ?m1 ?f1 = @bind _ _ _ ?m2 ?f2 =>
       first[ simpl m1; congr_ext m1 | simpl m2; congr_ext m2 ]
   end.
 
@@ -491,21 +521,21 @@ Tactic Notation "Open" ssrpatternarg(pat) :=
   With (idtac) Open pat.
 
 Tactic Notation "Inf" tactic(tac) :=
-  (With (tac; reflexivity) Open (X in @Bind _ _ _ _ X = _ )) ||
-  (With (tac; reflexivity) Open (X in _ = @Bind _ _ _ _ X)).
+  (With (tac; reflexivity) Open (X in @bind _ _ _ _ X = _ )) ||
+  (With (tac; reflexivity) Open (X in _ = @bind _ _ _ _ X)).
 
 Tactic Notation "rewrite_" constr(lem) :=
-  (With (rewrite lem; reflexivity) Open (X in @Bind _ _ _ _ X = _ )) ||
-  (With (rewrite lem; reflexivity) Open (X in _ = @Bind _ _ _ _ X)).
-
+  (With (rewrite lem; reflexivity) Open (X in @bind _ _ _ _ X = _ )) ||
+  (With (rewrite lem; reflexivity) Open (X in _ = @bind _ _ _ _ X)).
 
 Section fmap_and_join.
 Variable M : monad.
 Local Open Scope mprog.
 
-Lemma fmapE (A B : UU0) (f : A -> B) (m : M _) : fmap f m = m >>= (Ret \o f).
+Lemma fmapE' (A B : UU0) (f : A -> B) (m : M _) : fmap f m = m >>= (Ret \o f).
 Proof.
-by rewrite bindE [in RHS]functor_o [in RHS]compE -[in RHS](compE Join) joinMret.
+by rewrite fmapE.
+(*by rewrite bindE [in RHS]functor_o [in RHS]compE -[in RHS](compE Join) joinMret. TODO *)
 Qed.
 
 Lemma bind_fmap (A B C : UU0) (f : A -> B) (m : M A) (g : B -> M C) :
@@ -587,7 +617,7 @@ Notation "m >=> n" := (kleisli n m) : monae_scope.
 HB.mixin Record isMonadFail (M : UU0 -> UU0) of Monad M := {
   fail : forall A : UU0, M A;
   (* exceptions are left-zeros of sequential composition *)
-  bindfailf : BindLaws.left_zero (@Bind [the monad of M]) fail (* fail A >>= f = fail B *)
+  bindfailf : BindLaws.left_zero (@bind [the monad of M]) fail (* fail A >>= f = fail B *)
 }.
 
 HB.structure Definition MonadFail := {M of isMonadFail M & }.
@@ -645,7 +675,7 @@ by rewrite boolp.funeqE => x; rewrite !compE join_fmap /bassert joinE bindA.
 Qed.
 
 (* guards commute with anything *)
-Lemma guardsC (HM : BindLaws.right_zero (@Bind M) (@fail _)) b B (m : M B) :
+Lemma guardsC (HM : BindLaws.right_zero (@bind M) (@fail _)) b B (m : M B) :
   guard b >> m = m >>= assert (fun=> b).
 Proof.
 case: guardPn => Hb.
@@ -666,7 +696,7 @@ HB.mixin Record isMonadAlt (M : UU0 -> UU0) of Monad M := {
   alt : forall T : UU0, M T -> M T -> M T ;
   altA : forall T : UU0, associative (@alt T) ;
   (* composition distributes leftwards over choice *)
-  alt_bindDl : BindLaws.left_distributive (@Bind [the monad of M]) alt
+  alt_bindDl : BindLaws.left_distributive (@bind [the monad of M]) alt
 (* in general, composition does not distribute rightwards over choice *)
 (* NB: no bindDr to accommodate both angelic and demonic interpretations of nondeterminism *)
 }.
@@ -726,14 +756,14 @@ Qed.
 End nondet_big.
 
 HB.mixin Record isMonadFailR0 (M : UU0 -> UU0) of MonadFail M := {
-  bindmfail : BindLaws.right_zero (@Bind [the monad of M]) (@fail _)
+  bindmfail : BindLaws.right_zero (@bind [the monad of M]) (@fail _)
 }.
 
 HB.structure Definition MonadFailR0 := {M of isMonadFailR0 M & }.
 Notation failR0Monad := MonadFailR0.type.
 
 HB.mixin Record isMonadPrePlus (M : UU0 -> UU0) of MonadNondet M & MonadFailR0 M := {
-  alt_bindDr : BindLaws.right_distributive (@Bind [the monad of M]) (@Alt _)
+  alt_bindDr : BindLaws.right_distributive (@bind [the monad of M]) (@Alt _)
 }.
 
 HB.structure Definition MonadPrePlus := {M of isMonadPrePlus M & }.
@@ -813,7 +843,7 @@ HB.mixin Record isMonadJump (ref : UU0 -> UU0) (M : UU0 -> UU0) of Monad M := {
    jump2 : forall (A B : UU0) p r', @sub _ _ p (@jump A B r') = p r';
    jump3 : forall (A B : UU0) (p : ref A -> ref B -> M B) (k1 : A -> M B) k2,
      @sub _ _ (fun r1 : ref A => @sub _ _ (fun r2 => p r1 r2) (k2 r1)) k1 =
-     @sub _ _ (fun r2 : ref B => @sub _ _ (fun r1 => p r1 r2) k1) (fun x => @sub _ _ (k2^~x) k1); (*NB: differs from [Schrijvers et al. 19]*)
+     @sub _ _ (fun r2 : ref B => @sub _ _ (fun r1 => p r1 r2) k1) (fun x => @sub _ _ (k2^~ x) k1); (*NB: differs from [Schrijvers et al. 19]*)
    jump4 : forall (A B : UU0) r x k, (@jump A B r x) >>= k = @jump A B r x;
    jump5 : forall (A B : UU0) p q k, @sub A B p q >>= k = @sub A B (p >=> k) (q >=> k)
 }.
@@ -1040,7 +1070,7 @@ HB.mixin Record isMonadProb (M : UU0 -> UU0) of Monad M := {
     let ab := (choice r _ a b) in
     choice p _ a bc = choice s _ ab c;
   (* composition distributes leftwards over [probabilistic] choice *)
-  prob_bindDl : forall p, BindLaws.left_distributive (@Bind [the monad of M]) (choice p)
+  prob_bindDl : forall p, BindLaws.left_distributive (@bind [the monad of M]) (choice p)
 }.
 
 HB.structure Definition MonadProb := {M of isMonadProb M & }.
@@ -1054,7 +1084,7 @@ HB.mixin Record isMonadProbDr (M : UU0 -> UU0) of MonadProb M := {
   (* composition distributes rightwards over [probabilistic] choice *)
   (* WARNING: this should not be asserted as an axiom in conjunction with
      distributivity of <||> over [] *)
-  prob_bindDr : forall p, BindLaws.right_distributive (@Bind [the monad of M]) (choice p) (* NB: not used *)
+  prob_bindDr : forall p, BindLaws.right_distributive (@bind [the monad of M]) (choice p) (* NB: not used *)
 }.
 
 HB.structure Definition MonadProbDr := {M of isMonadProbDr M & }.
@@ -1105,7 +1135,7 @@ HB.mixin Record isMonadFailFresh (S : eqType) (M : UU0 -> UU0) of MonadFresh S M
   distinct : segment_closed.t S ;
   bassert_symbols : bassert distinct \o (@symbols _ [the freshMonad S of M]) = @symbols _ [the freshMonad S of M] ;
   (* failure is a right zero of composition (backtracking interpretation) *)
-  failfresh_bindmfail : BindLaws.right_zero (@Bind [the monad of M]) (@fail _)
+  failfresh_bindmfail : BindLaws.right_zero (@bind [the monad of M]) (@fail _)
 }.
 
 HB.structure Definition MonadFailFresh (S : eqType) := {M of isMonadFailFresh S M}.
