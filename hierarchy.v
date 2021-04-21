@@ -884,6 +884,11 @@ HB.structure Definition MonadFailState (S : UU0) :=
   {M of isMonadFail M & isMonadState S M}.
 Notation failStateMonad := MonadFailState.type.
 
+(*NB: explicit join newly added*)
+HB.structure Definition MonadFailR0State (S : UU0) :=
+  {M of isMonadFailR0 M & isMonadState S M}.
+Notation failR0StateMonad := MonadFailR0State.type.
+
 
 
 HB.structure Definition MonadNondetState (S : UU0) :=
@@ -945,9 +950,9 @@ Notation failReifyMonad := MonadFailReify.type.
 HB.structure Definition MonadFailFailR0Reify (S : UU0) := {M of MonadFailReify S M & MonadFailR0 M}.
 Notation failFailR0ReifyMonad := MonadFailFailR0Reify.type.
 
-(* TODO *)
-Fail HB.structure Definition MonadFailStateReify (S : UU0) := {M of MonadStateReify S M & MonadFailFailR0Reify S M}.
-Fail Notation failStateReifyMonad := MonadFailStateReify.type.
+HB.structure Definition MonadFailStateReify (S : UU0) := {M of MonadStateReify S M & MonadFailFailR0Reify S M}.
+Notation failStateReifyMonad := MonadFailStateReify.type.
+
 
 (*
 Module MonadFailStateReify.
