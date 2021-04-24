@@ -186,14 +186,8 @@ documentation: |-
  
   Installation of monae on Windows is less simple.
   First install infotheo following the [instructions for Windows 10](https://github.com/affeldt-aist/infotheo).
-  Once infotheo is installed:
-  1. If opam is available, do
-     + `opam install coq-monae` or `git clone git@github.com:affeldt-aist/monae.git; opam install .`
-  2. If opam is not available (i.e., installation of MathComp using unzip, untar, cd, make, make install),
-     do:
-     + `git clone git@github.com:affeldt-aist/monae.git`
-     + `coq_makefile -o Makefile -f _CoqProject`
-     + `make`
+  Once infotheo is installed (with opam), do:
+  - `opam install coq-monae` or `git clone git@github.com:affeldt-aist/monae.git; opam install .`
 
   ## Original License
 
