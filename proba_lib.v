@@ -431,7 +431,7 @@ rewrite choicemm.
 rewrite [in LHS](choiceA (/ 7)%:pr (/ 6)%:pr (/ 2)%:pr (@Prob.mk (2/7) H27)); last first.
   by rewrite 4!probpK /= /onem; split; field.
 rewrite choicemm.
-rewrite [in LHS](choiceA (/ 8)%:pr (@Prob.mk_ (2/7) H27) (@Prob.mk_ (7/21) H721) (@Prob.mk_ (21/56) H2156)); last first.
+rewrite [in LHS](choiceA (/ 8)%:pr (@Prob.mk (2/7) H27) (@Prob.mk (7/21) H721) (@Prob.mk (21/56) H2156)); last first.
   by rewrite probpK /= /onem; split; field.
 rewrite (choiceC (/ 4).~%:pr).
 rewrite [in LHS](choiceA (/ 5)%:pr (probcplt (/ 4).~%:pr) (/ 2)%:pr (@Prob.mk (2/5) H25)); last first.

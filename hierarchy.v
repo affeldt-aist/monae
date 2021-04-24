@@ -28,9 +28,6 @@ From HB Require Import structures.
 (*                       components of a natural transformation               *)
 (*   naturality F G f == the components f form a natural transformation       *)
 (*                       F ~> G                                               *)
-(*                NId == identity natural transformation                      *)
-(*                 \v == vertical composition of natural transformations      *)
-(*                 \h == horizontal composition of natural transformations    *)
 (*    Module JoinLaws == join laws of a monad                                 *)
 (*              monad == type of monads, inherits from the type of functors   *)
 (*                Ret == natural transformation FId ~> M for a monad M        *)
@@ -136,13 +133,13 @@ HB.mixin Record isFunctor (M : UU0 -> UU0) := {
 HB.structure Definition Functor := {M of isFunctor M}.
 Notation functor := Functor.type.
 
-Definition acto (f : functor) : UU0 -> UU0 := Functor.sort f.
+(*Definition acto (f : functor) : UU0 -> UU0 := Functor.sort f.*)
 
 Notation "F # g" := (@actm F _ _ g) : monae_scope.
 Notation "'fmap' f" := (_ # f) : mprog.
 
 Section functorid.
-Definition id_f (A B : UU0) (f : A -> B) := f.
+Definition id_f (A B : UU0) (f : A -> B) : idfun A -> idfun B := f.
 Lemma id_id : FunctorLaws.id id_f. Proof. by []. Qed.
 Lemma id_comp : FunctorLaws.comp id_f. Proof. by []. Qed.
 End functorid.
@@ -223,7 +220,7 @@ Notation "f (o) g" := (fcomp f g) : mprog.
 Arguments fcomp : simpl never.
 
 Lemma functor_ext (F G : functor) :
-  forall (H : acto F = acto G),
+  forall (H : Functor.sort F = Functor.sort G),
   @actm G =
   eq_rect _ (fun m : UU0 -> UU0 => forall A B : UU0, (A -> B) -> m A -> m B) (@actm F) _ H  ->
   G = F.
@@ -707,9 +704,6 @@ Notation "a [~] b" := (@alt _ _ a b). (* infix notation *)
 
 Notation altMonad := MonadAlt.type.
 
-Definition Alt (M : altMonad) T := @alt M T.
-Arguments Alt {M} {T}.
-
 HB.mixin Record isMonadAltCI (M : UU0 -> UU0) of MonadAlt M := {
   altmm : forall A : UU0, idempotent (@alt [the altMonad of M] A) ;
   altC : forall A : UU0, commutative (@alt [the altMonad of M] A)
@@ -747,7 +741,7 @@ Variables (M : nondetMonad) (A : UU0).
 Canonical alt_monoid :=
   Monoid.Law (@altA M A) (@altfailm _ _) (@altmfail _ _).
 
-Lemma test_bigop n : \big[Alt/fail]_(i < n) (fail : M A) = fail.
+Lemma test_bigop n : \big[(@alt _ _)/fail]_(i < n) (fail : M A) = fail.
 Proof.
 elim: n => [|n IH]; first by rewrite big_ord0.
 by rewrite big_ord_recr /= IH altmfail.
@@ -763,7 +757,7 @@ HB.structure Definition MonadFailR0 := {M of isMonadFailR0 M & }.
 Notation failR0Monad := MonadFailR0.type.
 
 HB.mixin Record isMonadPrePlus (M : UU0 -> UU0) of MonadNondet M & MonadFailR0 M := {
-  alt_bindDr : BindLaws.right_distributive (@bind [the monad of M]) (@Alt _)
+  alt_bindDr : BindLaws.right_distributive (@bind [the monad of M]) (@alt _)
 }.
 
 HB.structure Definition MonadPrePlus := {M of isMonadPrePlus M & }.
@@ -924,7 +918,7 @@ Notation exceptStateRunMonad := MonadExceptStateRun.type.
 HB.mixin Record isMonadReify (S : UU0) (M : UU0 -> UU0) of Monad M := {
   reify : forall A : UU0, M A -> S -> option (A * S)%type ;
   reifyret : forall (A : UU0) (a : A) s, @reify _ (Ret a) s = Some (a, s) ;
-  reifytbind : forall (A B : UU0) (m : M A) (f : A -> M B) s,
+  reifybind : forall (A B : UU0) (m : M A) (f : A -> M B) s,
       @reify _ (m >>= f) s = match @reify _ m s with | Some a's' => @reify _ (f a's'.1) a's'.2 | None => None end
 }.
 
