@@ -21,35 +21,14 @@ Local Open Scope tuple_ext_scope.
 From infotheo Require Import ssrZ.
 Require Import ZArith.
 
-(* TODO: Pr to infotheo *)
-Local Open Scope zarith_ext_scope.
-
-Reserved Notation "n %:Z" (at level 2, left associativity, format "n %:Z").
-Definition natZ := nosimpl Z_of_nat.
-Notation "n %:Z" := (natZ n) : zarith_ext_scope.
-
-Notation "z .+1Z" := (Z.succ z) (at level 2, left associativity,
-  format "z .+1Z") : zarith_ext_scope.
-
-Lemma add1Z z : (1 + z)%Z = z.+1Z.
-Proof. by rewrite Z.add_1_l. Qed.
-
-Lemma natZ0 : 0%:Z = 0%Z. Proof. exact: Nat2Z.inj_0. Qed.
-
-Lemma natZS n : n.+1%:Z = n%:Z.+1Z.
-Proof. by rewrite -Zpos_P_of_succ_nat. Qed.
-
-Local Close Scope zarith_ext_scope.
-(* TODO: Pr to infotheo (end) *)
-
 Section marray.
 Variables (E : UU0) (M : arrayMonad E Z_eqType).
 
 Fixpoint readList (i : Z) (n : nat) : M (seq E) :=
-  if n isn't k.+1 then Ret [::] else liftM2 cons (aGet i) (readList (i + 1) k).
+  if n isn't k.+1 then Ret [::] else liftM2 cons (aget i) (readList (i + 1) k).
 
 Fixpoint writeList (i : Z) (s : seq E) : M unit :=
-  if s isn't x :: xs then Ret tt else aPut i x >> writeList (i + 1) xs.
+  if s isn't x :: xs then Ret tt else aput i x >> writeList (i + 1) xs.
 
 Definition writeL (i : Z) (s : seq E) := writeList i s >> Ret (size s).
 

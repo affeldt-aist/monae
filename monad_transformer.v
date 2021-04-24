@@ -122,14 +122,14 @@ Definition bindS A B (m : MS A) f : MS B := fun s => m s >>= uncurry f.
 Definition MS_map (A B : UU0) (f : A -> B) (m : MS A) : MS B :=
   (M # (fun x => (f x.1, x.2))) \o m.
 
-Lemma MS_map_i : FunctorLaws.id MS_map.
+Local Lemma MS_map_i : FunctorLaws.id MS_map.
 Proof.
 move=> A; rewrite boolp.funeqE => m; rewrite /MS_map boolp.funeqE => s.
 rewrite (_ : (fun x : A * S => _) = id) ?functor_id //.
 by rewrite boolp.funeqE; case.
 Qed.
 
-Lemma MS_map_o : FunctorLaws.comp MS_map.
+Local Lemma MS_map_o : FunctorLaws.comp MS_map.
 Proof.
 move=> A B C g h; rewrite /MS_map boolp.funeqE => m.
 by rewrite boolp.funeqE => s /=; rewrite -[RHS]compE -functor_o.
@@ -137,7 +137,7 @@ Qed.
 
 HB.instance Definition _ := isFunctor.Build MS MS_map_i MS_map_o.
 
-Lemma naturality_retS : naturality FId [the functor of MS] retS.
+Local Lemma naturality_retS : naturality FId [the functor of MS] retS.
 Proof.
 move=> A B h; rewrite /actm /= boolp.funeqE => a /=.
 rewrite /MS_map /= boolp.funeqE => s /=.
@@ -147,27 +147,27 @@ Qed.
 Canonical retS_natural : FId ~> MS :=
   Natural.Pack (Natural.Mixin naturality_retS).
 
-Let bindSretf : BindLaws.left_neutral bindS retS_natural.
+Local Lemma bindSretf : BindLaws.left_neutral bindS retS_natural.
 Proof.
 by move=> A B a f; rewrite /bindS boolp.funeqE => s; rewrite bindretf.
 Qed.
 
-Let bindSmret : BindLaws.right_neutral bindS retS_natural.
+Local Lemma bindSmret : BindLaws.right_neutral bindS retS_natural.
 Proof.
 move=> A m; rewrite /bindS boolp.funeqE => s.
 by rewrite -[in RHS](bindmret (m s)); bind_ext; case.
 Qed.
 
-Let bindSA : BindLaws.associative bindS.
+Local Lemma bindSA : BindLaws.associative bindS.
 Proof.
 move=> A B C m f g; rewrite /bindS boolp.funeqE => s.
 by rewrite bindA; bind_ext; case.
 Qed.
 
-Lemma MS_mapE : forall (A B : UU0) (f : A -> B) (m : MS A),
+Local Lemma MS_mapE (A B : UU0) (f : A -> B) (m : MS A) :
   ([the functor of MS] # f) m = bindS m (@retS_natural _ \o f).
 Proof.
-move=> A B f m; rewrite /bindS boolp.funeqE => s.
+rewrite /bindS boolp.funeqE => s.
 rewrite (_ : _ # f = MS_map f) // /MS_map [LHS]/= fmapE; congr bind .
 by rewrite boolp.funeqE => -[].
 Qed.
@@ -179,13 +179,13 @@ HB.instance Definition _ :=
 
 Definition liftS A (m : M A) : MS A := fun s => m >>= (fun x => Ret (x, s)).
 
-Lemma H0 : MonadMLaws.ret liftS.
+Local Lemma retliftS : MonadMLaws.ret liftS.
 Proof.
 move=> A; rewrite /liftS boolp.funeqE => /= a; rewrite boolp.funeqE => s /=.
 by rewrite bindretf.
 Qed.
 
-Lemma H1 : MonadMLaws.bind liftS.
+Local Lemma bindliftS : MonadMLaws.bind liftS.
 Proof.
 move=> A B m f; rewrite {1}/liftS; rewrite boolp.funeqE => s.
 rewrite [in LHS]bindA.
@@ -196,10 +196,9 @@ by rewrite [in RHS]bindretf.
 Qed.
 
 Definition stateTmonadM : monadM M [the monad of MS] :=
-  monadM.Pack (@monadM.Mixin _ _ liftS H0 H1).
+  monadM.Pack (@monadM.Mixin _ _ liftS retliftS bindliftS).
 
 End state_monad_transformer.
-
 
 Definition stateT S : monadT := MonadT.Pack (MonadT.Class (isMonadT.Build _ (stateTmonadM S))).
 
@@ -217,38 +216,37 @@ Variables (S : UU0) (M : monad).
 Let Put : S -> S -> M (unit * S)%type := fun s _ : S => @ret M (unit * S)%type (pair tt s).
 Let Get : S -> M (S * S)%type := fun s : S => @ret M (S * S)%type (s, s).
 
-Let H0 (s s' : S) : @bind (stateT S M) _ _ (Put s) (fun=> Put s') = Put s'.
+Local Lemma bindputput (s s' : S) : @bind (stateT S M) _ _ (Put s) (fun=> Put s') = Put s'.
 Proof.
 rewrite bindE /= /join_of_bind /= /bindS /=; rewrite boolp.funeqE => s0 /=.
 by rewrite bind_fmap {1}/Put bindretf.
 Qed.
 
-Let H1 (s : S) : @bind (stateT S M) _ _ (Put s) (fun=> Get) =
+Local Lemma bindputget (s : S) : @bind (stateT S M) _ _ (Put s) (fun=> Get) =
                  @bind (stateT S M) _ _ (Put s) (fun=> ret S s).
 Proof.
 rewrite boolp.funeqE => s0.
-rewrite !bindE /= /join_of_bind /= /bindS /=.
-by rewrite !bind_fmap /= 2!bindretf.
+by rewrite !bindE /= /join_of_bind /= /bindS /= !bind_fmap /= 2!bindretf.
 Qed.
 
-Let H2 : @bind (stateT S M) _ _ Get Put = skip.
+Local Lemma bindgetput : @bind (stateT S M) _ _ Get Put = skip.
 Proof.
 rewrite boolp.funeqE => s.
 rewrite !bindE /= /join_of_bind /= /bindS /=.
 by rewrite bind_fmap bindretf.
 Qed.
 
-Let H3 (A : UU0) (k : S -> S -> stateT S M A) :
+Local Lemma bindgetget (A : UU0) (k : S -> S -> stateT S M A) :
   @bind (stateT S M) _ _ Get (fun s => @bind (stateT S M) _ _ Get (k s)) =
   @bind (stateT S M) _ _ Get (fun s => k s s).
 Proof.
 rewrite boolp.funeqE => s.
-rewrite !bindE !MS_mapE /bindS /= /join_of_bind /= /bindS /=.
-rewrite !bindretf /=.
+rewrite !bindE !MS_mapE /bindS /= /join_of_bind /= /bindS /= !bindretf /=.
 by rewrite bindE /= /join_of_bind /= /bindS bind_fmap bindretf.
 Qed.
 
-HB.instance Definition _ := @isMonadState.Build S (stateT S M) Get Put H0 H1 H2 H3.
+HB.instance Definition _ := @isMonadState.Build S (stateT S M) Get Put
+  bindputput bindputget bindgetput bindgetget.
 
 End stateMonad_of_stateT.
 
@@ -259,8 +257,6 @@ xxxx
 
 Canonical stateMonad_of_stateT S M :=
   MonadState.Pack (MonadState.Class (stateMonad_of_stateT_mixin S M)).*)
-
-(* TODO urgent xxx
 
 Section exception_monad_transformer.
 
@@ -282,14 +278,14 @@ Definition MX_map (A B : UU0) (f : A -> B) : MX A -> MX B :=
   M # (fun x => match x with inl y => inl y | inr y => inr (f y) end).
 Local Close Scope mprog.
 
-Lemma MX_map_i : FunctorLaws.id MX_map.
+Local Lemma MX_map_i : FunctorLaws.id MX_map.
 Proof.
 move=> A; rewrite boolp.funeqE => x.
 rewrite /MX in x *.
 by rewrite /MX_map (_ : (fun _ => _) = id) ?functor_id // boolp.funeqE; case.
 Qed.
 
-Lemma MX_map_o : FunctorLaws.comp MX_map.
+Local Lemma MX_map_o : FunctorLaws.comp MX_map.
 Proof.
 rewrite /MX_map => A B C g h /=.
 rewrite boolp.funeqE => x /=.
@@ -297,9 +293,9 @@ rewrite -[RHS]compE -functor_o /=; congr (_ # _).
 by rewrite boolp.funeqE; case.
 Qed.
 
-HB.instance Definition MX_functor := isFunctor.Build MX MX_map_i MX_map_o.
+HB.instance Definition _ := isFunctor.Build MX MX_map_i MX_map_o.
 
-Lemma naturality_retX : naturality FId [the functor of MX] retX.
+Local Lemma naturality_retX : naturality FId [the functor of MX] retX.
 Proof.
 move=> A B h; rewrite /retX boolp.funeqE /= => a.
 by rewrite /actm /= /MX_map -[LHS]compE (natural ret).
@@ -308,52 +304,79 @@ Qed.
 Definition retX_natural : FId ~> MX :=
   Natural.Pack (Natural.Mixin naturality_retX).
 
-Program Definition exceptTmonad : monad :=
-  @Monad_of_ret_bind [the functor of MX] retX_natural bindX _ _ _.
-Next Obligation. by move=> A B a f; rewrite /bindX bindretf. Qed.
-Next Obligation.
-move=> A m; rewrite /bindX -[in RHS](bindmret m); by bind_ext; case.
+Local Lemma bindXretf : BindLaws.left_neutral bindX retX_natural.
+Proof. by move=> A B a f; rewrite /bindX bindretf. Qed.
+
+Local Lemma bindXmret : BindLaws.right_neutral bindX retX_natural.
+Proof.
+by move=> A m; rewrite /bindX -[in RHS](bindmret m); bind_ext; case.
 Qed.
-Next Obligation.
+
+Local Lemma bindXA : BindLaws.associative bindX.
+Proof.
 move=> A B C m f g; rewrite /bindX bindA; bind_ext; case => //.
 by move=> z; rewrite bindretf.
 Qed.
 
-Definition liftX X (m : M X) : exceptTmonad X :=
-  m >>= (@ret exceptTmonad _).
+Local Lemma MX_mapE (A B : UU0) (f : A -> B) (m : MX A) :
+  ([the functor of MX] # f) m = bindX m (@retX_natural _ \o f).
+Proof.
+rewrite /bindX (_ : _ # f = MX_map f) // /MX_map fmapE; congr bind => /=.
+by rewrite boolp.funeqE => -[|].
+Qed.
 
-Program Definition exceptTmonadM : monadM M exceptTmonad :=
-  monadM.Pack (@monadM.Mixin _ _ liftX _ _).
-Next Obligation.
+HB.instance Definition _ :=
+  Monad_of_ret_bind.Build MX MX_mapE bindXretf bindXmret bindXA.
+
+Definition liftX X (m : M X) : MX X :=
+  m >>= (@ret [the monad of MX] _).
+
+Local Lemma retliftX : MonadMLaws.ret liftX.
+Proof.
 by move=> A; rewrite boolp.funeqE => a; rewrite /liftX /= bindretf.
 Qed.
-Next Obligation.
-move=> A B m f; rewrite /liftX [in RHS]/Bind [in RHS]/Join /=.
-rewrite  /Monad_of_ret_bind.join /= /bindX !bindA.
-bind_ext => a; by rewrite !bindretf.
+
+Local Lemma bindliftX : MonadMLaws.bind liftX.
+Proof.
+move=> A B m f; rewrite {1}/liftX.
+rewrite !bindE !fmapE.
+rewrite /= /join_of_bind /bindX /= !bindA.
+rewrite 2!joinE !bindA.
+bind_ext => a.
+rewrite 3!bindretf.
+rewrite /liftX /=.
+bind_ext => b.
+by rewrite bindretf.
 Qed.
+
+Definition exceptTmonadM : monadM M [the monad of MX] :=
+  monadM.Pack (@monadM.Mixin _ _ liftX retliftX bindliftX).
 
 End exception_monad_transformer.
 
-Definition exceptT Z := MonadT.Pack (MonadT.Mixin (@exceptTmonadM Z)).
+Definition exceptT Z := MonadT.Pack (MonadT.Class (isMonadT.Build _ (exceptTmonadM Z))).
 
 Lemma liftXE Z (M : monad) U (m : M U) : liftX _ m = Lift (exceptT Z) M U m.
 Proof. by []. Qed.
 
-Definition failMonad_of_exceptT_mixin (M : monad) :
-  isMonadFail (exceptT unit M).
+Section failMonad_of_exceptT.
+Variable M : monad.
+
+Let Fail : forall B, M (unit + B)%type := fun B => Ret (@inl _ B tt).
+
+Local Lemma bindfail : BindLaws.left_zero (@bind (exceptT unit M)) Fail.
 Proof.
-refine (@isMonadFail.Build (exceptT unit M)
-                    (fun B => Ret (@inl _ B tt))
-                    _ ).
-move=> A B.
-case: M => m [f [/= r j a b c]] g.
-rewrite /Bind /= /bindX /= /exceptTmonad /Monad_of_ret_bind /= /actm /=.
-by rewrite /Monad_of_ret_bind.Map /= /bindX /= !bindretf.
+move=> A B g.
+rewrite /Fail.
+by rewrite bindE /= /join_of_bind /bindX /= fmapE /= bindA 2!bindretf.
 Qed.
 
-Canonical failMonad_of_exceptT M := MonadFail.Pack (MonadFail.Class (failMonad_of_exceptT_mixin M)).
+HB.instance Definition _ := @isMonadFail.Build (exceptT unit M) Fail bindfail.
+(*Canonical failMonad_of_exceptT M := MonadFail.Pack (MonadFail.Class (failMonad_of_exceptT_mixin M)).*)
 
+End failMonad_of_exceptT.
+
+(*
 Section environment_monad_transformer.
 
 Local Obligation Tactic := idtac.
@@ -893,7 +916,6 @@ Lemma natural_hmap (T : FMT) : natural_hmap_lift (Hmap T).
 Proof. by case: T => [? []]. Qed.
 End fmt_lemmas.
 
-(* TODO: urgent xxx 
 Section exceptFMT.
 Variable X : UU0.
 Let T : monadT := exceptT X.
@@ -905,11 +927,7 @@ Lemma natural_hmapX' (F G : monad) (tau : F ~> G) :
 Proof.
 move=> A B h.
 rewrite /hmapX'.
-have eXh : forall G, exceptT X G # h = MX_map h.
-  move=> E; rewrite boolp.funeqE => m /=.
-  rewrite /actm /= /Monad_of_ret_bind.Map /MX_map /= /bindX /= fmapE.
-  congr (_ >>= _).
-  by rewrite boolp.funeqE; case.
+have eXh : forall G, exceptT X G # h = MX_map h by [].
 by rewrite 2!eXh /MX_map /= (natural tau).
 Qed.
 
@@ -926,10 +944,11 @@ Qed.
 Let monadMbind_hmapX (F G : monad) (e : monadM F G) :
   MonadMLaws.bind (hmapX (monadM_nt e)).
 Proof.
-move=> A B m f; rewrite /hmapX /=.
-rewrite !bindE /= /bindX /=.
+move=> A B m f; rewrite /hmapX /= /hmapX' /=.
+rewrite !bindE /= /join_of_bind /bindX /= !bind_fmap.
 rewrite !monadMbind /=.
-rewrite !bindA /=.
+
+rewrite bind_fmap.
 congr (_ >>= _).
 rewrite boolp.funeqE.
 case.
@@ -981,7 +1000,7 @@ End exceptFMT.
 
 Lemma liftFMTXE X (M : monad) U : @liftX _ _ _ = Lift (exceptFMT X) M U.
 Proof. by []. Qed.
-*)
+
 Section Fmt_stateT.
 Variable S : UU0.
 Let T : monadT := stateT S.
