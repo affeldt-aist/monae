@@ -107,52 +107,54 @@ by exists i; rewrite ?ri.
 Qed.
 End PR_to_fset.
 
-Module ModelMonad.
-
-Section identity.
-Local Obligation Tactic := by [].
-Definition identity_functor : FId ~> FId :=
-  Natural.Pack (Natural.Mixin (@natural_id FId)).
+Module ModelMonadIdentity.
 Let bind := fun A B (a : FId A) (f : A -> FId B) => f a.
-Let ret := fun A (a : id A) => a.
-Let fmapE : forall (A B : UU0) (f : A -> B) (m : FId A),
-    ([the functor of FId] # f) m = @bind _ _ m (@ret _ \o f).
+Let fmapE (A B : UU0) (f : A -> B) (m : FId A) :
+  (FId # f) m = @bind _ _ m (@NId FId _ \o f).
 Proof. by []. Qed.
-Let H0 : BindLaws.left_neutral bind identity_functor. Proof. by []. Qed.
-Let H1 : BindLaws.right_neutral bind identity_functor. Proof. by []. Qed.
+Let H0 : BindLaws.left_neutral bind (NId FId). Proof. by []. Qed.
+Let H1 : BindLaws.right_neutral bind (NId FId). Proof. by []. Qed.
 Let H2 : BindLaws.associative bind. Proof. by []. Qed.
-HB.instance Definition _ := @Monad_of_ret_bind.Build idfun identity_functor
+HB.instance Definition _ := @Monad_of_ret_bind.Build idfun (NId FId)
   bind fmapE H0 H1 H2.
-End identity.
+End ModelMonadIdentity.
+HB.export ModelMonadIdentity.
 
-Module ListMonad.
+Module ModelListMonad.
 Definition acto := fun A => seq A.
 Local Notation M := acto.
 Lemma map_id : @FunctorLaws.id seq (@map).
 Proof. by move=> A; rewrite boolp.funeqE => x; rewrite map_id. Qed.
 Lemma map_comp : @FunctorLaws.comp seq (@map).
 Proof. by move=> A B C g h; rewrite boolp.funeqE => x; rewrite map_comp. Qed.
-Definition functor := Functor.Pack (Functor.Class (isFunctor.Build acto map_id map_comp)).
+HB.instance Definition _ := isFunctor.Build acto map_id map_comp.
 Definition ret_component := fun A : Type => (@cons A)^~ [::].
-Lemma ret_naturality : naturality FId functor ret_component.
+Lemma ret_naturality : naturality FId [the functor of acto] ret_component.
 Proof. by move=> A B h; rewrite boolp.funeqE. Qed.
-Definition ret : FId ~> functor := Natural.Pack (Natural.Mixin ret_naturality).
+Definition ret : FId ~> [the functor of acto] :=
+  Natural.Pack (Natural.Mixin ret_naturality).
 Definition bind := fun A B (a : M A) (f : A -> M B) => flatten (map f a).
-Lemma left_neutral : @BindLaws.left_neutral functor bind ret.
+Lemma left_neutral : BindLaws.left_neutral bind ret.
 Proof. by move=> A B m f; rewrite /bind /ret /= cats0. Qed.
-Lemma right_neutral : @BindLaws.right_neutral functor bind ret.
+Lemma right_neutral : BindLaws.right_neutral bind ret.
 Proof. by move=> A m; rewrite /bind flatten_seq1. Qed.
-Lemma associative : @BindLaws.associative functor bind.
+Lemma associative : BindLaws.associative bind.
 Proof.
 move=> A B C; elim => // h t; rewrite /bind => ih f g.
 by rewrite /= map_cat flatten_cat /= ih.
 Qed.
-xxx
-Definition t := Monad_of_ret_bind left_neutral right_neutral associative.
-End ListMonad.
+Lemma fmapE (A B : UU0) (f : A -> B) (m : M A) :
+  ([the functor of M] # f) m = bind m (@ret _ \o f).
+Proof.
+rewrite /= /actm /= /bind /ret_component /=.
+by rewrite map_comp /= flatten_seq1.
+Qed.
+HB.instance Definition _ := @Monad_of_ret_bind.Build
+  acto ret bind fmapE left_neutral right_neutral associative.
+End ModelListMonad.
+HB.export ModelListMonad.
 
-Module SetMonad.
-Section setmonad.
+Module ModelSetMonad.
 Lemma map_id : FunctorLaws.id (@image).
 Proof.
 by move=> x; rewrite boolp.funeqE => y; rewrite image_id.
@@ -161,30 +163,38 @@ Lemma map_comp : FunctorLaws.comp (@image).
 Proof.
 by move=> A B C g h; rewrite boolp.funeqE => x /=; rewrite image_comp.
 Qed.
-Definition functor := Functor.Pack (Functor.Class (isFunctor.Build _ map_id map_comp)).
-Lemma naturality_ret : naturality FId functor (@set1).
+HB.instance Definition _ := isFunctor.Build set map_id map_comp.
+Lemma naturality_ret : naturality FId [the functor of set] (@set1).
 Proof.
 move=> A B h; rewrite boolp.funeqE => a /=; rewrite boolp.funeqE => b /=.
 rewrite boolp.propeqE; split.
   by case => a0; rewrite /set1 => ->{a0} <-{b}.
 by rewrite /set1 => ->{b} /=; exists a.
 Qed.
-Definition ret : FId ~> functor := Natural.Pack (Natural.Mixin naturality_ret).
-Lemma left_neutral :
-  @BindLaws.left_neutral functor (fun A B => @bigsetU B A) ret.
-Proof.  move=> ? ? ? ?; exact: bigcup_set1. Qed.
-Lemma right_neutral :
-  @BindLaws.right_neutral functor (fun A B => @bigsetU B A) ret.
-Proof. by move=> ? ?; rewrite classical_sets_ext.bigcup_of_singleton image_id. Qed.
-Lemma associative :
-  @BindLaws.associative functor (fun A B => @bigsetU B A).
+Definition ret : FId ~> [the functor of set] :=
+  Natural.Pack (Natural.Mixin naturality_ret).
+Lemma left_neutral : BindLaws.left_neutral (fun A B => @bigsetU B A) ret.
+Proof. move=> ? ? ? ?; exact: bigcup_set1. Qed.
+Lemma right_neutral : BindLaws.right_neutral (fun A B => @bigsetU B A) ret.
+Proof.
+by move=> ? ?; rewrite classical_sets_ext.bigcup_of_singleton image_id.
+Qed.
+Lemma associative : BindLaws.associative (fun A B => @bigsetU B A).
 Proof. move=> ? ? ? ? ? ?; exact: bigsetUA. Qed.
-Definition t := Monad_of_ret_bind left_neutral right_neutral associative.
-End setmonad.
-End SetMonad.
+Lemma fmapE (A B : UU0) (f : A -> B) (m : set A) :
+  ([the functor of set] # f) m = (fun A B => @bigsetU B A) _ _ m (@ret _ \o f).
+Proof.
+rewrite /= /actm /= /image /= /bigsetU /=(*TODO: lemma?*).
+rewrite boolp.predeqE => b; split=> -[a ma].
+  by move=> <- /=; exists a.
+by move=> ->; rewrite /mkset; exists a.
+Qed.
+HB.instance Definition _ := @Monad_of_ret_bind.Build set ret (fun A B => @bigsetU B A) fmapE left_neutral right_neutral associative.
+End ModelSetMonad.
+HB.export ModelSetMonad.
 
-Module Except.
-Section except.
+Module ModelExcept.
+Section tmp.
 Variable E : UU0.
 Definition acto := fun A : UU0 => (E + A)%type.
 Local Notation M := acto.
@@ -194,26 +204,30 @@ Lemma map_id : FunctorLaws.id map.
 Proof. by move=> *; rewrite boolp.funeqE; case. Qed.
 Lemma map_comp : FunctorLaws.comp map.
 Proof. by move=> *; rewrite boolp.funeqE; case. Qed.
-Definition functor := Functor.Pack (Functor.Class (isFunctor.Build acto map_id map_comp)).
+HB.instance Definition _ := isFunctor.Build acto map_id map_comp.
 Definition ret_component := @inr E.
-Lemma natural : naturality FId functor ret_component.
+Lemma natural : naturality FId [the functor of acto] ret_component.
 Proof. by move=> A B h; rewrite boolp.funeqE. Qed.
-Definition ret : FId ~> functor := Natural.Pack (Natural.Mixin natural).
+Definition ret : FId ~> [the functor of acto] := Natural.Pack (Natural.Mixin natural).
 Definition bind := fun A B (a : M A) (f : A -> M B) =>
   match a with inl z => inl z | inr b => f b end.
-Lemma left_neutral : @BindLaws.left_neutral functor bind ret.
+Lemma left_neutral : BindLaws.left_neutral bind ret.
 Proof. by []. Qed.
-Lemma right_neutral : @BindLaws.right_neutral functor bind ret.
+Lemma right_neutral : BindLaws.right_neutral bind ret.
 Proof. by move=> ? []. Qed.
-Lemma associative : @BindLaws.associative functor bind.
+Lemma associative : BindLaws.associative bind.
 Proof. by move=> ? ? ? []. Qed.
-Definition t := Monad_of_ret_bind left_neutral right_neutral associative.
-End except.
-End Except.
+Lemma fmapE (A B : UU0) (f : A -> B) (m : acto A) :
+  ([the functor of acto] # f) m = bind m (@ret _ \o f).
+Proof. by rewrite /= /actm /= /ret_component /bind; case: m. Qed.
+HB.instance Definition _ := @Monad_of_ret_bind.Build acto ret bind fmapE left_neutral right_neutral associative.
+End tmp.
+End ModelExcept.
+HB.export ModelExcept.
 
-Definition option_monad := Except.t unit.
+Definition option_monad := ModelExcept.acto unit.
 
-Module Output.
+Module ModelOutput.
 Section output.
 Variable L : UU0.
 Definition acto := fun X : UU0 => (X * seq L)%type.
@@ -224,27 +238,31 @@ Lemma map_id : FunctorLaws.id map.
 Proof. by move=> A; rewrite boolp.funeqE; case. Qed.
 Lemma map_comp : FunctorLaws.comp map.
 Proof. by move=> A B C g h; rewrite boolp.funeqE; case. Qed.
-Definition functor := Functor.Pack (Functor.Class (isFunctor.Build acto map_id map_comp)).
+HB.instance Definition _ := isFunctor.Build acto map_id map_comp.
 Definition ret_component : FId ~~> M := fun A a => (a, [::]).
-Lemma naturality_ret : naturality FId functor ret_component.
+Lemma naturality_ret : naturality FId [the functor of acto] ret_component.
 Proof. by move=> A B h; rewrite boolp.funeqE. Qed.
-Definition ret : FId ~> functor := Natural.Pack (Natural.Mixin naturality_ret).
+Definition ret : FId ~> [the functor of acto] := Natural.Pack (Natural.Mixin naturality_ret).
 Definition bind := fun A B (m : M A) (f : A -> M B) =>
   let: (x, w) := m in let: (x', w') := f x in (x', w ++ w').
-Lemma left_neutral : @BindLaws.left_neutral functor bind ret.
+Lemma left_neutral : BindLaws.left_neutral bind ret.
 Proof. by move=> A B a f; rewrite /bind /=; case: f. Qed.
-Lemma right_neutral : @BindLaws.right_neutral functor bind ret.
+Lemma right_neutral : BindLaws.right_neutral bind ret.
 Proof. by move=> A m; rewrite /bind /=; case: m => x w; rewrite cats0. Qed.
-Lemma associative : @BindLaws.associative functor bind.
+Lemma associative : BindLaws.associative bind.
 Proof.
 move=> A B C m f g; rewrite /bind; case: m => x w; case: f => x' w'.
 by case: g => x'' w''; rewrite catA.
 Qed.
-Definition t := Monad_of_ret_bind left_neutral right_neutral associative.
+Lemma fmapE (A B : UU0) (f : A -> B) (m : M A) :
+  ([the functor of acto] # f) m = bind m (@ret _ \o f).
+Proof. by rewrite /actm /= /bind /=; case: m => h t; rewrite cats0. Qed.
+HB.instance Definition _ := @Monad_of_ret_bind.Build M ret bind fmapE left_neutral right_neutral associative.
 End output.
-End Output.
+End ModelOutput.
+HB.export ModelOutput.
 
-Module Environment.
+Module ModelEnvironment.
 Section environment.
 Variable E : UU0.
 Definition acto := fun A : UU0 => E -> A.
@@ -253,25 +271,31 @@ Definition map (A B : UU0) (f : A -> B) (m : M A) : M B := fun e => f (m e).
 Lemma map_id : FunctorLaws.id map. Proof. by []. Qed.
 Lemma map_comp : FunctorLaws.comp map.
 Proof. by move=> A B C g h; rewrite boolp.funeqE. Qed.
-Definition functor := Functor.Pack (Functor.Class (isFunctor.Build acto map_id map_comp)).
+HB.instance Definition _ := isFunctor.Build acto map_id map_comp.
 Definition ret_component : FId ~~> M := fun A x => fun e => x.
 (* computation that ignores the environment *)
-Lemma naturality_ret : naturality FId functor ret_component.
+Lemma naturality_ret : naturality FId [the functor of M] ret_component.
 Proof. by move=> A B h; rewrite boolp.funeqE. Qed.
-Definition ret : FId ~> functor := Natural.Pack (Natural.Mixin naturality_ret).
+Definition ret : FId ~> [the functor of M] := Natural.Pack (Natural.Mixin naturality_ret).
 Definition bind := fun A B (m : M A) (f : A -> M B) => fun e => f (m e) e.
 (* binds m f applied the same environment to m and to the result of f *)
-Lemma left_neutral : @BindLaws.left_neutral functor bind ret.
+Lemma left_neutral : BindLaws.left_neutral bind ret.
 Proof. by []. Qed.
-Lemma right_neutral : @BindLaws.right_neutral functor bind ret.
+Lemma right_neutral : BindLaws.right_neutral bind ret.
 Proof. by []. Qed.
-Lemma associative : @BindLaws.associative functor bind.
+Lemma associative : BindLaws.associative bind.
 Proof. by []. Qed.
-Definition t := Monad_of_ret_bind left_neutral right_neutral associative.
+Lemma fmapE (A B : UU0) (f : A -> B) (m : M A) :
+  ([the functor of acto] # f) m = bind m (@ret _ \o f).
+Proof.
+by rewrite /actm /= /bind /ret_component boolp.funeqE => e /=.
+Qed.
+HB.instance Definition _ := @Monad_of_ret_bind.Build M ret bind fmapE left_neutral right_neutral associative.
 End environment.
-End Environment.
+End ModelEnvironment.
+HB.export ModelEnvironment.
 
-Module State.
+Module ModelState.
 Section state.
 Variable S : UU0. (* type of states *)
 Definition acto := fun A : UU0 => S -> A * S.
@@ -288,30 +312,37 @@ Proof.
 move=> A B C g h; rewrite boolp.funeqE => m; rewrite boolp.funeqE => s.
 by rewrite /map /=; case: m.
 Qed.
-Definition functor := Functor.Pack (Functor.Class (isFunctor.Build acto map_id map_comp)).
+HB.instance Definition _ := isFunctor.Build acto map_id map_comp.
 Definition ret_component : FId ~~> M := fun A a => fun s => (a, s).
-Lemma naturality_ret : naturality FId functor ret_component.
+Lemma naturality_ret : naturality FId [the functor of M] ret_component.
 Proof. by move=> A B h; rewrite boolp.funeqE => a /=; rewrite boolp.funeqE. Qed.
-Definition ret : FId ~> functor := Natural.Pack (Natural.Mixin naturality_ret).
+Definition ret : FId ~> [the functor of M] := Natural.Pack (Natural.Mixin naturality_ret).
 Definition bind := fun A B (m : M A) (f : A -> M B) => uncurry f \o m.
-Lemma left_neutral : @BindLaws.left_neutral functor bind ret.
+Lemma left_neutral : BindLaws.left_neutral bind ret.
 Proof. by move=> A B a f; rewrite boolp.funeqE. Qed.
-Lemma right_neutral : @BindLaws.right_neutral functor bind ret.
+Lemma right_neutral : BindLaws.right_neutral bind ret.
 Proof.
 by move=> A f; rewrite boolp.funeqE => s; rewrite /bind /=; case: (f s).
 Qed.
-Lemma associative : @BindLaws.associative functor bind.
+Lemma associative : BindLaws.associative bind.
 Proof.
 move=> A B C a b c; rewrite /bind compA; congr (_ \o _).
 by rewrite boolp.funeqE => -[].
 Qed.
-Definition t := Monad_of_ret_bind left_neutral right_neutral associative.
+Lemma fmapE (A B : UU0) (f : A -> B) (m : M A) :
+  ([the functor of acto] # f) m = bind m (@ret _ \o f).
+Proof.
+by rewrite /actm /= /bind /ret_component /= boolp.funeqE => s.
+Qed.
+HB.instance Definition _ := @Monad_of_ret_bind.Build
+  M ret bind fmapE left_neutral right_neutral associative.
 End state.
-End State.
+End ModelState.
+HB.export ModelState.
 
 (* see Sect. 3 of of [Wadler, 94] for the model of the ret and the bind of the
 continuation monad *)
-Module Cont.
+Module ModelCont.
 Section cont.
 Variable r : UU0. (* the type of answers *)
 Definition acto := fun A : UU0 => (A -> r) -> r.
@@ -322,22 +353,28 @@ Lemma map_id : FunctorLaws.id actm.
 Proof. by move=> A; rewrite boolp.funeqE => m; rewrite boolp.funeqE. Qed.
 Lemma map_comp : FunctorLaws.comp actm.
 Proof. by move=> *; rewrite boolp.funeqE => m; rewrite boolp.funeqE. Qed.
-Definition functor := Functor.Pack (Functor.Class (isFunctor.Build acto map_id map_comp)).
-Lemma naturality_ret : naturality FId functor (fun A a => fun k => k a).
+HB.instance Definition func_mixin := isFunctor.Build acto map_id map_comp.
+Definition F := Functor.Pack (Functor.Class func_mixin).
+Lemma naturality_ret : naturality FId [the functor of M] (fun A a => fun k => k a).
 Proof. by move=> A B f; rewrite boolp.funeqE => a /=; rewrite boolp.funeqE. Qed.
-Definition ret : FId ~> functor := Natural.Pack (Natural.Mixin naturality_ret).
+Definition ret : FId ~> [the functor of M]:= Natural.Pack (Natural.Mixin naturality_ret).
 Definition bind := fun A B (ma : M A) (f : A -> M B) => fun k => ma (fun a => f a k).
-Lemma left_neutral : @BindLaws.left_neutral functor bind ret.
+Lemma left_neutral : BindLaws.left_neutral bind ret.
 Proof. by move=> A B a f; rewrite boolp.funeqE => Br. Qed.
-Lemma right_neutral : @BindLaws.right_neutral functor bind ret.
+Lemma right_neutral : BindLaws.right_neutral bind ret.
 Proof. by []. Qed.
-Lemma associative : @BindLaws.associative functor bind.
+Lemma associative : BindLaws.associative bind.
 Proof. by []. Qed.
-Definition t : monad := Monad_of_ret_bind left_neutral right_neutral associative.
+Lemma fmapE (A B : UU0) (f : A -> B) (m : M A) :
+  ([the functor of acto] # f) m = bind m (@ret _ \o f).
+Proof.
+by rewrite /actm /= /bind /ret_component /= boolp.funeqE => s.
+Qed.
+HB.instance Definition _ := @Monad_of_ret_bind.Build
+  M ret bind fmapE left_neutral right_neutral associative.
 End cont.
-End Cont.
-
-End ModelMonad.
+End ModelCont.
+HB.export ModelCont.
 
 Module ListOps.
 
@@ -366,12 +403,13 @@ Definition F : functor := Functor.Pack (Functor.Class func_mixin).
 End Append.
 HB.export Append.
 
-Local Notation M := [the monad of ModelMonad.ListMonad.t].
+Local Notation M := [the monad of ModelListMonad.acto].
 
 Definition empty A : unit -> M A := fun _ => @nil A.
 Lemma naturality_empty : naturality (Empty.F \O M) M empty.
 Proof. by move=> A B h; rewrite boolp.funeqE. Qed.
-Definition empty_op : Empty.F.-operation M := Natural.Pack (Natural.Mixin naturality_empty).
+Definition empty_op : Empty.F.-operation M :=
+  Natural.Pack (Natural.Mixin naturality_empty).
 Lemma algebraic_empty : algebraicity empty_op.
 Proof. by []. Qed.
 
@@ -380,18 +418,16 @@ Definition append A : (M A * M A)%type -> M A :=
 Lemma naturality_append : naturality (Append.F \O M) M append.
 Proof.
 move=> A B h; rewrite boolp.funeqE; case => s1 s2 /=.
-rewrite /hierarchy.actm /= /Monad_of_ret_bind.Map /=.
-rewrite /ModelMonad.ListMonad.bind /= /ModelMonad.ListMonad.ret /=.
-by rewrite map_cat flatten_cat.
+rewrite /hierarchy.actm /=.
+by rewrite map_cat.
 Qed.
 Definition append_op : Append.F.-operation M := Natural.Pack (Natural.Mixin naturality_append).
 Lemma algebraic_append : algebraicity append_op.
 Proof.
 move=> A B f [t1 t2] /=.
-rewrite !bindE /= /ModelMonad.ListMonad.bind /= /actm /=.
-rewrite /Monad_of_ret_bind.Map /=.
-rewrite /ModelMonad.ListMonad.bind /= /ModelMonad.ListMonad.ret /=.
-by rewrite -flatten_cat -map_cat /= -flatten_cat -map_cat.
+rewrite !bindE /= /join_of_bind /= /ModelListMonad.bind /=.
+rewrite /actm /=.
+by rewrite -flatten_cat -2!map_cat.
 Qed.
 
 End ListOps.
@@ -423,29 +459,29 @@ HB.export Flush.
 
 Section outputops.
 Variable L : UU0.
-Local Notation M := (ModelMonad.Output.t L).
+Local Notation M := (ModelOutput.acto L).
 
 Definition output (A : UU0) : (seq L * M A) -> M A :=
   fun m => let: (x, w') := m.2 in (x, m.1 ++ w'). (*NB: w'++m.1 in the esop paper*)
-Lemma naturality_output : naturality (Output.F L \O M) M output.
+Lemma naturality_output : naturality (Output.F L \O [the functor of M]) [the functor of M] output.
 Proof.
 move=> A B h; rewrite boolp.funeqE; case => w [x w'] /=.
-by rewrite /output /= cats0 /hierarchy.actm /= /Monad_of_ret_bind.Map /= cats0.
+by rewrite /output /= /hierarchy.actm /=.
 Qed.
-Definition output_op : (Output.F L).-operation M :=
+Definition output_op : (Output.F L).-operation [the monad of M] :=
   Natural.Pack (Natural.Mixin naturality_output).
 Lemma algebraic_output : algebraicity output_op.
 Proof.
 move=> A B f [w [x w']].
-rewrite bindE /= /output /= bindE /= !cats0.
+rewrite bindE /= /output /= /join_of_bind /= bindE /= /join_of_bind /=.
 by case: f => x' w''; rewrite catA.
 Qed.
 
 Definition flush A : M A -> M A := fun m => let: (x, _) := m in (x, [::]).
 (* performing a computation in a modified environment *)
-Lemma naturality_flush : naturality (Flush.F \O M) M flush.
+Lemma naturality_flush : naturality (Flush.F \O [the functor of M]) [the functor of M] flush.
 Proof. by move=> A B h; rewrite boolp.funeqE; case. Qed.
-Definition flush_op : Flush.F.-operation M := Natural.Pack (Natural.Mixin naturality_flush).
+Definition flush_op : Flush.F.-operation [the monad of M] := Natural.Pack (Natural.Mixin naturality_flush).
 (* NB: flush is not algebraic *)
 Lemma algebraic_flush : algebraicity flush_op.
 Proof.
@@ -453,10 +489,9 @@ move=> A B f [x w].
 rewrite /flush_op /=.
 rewrite /flush /=.
 rewrite /hierarchy.actm /=.
-rewrite bindE /=.
+rewrite bindE /= /join_of_bind /=.
 rewrite /OutputOps.Flush.actm.
-rewrite bindE /=.
-rewrite cats0.
+rewrite bindE /= /join_of_bind /=.
 case: f => x' w'.
 Abort.
 
@@ -465,10 +500,10 @@ End outputops.
 End OutputOps.
 
 (* wip *)
-Module ModelOutput.
-Section modeloutput.
+Module ModelOutput2.
+Section modeloutput2.
 Variable L : UU0.
-Local Notation M := (ModelMonad.Output.t L).
+Local Notation M := (ModelOutput.acto L).
 (* usual output operation *)
 Definition output : seq L -> M unit := fun w => OutputOps.output_op _ _ (w, Ret tt).
 Lemma outputE : output = fun w => (tt, w).
@@ -477,8 +512,8 @@ rewrite boolp.funeqE => w.
 by rewrite /output /OutputOps.output_op /= /OutputOps.output /= cats0.
 Qed.
 (* TODO: complete with an interface for the output monad and instantiate *)
-End modeloutput.
-End ModelOutput.
+End modeloutput2.
+End ModelOutput2.
 
 Module EnvironmentOps.
 
@@ -507,21 +542,21 @@ HB.export Local.
 
 Section environmentops.
 Variable E : UU0.
-Local Notation M := (ModelMonad.Environment.t E).
+Local Notation M := (ModelEnvironment.acto E).
 
 Definition ask A : (E -> M A) -> M A := fun f s => f s s. (* reading the environment *)
-Lemma naturality_ask : naturality (Ask.F E \O M) M ask.
+Lemma naturality_ask : naturality (Ask.F E \O [the functor of M]) [the functor of M] ask.
 Proof. by []. Qed.
-Definition ask_op : (Ask.F E).-operation M :=
+Definition ask_op : (Ask.F E).-operation [the monad of M] :=
   Natural.Pack (Natural.Mixin naturality_ask).
 Lemma algebraic_ask : algebraicity ask_op.
 Proof. by []. Qed.
 
 Definition local A : (E -> E) * M A -> M A := fun x s => let: (e, t) := x in t (e s).
 (* performing a computation in a modified environment *)
-Lemma naturality_local : naturality (Local.F E \O M) M local.
+Lemma naturality_local : naturality (Local.F E \O [the functor of M]) [the functor of M] local.
 Proof. by move=> A B h; rewrite boolp.funeqE; case. Qed.
-Definition local_op : (Local.F E).-operation M :=
+Definition local_op : (Local.F E).-operation [the monad of M] :=
   Natural.Pack (Natural.Mixin naturality_local).
 (* NB: local is not algebraic *)
 Lemma algebraic_local : algebraicity local_op.
@@ -530,39 +565,32 @@ move=> A B f t.
 rewrite /local_op /=.
 rewrite /local /=.
 rewrite boolp.funeqE => e /=.
-rewrite bindE /=.
-rewrite /ModelMonad.Environment.bind /=.
+rewrite bindE /= /join_of_bind /=.
+rewrite /ModelEnvironment.bind /=.
 rewrite /hierarchy.actm /=.
-rewrite /Monad_of_ret_bind.Map /=.
-rewrite /ModelMonad.Environment.bind /=.
-rewrite /ModelMonad.Environment.ret /=.
+rewrite /ModelEnvironment.map /=.
 rewrite /EnvironmentOps.Local.actm /=.
 case: t => /= ee m.
-rewrite bindE /=.
-rewrite /ModelMonad.Environment.bind /=.
+rewrite bindE /= /join_of_bind /=.
+rewrite /ModelEnvironment.bind /=.
 rewrite /hierarchy.actm /=.
-rewrite /Monad_of_ret_bind.Map /=.
-rewrite /ModelMonad.Environment.bind /=.
-rewrite /ModelMonad.Environment.ret /=.
-rewrite /ModelMonad.Environment.ret_component /=.
+rewrite /ModelEnvironment.map /=.
 Abort.
 
 End environmentops.
 End EnvironmentOps.
 
 (* wip *)
-Module ModelEnvironment.
-Section modelenvironment.
+Module ModelEnvironment2.
+Section modelenvironment2.
 Variable E : UU0.
-Local Notation M := (ModelMonad.Environment.t E).
+Local Notation M := (ModelEnvironment.acto E).
 (* usual get operation *)
 Definition ask : M E := EnvironmentOps.ask_op _ _ Ret.
 Lemma askE : ask = fun e => e. Proof. by []. Qed.
 (* TODO: complete with an interface for the environment monad and instantiate, see Jaskelioff's PhD *)
-End modelenvironment.
-End ModelEnvironment.
-
-Module ExceptOps.
+End modelenvironment2.
+End ModelEnvironment2.
 
 Module Throw. Section throw. Variable Z : UU0.
 Definition acto (X : UU0) := Z.
@@ -589,24 +617,24 @@ HB.export Handle.
 
 Section exceptops.
 Variable Z : UU0.
-Local Notation M := (ModelMonad.Except.t Z).
+Local Notation M := (ModelExcept.acto Z).
 
 Definition throw (A : UU0) : Z -> M A := fun z => inl z.
-Lemma naturality_throw : naturality (Throw.F Z \O M) M throw.
+Lemma naturality_throw : naturality (Throw.F Z \O [the functor of M]) [the functor of M] throw.
 Proof. by []. Qed.
-Definition throw_op : (Throw.F Z).-operation M :=
+Definition throw_op : (Throw.F Z).-operation [the monad of M] :=
   Natural.Pack (Natural.Mixin naturality_throw).
 Lemma algebraic_throw : algebraicity throw_op.
 Proof. by []. Qed.
-Definition throw_aop : (Throw.F Z).-aoperation (ModelMonad.Except.t Z) :=
+Definition throw_aop : (Throw.F Z).-aoperation [the monad of M] :=
   AOperation.Pack (AOperation.Class (AOperation.Mixin algebraic_throw)).
 
 Definition handle A (m : M A) (h : Z -> M A) : M A :=
   match m with inl z => h z | inr x => inr x end.
 Lemma naturality_handle :
-  naturality (Handle.F Z \O M) M (fun A => uncurry (@handle A)).
+  naturality (Handle.F Z \O [the functor of M]) [the functor of M] (fun A => uncurry (@handle A)).
 Proof. by move=> A B h; rewrite boolp.funeqE; case; case. Qed.
-Definition handle_op : (Handle.F Z).-operation M :=
+Definition handle_op : (Handle.F Z).-operation [the monad of M] :=
   Natural.Pack (Natural.Mixin naturality_handle).
 (* NB: handle is not algebraic *)
 Lemma algebraic_handle : algebraicity handle_op.
@@ -616,21 +644,19 @@ rewrite /handle_op /=.
 rewrite /handle /=.
 rewrite /uncurry /prod_curry.
 case: t => -[z//|a] g /=.
-rewrite bindE /=.
+rewrite bindE /= /join_of_bind /=.
 case: (f a) => // z.
-rewrite bindE /=.
-rewrite /ModelMonad.Except.bind /=.
+rewrite bindE /= /join_of_bind /=.
+rewrite /ModelExcept.bind /=.
 rewrite /hierarchy.actm /=.
-rewrite /Monad_of_ret_bind.Map /=.
-rewrite /ModelMonad.Except.bind /=.
+rewrite /ModelExcept.map /=.
 case: (g z) => [z0|a0].
 Abort.
 
 End exceptops.
-End ExceptOps.
 
-Arguments ExceptOps.throw_op {Z}.
-Arguments ExceptOps.handle_op {Z}.
+Arguments throw_op {Z}.
+Arguments handle_op {Z}.
 
 Module StateOps.
 
@@ -661,33 +687,33 @@ HB.export Put.
 
 Section stateops.
 Variable S : UU0.
-Local Notation M := (ModelMonad.State.t S).
+Local Notation M := (ModelState.acto S).
 
 Definition get A (k : S -> M A) : M A := fun s => k s s.
-Lemma naturality_get : naturality (Get.F S \O M) M get.
+Lemma naturality_get : naturality (Get.F S \O [the functor of M]) [the functor of M] get.
 Proof.
 move=> A B h; rewrite boolp.funeqE => /= m /=.
 by rewrite boolp.funeqE => s; rewrite FCompE.
 Qed.
-Definition get_op : (Get.F S).-operation M :=
+Definition get_op : (Get.F S).-operation [the monad of M] :=
   Natural.Pack (Natural.Mixin naturality_get).
 Lemma algebraic_get : algebraicity get_op.
 Proof. by []. Qed.
-Definition get_aop : (Get.F S).-aoperation (ModelMonad.State.t S) :=
+Definition get_aop : (Get.F S).-aoperation [the monad of M] :=
   AOperation.Pack (AOperation.Class (AOperation.Mixin algebraic_get)).
 
 Definition put A (s : S) (m : M A) : M A := fun _ => m s.
 Lemma naturality_put :
-  naturality (Put.F S \O M) M (fun A => uncurry (put (A:=A))).
+  naturality (Put.F S \O [the functor of M]) [the functor of M] (fun A => uncurry (put (A:=A))).
 Proof.
 move=> A B h.
 by rewrite boolp.funeqE => /=; case => s m /=; rewrite boolp.funeqE.
 Qed.
-Definition put_op : (Put.F S).-operation M :=
+Definition put_op : (Put.F S).-operation [the monad of M] :=
   Natural.Pack (Natural.Mixin naturality_put).
 Lemma algebraic_put : algebraicity put_op.
 Proof. by move=> ? ? ? []. Qed.
-Definition put_aop : (Put.F S).-aoperation (ModelMonad.State.t S) :=
+Definition put_aop : (Put.F S).-aoperation [the monad of M] :=
   AOperation.Pack (AOperation.Class (AOperation.Mixin algebraic_put)).
 
 End stateops.
@@ -722,28 +748,28 @@ HB.export Acallcc.
 Section contops.
 Variable r : UU0.
 
-Local Notation M := (ModelMonad.Cont.t r).
+Local Notation M := (ModelCont.acto r).
 
 Definition abort (A : UU0) : r -> M A := fun r _ => r.
-Lemma naturality_abort : naturality (Abort.F r \O M) M abort.
+Lemma naturality_abort : naturality (Abort.F r \O [the monad of M]) [the monad of M] abort.
 Proof. by []. Qed.
-Definition abort_op : (Abort.F r).-operation M :=
+Definition abort_op : (Abort.F r).-operation [the monad of M] :=
   Natural.Pack (Natural.Mixin naturality_abort).
 Lemma algebraicity_abort : algebraicity abort_op.
 Proof. by []. Qed.
-Definition abort_aop : (Abort.F r).-aoperation (ModelMonad.Cont.t r) :=
+Definition abort_aop : (Abort.F r).-aoperation [the monad of M] :=
   AOperation.Pack (AOperation.Class (AOperation.Mixin algebraicity_abort)).
 
 (* alebgraic call/cc *)
 Definition acallcc A (f : (M A -> r) -> M A) : M A :=
   fun k => f (fun m => m k) k.
-Lemma naturality_acallcc : naturality (Acallcc.F r \O M) M acallcc.
+Lemma naturality_acallcc : naturality (Acallcc.F r \O [the functor of M]) [the functor of M] acallcc.
 Proof. by []. Qed.
-Definition acallcc_op : (Acallcc.F r).-operation M :=
+Definition acallcc_op : (Acallcc.F r).-operation [the monad of M] :=
   Natural.Pack (Natural.Mixin naturality_acallcc).
 Lemma algebraicity_callcc : algebraicity acallcc_op.
 Proof. by []. Qed.
-Definition callcc_aop : (Acallcc.F r).-aoperation (ModelMonad.Cont.t r) :=
+Definition callcc_aop : (Acallcc.F r).-aoperation [the monad of M] :=
   AOperation.Pack (AOperation.Class (AOperation.Mixin algebraicity_callcc)).
 
 End contops.
@@ -752,8 +778,8 @@ End ContOps.
 Module ModelFail.
 
 Section option.
-Definition option_fail : forall A, ModelMonad.option_monad A := fun A => @ExceptOps.throw unit A tt.
-Let bindfailf : BindLaws.left_zero (@Bind ModelMonad.option_monad) option_fail.
+Definition option_fail : forall A, option_monad A := fun A => @throw unit A tt.
+Let bindfailf : BindLaws.left_zero (@bind _) option_fail.
 Proof. by []. Qed.
 HB.instance Definition option_mixin := @isMonadFail.Build ModelMonad.option_monad
   option_fail bindfailf.

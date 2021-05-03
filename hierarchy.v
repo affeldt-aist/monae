@@ -28,9 +28,6 @@ From HB Require Import structures.
 (*                       components of a natural transformation               *)
 (*   naturality F G f == the components f form a natural transformation       *)
 (*                       F ~> G                                               *)
-(*                NId == identity natural transformation                      *)
-(*                 \v == vertical composition of natural transformations      *)
-(*                 \h == horizontal composition of natural transformations    *)
 (*    Module JoinLaws == join laws of a monad                                 *)
 (*              monad == type of monads, inherits from the type of functors   *)
 (*                Ret == natural transformation FId ~> M for a monad M        *)
@@ -136,13 +133,13 @@ HB.mixin Record isFunctor (M : UU0 -> UU0) := {
 HB.structure Definition Functor := {M of isFunctor M}.
 Notation functor := Functor.type.
 
-Definition acto (f : functor) : UU0 -> UU0 := Functor.sort f.
+(*Definition acto (f : functor) : UU0 -> UU0 := Functor.sort f.*)
 
 Notation "F # g" := (@actm F _ _ g) : monae_scope.
 Notation "'fmap' f" := (_ # f) : mprog.
 
 Section functorid.
-Definition id_f (A B : UU0) (f : A -> B) := f.
+Definition id_f (A B : UU0) (f : A -> B) : idfun A -> idfun B := f.
 Lemma id_id : FunctorLaws.id id_f. Proof. by []. Qed.
 Lemma id_comp : FunctorLaws.comp id_f. Proof. by []. Qed.
 End functorid.
@@ -223,7 +220,7 @@ Notation "f (o) g" := (fcomp f g) : mprog.
 Arguments fcomp : simpl never.
 
 Lemma functor_ext (F G : functor) :
-  forall (H : acto F = acto G),
+  forall (H : Functor.sort F = Functor.sort G),
   @actm G =
   eq_rect _ (fun m : UU0 -> UU0 => forall A B : UU0, (A -> B) -> m A -> m B) (@actm F) _ H  ->
   G = F.

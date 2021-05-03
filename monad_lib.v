@@ -12,7 +12,11 @@ Require Import hierarchy.
 (******************************************************************************)
 (*  Properties and examples of functors, natural transformations, and monads  *)
 (*                                                                            *)
-(*                    s \h g == horizontal composition                        *)
+(*                       NId == identity natural transformation               *)
+(*                        \v == vertical composition of natural               *)
+(*                              transformations                               *)
+(*                        \h == horizontal composition of natural             *)
+(*                              transformations                               *)
 (*                    F ## n == application of the functor F to the natural   *)
 (*                              transformation n                              *)
 (*                    F -| G == adjoint functors                              *)
@@ -111,8 +115,8 @@ Proof. by rewrite functor_o. Qed.
 
 Section id_natural_transformation.
 Variables C : functor.
-Definition natural_id : naturality _ _ (fun A => @id (C A)). Proof. by []. Qed.
-Definition NId : C ~> C := Natural.Pack (Natural.Mixin natural_id).
+Definition natural_id : naturality C C (fun A => @id (C A)). Proof. by []. Qed.
+Canonical NId : C ~> C := Natural.Pack (Natural.Mixin natural_id).
 End id_natural_transformation.
 
 Section vertical_composition.
@@ -170,7 +174,7 @@ Lemma functor_app_natural_hcomp (S F G : functor) (nt : F ~> G) :
 Proof. by apply nattrans_ext => a; rewrite functor_app_naturalE. Qed.
 
 Section natural_transformation_example.
-Definition fork' : [the functor of idfun] ~~> squaring := fun A (a : A) => (a, a).
+Definition fork' : FId ~~> squaring := fun A (a : A) => (a, a).
 Lemma fork_natural : naturality _ _ fork'. Proof. by []. Qed.
 Definition fork : idfun ~> squaring := Natural.Pack (Natural.Mixin fork_natural).
 End natural_transformation_example.
