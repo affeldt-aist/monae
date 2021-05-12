@@ -64,81 +64,81 @@ Definition start2 : M bool := Ret true.
 
 Definition step2 (cr : Z`2) (k : M bool) : M bool :=
   (do b' <- k ;
-   do uds <- Get;
+   do uds <- get;
    let (b, uds') := test cr uds in
-   Put uds' >> Ret (b && b'))%Do.
+   put uds' >> Ret (b && b'))%Do.
 
 Definition safe2 : seq Z`2 -> M bool :=
   foldr step2 start2.
 
 Lemma safe2E crs :
-  safe2 crs = Get >>= (fun uds => let (ok, uds') := safe1 uds crs in
-                               (Put uds' >> Ret ok)).
+  safe2 crs = get >>= (fun uds => let (ok, uds') := safe1 uds crs in
+                               (put uds' >> Ret ok)).
 Proof.
 (* TODO(rei): how to write this proof w.o. the "set" and "transitivity"'s? *)
 apply/esym; rewrite /safe2.
-set f := fun x => Get >>= (fun uds => let (ok, uds') := safe1 uds x in Put uds' >> Ret ok) : M _.
+set f := fun x => get >>= (fun uds => let (ok, uds') := safe1 uds x in put uds' >> Ret ok) : M _.
 rewrite -(@foldr_universal_ext _ _ _ _ f) //;
   [apply/esym|move=> cr {}crs; apply/esym].
   by rewrite /start2 /f /= -bindA getputskip bindskipf.
 (* definition of safe1 *)
 transitivity
-  (Get >>= (fun uds =>
-  let (ok, uds') := step1 cr (safe1  uds crs) in Put uds'>> Ret ok) : M _); last first.
+  (get >>= (fun uds =>
+  let (ok, uds') := step1 cr (safe1  uds crs) in put uds'>> Ret ok) : M _); last first.
   by [].
 (* introduce a let *)
 transitivity
-  (Get >>= (fun uds =>
+  (get >>= (fun uds =>
   let (b', uds'') := safe1 uds crs in
-  let (ok, uds') := step1 cr (b', uds'') in Put uds' >> Ret ok) : M _); last first.
+  let (ok, uds') := step1 cr (b', uds'') in put uds' >> Ret ok) : M _); last first.
   bind_ext => x.
   by case: safe1.
 (* definition of step1 *)
 transitivity
-  (Get >>= (fun uds =>
+  (get >>= (fun uds =>
   let (b', uds'') := safe1 uds crs in
   let (b, uds''') := test cr uds'' in
-  let (ok, uds') := (b && b', uds''') in Put uds' >> Ret ok) : M _); last first.
+  let (ok, uds') := (b && b', uds''') in put uds' >> Ret ok) : M _); last first.
   bind_ext => x.
   case: safe1 => // h t.
   rewrite /step1 /=.
   by case: test.
 transitivity
-  (Get >>= (fun uds =>
+  (get >>= (fun uds =>
   let (b', uds'') := safe1 uds crs in
   let (b, uds''') := test cr uds'' in
-  let (ok, uds') := (b && b', uds''') in (Put uds'' >> Put uds' >> Ret ok)) : M _); last first.
+  let (ok, uds') := (b && b', uds''') in (put uds'' >> put uds' >> Ret ok)) : M _); last first.
   bind_ext => x.
   case: safe1 => // h t.
   case: test => // a b.
   by rewrite putput.
 (* move two of the lets *)
 transitivity
-  (Get >>= (fun uds =>
+  (get >>= (fun uds =>
   let (b', uds'') := safe1 uds crs in
-  Put uds'' >>
+  put uds'' >>
   let (b, uds''') := test cr uds'' in
-  let (ok, uds') := (b && b', uds''') in Put uds' >> Ret ok) : M _); last first.
+  let (ok, uds') := (b && b', uds''') in put uds' >> Ret ok) : M _); last first.
   bind_ext => x.
   case: safe1 => // h t.
   case: test => // a b.
   by rewrite bindA.
 transitivity
-  (Get >>= (fun uds =>
+  (get >>= (fun uds =>
   let (b', uds'') := safe1 uds crs in
-  Put uds'' >>
-  (Get >>= (fun uds4  =>
+  put uds'' >>
+  (get >>= (fun uds4  =>
   let (b, uds''') := test cr uds4 in
-  let (ok, uds') := (b && b', uds''') in Put uds' >> Ret ok))) : M _); last first.
+  let (ok, uds') := (b && b', uds''') in put uds' >> Ret ok))) : M _); last first.
   bind_ext => x.
   case: safe1 => // h t.
   by rewrite -bindA putgetput.
 transitivity
   (do
-   b' <- (do uds <- Get ; let (ok, uds'') := safe1 uds crs in Put uds'' >> Ret ok) ;
-   (do uds'''' <- Get;
+   b' <- (do uds <- get ; let (ok, uds'') := safe1 uds crs in put uds'' >> Ret ok) ;
+   (do uds'''' <- get;
    let (b, uds''') := test cr uds'''' in
-   let (ok, uds') := (b && b', uds''') in Put uds' >> Ret ok) : M _)%Do; last first.
+   let (ok, uds') := (b && b', uds''') in put uds' >> Ret ok) : M _)%Do; last first.
   rewrite bindA; bind_ext => x.
   case: safe1 => // h t.
   by rewrite bindA; rewrite_ bindretf.
@@ -155,7 +155,7 @@ Section safe_reification.
 
 Variable M : stateReifyMonad (seq Z)`2.
 
-Lemma reify_safe2 crs updowns : Reify (safe2 crs : M _) updowns = Some (safe1 updowns crs).
+Lemma reify_safe2 crs updowns : reify (safe2 crs : M _) updowns = Some (safe1 updowns crs).
 Proof.
 rewrite safe2E reifybind reifyget; case: safe1 => a b.
 by rewrite reifybind reifyput reifyret.
@@ -170,11 +170,11 @@ Local Open Scope do_notation.
 Variable M : nondetStateMonad (seq Z)`2.
 
 Definition queens_state_nondeter n : M (seq Z) :=
-  do s <- Get ;
+  do s <- get ;
     do rs <- perms (map Z_of_nat (iota 0 n));
-      Put empty >>
+      put empty >>
         (do ok <- safe2 (place n rs) ;
-             (Put s >> guard ok)) >> Ret rs.
+             (put s >> guard ok)) >> Ret rs.
 
 Lemma queensE n : queens n = queens_state_nondeter n.
 Proof.
@@ -183,8 +183,8 @@ rewrite {1}/queens putpermsC; bind_ext => y.
 rewrite safe2E.
 set f := (do ok <- (do _ <- _; _); _ >> guard ok in RHS).
 rewrite (_ : f =
-  do uds <- Get; Put (safe1 uds (place n y)).2 >> Ret (safe1 uds (place n y)).1 >>
-      Put x >> guard (safe1 uds (place n y)).1); last first.
+  do uds <- get; put (safe1 uds (place n y)).2 >> Ret (safe1 uds (place n y)).1 >>
+      put x >> guard (safe1 uds (place n y)).1); last first.
   rewrite {}/f bindA; bind_ext => u.
   case: (safe1 _ _) => a b.
   rewrite 2!bindA bindretf bindA.
@@ -207,11 +207,11 @@ Local Open Scope do_notation.
 Variable M : nondetStateMonad (seq Z)`2.
 
 Definition queens_explor n : M _ :=
-  do s <- Get;
+  do s <- get;
     do rs <- perms (map Z_of_nat (iota 0 n));
-      Put empty >>
+      put empty >>
         (do ok <- safe2 (place n rs) ;
-             (guard ok >> Put s)) >> Ret rs.
+             (guard ok >> put s)) >> Ret rs.
 
 Lemma queens_explorE n : queens_explor n = queens_state_nondeter n.
 Proof.
@@ -232,9 +232,9 @@ Qed.
 Definition safe3 crs : M _ := safe2 crs >>= fun b => guard b.
 
 Definition queens_safe3 n : M _ :=
-  do s <- Get;
+  do s <- get;
     (do rs <- perms (map Z_of_nat (iota 0 n)) ;
-      Put empty >> safe3 (place n rs) >> Put s >> Ret rs).
+      put empty >> safe3 (place n rs) >> put s >> Ret rs).
 
 Lemma queens_safe3E n : queens_safe3 n = queens_explor n :> M _.
 Proof.
@@ -247,7 +247,7 @@ by rewrite_ bindA.
 Qed.
 
 Definition step3 B cr (m : M B) := m >>
-  do uds <- Get ; let (b, uds') := test cr uds in Put uds' >> guard b.
+  do uds <- get ; let (b, uds') := test cr uds in put uds' >> guard b.
 
 Lemma safe3E crs :
   safe3 crs = foldr (@step3 unit) skip crs :> M _.
@@ -260,31 +260,31 @@ transitivity (((fun x => x >>= (guard : _ -> M _)) \o
 apply foldr_fusion_ext => [|cr {crs}k].
   by rewrite /= /safe3 /= /start2 /= bindretf guardT.
 transitivity ((do b' <- k ;
-               do uds <- Get ;
+               do uds <- get ;
                let (b, uds') := test cr uds in
-               Put uds' >> Ret (b && b')) >>= guard).
+               put uds' >> Ret (b && b')) >>= guard).
   by rewrite /step2.
 transitivity (do b' <- k ;
-              do uds <- Get ;
+              do uds <- get ;
               let (b, uds') := test cr uds in
-              Put uds' >> guard (b && b')).
+              put uds' >> guard (b && b')).
   (* by "do-notation" *)
   rewrite bindA; bind_ext => x.
   rewrite bindA; bind_ext => y.
   case: (test cr y) => a b.
   by rewrite bindA bindretf.
 transitivity (do b' <- k ;
-              do uds <- Get ;
+              do uds <- get ;
               let (b, uds') := test cr uds in
-              Put uds' >> guard b >> guard b').
+              put uds' >> guard b >> guard b').
   bind_ext => x.
   bind_ext => y.
   case: (test cr y) => a b.
   by rewrite bindA guard_and.
 transitivity (do b' <- k ;
-              guard b' >> (do uds <- Get ;
+              guard b' >> (do uds <- get ;
                            let (b, uds') := test cr uds in
-                           Put uds' >> guard b)).
+                           put uds' >> guard b)).
   bind_ext => b'.
   rewrite guardsC; last exact: bindmfail.
   rewrite bindA.
@@ -295,9 +295,9 @@ transitivity (do b' <- k ;
   rewrite -guard_and andbC guard_and guardsC //.
   exact: bindmfail.
 transitivity ((k >>= guard) >>
-               do uds <- Get ;
+               do uds <- get ;
                  let (b, uds') := test cr uds in
-                 Put uds' >> guard b).
+                 put uds' >> guard b).
   by rewrite bindA.
 by [].
 Qed.
@@ -388,7 +388,7 @@ Variable M : nondetStateMonad (Z * seq Z * seq Z)%type.
 Definition opdot_queens : Z -> M (seq Z) -> M (seq Z) := opdot queens_next queens_ok.
 
 Lemma corollary45 s : assert (safeAcc_scanl 0 [::] [::]) s =
-  protect (Put (0%Z, [::], [::]) >> foldr opdot_queens (Ret [::]) s).
+  protect (put (0%Z, [::], [::]) >> foldr opdot_queens (Ret [::]) s).
 Proof.
 rewrite assert_all_scanl. (* NB: uses theorem 4.1 *)
 rewrite /protect; bind_ext => st.
@@ -401,14 +401,14 @@ Definition queensBody (xs : seq Z) : M (seq Z) :=
   perms xs >>= foldr opdot_queens (Ret [::]).
 
 Lemma mu_queens_state_nondeter n : mu_queens n =
-  protect (Put (0, [::], [::])%Z >> queensBody (map Z_of_nat (iota 0 n))).
+  protect (put (0, [::], [::])%Z >> queensBody (map Z_of_nat (iota 0 n))).
 Proof.
 rewrite mu_queensE.
 transitivity (perms (map Z.of_nat (iota 0 n)) >>= (fun xs =>
-    protect (Put (0, [::], [::])%Z >> foldr opdot_queens (Ret [::]) xs))).
+    protect (put (0, [::], [::])%Z >> foldr opdot_queens (Ret [::]) xs))).
   bind_ext => s /=.
   exact: corollary45.
-transitivity (protect (Put (0, [::], [::])%Z >>
+transitivity (protect (put (0, [::], [::])%Z >>
     perms (map Z.of_nat (iota 0 n)) >>= foldr opdot_queens (Ret [::]))).
   rewrite -getpermsC /protect; bind_ext => s.
   rewrite !bindA putpermsC.
@@ -471,9 +471,9 @@ transitivity (do x <- Ret (u, v) [~] (do y_ys <- select v; Ret (y_ys.1, u :: y_y
   op b (do x0 <- fmap (cons x.1) (unfoldM p select x.2); foldr op (Ret [::]) x0)); last first.
   apply/esym.
   rewrite {1}/op /opdot_queens /opdot fmap_bind.
-  transitivity (do st <- Get;
+  transitivity (do st <- get;
   (guard (queens_ok (queens_next st b)) >> do x <- Ret (u, v) [~] (do y_ys <- select v; Ret (y_ys.1, u :: y_ys.2));
-   (Put (queens_next st b)) >>
+   (put (queens_next st b)) >>
   ((cons b
     (o) (fun x : Z * seq Z => do x0 <- fmap (cons x.1) (unfoldM p select x.2); foldr op (Ret [::]) x0)) x))).
     bind_ext => st.
@@ -482,10 +482,10 @@ transitivity (do x <- Ret (u, v) [~] (do y_ys <- select v; Ret (y_ys.1, u :: y_y
     rewrite -commute_nondetState //.
     case: (@select_is_nondetState _ M _ v) => x /= <-.
     by exists (ndAlt (ndRet (u, v)) (ndBind x (fun y => ndRet (y.1, u :: y.2)))).
-  transitivity (do st <- Get;
+  transitivity (do st <- get;
   (do x <- Ret (u, v) [~] (do y_ys <- select v; Ret (y_ys.1, u :: y_ys.2)) : M _;
   guard (queens_ok (queens_next st b)) >>
-   Put (queens_next st b) >>
+   put (queens_next st b) >>
    (cons b
     (o) (fun x0 : Z * seq Z => do x1 <- fmap (cons x0.1) (unfoldM p select x0.2); foldr op (Ret [::]) x1))
      x)).
@@ -538,8 +538,8 @@ Local Open Scope mprog.
 (* last step of Section 5.2 *)
 Lemma queensBodyE' xs : queensBody M xs = if xs is [::] then Ret [::] else
   select xs >>= (fun xys =>
-  Get >>= (fun st => guard (queens_ok (queens_next st xys.1)) >>
-  Put (queens_next st xys.1) >> ((fmap (cons xys.1)) (queensBody M xys.2)))).
+  get >>= (fun st => guard (queens_ok (queens_next st xys.1)) >>
+  put (queens_next st xys.1) >> ((fmap (cons xys.1)) (queensBody M xys.2)))).
 Proof.
 case: xs => [|h t].
   rewrite queensBodyE // hyloME //; exact: decr_size_select.

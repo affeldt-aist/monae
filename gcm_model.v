@@ -7,6 +7,7 @@ From mathcomp Require Import finmap.
 From infotheo Require Import Reals_ext classical_sets_ext Rbigop ssrR ssr_ext.
 From infotheo Require Import fdist fsdist convex necset.
 Require Import monae_lib.
+From HB Require Import structures.
 Require category.
 
 (******************************************************************************)
@@ -386,18 +387,13 @@ Lemma free_semiCompSemiLattConvType_mor'_affine :
   affine free_semiCompSemiLattConvType_mor'.
 Proof.
 move=> p a0 a1; apply necset_ext => /=; rewrite predeqE => b0; split.
-- case=> a.
-  rewrite necset_convType.convE => -[a0' [a1' [H0 [H1 ->{a}]]]] <-{b0}.
-  rewrite necset_convType.convE; exists (f a0'); exists (f a1'); split.
-    by rewrite in_setE /=; exists a0' => //; rewrite -in_setE.
-  split; last by case: f => f' /= Hf; rewrite Hf.
-  by rewrite in_setE /=; exists a1' => //; rewrite -in_setE.
-- rewrite necset_convType.convE => -[b0' [b1']].
-  rewrite !in_setE /= => -[[a0' H0] <-{b0'}] -[[a1' h1] <-{b1'}] ->{b0}.
-  exists (a0' <|p|> a1').
-  rewrite necset_convType.convE; exists a0', a1'; split; first by rewrite in_setE.
-  by split => //; rewrite in_setE.
-  by case: f => f' /= Hf; rewrite Hf.
+- rewrite !necset_convType.convE.
+  case=> a [] a0' a0a0'; rewrite conv_pt_setE=> -[] a1' a1a1' <- <- /=.
+  by case: f=> f' /= ->; apply conv_in_conv_set; apply imageP.
+
+- rewrite !necset_convType.convE /= => /conv_in_conv_set' [] x [] y [] [] a0' a0a0' <- [] [] a1' a1a1' <- ->.
+  rewrite affine_image_conv_set /=.
+  by apply conv_in_conv_set; apply imageP.
 Qed.
 
 Lemma bigsetU_affine (X : neset (necset A)) :
@@ -505,14 +501,9 @@ Qed.
 
 Lemma eps1''_affine L : affine (@eps1'' L).
 Proof.
-move=> X Y p; rewrite -biglub_conv_setD.
+move=> p X Y; rewrite -biglub_conv_setD.
 congr (|_| _%:ne); apply/neset_ext => /=.
-rewrite conv_setE necset_convType.convE eqEsubset; split=> u.
-- case=> x [] y [] xX [] yY ->.
-  exists x; first by rewrite -in_setE.
-  by rewrite conv_pt_setE; exists y; first by rewrite -in_setE.
-- case=> x Xx; rewrite conv_pt_setE => -[] y Yy <-.
-  by exists x, y; rewrite !in_setE.
+by rewrite necset_convType.convE.
 Qed.
 
 Let eps1' : F1 \O U1 ~~> FId :=
@@ -536,9 +527,9 @@ Lemma necset1_affine (C : convType) : affine (@necset1 C).
 Proof.
 move=> p a b /=; apply/necset_ext; rewrite eqEsubset; split=> x /=.
 - move->; rewrite necset_convType.convE.
-  by exists a, b; rewrite !asboolE.
-- rewrite necset_convType.convE => -[] a0 [] b0.
-  by rewrite !asboolE /necset1 /= => -[] -> [] -> ->.
+  by apply conv_in_conv_set.
+- rewrite necset_convType.convE /necset1 /=.
+  by case/conv_in_conv_set'=> a0 [] b0 [] -> [] -> ->.
 Qed.
 
 Let eta1' : FId ~~> U1 \O F1 :=
@@ -641,7 +632,7 @@ Definition A1 := AdjointFunctors.mk triL1 triR1.
 Definition Aprob := adj_comp AC A0.
 Definition Agcm := adj_comp Aprob A1.
 Definition Mgcm := Monad_of_adjoint Agcm.
-Definition gcm := Monad_of_category_monad Mgcm.
+Definition gcm := Monad_of_category_monad.m Mgcm.
 
 Section gcm_opsE.
 Import hierarchy.
@@ -649,7 +640,7 @@ Import hierarchy.
 Lemma gcm_retE (T : Type) (x : choice_of_Type T) :
   Ret x = necset1 (FSDist1.d x) :> gcm T.
 Proof.
-rewrite /= /Monad_of_category_monad.ret /= /Hom.apply /=.
+rewrite /= /ret_ /Monad_of_category_monad.ret /= /Hom.apply /=.
 rewrite !HCompId !HIdComp /=.
 rewrite /id_f /= /etaC.
 unlock => /=.
@@ -675,10 +666,11 @@ Local Notation U1 := forget_semiCompSemiLattConvType.
 Variable T : Type.
 Variable X : gcm (gcm T).
 Lemma gcm_joinE : Join X = necset_join X.
+Proof.
 Import category.
 Local Open Scope convex_scope.
 apply/necset_ext.
-rewrite /= /Monad_of_category_monad.join /= !HCompId !HIdComp eps1E.
+rewrite /= /join_ /= /Monad_of_category_monad.join /= !HCompId !HIdComp eps1E.
 rewrite functor_o NEqE functor_id compfid.
 rewrite 2!VCompE_nat HCompId HIdComp.
 set E := epsC _; have->: E = (homid0 _) by apply/hom_ext; rewrite epsCE.
@@ -700,9 +692,9 @@ Require proba_monad_model.
 Section probMonad_out_of_F0U0.
 Import category.
 (* probability monad built directly *)
-Definition M := proba_monad_model.MonadProbModel.prob.
+Definition M := proba_monad_model.MonadProbModel.t.
 (* probability monad built using adjunctions *)
-Definition N := Monad_of_category_monad (Monad_of_adjoint Aprob).
+Definition N := Monad_of_category_monad.m (Monad_of_adjoint Aprob).
 
 Lemma actmE T : N T = M T.
 Proof. by []. Qed.
@@ -713,8 +705,10 @@ Lemma JoinE T :
   (Join : (N \O N) T -> N T) = (Join : (M \O M) T -> M T).
 Proof.
 apply funext => t /=.
-rewrite Monad_of_category_monad.joinE.
-rewrite [in LHS]/= HCompId HIdComp [X in _ (X t)]/= epsCE.
+rewrite /join_.
+rewrite [in LHS]/= HCompId HIdComp [X in _ (X t)]/=.
+rewrite /Actm [in LHS]/=.
+rewrite epsCE.
 (* TODO: rewrite with FSDistfmap_id *)
 rewrite eps0_correct.
 rewrite /FSDistjoin /FSDistfmap /= FSDistBindA /=.
@@ -725,7 +719,8 @@ Qed.
 Lemma RetE T : (Ret : FId T -> N T) = (Ret : FId T -> M T).
 Proof.
 apply funext => t /=.
-rewrite /Monad_of_category_monad.ret /=.
+rewrite /ret_.
+rewrite [in LHS]/=.
 by rewrite HCompId HIdComp [X in _ (X t)]/= eta0E etaCE.
 Qed.
 End probMonad_out_of_F0U0.

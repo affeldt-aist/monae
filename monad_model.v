@@ -1163,9 +1163,9 @@ HB.export ModelStateLoop.
 Module ModelReify.
 Section modelreify.
 Variables S T : UU0.
-Let SseqT := (S * seq T)%type.
-Let M := (StateMonad.acto SseqT).
-Let reify : forall A, M A -> S * seq T -> option (A * _) := (fun A m (s : S * seq T) => Some (m s)).
+Definition state_trace := (S * seq T)%type.
+Let M := (StateMonad.acto state_trace).
+Let reify : forall A, M A -> state_trace -> option (A * state_trace) := (fun A m s => Some (m s)).
 Let reifyret : forall (A : UU0) (a : A) s, @reify _ (Ret a) s = Some (a, s).
 Proof. by []. Qed.
 Let reifybind : forall (A B : UU0) (m : M A) (f : A -> M B) s,
@@ -1180,8 +1180,7 @@ rewrite /hierarchy.actm /=.
 rewrite /map.
 by destruct (m0 s) => //=.
 Qed.
-HB.instance Definition xxx := isMonadReify.Build SseqT M reifyret reifybind.
-Definition t := MonadReify.Pack (MonadReify.Class xxx).
+HB.instance Definition _ := isMonadReify.Build state_trace (StateMonad.acto state_trace) reifyret reifybind.
 End modelreify.
 End ModelReify.
 HB.export ModelReify.
@@ -1190,14 +1189,13 @@ Module ModelStateTraceReify.
 Section modelstatetracereify.
 Variables S T : UU0.
 Let acto := (StateMonad.acto (S * seq T)).
-Let reifystget :  forall s l, @reify _ (ModelReify.t S T) _ (@st_get _ _ [the stateTraceMonad S T of acto]) (s, l) = Some (s, (s, l)).
+Let reifystget :  forall s l, @reify _ _ _ (@st_get _ _ [the stateTraceMonad S T of acto]) (s, l) = Some (s, (s, l)).
 Proof. by []. Qed.
-Let reifystput : forall s l s', @reify _ (ModelReify.t S T) _ (@st_put _ _ [the stateTraceMonad S T of acto] s') (s, l) = Some (tt, (s', l)).
+Let reifystput : forall s l s', @reify _ _ _ (@st_put _ _ [the stateTraceMonad S T of acto] s') (s, l) = Some (tt, (s', l)).
 Proof. by []. Qed.
-Let reifystmark : forall t s l, @reify _ (ModelReify.t S T) _ (@st_mark _ _ [the stateTraceMonad S T of acto] t) (s, l) = Some (tt, (s, rcons l t)).
+Let reifystmark : forall t s l, @reify _ _ _ (@st_mark _ _ [the stateTraceMonad S T of acto] t) (s, l) = Some (tt, (s, rcons l t)).
 Proof. by []. Qed.
-Fail HB.instance Definition _ := isMonadStateTraceReify.Build S T acto reifystget reifystput reifystmark.
-(* TODO: urgent *)
+HB.instance Definition _ := isMonadStateTraceReify.Build S T (StateMonad.acto (S * seq T)) reifystget reifystput reifystmark.
 End modelstatetracereify.
 End ModelStateTraceReify.
 
@@ -1500,7 +1498,7 @@ Variable S : choiceType.
 End nondetstate.
 
 End ModelBacktrackableState.
-
+(* TODO
 (* result of a discussion with Maxime and Enrico on 2019-09-12 *)
 Section eq_rect_ret.
 Variable X : UU0.
@@ -1580,13 +1578,15 @@ rewrite /eq_rect (_ : K = erefl) //; exact/proof_irr.
 Qed.
 
 End eq_rect_bind.
+*)
 
+(* TODO
 Section instantiations_with_the_identity_monad.
 
 Lemma stateT_id_ModelState S :
-  stateT S ModelMonad.identity = ModelMonad.State.t S.
+  stateT S [the monad of idfun] = [the monad of StateMonad.acto S].
 Proof.
-rewrite /= /stateTmonadM /ModelMonad.State.t.
+rewrite /= /stateTmonadM /=.
 have FG : MS_functor S ModelMonad.identity = ModelMonad.State.functor S.
   apply: functor_ext => /=; apply fun_ext_dep => A; apply fun_ext_dep => B.
   rewrite boolp.funeqE => f; rewrite boolp.funeqE => m; rewrite boolp.funeqE => s.
@@ -1647,7 +1647,9 @@ by cbv.
 Abort.
 
 End monad_transformer_calcul.
+*)
 
+(*
 Section examples_of_algebraic_lifting.
 
 Section state_exceptT.
@@ -1761,3 +1763,4 @@ Next Obligation. by []. Defined.
 
 End modelmonadexceptstaterun.
 End ModelMonadExceptStateRun.
+*)

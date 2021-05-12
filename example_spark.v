@@ -140,7 +140,7 @@ Variables (A B : Type) (b : B) (mul : B -> A -> B) (add : B -> B -> B).
 
 (* TODO(rei): integrate this into a (new?) monad *)
 Hypothesis idempotent_converse :
-  forall C m1 m2 x, m1 [~] m2 = Ret x :> M C -> m1 = @RET M _ x /\ m2 = @RET M _ x.
+  forall C m1 m2 x, m1 [~] m2 = Ret x :> M C -> m1 = ret _ x /\ m2 = ret _ x.
 Hypothesis injective_return : forall C x1 x2,
   Ret x1 = Ret x2 :> M C -> x1 = x2.
 
@@ -186,7 +186,7 @@ Variable M : nondetMonad.
 Variables (A B : Type) (b : B) (mul : B -> A -> B) (add : B -> B -> B).
 
 Hypothesis idempotent_converse :
-  forall C m1 m2 x, m1 [~] m2 = Ret x :> M C -> m1 = @RET M _ x /\ m2 = @RET M _ x.
+  forall C m1 m2 x, m1 [~] m2 = Ret x :> M C -> m1 = ret _ x /\ m2 = ret _ x.
 Hypothesis injective_return : forall C x1 x2,
   Ret x1 = Ret x2 :> M C -> x1 = x2.
 
@@ -198,7 +198,7 @@ move=> zzs H.
 transitivity (foldl mul b (flatten [:: zs])).
   by rewrite /= cats0.
 transitivity (foldl add b (map (foldl mul b) [:: zs])).
-  have Hm : perm [:: zs] = Ret [:: zs] [~] (@Fail M _).
+  have Hm : perm [:: zs] = Ret [:: zs] [~] (@fail M _).
     by rewrite /= bindretf insertE altmfail.
   by rewrite (lemma45a idempotent_converse injective_return H).
 by rewrite /= -zzs.
@@ -226,7 +226,7 @@ Variable M : nondetCIMonad.
 Variables (A B : Type) (b : B) (mul : B -> A -> B) (add : B -> B -> B).
 
 Hypothesis idempotent_converse :
-  forall C m1 m2 x, m1 [~] m2 = Ret x :> M C -> m1 = @RET M _ x /\ m2 = @RET M _ x.
+  forall C m1 m2 x, m1 [~] m2 = Ret x :> M C -> m1 = ret _ x /\ m2 = ret _ x.
 Hypothesis injective_return : forall C x1 x2,
   Ret x1 = Ret x2 :> M C -> x1 = x2.
 
@@ -267,7 +267,7 @@ Variable M : nondetCIMonad.
 Variables (A B : Type) (b : B) (mul : B -> A -> B) (add : B -> B -> B).
 
 Hypothesis idempotent_converse :
-  forall C m1 m2 x, m1 [~] m2 = Ret x :> M C -> m1 = @RET M _ x /\ m2 = @RET M _ x.
+  forall C m1 m2 x, m1 [~] m2 = Ret x :> M C -> m1 = ret _ x /\ m2 = ret _ x.
 Hypothesis injective_return : forall C x1 x2,
   Ret x1 = Ret x2 :> M C -> x1 = x2.
 

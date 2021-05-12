@@ -1140,37 +1140,37 @@ rewrite {1}/f.
 have -> : hom_Type (g \o h) = [hom hom_Type g \o hom_Type h] by apply hom_ext.
 by rewrite category.functor_o.
 Qed.
-HB.instance Definition m'_ := hierarchy.isFunctor.Build _ fid fcomp.
-Definition m' := hierarchy.Functor.Pack (hierarchy.Functor.Class m'_).
+HB.instance Definition _ := hierarchy.isFunctor.Build m'' fid fcomp.
+(*Definition m' := hierarchy.Functor.Pack (hierarchy.Functor.Class m'_).*)
 
 (*Import hierarchy.Functor.Exports.*)
 
-Definition ret (A : Type) (x : A) : m' A := (@Monad.Exports.Ret _ M A x).
-Definition join (A : Type) (x : m' (m' A)) := (@Monad.Exports.Join _ M A x).
+Definition ret_ (A : Type) (x : A) : m'' A := (@Monad.Exports.Ret _ M A x).
+Definition join_ (A : Type) (x : m'' (m'' A)) := (@Monad.Exports.Join _ M A x).
 
 (*Lemma joinE A (x : m' (m' A)) : join x = @Join _ M A x.
 Proof. by []. Qed.*)
 
-Lemma ret_nat : hierarchy.naturality hierarchy.FId m' ret.
+Lemma ret_nat : hierarchy.naturality hierarchy.FId [the functor of m''] ret_.
 Proof. move=> ? ? ?; exact: (ret_naturality M). Qed.
-Definition _ret_nat : hierarchy.Natural.type hierarchy.FId m' :=
+Definition ret : hierarchy.Natural.type hierarchy.FId [the functor of m''] :=
   hierarchy.Natural.Pack (hierarchy.Natural.Mixin ret_nat).
-Lemma join_nat : hierarchy.naturality (hierarchy.FComp m' m') m' join.
+Lemma join_nat : hierarchy.naturality (hierarchy.FComp [the functor of m''] [the functor of m'']) [the functor of m''] join_.
 Proof.
 move=> A B h; apply funext=> x; rewrite /ret /actm /= /f.
 rewrite -[in LHS]compE join_naturality.
 rewrite compE category.FCompE.
-suff -> : (M # (M # hom_Type h)) x = (M # hom_Type (@actm m' _ _ h)) x
+suff -> : (M # (M # hom_Type h)) x = (M # hom_Type (@actm [the functor of m''] _ _ h)) x
   by [].
 congr ((M # _ ) _).
 by apply/hom_ext/funext.
 Qed.
-Definition _join_nat := hierarchy.Natural.Pack (hierarchy.Natural.Mixin join_nat).
-Lemma joinretM : hierarchy.JoinLaws.left_unit _ret_nat _join_nat.
+Definition join := hierarchy.Natural.Pack (hierarchy.Natural.Mixin join_nat).
+Lemma joinretM : hierarchy.JoinLaws.left_unit ret join.
 Proof.
 by move=> A; apply funext=> x; rewrite /join /ret /= -[in LHS]compE category.joinretM.
 Qed.
-Lemma joinMret (A : Type) : @join _ \o (@actm m' _ _ (@ret _)) = id :> (m' A -> m' A).
+Lemma joinMret (A : Type) : @join A \o (@actm [the functor of m''] _ _ (@ret _)) = id :> (m'' A ->  m'' A).
 Proof.
 apply funext=> x; rewrite /join /ret /actm /=.
 set i := f _.
@@ -1184,23 +1184,40 @@ suff -> : @hom_Type A (M A) [eta (@Monad.Exports.Ret CT M A)] = Monad.Exports.Re
 by apply hom_ext.
 Qed.
 Lemma joinA (A : Type) :
-  @join _ \o @actm m' _ _ (@join _) = @join _ \o @join _ :> (m' (m' (m' A)) -> m' A).
+  @join A \o @actm _ _ _ (@join A) = @join _ \o @join _.
 Proof.
 apply funext=> x; rewrite /join /ret /Actm /=.
 rewrite -[in RHS]compE -category.joinA compE.
 congr (_ _).
-Locate "#".
 rewrite /actm [in LHS]/=.
 rewrite /f.
 suff -> : (@hom_Type (M (M A)) (M A)
                     [eta (@Monad.Exports.Join CT M A)]) = Monad.Exports.Join by [].
 by apply hom_ext.
 Qed.
-HB.instance Definition _mixin := hierarchy.isMonad.Build _ joinretM joinMret joinA.
-Definition m : hierarchy.Monad.type := hierarchy.Monad.Pack (hierarchy.Monad.Class _mixin).
+
+Let bind (A B : UU0) (m : m'' A) (f : A -> m'' B) : m'' B := @join _ ((@actm _ _ _ f) m).
+
+Lemma fmapE : forall (A B : UU0) (f : A -> B) (m : m'' A),
+  (@hierarchy.actm [the functor of m''] _ _ f) m = bind m (@ret _ \o f).
+Proof.
+move=> A B f m.
+rewrite /hierarchy.actm /=.
+rewrite /bind.
+rewrite -[in RHS]compE.
+rewrite functor_o.
+rewrite compA.
+rewrite joinMret.
+rewrite compidf.
+done.
+Qed.
+
+Lemma bindE : forall (A B : UU0) (f : A -> m'' B) (m : m'' A),
+    bind m f = @join _ ((@hierarchy.actm [the functor of m''] _ _ f) m).
+Proof. by []. Qed.
+
+HB.instance Definition mixin := @hierarchy.isMonad.Build m'' ret join bind fmapE bindE joinretM joinMret joinA.
+Definition m : hierarchy.Monad.type := hierarchy.Monad.Pack (hierarchy.Monad.Class mixin).
 End def.
-Module Exports.
-Notation Monad_of_category_monad := m.
-End Exports.
 End Monad_of_category_monad.
-Export Monad_of_category_monad.Exports.
+HB.export Monad_of_category_monad.

@@ -7,6 +7,7 @@ From mathcomp Require Import finmap.
 From infotheo Require Import Reals_ext Rbigop ssrR fdist fsdist convex.
 From infotheo Require Import necset.
 Require category.
+From HB Require Import structures.
 Require Import monae_lib hierarchy monad_lib proba_lib monad_model gcm_model.
 
 (******************************************************************************)
@@ -34,13 +35,13 @@ Local Open Scope monae_scope.
 Definition alt A (x y : gcm A) : gcm A := x [+] y.
 Definition choice p A (x y : gcm A) : gcm A := x <| p |> y.
 
-Lemma altA A : associative (@alt A).
+Lemma altA A : ssrfun.associative (@alt A).
 Proof. by move=> x y z; rewrite /alt lubA. Qed.
 
 Lemma image_FSDistfmap A B (x : gcm A) (k : choice_of_Type A -> gcm B) :
   FSDistfmap k @` x = (gcm # k) x.
 Proof.
-rewrite /Actm /= /category.Monad_of_category_monad.f /= /category.id_f /=.
+rewrite /hierarchy.actm /= /category.Monad_of_category_monad.f /= /category.id_f /=.
 by rewrite/free_semiCompSemiLattConvType_mor /=; unlock.
 Qed.
 
@@ -56,7 +57,7 @@ Local Notation U1 := forget_semiCompSemiLattConvType.
 Lemma FunaltDr (A B : Type) (x y : gcm A) (k : A -> gcm B) :
   (gcm # k) (x [+] y) = (gcm # k) x [+] (gcm # k) y.
 Proof.
-rewrite /hierarchy.Functor.Exports.Actm /=.
+rewrite /hierarchy.actm /=.
 rewrite /Monad_of_category_monad.f /=.
 case: (free_semiCompSemiLattConvType_mor
         (free_convType_mor (free_choiceType_mor (hom_Type k))))=> f /= [] Haf Hbf.
@@ -69,7 +70,7 @@ Qed.
 Lemma FunpchoiceDr (A B : Type) (x y : gcm A) (k : A -> gcm B) p :
   (gcm # k) (x <|p|> y) = (gcm # k) x <|p|> (gcm # k) y.
 Proof.
-rewrite /hierarchy.Functor.Exports.Actm /=.
+rewrite /hierarchy.actm /=.
 rewrite /Monad_of_category_monad.f /=.
 case: (free_semiCompSemiLattConvType_mor
         (free_convType_mor (free_choiceType_mor (hom_Type k))))=> f /= [] Haf Hbf.
@@ -114,15 +115,15 @@ Local Notation F0o := FSDist_convType.
 Local Notation FCo := choice_of_Type.
 Local Notation F1m := free_semiCompSemiLattConvType_mor.
 Local Notation F0m := free_convType_mor.
-Lemma bindaltDl : BindLaws.left_distributive (@hierarchy.Bind gcm) alt.
+Lemma bindaltDl : BindLaws.left_distributive (@hierarchy.bind gcm) alt.
 Proof.
 move=> A B x y k.
 rewrite !hierarchy.bindE /alt FunaltDr.
 suff -> : forall T (u v : gcm (gcm T)),
   hierarchy.Join (u [+] v : gcm (gcm T)) = hierarchy.Join u [+] hierarchy.Join v by [].
 move=> T u v.
-rewrite /= /Monad_of_category_monad.join /=.
-rewrite HCompId HIdComp /AdjComp.Eps. 
+rewrite /= /join_ /=.
+rewrite HCompId HIdComp /AdjComp.Eps.
 do 3 rewrite VCompE_nat homfunK functor_o !compE.
 rewrite !functor_id HCompId HIdComp.
 rewrite (_ : epsC (U0 (U1 (F1o (F0o (FCo T))))) = [NEq _, _] _) ?hom_ext ?epsCE //.
@@ -131,14 +132,15 @@ by rewrite affine_F1e0U1PD_alt affine_e1PD_alt.
 Qed.
 End bindaltDl.
 
-Definition P_delta_monadAltMixin : MonadAlt.mixin_of gcm :=
-  MonadAlt.Mixin altA bindaltDl.
+HB.instance Definition P_delta_monadAltMixin := @isMonadAlt.Build gcm alt altA bindaltDl.
 Definition gcmA : altMonad := MonadAlt.Pack (MonadAlt.Class P_delta_monadAltMixin).
 
-Lemma altxx A : idempotent (@Alt gcmA A).
-Proof. by move=> x; rewrite /Alt /= /alt lubxx. Qed.
-Lemma altC A : commutative (@Alt gcmA A).
-Proof. by move=> a b; rewrite /Alt /= /alt /= lubC. Qed.
+Lemma altxx A : idempotent (@alt A).
+Proof. by move=> x; rewrite /= /alt lubxx. Qed.
+Lemma altC A : commutative (@alt A).
+Proof. by move=> a b; rewrite /= /alt /= lubC. Qed.
+
+HB.instance Definition P_delta_monadAltCIMixin := @isMonadAltCI.Build gcm alt altxx altC.
 
 Definition P_delta_monadAltCIMixin : MonadAltCI.class_of gcmA :=
   MonadAltCI.Class (MonadAltCI.Mixin altxx altC).
@@ -208,7 +210,7 @@ rewrite !hierarchy.bindE /choice FunpchoiceDr.
 suff -> : forall T (u v : gcm (gcm T)), hierarchy.Join (u <|p|> v : gcm (gcm T)) = hierarchy.Join u <|p|> hierarchy.Join v by [].
 move=> T u v.
 rewrite /= /Monad_of_category_monad.join /=.
-rewrite HCompId HIdComp /AdjComp.Eps. 
+rewrite HCompId HIdComp /AdjComp.Eps.
 do 3 rewrite VCompE_nat homfunK functor_o !compE.
 rewrite !functor_id HCompId HIdComp.
 rewrite (_ : epsC (U0 (U1 (F1o (F0o (FCo T))))) = [NEq _, _] _) ?hom_ext ?epsCE //.

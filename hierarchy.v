@@ -892,11 +892,11 @@ Notation nondetStateMonad := MonadNondetState.type.
 HB.mixin Record isMonadStateRun (S : UU0) (N : monad)
    (M : UU0 -> UU0) of MonadState S M := {
   runStateT : forall A : UU0, M A -> S -> N (A * S)%type ;
-  RunStateTRet : forall (A : UU0) (a : A) (s : S), @runStateT _ (Ret a) s = Ret (a, s) ;
-  RunStateTBind : forall (A B : UU0) (m : M A) (f : A -> M B) (s : S),
+  runStateTret : forall (A : UU0) (a : A) (s : S), @runStateT _ (Ret a) s = Ret (a, s) ;
+  runStateTbind : forall (A B : UU0) (m : M A) (f : A -> M B) (s : S),
     @runStateT _ (m >>= f) s = @runStateT _ m s >>= fun x => @runStateT _ (f x.1) x.2 ;
-  RunStateTget : forall s : S, @runStateT _ get s = Ret (s, s) ;
-  RunStateTput : forall s' s : S, @runStateT _ (put s') s = Ret (tt, s') }.
+  runStateTget : forall s : S, @runStateT _ get s = Ret (s, s) ;
+  runStateTput : forall s' s : S, @runStateT _ (put s') s = Ret (tt, s') }.
 
 HB.structure Definition MonadStateRun (S : UU0) (N : monad) :=
   {M of isMonadStateRun S N M & }.
@@ -1048,7 +1048,7 @@ Notation stateTraceMonad := MonadStateTrace.type.
 HB.mixin Record isMonadStateTraceReify (S T : UU0) (M : UU0 -> UU0) of MonadReify (S * seq T)%type M & MonadStateTrace S T M := {
   reifystget : forall s l, reify (@st_get _ _ [the stateTraceMonad S T of M]) (s, l) = Some (s, (s, l)) ;
   reifystput : forall s l s', reify (@st_put _ _ [the stateTraceMonad S T of M] s') (s, l) = Some (tt, (s', l)) ;
-  reifystmark_ : forall t s l, reify (@st_mark _ _ [the stateTraceMonad S T of M] t) (s, l) = Some (tt, (s, rcons l t))
+  reifystmark : forall t s l, reify (@st_mark _ _ [the stateTraceMonad S T of M] t) (s, l) = Some (tt, (s, rcons l t))
 }.
 HB.structure Definition MonadStateTraceReify (S T : UU0) := {M of isMonadStateTraceReify S T M}.
 Notation stateTraceReifyMonad := MonadStateTraceReify.type.
