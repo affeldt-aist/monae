@@ -805,7 +805,7 @@ HB.export Fail.
 
 Module Except.
 Section except.
-Definition M : failMonad := [the failMonad of ExceptMonad.acto unit].
+Let M : failMonad := [the failMonad of ExceptMonad.acto unit].
 Definition handle : forall A, M A -> M A -> M A :=
   fun A m1 m2 => @handle_op unit _ (m1, (fun _ => m2)).
 Lemma handleE : handle = (fun A m m' => if m is inr x then m else m').
@@ -1144,58 +1144,61 @@ End shiftreset_examples.
 Module ModelStateLoop.
 Section modelstateloop.
 Variable S : UU0.
-Local Notation M := (@ModelMonad.State.t S).
+Local Notation M := (StateMonad.acto S).
 Fixpoint mforeach (it min : nat) (body : nat -> M unit) : M unit :=
   if it <= min then Ret tt
   else if it is it'.+1 then
       (body it') >>= (fun _ => mforeach it' min body)
       else Ret tt.
-Program Definition mk : loopStateMonad S :=
-let m := @ModelState.state S in
-let slm := @MonadStateLoop.Class S _ (MonadState.class m)
-  (@MonadStateLoop.Mixin _ m mforeach _ _ ) in
-MonadStateLoop.Pack slm.
-Next Obligation. by case: m => //= n; rewrite ltnS leqnn. Qed.
-Next Obligation. by case: ifPn => //; rewrite ltnNge leq_addr. Qed.
+Let loop0 m body : mforeach m m body = Ret tt.
+Proof. by case: m => //= n; rewrite ltnS leqnn. Qed.
+Let loop1 m n body : mforeach (m.+1 + n) m body =
+     (body (m + n)) >> mforeach (m + n) m body :> M unit.
+Proof. by rewrite /mforeach /=; case: ifPn => //; rewrite ltnNge leq_addr. Qed.
+HB.instance Definition _ := isMonadStateLoop.Build S M loop0 loop1.
 End modelstateloop.
 End ModelStateLoop.
+HB.export ModelStateLoop.
 
 Module ModelReify.
-
-Definition mk {S T : UU0} : reifyMonad (S * seq T)%type.
-set m := @ModelMonad.State.t (S * seq T)%type.
-refine (@MonadReify.Pack _ _ (@MonadReify.Class _ _ (Monad.class m)
-  (@MonadReify.Mixin _ m
-  (fun A m (s : S * seq T) => Some (m s)) (* reify *) _ _))).
-by [].
+Section modelreify.
+Variables S T : UU0.
+Let SseqT := (S * seq T)%type.
+Let M := (StateMonad.acto SseqT).
+Let reify : forall A, M A -> S * seq T -> option (A * _) := (fun A m (s : S * seq T) => Some (m s)).
+Let reifyret : forall (A : UU0) (a : A) s, @reify _ (Ret a) s = Some (a, s).
+Proof. by []. Qed.
+Let reifybind : forall (A B : UU0) (m : M A) (f : A -> M B) s,
+      @reify _ (m >>= f) s = match @reify _ m s with | Some a's' => @reify _ (f a's'.1) a's'.2 | None => None end.
+Proof.
 move=> A B m0 f s.
 rewrite !bindE /=.
-rewrite /ModelMonad.State.bind /=.
-rewrite /Actm /=.
-rewrite /Monad_of_ret_bind.Map /=.
-rewrite /ModelMonad.State.bind /=.
-rewrite /ModelMonad.State.ret /=.
-by destruct (m0 s).
-Defined.
-
+rewrite /join_of_bind /=.
+rewrite /StateMonad.bind /=.
+rewrite /uncurry /= /prod_curry /= /Datatypes.uncurry /= /comp /= /reify /=.
+rewrite /hierarchy.actm /=.
+rewrite /map.
+by destruct (m0 s) => //=.
+Qed.
+HB.instance Definition xxx := isMonadReify.Build SseqT M reifyret reifybind.
+Definition t := MonadReify.Pack (MonadReify.Class xxx).
+End modelreify.
 End ModelReify.
+HB.export ModelReify.
 
 Module ModelStateTraceReify.
-
-Definition mk {S T} :
-  stateTraceReifyMonad S T.
-refine (let stm := @ModelStateTrace.mk S T in
-        let reify := @ModelReify.mk S T in
-@MonadStateTraceReify.Pack S T (fun A => S * seq T -> A * (S * seq T))
-  (@MonadStateTraceReify.Class S T (fun A => S * seq T -> A * (S * seq T))
-    (MonadStateTrace.class stm)
-    (MonadReify.mixin (MonadReify.class reify))
-    (@MonadStateTraceReify.Mixin _ _ reify _ _ _ _ _ _))).
-by [].
-by [].
-by [].
-Defined.
-
+Section modelstatetracereify.
+Variables S T : UU0.
+Let acto := (StateMonad.acto (S * seq T)).
+Let reifystget :  forall s l, @reify _ (ModelReify.t S T) _ (@st_get _ _ [the stateTraceMonad S T of acto]) (s, l) = Some (s, (s, l)).
+Proof. by []. Qed.
+Let reifystput : forall s l s', @reify _ (ModelReify.t S T) _ (@st_put _ _ [the stateTraceMonad S T of acto] s') (s, l) = Some (tt, (s', l)).
+Proof. by []. Qed.
+Let reifystmark : forall t s l, @reify _ (ModelReify.t S T) _ (@st_mark _ _ [the stateTraceMonad S T of acto] t) (s, l) = Some (tt, (s, rcons l t)).
+Proof. by []. Qed.
+Fail HB.instance Definition _ := isMonadStateTraceReify.Build S T acto reifystget reifystput reifystmark.
+(* TODO: urgent *)
+End modelstatetracereify.
 End ModelStateTraceReify.
 
 Module ModelBacktrackableState.
@@ -1273,22 +1276,23 @@ rewrite andbT.
 by apply/imfsetP; exists (a2, s2).
 Qed.
 
-Definition func := Functor.Pack (Functor.Mixin map_id map_comp).
+HB.instance Definition func := isFunctor.Build acto map_id map_comp.
 
-Lemma naturality_ret : naturality FId func ret_component.
+Lemma naturality_ret : naturality FId [the functor of acto] ret_component.
 Proof.
 move=> A B h; rewrite /ret_component boolp.funeqE => a; rewrite boolp.funeqE => s.
-by rewrite /func /Actm /map /bind /= imfset_set1 /= big_seq_fset1.
+by rewrite /func /hierarchy.actm /= /map /bind /= imfset_set1 /= big_seq_fset1.
 Qed.
 
-Definition ret : FId ~> func := Natural.Pack (Natural.Mixin naturality_ret).
+Definition ret : FId ~> [the functor of acto] := Natural.Pack (Natural.Mixin naturality_ret).
 
-Program Definition t := @Monad_of_ret_bind _ ret bind _ _ _.
-Next Obligation.
+Let H0 : BindLaws.left_neutral bind ret.
+Proof.
 move=> A B /= m f; rewrite boolp.funeqE => s.
 by rewrite /bind /ret imfset_set1 /= big_seq_fset1.
 Qed.
-Next Obligation.
+Let H1 : BindLaws.right_neutral bind ret.
+Proof.
 move=> A B /=; rewrite boolp.funeqE => s.
 apply/fsetP => /= x; apply/bigfcupP'; case: ifPn => xBs.
   set x' := (x : [choiceType of convex.choice_of_Type A * convex.choice_of_Type S]).
@@ -1298,7 +1302,8 @@ apply/fsetP => /= x; apply/bigfcupP'; case: ifPn => xBs.
 case => /= SA /imfsetP[] /= sa saBs ->{SA} /fset1P => Hx.
 move: xBs; rewrite Hx; apply/negP; rewrite negbK; by case: sa saBs Hx.
 Qed.
-Next Obligation.
+Let H2 : BindLaws.associative bind.
+Proof.
 move=> A B C /= m f g; rewrite boolp.funeqE => s.
 have @g' : convex.choice_of_Type B -> convex.choice_of_Type S -> {fset convex.choice_of_Type C * convex.choice_of_Type S}.
   move=> b' s'; exact: (g b' s').
@@ -1311,24 +1316,28 @@ apply/fsetP => /= x; apply/bigfcupP'/bigfcupP'; case => /= CS  /imfsetP[/=].
   exists (g bs.1 bs.2) => //; apply/imfsetP => /=; exists bs => //.
   apply/bigfcupP' => /=; exists (f sa.1 sa.2) => //; by apply/imfsetP => /=; exists sa.
 Qed.
-Lemma BindE (A B : Type) m (f : A -> t B) :
+Let fmapE (A B : UU0) (f : A -> B) (m : [the functor of acto] A) : ([the functor of acto] # f) m = @bind _ _ m (@ret _ \o f).
+Proof.
+by rewrite /hierarchy.actm /= /map /bind /=.
+Qed.
+HB.instance Definition _ := @Monad_of_ret_bind.Build acto ret bind fmapE H0 H1 H2.
+Lemma BindE (A B : Type) m (f : A -> [the monad of acto] B) :
   m >>= f = fun s => \bigcup_(i <- (fun x : [choiceType of convex.choice_of_Type A * convex.choice_of_Type S] => f x.1 x.2) @` (m s)) i.
 Proof.
 rewrite boolp.funeqE => s.
-rewrite /Bind /Join /= /Monad_of_ret_bind.join /=.
-rewrite /bind.
+rewrite bindE /= /join_of_bind /= /bind /=.
 set lhs := [fset _ _ | _ in _].
 set rhs := [fset _ _ | _ in _].
 rewrite (_ : lhs = rhs) //; apply/fsetP => x; rewrite {}/lhs {}/rhs.
 apply/idP/imfsetP => /=.
 - case/imfsetP => -[a1 a2] /=.
-  rewrite /Actm /=.
-  rewrite /Monad_of_ret_bind.Map /=.
+  rewrite /hierarchy.actm /=.
+  rewrite /map /=.
   case/bigfcupP' => /= b.
   by case/imfsetP => -[b1 b2] /= Hb ->{b} /fset1P[-> -> ->{x a1 a2}]; exists (b1, b2).
 - case=> -[a1 s1] Ha /= ->{x}.
   apply/imfsetP => /=.
-  rewrite /Actm /= /Monad_of_ret_bind.Map /=.
+  rewrite /hierarchy.actm /= /map /=.
   eexists.
   + apply/bigfcupP' => /=.
     eexists.
@@ -1342,15 +1351,10 @@ End monad.
 
 Section state.
 Variable S : Type.
-Local Obligation Tactic := idtac.
-
-Program Definition _state : stateMonad S :=
-  @MonadState.Pack S (acto S)
-  (@MonadState.Class S (acto S) (Monad.class (t S)) (@MonadState.Mixin S (t S)
-((fun s => [fset (s : convex.choice_of_Type S , s : convex.choice_of_Type S)]) : (t S S)) (* get *)
-((fun s => (fun _ => [fset (tt : convex.choice_of_Type unit, s : convex.choice_of_Type S)])) : S -> (t S unit)) (* put *)
-_ _ _ _)).
-Next Obligation.
+Let get := (fun s => [fset (s : convex.choice_of_Type S , s : convex.choice_of_Type S)]) : (acto S S).
+Let put := (fun s => (fun _ => [fset (tt : convex.choice_of_Type unit, s : convex.choice_of_Type S)])) : S -> (acto S unit).
+Let putput : forall s s', put s >> put s' = put s'.
+Proof.
 move=> s s'; rewrite boolp.funeqE => s''.
 rewrite BindE; apply/fsetP => /= x; apply/bigfcupP'/fset1P.
 - by case => /= x0 /imfsetP[/= x1] /fset1P _ -> /fset1P.
@@ -1359,7 +1363,8 @@ rewrite BindE; apply/fsetP => /= x; apply/bigfcupP'/fset1P.
     exact/fset1P.
   apply/imfsetP => /=; exists (tt, s) => //; exact/fset1P.
 Qed.
-Next Obligation.
+Let putget : forall s, put s >> get = put s >> Ret s.
+Proof.
 move=> s; rewrite boolp.funeqE => s'.
 rewrite 2!BindE /=; apply/fsetP => /= x; apply/bigfcupP'/bigfcupP'.
 - case => /= x0 /imfsetP[/= x1] /fset1P -> -> /fset1P ->.
@@ -1371,7 +1376,8 @@ rewrite 2!BindE /=; apply/fsetP => /= x; apply/bigfcupP'/bigfcupP'.
     exact/fset1P.
   apply/imfsetP => /=; exists (tt, s) => //; exact/fset1P.
 Qed.
-Next Obligation.
+Let getputskip : get >>= put = skip.
+Proof.
 rewrite boolp.funeqE => s.
 rewrite BindE /skip /= /Ret; apply/fsetP => /= x; apply/bigfcupP'/idP.
 - case => /= x0 /imfsetP[/= x1] /fset1P -> -> /fset1P ->; exact/fset1P.
@@ -1379,7 +1385,9 @@ rewrite BindE /skip /= /Ret; apply/fsetP => /= x; apply/bigfcupP'/idP.
     exact/fset1P.
   apply/imfsetP; exists (s, s) => //; by rewrite inE.
 Qed.
-Next Obligation.
+Let getget : forall (A : UU0) (k : S -> S -> _ A),
+    get >>= (fun s => get >>= k s) = get >>= fun s => k s s.
+Proof.
 move=> A k; rewrite boolp.funeqE => s.
 rewrite 2!BindE; apply/fsetP => x; apply/bigfcupP'/bigfcupP'.
 - case => /= x0 /imfsetP[/= x1] /fset1P -> ->.
@@ -1393,31 +1401,31 @@ rewrite 2!BindE; apply/fsetP => x; apply/bigfcupP'/bigfcupP'.
   apply/bigfcupP'; exists (k s s s) => //;   apply/imfsetP; exists (s, s) => //=; exact/fset1P.
 Qed.
 
+HB.instance Definition _ := isMonadState.Build S (acto S) putput putget getputskip getget.
+
 End state.
 
 Section fail.
 Variable S : choiceType.
-Program Definition _fail : failMonad := @MonadFail.Pack _
-  (@MonadFail.Class _ (Monad.class (t S))
-    (@MonadFail.Mixin _ (fun (A : Type) (_ : S) => fset0) _)).
-Next Obligation.
+Let fail : forall A, acto S A := (fun (A : Type) (_ : S) => fset0).
+Let bindfailf : BindLaws.left_zero (@hierarchy.bind _ ) fail.
+Proof.
 move=> A B g; rewrite boolp.funeqE => s; apply/fsetP => x; rewrite inE BindE; apply/negbTE.
 apply/bigfcupP'; case => /= x0 /imfsetP[/= sa].
 by rewrite (@in_fset0 [choiceType of convex.choice_of_Type A * convex.choice_of_Type S]).
 Qed.
 
+HB.instance Definition _ := isMonadFail.Build (acto S) bindfailf.
 End fail.
 
 Section alt.
-
 Variable S : choiceType.
-Local Obligation Tactic := try by [].
-Program Definition _alt : altMonad := @MonadAlt.Pack _
-  (@MonadAlt.Class _ (@Monad.class (t S))
-    (@MonadAlt.Mixin (t S)
-      (fun (A : Type) (a b : S -> {fset [choiceType of convex.choice_of_Type A * convex.choice_of_Type S]}) (s : S) => a s `|` b s) _ _)).
-Next Obligation. by move=> A a b c; rewrite boolp.funeqE => s; rewrite fsetUA. Qed.
-Next Obligation.
+Let M := [the monad of acto S].
+Let alt := (fun (A : Type) (a b : S -> {fset [choiceType of convex.choice_of_Type A * convex.choice_of_Type S]}) (s : S) => a s `|` b s).
+Let altA : forall T : UU0, ssrfun.associative (@alt T).
+Proof. by move=> A a b c; rewrite boolp.funeqE => s; rewrite /alt fsetUA. Qed.
+Let alt_bindDl : BindLaws.left_distributive (@hierarchy.bind M) (@alt).
+Proof.
 move=> A B /= m1 m2 k; rewrite boolp.funeqE => s; rewrite !BindE /=.
 apply/fsetP => /= bs; apply/bigfcupP'/fsetUP.
 - case => /= BS /imfsetP[/= sa] /fsetUP[sam1s ->{BS} Hbs|sam2s ->{BS} Hbs].
@@ -1427,40 +1435,38 @@ apply/fsetP => /= bs; apply/bigfcupP'/fsetUP.
   by exists (k sa.1 sa.2) => //; apply/imfsetP; exists sa => //; rewrite inE sams.
   by exists (k sa.1 sa.2) => //; apply/imfsetP; exists sa => //; rewrite inE sams orbT.
 Qed.
-
+HB.instance Definition _ := isMonadAlt.Build (acto S) altA alt_bindDl.
 End alt.
 
 Section nondet.
 
 Variable S : choiceType.
-Local Obligation Tactic := try by [].
-Program Definition nondetbase : nondetMonad :=
-  @MonadNondet.Pack _ (@MonadNondet.Class _ (@MonadFail.class (_fail S))
-    (@MonadAlt.mixin (_alt S) _) (@MonadNondet.Mixin _ _ _ _)).
-Next Obligation. move=> A /= m; rewrite boolp.funeqE => s; by rewrite fset0U. Qed.
-Next Obligation. move=> A /= m; rewrite boolp.funeqE => s; by rewrite fsetU0. Qed.
+Let M : failMonad := [the failMonad of acto S].
+Let N : altMonad := [the altMonad of acto S].
+Let altfailm : @BindLaws.left_id _ (@fail M) (@alt N).
+Proof. by move=> A /= m; rewrite boolp.funeqE => s; rewrite /alt /= fset0U. Qed.
+Let altmfail : @BindLaws.right_id _ (@fail M) (@alt N).
+Proof. by move=> A /= m; rewrite boolp.funeqE => s; rewrite /alt /= fsetU0. Qed.
+HB.instance Definition _ := isMonadNondet.Build (acto S) altfailm altmfail.
 End nondet.
 
 Section failR0monad.
 Variable S : choiceType.
-Local Obligation Tactic := try by [].
-Program Definition failR0base : failR0Monad :=
-  @MonadFailR0.Pack _ (@MonadFailR0.Class _ (MonadNondet.base (MonadNondet.class (nondetbase S))) (@MonadFailR0.Mixin _ _)).
-Next Obligation.
+Let yyy : BindLaws.right_zero (@hierarchy.bind [the monad of acto S]) (@fail _).
+Proof.
 move=> A B /= g; rewrite !BindE /=; rewrite boolp.funeqE => s; apply/fsetP => /= sa.
 apply/idP/idP/bigfcupP'.
 case => /= SA /imfsetP[/= bs bsgs ->{SA}].
 by rewrite (@in_fset0 [choiceType of convex.choice_of_Type A * convex.choice_of_Type S]).
 Qed.
+HB.instance Definition _ := isMonadFailR0.Build (acto S) yyy.
 End failR0monad.
 
 Section preplusmonad.
 
 Variable S : choiceType.
-Local Obligation Tactic := try by [].
-Program Definition preplusbase : prePlusMonad :=
-  @MonadPrePlus.Pack _ (@MonadPrePlus.Class _ (@MonadNondet.class (nondetbase S)) (MonadFailR0.mixin (@MonadFailR0.class (failR0base S))) (@MonadPrePlus.Mixin _ _)).
-Next Obligation.
+Let yyy : BindLaws.right_distributive (@hierarchy.bind [the monad of acto S]) (@alt _).
+Proof.
 move=> A B /= m k1 k2; rewrite boolp.funeqE => s; rewrite !BindE /=; apply/fsetP => /= bs.
 apply/bigfcupP'/idP.
 - case => /= BS /imfsetP[/= sa sams ->{BS}] /fsetUP[bsk1|bsk2].
@@ -1477,15 +1483,19 @@ apply/bigfcupP'/idP.
   by apply/fsetUP; right.
 Qed.
 
+HB.instance Definition _ := isMonadPrePlus.Build (acto S) yyy.
+
 End preplusmonad.
 
 Section nondetstate.
 
 Variable S : choiceType.
-Definition nondetstate : nondetStateMonad S :=
+
+(*Definition nondetstate : nondetStateMonad S :=
   @MonadNondetState.Pack _ _
     (@MonadNondetState.Class _ _ (MonadPrePlus.class (preplusbase S))
-      (MonadState.mixin (MonadState.class (_state S)))).
+      (MonadState.mixin (MonadState.class (_state S)))).*)
+(* HB.instance Definition _ := isMonadNondetState.Build (acto S).  *)
 
 End nondetstate.
 

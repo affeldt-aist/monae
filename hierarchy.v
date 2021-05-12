@@ -918,7 +918,7 @@ Notation exceptStateRunMonad := MonadExceptStateRun.type.
 HB.mixin Record isMonadReify (S : UU0) (M : UU0 -> UU0) of Monad M := {
   reify : forall A : UU0, M A -> S -> option (A * S)%type ;
   reifyret : forall (A : UU0) (a : A) s, @reify _ (Ret a) s = Some (a, s) ;
-  reifytbind : forall (A B : UU0) (m : M A) (f : A -> M B) s,
+  reifybind : forall (A B : UU0) (m : M A) (f : A -> M B) s,
       @reify _ (m >>= f) s = match @reify _ m s with | Some a's' => @reify _ (f a's'.1) a's'.2 | None => None end
 }.
 
