@@ -29,7 +29,8 @@ From HB Require Import structures.
 (*   naturality F G f == the components f form a natural transformation       *)
 (*                       F ~> G                                               *)
 (*    Module JoinLaws == join laws of a monad                                 *)
-(*              monad == type of monads, inherits from the type of functors   *)
+(*            isMonad == mixin of monad                                       *)
+(*              monad == type of monads                                       *)
 (*                Ret == natural transformation FId ~> M for a monad M        *)
 (*               Join == natural transformation M \O M ~> M for a monad M     *)
 (*    Module BindLaws == bind laws of a monad                                 *)
@@ -559,18 +560,6 @@ apply functional_extensionality.
 by elim=> // h t /= IH; rewrite !rev_cons IH map_rcons.
 Qed.*)
 
-(* TODO: move? *)
-Lemma foldl_revE (T R : UU0) (f : R -> T -> R) (z : R) :
-  foldl f z \o rev = foldr (fun x : T => f^~ x) z.
-Proof. by rewrite boolp.funeqE => s; rewrite -foldl_rev. Qed.
-
-Lemma mfoldl_rev (T R : UU0) (f : R -> T -> R) (z : R) (s : seq T -> M (seq T)) :
-  foldl f z (o) (rev (o) s) = foldr (fun x => f^~ x) z (o) s.
-Proof.
-rewrite boolp.funeqE => x; rewrite !fcompE 3!fmapE !bindA.
-bind_ext => ?; by rewrite bindretf /= -foldl_rev.
-Qed.
-
 Lemma joinE A (pp : M (M A)) : Join pp = pp >>= id.
 Proof. rewrite bindE; congr Join; by rewrite functor_id. Qed.
 
@@ -892,11 +881,11 @@ Notation nondetStateMonad := MonadNondetState.type.
 HB.mixin Record isMonadStateRun (S : UU0) (N : monad)
    (M : UU0 -> UU0) of MonadState S M := {
   runStateT : forall A : UU0, M A -> S -> N (A * S)%type ;
-  RunStateTRet : forall (A : UU0) (a : A) (s : S), @runStateT _ (Ret a) s = Ret (a, s) ;
-  RunStateTBind : forall (A B : UU0) (m : M A) (f : A -> M B) (s : S),
+  runStateTret : forall (A : UU0) (a : A) (s : S), @runStateT _ (Ret a) s = Ret (a, s) ;
+  runStateTbind : forall (A B : UU0) (m : M A) (f : A -> M B) (s : S),
     @runStateT _ (m >>= f) s = @runStateT _ m s >>= fun x => @runStateT _ (f x.1) x.2 ;
-  RunStateTget : forall s : S, @runStateT _ get s = Ret (s, s) ;
-  RunStateTput : forall s' s : S, @runStateT _ (put s') s = Ret (tt, s') }.
+  runStateTget : forall s : S, @runStateT _ get s = Ret (s, s) ;
+  runStateTput : forall s' s : S, @runStateT _ (put s') s = Ret (tt, s') }.
 
 HB.structure Definition MonadStateRun (S : UU0) (N : monad) :=
   {M of isMonadStateRun S N M & }.
@@ -1048,7 +1037,7 @@ Notation stateTraceMonad := MonadStateTrace.type.
 HB.mixin Record isMonadStateTraceReify (S T : UU0) (M : UU0 -> UU0) of MonadReify (S * seq T)%type M & MonadStateTrace S T M := {
   reifystget : forall s l, reify (@st_get _ _ [the stateTraceMonad S T of M]) (s, l) = Some (s, (s, l)) ;
   reifystput : forall s l s', reify (@st_put _ _ [the stateTraceMonad S T of M] s') (s, l) = Some (tt, (s', l)) ;
-  reifystmark_ : forall t s l, reify (@st_mark _ _ [the stateTraceMonad S T of M] t) (s, l) = Some (tt, (s, rcons l t))
+  reifystmark : forall t s l, reify (@st_mark _ _ [the stateTraceMonad S T of M] t) (s, l) = Some (tt, (s, rcons l t))
 }.
 HB.structure Definition MonadStateTraceReify (S T : UU0) := {M of isMonadStateTraceReify S T M}.
 Notation stateTraceReifyMonad := MonadStateTraceReify.type.

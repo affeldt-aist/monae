@@ -7,6 +7,7 @@ From mathcomp Require Import finmap.
 From infotheo Require Import Reals_ext classical_sets_ext Rbigop ssrR ssr_ext.
 From infotheo Require Import fdist fsdist convex necset.
 Require Import monae_lib.
+From HB Require Import structures.
 Require category.
 
 (******************************************************************************)
@@ -630,7 +631,8 @@ Definition A1 := AdjointFunctors.mk triL1 triR1.
 Definition Aprob := adj_comp AC A0.
 Definition Agcm := adj_comp Aprob A1.
 Definition Mgcm := Monad_of_adjoint Agcm.
-Definition gcm := Monad_of_category_monad Mgcm.
+Definition gcm := [the hierarchy.monad of Monad_of_category_monad.m'' Mgcm].
+(*Definition gcm := Monad_of_category_monad.m Mgcm.*)
 
 Section gcm_opsE.
 Import hierarchy.
@@ -638,7 +640,7 @@ Import hierarchy.
 Lemma gcm_retE (T : Type) (x : choice_of_Type T) :
   Ret x = necset1 (FSDist1.d x) :> gcm T.
 Proof.
-rewrite /= /Monad_of_category_monad.ret /= /Hom.apply /=.
+rewrite /= /ret_ /Monad_of_category_monad.ret /= /Hom.apply /=.
 rewrite !HCompId !HIdComp /=.
 rewrite /id_f /= /etaC.
 unlock => /=.
@@ -664,10 +666,11 @@ Local Notation U1 := forget_semiCompSemiLattConvType.
 Variable T : Type.
 Variable X : gcm (gcm T).
 Lemma gcm_joinE : Join X = necset_join X.
+Proof.
 Import category.
 Local Open Scope convex_scope.
 apply/necset_ext.
-rewrite /= /Monad_of_category_monad.join /= !HCompId !HIdComp eps1E.
+rewrite /= /join_ /= /Monad_of_category_monad.join /= !HCompId !HIdComp eps1E.
 rewrite functor_o NEqE functor_id compfid.
 rewrite 2!VCompE_nat HCompId HIdComp.
 set E := epsC _; have->: E = (homid0 _) by apply/hom_ext; rewrite epsCE.
@@ -689,9 +692,11 @@ Require proba_monad_model.
 Section probMonad_out_of_F0U0.
 Import category.
 (* probability monad built directly *)
-Definition M := proba_monad_model.MonadProbModel.prob.
+Definition M := proba_monad_model.MonadProbModel.t.
 (* probability monad built using adjunctions *)
-Definition N := Monad_of_category_monad (Monad_of_adjoint Aprob).
+Definition N :=
+ [the hierarchy.monad of Monad_of_category_monad.m'' (Monad_of_adjoint Aprob)].
+(*Monad_of_category_monad.m (Monad_of_adjoint Aprob).*)
 
 Lemma actmE T : N T = M T.
 Proof. by []. Qed.
@@ -702,8 +707,10 @@ Lemma JoinE T :
   (Join : (N \O N) T -> N T) = (Join : (M \O M) T -> M T).
 Proof.
 apply funext => t /=.
-rewrite Monad_of_category_monad.joinE.
-rewrite [in LHS]/= HCompId HIdComp [X in _ (X t)]/= epsCE.
+rewrite /join_.
+rewrite [in LHS]/= HCompId HIdComp [X in _ (X t)]/=.
+rewrite /Actm [in LHS]/=.
+rewrite epsCE.
 (* TODO: rewrite with FSDistfmap_id *)
 rewrite eps0_correct.
 rewrite /FSDistjoin /FSDistfmap /= FSDistBindA /=.
@@ -714,7 +721,8 @@ Qed.
 Lemma RetE T : (Ret : FId T -> N T) = (Ret : FId T -> M T).
 Proof.
 apply funext => t /=.
-rewrite /Monad_of_category_monad.ret /=.
+rewrite /ret_.
+rewrite [in LHS]/=.
 by rewrite HCompId HIdComp [X in _ (X t)]/= eta0E etaCE.
 Qed.
 End probMonad_out_of_F0U0.

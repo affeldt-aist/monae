@@ -79,6 +79,10 @@ End fusion_law.
 
 End fold.
 
+Lemma foldl_revE (T R : Type) (f : R -> T -> R) (z : R) :
+  foldl f z \o rev = foldr (fun x : T => f^~ x) z.
+Proof. by rewrite boolp.funeqE => s; rewrite -foldl_rev. Qed.
+
 Section curry.
 Variables A B C : Type.
 Implicit Types f : A -> B -> C.

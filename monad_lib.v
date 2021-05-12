@@ -1,7 +1,6 @@
 (* monae: Monadic equational reasoning in Coq                                 *)
 (* Copyright (C) 2020 monae authors, license: LGPL-2.1-or-later               *)
 Ltac typeof X := type of X.
-
 Require Import ssrmatching.
 From mathcomp Require Import all_ssreflect.
 From mathcomp Require boolp.
@@ -26,7 +25,7 @@ Require Import hierarchy.
 (*                              functor E                                     *)
 (*           algebraicity op == the operation op is algebraic                 *)
 (*          E .-aoperation M == algebraic E.-operation M                      *)
-(*  Module Monad_of_ret_bind == construction of a monad from ret and bind     *)
+(*         Monad_of_ret_bind == factory to build a monad from ret and bind    *)
 (*                                                                            *)
 (******************************************************************************)
 
@@ -41,6 +40,15 @@ Unset Strict Implicit.
 Unset Printing Implicit Defensive.
 
 Local Open Scope monae_scope.
+
+Local Open Scope mprog.
+Lemma mfoldl_rev {M : monad} (T R : UU0) (f : R -> T -> R) (z : R) (s : seq T -> M (seq T)) :
+  foldl f z (o) (rev (o) s) = foldr (fun x => f^~ x) z (o) s.
+Proof.
+rewrite boolp.funeqE => x; rewrite !fcompE 3!fmapE !bindA.
+bind_ext => ?; by rewrite bindretf /= -foldl_rev.
+Qed.
+Local Close Scope mprog.
 
 Definition liftM2 {M : monad} (A B C : UU0) (oplus : A -> B -> C) m1 m2 : M C :=
   m1 >>= (fun x1 => m2 >>= (fun x2 => Ret (oplus x1 x2))).
@@ -399,8 +407,6 @@ End algebraic_operation_interface.
 Definition join_of_bind (F : functor)
   (b : forall (A B : UU0), F A -> (A -> F B) -> F B) := (fun A : UU0 => (b _ A)^~ id).
 
-(*Definition coucou (M : UU0 -> UU0) := M.*)
-
 HB.factory Record Monad_of_ret_bind (M : UU0 -> UU0) of isFunctor M := {
   ret : idfun ~> M ;
   bind : forall (A B : UU0), M A -> (A -> M B) -> M B ;
@@ -496,8 +502,8 @@ move=> A; rewrite boolp.funeqE => mmma.
 by rewrite /join /= /join_of_bind bind_Map compidf bindA.
 Qed.
 
-Lemma  bindE : forall (A B : UU0) (f : A -> M B) (m : M A),
-    bind m f = (join) _ (([the functor of M] # f) m).
+Lemma bindE : forall (A B : UU0) (f : A -> M B) (m : M A),
+  bind m f = (join) _ (([the functor of M] # f) m).
 Proof.
 move=> A B f m.
 rewrite /join /join_of_bind /=.

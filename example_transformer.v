@@ -21,7 +21,7 @@ Local Open Scope monae_scope.
 (******************************************************************************)
 Definition evalStateT (N : monad) (S : UU0) (M : stateRunMonad S N)
     {A : UU0} (m : M A) (s : S) : N A :=
-  RunStateT m s >>= fun x => Ret x.1.
+  runStateT m s >>= fun x => Ret x.1.
 
 Section FastProduct.
 Variables (N : exceptMonad) (M : exceptStateRunMonad nat N).
@@ -29,12 +29,12 @@ Variables (N : exceptMonad) (M : exceptStateRunMonad nat N).
 Fixpoint fastProductRec l : M unit :=
   match l with
   | [::] => Ret tt
-  | 0 :: _ => Fail
-  | n.+1 :: l' => Get >>= fun m => Put (m * n.+1) >> fastProductRec l'
+  | 0 :: _ => fail
+  | n.+1 :: l' => get >>= fun m => put (m * n.+1) >> fastProductRec l'
   end.
 
 Definition fastProduct l : M _ :=
-  Catch (Put 1 >> fastProductRec l >> Get) (Ret 0 : M _).
+  catch (put 1 >> fastProductRec l >> get) (Ret 0 : M _).
 
 Lemma fastProductCorrect l n :
   evalStateT (fastProduct l) n = Ret (product l).
@@ -42,11 +42,11 @@ Proof.
 rewrite /fastProduct -(mul1n (product _)); move: 1.
 elim: l => [ | [ | x] l ih] m.
 - rewrite muln1 bindA bindretf putget.
-  rewrite /evalStateT RunStateTCatch RunStateTBind RunStateTPut bindretf.
-  by rewrite RunStateTRet RunStateTRet catchret bindretf.
+  rewrite /evalStateT runStateTcatch runStateTbind runStateTput bindretf.
+  by rewrite runStateTret runStateTret catchret bindretf.
 - rewrite muln0.
-  rewrite /evalStateT RunStateTCatch RunStateTBind RunStateTBind RunStateTPut.
-  by rewrite bindretf RunStateTFail bindfailf catchfailm RunStateTRet bindretf.
+  rewrite /evalStateT runStateTcatch runStateTbind runStateTbind runStateTput.
+  by rewrite bindretf runStateTfail bindfailf catchfailm runStateTret bindretf.
 - rewrite [fastProductRec _]/=.
   by rewrite -bindA putget bindA bindA bindretf -bindA -bindA putput ih mulnA.
 Qed.
@@ -135,10 +135,10 @@ Section incr_fail_incr.
 
 Section with_failStateReifyMonad.
 Variables M : failStateReifyMonad nat.
-Let incr : M unit := Get >>= (Put \o succn).
-Let prog (B : UU0) : M unit := incr >> @Fail _ B >> incr.
+Let incr : M unit := get >>= (put \o succn).
+Let prog (B : UU0) : M unit := incr >> @fail _ B >> incr.
 
-Goal forall T, prog T = @Fail _ _.
+Goal forall T, prog T = @fail _ _.
 Proof.
 move=> T; rewrite /prog.
 rewrite bindA.
@@ -150,10 +150,10 @@ End with_failStateReifyMonad.
 Section with_stateT_of_failMonad.
 Variable N : failMonad.
 Let M : monad := stateT nat N.
-Let incr : M unit := Get >>= (Put \o succn).
-Let prog T : M unit := incr >> Lift (stateT nat) N T Fail >> incr.
+Let incr : M unit := get >>= (put \o succn).
+Let prog T : M unit := incr >> Lift (stateT nat) N T fail >> incr.
 
-Goal forall T, prog T = Lift (stateT nat) N unit Fail.
+Goal forall T, prog T = Lift (stateT nat) N unit fail.
 Proof.
 move=> T; rewrite /prog.
 rewrite bindA.
@@ -162,15 +162,15 @@ Abort.
 End with_stateT_of_failMonad.
 
 Section with_exceptT_of_stateMonad.
-Definition LGet S (M : stateMonad S) := Lift (exceptT unit) M S (@Get S M).
-Definition LPut S (M : stateMonad S) := Lift (exceptT unit) M unit \o (@Put S M).
+Definition LGet S (M : stateMonad S) := Lift (exceptT unit) M S (@get S M).
+Definition LPut S (M : stateMonad S) := Lift (exceptT unit) M unit \o (@put S M).
 
 Variable N : stateMonad nat.
 Let M : monad := exceptT unit N.
 Let incr : M unit := LGet N >>= (LPut N \o succn).
-Let prog T : M unit := incr >> (Fail : _ T) >> incr.
+Let prog T : M unit := incr >> (fail : _ T) >> incr.
 
-Goal forall T, prog T = @Fail _ unit.
+Goal forall T, prog T = @fail _ unit.
 Proof.
 move=> T; rewrite /prog.
 Abort.
@@ -182,31 +182,26 @@ Require Import monad_model.
 
 Section incr_fail_incr_model.
 
-Lemma bindLmfail (M := ModelMonad.option_monad) S T U (m : stateT S M U)
-    (FAIL := @ExceptOps.throw unit T tt) :
+Lemma bindLmfail (M := [the monad of option_monad]) S T U (m : stateT S M U)
+    (FAIL := @throw unit T tt) :
   m >> Lift (stateT S) M T FAIL = Lift (stateT S) M T FAIL.
 Proof.
 rewrite -!liftSE /liftS boolp.funeqE => s.
-rewrite /Bind /=.
-rewrite /bindS /=.
-rewrite /stateTmonad /=.
-rewrite /Monad_of_ret_bind /=.
-rewrite /Actm /=.
-rewrite /Monad_of_ret_bind.Map /=.
-rewrite /bindS /retS /=.
-rewrite /Bind /=.
-rewrite /ModelMonad.Except.bind /= /Actm /=.
-rewrite /Monad_of_ret_bind.Map /=.
-rewrite /ModelMonad.Except.bind /=.
-by case: (m s); case.
+rewrite ExceptMonadE.
+rewrite {1}bindE /= {1}/join_of_bind /= {1}/bindS /=.
+rewrite {1}bindE /= {1}/join_of_bind /=.
+rewrite /hierarchy.actm /= /MS_map /=.
+rewrite /hierarchy.actm /=.
+case (m s) => //.
+by case.
 Qed.
 
 Section fail_model_sufficient.
-Let N : failMonad := ModelFail.option.
-Let M : monad := stateT nat N.
-Let FAIL T := @ExceptOps.throw unit T tt.
+Let N : failMonad := [the failMonad of option_monad].
+Let M : monad := [the stateMonad nat of MS nat N].
+Let FAIL T := @throw unit T tt.
 
-Let incr : M unit := Get >>= (Put \o succn).
+Let incr : M unit := hierarchy.get >>= (hierarchy.put \o succn).
 Let prog T : M unit := incr >> Lift (stateT nat) N T (@FAIL T) >> incr.
 
 Goal forall T, prog T = Lift (stateT nat) N unit (@FAIL unit).

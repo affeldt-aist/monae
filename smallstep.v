@@ -39,9 +39,9 @@ Set Bullet Behavior "Strict Subproofs".
 Obligation Tactic := idtac.
 
 Reserved Notation "'p_do' x <- m ; e"
-  (at level 60, x ident, m at level 200, e at level 60).
+  (at level 60, x name, m at level 200, e at level 60).
 Reserved Notation "'p_do' x : T <- m ; e"
-  (at level 60, x ident, m at level 200, e at level 60).
+  (at level 60, x name, m at level 200, e at level 60).
 
 Section Syntax.
 
@@ -398,27 +398,27 @@ Fixpoint denote {A} (p : program A) : M A :=
     if m is m'.+1 then denote p >> loop m' else Ret tt) n
   | p_while fuel c p => (fix loop m : M unit :=
     if m is m'.+1 then
-      (stGet >>= (fun s =>
+      (st_get >>= (fun s =>
       if c s then denote p >> loop m' else Ret tt))
     else Ret tt) fuel
-  | p_get => stGet
-  | p_put s' => stPut s'
-  | p_mark t => stMark t
+  | p_get => st_get
+  | p_put s' => st_put s'
+  | p_mark t => st_mark t
   end.
 
 Notation "'Repeat' n {{ p }}" := (
-  (fix loop (m : nat) : MonadStateTrace.acto M unit :=
+  (fix loop (m : nat) : M unit :=
    match m with
    | 0 => Ret tt
    | m'.+1 => denote p >> loop m'
    end) n) (at level 200).
 
 Notation "'While' fuel @ c {{ p }}" := (
-  (fix loop (m : nat) : MonadStateTrace.acto M unit :=
+  (fix loop (m : nat) : M unit :=
    match m with
    | 0 => Ret tt
    | m'.+1 =>
-     stGet >>= (fun s =>
+     st_get >>= (fun s =>
      if c s then denote p >> loop m' else Ret tt)
    end) fuel) (at level 200).
 
@@ -446,7 +446,7 @@ Variable M : stateTraceReifyMonad S T.
 
 Lemma denote_prefix_preserved A (m : M A) :
   stateTrace_sub m -> forall s s' l1 l a,
-  Reify m (s, l1) = Some (a, (s', l)) ->
+  reify m (s, l1) = Some (a, (s', l)) ->
   exists l2, l = l1 ++ l2.
 Proof.
 case=> p <-{m}.
@@ -457,7 +457,7 @@ induction p as [ A a | A B p IHp g IHg | A b p1 IHp1 p2 IHp2 |
   rewrite cats0.
   by move: Heq; rewrite reifyret => -[].
 - rewrite reifybind in Heq.
-  case_eq (Reify (denote M _ p) (s, l1)).
+  case_eq (reify (denote M _ p) (s, l1)).
   + intros (a, (s0, l0)) Hp.
     rewrite Hp in Heq.
     move/IHp : Hp => [l2 Hp].
@@ -474,7 +474,7 @@ induction p as [ A a | A B p IHp g IHg | A b p1 IHp1 p2 IHp2 |
     rewrite cats0.
     by move: Heq; rewrite reifyret => -[].
   + rewrite reifybind in Heq.
-    case_eq (Reify (denote M _ p) (s, l1)).
+    case_eq (reify (denote M _ p) (s, l1)).
     * intros (a, (s0, l0)) Hp.
       move: (IHp _ _ _ _ _ Hp) => [l2 ?].
       subst l0.
@@ -491,9 +491,10 @@ induction p as [ A a | A B p IHp g IHg | A b p1 IHp1 p2 IHp2 |
     rewrite cats0.
     by move: Heq; rewrite reifyret => -[].
   + rewrite reifybind reifystget in Heq.
-    destruct (c (s, l1).1).
+    simpl in Heq.
+    destruct (c s).
     * rewrite reifybind in Heq.
-      case_eq (Reify (denote M _ p) (s, l1)).
+      case_eq (reify (denote M _ p) (s, l1)).
      -- intros (a ,(s0, l0)) Hp.
         move: (IHp _ _ _ _ _ Hp) => [l2 ?].
         subst l0.
@@ -519,8 +520,8 @@ Qed.
 
 Lemma denote_prefix_independent A (m : M A) :
   stateTrace_sub m -> forall s l1 l2,
-  Reify m (s, l1 ++ l2) =
-  let res := Reify m (s, l2) in
+  reify m (s, l1 ++ l2) =
+  let res := reify m (s, l2) in
   match res with
   | None => None
   | Some res => Some (res.1, (res.2.1, l1 ++ res.2.2))
@@ -533,7 +534,7 @@ elim: p s l1 l2 => /= {A} [A a|A B p1 IH1 p2 IH2|A b p1 IH1 p2 IH2|
 - by rewrite !reifyret.
 - rewrite [in LHS]reifybind [in LHS]IH1.
   rewrite [in RHS]reifybind.
-  case: (Reify (denote M _ p1) (s, l2)) => [[a' [s' l']] | ] /=.
+  case: (reify (denote M _ p1) (s, l2)) => [[a' [s' l']] | ] /=.
   + by rewrite IH2.
   + reflexivity.
 - by case: ifPn => _; [rewrite IH1|rewrite IH2].
@@ -542,7 +543,7 @@ elim: p s l1 l2 => /= {A} [A a|A B p1 IH1 p2 IH2|A b p1 IH1 p2 IH2|
   + by rewrite !reifyret.
   + do 2 rewrite reifybind.
     rewrite {}IHp.
-    case_eq (Reify (denote M _ p) (s, l2)).
+    case_eq (reify (denote M _ p) (s, l2)).
     * intros (a, (s0, l0)) Hp.
       exact: IH.
     * reflexivity.
@@ -555,7 +556,7 @@ elim: p s l1 l2 => /= {A} [A a|A B p1 IH1 p2 IH2|A b p1 IH1 p2 IH2|
     * do 2 rewrite reifybind.
       rewrite IHp.
       clear IHp.
-      case_eq (Reify (denote M _ p) (s, l2)).
+      case_eq (reify (denote M _ p) (s, l2)).
      -- intros (a, (s0, l0)) Hp.
         exact: IH.
      -- reflexivity.
@@ -567,8 +568,8 @@ Qed.
 
 Lemma denote_continuation_prefix_independent (m : M _) :
   continuation_sub m -> forall s l1 l2,
-  Reify m (s, l1 ++ l2) =
-  let res := Reify m (s, l2) in
+  reify m (s, l1 ++ l2) =
+  let res := reify m (s, l2) in
   match res with
   | None => None
   | Some res => Some (res.1, (res.2.1, l1 ++ res.2.2))
@@ -580,14 +581,14 @@ elim: k => // [A a s l1 l2|A p k IH s l1 l2].
 by rewrite !reifyret.
 rewrite /= !reifybind.
 rewrite denote_prefix_independent /=; [ | now exists p ].
-destruct (Reify (denote M _ p) (s, l2)) as [ (a, (s', l)) | ].
+destruct (reify (denote M _ p) (s, l2)) as [ (a, (s', l)) | ].
 - by rewrite IH.
 - reflexivity.
 Qed.
 
 Lemma step_None_correct s s' k k' l :
   step (s, k) None (s', k') ->
-  Reify (denote_continuation M k) (s, l) = Reify (denote_continuation M k') (s', l).
+  reify (denote_continuation M k) (s, l) = reify (denote_continuation M k') (s', l).
 Proof.
 intro Hstep.
 remember (s, k) as sk eqn: Heq.
@@ -637,8 +638,8 @@ Qed.
 
 Lemma step_Some_correct s s' k k' t l :
   step (s, k) (Some t) (s', k') ->
-  Reify (denote_continuation M k) (s, l) =
-  Reify (denote_continuation M k') (s', rcons l t).
+  reify (denote_continuation M k) (s, l) =
+  reify (denote_continuation M k') (s', rcons l t).
 Proof.
 intro Hstep.
 remember (s, k) as sk eqn: Heq.
@@ -657,7 +658,7 @@ Qed.
 
 Lemma step_star_correct_gen s s' k k' l l' :
   step_star (s, k) l' (s', k') ->
-  Reify (denote_continuation M k) (s, l) = Reify (denote_continuation M k') (s', l++l').
+  reify (denote_continuation M k) (s, l) = reify (denote_continuation M k') (s', l++l').
 Proof.
 intro Hstep_star.
 remember (s, k) as sk eqn: Heq.
@@ -688,13 +689,13 @@ Qed.
 Proposition step_star_correct
   (s s' : S) (A : Type) (a : A) (p : program A) (l : list T) :
   step_star (s, p `; stop A) l (s', stop A a) ->
-  Reify (denote M _ p) (s, []) = Some (a, (s', l)).
+  reify (denote M _ p) (s, []) = Some (a, (s', l)).
 Proof.
 intro Hss.
 apply step_star_correct_gen with (l := []) in Hss.
 move: Hss.
 rewrite /= reifyret reifybind.
-destruct (Reify (denote M _ p) (s, [])) as [[a'' [s'' l'']] | ].
+destruct (reify (denote M _ p) (s, [])) as [[a'' [s'' l'']] | ].
 - rewrite reifyret => -[Heq3 <- <-].
   apply inj_pair2 in Heq3.
   by rewrite Heq3.
@@ -703,7 +704,7 @@ Qed.
 
 Lemma step_star_complete_gen
   (s s' : S) (A : Type) (a : A) (p : program A) (l1 l2 : list T) f :
-  Reify (denote M _ p) (s, l1) = Some (a, (s', l1 ++ l2)) ->
+  reify (denote M _ p) (s, l1) = Some (a, (s', l1 ++ l2)) ->
   step_star (s, p `; f) l2 (s', f a).
 Proof.
 revert s s' a l1 l2 f.
@@ -719,7 +720,7 @@ induction p as [ A a | A B p IHp g IHg | A b p1 IHp1 p2 IHp2 |
   + apply s_bind.
   + move: Heq.
     rewrite reifybind.
-    case_eq (Reify (denote M _ p) (s, l1)).
+    case_eq (reify (denote M _ p) (s, l1)).
     intros (a, (s0, l0)) Hp Heq.
     move: (denote_prefix_preserved ltac:(now eexists) Hp) => [l3 Hl3].
     rewrite Hl3 in Hp.
@@ -752,14 +753,14 @@ induction p as [ A a | A B p IHp g IHg | A b p1 IHp1 p2 IHp2 |
      (revert l2 H; induction l1; [ tauto | intros ? [=]; firstorder ]).
     eapply ss_step_None; [ apply s_repeat_O | apply ss_refl ].
   + rewrite reifybind in Heq.
-    case_eq (Reify (denote M _ p) (s, l1)).
+    case_eq (reify (denote M _ p) (s, l1)).
     * intros (a, (s0, l0)) Hp.
       rewrite Hp in Heq.
       move: (denote_prefix_preserved ltac:(now eexists) Hp) => [l3 Hl3].
       rewrite Hl3 {l0 Hl3} in Hp, Heq.
       specialize (IHp _ _ _ _ _ (fun _ => p_repeat n' p `; f) Hp).
       assert (Heq':
-       Reify (denote M _ (p_repeat n' p)) (s0, l1 ++ l3) = Some (a', (s', l1 ++ l2)))
+       reify (denote M _ (p_repeat n' p)) (s0, l1 ++ l3) = Some (a', (s', l1 ++ l2)))
        by apply Heq.
       move: (denote_prefix_preserved ltac:(now eexists) Heq') => [l4 Hl4].
       rewrite Hl4 in Heq.
@@ -781,14 +782,14 @@ induction p as [ A a | A B p IHp g IHg | A b p1 IHp1 p2 IHp2 |
     cbn in Heq.
     case_eq (c s); [ intro Htrue | intro Hfalse ].
     * rewrite Htrue reifybind in Heq.
-      case_eq (Reify (denote M _ p) (s, l1)).
+      case_eq (reify (denote M _ p) (s, l1)).
      -- intros (a, (s0, l0)) Hp.
         rewrite Hp in Heq.
         move: (denote_prefix_preserved ltac:(now eexists) Hp) => [l3 Hl3].
         rewrite Hl3 {l0 Hl3} in Hp, Heq.
         specialize (IHp _ _ _ _ _ (fun _ => p_while fuel' c p `; f) Hp).
         assert (Heq':
-         Reify (denote M _ (p_while fuel' c p)) (s0, l1 ++ l3) = Some (a', (s', l1 ++ l2)))
+         reify (denote M _ (p_while fuel' c p)) (s0, l1 ++ l3) = Some (a', (s', l1 ++ l2)))
          by apply Heq.
         move: (denote_prefix_preserved ltac:(now eexists) Heq') => [l4 Hl4].
         rewrite Hl4 in Heq.
@@ -819,7 +820,7 @@ Qed.
 
 Proposition step_star_complete
   (s s' : S) (A : Type) (a : A) (p : program A) (l : list T) :
-  Reify (denote M _ p) (s, []) = Some (a, (s', l)) ->
+  reify (denote M _ p) (s, []) = Some (a, (s', l)) ->
   step_star (s, p `; stop A) l (s', stop A a).
 Proof.
 intro Hp.
@@ -838,23 +839,23 @@ Definition p_nonce : program nat :=
   p_do _ <- p_mark n;
   p_ret n.
 
-Definition M := @ModelStateTraceReify.mk.
+(*Definition M := @ModelStateTraceReify.mk.*)
 
-Eval unfold denote, p_nonce in denote (M nat nat) nat p_nonce.
+Eval unfold denote, p_nonce in denote _ nat p_nonce.
 
 Local Open Scope do_notation.
 
-Definition nonce : M nat nat nat :=
-  do n : nat <- stGet;
-  do _ : unit <- stPut (S n);
-  do _ : unit <- stMark n;
+Definition nonce : (StateMonad.acto (nat * seq nat)%type) nat :=
+  do n : nat <- st_get;
+  do _ : unit <- st_put (S n);
+  do _ : unit <- st_mark n;
   Ret n.
 
 Compute nonce (0, []).
-Compute (denote (M nat nat) nat p_nonce) (0, []).
+Compute (denote ([the stateTraceMonad nat nat of (StateMonad.acto (nat * seq nat)%type)]) nat p_nonce) (0, []).
 Compute run_ss p_nonce 0.
 
-Remark denote_p_nonce : denote (M nat nat) nat p_nonce = nonce.
+Remark denote_p_nonce : denote _ nat p_nonce = nonce.
 Proof. by []. Qed.
 
 Program Example p_nonce_twice : program bool_eqType :=
@@ -867,33 +868,33 @@ Program Example p_nonce_twice : program bool_eqType :=
   p_do y <- nonce ;
   p_ret (x == y).
 
-Example nonce_twice : M _ _ _ :=
+Example nonce_twice : [the stateTraceMonad nat nat of (StateMonad.acto (nat * seq nat)%type)] _ :=
   do nonce <- Ret (
-    do n : nat <- stGet;
-    do _ : unit <- stPut (S n);
-    do _ : unit <- stMark n;
+    do n : nat <- st_get;
+    do _ : unit <- st_put (S n);
+    do _ : unit <- st_mark n;
     Ret n ) ;
   do x <- nonce ;
   do y <- nonce ;
   Ret (Nat.eqb x y).
 
 Compute nonce_twice (0, []).
-Compute (denote (M nat nat) bool p_nonce_twice) (0, []).
+Compute (denote ([the stateTraceMonad nat nat of (StateMonad.acto (nat * seq nat)%type)]) bool p_nonce_twice) (0, []).
 Compute run_ss p_nonce_twice 0.
 
 Remark denote_p_nonce_twice :
-  denote (M nat nat) bool p_nonce_twice = nonce_twice.
+  denote _ bool p_nonce_twice = nonce_twice.
 Proof. by []. Qed.
 
-Fixpoint countdown (fuel : nat) : M nat bool unit :=
+Fixpoint countdown (fuel : nat) : [the stateTraceMonad nat bool of (StateMonad.acto (nat * seq bool)%type)] unit :=
   match fuel with
   | O => Ret tt
   | S fuel' =>
-    do n <- stGet ;
+    do n <- st_get ;
     if (n == 0) then
-      stMark true
+      st_mark true
     else
-      do _ <- stMark false ; do _ <- stPut (n-1) ; countdown fuel'
+      do _ <- st_mark false ; do _ <- st_put (n-1) ; countdown fuel'
   end.
 
 Fixpoint p_countdown (fuel : nat) : program unit :=
@@ -909,11 +910,11 @@ Fixpoint p_countdown (fuel : nat) : program unit :=
   end.
 
 Compute (countdown 100) (5, []).
-Compute (denote (M nat bool) unit (p_countdown 100)) (5, []).
+Compute (denote [the stateTraceMonad nat bool of (StateMonad.acto (nat * seq bool)%type)] unit (p_countdown 100)) (5, []).
 Compute run_ss (p_countdown 100) 5.
 
 Remark denote_countdown fuel :
-  denote (M nat bool) unit (p_countdown fuel) = countdown fuel.
+  denote ([the stateTraceMonad nat bool of (StateMonad.acto (nat * seq bool)%type)]) unit (p_countdown fuel) = countdown fuel.
 Proof.
 elim: fuel => // n.
 rewrite [countdown (S n)]/=.

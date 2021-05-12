@@ -63,14 +63,14 @@ Section tree_relabelling.
 Variable Symbol : eqType. (* TODO: ideally, we would like a generic type here with a succ function *)
 Variable M : failFreshMonad Symbol.
 Variable q : pred (seq Symbol * seq Symbol).
-Hypothesis promotable_q : promotable (Distinct M) q.
+Hypothesis promotable_q : promotable (@distinct _ M) q.
 
 Local Open Scope mprog.
 
 Definition relabel : Tree Symbol -> M (Tree Symbol) :=
-  foldt (M # Tip \o const Fresh) (fmap (uncurry Bin) \o mpair).
+  foldt (M # Tip \o const fresh) (fmap (uncurry Bin) \o mpair).
 
-Let drTip {A} : A -> M _ := (M # wrap) \o const Fresh.
+Let drTip {A} : A -> M _ := (M # wrap) \o const fresh.
 Let drBin {N : failMonad} : (N _ * N _ -> N _) :=
   (fmap ucat) \o bassert q \o mpair.
 
@@ -155,9 +155,11 @@ Proof.
 apply foldt_universal.
   (* relabel >=> dlabels \o Tip = drTip *)
   rewrite /kleisli (* TODO(rei): don't unfold *) -(compA (Join \o _)) -(compA Join).
-  rewrite (_ : _ \o Tip = (M # Tip) \o const Fresh) //.
-  rewrite (compA (fmap dlabels)) -functor_o (_ : dlabels \o _ = Ret \o wrap) //.
-  by rewrite functor_o 2!compA joinMret.
+  rewrite (_ : _ \o Tip = (M # Tip) \o const fresh) //.
+  rewrite (compA (fmap dlabels)) -functor_o.
+  rewrite (_ : dlabels \o _ = ret _ \o wrap) //.
+  rewrite functor_o 3!compA.
+  by rewrite joinMret.
 (* relabel >=> dlabels \o Bin = drBin \o _ *)
 rewrite /kleisli (* TODO(rei): don't unfold *) -[in LHS](compA (Join \o _)) -[in LHS](compA Join).
 rewrite (_ : _ \o _ Bin = (fmap (uncurry Bin)) \o (mpair \o relabel^`2)); last first.
@@ -179,26 +181,26 @@ Qed.
 
 (* second property of Sect. 9.3 *)
 Lemma symbols_size_is_fold :
-  Symbols \o (@size_Tree Symbol) = foldt drTip drBin.
+  symbols \o (@size_Tree Symbol) = foldt drTip drBin.
 Proof.
 apply foldt_universal.
-  by rewrite -compA (_ : @size_Tree Symbol \o _ = const 1) // Symbols_prop1.
-pose p := Distinct M.
-transitivity (bassert p \o Symbols \o @size_Tree Symbol \o uncurry Bin
+  by rewrite -compA (_ : @size_Tree Symbol \o _ = const 1) // symbols_prop1.
+pose p := @distinct _ M.
+transitivity (bassert p \o symbols \o @size_Tree Symbol \o uncurry Bin
   : (_ -> M _)).
   by rewrite bassert_symbols.
-transitivity ((bassert p) \o Symbols \o uaddn \o (@size_Tree Symbol)^`2
+transitivity ((bassert p) \o symbols \o uaddn \o (@size_Tree Symbol)^`2
   : (_ -> M _)).
   by rewrite -[in LHS]compA -[in RHS]compA size_Tree_Bin.
-transitivity (bassert p \o (fmap ucat) \o mpair \o (Symbols \o (@size_Tree Symbol))^`2
+transitivity (bassert p \o (fmap ucat) \o mpair \o (symbols \o (@size_Tree Symbol))^`2
   : (_ -> M _)).
-  rewrite -2!compA (compA Symbols) Symbols_prop2.
+  rewrite -2!compA (compA symbols) symbols_prop2.
   by rewrite -(compA (_ \o mpair)) (compA (bassert p)).
-transitivity ((fmap ucat) \o bassert q \o mpair \o (bassert p \o Symbols \o (@size_Tree Symbol))^`2
+transitivity ((fmap ucat) \o bassert q \o mpair \o (bassert p \o symbols \o (@size_Tree Symbol))^`2
   : (_ -> M _)).
   (* assert p distributes over concatenation *)
   by rewrite (promote_assert_sufficient_condition (@failfresh_bindmfail _ M) promotable_q).
-transitivity ((fmap ucat) \o bassert q \o mpair \o (Symbols \o (@size_Tree Symbol))^`2
+transitivity ((fmap ucat) \o bassert q \o mpair \o (symbols \o (@size_Tree Symbol))^`2
   : (_ -> M _)).
   by rewrite bassert_symbols.
 by [].
@@ -206,7 +208,7 @@ Qed.
 
 (* main claim *)
 Lemma dlabels_relabel_never_fails :
-  relabel >=> dlabels = Symbols \o @size_Tree Symbol.
+  relabel >=> dlabels = symbols \o @size_Tree Symbol.
 Proof. by rewrite dlabels_relabel_is_fold symbols_size_is_fold. Qed.
 
 End tree_relabelling.
