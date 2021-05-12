@@ -704,9 +704,6 @@ Notation "a [~] b" := (@alt _ _ a b). (* infix notation *)
 
 Notation altMonad := MonadAlt.type.
 
-Definition Alt (M : altMonad) T := @alt M T.
-Arguments Alt {M} {T}.
-
 HB.mixin Record isMonadAltCI (M : UU0 -> UU0) of MonadAlt M := {
   altmm : forall A : UU0, idempotent (@alt [the altMonad of M] A) ;
   altC : forall A : UU0, commutative (@alt [the altMonad of M] A)
@@ -744,7 +741,7 @@ Variables (M : nondetMonad) (A : UU0).
 Canonical alt_monoid :=
   Monoid.Law (@altA M A) (@altfailm _ _) (@altmfail _ _).
 
-Lemma test_bigop n : \big[Alt/fail]_(i < n) (fail : M A) = fail.
+Lemma test_bigop n : \big[(@alt _ _)/fail]_(i < n) (fail : M A) = fail.
 Proof.
 elim: n => [|n IH]; first by rewrite big_ord0.
 by rewrite big_ord_recr /= IH altmfail.
@@ -760,7 +757,7 @@ HB.structure Definition MonadFailR0 := {M of isMonadFailR0 M & }.
 Notation failR0Monad := MonadFailR0.type.
 
 HB.mixin Record isMonadPrePlus (M : UU0 -> UU0) of MonadNondet M & MonadFailR0 M := {
-  alt_bindDr : BindLaws.right_distributive (@bind [the monad of M]) (@Alt _)
+  alt_bindDr : BindLaws.right_distributive (@bind [the monad of M]) (@alt _)
 }.
 
 HB.structure Definition MonadPrePlus := {M of isMonadPrePlus M & }.
