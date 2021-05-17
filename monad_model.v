@@ -1621,33 +1621,31 @@ apply (@monad_of_ret_bind_ext _ _ _ _ _ _ FG) => /=.
 set x := @bindC _ _; exact: (@eq_rect_bind_cont r x (esym FG)).
 Qed.
 
-End instantiations_with_the_identity_monad.
+End instantiations_with_the_identity_monad.*)
 
 Section monad_transformer_calcul.
 
-Let contTi := @contT^~ ModelMonad.identity.
-Let callcci := ModelCont.callcc.
+Let contTi T := MC T [the monad of idfun].
 
 Definition break_if_none (m : monad) (break : _) (acc : nat) (x : option nat) : m nat :=
   if x is Some x then Ret (x + acc) else break acc.
 
 Definition sum_until_none (xs : seq (option nat)) : contTi nat nat :=
-  callcci (fun break : nat -> contTi nat nat => foldM (break_if_none break) 0 xs).
+  callcc (fun break : nat -> contTi nat nat => foldM (break_if_none break) 0 xs).
 
 Goal sum_until_none [:: Some 2; Some 6; None; Some 4] = @^~ 8.
 by cbv.
 Abort.
 
 Definition calcul : contTi nat nat :=
-  (contTi _ # (fun x => 8 + x))
-  (callcci (fun k : _ -> contTi nat _ => (k 5) >>= (fun y => Ret (y + 4)))).
+  (_ # (fun x => 8 + x))
+  (callcc (fun k : _ -> contTi nat _ => (k 5) >>= (fun y => Ret (y + 4)))).
 
 Goal calcul = @^~ 13.
 by cbv.
 Abort.
 
 End monad_transformer_calcul.
-*)
 
 (*
 Section examples_of_algebraic_lifting.

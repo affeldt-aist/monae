@@ -213,8 +213,8 @@ Proof. by []. Qed.
 Section stateMonad_of_stateT.
 Variables (S : UU0) (M : monad).
 
-Let Put : S -> S -> M (unit * S)%type := fun s _ : S => @ret M (unit * S)%type (pair tt s).
-Let Get : S -> M (S * S)%type := fun s : S => @ret M (S * S)%type (s, s).
+Let Put : S -> MS S M unit := fun s _ : S => @ret M (unit * S)%type (tt, s).
+Let Get : MS S M S := fun s : S => @ret M (S * S)%type (s, s).
 
 Local Lemma bindputput (s s' : S) : @bind (stateT S M) _ _ (Put s) (fun=> Put s') = Put s'.
 Proof.
@@ -245,7 +245,7 @@ rewrite !bindE !MS_mapE /bindS /= /join_of_bind /= /bindS /= !bindretf /=.
 by rewrite bindE /= /join_of_bind /= /bindS bind_fmap bindretf.
 Qed.
 
-HB.instance Definition _ := @isMonadState.Build S (stateT S M) Get Put
+HB.instance Definition _ := @isMonadState.Build S (MS S M) Get Put
   bindputput bindputget bindgetput bindgetget.
 
 End stateMonad_of_stateT.
@@ -371,7 +371,7 @@ rewrite /Fail.
 by rewrite bindE /= /join_of_bind /bindX /= fmapE /= bindA 2!bindretf.
 Qed.
 
-HB.instance Definition _ := @isMonadFail.Build (exceptT unit M) Fail bindfail.
+HB.instance Definition _ := @isMonadFail.Build (MX unit M) Fail bindfail.
 (*Canonical failMonad_of_exceptT M := MonadFail.Pack (MonadFail.Class (failMonad_of_exceptT_mixin M)).*)
 
 End failMonad_of_exceptT.
@@ -646,10 +646,38 @@ Definition contTmonadM : monadM M [the monad of MC] :=
 
 End continuation_monad_tranformer.
 
-Definition contT r := MonadT.Pack (MonadT.Class (isMonadT.Build _ (contTmonadM r))).
+Definition contT r : monadT := MonadT.Pack (MonadT.Class (isMonadT.Build _ (contTmonadM r))).
 
 Definition abortT r X (M : monad) A : contT r M A := fun _ : A -> M r => Ret X.
 Arguments abortT {r} _ {M} {A}.
+
+Section contMonad_of_contT.
+Variables (r : UU0) (M : monad).
+Let N := MC r M.
+
+Let Callcc (A B : UU0) : ((A -> N B) -> N A) -> N A :=
+  fun k f => k (fun a => fun=> f a) f.
+
+Local Lemma Callcc0 (A B : UU0) (g : (A -> N B) -> N A) (k : B -> N B) :
+  @Callcc _ _ (fun f => g (fun x => f x >>= k)) = @Callcc _ _ g.
+Proof. by []. Qed.
+
+Local Lemma Callcc1 (A B : UU0) (m : N B) : @Callcc _ _ (fun _ : B -> N A => m) = m.
+Proof. by []. Qed.
+
+Local Lemma Callcc2 (A B C : UU0) (m : N A) x (k : A -> B -> N C) :
+  @Callcc _ _ (fun f : _ -> N _ => m >>= (fun a => f x >>= (fun b => k a b))) =
+  @Callcc _ _ (fun f : _ -> N _ => m >> f x).
+Proof. by []. Qed.
+
+Local Lemma Callcc3 (A B : UU0) (m : N A) b :
+  @Callcc _ _ (fun f : B -> N B => m >> f b) = @Callcc _ _ (fun _ : B -> N B => m >> Ret b).
+Proof. by []. Qed.
+
+HB.instance Definition _ := @isMonadContinuation.Build (MC r M) Callcc
+  Callcc0 Callcc1 Callcc2 Callcc3.
+
+End contMonad_of_contT.
 
 Section continuation_monad_transformer_examples.
 

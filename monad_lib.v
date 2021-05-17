@@ -496,8 +496,8 @@ move=> A; rewrite boolp.funeqE => mmma.
 by rewrite /join /= /join_of_bind bind_Map compidf bindA.
 Qed.
 
-Lemma  bindE : forall (A B : UU0) (f : A -> M B) (m : M A),
-    bind m f = (join) _ (([the functor of M] # f) m).
+Lemma bindE : forall (A B : UU0) (f : A -> M B) (m : M A),
+  bind m f = (join) _ (([the functor of M] # f) m).
 Proof.
 move=> A B f m.
 rewrite /join /join_of_bind /=.
