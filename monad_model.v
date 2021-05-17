@@ -659,83 +659,80 @@ End exceptops.
 Arguments throw_op {Z}.
 Arguments handle_op {Z}.
 
-Module StateOps.
-
 (* NB: see also Module Ask *)
-Module Get. Section get. Variable S : UU0.
+Module StateOpsGet. Section get. Variable S : UU0.
 Definition acto (X : UU0) := S -> X.
 Definition actm (X Y : UU0) (f : X -> Y) (t : acto X) : acto Y := f \o t.
 Let func_id : FunctorLaws.id actm.
 Proof. by move=> A; rewrite boolp.funeqE. Qed.
 Let func_comp : FunctorLaws.comp actm.
 Proof. by move=> A B C g h; rewrite boolp.funeqE. Qed.
+#[export]
 HB.instance Definition _ := isFunctor.Build acto func_id func_comp.
 (*Definition F := Functor.Pack (Functor.Class func_mixin).*)
-End get. End Get.
-HB.export Get.
+End get. End StateOpsGet.
+HB.export StateOpsGet.
 
-Module Put. Section put. Variable S : UU0.
+Module StateOpsPut. Section put. Variable S : UU0.
 Definition acto (X : UU0) := (S * X)%type.
 Definition actm (X Y : UU0) (f : X -> Y) (sx : acto X) : acto Y := (sx.1, f sx.2).
 Let func_id : FunctorLaws.id actm.
 Proof. by move=> A; rewrite boolp.funeqE; case. Qed.
 Let func_comp : FunctorLaws.comp actm.
 Proof. by move=> A B C g h; rewrite boolp.funeqE. Qed.
+#[export]
 HB.instance Definition _ := isFunctor.Build acto func_id func_comp.
 (*Definition F := Functor.Pack (Functor.Class func_mixin).*)
-End put. End Put.
-HB.export Put.
+End put. End StateOpsPut.
+HB.export StateOpsPut.
 
 Section stateops.
 Variable S : UU0.
 Local Notation M := (StateMonad.acto S).
 
 Definition get A (k : S -> M A) : M A := fun s => k s s.
-Lemma naturality_get : naturality ([the functor of Get.acto S] \O [the functor of M]) [the functor of M] get.
+Lemma naturality_get : naturality ([the functor of StateOpsGet.acto S] \O [the functor of M]) [the functor of M] get.
 Proof.
 move=> A B h; rewrite boolp.funeqE => /= m /=.
 by rewrite boolp.funeqE => s; rewrite FCompE.
 Qed.
-Definition get_op : [the functor of Get.acto S].-operation [the monad of M] :=
+Definition get_op : [the functor of StateOpsGet.acto S].-operation [the monad of M] :=
   Natural.Pack (Natural.Mixin naturality_get).
 Lemma algebraic_get : algebraicity get_op.
 Proof. by []. Qed.
-Definition get_aop : [the functor of Get.acto S].-aoperation [the monad of M] :=
+Definition get_aop : [the functor of StateOpsGet.acto S].-aoperation [the monad of M] :=
   AOperation.Pack (AOperation.Class (AOperation.Mixin algebraic_get)).
 
 Definition put A (s : S) (m : M A) : M A := fun _ => m s.
 Lemma naturality_put :
-  naturality ([the functor of Put.acto S] \O [the functor of M]) [the functor of M] (fun A => uncurry (put (A:=A))).
+  naturality ([the functor of StateOpsPut.acto S] \O [the functor of M]) [the functor of M] (fun A => uncurry (put (A:=A))).
 Proof.
 move=> A B h.
 by rewrite boolp.funeqE => /=; case => s m /=; rewrite boolp.funeqE.
 Qed.
-Definition put_op : [the functor of Put.acto S].-operation [the monad of M] :=
+Definition put_op : [the functor of StateOpsPut.acto S].-operation [the monad of M] :=
   Natural.Pack (Natural.Mixin naturality_put).
 Lemma algebraic_put : algebraicity put_op.
 Proof. by move=> ? ? ? []. Qed.
-Definition put_aop : [the functor of Put.acto S].-aoperation [the monad of M] :=
+Definition put_aop : [the functor of StateOpsPut.acto S].-aoperation [the monad of M] :=
   AOperation.Pack (AOperation.Class (AOperation.Mixin algebraic_put)).
 
 End stateops.
-End StateOps.
 
-Arguments StateOps.get_op {S}.
-Arguments StateOps.put_op {S}.
+Arguments get_op {S}.
+Arguments put_op {S}.
 
-Module ContOps.
-
-Module Abort. Section abort. Variable r : UU0.
+Module ContOpsAbort. Section abort. Variable r : UU0.
 Definition acto (X : UU0) := r.
 Definition actm (A B : UU0) (f : A -> B) (x : acto A) : acto B := x.
 Let func_id : FunctorLaws.id actm. Proof. by []. Qed.
 Let func_comp : FunctorLaws.comp actm. Proof. by []. Qed.
 HB.instance Definition _ := isFunctor.Build acto func_id func_comp.
 (*Definition F := Functor.Pack (Functor.Class func_mixin).*)
-End abort. End Abort.
-HB.export Abort.
+End abort. End ContOpsAbort.
+HB.export ContOpsAbort.
 
-Module Acallcc. Section acallcc. Variable r : UU0.
+Module ContOpsAcallcc. Section acallcc. Variable r : UU0.
 Definition acto := fun A : UU0 => (A -> r) -> A.
 Definition actm (X Y : UU0) (f : X -> Y) (t : acto X) : acto Y :=
   fun (g : Y -> r) => f (t (fun x => g (f x))).
@@ -743,8 +740,8 @@ Let func_id : FunctorLaws.id actm. Proof. by []. Qed.
 Let func_comp : FunctorLaws.comp actm. Proof. by []. Qed.
 HB.instance Definition _ := isFunctor.Build acto func_id func_comp.
 (*Definition F := Functor.Pack (Functor.Class func_mixin).*)
-End acallcc. End Acallcc.
-HB.export Acallcc.
+End acallcc. End ContOpsAcallcc.
+HB.export ContOpsAcallcc.
 
 Section contops.
 Variable r : UU0.
@@ -752,29 +749,28 @@ Variable r : UU0.
 Local Notation M := (ContMonad.acto r).
 
 Definition abort (A : UU0) : r -> M A := fun r _ => r.
-Lemma naturality_abort : naturality ([the functor of Abort.acto r] \O [the monad of M]) [the monad of M] abort.
+Lemma naturality_abort : naturality ([the functor of ContOpsAbort.acto r] \O [the monad of M]) [the monad of M] abort.
 Proof. by []. Qed.
-Definition abort_op : [the functor of Abort.acto r].-operation [the monad of M] :=
+Definition abort_op : [the functor of ContOpsAbort.acto r].-operation [the monad of M] :=
   Natural.Pack (Natural.Mixin naturality_abort).
 Lemma algebraicity_abort : algebraicity abort_op.
 Proof. by []. Qed.
-Definition abort_aop : [the functor of Abort.acto r].-aoperation [the monad of M] :=
+Definition abort_aop : [the functor of ContOpsAbort.acto r].-aoperation [the monad of M] :=
   AOperation.Pack (AOperation.Class (AOperation.Mixin algebraicity_abort)).
 
 (* alebgraic call/cc *)
 Definition acallcc A (f : (M A -> r) -> M A) : M A :=
   fun k => f (fun m => m k) k.
-Lemma naturality_acallcc : naturality ([the functor of Acallcc.acto r] \O [the functor of M]) [the functor of M] acallcc.
+Lemma naturality_acallcc : naturality ([the functor of ContOpsAcallcc.acto r] \O [the functor of M]) [the functor of M] acallcc.
 Proof. by []. Qed.
-Definition acallcc_op : [the functor of Acallcc.acto r].-operation [the monad of M] :=
+Definition acallcc_op : [the functor of ContOpsAcallcc.acto r].-operation [the monad of M] :=
   Natural.Pack (Natural.Mixin naturality_acallcc).
 Lemma algebraicity_callcc : algebraicity acallcc_op.
 Proof. by []. Qed.
-Definition callcc_aop : [the functor of Acallcc.acto r].-aoperation [the monad of M] :=
+Definition callcc_aop : [the functor of ContOpsAcallcc.acto r].-aoperation [the monad of M] :=
   AOperation.Pack (AOperation.Class (AOperation.Mixin algebraicity_callcc)).
 
 End contops.
-End ContOps.
 
 Module Fail.
 
@@ -829,9 +825,9 @@ Module State.
 Section state.
 Variable S : UU0.
 Local Notation M := (StateMonad.acto S).
-Definition get : M S := StateOps.get_op _ Ret.
+Definition get : M S := get_op _ Ret.
 Lemma getE : get = fun s => (s, s). Proof. by []. Qed.
-Definition put : S -> M unit := fun s => StateOps.put_op _ (s, Ret tt).
+Definition put : S -> M unit := fun s => put_op _ (s, Ret tt).
 Lemma putE : put = fun s' _ => (tt, s').
 Proof. by []. Qed.
 Let putput : forall s s', put s >> put s' = put s'.
@@ -974,7 +970,7 @@ Section modelcont.
 Variable r : UU0.
 Local Notation M := [the monad of (ContMonad.acto r)].
 Let callcc (A B : UU0) (f : (A -> M B) -> M A) : M A :=
-  ContOps.acallcc_op _ _ (fun k => f (fun x _ => k (Ret x))).
+  acallcc_op _ _ (fun k => f (fun x _ => k (Ret x))).
 Lemma callccE (A B : UU0) (f : (A -> M B) -> M A) : callcc f = usual_callcc f.
 Proof. by []. Qed.
 Let callcc0 : forall (A B : UU0) (g : (A -> M B) -> M A) (k : B -> M B),
@@ -1647,23 +1643,22 @@ Abort.
 
 End monad_transformer_calcul.
 
-(*
 Section examples_of_algebraic_lifting.
 
 Section state_exceptT.
-Let M S : monad := ModelState.state S.
+Let M S : monad := [the monad of StateMonad.acto S].
 
-Definition aLGet {Z S} : (StateOps.Get.func S).-aoperation (exceptT Z (M S)) :=
-  alifting (StateOps.get_aop S) (Lift (exceptT Z) (M S)).
+Definition aLGet {Z S} : [the functor of StateOpsGet.acto S].-aoperation (exceptT Z (M S)) :=
+  alifting (get_aop S) (Lift (exceptT Z) (M S)).
 
-Definition aLPut {Z S} : (StateOps.Put.func S).-operation (exceptT Z (M S)) :=
-  alifting (StateOps.put_aop S) (Lift (exceptT Z) (M S)).
+Definition aLPut {Z S} : [the functor of StateOpsPut.acto S].-operation (exceptT Z (M S)) :=
+  alifting (put_aop S) (Lift (exceptT Z) (M S)).
 
-Goal forall Z (S : UU0) X (k : S -> exceptT Z (M S) X), aLGet _ k = StateOps.get_op _ k.
+Goal forall Z (S : UU0) X (k : S -> exceptT Z (M S) X), aLGet _ k = get_op _ k.
 by [].
 Abort.
 
-Goal forall Z S, aLGet _ Ret = Lift (exceptT Z) (M S) _ (@ModelState.get S).
+Goal forall Z S, aLGet _ Ret = Lift (exceptT Z) (M S) _ (@get S).
 by [].
 Abort.
 
@@ -1671,11 +1666,11 @@ End state_exceptT.
 
 Section continuation_stateT.
 Variable (r S : UU0).
-Let M : monad := ModelCont.t r.
+Let M : monad := [the monad of ContMonad.acto r].
 Let stS : monadT := stateT S.
 
-Definition aLCallcc : (ContOps.Acallcc.func r).-aoperation (stS M) :=
-  alifting (ContOps.callcc_aop r) (Lift stS M).
+Definition aLCallcc : [the functor of ContOpsAcallcc.acto r].-aoperation (stS M) :=
+  alifting (callcc_aop r) (Lift stS M).
 
 Goal forall A (f : (stS M A -> r) -> stS M A),
   aLCallcc _ f = (fun s k => f (fun m => uncurry m (s, k)) s k) :> stS M A.
@@ -1688,7 +1683,7 @@ Definition usual_callccS (A B : UU0) (f : (A -> stS M B) -> stS M A) : stS M A :
 
 Lemma callccS_E A B f : @aLCallcc _
     (fun k : stS M A -> r =>
-       f (fun x => (fun (_ : S) (_ : B * S -> r) => k (@RET (stS M) A x)) : stS M B)) =
+       f (fun x => (fun (_ : S) (_ : B * S -> r) => k (Ret x)) : stS M B)) =
   usual_callccS f.
 Proof.
 by rewrite /aLCallcc /= /stS /= /stateT /= /stateTmonadM /=; unlock.
@@ -1701,37 +1696,41 @@ End examples_of_algebraic_lifting.
 Module ModelMonadStateRun.
 Section modelmonadstaterun.
 Variable S : UU0.
-Let N : monad := ModelExcept.t.
-Definition M : stateMonad S := stateMonad_of_stateT(*stateT*) S N.
+Let N : monad := [the monad of ExceptMonad.acto unit].
+Definition M : stateMonad S := [the stateMonad S of stateT S N].
 
-Local Obligation Tactic := idtac.
-Program Definition t : stateRunMonad S N :=
-  @MonadStateRun.Pack S N (MS S N) (@MonadStateRun.Class S N _
-    (MonadState.Class (@MonadState.Mixin S _ (@Get _ M) (@Put _ M) _ _ _ _))
-    (@MonadStateRun.Mixin S N _
-      (fun A : UU0 => id) (*runStateT*)
-      _ _ _ _)).
-Next Obligation. move=> s s'; exact: (putput (stateMonad_of_stateT S N)). Qed.
-Next Obligation. move=> s; exact: (putget (stateMonad_of_stateT S N)). Qed.
-Next Obligation. exact: (getputskip (stateMonad_of_stateT S N)). Qed.
-Next Obligation. exact: (@getget _ (stateMonad_of_stateT S N)). Qed.
-Next Obligation. by []. Qed.
-Next Obligation.
-move=> A M m f s /=; rewrite /t_obligation_5.
-rewrite /Bind /bindS /= /ModelMonad.Except.bind /= /Actm /=.
-rewrite /Monad_of_ret_bind.Map /= /ModelMonad.Except.bind /=.
-by case: (m s) => // -[].
+Let runStateT : forall A : UU0, M A -> S -> N (A * S)%type := fun A : UU0 => id.
+Let runStateTret : forall (A : UU0) (a : A) (s : S), @runStateT _ (Ret a) s = Ret (a, s).
+Proof. by []. Qed.
+Let runStateTbind : forall (A B : UU0) (m : M A) (f : A -> M B) (s : S),
+  @runStateT _ (m >>= f) s = @runStateT _ m s >>= fun x => @runStateT _ (f x.1) x.2.
+Proof.
+move=> A M m f s /=.
+rewrite /= /runStateT bindE /= /join_of_bind /bindS /=.
+rewrite /hierarchy.actm /= /MS_map /hierarchy.actm /=.
+by case: (m s) => //.
 Qed.
-Next Obligation. by []. Qed.
-Next Obligation. by []. Qed.
+Let runStateTget : forall s : S, runStateT hierarchy.get  s = Ret (s, s) :> N _.
+Proof. by []. Qed.
+Let runStateTput : forall s' s : S, @runStateT _ (hierarchy.put s') s = Ret (tt, s').
+Proof. by []. Qed.
+
+HB.instance Definition _ :=
+  isMonadStateRun.Build S N (MS S N)
+  runStateTret
+  runStateTbind
+  runStateTget
+  runStateTput.
 
 End modelmonadstaterun.
 End ModelMonadStateRun.
+HB.export ModelMonadStateRun.
 
 Module ModelMonadExceptStateRun.
 Section modelmonadexceptstaterun.
 Variable S : UU0.
-Let N : exceptMonad := ModelExcept.t.
+(*Let N : exceptMonad := ModelExcept.t.*)
+Let N : exceptMonad := [the failMonad of ExceptMonad.acto unit].
 Definition M : stateRunMonad S N := ModelMonadStateRun.t S.
 
 Local Obligation Tactic := idtac.
