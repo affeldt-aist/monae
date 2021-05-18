@@ -1730,34 +1730,59 @@ Module ModelMonadExceptStateRun.
 Section modelmonadexceptstaterun.
 Variable S : UU0.
 (*Let N : exceptMonad := ModelExcept.t.*)
-Let N : exceptMonad := [the failMonad of ExceptMonad.acto unit].
-Definition M : stateRunMonad S N := ModelMonadStateRun.t S.
+Let N : exceptMonad := [the exceptMonad of ExceptMonad.acto unit].
+Definition M : stateRunMonad S N := [the stateRunMonad S N of MS S N].
 
-Local Obligation Tactic := idtac.
-Program Definition t : exceptStateRunMonad S N :=
-  @MonadExceptStateRun.Pack S N (MS S N)
-    (@MonadExceptStateRun.Class S N (MS S N)
-       (@MonadExcept.Class (MS S N) _ _)
-       (MonadState.mixin (MonadState.class (ModelMonadStateRun.t S)))
-       (MonadStateRun.mixin (MonadStateRun.class M))
-       (MonadExceptStateRun.Mixin _ _)).
-Next Obligation.
-pose X : forall A : UU0, M A := fun A => liftS (@Fail N _).
-by refine (@MonadFail.Class _ _ (@MonadFail.Mixin _ X _)).
+(*Lemma RunStateTfail : forall (A : UU0) (s : S),
+  runStateT (@fail [the failMonad of (MS S N)] A) s = @fail N _.*)
+
+Let Catch (A : UU0) := mapStateT2 (@catch N (A * S)%type).
+
+Let Catchmfail : forall A, right_id (liftS (@fail N A)) (@Catch A).
+Proof.
+move=> A x; rewrite /Catch /mapStateT2 boolp.funeqE => s.
+by rewrite catchmfail.
+Qed.
+
+Let Catchfailm : forall A, left_id (liftS (@fail N A)) (@Catch A).
+Proof.
+by move=> A x; rewrite /Catch /mapStateT2 boolp.funeqE => s; rewrite catchfailm.
+Qed.
+
+Let CatchA : forall A, ssrfun.associative (@Catch A).
+Proof.
+by move=> A; rewrite /Catch /mapStateT2 => a b c; rewrite boolp.funeqE => s; rewrite catchA.
+Qed.
+
+Let Catchret : forall A x, @left_zero (M A) (M A) (Ret x) (@Catch A).
+Proof.
+by move=> A x y; rewrite /Catch /mapStateT2 boolp.funeqE => s; rewrite catchret.
+Qed.
+
+Program Definition xxx : exceptMonad.
+refine (MonadExcept.Pack (MonadExcept.Class (@isMonadExcept.Axioms_ (MS S N) _ _ (isMonadFail.Axioms_ (fun A => liftS (@fail N A)) _) Catch Catchmfail Catchfailm CatchA Catchret))).
+by move=> A B f.
 Defined.
-Next Obligation.
-set f := fun A : UU0 => mapStateT2 (@Catch N (A * S)%type).
-refine (@MonadExcept.Mixin (MonadFail.Pack t_obligation_1) f _ _ _ _).
-by move=> A x; rewrite /f /mapStateT2 boolp.funeqE => s; rewrite catchmfail.
-by move=> A x; rewrite /f /mapStateT2 boolp.funeqE => s; rewrite catchfailm.
-by move=> A; rewrite /f /mapStateT2 => a b c; rewrite boolp.funeqE => s; rewrite catchA.
-by move=> A x y; rewrite /f /mapStateT2 boolp.funeqE => s; rewrite catchret.
+
+Lemma RunStateTfail : forall (A : UU0) (s : S),
+  runStateT (@fail xxx A) s = @fail N _.
+Proof.
+move=> A s.
+done.
+Qed.
+
+Lemma RunStateTcatch : forall (A : UU0) (s : S) (m1 m2 : _ A),
+  runStateT (Catch m1 m2) s =
+  @catch N _ (runStateT m1 s) (runStateT m2 s).
+Proof.
+done.
+Qed.
+
+Program Definition yyy : exceptStateRunMonad S N.
+refine (MonadExceptStateRun.Pack (MonadExceptStateRun.Class (isMonadExceptStateRun.Axioms_ _ _ _ _))).
+exact: RunStateTfail.
+exact: RunStateTcatch.
 Defined.
-Next Obligation. by []. Defined.
-Next Obligation. by []. Defined.
-Next Obligation. by []. Defined.
-Next Obligation. by []. Defined.
 
 End modelmonadexceptstaterun.
 End ModelMonadExceptStateRun.
-*)

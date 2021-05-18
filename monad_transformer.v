@@ -189,7 +189,7 @@ Local Lemma bindliftS : MonadMLaws.bind liftS.
 Proof.
 move=> A B m f; rewrite {1}/liftS; rewrite boolp.funeqE => s.
 rewrite [in LHS]bindA.
-transitivity (Builders_13.Super.bind (liftS m s) (uncurry (liftS (A:=B) \o f))) => //.
+transitivity (bind (liftS m s) (uncurry (liftS (A:=B) \o f))) => //.
 rewrite [in RHS]bindA.
 bind_ext => a.
 by rewrite [in RHS]bindretf.
@@ -361,8 +361,9 @@ Proof. by []. Qed.
 
 Section failMonad_of_exceptT.
 Variable M : monad.
+Let N (B : UU0) := M (unit + B)%type.
 
-Let Fail : forall B, M (unit + B)%type := fun B => Ret (@inl _ B tt).
+Let Fail : forall B, N B := fun B => Ret (@inl _ B tt).
 
 Local Lemma bindfail : BindLaws.left_zero (@bind (exceptT unit M)) Fail.
 Proof.
@@ -375,6 +376,61 @@ HB.instance Definition _ := @isMonadFail.Build (MX unit M) Fail bindfail.
 (*Canonical failMonad_of_exceptT M := MonadFail.Pack (MonadFail.Class (failMonad_of_exceptT_mixin M)).*)
 
 End failMonad_of_exceptT.
+
+Section exceptMonad_of_exceptT.
+Variables (M : monad).
+Let N (B : UU0) := M (unit + B)%type.
+
+Let Catch (B : UU0) (x : N B) (y : N B) : N B.
+apply: (@bind M (unit + B)).
+exact: x.
+case.
+  case.
+  exact: y.
+move=> b.
+apply: ret.
+apply: inr.
+exact: b.
+Defined.
+
+Let Catchmfail : forall A, right_id (@fail [the failMonad of MX unit M] A) (@Catch A).
+Proof.
+move=> A x.
+rewrite /Catch /=.
+rewrite /fail /=.
+rewrite -[in RHS](bindmret x).
+bind_ext.
+case=> /=.
+  by case => //.
+by move=> b.
+Qed.
+
+Let Catchfailm : forall A, left_id (@fail [the failMonad of MX unit M] A) (@Catch A).
+Proof.
+move=> A x; rewrite /N in x *.
+by rewrite /Catch /= /fail /= bindretf.
+Qed.
+
+Let CatchA : forall A, associative (@Catch A).
+Proof.
+move=> A x y z; rewrite /Catch bindA.
+bind_ext.
+case.
+  by case.
+move=> b.
+by rewrite bindretf.
+Qed.
+
+Let Catchret : forall A (x : A%type), @left_zero (N A) (N A) (Ret (inr x)) (@Catch A).
+Proof.
+move=> A /= ua n.
+by rewrite /Catch /= bindretf.
+Qed.
+
+HB.instance Definition _ :=
+  @isMonadExcept.Build (MX unit M) Catch Catchmfail Catchfailm CatchA Catchret.
+
+End exceptMonad_of_exceptT.
 
 Section environment_monad_transformer.
 
@@ -1028,7 +1084,7 @@ Proof.
 move=> A B m f; rewrite /hmapX /= /hmapX' /=.
 rewrite !bindE /= /join_of_bind /bindX /= !bind_fmap.
 rewrite !monadMbind /=.
-congr (Builders_13.Super.bind (e (X + A)%type m) _).
+congr (bind (e (X + A)%type m) _).
 rewrite boolp.funeqE.
 case.
   move=> x /=.
