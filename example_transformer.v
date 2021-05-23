@@ -187,16 +187,13 @@ Lemma bindLmfail (M := [the monad of option_monad]) S T U (m : stateT S M U)
   m >> Lift (stateT S) M T FAIL = Lift (stateT S) M T FAIL.
 Proof.
 rewrite -!liftSE /liftS boolp.funeqE => s.
-rewrite bindE /= /join_of_bind /=.
-rewrite /bindS /=.
+rewrite ExceptMonadE.
+rewrite {1}bindE /= {1}/join_of_bind /= {1}/bindS /=.
+rewrite {1}bindE /= {1}/join_of_bind /=.
 rewrite /hierarchy.actm /= /MS_map /=.
-rewrite /hierarchy.actm /= /ExceptMonad.map /=.
-rewrite bindE /= /join_of_bind /=.
-rewrite /ExceptMonad.bind /=.
-rewrite /hierarchy.actm /= /ExceptMonad.map /=.
-rewrite bindE /= /join_of_bind /=.
-destruct (m s) => //.
-by case: u.
+rewrite /hierarchy.actm /=.
+case (m s) => //.
+by case.
 Qed.
 
 Section fail_model_sufficient.

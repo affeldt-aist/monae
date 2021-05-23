@@ -25,7 +25,7 @@ Require Import hierarchy.
 (*                              functor E                                     *)
 (*           algebraicity op == the operation op is algebraic                 *)
 (*          E .-aoperation M == algebraic E.-operation M                      *)
-(*  Module Monad_of_ret_bind == construction of a monad from ret and bind     *)
+(*         Monad_of_ret_bind == factory to build a monad from ret and bind    *)
 (*                                                                            *)
 (******************************************************************************)
 
@@ -406,8 +406,6 @@ End algebraic_operation_interface.
 
 Definition join_of_bind (F : functor)
   (b : forall (A B : UU0), F A -> (A -> F B) -> F B) := (fun A : UU0 => (b _ A)^~ id).
-
-(*Definition coucou (M : UU0 -> UU0) := M.*)
 
 HB.factory Record Monad_of_ret_bind (M : UU0 -> UU0) of isFunctor M := {
   ret : idfun ~> M ;

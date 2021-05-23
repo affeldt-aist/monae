@@ -39,9 +39,9 @@ Set Bullet Behavior "Strict Subproofs".
 Obligation Tactic := idtac.
 
 Reserved Notation "'p_do' x <- m ; e"
-  (at level 60, x ident, m at level 200, e at level 60).
+  (at level 60, x name, m at level 200, e at level 60).
 Reserved Notation "'p_do' x : T <- m ; e"
-  (at level 60, x ident, m at level 200, e at level 60).
+  (at level 60, x name, m at level 200, e at level 60).
 
 Section Syntax.
 

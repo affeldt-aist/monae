@@ -678,7 +678,7 @@ End slifting_handle.
 (* example 32 *)
 Section slifting_flush.
 Variable R : UU0.
-Let E : functor := [the functor of Flush.acto].
+Let E := [the functor of Flush.acto].
 Let M := [the monad of OutputMonad.acto R].
 Let flush : E.-operation M := flush_op R.
 Hypothesis naturality_MK : forall (A : UU0) (m : MK M A),
