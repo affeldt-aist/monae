@@ -598,7 +598,6 @@ Qed.
 HB.instance Definition _ :=
   Monad_of_ret_bind.Build MO MO_mapE bindOretf bindOmret bindOA.
 
-
 Definition liftO A (m : M A) : MO A :=
   m >>= (fun x => Ret (x, [::])).
 

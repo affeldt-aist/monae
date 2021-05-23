@@ -1,7 +1,6 @@
 (* monae: Monadic equational reasoning in Coq                                 *)
 (* Copyright (C) 2020 monae authors, license: LGPL-2.1-or-later               *)
 Ltac typeof X := type of X.
-
 Require Import ssrmatching.
 From mathcomp Require Import all_ssreflect.
 From mathcomp Require boolp.
@@ -41,6 +40,15 @@ Unset Strict Implicit.
 Unset Printing Implicit Defensive.
 
 Local Open Scope monae_scope.
+
+Local Open Scope mprog.
+Lemma mfoldl_rev {M : monad} (T R : UU0) (f : R -> T -> R) (z : R) (s : seq T -> M (seq T)) :
+  foldl f z (o) (rev (o) s) = foldr (fun x => f^~ x) z (o) s.
+Proof.
+rewrite boolp.funeqE => x; rewrite !fcompE 3!fmapE !bindA.
+bind_ext => ?; by rewrite bindretf /= -foldl_rev.
+Qed.
+Local Close Scope mprog.
 
 Definition liftM2 {M : monad} (A B C : UU0) (oplus : A -> B -> C) m1 m2 : M C :=
   m1 >>= (fun x1 => m2 >>= (fun x2 => Ret (oplus x1 x2))).

@@ -559,18 +559,6 @@ apply functional_extensionality.
 by elim=> // h t /= IH; rewrite !rev_cons IH map_rcons.
 Qed.*)
 
-(* TODO: move? *)
-Lemma foldl_revE (T R : UU0) (f : R -> T -> R) (z : R) :
-  foldl f z \o rev = foldr (fun x : T => f^~ x) z.
-Proof. by rewrite boolp.funeqE => s; rewrite -foldl_rev. Qed.
-
-Lemma mfoldl_rev (T R : UU0) (f : R -> T -> R) (z : R) (s : seq T -> M (seq T)) :
-  foldl f z (o) (rev (o) s) = foldr (fun x => f^~ x) z (o) s.
-Proof.
-rewrite boolp.funeqE => x; rewrite !fcompE 3!fmapE !bindA.
-bind_ext => ?; by rewrite bindretf /= -foldl_rev.
-Qed.
-
 Lemma joinE A (pp : M (M A)) : Join pp = pp >>= id.
 Proof. rewrite bindE; congr Join; by rewrite functor_id. Qed.
 
