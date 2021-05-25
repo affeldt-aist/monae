@@ -633,6 +633,13 @@ Proof.
 move: a b => -[|] b /=; by [rewrite guardT bindskipf | rewrite guardF bindfailf].
 Qed.
 
+Lemma guard_and_split a b c d : guard ([&& a, b, c & d]) = guard a >> guard b >> guard c >> guard d.
+Proof.
+  move: a => -[|] /=; [rewrite guardT bindskipf | by rewrite guardF !bindfailf].
+  move: b => -[|] /=; [rewrite guardT bindskipf | by rewrite guardF !bindfailf].
+  move: c => -[|] /=; by [rewrite guardT bindskipf | rewrite guardF bindfailf].
+Qed.
+
 Definition assert {A : UU0} (p : pred A) (a : A) : M A :=
   locked (guard (p a) >> Ret a).
 
