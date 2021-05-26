@@ -459,7 +459,7 @@ Lemma promote_assert_sufficient_condition (M : failMonad) (A : UU0) :
 Proof.
 move=> right_z p q promotable_pq.
 (*
-rewrite /promote_assert fun_extboolp.funeqE => -[x1 x2].
+rewrite /promote_assert fun_ext => -[x1 x2].
 rewrite 3![in RHS]compE [in RHS]fmapE.
 rewrite 2![in LHS]compE {1}/bassert [in LHS]bind_fmap !bindA.
 bind_ext => s.

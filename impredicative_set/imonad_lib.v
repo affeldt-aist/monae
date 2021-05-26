@@ -73,11 +73,11 @@ Definition curry_f (A B : UU0) (f : A -> B) : curry_M A -> curry_M B :=
   fun x : X * A => (x.1, f x.2).
 Lemma curry_f_id : FunctorLaws.id curry_f.
 Proof.
-by rewrite /FunctorLaws.id => A; rewrite /curry_f boolp.funeqE; case.
+by rewrite /FunctorLaws.id => A; rewrite /curry_f; apply fun_ext; case.
 Qed.
 Lemma curry_f_comp : FunctorLaws.comp curry_f.
 Proof.
-by rewrite /FunctorLaws.comp => A B C g h; rewrite /curry_f boolp.funeqE; case.
+by rewrite /FunctorLaws.comp => A B C g h; rewrite /curry_f; apply fun_ext; case.
 Qed.
 HB.instance Definition _ :=
   @isFunctor.Build curry_M curry_f curry_f_id curry_f_comp.
@@ -90,12 +90,12 @@ Definition uncurry_f (X A B : UU0) (f : A -> B) : uncurry_M X A -> uncurry_M X B
   fun g : X -> A => f \o g.
 Lemma uncurry_f_id X : FunctorLaws.id (@uncurry_f X).
 Proof.
-rewrite /FunctorLaws.id => A; rewrite /uncurry_f boolp.funeqE => ?.
+rewrite /FunctorLaws.id => A; rewrite /uncurry_f; apply fun_ext => ?.
 by rewrite compidf.
 Qed.
 Lemma uncurry_f_comp X : FunctorLaws.comp (@uncurry_f X).
 Proof.
-rewrite /FunctorLaws.comp => A B C g h; rewrite /uncurry_f boolp.funeqE => ?.
+rewrite /FunctorLaws.comp => A B C g h; rewrite /uncurry_f; apply fun_ext => ?.
 by rewrite compE compA.
 Qed.
 HB.instance Definition _ X :=
@@ -231,9 +231,9 @@ Definition curry_eta : eta_type (curry_F X) (uncurry_F X) := Natural.Pack (Natur
 Lemma adjoint_currry : curry_F X -| uncurry_F X.
 Proof.
 apply: (@AdjointFunctor.mk _ _ curry_eta curry_eps).
-by move=> A; rewrite /TriangularLaws.left boolp.funeqE; case.
+by move=> A; rewrite /TriangularLaws.left; apply fun_ext; case.
 move=> A; rewrite /TriangularLaws.right /uncurry_F /curry_eps /curry_eta /uncurry_M.
-by rewrite /= /uncurry_f /= /comp /= boolp.funeqE => f; apply fun_ext.
+by rewrite /= /uncurry_f /= /comp /=; apply fun_ext => f; apply fun_ext.
 Qed.
 End adjoint_example.
 
@@ -450,7 +450,7 @@ Notation M' := ([the functor of M]).
 (*
 Lemma naturality_ret : naturality FId M' ret.
 Proof.
-move=> A B h; rewrite FIdf boolp.funeqE => ?.
+move=> A B h; rewrite FIdf; apply fun_ext => ?.
 (*by rewrite compE /= /Map MapE /= bindretf.
 Qed.*) Admitted.
 
@@ -538,7 +538,7 @@ Proof. by []. Qed.
 
 Lemma naturality_ret : naturality FId M' ret.
 Proof.
-move=> A B h; rewrite FIdf boolp.funeqE => ?.
+move=> A B h; rewrite FIdf; apply fun_ext => ?.
 by rewrite compE /= /Map MapE /= bindretf.
 Qed.
 

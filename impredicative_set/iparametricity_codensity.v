@@ -51,7 +51,7 @@ Axiom param : T_R m m.
 
 Lemma naturality : naturality (exponential_F A \O M) M m.
 Proof.
-move=> X Y f; rewrite boolp.funeqE => eX.
+move=> X Y f; apply fun_ext => eX.
 by apply (param X Y (fun x y => (M # f) x = y)) => a _ <-.
 Qed.
 
@@ -86,7 +86,7 @@ Axiom param : T_R m m.
 
 Lemma naturality : naturality (exponential_F A \O M) M m.
 Proof.
-move=> X Y f; rewrite boolp.funeqE => eX.
+move=> X Y f; apply fun_ext => eX.
 set rhs := RHS.
 have : Me_R X Y (fun x y => f x = y) (m X eX) rhs.
   apply: param => a _ <-; rewrite Actm_exponenial_FE compE.
@@ -143,7 +143,7 @@ Axiom param : T_R m m.
 
 Lemma naturality : naturality (exponential_F A \O M) M m.
 Proof.
-move=> X Y f /=; rewrite boolp.funeqE => eX.
+move=> X Y f /=; apply fun_ext => eX.
 set rhs := RHS.
 have : Ml_R X Y (fun x y => f x = y) (m X eX) rhs.
   apply: param => a _ <-; rewrite Actm_exponenial_FE compE.
@@ -191,13 +191,13 @@ Proof. by []. Qed.
 
 Lemma naturality : naturality (exponential_F A \O M) M m.
 Proof.
-move=> X Y f; rewrite boolp.funeqE => eX.
+move=> X Y f; apply fun_ext => eX.
 set rhs := RHS.
 have H : Ms_R X Y (fun x y => f x = y) (m X eX) rhs.
   apply param => // a _ <- s1 _ <-.
   rewrite Actm_exponenial_FE Actm_ModelMonadStateE'.
   by case: (eX a) => x s2; exact: prod_R_pair_R.
-rewrite boolp.funeqE => s.
+apply fun_ext => s.
 have {}H : prod_R X Y (fun x y => f x = y) S S S_R (m X eX s) (rhs s) by exact: H.
 inversion H as [x y fxy s1 s2 s12 xs1 ys2].
 by rewrite Actm_ModelMonadStateE -xs1 fxy s12.

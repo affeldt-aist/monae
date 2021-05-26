@@ -84,7 +84,7 @@ Qed.
 Lemma bindmret (A : UU0) (m : failPState A) :
 bind m ret = m.
 Proof.
-rewrite boolp.funeqE => s.
+apply fun_ext => s.
 unfold bind.
 destruct (m s) as [[|]]; reflexivity.
 Qed.
@@ -94,7 +94,7 @@ Lemma bindA
   (f : A -> failPState B) (g : B -> failPState C) :
 bind (bind m f) g = bind m (fun x => bind (f x) g).
 Proof.
-rewrite boolp.funeqE => s.
+apply fun_ext => s.
 unfold bind.
 destruct (m s) as [[|]]; reflexivity.
 Qed.
@@ -186,7 +186,7 @@ Lemma bindLmfail (M := [the monad of option_monad]) S T U (m : stateT S M U)
     (FAIL := @throw unit T tt) :
   m >> Lift (stateT S) M T FAIL = Lift (stateT S) M T FAIL.
 Proof.
-rewrite -!liftSE /liftS boolp.funeqE => s.
+rewrite -!liftSE /liftS; apply fun_ext => s.
 rewrite ExceptMonadE.
 rewrite {1}bindE /= {1}/join_of_bind /= {1}/bindS /=.
 rewrite {1}bindE /= {1}/join_of_bind /=.
