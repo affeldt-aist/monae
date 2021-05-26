@@ -1,7 +1,7 @@
 (* monae: Monadic equational reasoning in Coq                                 *)
 (* Copyright (C) 2020 monae authors, license: LGPL-2.1-or-later               *)
 From mathcomp Require Import all_ssreflect.
-Require FunctionalExtensionality ProofIrrelevance.
+Require ProofIrrelevance FunctionalExtensionality.
 
 Definition fun_ext := @FunctionalExtensionality.functional_extensionality.
 
@@ -19,7 +19,7 @@ Set Implicit Arguments.
 Unset Strict Implicit.
 Unset Printing Implicit Defensive.
 
-(* notations common to ihierarchy.v and ../category.v *)
+(* notations common to hierarchy.v and category.v *)
 
 Reserved Notation "m >>= f" (at level 49).
 Reserved Notation "'do' x <- m ; e"
@@ -79,6 +79,10 @@ Proof. by rewrite -foldr_fusion. Qed.
 End fusion_law.
 
 End fold.
+
+Lemma foldl_revE (T R : Type) (f : R -> T -> R) (z : R) :
+  foldl f z \o rev = foldr (fun x : T => f^~ x) z.
+Proof. by apply fun_ext => s; rewrite -foldl_rev. Qed.
 
 Section curry.
 Variables A B C : Type.

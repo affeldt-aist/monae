@@ -1,6 +1,8 @@
 (* monae: Monadic equational reasoning in Coq                                 *)
 (* Copyright (C) 2020 monae authors, license: LGPL-2.1-or-later               *)
 From mathcomp Require Import all_ssreflect.
+From mathcomp Require boolp.
+From HB Require Import structures.
 Require Import imonae_lib ihierarchy imonad_lib imonad_transformer.
 
 (******************************************************************************)
@@ -24,7 +26,6 @@ Require Import imonae_lib ihierarchy imonad_lib imonad_transformer.
 (*              local_*E == Lemmas: liftings of local                         *)
 (*             handle_*E == Lemmas: liftings of handle                        *)
 (*              flush_*E == Lemmas: liftings of flush                         *)
-(*                                                                            *)
 (******************************************************************************)
 
 Set Implicit Arguments.
@@ -32,8 +33,6 @@ Unset Strict Implicit.
 Unset Printing Implicit Defensive.
 
 Local Open Scope monae_scope.
-
-Import Univ.
 
 Definition MK (m : UU0 -> UU0) (A : UU0) :=
   forall (B : UU0), (A -> m B) -> m B.
@@ -52,58 +51,72 @@ Definition MK_map (A B : UU0) (f : A -> B) (m : MK M A) : MK M B :=
 
 Lemma MK_map_i : FunctorLaws.id MK_map.
 Proof.
-move=> A; rewrite /MK_map; apply fun_ext => m /=.
+move=> A; rewrite /MK_map boolp.funeqE => m /=.
 apply fun_ext_dep => B.
-by apply fun_ext => k.
+by rewrite boolp.funeqE => k.
 Qed.
 
 Lemma MK_map_o : FunctorLaws.comp MK_map.
 Proof. by []. Qed.
 
-Definition MK_functor := Functor.Pack (Functor.Mixin MK_map_i MK_map_o).
+HB.instance Definition _ := isFunctor.Build (MK M) MK_map_i MK_map_o.
 
-Lemma naturality_retK : naturality FId MK_functor retK.
+Lemma naturality_retK : naturality FId [the functor of MK M] retK.
 Proof.
 move=> A B h.
-rewrite /MK_functor /Actm /= /MK_map /retK /=.
-by apply fun_ext => a /=; exact: fun_ext_dep.
+rewrite /ihierarchy.actm /= /MK_map /retK /=.
+by rewrite boolp.funeqE => a /=; exact: fun_ext_dep.
 Qed.
 
-Definition retK_natural : FId ~> MK_functor :=
+Definition retK_natural : FId ~> [the functor of MK M] :=
   Natural.Pack (Natural.Mixin naturality_retK).
 
-Program Definition codensityTmonad : monad :=
-  @Monad_of_ret_bind MK_functor retK_natural bindK _ _ _.
-Next Obligation.
+Lemma left_neutral : BindLaws.left_neutral bindK retK_natural.
+Proof.
 move=> A B a f; rewrite /bindK /=.
-by apply fun_ext_dep => C; apply fun_ext.
+by apply fun_ext_dep => C; rewrite boolp.funeqE.
 Qed.
-Next Obligation.
-move=> A m; rewrite /bindK /retK.
-by apply fun_ext_dep => C; apply fun_ext.
-Qed.
-Next Obligation. by move=> A B C m f g; rewrite /bindK; exact: fun_ext_dep. Qed.
 
-Definition liftK (A : UU0) (m : M A) : codensityTmonad A :=
+Lemma right_neutral : BindLaws.right_neutral bindK retK_natural.
+Proof.
+move=> A m; rewrite /bindK /retK.
+by apply fun_ext_dep => C; rewrite boolp.funeqE.
+Qed.
+
+Lemma associative : BindLaws.associative bindK.
+Proof. by move=> A B C m f g; rewrite /bindK; exact: fun_ext_dep. Qed.
+
+Lemma fmapE (A B : UU0) (f : A -> B) (m : MK M A) :
+  ([the functor of MK M] # f) m = bindK m (@retK_natural _ \o f).
+Proof. by []. Qed.
+
+HB.instance Definition _ := @Monad_of_ret_bind.Build (MK M) retK_natural
+  bindK fmapE left_neutral right_neutral associative.
+
+Definition liftK (A : UU0) (m : M A) : [the monad of MK M] A :=
   fun (B : UU0) (k : A -> M B) => m >>= k.
 
-Program Definition codensityTmonadM : monadM M codensityTmonad :=
-  locked (monadM.Pack (@monadM.Mixin _ _ liftK _ _)).
-Next Obligation.
+Local Lemma retliftK : MonadMLaws.ret liftK.
+Proof.
 move=> A; rewrite /liftK /= /retK /=.
-apply fun_ext => a; apply fun_ext_dep => B /=.
-by apply fun_ext => b; rewrite bindretf.
+rewrite boolp.funeqE => a; apply fun_ext_dep => B /=.
+by rewrite boolp.funeqE => b; rewrite bindretf.
 Qed.
-Next Obligation.
+
+Local Lemma bindliftK : MonadMLaws.bind liftK.
+Proof.
 move=> A B m f; rewrite /liftK.
-apply fun_ext_dep => C /=; apply fun_ext => g.
+apply fun_ext_dep => C /=; rewrite boolp.funeqE => g.
 by rewrite bindA.
 Qed.
+
+Definition codensityTmonadM : monadM M [the monad of MK M] :=
+  monadM.Pack (@monadM.Mixin _ _ liftK retliftK bindliftK).
 
 End codensity.
 
 Definition codensityT : monadT :=
-  MonadT.Pack (@MonadT.Mixin codensityTmonad codensityTmonadM).
+  MonadT.Pack (MonadT.Class (isMonadT.Build _ codensityTmonadM)).
 
 Section kappa.
 Variables (M : monad) (E : functor) (op : E.-operation M).
@@ -114,9 +127,9 @@ Definition kappa' : E ~~> codensityT M :=
 
 Lemma natural_kappa' : naturality _ _ kappa'.
 Proof.
-move=> A B h; rewrite /kappa'; apply fun_ext => ea; rewrite [in RHS]/=.
+move=> A B h; rewrite /kappa' boolp.funeqE => ea; rewrite [in RHS]/=.
 transitivity (fun B0 (k : B -> M B0) => op B0 ((E # (k \o h)) ea)) => //.
-by apply fun_ext_dep => C; apply fun_ext => D; rewrite functor_o.
+by apply fun_ext_dep => C; rewrite boolp.funeqE => D; rewrite functor_o.
 Qed.
 
 Definition kappa := Natural.Pack (Natural.Mixin natural_kappa').
@@ -140,9 +153,9 @@ Hypothesis naturality_MK : forall (A : UU0) (m : MK M A),
 
 Lemma natural_from_component : naturality (codensityT M) M from_component.
 Proof.
-move=> A B h; apply fun_ext => m /=.
+move=> A B h; rewrite boolp.funeqE => m /=.
 transitivity (m B (Ret \o h)) => //. (* by definition of from *)
-rewrite -(natural RET).
+rewrite -(natural ret).
 transitivity ((M # h \o m A) Ret) => //. (* by definition of from *)
 by rewrite naturality_MK.
 Qed.
@@ -151,7 +164,7 @@ Definition from := Natural.Pack (Natural.Mixin natural_from_component).
 
 Lemma from_component_liftK A : @from_component A \o Lift codensityT M A = id.
 Proof.
-apply fun_ext => m /=.
+rewrite boolp.funeqE => m /=.
 rewrite /from_component /= /Lift /=.
 rewrite /codensityTmonadM /=.
 (* TODO *) unlock => /=.
@@ -169,9 +182,10 @@ Definition psik : E.-aoperation (codensityT M) := psi (kappa op).
 Lemma psikE (A : UU0) : op A =
   (@from_component M A) \o (@psik A) \o ((E ## (monadM_nt (Lift codensityT M))) A).
 Proof.
-apply fun_ext => m /=.
+rewrite boolp.funeqE => m /=.
 rewrite /from_component /psik /= /psi' /kappa' /fun_app_nt /=.
 rewrite /bindK /=.
+rewrite /join_of_bind.
 rewrite -[in RHS]compE.
 rewrite -[in RHS]compE.
 rewrite -compA.
@@ -205,7 +219,7 @@ rewrite -compA.
 transitivity ((op1 \v op2) X \o
   ((E # Lift t (codensityT M) X) \o (E # Lift codensityT M X))).
   congr (_ \o _); rewrite /op3.
-  by rewrite -functor_o -natural_hmap functor_o functor_app_naturalE.
+  by rewrite -functor_o -natural_hmap functor_app_naturalE -(@functor_o E).
 transitivity (op1 X \o
   (op2 X \o E # Lift t (codensityT M) X) \o E # Lift codensityT M X).
   by rewrite vcompE -compA.
@@ -238,9 +252,9 @@ Let op' X : (E \O stateFMT S M) X -> stateFMT S M X :=
 Lemma slifting_stateT (X : UU0) :
   (slifting op (stateFMT S) naturality_MK) X = @op' _.
 Proof.
-apply fun_ext => emx.
+rewrite boolp.funeqE => emx.
 rewrite /op'.
-apply fun_ext => s.
+rewrite boolp.funeqE => s.
 rewrite /slifting.
 rewrite 2!vcompE.
 set h := Hmap _.
@@ -248,19 +262,21 @@ rewrite (psikE op).
 rewrite 2!functor_app_naturalE.
 rewrite /=.
 congr (from_component _).
-apply fun_ext_dep => A; apply fun_ext => f.
+apply fun_ext_dep => A; rewrite boolp.funeqE => f.
 rewrite {1}/psi' /=.
 rewrite /bindS /=.
-rewrite -liftSE /liftS /=.
+rewrite /join_of_bind.
+rewrite /liftS /=.
 rewrite -(compE _ _ emx) -functor_o.
 rewrite -[in RHS](compE _ _ emx) -functor_o.
 rewrite bindA.
 set ret_id := (X in _ >>= X).
 have -> : ret_id = fun (x : MS S (codensityT M) X) (C : UU0) => (fun t => x s C t).
-  exact: fun_ext.
-rewrite {1}/Bind /= /bindK /= {1}/Actm /=.
-rewrite /Monad_of_ret_bind.Map /= /bindK /=.
+  by rewrite boolp.funeqE.
+rewrite {1}bindE /= /join_of_bind /= /bindK /= fmapE.
+rewrite /bindK /=.
 rewrite /psi' /= /bindK /kappa' /=.
+rewrite /join_of_bind /=.
 rewrite /retK /= /MK /=.
 rewrite -(compE _ _ emx).
 rewrite -functor_o.
@@ -278,21 +294,22 @@ Let op' Y : (E \O exceptFMT Z M) Y -> exceptFMT Z M Y := @op _.
 Lemma slifting_exceptT (X : UU0) :
   (slifting op (exceptFMT Z) naturality_MK) X = @op' X.
 Proof.
-apply fun_ext => emx.
+rewrite boolp.funeqE => emx.
 rewrite /op'.
 rewrite (psikE op (Z + X)%type).
 rewrite /slifting.
 rewrite 2!vcompE.
 set h := Hmap _.
 rewrite /=.
-congr (from_component (psi' _ _)).
-apply fun_ext_dep => A; apply fun_ext => B; apply fun_ext_dep => C.
-rewrite /=.
-rewrite /psi'.
-rewrite /retK /= /bindK /=.
-apply fun_ext => D.
-rewrite /kappa'.
-congr (op C _).
+f_equal.
+rewrite /psi' /= /join_of_bind.
+rewrite /bindX /= bindE /= {1}/join_of_bind /=.
+rewrite fmapE.
+rewrite /bindK /=.
+apply fun_ext_dep => A; rewrite boolp.funeqE => k.
+rewrite /liftX /= bindE /= /join_of_bind /= /bindK /= fmapE /= /bindK /=.
+rewrite /psi' /= /join_of_bind /= /bindK /= /kappa'.
+congr (op _ _).
 rewrite -(compE (E # _)).
 by rewrite -functor_o.
 Qed.
@@ -310,9 +327,9 @@ Let op' X : (E \O envFMT Env M) X -> envFMT Env M X :=
 Lemma slifting_envT (X : UU0) :
   (slifting op (envFMT Env) naturality_MK) X = @op' _.
 Proof.
-apply fun_ext => emx.
+rewrite boolp.funeqE => emx.
 rewrite /op'.
-apply fun_ext => s.
+rewrite boolp.funeqE => s.
 rewrite /slifting.
 rewrite 2!vcompE.
 set h := Hmap _.
@@ -320,15 +337,14 @@ rewrite (psikE op).
 rewrite 2!functor_app_naturalE.
 rewrite /=.
 congr (from_component _).
-apply fun_ext_dep => A; apply fun_ext => f.
-rewrite {1}/psi' /=.
+apply fun_ext_dep => A; rewrite boolp.funeqE => f.
+rewrite {1}/psi' /= /join_of_bind /=.
 rewrite /bindEnv /=.
-rewrite -liftEnvE /liftEnv /=.
+rewrite bindE /= /join_of_bind /= /bindK.
+rewrite fmapE /bindK.
+rewrite /liftEnv /=.
 rewrite -(compE _ _ emx) -functor_o.
 rewrite -[in RHS](compE _ _ emx) -functor_o.
-rewrite /Bind /Join /= /bindK /=.
-rewrite {1}/Actm /= /Monad_of_ret_bind.Map /=.
-rewrite /bindK.
 rewrite /psi' /= /bindK /= /kappa' /=.
 congr (op A).
 rewrite -(compE _ _ emx) -[in RHS](compE _ _ emx).
@@ -346,7 +362,7 @@ Let op' X : (E \O outputFMT R M) X -> outputFMT R M X :=
 Lemma slifting_outputT (X : UU0) :
   (slifting op (outputFMT R) naturality_MK) X = @op' _.
 Proof.
-apply fun_ext => emx.
+rewrite boolp.funeqE => emx.
 rewrite /op'.
 rewrite /slifting.
 rewrite 2!vcompE.
@@ -354,24 +370,24 @@ set h := Hmap _.
 rewrite (psikE op).
 rewrite 2!functor_app_naturalE.
 rewrite /=.
-congr (from_component _).
-apply fun_ext_dep => A; apply fun_ext => f.
-rewrite {1}/psi' /=.
-rewrite /bindO /=.
-rewrite -liftOE /liftO /=.
+f_equal.
+rewrite /psi' /= /join_of_bind /= /bindK /bindO /= bindE /= /join_of_bind /bindK /=.
+apply fun_ext_dep => A; rewrite boolp.funeqE => f.
+rewrite fmapE /bindK.
+rewrite /liftO /=.
 rewrite -(compE _ _ emx) -functor_o.
-rewrite /Bind /Join /= /bindK /=.
-rewrite {1}/Actm /= /Monad_of_ret_bind.Map /=.
+rewrite bindE /= /join_of_bind /= /bindK /=.
+rewrite fmapE.
 rewrite /bindK.
 rewrite /psi' /= /bindK /= /kappa' /=.
 congr (op A).
 rewrite -(compE _ _ emx) -[in RHS](compE _ _ emx).
 rewrite -2!functor_o.
 congr ((E # _) _).
-apply fun_ext => rmx /=.
-rewrite /retK /= /Actm /= /Monad_of_ret_bind.Map /bindK.
+rewrite boolp.funeqE => rmx /=.
+rewrite /retK /= bindE fmapE /= /join_of_bind /= /bindK.
 congr (Lift codensityT M _ _ _ _).
-by apply fun_ext; case.
+by rewrite boolp.funeqE; case.
 Qed.
 
 End slifting_outputT.
@@ -390,10 +406,11 @@ Lemma slifting_alifting_stateFMT (S : UU0) (t := stateFMT S) :
 Proof.
 apply nattrans_ext => X.
 rewrite (slifting_stateT aop naturality_MK S).
-apply fun_ext => m.
-apply fun_ext => s.
+rewrite boolp.funeqE => m.
+rewrite boolp.funeqE => s.
 rewrite /alifting.
-rewrite psiE /= /bindS -liftSE /liftS /=.
+rewrite psiE /=.
+rewrite /join_of_bind /= /bindS /liftS /=.
 rewrite 2!algebraic.
 congr (aop _ _).
 rewrite -[RHS](compE _ (E # _)).
@@ -401,7 +418,7 @@ rewrite -functor_o.
 rewrite -[RHS](compE _ (E # _)).
 rewrite -functor_o.
 congr ((E # _) m).
-apply fun_ext => x.
+rewrite boolp.funeqE => x.
 by rewrite /= 2!bindretf.
 Qed.
 
@@ -410,9 +427,9 @@ Lemma slifting_alifting_exceptFMT (Z : UU0) (t := exceptFMT Z) :
 Proof.
 apply nattrans_ext => X.
 rewrite (slifting_exceptT aop naturality_MK Z).
-apply fun_ext => m.
+rewrite boolp.funeqE => m.
 rewrite /alifting.
-rewrite psiE /= /bindX /liftX.
+rewrite psiE /= /join_of_bind /bindX /liftX.
 rewrite 2!algebraic.
 congr (aop _ _).
 rewrite -[RHS](compE _ (E # _)).
@@ -420,7 +437,7 @@ rewrite -functor_o.
 rewrite -[RHS](compE _ (E # _)).
 rewrite -functor_o.
 rewrite (_ : _ \o _ = id) ?functor_id //.
-apply fun_ext => n /=.
+rewrite boolp.funeqE => n /=.
 by rewrite 2!bindretf.
 Qed.
 
@@ -429,16 +446,16 @@ Lemma slifting_alifting_envFMT (Env : UU0) (t := envFMT Env) :
 Proof.
 apply nattrans_ext => X.
 rewrite (slifting_envT aop naturality_MK Env).
-apply fun_ext => m.
-apply fun_ext => e.
+rewrite boolp.funeqE => m.
+rewrite boolp.funeqE => e.
 rewrite /alifting.
-rewrite psiE /= /bindEnv -liftEnvE /liftEnv.
+rewrite psiE /= /join_of_bind /= /bindEnv /liftEnv.
 rewrite algebraic.
 congr (aop _ _).
 rewrite -[RHS](compE _ (E # _)).
 rewrite -functor_o.
 congr ((E # _) m).
-apply fun_ext => x.
+rewrite boolp.funeqE => x.
 by rewrite /= bindretf.
 Qed.
 
@@ -447,9 +464,9 @@ Lemma slifting_alifting_outputFMT (R : UU0) (t := outputFMT R) :
 Proof.
 apply nattrans_ext => X.
 rewrite (slifting_outputT aop naturality_MK R).
-apply fun_ext => m.
+rewrite boolp.funeqE => m.
 rewrite /alifting.
-rewrite psiE /= /bindO -liftOE /liftO.
+rewrite psiE /= /join_of_bind /= /bindO /liftO.
 rewrite 2!algebraic.
 congr (aop _ _).
 rewrite -[RHS](compE _ (E # _)).
@@ -457,7 +474,7 @@ rewrite -functor_o.
 rewrite -[RHS](compE _ (E # _)).
 rewrite -functor_o.
 rewrite (_ : _ \o _ = id) ?functor_id //.
-apply fun_ext => n /=.
+rewrite boolp.funeqE => n /=.
 rewrite 2!bindretf.
 Open (X in _ >>= X).
  by case : x => ? ?; rewrite cat0s.
@@ -471,9 +488,9 @@ Require Import imonad_model.
 (* example 30 *)
 Section slifting_local.
 Variable Env : UU0.
-Let E := imonad_model.EnvironmentOps.Local.func Env.
-Let M := imonad_model.ModelMonad.Environment.t Env.
-Let local : E.-operation M := imonad_model.EnvironmentOps.local_op Env.
+Let E := [the functor of Local.acto Env].
+Let M := [the monad of EnvironmentMonad.acto Env].
+Let local : E.-operation M := local_op Env.
 Hypothesis naturality_MK : forall (A : UU0) (m : MK M A),
   naturality_MK m.
 
@@ -504,7 +521,7 @@ Lemma local_stateTE (X : UU0) :
   (slifting local (stateFMT S) naturality_MK) X = @local_stateT' X.
 Proof.
 rewrite slifting_stateT.
-by apply fun_ext => -[].
+by rewrite boolp.funeqE => -[].
 Qed.
 End slifting_local_stateT.
 
@@ -521,7 +538,7 @@ Lemma local_exceptTE (X : UU0) :
   (slifting local (exceptFMT Z) naturality_MK) X = @local_exceptT' X.
 Proof.
 rewrite slifting_exceptT.
-by apply fun_ext => -[].
+by rewrite boolp.funeqE => -[].
 Qed.
 
 End slifting_local_exceptT.
@@ -539,7 +556,7 @@ Lemma local_envTE (X : UU0) :
   (slifting local (envFMT Z) naturality_MK) X = @local_envT' X.
 Proof.
 rewrite slifting_envT.
-by apply fun_ext => -[].
+by rewrite boolp.funeqE => -[].
 Qed.
 End slifting_local_envT.
 
@@ -556,7 +573,7 @@ Lemma local_outputTE (X : UU0) :
   (slifting local (outputFMT R) naturality_MK) X = @local_outputT' X.
 Proof.
 rewrite slifting_outputT.
-by apply fun_ext; case.
+by rewrite boolp.funeqE; case.
 Qed.
 End slifting_local_outputT.
 
@@ -564,9 +581,9 @@ End slifting_local.
 
 (* example 31 *)
 Section slifting_handle. (* except monad with Z = unit *)
-Let E := imonad_model.ExceptOps.Handle.func unit.
-Let M := imonad_model.ModelExcept.t.
-Let handle : E.-operation M := @imonad_model.ExceptOps.handle_op unit.
+Let E := [the functor of Handle.acto unit].
+Let M := [the monad of ExceptMonad.acto unit].
+Let handle : E.-operation M := @handle_op unit.
 Hypothesis naturality_MK : forall (A : UU0) (m : MK M A),
   naturality_MK m.
 
@@ -585,8 +602,8 @@ Lemma handle_stateTE (X : UU0) :
   (slifting handle (stateFMT S) naturality_MK) X = @handle_stateT' X.
 Proof.
 rewrite slifting_stateT.
-apply fun_ext => -[m f].
-by apply fun_ext.
+rewrite boolp.funeqE => -[m f].
+by rewrite boolp.funeqE.
 Qed.
 End slifting_handle_stateT.
 
@@ -605,7 +622,7 @@ Lemma handle_exceptTE (X : UU0) :
   (slifting handle (exceptFMT Z) naturality_MK) X = @handle_exceptT' X.
 Proof.
 rewrite slifting_exceptT.
-by apply fun_ext.
+by rewrite boolp.funeqE.
 Qed.
 End slifting_handle_exceptT.
 
@@ -624,8 +641,8 @@ Lemma handle_envTE (X : UU0) :
   (slifting handle (envFMT Z) naturality_MK) X = @handle_envT' X.
 Proof.
 rewrite slifting_envT.
-apply fun_ext => -[m f].
-by apply fun_ext.
+rewrite boolp.funeqE => -[m f].
+by rewrite boolp.funeqE.
 Qed.
 End slifting_handle_envT.
 
@@ -644,7 +661,7 @@ Lemma handle_outputTE (X : UU0) :
   (slifting handle (outputFMT R) naturality_MK) X = @handle_outputT' X.
 Proof.
 rewrite slifting_outputT.
-by apply fun_ext; case.
+by rewrite boolp.funeqE; case.
 Qed.
 End slifting_handle_outputT.
 
@@ -653,9 +670,9 @@ End slifting_handle.
 (* example 32 *)
 Section slifting_flush.
 Variable R : UU0.
-Let E := imonad_model.OutputOps.Flush.func.
-Let M := imonad_model.ModelMonad.Output.t R.
-Let flush : E.-operation M := @imonad_model.OutputOps.flush_op R.
+Let E := [the functor of Flush.acto].
+Let M := [the monad of OutputMonad.acto R].
+Let flush : E.-operation M := flush_op R.
 Hypothesis naturality_MK : forall (A : UU0) (m : MK M A),
   naturality_MK m.
 
@@ -705,7 +722,7 @@ Lemma flush_outputTE (X : UU0) :
   (slifting flush (outputFMT R) naturality_MK) X = @flush_outputT' X.
 Proof.
 rewrite slifting_outputT.
-by apply fun_ext; case.
+by rewrite boolp.funeqE; case.
 Qed.
 End slifting_flush_outputT.
 
