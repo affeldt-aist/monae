@@ -3,6 +3,7 @@
 Declare ML Module "paramcoq".
 
 From mathcomp Require Import all_ssreflect.
+From HB Require Import structures.
 Require Import imonae_lib ihierarchy imonad_lib ifmt_lifting imonad_model.
 
 (******************************************************************************)
@@ -14,12 +15,11 @@ Require Import imonae_lib ihierarchy imonad_lib ifmt_lifting imonad_model.
 (* - the list monad (Module List)                                             *)
 (* - the state monad (Module State)                                           *)
 (*                                                                            *)
-(* WARNING: see ifmt_lifting.v                                                *)
+(* WARNING: see fmt_lifting.v                                                 *)
 (******************************************************************************)
 
 Local Open Scope monae_scope.
 
-Import Univ.
 Set Bullet Behavior "Strict Subproofs".
 
 Lemma Actm_exponenial_FE (M : monad) (X Y : UU0) (f : X -> Y) :
@@ -34,7 +34,7 @@ Variable A : UU0.
 
 Realizer A as A_R := (@eq A).
 
-Let M := ModelMonad.identity.
+Let M := [the monad of idfun].
 
 Definition Mi (X : UU0) : UU0 := ltac:(
   let t := constr:(M X) in
@@ -58,7 +58,7 @@ Qed.
 End identity_naturality.
 End Identity.
 
-Check uniform_sigma_lifting (M := ModelMonad.identity) _ _ Identity.naturality.
+Check uniform_sigma_lifting (M := [the monad of idfun]) _ _ Identity.naturality.
 
 (******************************************************************************)
 
@@ -69,7 +69,7 @@ Variables Z A : UU0.
 Realizer Z as Z_R := (@eq Z).
 Realizer A as A_R := (@eq A).
 
-Let M := ModelMonad.Except.t Z.
+Let M := [the monad of ExceptMonad.acto Z].
 
 Definition Me (X : UU0) : UU0 := ltac:(
   let t := constr:(M X) in
@@ -98,7 +98,7 @@ End exception_naturality.
 End Exception.
 
 Check fun Z => uniform_sigma_lifting
-  (M := ModelMonad.Except.t Z) _ _ (Exception.naturality Z).
+  (M := [the monad of ExceptMonad.acto Z]) _ _ (Exception.naturality Z).
 
 (******************************************************************************)
 
@@ -106,7 +106,7 @@ Module Option.
 Section option_naturality.
 Variable A : UU0.
 
-Let M := ModelMonad.option_monad.
+Let M := [the monad of option_monad].
 
 Variable m : MK M A.
 
@@ -116,7 +116,7 @@ Proof. exact: Exception.naturality. Qed.
 End option_naturality.
 End Option.
 
-Check uniform_sigma_lifting (M := ModelMonad.option_monad) _ _ Option.naturality.
+Check uniform_sigma_lifting (M := [the monad of option_monad]) _ _ Option.naturality.
 
 (******************************************************************************)
 
@@ -126,7 +126,7 @@ Variable A : UU0.
 
 Realizer A as A_R := (@eq A).
 
-Let M := ModelMonad.ListMonad.t.
+Let M := [the monad of ListMonad.acto].
 
 Definition Ml (X : UU0) : UU0 := ltac:(
   let t := constr:(M X) in
@@ -154,7 +154,7 @@ Qed.
 End list_naturality.
 End List.
 
-Check uniform_sigma_lifting (M := ModelMonad.ListMonad.t) _ _ List.naturality.
+Check uniform_sigma_lifting (M := [the monad of ListMonad.acto]) _ _ List.naturality.
 
 (******************************************************************************)
 
@@ -165,7 +165,7 @@ Variable S A : UU0.
 Realizer S as S_R := (@eq S).
 Realizer A as A_R := (@eq A).
 
-Let M := ModelMonad.State.t S.
+Let M := [the monad of StateMonad.acto S].
 
 Definition Ms X : UU0 := ltac:(
   let t := constr:(M X) in
@@ -197,7 +197,7 @@ have H : Ms_R X Y (fun x y => f x = y) (m X eX) rhs.
   apply param => // a _ <- s1 _ <-.
   rewrite Actm_exponenial_FE Actm_ModelMonadStateE'.
   by case: (eX a) => x s2; exact: prod_R_pair_R.
-apply/fun_ext => s.
+apply fun_ext => s.
 have {}H : prod_R X Y (fun x y => f x = y) S S S_R (m X eX s) (rhs s) by exact: H.
 inversion H as [x y fxy s1 s2 s12 xs1 ys2].
 by rewrite Actm_ModelMonadStateE -xs1 fxy s12.
@@ -206,4 +206,4 @@ End state_naturality.
 End State.
 
 Check fun S => uniform_sigma_lifting
-  (M := ModelMonad.State.t S) _ _ (State.naturality S).
+  (M := [the monad of StateMonad.acto S]) _ _ (State.naturality S).
