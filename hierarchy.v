@@ -791,7 +791,7 @@ Notation contMonad := MonadContinuation.type.
 (*Definition Callcc (M : contMonad) := @callcc M.*)
 Arguments callcc {_} {_} {_}.
 
-HB.mixin Record isMonadShiftReset U (M : UU0 -> UU0) of MonadContinuation M := {
+HB.mixin Record isMonadShiftReset (U : UU0) (M : UU0 -> UU0) of MonadContinuation M := {
   shift : forall A : UU0, ((A -> M U) -> M U) -> M A ;
   reset : M U -> M U ;
   shiftreset0 : forall (A : UU0) (m : M A), @shift _ (fun k => m >>= k) = m ;
@@ -1044,15 +1044,15 @@ Notation stateTraceReifyMonad := MonadStateTraceReify.type.
 
 Local Open Scope reals_ext_scope.
 HB.mixin Record isMonadProb (M : UU0 -> UU0) of Monad M := {
-  choice : forall (p : prob) (T : Type), M T -> M T -> M T ;
+  choice : forall (p : prob) (T : UU0), M T -> M T -> M T ;
   (* identity axioms *)
-  choice0 : forall (T : Type) (a b : M T), choice 0%:pr _ a b = b ;
-  choice1 : forall (T : Type) (a b : M T), choice 1%:pr _ a b = a ;
+  choice0 : forall (T : UU0) (a b : M T), choice 0%:pr _ a b = b ;
+  choice1 : forall (T : UU0) (a b : M T), choice 1%:pr _ a b = a ;
   (* skewed commutativity *)
-  choiceC : forall (T : Type) p (a b : M T), choice p _ a b = choice (p.~ %:pr) _ b a ;
-  choicemm : forall (T : Type) p, idempotent (@choice p T) ;
+  choiceC : forall (T : UU0) p (a b : M T), choice p _ a b = choice (p.~ %:pr) _ b a ;
+  choicemm : forall (T : UU0) p, idempotent (@choice p T) ;
   (* quasi associativity *)
-  choiceA : forall (T : Type) (p q r s : prob) (a b c : M T),
+  choiceA : forall (T : UU0) (p q r s : prob) (a b c : M T),
     (p = r * s :> R /\ s.~ = p.~ * q.~)%R ->
     let bc := (choice q _ b c) in (*NB: needed to preserve the notation in the resulting choiceA lemma, report? *)
     let ab := (choice r _ a b) in

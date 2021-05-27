@@ -473,9 +473,9 @@ rewrite /join_of_bind.
 rewrite bind_Map.
 rewrite bindA.
 congr bind.
-apply fun_ext => /= ma.
-Fail by rewrite compidf fmapE.
-Admitted.
+apply: fun_ext => ma.
+by rewrite compidf fmapE.
+Qed.
 
 Definition join : M' \O M' ~> M' := Natural.Pack (Natural.Mixin naturality_join).
 

@@ -127,7 +127,7 @@ End identitymonad. End IdentityMonad.
 HB.export IdentityMonad.
 
 Module ListMonad. Section listmonad.
-Definition acto := fun A => seq A.
+Definition acto := fun (A : UU0) => seq A.
 Local Notation M := acto.
 Let map_id : @FunctorLaws.id seq (@map).
 Proof. by move=> A; rewrite boolp.funeqE => x; rewrite map_id. Qed.
@@ -416,8 +416,8 @@ Lemma ContMonadE (r A B : UU0) (M := ContMonad.acto r) (m : M A) (f : A -> M B) 
 Proof. by []. Qed.
 
 Module Empty. Section empty.
-Definition acto (X : Type) : UU0 := unit.
-Let actm X Y (f : X -> Y) (t : acto X) : acto Y := tt.
+Definition acto (X : UU0) : UU0 := unit.
+Let actm (X Y : UU0) (f : X -> Y) (t : acto X) : acto Y := tt.
 Let func_id : FunctorLaws.id actm.
 Proof. by move=> A; rewrite boolp.funeqE; case. Qed.
 Let func_comp : FunctorLaws.comp actm.
@@ -479,7 +479,7 @@ HB.export Output.
 
 Module Flush. Section flush.
 Definition acto (X : UU0) := X.
-Let actm X Y (f : X -> Y) (t : acto X) : acto Y := f t.
+Let actm (X Y : UU0) (f : X -> Y) (t : acto X) : acto Y := f t.
 Let func_id : FunctorLaws.id actm. Proof. by []. Qed.
 Let func_comp : FunctorLaws.comp actm. Proof. by []. Qed.
 HB.instance Definition _ := isFunctor.Build acto func_id func_comp.
@@ -1063,7 +1063,7 @@ End continuation_examples.
 (* see Sect. 3.2 of [Wadler, 94] for the model of shift and reset *)
 Module ModelShiftReset.
 Section modelshiftreset.
-Variable r : Type.
+Variable r : UU0.
 Let M := [the contMonad of ContMonad.acto r].
 Definition shift :
     forall A : UU0, ((A -> M r) -> M r) -> M A :=

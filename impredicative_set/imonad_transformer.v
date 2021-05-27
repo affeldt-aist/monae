@@ -505,9 +505,7 @@ Local Lemma retliftEnv : MonadMLaws.ret liftEnv.
 Proof. by []. Qed.
 
 Local Lemma bindliftEnv : MonadMLaws.bind liftEnv.
-Proof.
-by [].
-Qed.
+Proof. by []. Qed.
 
 Definition envTmonadM : monadM M [the monad of MEnv] :=
   monadM.Pack (@monadM.Mixin _ _ liftEnv retliftEnv bindliftEnv).

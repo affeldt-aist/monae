@@ -19,7 +19,6 @@ Require Import ihierarchy imonad_lib.
 (*      permutation s == permutation                                          *)
 (*                       (ref: Sect. 3, mu2019tr2)                            *)
 (*             select == (ref: Sect. 4.4, gibbons2011icfp)                    *)
-(*              perms == type seq A -> M (seq A)                              *)
 (*            mu_perm == definition of perms using unfoldM                    *)
 (*                       (ref: Sect 4.3, mu2017)                              *)
 (*                                                                            *)
@@ -465,7 +464,6 @@ Qed.
 
 End nondet_insert.
 
-(*
 Section select.
 Variables (M : nondetMonad) (A : UU0).
 Implicit Types s : seq A.
@@ -473,157 +471,20 @@ Implicit Types s : seq A.
 Fixpoint select s : M (A * seq A)%type :=
   if s isn't h :: t then fail else
   (Ret (h, t) [~] select t >>= (fun x => Ret (x.1, h :: x.2))).
-
-Local Obligation Tactic := idtac.
-(* variant of select that keeps track of the length, useful to write perms *)
-Program Fixpoint tselect (s : seq A) : M (A * (size s).-1.-tuple A)%type :=
-  if s isn't h :: t then fail else
-  Ret (h, @Tuple (size t) A t _) [~]
-  tselect t >>= (fun x => Ret (x.1, @Tuple (size t) A _ _ (* h :: x.2 *))).
-Next Obligation. by []. Defined.
-Next Obligation.
-move=> s h [|h' t] hts [x1 x2]; [exact: [::] | exact: (h :: x2)].
-Defined.
-Next Obligation.
-move=> s h [|h' t] hts [x1 x2] //=; by rewrite size_tuple.
-Defined.
-Next Obligation. by []. Defined.
-
-Lemma tselect_nil : tselect [::] = fail. Proof. by []. Qed.
-
-Lemma tselect1 a : tselect [:: a] = Ret (a, [tuple]).
-Proof.
-rewrite /= bindfailf altmfail /tselect_obligation_1 /= tupleE /nil_tuple.
-by do 3 f_equal; apply eq_irrelevance.
-Qed.
-
-Program Definition tselect_cons_statement a t (_ : t <> nil) :=
-  tselect (a :: t) = Ret (a, @Tuple _ _ t _) [~]
-                    tselect t >>= (fun x => Ret (x.1, @Tuple _ _ (a :: x.2) _)).
-Next Obligation. by []. Defined.
-Next Obligation.
-move=> a t t0 [x1 x2].
-rewrite /= size_tuple prednK //; by destruct t.
-Defined.
-
-Program Lemma tselect_cons a t (Ht : t <> nil) : tselect_cons_statement a Ht.
-Proof.
-rewrite /tselect_cons_statement [in LHS]/=; congr (_ [~] _).
-bind_ext; case=> x1 x2 /=.
-do 2 f_equal; apply val_inj => /=; by destruct t.
-Qed.
-
-Local Open Scope mprog.
-
-Lemma selectE s : select s = fmap (fun xy => (xy.1, tval xy.2)) (tselect s).
-Proof.
-elim: s => [|h [|h' t] IH].
-- by rewrite fmapE bindfailf.
-- by rewrite tselect1 fmapE bindretf /= bindfailf altmfail.
-- rewrite {1}/select -/(select (h' :: t)) IH [in RHS]alt_fmapDl.
-  rewrite [in X in _ = X [~] _]fmapE bindretf; congr (_ [~] _).
-  rewrite bind_fmap fmap_bind; bind_ext => -[x1 x2].
-  by rewrite fcompE fmapE bindretf.
-Qed.
-
-Lemma decr_size_select : bassert_size select.
-Proof.
-case => [|h t]; first by rewrite !selectE fmap_fail /bassert bindfailf.
-rewrite /bassert selectE bind_fmap fmapE; bind_ext => -[x y] /=.
-by case: assertPn => //=; rewrite size_tuple /= ltnS leqnn.
-Qed.
+(* NB: see .. for the theory of select *)
 
 End select.
 Arguments select {M} {A}.
-Arguments tselect {M} {A}.
-
-Section permutations.
-Variables (M : nondetMonad) (A : UU0).
-Implicit Types s : seq A.
-
-Local Obligation Tactic := idtac.
-Program Definition perms' s
-  (f : forall s', size s' < size s -> M (seq A)) : M (seq A) :=
-  (if s isn't h :: t then Ret [::] else
-    do x <- tselect (h :: t); do y <- f x.2 _; Ret (x.1 :: y))%Do.
-Next Obligation.
-move=> s H h t hts [y ys]; by rewrite size_tuple -hts ltnS leqnn.
-Qed.
-Next Obligation. by []. Qed.
-
-Definition perms : seq A -> M (seq A) :=
-  Fix (@well_founded_size _) (fun _ => M _) perms'.
-
-Lemma tpermsE s : (perms s = if s isn't h :: t then Ret [::] else
-  do x <- tselect (h :: t); do y <- perms x.2; Ret (x.1 :: y))%Do.
-Proof.
-rewrite {1}/perms Fix_eq //; [by case: s|move=> s' f g H].
-by rewrite /perms'; destruct s' => //; bind_ext=> x; rewrite H.
-Qed.
-
-Lemma permsE s : (perms s = if s isn't h :: t then Ret [::] else
-  do x <- select (h :: t); do y <- perms x.2; Ret (x.1 :: y))%Do.
-Proof.
-rewrite tpermsE; case: s => // h t.
-by rewrite selectE bind_fmap.
-Qed.
-
-End permutations.
-Arguments perms {M} {A}.
 
 Section mu_perm.
 Variables (A : UU0) (M : nondetMonad).
 
 Definition mu_perm : seq A -> M (seq A) :=
   unfoldM (@well_founded_size _) (@nilp _) select.
-
-Lemma mu_permE s : (mu_perm s = if s isn't h :: t then Ret [::]
-  else do a <- select (h :: t) ; do b <- mu_perm a.2; Ret (a.1 :: b))%Do.
-Proof.
-rewrite /mu_perm unfoldME; last exact: decr_size_select.
-case: s => // h t; rewrite (_ : nilp _ = false) //.
-by bind_ext => -[x1 x2] ; rewrite fmapE.
-Qed.
-
-Lemma perms_mu_perm s : perms s = mu_perm s.
-Proof.
-move Hn : (size s) => n.
-elim: n s Hn => [|n IH [//|h t] /= [tn]].
-  case => //; by rewrite permsE mu_permE.
-rewrite tpermsE mu_permE selectE bind_fmap; bind_ext => -[a b].
-by rewrite IH // size_tuple.
-Qed.
+(* NB: see .. for the theory of mu_perm *)
 
 End mu_perm.
 Arguments mu_perm {A} {M}.
-
-Module SyntaxNondet.
-
-Inductive t : Type -> Type :=
-| ret : forall A, A -> t A
-| bind : forall B A, t B -> (B -> t A) -> t A
-| fail : forall A, t A
-| alt : forall A, t A -> t A -> t A.
-
-Fixpoint denote {M : nondetMonad} {A : UU0} (m : t A) : M A :=
-  match m with
-  | ret A a => Ret a
-  | bind A B m f => denote m >>= (fun x => denote (f x))
-  | fail A => ihierarchy.fail
-  | alt A m1 m2 => denote m1 [~] denote m2
-  end.
-
-Module Exports.
-Notation nondetSyntax := t.
-Notation ndAlt := alt.
-Notation ndRet := ret.
-Notation ndBind := bind.
-Notation ndFail := fail.
-Notation ndDenote := denote.
-End Exports.
-End SyntaxNondet.
-Export SyntaxNondet.Exports.
-*)
 
 Section fastproduct.
 

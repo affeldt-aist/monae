@@ -124,7 +124,8 @@ Definition MS_map (A B : UU0) (f : A -> B) (m : MS A) : MS B :=
 
 Local Lemma MS_map_i : FunctorLaws.id MS_map.
 Proof.
-move=> A; rewrite boolp.funeqE => m; rewrite /MS_map boolp.funeqE => s.
+move=> A; rewrite boolp.funeqE => m.
+rewrite /MS_map boolp.funeqE => s.
 rewrite (_ : (fun x : A * S => _) = id) ?functor_id //.
 by rewrite boolp.funeqE; case.
 Qed.
@@ -421,7 +422,7 @@ move=> b.
 by rewrite bindretf.
 Qed.
 
-Let Catchret : forall A (x : A%type), @left_zero (N A) (N A) (Ret (inr x)) (@Catch A).
+Let Catchret : forall (A : UU0) (x : A%type), @left_zero (N A) (N A) (Ret (inr x)) (@Catch A).
 Proof.
 move=> A /= ua n.
 by rewrite /Catch /= bindretf.
@@ -505,10 +506,7 @@ Local Lemma retliftEnv : MonadMLaws.ret liftEnv.
 Proof. by []. Qed.
 
 Local Lemma bindliftEnv : MonadMLaws.bind liftEnv.
-Proof.
-move=> A B m f; rewrite /liftEnv boolp.funeqE => r.
-by rewrite /= /bind /= /bindEnv /=.
-Qed.
+Proof. by []. Qed.
 
 Definition envTmonadM : monadM M [the monad of MEnv] :=
   monadM.Pack (@monadM.Mixin _ _ liftEnv retliftEnv bindliftEnv).
