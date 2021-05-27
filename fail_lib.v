@@ -467,7 +467,7 @@ Qed.
 End nondet_insert.
 
 Section select.
-Variables (M : nondetMonad) (A : Type).
+Variables (M : nondetMonad) (A : UU0).
 Implicit Types s : seq A.
 
 Fixpoint select s : M (A * seq A)%type :=
@@ -572,7 +572,7 @@ End permutations.
 Arguments perms {M} {A}.
 
 Section mu_perm.
-Variables (A : Type) (M : nondetMonad).
+Variables (A : UU0) (M : nondetMonad).
 
 Definition mu_perm : seq A -> M (seq A) :=
   unfoldM (@well_founded_size _) (@nilp _) select.

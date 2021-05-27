@@ -1,7 +1,4 @@
 From mathcomp Require Import all_ssreflect.
-From mathcomp Require Import finmap.
-From mathcomp Require Import classical_sets.
-From infotheo Require convex classical_sets_ext.
 Require Import imonae_lib.
 From HB Require Import structures.
 Require Import ihierarchy imonad_lib ifail_lib istate_lib itrace_lib.
@@ -18,7 +15,6 @@ Require PropExtensionality.
 (* Instances of monads (Modules):                                             *)
 (* IdentityMonad      == identity monad idfun                                 *)
 (* ListMonad          == list monad seq                                       *)
-(* SetMonad           == set monads using classical_sets                      *)
 (* ExceptMonad        == exception monad E + A                                *)
 (* option_monad       == notation for ExceptMonad.acto unit                   *)
 (* OutputMonad        == output monad X * seq L                               *)
@@ -41,22 +37,18 @@ Require PropExtensionality.
 (* acallcc_op              == algebraic callcc operation                      *)
 (*                                                                            *)
 (* Models of interfaces:                                                      *)
-(* Module Fail             == failMonad for option_monad, ListMonad.acto, set *)
+(* Module Fail             == failMonad for option_monad, ListMonad.acto      *)
 (* Module Except           == exceptMonad for ExcetMonad.acto unit            *)
 (* Module State            == stateMonad for StateMonad.acto S                *)
-(* Module Alt              == altMonad for ListMonad.acto, set                *)
-(* Module AltCI            == altCIMonad for ListMonad.acto, set              *)
-(* Module Nondet           == nondetMonad for ListMonad.acto, set             *)
+(* Module Alt              == altMonad for ListMonad.acto                     *)
+(* Module AltCI            == altCIMonad for ListMonad.acto                   *)
+(* Module Nondet           == nondetMonad for ListMonad.acto                  *)
 (* Module ModelStateTrace  == stateTraceMonad for StateMonad.acto (S * seq T) *)
 (* Module ModelCont        == contMonad for ContMonad.acto r                  *)
 (* Module ModelShiftReset  == shiftResetMonad for ContMonad.acto r            *)
 (* Module ModelReify       == reifyModel for StateMonad.acto (S * seq T)      *)
 (* Module ModelStateTraceReify == stateTraceReify monad for                   *)
 (*                                StateMonad.acto (S * seq T)                 *)
-(* Module ModelBacktrackableState == from the ground up using fsets, i.e.,    *)
-(*                                   redefinition of monads state-fail-alt-   *)
-(*                                   nondet-failR0-preplusmonad-nondetstate   *)
-(*                                   for S -> {fset (A * S)}                  *)
 (* Module ModelMonadStateRun       == stateRunMonad for MS                    *)
 (* Module ModelMonadExceptStateRun == exceptStateRunMonad                     *)
 (*                                                                            *)
@@ -70,46 +62,6 @@ Unset Strict Implicit.
 Unset Printing Implicit Defensive.
 
 Local Open Scope monae_scope.
-
-(* TODO *)
-Section PR_to_classical_sets.
-Local Open Scope classical_set_scope.
-
-Lemma bigsetUA A B C (s : set A) (f : A -> set B) (g : B -> set C) :
-  \bigcup_(i in \bigcup_(i in s) f i) g i = \bigcup_(x in s) \bigcup_(i in f x) g i.
-Proof.
-apply fun_ext => c; apply PropExtensionality.propositional_extensionality.
-split => [[b [a' aa' ?] ?]|[a' aa' [b ? ?]]];
-  by [exists a' => //; exists b | exists b => //; exists a'].
-Qed.
-
-End PR_to_classical_sets.
-
-(* TODO *)
-Section PR_to_fset.
-Local Open Scope fset_scope.
-Variables (K V : choiceType) (f : K -> V).
-
-Lemma imfset_set1 x : f @` [fset x] = [fset f x].
-Proof.
-apply/fsetP => y.
-by apply/imfsetP/fset1P=> [[x' /fset1P-> //]| ->]; exists x; rewrite ?fset11.
-Qed.
-
-Variables (T : choiceType) (I : eqType) (r : seq I).
-(* In order to avoid "&& true" popping up everywhere, *)
-(*  we prepare a specialized version of bigfcupP *)
-Lemma bigfcupP' x (F : I -> {fset T}) :
-  reflect (exists2 i : I, (i \in r) & x \in F i)
-          (x \in \bigcup_(i <- r | true) F i).
-Proof.
-apply: (iffP idP) => [|[i ri]]; last first.
-  by apply: fsubsetP x; rewrite bigfcup_sup.
-rewrite big_seq_cond; elim/big_rec: _ => [|i _ /andP[ri Pi] _ /fsetUP[|//]].
-  by rewrite in_fset0.
-by exists i; rewrite ?ri.
-Qed.
-End PR_to_fset.
 
 Module IdentityMonad. Section identitymonad.
 Let bind := fun A B (a : FId A) (f : A -> FId B) => f a.
@@ -162,53 +114,6 @@ HB.export ListMonad.
 Lemma ListMonadE (A B : UU0) (M := ListMonad.acto) (m : M A) (f : A -> M B) :
   m >>= f = flatten (map f m).
 Proof. by []. Qed.
-
-(*
-Module SetMonad.
-Section setmonad.
-Let map_id : FunctorLaws.id (@image).
-Proof. by move=> x; apply fun_ext => y; rewrite image_id. Qed.
-Let map_comp : FunctorLaws.comp (@image).
-Proof.
-by move=> A B C g h; apply fun_ext => x /=; rewrite image_comp.
-Qed.
-HB.instance Definition _ := isFunctor.Build set map_id map_comp.
-Let naturality_ret : naturality FId [the functor of set] (@set1).
-Proof.
-move=> A B h; apply fun_ext => a /=; apply fun_ext => b /=.
-apply PropExtensionality.propositional_extensionality; split.
-  by case => a0; rewrite /set1 => ->{a0} <-{b}.
-by rewrite /set1 => ->{b} /=; exists a.
-Qed.
-Let ret : FId ~> set := Natural.Pack (Natural.Mixin naturality_ret).
-Let bind := fun A B => @bigsetU B A.
-Let left_neutral : BindLaws.left_neutral bind ret.
-Proof. move=> ? ? ? ?; exact: bigcup_set1. Qed.
-Let right_neutral : BindLaws.right_neutral bind ret.
-Proof.
-by move=> ? ?; rewrite /bind classical_sets_ext.bigcup_of_singleton image_id.
-Qed.
-Let associative : BindLaws.associative bind.
-Proof. move=> ? ? ? ? ? ?; exact: bigsetUA. Qed.
-Let fmapE (A B : UU0) (f : A -> B) (m : set A) :
-  ([the functor of set] # f) m = bind m (@ret _ \o f).
-Proof.
-rewrite /= /actm /= /image /= /bigsetU /=(*TODO: lemma?*).
-apply fun_ext => b.
-apply PropExtensionality.propositional_extensionality; split=> -[a ma].
-  by move=> <- /=; exists a.
-by move=> ->; rewrite /mkset; exists a.
-Qed.
-HB.instance Definition _ := @Monad_of_ret_bind.Build set ret bind fmapE
-  left_neutral right_neutral associative.
-End setmonad.
-End SetMonad.
-HB.export SetMonad.
-
-Lemma SetMonadE (A B : UU0) (M := [the monad of set]) (m : M A) (f : A -> M B) :
-  m >>= f = bigsetU m f.
-Proof. by []. Qed.
-*)
 
 Module ExceptMonad.
 Section exceptmonad.
@@ -791,16 +696,6 @@ Local Lemma list_bindfailf : BindLaws.left_zero (@bind [the monad of ListMonad.a
 Proof. by []. Qed.
 HB.instance Definition _ := @isMonadFail.Build ListMonad.acto list_fail list_bindfailf.
 
-(*
-Definition set_fail : forall (A : UU0), set A := @set0.
-Local Lemma set_bindfailf : BindLaws.left_zero (@bind [the monad of set]) set_fail.
-Proof.
-move=> A B f /=; apply fun_ext => b; apply PropExtensionality.propositional_extensionality.
-by split=> // -[a []].
-Qed.
-HB.instance Definition _ := isMonadFail.Build set set_bindfailf.
-*)
-
 End Fail.
 HB.export Fail.
 
@@ -864,46 +759,8 @@ Qed.
 HB.instance Definition _ := isMonadAlt.Build ListMonad.acto altA alt_bindDl.
 End list.
 
-(*
-(* NB: was at the top of the file *)
-Lemma setUDl : @BindLaws.left_distributive [the functor of set] (fun I A => @bigsetU A I) (@setU).
-Proof.
-move=> A B /= p q r; apply fun_ext => b; apply PropExtensionality.propositional_extensionality; split.
-move=> -[a [?|?] ?]; by [left; exists a | right; exists a].
-by rewrite /setU => -[[a ? ?]|[a ? ?]]; exists a => //; [left|right].
-Qed.
-
-Section set.
-Let M := [the monad of set].
-Let altA : forall T : UU0, ssrfun.associative (@setU T).
-Proof. by move=> ?; exact: setUA. Qed.
-Let alt_bindDl : BindLaws.left_distributive (@bind [the monad of set]) (@setU).
-Proof.
-rewrite /BindLaws.left_distributive /= => A B m1 m2 k.
-by rewrite SetMonadE setUDl.
-Qed.
-HB.instance Definition _ := isMonadAlt.Build set altA alt_bindDl.
-End set.
-*)
-
 End Alt.
 HB.export Alt.
-
-Module AltCI.
-
-(*
-Section set.
-Let M := [the altMonad of set].
-Let altmm : forall A : UU0, idempotent (@alt M A).
-Proof. by move=> ?; exact: setUid. Qed.
-Let altC : forall A : UU0, commutative (@alt M A).
-Proof. by move=> ?; exact: setUC. Qed.
-HB.instance Definition _ := @isMonadAltCI.Build set altmm altC.
-(*Definition set := MonadAltCI.Pack (MonadAltCI.Class set_mixin).*)
-End set.
-*)
-
-End AltCI.
 
 Module Nondet.
 
@@ -919,24 +776,6 @@ by rewrite /alt /= /list_alt /= /curry /= /fail /= /list_fail /= cats0.
 Qed.
 HB.instance Definition _ := isMonadNondet.Build ListMonad.acto altfailm altmfail.
 End list.
-
-(*
-Section set.
-Let M : failMonad := [the failMonad of set].
-Let N : altMonad := [the altMonad of set].
-Let altfailm : @BindLaws.left_id _ (@fail M) (@alt N).
-Proof.
-move=> T m.
-by rewrite /fail /= /set_fail /alt /= set0U.
-Qed.
-Let altmfail : @BindLaws.right_id _ (@fail M) (@alt N).
-Proof.
-move=> A l /=.
-by rewrite /fail /= /alt /= /set_fail setU0.
-Qed.
-HB.instance Definition _ := isMonadNondet.Build set altfailm altmfail.
-End set.
-*)
 
 End Nondet.
 
@@ -1194,307 +1033,6 @@ Proof. by []. Qed.
 HB.instance Definition _ := isMonadStateTraceReify.Build S T (StateMonad.acto (S * seq T)) reifystget reifystput reifystmark.
 End modelstatetracereify.
 End ModelStateTraceReify.
-
-(*
-Module ModelBacktrackableState.
-Local Open Scope fset_scope.
-
-Section monad.
-Variable S : UU0.
-Local Obligation Tactic := try by [].
-
-Definition acto : UU0 -> UU0 :=
-  fun A : UU0 => S -> {fset (convex.choice_of_Type A * convex.choice_of_Type S)}.
-
-Let ret_component := fun A (a : A) s =>
-  [fset (a : convex.choice_of_Type A, s : convex.choice_of_Type S)].
-
-Let bind := fun (A B : UU0) (m : acto A)
-  (f : A -> S -> {fset (convex.choice_of_Type B * convex.choice_of_Type S)}) =>
-  fun s => \bigcup_(i <- (fun x : [choiceType of convex.choice_of_Type A *
-                                           convex.choice_of_Type S] => f x.1 x.2) @` (m s))
-                 i.
-
-Definition map (A B : UU0) (f : A -> B) (m : acto A) : acto B :=
-  bind m (@ret_component _ \o f).
-
-Lemma map_id : FunctorLaws.id map.
-Proof.
-move=> A; rewrite /map; apply fun_ext => m.
-rewrite /bind; apply fun_ext => s.
-rewrite compfid big_imfset /=; last first.
-  by move=> [a0 s0] [a1 s1] /= _ _ /fset1_inj.
-rewrite /ret_component; apply/fsetP => /= -[a0 s0].
-apply/idP/idP.
-  case/(@bigfcupP _ _ (m s)) => /= -[a1 s1].
-  rewrite andbT => H1 /=.
-  by move/fset1P => ->.
-move=> H0.
-apply/(@bigfcupP _ _ (m s)).
-exists (a0, s0) => //.
-by rewrite andbT.
-by apply/fset1P.
-Qed.
-
-Lemma map_comp : FunctorLaws.comp map.
-move=> A B C g h.
-rewrite /map /bind; apply fun_ext => m.
-apply fun_ext => s /=.
-apply/fsetP => /= -[c0 s0].
-apply/idP/idP.
-  case/bigfcupP => /= x.
-  rewrite andbT => /imfsetP /= -[[a1 s1] H1] ->{x} /=.
-  rewrite /ret_component => /fset1P [->{c0} ->{s0}].
-  apply/bigfcupP => /=.
-  eexists; last exact/fset1P.
-  rewrite andbT.
-  apply/imfsetP => /=.
-  exists ((h a1), s1).
-  apply/bigfcupP => /=.
-  eexists; last exact/fset1P.
-  rewrite andbT.
-  apply/imfsetP => //=.
-  eexists.
-  exact: H1.
-  by [].
-  by [].
-case/bigfcupP => /= x.
-rewrite andbT.
-case/imfsetP => /= -[b1 s1].
-move/bigfcupP => /= -[bs].
-rewrite andbT.
-move/imfsetP => /= [[a2 s2]] H2 ->{bs} /= /fset1P -[->{b1} ->{s1}] ->{x}.
-move/fset1P => [->{c0} ->{s0}].
-apply/bigfcupP => /=.
-eexists; last exact/fset1P.
-rewrite andbT.
-by apply/imfsetP; exists (a2, s2).
-Qed.
-
-HB.instance Definition _ := isFunctor.Build acto map_id map_comp.
-
-Lemma naturality_ret : naturality FId [the functor of acto] ret_component.
-Proof.
-move=> A B h; rewrite /ret_component; apply fun_ext => a; apply fun_ext => s.
-by rewrite /actm /= /map /bind /= imfset_set1 /= big_seq_fset1.
-Qed.
-
-Definition ret : FId ~> [the functor of acto] := Natural.Pack (Natural.Mixin naturality_ret).
-
-Let H0 : BindLaws.left_neutral bind ret.
-Proof.
-move=> A B /= m f; apply fun_ext => s.
-by rewrite /bind /ret imfset_set1 /= big_seq_fset1.
-Qed.
-Let H1 : BindLaws.right_neutral bind ret.
-Proof.
-move=> A B /=; apply fun_ext => s.
-apply/fsetP => /= x; apply/bigfcupP'; case: ifPn => xBs.
-  set x' := (x : [choiceType of convex.choice_of_Type A * convex.choice_of_Type S]).
-  exists [fset x']; last by rewrite inE.
-    apply/imfsetP; exists x' => //=.
-  by case: x'.
-case => /= SA /imfsetP[] /= sa saBs ->{SA} /fset1P => Hx.
-move: xBs; rewrite Hx; apply/negP; rewrite negbK; by case: sa saBs Hx.
-Qed.
-Let H2 : BindLaws.associative bind.
-Proof.
-move=> A B C /= m f g; apply fun_ext => s.
-have @g' : convex.choice_of_Type B -> convex.choice_of_Type S -> {fset convex.choice_of_Type C * convex.choice_of_Type S}.
-  move=> b' s'; exact: (g b' s').
-apply/fsetP => /= x; apply/bigfcupP'/bigfcupP'; case => /= CS  /imfsetP[/=].
-- move=> bs /bigfcupP'[/= BS]  /imfsetP[/= sa] sams ->{BS} bsfsa ->{CS} xgbs.
-  exists (\bigcup_(i <- [fset g' x0.1 x0.2 | x0 in f sa.1 sa.2]) i).
-    by apply/imfsetP => /=; exists sa.
-  apply/bigfcupP'; exists (g bs.1 bs.2) => //; by apply/imfsetP => /=; exists bs.
-- move=> sa sams ->{CS} /bigfcupP'[/= CS]  /imfsetP[/= bs] bsfsa ->{CS} xgbs.
-  exists (g bs.1 bs.2) => //; apply/imfsetP => /=; exists bs => //.
-  apply/bigfcupP' => /=; exists (f sa.1 sa.2) => //; by apply/imfsetP => /=; exists sa.
-Qed.
-Let fmapE (A B : UU0) (f : A -> B) (m : [the functor of acto] A) : ([the functor of acto] # f) m = @bind _ _ m (@ret _ \o f).
-Proof. by []. Qed.
-HB.instance Definition _ := @Monad_of_ret_bind.Build acto ret bind fmapE H0 H1 H2.
-Lemma BindE (A B : Type) m (f : A -> [the monad of acto] B) :
-  m >>= f = fun s => \bigcup_(i <- (fun x : [choiceType of convex.choice_of_Type A * convex.choice_of_Type S] => f x.1 x.2) @` (m s)) i.
-Proof.
-apply fun_ext => s.
-rewrite bindE /= /join_of_bind /= /bind /=.
-set lhs := [fset _ _ | _ in _].
-set rhs := [fset _ _ | _ in _].
-rewrite (_ : lhs = rhs) //; apply/fsetP => x; rewrite {}/lhs {}/rhs.
-apply/idP/imfsetP => /=.
-- case/imfsetP => -[a1 a2] /=.
-  rewrite /actm /=.
-  rewrite /map /=.
-  case/bigfcupP' => /= b.
-  by case/imfsetP => -[b1 b2] /= Hb ->{b} /fset1P[-> -> ->{x a1 a2}]; exists (b1, b2).
-- case=> -[a1 s1] Ha /= ->{x}.
-  apply/imfsetP => /=.
-  rewrite /actm /= /map /=.
-  eexists.
-  + apply/bigfcupP' => /=.
-    eexists.
-      apply/imfsetP => /=.
-      by exists (a1, s1).
-    apply/fset1P; reflexivity.
-  + by [].
-Qed.
-
-End monad.
-
-Section state.
-Variable S : Type.
-Let get := (fun s => [fset (s : convex.choice_of_Type S , s : convex.choice_of_Type S)]) : (acto S S).
-Let put := (fun s => (fun _ => [fset (tt : convex.choice_of_Type unit, s : convex.choice_of_Type S)])) : S -> (acto S unit).
-Let putput : forall s s', put s >> put s' = put s'.
-Proof.
-move=> s s'; apply fun_ext => s''.
-rewrite BindE; apply/fsetP => /= x; apply/bigfcupP'/fset1P.
-- by case => /= x0 /imfsetP[/= x1] /fset1P _ -> /fset1P.
-- move=> -> /=.
-  exists [fset ((tt, s') : [choiceType of convex.choice_of_Type unit * convex.choice_of_Type S])] => /=; last first.
-    exact/fset1P.
-  apply/imfsetP => /=; exists (tt, s) => //; exact/fset1P.
-Qed.
-Let putget : forall s, put s >> get = put s >> Ret s.
-Proof.
-move=> s; apply fun_ext => s'.
-rewrite 2!BindE /=; apply/fsetP => /= x; apply/bigfcupP'/bigfcupP'.
-- case => /= x0 /imfsetP[/= x1] /fset1P -> -> /fset1P ->.
-  exists [fset ((s, s) : [choiceType of convex.choice_of_Type S * convex.choice_of_Type S])]; last first.
-    exact/fset1P.
-  apply/imfsetP => /=; exists (tt, s) => //; exact/fset1P.
-- case => /= x0 /imfsetP[/= x1] /fset1P -> -> /fset1P ->.
-  exists [fset ((s ,s) : [choiceType of convex.choice_of_Type S * convex.choice_of_Type S])]; last first.
-    exact/fset1P.
-  apply/imfsetP => /=; exists (tt, s) => //; exact/fset1P.
-Qed.
-Let getputskip : get >>= put = skip.
-Proof.
-apply fun_ext => s.
-rewrite BindE /skip /= /Ret; apply/fsetP => /= x; apply/bigfcupP'/idP.
-- case => /= x0 /imfsetP[/= x1] /fset1P -> -> /fset1P ->; exact/fset1P.
-- move/fset1P => ->; exists [fset ((tt, s) : [choiceType of convex.choice_of_Type unit * convex.choice_of_Type S])]; last first.
-    exact/fset1P.
-  apply/imfsetP; exists (s, s) => //; by rewrite inE.
-Qed.
-Let getget : forall (A : UU0) (k : S -> S -> _ A),
-    get >>= (fun s => get >>= k s) = get >>= fun s => k s s.
-Proof.
-move=> A k; apply fun_ext => s.
-rewrite 2!BindE; apply/fsetP => x; apply/bigfcupP'/bigfcupP'.
-- case => /= x0 /imfsetP[/= x1] /fset1P -> ->.
-  rewrite BindE => /bigfcupP'[/= x2] /imfsetP[/= x3] /fset1P -> -> xkss.
-  exists (k s s s) => //; apply/imfsetP; exists (s, s) => //; by rewrite inE.
-- case => /= x0 /imfsetP[/= x1] /fset1P -> -> /= xksss.
-  have @k' : convex.choice_of_Type S -> convex.choice_of_Type S -> (convex.choice_of_Type S -> {fset convex.choice_of_Type A * convex.choice_of_Type S}).
-    move=> a b s'; exact: (k a b s').
-  exists (\bigcup_(i <- [fset k' (s, s).1 x2.1 x2.2 | x2 in [fset (((s, s).2, (s, s).2) : [choiceType of convex.choice_of_Type S * convex.choice_of_Type S])]]) i).
-    apply/imfsetP ; exists (s, s); by [rewrite inE | rewrite BindE].
-  apply/bigfcupP'; exists (k s s s) => //;   apply/imfsetP; exists (s, s) => //=; exact/fset1P.
-Qed.
-
-HB.instance Definition _ := isMonadState.Build S (acto S) putput putget getputskip getget.
-
-End state.
-
-Section fail.
-Variable S : choiceType.
-Let fail : forall A, acto S A := (fun (A : Type) (_ : S) => fset0).
-Let bindfailf : BindLaws.left_zero (@bind _ ) fail.
-Proof.
-move=> A B g; apply fun_ext => s; apply/fsetP => x; rewrite inE BindE; apply/negbTE.
-apply/bigfcupP'; case => /= x0 /imfsetP[/= sa].
-by rewrite (@in_fset0 [choiceType of convex.choice_of_Type A * convex.choice_of_Type S]).
-Qed.
-
-HB.instance Definition _ := isMonadFail.Build (acto S) bindfailf.
-End fail.
-
-Section alt.
-Variable S : choiceType.
-Let M := [the monad of acto S].
-Let alt := (fun (A : Type) (a b : S -> {fset [choiceType of convex.choice_of_Type A * convex.choice_of_Type S]}) (s : S) => a s `|` b s).
-Let altA : forall T : UU0, ssrfun.associative (@alt T).
-Proof. by move=> A a b c; apply fun_ext => s; rewrite /alt fsetUA. Qed.
-Let alt_bindDl : BindLaws.left_distributive (@bind M) (@alt).
-Proof.
-move=> A B /= m1 m2 k; apply fun_ext => s; rewrite !BindE /=.
-apply/fsetP => /= bs; apply/bigfcupP'/fsetUP.
-- case => /= BS /imfsetP[/= sa] /fsetUP[sam1s ->{BS} Hbs|sam2s ->{BS} Hbs].
-  + left; apply/bigfcupP' => /=; exists (k sa.1 sa.2) => //; apply/imfsetP; by exists sa.
-  + right; apply/bigfcupP' => /=; exists (k sa.1 sa.2) => //; apply/imfsetP; by exists sa.
-- case => /bigfcupP'[/= BS /imfsetP[/= sa sams ->{BS} bsksa]].
-  by exists (k sa.1 sa.2) => //; apply/imfsetP; exists sa => //; rewrite inE sams.
-  by exists (k sa.1 sa.2) => //; apply/imfsetP; exists sa => //; rewrite inE sams orbT.
-Qed.
-HB.instance Definition _ := isMonadAlt.Build (acto S) altA alt_bindDl.
-End alt.
-
-Section nondet.
-
-Variable S : choiceType.
-Let M : failMonad := [the failMonad of acto S].
-Let N : altMonad := [the altMonad of acto S].
-Let altfailm : @BindLaws.left_id _ (@fail M) (@alt N).
-Proof. by move=> A /= m; apply fun_ext => s; rewrite /alt /= fset0U. Qed.
-Let altmfail : @BindLaws.right_id _ (@fail M) (@alt N).
-Proof. by move=> A /= m; apply fun_ext => s; rewrite /alt /= fsetU0. Qed.
-HB.instance Definition _ := isMonadNondet.Build (acto S) altfailm altmfail.
-End nondet.
-
-Section failR0monad.
-Variable S : choiceType.
-Let yyy : BindLaws.right_zero (@bind [the monad of acto S]) (@fail _).
-Proof.
-move=> A B /= g; rewrite !BindE /=; apply fun_ext => s; apply/fsetP => /= sa.
-apply/idP/idP/bigfcupP'.
-case => /= SA /imfsetP[/= bs bsgs ->{SA}].
-by rewrite (@in_fset0 [choiceType of convex.choice_of_Type A * convex.choice_of_Type S]).
-Qed.
-HB.instance Definition _ := isMonadFailR0.Build (acto S) yyy.
-End failR0monad.
-
-Section preplusmonad.
-
-Variable S : choiceType.
-Let yyy : BindLaws.right_distributive (@bind [the monad of acto S]) (@alt _).
-Proof.
-move=> A B /= m k1 k2; apply fun_ext => s; rewrite !BindE /=; apply/fsetP => /= bs.
-apply/bigfcupP'/idP.
-- case => /= BS /imfsetP[/= sa sams ->{BS}] /fsetUP[bsk1|bsk2].
-  + apply/fsetUP; left; apply/bigfcupP'; exists (k1 sa.1 sa.2) => //.
-    apply/imfsetP; by exists sa.
-  + apply/fsetUP; right; apply/bigfcupP'; exists (k2 sa.1 sa.2) => //.
-    apply/imfsetP; by exists sa.
-- move/fsetUP => [|] /bigfcupP'[/= BS] /imfsetP[/= sa sams ->{BS}] bsk.
-  exists (k1 sa.1 sa.2 `|` k2 sa.1 sa.2).
-    apply/imfsetP; by exists sa.
-  by apply/fsetUP; left.
-  exists (k1 sa.1 sa.2 `|` k2 sa.1 sa.2).
-    apply/imfsetP; by exists sa.
-  by apply/fsetUP; right.
-Qed.
-
-HB.instance Definition _ := isMonadPrePlus.Build (acto S) yyy.
-
-End preplusmonad.
-
-Section nondetstate.
-
-Variable S : choiceType.
-
-(*Definition nondetstate : nondetStateMonad S :=
-  @MonadNondetState.Pack _ _
-    (@MonadNondetState.Class _ _ (MonadPrePlus.class (preplusbase S))
-      (MonadState.mixin (MonadState.class (_state S)))).*)
-(* HB.instance Definition _ := isMonadNondetState.Build (acto S).  *)
-
-End nondetstate.
-
-End ModelBacktrackableState.
-*)
-
 
 (* TODO?
 (* result of a discussion with Maxime and Enrico on 2019-09-12 *)

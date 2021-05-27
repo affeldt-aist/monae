@@ -190,10 +190,8 @@ rewrite -!liftSE /liftS; apply fun_ext => s.
 rewrite ExceptMonadE.
 rewrite {1}bindE /= {1}/join_of_bind /= {1}/bindS /=.
 rewrite {1}bindE /= {1}/join_of_bind /=.
-rewrite /ihierarchy.actm /= /MS_map /=.
-rewrite /ihierarchy.actm /=.
-case (m s) => //.
-by case.
+rewrite /actm /= /MS_map /= /actm /=.
+by case (m s) => // -[].
 Qed.
 
 Section fail_model_sufficient.
@@ -201,7 +199,7 @@ Let N : failMonad := [the failMonad of option_monad].
 Let M : monad := [the stateMonad nat of MS nat N].
 Let FAIL T := @throw unit T tt.
 
-Let incr : M unit := ihierarchy.get >>= (ihierarchy.put \o succn).
+Let incr : M unit := get >>= (put \o succn).
 Let prog T : M unit := incr >> Lift (stateT nat) N T (@FAIL T) >> incr.
 
 Goal forall T, prog T = Lift (stateT nat) N unit (@FAIL unit).

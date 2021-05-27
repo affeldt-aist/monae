@@ -2,7 +2,6 @@
 (* Copyright (C) 2020 monae authors, license: LGPL-2.1-or-later               *)
 Require Import ZArith.
 From mathcomp Require Import all_ssreflect.
-From infotheo Require Import ssrZ.
 Require Import imonae_lib.
 From HB Require Import structures.
 Require Import ihierarchy imonad_lib ifail_lib.
@@ -89,171 +88,8 @@ Lemma getput_prepend (S : UU0) (M : nondetStateMonad S) A (m : M A) :
   m = get >>= (fun x => put x >> m).
 Proof. by rewrite -{2}(bindskipf m) -bindA getputskip 2!bindskipf. Qed.
 
-(* TODO: Fix universes *)
-(*
-Section state_commute.
-
-Variables (S : UU0) (M : nondetStateMonad S).
-
-Lemma puttselectC (x : S) A (s : seq A) B (f : _ -> M B) :
-  put x >> (tselect s >>= f) = tselect s >>= (fun rs => put x >> f rs).
-Proof.
-elim: s f => [|h t IH] f.
-  by rewrite tselect_nil 2!bindfailf bindmfail.
-  case: t IH f => [|h' t] IH f.
-  by rewrite tselect1 !bindretf.
-rewrite tselect_cons // => H.
-rewrite [in LHS]alt_bindDl [in RHS]alt_bindDl alt_bindDr.
-congr (_ [~] _); first by rewrite 2!bindretf.
-rewrite 2!bindA IH; bind_ext => y; by rewrite !bindretf.
-Qed.
-
-Lemma putselectC (x : S) A (s : seq A) B (f : A * (seq A) -> M B) :
-  put x >> (select s >>= f) = select s >>= (fun rs => put x >> f rs).
-Proof.
-rewrite selectE {1}fmapE.
-rewrite_ bindA.
-rewrite puttselectC [in RHS]fmapE bindA.
-bind_ext => x0; by rewrite 2!bindretf.
-Qed.
-
-Lemma gettselectC A (s : seq A) B (f : _ -> _ -> M B) :
-  (do ini <- get; do rs <- tselect s; f rs ini =
-   do rs <- tselect s; do ini <- get; f rs ini)%Do.
-Proof.
-elim: s f => [|h t IH] f.
-  rewrite tselect_nil bindfailf; rewrite_ bindfailf; by rewrite bindmfail.
-case: t IH f => [|h' t] IH f.
-  rewrite tselect1 bindretf; by rewrite_ bindretf.
-rewrite tselect_cons // => H.
-rewrite [tselect _]lock.
-rewrite_ (@alt_bindDl M) (*TODO: M necessary?*).
-rewrite [in RHS]alt_bindDl alt_bindDr.
-congr (_ [~] _).
-  rewrite bindretf; bind_ext => ?; by rewrite bindretf.
-rewrite -lock.
-transitivity (do x0 <- tselect (h' :: t); do x <- get;
-   f (x0.1, Tuple (ifail_lib.tselect_cons_statement_obligation_2 h H x0)) x)%Do.
- rewrite -IH; bind_ext => x.
- rewrite bindA;by rewrite_ bindretf.
-rewrite bindA; bind_ext => y; by rewrite bindretf.
-Qed.
-
-Lemma putpermsC (x : S) A (s : seq A) B (f : _ -> M B) :
-  put x >> (perms s >>= f) = perms s >>= (fun rs => put x >> f rs).
-Proof.
-move Hn : (size s) => n.
-elim: n s Hn x f => [|n IH] s Hn x f.
-  by case: s Hn => // _; rewrite permsE 2!bindretf.
-case: s Hn => // h t [Hn].
-rewrite tpermsE 2!bindA puttselectC; bind_ext; case=> a b.
-rewrite 2!bindA.
-have bn : size b = n by rewrite size_tuple.
-rewrite IH //.
-by do 2! rewrite_ bindretf.
-Qed.
-
-Lemma getpermsC A (s : seq A) B (f : _ -> _ -> M B) :
-  (get >>= (fun ini => perms s >>=  f^~ ini) =
-   perms s >>= (fun rs => get >>= f rs))%Do.
-Proof.
-move Hn : (size s) => n.
-elim: n s Hn f => [|n IH] s Hn f.
-  case: s Hn => // _; rewrite permsE.
-  by rewrite bindretf; rewrite_ bindretf.
-case: s Hn => // h t [Hn].
-rewrite tpermsE bindA.
-transitivity (do x <- tselect (h :: t); do ini <- get; do rs <- perms x.2;
-  f (x.1 :: rs) ini)%Do; last first.
-  bind_ext => x.
-  rewrite IH ?size_tuple // bindA.
-  by rewrite_ bindretf.
-rewrite -gettselectC.
-bind_ext => x.
-rewrite bindA; bind_ext => rs.
-rewrite bindA.
-by rewrite_ bindretf.
-Qed.
-
-End state_commute.
-
-Definition nondetState_sub S (M : nondetStateMonad S) A (n : M A) :=
-  {m | ndDenote m = n}.
-
-Lemma select_is_nondetState S (M : nondetStateMonad S) A (s : seq A) :
-  nondetState_sub (select s : M _).
-Proof.
-elim: s => [/= | u v [x /= <-]]; first by exists (@ndFail _).
-by exists (ndAlt (ndRet (u, v)) (ndBind x (fun x => ndRet (x.1, u :: x.2)))).
-Qed.
-
-Lemma unfoldM_is_nondetState S (M : nondetStateMonad S) (A B : UU0)
-  (f : seq B -> M (A * seq B)%type) :
-  (forall s, nondetState_sub (f s)) -> bassert_size f ->
-  forall s, nondetState_sub (unfoldM (@well_founded_size B) (@nilp _) f s).
-Proof.
-move=> Hf size_f s.
-apply/@ConstructiveEpsilon.constructive_indefinite_description.
-move: s; apply: (well_founded_induction (@well_founded_size _)) => s IH.
-have {}IH : forall x, size x < size s ->
-  { m | ndDenote m = unfoldM (@well_founded_size B) (@nilp _) f x}.
-(*
-  move=> x xs; exact/@ConstructiveEpsilon.constructive_indefinite_description/IH.
-case: s IH => [|h t] IH.
-  rewrite unfoldME //=; by exists (ndRet [::]).
-rewrite unfoldME //.
-rewrite (_ : nilp _ = false) //.
-case: (Hf (h :: t)) => x Hx.
-rewrite -Hx.
-set g := fun y => match Bool.bool_dec (size y < size (h :: t)) true with
-               | left H => let: exist x _ := IH _ H in x
-               | _ => ndRet [::]
-               end.
-refine (ex_intro _ (ndBind x (fun x => ndBind (g x.2) (@ndRet _ \o cons x.1 ))) _).
-rewrite [in LHS]/=.
-rewrite Hx size_f /bassert !bindA.
-bind_ext => -[x1 x2].
-case: assertPn; rewrite ltnS => b1b2; last by rewrite !bindfailf.
-rewrite !bindretf /g.
-case: Bool.bool_dec => // x2t.
-case: (IH x2) => // x0 <-; by rewrite fmapE.
-Qed.
-*)
-Admitted.
-*)
-
 Definition commute {M : monad} A B (m : M A) (n : M B) C (f : A -> B -> M C) : Prop :=
   m >>= (fun x => n >>= (fun y => f x y)) = n >>= (fun y => m >>= (fun x => f x y)) :> M _.
-
-(*
-Lemma commute_nondetState S (M : nondetStateMonad S)
-  A (m : M A) B (n : M B) C (f : A -> B -> M C) :
-  nondetState_sub m -> commute m n f.
-Proof.
-case => x.
-elim: x m n f => [{}A a m n f <-| B0 {}A n0 H0 n1 H1 m n2 f <- |
-  A0 m n f <- | A0 n0 H0 n1 H1 m n2 f <-].
-- rewrite /commute bindretf.
-  by rewrite_ bindretf.
-- rewrite /commute /= !bindA.
-  transitivity (do x <- ndDenote n0; do y <- n2; ndDenote (n1 x) >>= f^~ y)%Do.
-    bind_ext => s.
-    by rewrite (H1 s).
-  rewrite H0 //.
-  bind_ext => b.
-  by rewrite bindA.
-- rewrite /commute /= bindfailf.
-  transitivity (n >> fail : M C); first by rewrite bindmfail.
-  bind_ext => b.
-  by rewrite bindfailf.
-- rewrite /commute /= alt_bindDl.
-  transitivity (do y <- n2; ndDenote n0 >>= f^~ y [~]
-                           ndDenote n1 >>= f^~ y)%Do; last first.
-    bind_ext => a.
-    by rewrite alt_bindDl.
-  by rewrite alt_bindDr H0 // H1.
-Qed.
-*)
 
 Section loop.
 Variables (A S : UU0) (M : stateMonad S) (op : S -> A -> S).
@@ -418,29 +254,14 @@ Qed.
 
 End section43.
 
-(* TODO: move? *)
-Definition intersect {A : eqType} (s t : seq A) : seq A := filter (mem s) t.
-
-Lemma nilp_intersect (A : eqType) (s t : seq A) :
-  nilp (intersect s t) = ~~ has (mem s) t.
-Proof. by rewrite /intersect /nilp size_filter has_count lt0n negbK. Qed.
-
-(*
-Definition seq_disjoint {A : eqType} : pred [eqType of (seq A)`2] :=
-  (@nilp _) \o uncurry intersect.
-*)
-
-Lemma intersect0s (A : eqType) (s : seq A) : intersect [::] s = [::].
-Proof. by elim: s. Qed.
-
-Definition promotable A (p : pred (seq A)) (q : pred (seq A * seq A)) :=
+Definition promotable (A : UU0) (p : pred (seq A)) (q : pred (seq A * seq A)) :=
   forall s t, p s -> p t -> p (s ++ t) = q (s, t).
 
-Lemma segment_closed_suffix A (p : segment_closed.t A) s :
+Lemma segment_closed_suffix (A : UU0) (p : segment_closed.t A) s :
   ~~ p s -> forall t, ~~ p (s ++ t).
 Proof. move=> ps t; apply: contra ps; by case/segment_closed.H. Qed.
 
-Lemma segment_closed_prefix A (p : segment_closed.t A) s :
+Lemma segment_closed_prefix (A : UU0) (p : segment_closed.t A) s :
   ~~ p s -> forall t, ~~ p (t ++ s).
 Proof. move=> ps t; apply: contra ps; by case/segment_closed.H. Qed.
 
@@ -458,8 +279,7 @@ Lemma promote_assert_sufficient_condition (M : failMonad) (A : UU0) :
   promote_assert M p q.
 Proof.
 move=> right_z p q promotable_pq.
-(*
-rewrite /promote_assert fun_ext => -[x1 x2].
+rewrite /promote_assert; apply fun_ext => -[x1 x2].
 rewrite 3![in RHS]compE [in RHS]fmapE.
 rewrite 2![in LHS]compE {1}/bassert [in LHS]bind_fmap !bindA.
 bind_ext => s.
@@ -480,23 +300,8 @@ case: (assertPn _ _ t) => pt; last first.
   by rewrite bindfailf.
 by rewrite bindretf /=  2!assertE promotable_pq //= bindA bindretf.
 Qed.
-*)
-Admitted.
 
 Section examples_promotable_segment_closed.
-
-(*
-Lemma promotable_uniq_seq_disjoint (A : UU0) : promotable (@uniq A) seq_disjoint.
-Proof.
-move=> s t ps pt.
-by rewrite cat_uniq ps pt /= andbT -nilp_intersect.
-Qed.
-*)
-
-Local Obligation Tactic := idtac.
-Program Definition uniq_is_segment_closed (A : eqType) : segment_closed.t A :=
-  @segment_closed.mk _ (@uniq A) _.
-Next Obligation. by move=> A a b; rewrite cat_uniq => /and3P[]. Qed.
 
 (* is a contiguous segment of the enumeration *)
 (* TODO(rei): generalize to any enumeration *)
@@ -533,6 +338,7 @@ move: Hab.
 by rewrite /is_iota /= => /eqP[] {1}->; rewrite -Ha.
 Qed.
 
+Local Obligation Tactic := idtac.
 Program Definition is_iota_is_segment_closed : segment_closed.t nat :=
   @segment_closed.mk _ is_iota _.
 Next Obligation.
@@ -610,85 +416,3 @@ Definition swap {S : UU0} {I : eqType} {M : arrayMonad S I} (i j : I) : M unit :
    do y <- aget j ;
    aput i y >>
    aput j x)%Do.
-
-Section monadarray_example.
-Local Open Scope do_notation.
-Variable M : arrayMonad nat bool_eqType.
-
-(*
-Definition does_swap (m : M unit) :=
-  (do x <- aget false ;
-   do y <- aget true ;
-   m >>
-   do x' <- aget false ;
-   do y' <- aget true ;
-   Ret ((x == y') && (y == x'))).
-
-Lemma swapP (m : M unit) :
-  does_swap (swap false true) = swap false true >> Ret true.
-Proof.
-rewrite /swap /does_swap.
-transitivity (
-  do x <- aget false;
-  do y <- aget true;
-  do x0 <- aget false;
-  (do y0 <- aget true; aput false y0 >> aput true x0) >>
-  (do x' <- aget false; do y' <- aget true; Ret ((x == y') && (y == x'))) : M _).
-  bind_ext => x; by rewrite_ bindA. (* TODO: should be shorter *)
-rewrite agetC.
-rewrite_ (@agetget _ _ M) (* TODO: args *).
-transitivity (
-  do x <- aget true;
-  do s <- aget false;
-  do y0 <- aget true; (aput false y0 >> aput true s) >>
-  (do x' <- aget false; do y' <- aget true; Ret ((s == y') && (x == x'))) : M _).
-  bind_ext => x; by rewrite_ bindA. (* TODO: should be shorter *)
-rewrite agetC.
-rewrite_ (@agetget _ _ M) (* TODO: args *).
-transitivity (
-  do x <- aget false;
-  do s <- aget true;
-  (aput false s >> (aput true x >>
-  do y' <- aget true; do x' <- aget false; Ret ((x == y') && (s == x')))) : M _).
-  bind_ext => x. bind_ext => y. rewrite bindA. bind_ext; case. by rewrite_ (@agetC _ _ M).
-transitivity (
-  do x <- aget false;
-  do s <- aget true;
-  (aput false s >> (aput true x >>
-  do x' <- aget false; Ret ((x == x) && (s == x')))) : M _).
-  bind_ext => x.
-  bind_ext => y.
-  bind_ext; case.
-  by rewrite -bindA aputget.
-transitivity (
-  do x <- aget false;
-  do s <- aget true;
-  (aput true x >> aput false s >> (do x' <- aget false; Ret ((x == x) && (s == x')))) : M _).
-  bind_ext => x.
-  bind_ext => y.
-  rewrite -bindA aputC //=; by left.
-transitivity (
-  do x <- aget false;
-  do s <- aget true;
-  (aput true x >> aput false s) >> Ret ((x == x) && (s == s)) : M _).
-  bind_ext => x.
-  bind_ext => y.
-  rewrite 2!bindA.
-  bind_ext; case.
-  by rewrite -bindA aputget.
-transitivity (
-  do x <- aget false;
-  do s <- aget true;
-  (aput true x >> aput false s) >> Ret true : M _).
-  bind_ext => x.
-  bind_ext => y.
-  by rewrite 2!eqxx.
-rewrite bindA.
-bind_ext => x.
-rewrite bindA.
-bind_ext => y.
-rewrite aputC //; by left.
-Qed.
-*)
-
-End monadarray_example.
