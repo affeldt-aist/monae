@@ -26,5 +26,7 @@ example_array.v
 example_monty.v
 smallstep.v
 example_transformer.v
+wip_share.v
+wip_netsys2017.v
 
 -R . monae
