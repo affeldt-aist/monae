@@ -1127,6 +1127,105 @@ Proof. by case: M s => ? [? []]. Qed.
 Local Close Scope type_scope.
 End staterun_lemmas.
 
+Axiom STRef : UU0 -> UU0 -> Type.
+
+Module MonadST.
+Record mixin_of (M : Type -> monad) := Mixin {
+  newSTRef : forall (B A : UU0), A -> M B (STRef B A) ;
+  readSTRef : forall (B A : UU0), STRef B A -> M B A ;
+  writeSTRef : forall (B A : UU0), STRef B A -> A -> M B unit ;
+  runST : forall (A : UU0), (forall (B : UU0), M B A) -> A
+  }.
+Record class_of (m : Type -> UU0 -> UU0) := Class {
+  base : forall (B : UU0), Monad.class_of (m B) ; mixin : mixin_of (fun (B : UU0) => Monad.Pack (base B)) }.
+Structure type := Pack { acto : Type -> UU0 -> UU0 ; class : class_of acto }.
+Definition monadType (B : UU0) (M : type) := Monad.Pack (base (class M) B).
+Module Exports.
+Definition NewSTRef (M : type) : forall (B A : UU0), A -> acto M B (STRef B A) :=
+  let: Pack _ (Class _ (Mixin x _ _ _)) := M in x.
+Arguments NewSTRef {M B A} : simpl never.
+Definition ReadSTRef (M : type) : forall (B A : UU0), STRef B A -> acto M B A :=
+  let: Pack _ (Class _ (Mixin _ x _ _)) := M in x.
+Arguments ReadSTRef {M B A} : simpl never.
+Definition WriteSTRef (M : type) : forall (B A : UU0), STRef B A -> A -> acto M B unit :=
+  let: Pack _ (Class _ (Mixin _ _ x _)) := M in x.
+Arguments WriteSTRef {M B A} : simpl never.
+Definition RunST (M : type) : forall (A : UU0), (forall (B : UU0), acto M B A) -> A :=
+  let: Pack _ (Class _ (Mixin _ _ _ x)) := M in x.
+Arguments RunST {M A} : simpl never.
+Notation stMonad := type.
+Coercion monadType : stMonad >-> monad.
+Canonical monadType.
+End Exports.
+End MonadST.
+Export MonadST.Exports.
+
+Section monadST_example.
+Variable (M : stMonad).
+
+Fixpoint sumST' (B : UU0) n (acc : STRef B nat) (f : nat -> nat -> nat) : MonadST.acto M B nat :=
+  if n is m.+1 then
+    (do a <- ReadSTRef acc ;
+     WriteSTRef acc (f a m))%Do >>
+     sumST' m acc f
+  else
+    ReadSTRef acc.
+
+Definition sumST n : nat :=
+  RunST (fun B => (do acc <- NewSTRef 0; sumST' n acc addn)%Do).
+
+Lemma NewReadSTRef (B : UU0) (A : UU0) (a : A) :
+  NewSTRef a >>= ReadSTRef = Ret a :> MonadST.acto M B A.
+Admitted.
+
+Lemma RunSTRet (A : UU0) (a : A) :
+  RunST (fun B : UU0 => Ret a : MonadST.acto M B A) = a.
+Admitted.
+
+Lemma sumST'E (B : UU0) n (acc : STRef B nat) x :
+  ReadSTRef acc = Ret x :> MonadST.acto M B nat ->
+  sumST' n acc addn = Ret (x + \sum_(i < n) i).
+Proof.
+elim: n x => [x|n ih x accx].
+  by rewrite /sumST' big_ord0 => ->; rewrite addn0.
+rewrite /=.
+Abort.
+
+Lemma sumSTE n : sumST n = \sum_(i < n) i.
+Proof.
+elim: n => [|n ih].
+  rewrite big_ord0.
+  rewrite /sumST.
+  rewrite /sumST'.
+  rewrite -[RHS]RunSTRet.
+  congr RunST.
+  apply FunctionalExtensionality.functional_extensionality_dep => B.
+  by rewrite NewReadSTRef.
+rewrite big_ord_recr /= -ih.
+rewrite /sumST /=.
+Abort.
+
+Fixpoint fibST' (B : UU0) n (x y : STRef B nat) : MonadST.acto M B nat :=
+  if n is m.+1 then
+    (do x' <- ReadSTRef x ;
+     do y' <- ReadSTRef y ;
+     WriteSTRef x y' >>
+     WriteSTRef y (x' + y')%nat >>
+   (fibST' m x y))%Do
+ else
+   ReadSTRef x.
+
+Fixpoint fibST n : nat :=
+  match n with
+  | O => O
+  | 1 => 1%N
+  | _ => RunST (fun B => do x <- NewSTRef O ;
+                         do y <- NewSTRef 1%N ;
+                         fibST' n x y)%Do
+  end.
+
+End monadST_example.
+
 Module MonadExceptStateRun.
 Section monadexceptstaterun.
 Variable S : UU0.
