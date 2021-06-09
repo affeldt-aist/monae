@@ -100,6 +100,11 @@ rewrite splitsE /= fmapE bindA; bind_ext => -[s1 s2] /=.
 by rewrite bindretf.
 Qed.
 
+Lemma qperm_consE x xs :
+  qperm (x :: xs) = splits xs >>= (fun z =>
+    liftM2 (fun a b => a ++ [:: x] ++ b) (qperm z.1) (qperm z.2)).
+Proof. by rewrite qperm_cons; bind_ext => -[]. Qed.
+
 Definition qpermE := (qperm_nil, qperm_cons).
 
 End qperm.
@@ -216,11 +221,66 @@ Proof.
   elim: xs => [//| a l ih ]. simpl. rewrite ih. done.
 Qed.
 
+Lemma guard_splits (p : T) (t : seq T) (C : Type) (f : seq T * seq T -> M C) :
+  guard (all (<= p) t) >> (splits t >>= f)
+  =
+  splits t >>= (fun x => guard (all (<= p) x.1) >>
+                      guard (all (<= p) x.2) >> f x).
+Proof.
+Admitted.
+
+Lemma splits_guard (t : seq T) (C : Type) (f : seq T * seq T -> M C) :
+  splits t >>= f =
+  (do x <- splits t; (guard (subseq(*modulo perm*) x.1 t) >> guard (subseq x.2 t)) >> f x)%Do.
+Admitted.
+
 Lemma guard_qperm_eq (B : Type) (p : T) (a : seq T) (f : seq T -> M B) :
-  guard (all (<= p) a) >>= (fun _ => qperm a >>= f) = qperm a >>= (fun x => guard (all (<= p) x) >> f x).
-  
+  guard (all (<= p) a) >>= (fun _ => qperm a >>= f) =
+  qperm a >>= (fun x => guard (all (<= p) x) >> f x).
   (* guard (all (<= p) a) >> (qperm a >>= f) = qperm a >>= (fun x => guard (all (<= p) x) >> f x). *)
 Proof.
+move: p.
+move szn : (size a) => n.
+elim: n f a szn => [f a /eqP|n ih f].
+  rewrite size_eq0 => /eqP ->{a} p.
+  by rewrite qperm_nil 2!bindretf.
+move=> -[//|h t [tn] p].
+rewrite qperm_consE.
+rewrite {1}/liftM2.
+rewrite [in LHS]bindA.
+rewrite /=.
+rewrite guard_and.
+rewrite [in LHS]bindA.
+(* 1. guard and split commute *)
+transitivity (
+  guard (h <= p) >>
+  (do x0 <- splits t;
+    guard (all (<= p) t) >>
+    do x <- do x1 <- qperm x0.1; do x2 <- qperm x0.2; Ret (x1 ++ h :: x2);
+    f x)%Do
+).
+  bind_ext => -[].
+  rewrite guard_splits.
+  rewrite [in LHS]splits_guard.
+  rewrite [in RHS]splits_guard.
+  admit.
+rewrite ![in RHS]bindA.
+transitivity (
+  (do x0 <- splits t;
+  guard (h <= p) >>
+   guard (all (<= p) t) >>
+   (do x <-
+    do x1 <- qperm x0.1; do x2 <- qperm x0.2; Ret (x1 ++ h :: x2);
+    f x))%Do
+).
+  admit.
+bind_ext => -[a b].
+rewrite /=.
+rewrite /liftM2.
+(* use ih after generalization *)
+Admitted.
+
+(*
   rewrite guardsC; last exact: (@bindmfail M).
   rewrite bindA.  
   bind_ext => x.
@@ -228,7 +288,7 @@ Proof.
   
   (* rewrite [in LHS]bindA. *)
   case: (x == a) => //.
-  bind_ext => x1.
+  bind_ext => x1.*)
 
   (* elim: x => [|a0 l].
   elim: a => [//|a l].
@@ -299,26 +359,19 @@ Proof.
   rewrite guardsC.
   rewrite qperm_cons.
   rewrite ih. *)
-Admitted.
 
 Lemma guard_qperm_eq2 (B : Type) (p : T) (a : seq T) (f : seq T -> M B) :
  guard (all (>= p) a) >> (qperm a >>= f) = qperm a >>= (fun x => (guard (all (>= p) x) >> f x)).
 Admitted.
 
-Lemma guard_qperm_neq (B : Type) (p : T) (b a : seq T) (f : seq T -> M B) :
- guard (all (>= p) b) >> (qperm a >>= f) = qperm a >>= (fun x => (guard (all (>= p) b) >> f x)).
-  rewrite guardsC; last exact: (@bindmfail M).
-  rewrite bindA.
-  bind_ext => x.
-  by rewrite guardsC; last exact: (@bindmfail M).
-Qed.
-
-Lemma guard_qperm_neq2 (B : Type) (p : T) (b a : seq T) (f : seq T -> M B) :
- guard (all (<= p) b) >> (qperm a >>= f) = qperm a >>= (fun x => (guard (all (<= p) b) >> f x)).
-  rewrite guardsC; last exact: (@bindmfail M).
-  rewrite bindA.
-  bind_ext => x.
-  by rewrite guardsC; last exact: (@bindmfail M).
+Lemma guard_qperm_neq (B : Type) (b a : seq T) (r : pred T) (f : seq T -> M B) :
+  guard (all r b) >> (qperm a >>= f) =
+    qperm a >>= (fun x => (guard (all r b) >> f x)).
+Proof.
+rewrite guardsC; last exact: (@bindmfail M).
+rewrite bindA.
+bind_ext => x.
+by rewrite guardsC; last exact: (@bindmfail M).
 Qed.
 
 Lemma refin_slowsort_inductive_case (p : T) (xs : seq T) :
@@ -362,7 +415,7 @@ rewrite -[in RHS]guard_and [in RHS]andbC [in RHS]guard_and.
 rewrite [in RHS]bindA.
 congr (_ >> _).
 rewrite boolp.funeqE => s'.
-rewrite -guard_qperm_neq2.
+rewrite -guard_qperm_neq.
 congr (_ >> _).
 rewrite boolp.funeqE => s2.
 under [RHS]eq_bind do rewrite bindA.
@@ -680,8 +733,9 @@ Variable M : plusMonad.
 (* split *)
 Example split1 : (@splits M nat [::]) = Ret ([::], [::]).
 by []. Qed.
-Example split2 : (@splits M nat [:: 1; 2]%N) = Ret ([:: 1; 2]%N, [::]%N) [~] Ret ([:: 2]%N, [:: 1]%N) [~]
-                                   Ret ([:: 1]%N, [:: 2]%N) [~] Ret ([::]%N, [:: 1; 2]%N).
+Example split2 : (@splits M nat [:: 1; 2]%N) =
+  Ret ([:: 1; 2]%N, [::]%N) [~] Ret ([:: 2]%N, [:: 1]%N) [~]
+  Ret ([:: 1]%N, [:: 2]%N) [~] Ret ([::]%N, [:: 1; 2]%N).
 rewrite /splits bindA.
 repeat rewrite bindretf alt_bindDl !bindretf.
 by rewrite altA. Qed.
