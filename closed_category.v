@@ -26,6 +26,7 @@ Set Implicit Arguments.
 Unset Strict Implicit.
 Unset Printing Implicit Defensive.
 
+Local Open Scope category_scope.
 
 Module CatWithFinProd.
 Section def.
@@ -35,7 +36,7 @@ Record mixin_of (C : category) : Type := Mixin {
  snd : forall a b, {hom prod a b, b};
  univ : forall c a b, {hom c,a} -> {hom c,b} -> {hom c, prod a b};
  _ : forall c a b (f : {hom c,a}) (g : {hom c,b}),
-     f = [hom of (fst a b) \o (univ f g)];
+     f = [hom (fst a b) \o (univ f g)];
 }.
 Record class_of (T : Type) : Type := Class {
  base : Category.mixin_of T;

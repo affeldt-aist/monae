@@ -26,5 +26,7 @@ example_array.v
 example_monty.v
 smallstep.v
 example_transformer.v
+monoidal_category.v
+closed_category.v
 
 -R . monae
