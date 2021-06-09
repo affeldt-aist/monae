@@ -21,27 +21,6 @@ Local Open Scope tuple_ext_scope.
 From infotheo Require Import ssrZ.
 Require Import ZArith.
 
-(* TODO: Pr to infotheo *)
-Local Open Scope zarith_ext_scope.
-
-Reserved Notation "n %:Z" (at level 2, left associativity, format "n %:Z").
-Definition natZ := nosimpl Z_of_nat.
-Notation "n %:Z" := (natZ n) : zarith_ext_scope.
-
-Notation "z .+1Z" := (Z.succ z) (at level 2, left associativity,
-  format "z .+1Z") : zarith_ext_scope.
-
-Lemma add1Z z : (1 + z)%Z = z.+1Z.
-Proof. by rewrite Z.add_1_l. Qed.
-
-Lemma natZ0 : 0%:Z = 0%Z. Proof. exact: Nat2Z.inj_0. Qed.
-
-Lemma natZS n : n.+1%:Z = n%:Z.+1Z.
-Proof. by rewrite -Zpos_P_of_succ_nat. Qed.
-
-Local Close Scope zarith_ext_scope.
-(* TODO: Pr to infotheo (end) *)
-
 Section marray.
 Variables (E : UU0) (M : arrayMonad E Z_eqType).
 
