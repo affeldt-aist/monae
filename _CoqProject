@@ -26,5 +26,6 @@ example_array.v
 example_monty.v
 smallstep.v
 example_transformer.v
+proba_monad_alternative.v
 
 -R . monae
