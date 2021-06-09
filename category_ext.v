@@ -150,13 +150,13 @@ Section homfstsnd.
 Let _homfst (x y : A * B) (f : {hom x,y}) : {hom x.1, y.1}.
 case:f => f.
 case/cid=> sf [] Hf _.
-exact: (HomPack Hf).
+exact: (HomPack _ _ _ Hf).
 Defined.
 Definition homfst := Eval hnf in _homfst.
 Let _homsnd (x y : A * B) (f : {hom x,y}) : {hom x.2, y.2}.
 case:f => f.
 case/cid=> sf [] _ Hf.
-exact: (HomPack Hf).
+exact: (HomPack _ _ _ Hf).
 Defined.
 Definition homsnd := Eval hnf in _homsnd.
 End homfstsnd.
@@ -242,7 +242,7 @@ exists (conj s1 s2); split.
   rewrite (_ : h = g); first exact: Hom.class.
   by rewrite boolp.funeqE => ?; rewrite /h /=; case: cid => ? [].
 Qed.
-Definition pairhom : {hom (a1, b1), (a2, b2)} := Hom.Pack _ pairhom'_in_hom.
+Definition pairhom : {hom (a1, b1), (a2, b2)} := Hom.Pack _ _ pairhom'_in_hom.
 End prodCat_pairhom.
 
 Section pairhom_idfun.
@@ -296,7 +296,7 @@ End pairhomK.
 Module papply_left.
 Section def.
 Variables A B C : category.
-Variable F' : functor (productCategory A B) C.
+Variable F' : {functor (productCategory A B) -> C}.
 Variable a : A.
 Definition F_obj : B -> C := fun b => F' (a, b).
 Definition F_mor (b1 b2 : B) (f : {hom b1, b2}) : {hom F_obj b1, F_obj b2} :=
@@ -313,14 +313,14 @@ rewrite (_ : i = [hom (pairhom [hom idfun] g) \o
                       (pairhom [hom idfun] h)]) ?functor_o_hom //.
 by apply/hom_ext => /=; rewrite boolp.funeqE; case.
 Qed.
-Definition F := Functor.Pack mixin_of.
+Definition F := Functor.Pack (Phant _) mixin_of.
 End def.
 End papply_left.
 
 Module papply_right.
 Section def.
 Variables A B C : category.
-Variable F' : functor (productCategory A B) C.
+Variable F' : {functor (productCategory A B) -> C}.
 Variable b : B.
 Definition F_obj : A -> C := fun a => F' (a, b).
 Definition F_mor (a1 a2 : A) (f : {hom a1, a2}) : {hom F_obj a1, F_obj a2} :=
@@ -337,7 +337,7 @@ rewrite (_ : i = [hom (pairhom g [hom idfun]) \o
                       (pairhom h [hom idfun])]) ?functor_o_hom //.
 by apply/hom_ext => /=; rewrite boolp.funeqE; case.
 Qed.
-Definition F := Functor.Pack mixin_of.
+Definition F := Functor.Pack (Phant _) mixin_of.
 End def.
 End papply_right.
 
@@ -349,7 +349,7 @@ Module ProductFunctor.
 *)
 Section def.
 Variables A1 B1 A2 B2 : category.
-Variables (F1 : functor A1 B1) (F2 : functor A2 B2).
+Variables (F1 : {functor A1 -> B1}) (F2 : {functor A2 -> B2}).
 Local Notation A := (A1 * A2)%type.
 Local Notation B := (B1 * B2)%type.
 Definition acto (x : A) : B := pair (F1 x.1) (F2 x.2).
@@ -364,14 +364,14 @@ Next Obligation.
 move=> [] a1 a2 [] b1 b2 [] c1 c2 g h.
 by rewrite /actm homfst_comp homsnd_comp 2!functor_o_hom pairhom_comp.
 Qed.
-Definition F := Functor.Pack mixin_of.
+Definition F := Functor.Pack (Phant _) mixin_of.
 End def.
 End ProductFunctor.
 
 Module alpha_left.
 Section alpha_left.
 Variables A B C D : category.
-Variable F' : functor (productCategory (productCategory A B) C) D.
+Variable F' : {functor (productCategory (productCategory A B) C) -> D}.
 Variables (a : A) (b : B).
 Definition acto : C -> D := papply_left.F F' (a, b).
 Definition actm (c1 c2 : C) (f : {hom c1, c2}) : {hom acto c1, acto c2} :=
@@ -388,7 +388,7 @@ rewrite (_ : i = [hom (pairhom [hom idfun] g) \o
                       (pairhom [hom idfun] h)]) ?functor_o_hom //.
 by apply/hom_ext => /=; rewrite boolp.funeqE; case.
 Qed.
-Definition F : functor C D := Functor.Pack mixin_of.
+Definition F : {functor C -> D} := Functor.Pack (Phant _) mixin_of.
 End alpha_left.
 End alpha_left.
 
@@ -462,6 +462,6 @@ Next Obligation.
 case=> xa [] xb xc [] ya [] yb yc [] za [] zb zc g h.
 by rewrite /actm !homsnd_comp !homfst_comp !pairhom_comp.
 Qed.
-Definition F := Functor.Pack mixin_of.
+Definition F := Functor.Pack (Phant _) mixin_of.
 End def.
 End ProductCategoryAssoc.
