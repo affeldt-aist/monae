@@ -371,7 +371,7 @@ Definition left_zero (f : forall A, M A) :=
 Definition right_zero (f : forall A, M A) :=
   forall (A B : UU0) (g : M B), g >>= (fun _ => f A) = f A.
 
-Definition left_neutral (r : FId ~> M) :=
+Definition left_neutral (r : forall A : UU0, A -> M A) :=
   forall (A B : UU0) (a : A) (f : A -> M B), r _ a >>= f = f a.
 
 Definition right_neutral (r : forall A : UU0, A -> M A) :=
