@@ -99,8 +99,9 @@ publications:
   pub_doi: 10.1007/978-3-030-33636-3_9
 - pub_url: https://arxiv.org/abs/2003.09993
   pub_title: A Trustful Monad for Axiomatic Reasoning with Probability and Nondeterminism
-- pub_url: https://arxiv.org/abs/2011.03463
+- pub_url: https://drops.dagstuhl.de/opus/volltexte/2021/13881/
   pub_title: Extending Equational Monadic Reasoning with Monad Transformers
+  pub_doi: 10.4230/LIPIcs.TYPES.2020.2
 
 #make_target: [
 #  [make "-j%{jobs}%"]
