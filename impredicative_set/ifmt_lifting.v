@@ -63,7 +63,7 @@ HB.instance Definition _ := isFunctor.Build (MK M) MK_map_i MK_map_o.
 Lemma naturality_retK : naturality FId [the functor of MK M] retK.
 Proof.
 move=> A B h.
-rewrite /ihierarchy.actm /= /MK_map /retK /=.
+rewrite /actm /= /MK_map /retK /=.
 by apply fun_ext => a /=; exact: fun_ext_dep.
 Qed.
 

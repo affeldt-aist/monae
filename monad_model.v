@@ -195,10 +195,8 @@ Proof. move=> ? ? ? ? ? ?; exact: bigsetUA. Qed.
 Let fmapE (A B : UU0) (f : A -> B) (m : set A) :
   ([the functor of set] # f) m = bind m (@ret _ \o f).
 Proof.
-rewrite /= /actm /= /image /= /bigsetU /=(*TODO: lemma?*).
-rewrite boolp.predeqE => b; split=> -[a ma].
-  by move=> <- /=; exists a.
-by move=> ->; rewrite /mkset; exists a.
+rewrite /= /actm /bind /= -classical_sets_ext.bigcup_image.
+by rewrite classical_sets_ext.bigcup_of_singleton image_comp.
 Qed.
 HB.instance Definition _ := @Monad_of_ret_bind.Build set ret bind fmapE
   left_neutral right_neutral associative.

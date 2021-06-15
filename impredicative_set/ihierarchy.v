@@ -125,8 +125,6 @@ HB.mixin Record isFunctor (M : UU0 -> UU0) := {
 HB.structure Definition Functor := {M of isFunctor M}.
 Notation functor := Functor.type.
 
-(*Definition acto (f : functor) : UU0 -> UU0 := Functor.sort f.*)
-
 Notation "F # g" := (@actm F _ _ g) : monae_scope.
 Notation "'fmap' f" := (_ # f) : mprog.
 
@@ -138,7 +136,7 @@ End functorid.
 
 HB.instance Definition _ := isFunctor.Build idfun id_id id_comp.
 
-(* TODO: virer ca *)
+(* NB: consider eliminating *)
 Definition FId := [the functor of idfun].
 
 Section functorcomposition.
@@ -156,7 +154,7 @@ Qed.
 HB.instance Definition _ :=
   isFunctor.Build (f \o g) functorcomposition_id functorcomposition_comp.
 
-(* TODO: essayer de virer ca *)
+(* TODO: consider eliminating *)
 Definition FComp := [the functor of f \o g].
 End functorcomposition.
 
@@ -360,7 +358,7 @@ Definition left_zero (f : forall A, M A) :=
 Definition right_zero (f : forall A, M A) :=
   forall (A B : UU0) (g : M B), g >>= (fun _ => f A) = f A.
 
-Definition left_neutral (r : FId ~> M) :=
+Definition left_neutral (r : forall A : UU0, A -> M A) :=
   forall (A B : UU0) (a : A) (f : A -> M B), r _ a >>= f = f a.
 
 Definition right_neutral (r : forall A : UU0, A -> M A) :=
@@ -567,6 +565,10 @@ Definition kleisli (A B C : UU0) (m : B -> M C) (n : A -> M B) : A -> M C :=
 Local Notation "m <=< n" := (kleisli m n).
 Local Notation "m >=> n" := (kleisli n m).
 
+Lemma kleisliE (A B C : UU0) (g : B -> M C) (f : A -> M B) :
+  (f >=> g) = Join \o (M # g) \o f.
+Proof. by []. Qed.
+
 Lemma bind_kleisli (A B C : UU0) m (f : A -> M B) (g : B -> M C) :
   m >>= (f >=> g) = (m >>= f) >>= g.
 Proof. by rewrite bindA; bind_ext => a; rewrite /kleisli !compE join_fmap. Qed.
@@ -710,7 +712,7 @@ HB.mixin Record isMonadNondet (M : UU0 -> UU0) of MonadFail M & MonadAlt M := {
   altmfail : @BindLaws.right_id [the functor of M] (@fail [the failMonad of M]) (@alt [the altMonad of M])
 }.
 
-HB.structure Definition MonadNondet := {M of isMonadNondet M & MonadFail M}.
+HB.structure Definition MonadNondet := {M of isMonadNondet M & MonadFail M & MonadAlt M}.
 Notation nondetMonad := MonadNondet.type.
 
 HB.structure Definition MonadCINondet := {M of MonadAltCI M & MonadNondet M}.
@@ -837,33 +839,18 @@ HB.mixin Record isMonadState (S : UU0) (M : UU0 -> UU0) of Monad M := {
   getget : forall (A : UU0) (k : S -> S -> M A),
     get >>= (fun s => get >>= k s) = get >>= fun s => k s s }.
 
-HB.structure Definition MonadState (S : UU0) := {M of isMonadState S M & }.
+HB.structure Definition MonadState (S : UU0) := { M of isMonadState S M & }.
 Notation stateMonad := MonadState.type.
-
-(*Definition Put (S : UU0) (M : stateMonad S) := @put S M.*)
-(*Definition Get (S : UU0) (M : stateMonad S) := @get S M.*)
-
-(*Section nondetstate_lemmas.
-Variables (S : UU0) (M : nondetStateMonad S).
-Lemma bindmfail : BindLaws.right_zero (@Bind M) (@Fail _).
-Proof. by case: M => m [? ? [? ?]]. Qed.
-Lemma alt_bindDr : BindLaws.right_distributive (@Bind M) (@Alt _).
-Proof. by case: M => m [? ? []]. Qed.
-End nondetstate_lemmas.*)
-
-
 
 (*NB: explicit join newly added*)
 HB.structure Definition MonadFailState (S : UU0) :=
-  {M of isMonadFail M & isMonadState S M}.
+  { M of isMonadFail M & isMonadState S M & isMonad M & isFunctor M }.
 Notation failStateMonad := MonadFailState.type.
 
 (*NB: explicit join newly added*)
 HB.structure Definition MonadFailR0State (S : UU0) :=
-  {M of isMonadFailR0 M & isMonadState S M}.
+  { M of isMonadFailR0 M & isMonadState S M & isMonadFail M & isMonad M & isFunctor M }.
 Notation failR0StateMonad := MonadFailR0State.type.
-
-
 
 HB.structure Definition MonadNondetState (S : UU0) :=
   { M of MonadPrePlus M & MonadState S M }.
@@ -899,7 +886,10 @@ HB.mixin Record isMonadReify (S : UU0) (M : UU0 -> UU0) of Monad M := {
   reify : forall A : UU0, M A -> S -> option (A * S)%type ;
   reifyret : forall (A : UU0) (a : A) s, @reify _ (Ret a) s = Some (a, s) ;
   reifybind : forall (A B : UU0) (m : M A) (f : A -> M B) s,
-      @reify _ (m >>= f) s = match @reify _ m s with | Some a's' => @reify _ (f a's'.1) a's'.2 | None => None end
+      @reify _ (m >>= f) s = match @reify _ m s with
+                             | Some a's' => @reify _ (f a's'.1) a's'.2
+                             | None => None
+                             end
 }.
 
 HB.structure Definition MonadReify (S : UU0) := {M of isMonadReify S M & }.
@@ -993,7 +983,7 @@ HB.mixin Record isMonadArray (S : UU0) (I : eqType) (M : UU0 -> UU0) of Monad M 
 }.
 
 HB.structure Definition MonadArray (S : UU0) (I : eqType) :=
-  {M of isMonadArray S I M }.
+  { M of isMonadArray S I M & isMonad M & isFunctor M }.
 Notation arrayMonad := MonadArray.type.
 
 HB.mixin Record isMonadTrace (T : UU0) (M : UU0 -> UU0) of Monad M := {
@@ -1005,7 +995,8 @@ Notation traceMonad := MonadTrace.type.
 
 HB.mixin Record isMonadTraceReify (T : UU0) (M : UU0 -> UU0) of
     MonadReify (seq T) M & MonadTrace T M := {
-  reifytmark : forall t l, reify (@mark _ [the traceMonad T of M] t) l = Some (tt, rcons l t)
+  reifytmark : forall t l,
+    reify (@mark _ [the traceMonad T of M] t) l = Some (tt, rcons l t)
 }.
 
 HB.mixin Record isMonadStateTrace (S T : UU0) (M : UU0 -> UU0) of Monad M := {
@@ -1021,16 +1012,23 @@ HB.mixin Record isMonadStateTrace (S T : UU0) (M : UU0 -> UU0) of Monad M := {
   st_getmark : forall e (k : _ -> M S), st_get >>= (fun v => st_mark e >> k v) =
                          st_mark e >> st_get >>= k
 }.
+
 HB.structure Definition MonadStateTrace (S T : UU0) :=
-  {M of isMonadStateTrace S T M}.
+  { M of isMonadStateTrace S T M & isMonad M & isFunctor M }.
 Notation stateTraceMonad := MonadStateTrace.type.
 
-HB.mixin Record isMonadStateTraceReify (S T : UU0) (M : UU0 -> UU0) of MonadReify (S * seq T)%type M & MonadStateTrace S T M := {
-  reifystget : forall s l, reify (@st_get _ _ [the stateTraceMonad S T of M]) (s, l) = Some (s, (s, l)) ;
-  reifystput : forall s l s', reify (@st_put _ _ [the stateTraceMonad S T of M] s') (s, l) = Some (tt, (s', l)) ;
-  reifystmark : forall t s l, reify (@st_mark _ _ [the stateTraceMonad S T of M] t) (s, l) = Some (tt, (s, rcons l t))
+HB.mixin Record isMonadStateTraceReify (S T : UU0) (M : UU0 -> UU0)
+    of MonadReify (S * seq T)%type M & MonadStateTrace S T M := {
+  reifystget : forall s l,
+    reify (@st_get _ _ [the stateTraceMonad S T of M]) (s, l) = Some (s, (s, l)) ;
+  reifystput : forall s l s',
+    reify (@st_put _ _ [the stateTraceMonad S T of M] s') (s, l) = Some (tt, (s', l)) ;
+  reifystmark : forall t s l,
+    reify (@st_mark _ _ [the stateTraceMonad S T of M] t) (s, l) = Some (tt, (s, rcons l t))
 }.
-HB.structure Definition MonadStateTraceReify (S T : UU0) := {M of isMonadStateTraceReify S T M}.
+HB.structure Definition MonadStateTraceReify (S T : UU0) :=
+  { M of isMonadStateTraceReify S T M & isFunctor M & isMonad M &
+         isMonadReify S M & isMonadStateTrace S T M }.
 Notation stateTraceReifyMonad := MonadStateTraceReify.type.
 
 HB.mixin Record isMonadFresh (S : UU0) (M : UU0 -> UU0) of Monad M := {
@@ -1051,14 +1049,18 @@ Coercion segment_closed_p : segment_closed.t >-> pred.
 Definition symbols S (M : freshMonad S) := fun n => sequence (nseq n (@fresh _ M)).
 Arguments symbols {_} {_}.
 
-HB.mixin Record isMonadFailFresh (S : UU0) (M : UU0 -> UU0) of MonadFresh S M & MonadFail M := Mixin {
+HB.mixin Record isMonadFailFresh (S : UU0) (M : UU0 -> UU0)
+    of MonadFresh S M & MonadFail M := Mixin {
 (*  symbols := fun n => sequence (nseq n fresh);*)
   (* generated symbols are indeed fresh (specification of fresh) *)
   distinct : segment_closed.t S ;
-  bassert_symbols : bassert distinct \o (@symbols _ [the freshMonad S of M]) = @symbols _ [the freshMonad S of M] ;
+  bassert_symbols : bassert distinct \o (@symbols _ [the freshMonad S of M]) =
+                    @symbols _ [the freshMonad S of M] ;
   (* failure is a right zero of composition (backtracking interpretation) *)
   failfresh_bindmfail : BindLaws.right_zero (@bind [the monad of M]) (@fail _)
 }.
 
-HB.structure Definition MonadFailFresh (S : UU0) := {M of isMonadFailFresh S M}.
+HB.structure Definition MonadFailFresh (S : UU0) :=
+  { M of isMonadFailFresh S M & isFunctor M & isMonad M & isMonadFresh S M &
+         isMonadFail M }.
 Notation failFreshMonad := MonadFailFresh.type.

@@ -53,7 +53,7 @@ rewrite boolp.funeqE; elim/last_ind => [/=|xs y IH].
   by rewrite fcompE insertE fmapE bindretf.
 rewrite fcompE.
 rewrite insert_rcons.
-rewrite naturality_nondeter fmapE bindretf.
+rewrite alt_fmapDr fmapE bindretf.
 rewrite -fmap_oE.
 have H : forall w, foldl op b \o rcons^~ w = op^~ w \o foldl op b.
   by move=> w; rewrite boolp.funeqE => ws /=; rewrite -cats1 foldl_cat.
@@ -154,7 +154,7 @@ have step1 : (Ret \o foldl mul b \o flatten) xss =
   (Ret \o foldl add b \o map (foldl mul b)) xss [~]
   fmap (foldl add b \o map (foldl mul b)) (m : M _).
   rewrite -H /aggregate perm_o_map -fcomp_comp.
-  by rewrite fcompE Hm alt_fmapDl fmapE /= bindretf.
+  by rewrite fcompE Hm alt_fmapDr fmapE /= bindretf.
 apply esym, idempotent_converse in step1.
 case: step1 => step11 step12.
 apply injective_return in step11.
@@ -169,7 +169,7 @@ have step1 : (Ret \o foldl mul b \o flatten) xss =
   (Ret \o foldl add b \o map (foldl mul b)) yss [~]
   fmap (foldl add b \o map (foldl mul b)) m.
   rewrite -H /aggregate perm_o_map -fcomp_comp.
-  by rewrite fcompE K alt_fmapDl fmapE /= bindretf.
+  by rewrite fcompE K alt_fmapDr fmapE /= bindretf.
 have step2 : (foldl mul b \o flatten) xss =
              (foldl add b \o map (foldl mul b)) yss.
   apply esym, idempotent_converse in step1.

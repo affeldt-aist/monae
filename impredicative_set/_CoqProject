@@ -3,6 +3,7 @@
 -arg -w -arg -notation-overridden
 -arg -w -arg -ambiguous-paths
 -arg -w -arg -notation-incompatible-format
+-arg -w -arg -elpi.add-const-for-axiom-or-sectionvar
 -arg -impredicative-set
 
 imonae_lib.v

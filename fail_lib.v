@@ -37,12 +37,7 @@ Definition arb {M : altMonad} : M bool := Ret true [~] Ret false.
 Section monadalt_lemmas.
 Variable (M : altMonad).
 
-(* TODO: name ok? *)
-Lemma naturality_nondeter (A B : UU0) (f : A -> B) (p q : M _):
-  (M # f) (p [~] q) = (M # f) p [~] (M # f) q.
-Proof. by rewrite 3!fmapE alt_bindDl. Qed.
-
-Lemma alt_fmapDl (A B : UU0) (f : A -> B) (m1 m2 : M A) :
+Lemma alt_fmapDr (A B : UU0) (f : A -> B) (m1 m2 : M A) :
   (M # f) (m1 [~] m2) = (M # f) m1 [~] (M # f) m2.
 Proof. by rewrite 3!fmapE alt_bindDl. Qed.
 
@@ -266,14 +261,18 @@ Fixpoint subs (s : seq A) : M (seq A) :=
   let t' := subs t in
   fmap (cons h) t' [~] t'.
 
-(* TODO: fixme
-Fixpoint SUBS (s : seq A) : Functor.acto (Monad.functorType (MonadAlt.monadType M)) _ :=
-  if s isn't h :: t then Ret [::] else
-  let t' : Functor.acto (Monad.functorType (MonadAlt.monadType M)) _ := SUBS t in
-  Alt (((MonadAlt.monadType M) # (cons h)) t') t'.
-
+Fixpoint SUBS (s : list A) : MonadAlt.sort M (list A) :=
+  if s isn't h :: t then
+      @Natural.cpnt ssrfun_idfun_canonical_Functor
+        (@Functor.Pack (Monad.sort (MonadAlt_to_Monad M))
+           (@Functor.Class (Monad.sort (MonadAlt_to_Monad M))
+              (@Monad.isFunctor_mixin (Monad.sort (MonadAlt_to_Monad M))
+                 (Monad.class (MonadAlt_to_Monad M))))) (@ret (MonadAlt_to_Monad M))
+        (list A) (@nil A)
+  else
+      let t' : MonadAlt.sort M (list A) := SUBS t in
+      @alt M (list A) (@actm (MonadAlt_to_Functor M) (list A) (list A) (@cons A h) t') t'.
 Goal subs = SUBS. by []. Abort.
-*)
 
 Lemma subs_cons x (xs : seq A) :
   subs (x :: xs) = let t' := subs xs in fmap (cons x) t' [~] t'.
@@ -323,7 +322,7 @@ Proof.
 rewrite boolp.funeqE; elim => [|y xs IH].
   by rewrite fcompE insertE -(compE (fmap (map f))) (natural ret) compE insertE.
 apply/esym.
-rewrite fcompE insertE alt_fmapDl.
+rewrite fcompE insertE alt_fmapDr.
 (* first branch *)
 rewrite -(compE (fmap (map f))) (natural ret) FIdf [ in X in X [~] _ ]/=.
 (* second branch *)
@@ -357,7 +356,7 @@ Lemma filter_insertN a : ~~ p a ->
 Proof.
 move=> pa; elim => [|h t IH].
   by rewrite fcompE insertE -(compE (fmap _)) (natural ret) FIdf /= (negbTE pa).
-rewrite fcompE insertE alt_fmapDl.
+rewrite fcompE insertE alt_fmapDr.
 rewrite -(compE (fmap _)) (natural ret) FIdf [in X in X [~] _]/= (negbTE pa).
 case: ifPn => ph.
 - rewrite -fmap_oE (_ : filter p \o cons h = cons h \o filter p); last first.
@@ -378,12 +377,12 @@ move=> pa; rewrite boolp.funeqE; elim => [|h t IH].
 rewrite fcompE [in RHS]/=; case: ifPn => ph.
 - rewrite [in RHS]insertE.
   move: (IH); rewrite [in X in X -> _]/= => <-.
-  rewrite [in LHS]insertE alt_fmapDl; congr (_ [~] _).
+  rewrite [in LHS]insertE alt_fmapDr; congr (_ [~] _).
     by rewrite fmapE bindretf /= pa ph.
   rewrite !fmapE /= fcompE bind_fmap bindA.
   rewrite_ bindretf.
   by rewrite /= ph.
-- rewrite [in LHS]insertE alt_fmapDl.
+- rewrite [in LHS]insertE alt_fmapDr.
   rewrite -[in X in _ [~] X = _]fmap_oE.
   rewrite (_ : (filter p \o cons h) = filter p); last first.
     by rewrite boolp.funeqE => x /=; rewrite (negbTE ph).
@@ -421,8 +420,8 @@ elim: s a' => [a'|s1 s2 IH a'].
   rewrite cat0s fmapE bindretf insertE altC; congr (_ [~] _).
   by rewrite insertE fmapE bindretf.
 rewrite [in LHS]/= insertE IH.
-rewrite naturality_nondeter [in X in _ [~] X = _]fmapE bindretf.
-rewrite naturality_nondeter [in X in _ = _ [~] X]fmapE bindretf.
+rewrite alt_fmapDr [in X in _ [~] X = _]fmapE bindretf.
+rewrite alt_fmapDr [in X in _ = _ [~] X]fmapE bindretf.
 by rewrite -!fmap_oE altCA.
 Qed.
 
@@ -430,7 +429,7 @@ Lemma rev_insert : rev (o) insert a = insert a \o rev :> (_ -> M _).
 Proof.
 rewrite boolp.funeqE; elim => [|h t IH].
   by rewrite fcompE insertE fmapE bindretf.
-rewrite fcompE insertE compE alt_fmapDl fmapE bindretf compE [in RHS]rev_cons insert_rcons.
+rewrite fcompE insertE compE alt_fmapDr fmapE bindretf compE [in RHS]rev_cons insert_rcons.
 rewrite rev_cons -cats1 rev_cons -cats1 -catA; congr (_ [~] _).
 move: IH; rewrite fcompE [X in X -> _]/= => <-.
 rewrite -!fmap_oE. congr (fmap _ (insert a t)).
@@ -520,7 +519,7 @@ Proof.
 elim: s => [|h [|h' t] IH].
 - by rewrite fmapE bindfailf.
 - by rewrite tselect1 fmapE bindretf /= bindfailf altmfail.
-- rewrite {1}/select -/(select (h' :: t)) IH [in RHS]alt_fmapDl.
+- rewrite {1}/select -/(select (h' :: t)) IH [in RHS]alt_fmapDr.
   rewrite [in X in _ = X [~] _]fmapE bindretf; congr (_ [~] _).
   rewrite bind_fmap fmap_bind; bind_ext => -[x1 x2].
   by rewrite fcompE fmapE bindretf.

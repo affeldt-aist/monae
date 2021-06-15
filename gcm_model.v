@@ -631,8 +631,7 @@ Definition A1 := AdjointFunctors.mk triL1 triR1.
 Definition Aprob := adj_comp AC A0.
 Definition Agcm := adj_comp Aprob A1.
 Definition Mgcm := Monad_of_adjoint Agcm.
-Definition gcm := [the hierarchy.monad of Monad_of_category_monad.m'' Mgcm].
-(*Definition gcm := Monad_of_category_monad.m Mgcm.*)
+Definition gcm := [the hierarchy.monad of Monad_of_category_monad.acto Mgcm].
 
 Section gcm_opsE.
 Import hierarchy.
@@ -649,11 +648,13 @@ Qed.
 
 Section move_to_classical_sets_ext.
 Lemma eq_bigcup_cond :
-forall (T U : Type) (P Q : set U) (X Y : U -> set T),
-P = Q -> (forall i, P i -> X i = Y i) -> \bigcup_(i in P) X i = \bigcup_(i in Q) Y i.
+  forall (T U : Type) (P Q : set U) (X Y : U -> set T),
+  P = Q -> (forall i, P i -> X i = Y i) ->
+  \bigcup_(i in P) X i = \bigcup_(i in Q) Y i.
 Proof.
 move=> ? ? P Q X Y pq XY.
-by rewrite eqEsubset; split=> x; case=> j; rewrite -?pq=> ?; rewrite -?XY // => ?; eexists j; rewrite -?pq // -XY //.
+by rewrite eqEsubset; split=> x; case=> j; rewrite -?pq=> ?; rewrite -?XY // => ?;
+  eexists j; rewrite -?pq // -XY //.
 Qed.
 End move_to_classical_sets_ext.
 
@@ -663,8 +664,9 @@ Local Notation FC := free_choiceType.
 Local Notation UC := forget_choiceType.
 Local Notation U0 := forget_convType.
 Local Notation U1 := forget_semiCompSemiLattConvType.
-Variable T : Type.
-Variable X : gcm (gcm T).
+
+Variables (T : Type) (X : gcm (gcm T)).
+
 Lemma gcm_joinE : Join X = necset_join X.
 Proof.
 Import category.
@@ -685,18 +687,19 @@ have-> : F1J = @necset_join.F1join0 _ :> (_ -> _).
 congr hull; apply eq_bigcup_cond=> //= x nXx.
 by case/boolP: (x \in necset_join.F1join0 X)=> [|/negP]; rewrite in_setE.
 Qed.
+
 End gcm_opsE.
 End P_delta_category_monad.
 
 Require proba_monad_model.
+
 Section probMonad_out_of_F0U0.
 Import category.
 (* probability monad built directly *)
 Definition M := proba_monad_model.MonadProbModel.t.
 (* probability monad built using adjunctions *)
 Definition N :=
- [the hierarchy.monad of Monad_of_category_monad.m'' (Monad_of_adjoint Aprob)].
-(*Monad_of_category_monad.m (Monad_of_adjoint Aprob).*)
+ [the hierarchy.monad of Monad_of_category_monad.acto (Monad_of_adjoint Aprob)].
 
 Lemma actmE T : N T = M T.
 Proof. by []. Qed.

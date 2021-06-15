@@ -45,7 +45,7 @@ rewrite_ bindA.
 rewrite_ bindretf.
 rewrite /overwrite.
 Inf rewrite -bindA.
-rewrite_ (@putput _ M) (* TODO: do we need M here? *).
+rewrite_ (@putput S).
 by rewrite -bindA getputskip bindskipf.
 Qed.
 
@@ -56,9 +56,9 @@ Fail Check test_nonce0.*)
 
 Section stateloop_examples.
 Variable (M : loopStateMonad nat).
-Let example min max : M unit := foreach max min (fun i : nat => (get >> Ret tt : M _)).
+Let example min max : M unit := foreach max min (fun i : nat => get >> Ret tt).
 Let sum n : M unit := foreach n O
-  (fun i : nat => (get >>= (fun z => put (z + i)) : M _)).
+  (fun i : nat => get >>= (fun z => put (z + i))).
 
 Lemma sum_test n :
   sum n = get >>= (fun m => put (m + sumn (iota 0 n))).
@@ -129,13 +129,13 @@ Inf rewrite !bindA.
 transitivity (do y <- get; (put s >> get) >>= fun z =>
   do a <- fmap (cons (op z x)) (put (op z x) >> foldr mul (Ret [::]) xs);
   put y >> Ret a)%Do; last by Inf rewrite !bindA.
-rewrite_ (@putget _ M) (* TODO: extra args necessary? *).
+rewrite_ (@putget S).
 rewrite_ bindA.
 rewrite_ bindretf.
 rewrite scanlM_of_scanl_helper.
 transitivity (fmap (cons (op s x)) (do y <- get; put (op s x) >>
   (do a <- foldr mul (Ret [::]) xs; put y >> Ret a)))%Do; last first.
-  congr (fmap _ _); by rewrite_ (@putput _ M) (*TODO: superfluous extra args?*).
+  congr (fmap _ _); by rewrite_ (@putput S).
 transitivity (fmap (cons (op s x)) (protect (scanlM (op s x) xs))); last first.
   congr (fmap _ _); by Inf rewrite -bindA.
 by rewrite -IH fmapE bindretf.

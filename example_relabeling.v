@@ -30,7 +30,6 @@ Fixpoint foldt B (f : A -> B) (g : B * B -> B) (t : Tree) : B :=
   | Bin t u => g (foldt f g t, foldt f g u)
   end.
 
-(* TODO: move? *)
 Section foldt_universal.
 Variables (B : Type) (h : Tree -> B) (f : A -> B) (g : B * B -> B).
 Hypothesis H1 : h \o Tip = f.
@@ -120,7 +119,7 @@ Qed.
 
 (* see gibbons2011icfp Sect. 9.3 *)
 Lemma join_and_pairs :
-  (Join \o (M #(*TODO: fmap*) mpair) \o mpair) \o ((fmap dlabels) \o relabel)^`2 =
+  (Join \o (M # mpair) \o mpair) \o ((fmap dlabels) \o relabel)^`2 =
   (mpair \o Join^`2) \o            ((fmap dlabels) \o relabel)^`2.
 Proof.
 rewrite boolp.funeqE => -[x1 x2].
@@ -154,14 +153,14 @@ Lemma dlabels_relabel_is_fold :
 Proof.
 apply foldt_universal.
   (* relabel >=> dlabels \o Tip = drTip *)
-  rewrite /kleisli (* TODO(rei): don't unfold *) -(compA (Join \o _)) -(compA Join).
+  rewrite kleisliE -(compA (Join \o _)) -(compA Join).
   rewrite (_ : _ \o Tip = (M # Tip) \o const fresh) //.
   rewrite (compA (fmap dlabels)) -functor_o.
   rewrite (_ : dlabels \o _ = ret _ \o wrap) //.
   rewrite functor_o 3!compA.
   by rewrite joinMret.
 (* relabel >=> dlabels \o Bin = drBin \o _ *)
-rewrite /kleisli (* TODO(rei): don't unfold *) -[in LHS](compA (Join \o _)) -[in LHS](compA Join).
+rewrite [in LHS]kleisliE -[in LHS](compA (Join \o _)) -[in LHS](compA Join).
 rewrite (_ : _ \o _ Bin = (fmap (uncurry Bin)) \o (mpair \o relabel^`2)); last first.
   by rewrite boolp.funeqE; case.
 rewrite (compA (fmap dlabels)) -functor_o.

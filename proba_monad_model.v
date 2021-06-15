@@ -18,13 +18,16 @@ Local Open Scope proba_scope.
 Notation choice_of_Type := convex.choice_of_Type.
 
 Module MonadProbModel.
+Section monadprobmodel.
 
 Definition acto : UU0 -> UU0 := fun A => {dist (choice_of_Type A)}.
 
-Lemma map_id : @FunctorLaws.id (FSDist.t \o choice_of_Type) (fun A B => @FSDistfmap (choice_of_Type A) (choice_of_Type B)).
+Lemma map_id : @FunctorLaws.id (FSDist.t \o choice_of_Type)
+  (fun A B => @FSDistfmap (choice_of_Type A) (choice_of_Type B)).
 Proof. by move=> A; exact: (FSDistfmap_id _). Qed.
 
-Lemma map_comp : @FunctorLaws.comp (FSDist.t \o choice_of_Type) (fun A B => @FSDistfmap (choice_of_Type A) (choice_of_Type B)).
+Lemma map_comp : @FunctorLaws.comp (FSDist.t \o choice_of_Type)
+  (fun A B => @FSDistfmap (choice_of_Type A) (choice_of_Type B)).
 Proof. by move=> A B C g h; exact: FSDistfmap_comp. Qed.
 
 HB.instance Definition _ := isFunctor.Build acto map_id map_comp.
@@ -35,10 +38,11 @@ Definition ret' : forall A, A -> {dist (choice_of_Type A)} :=
 Lemma naturality_ret' : naturality FId [the functor of acto] ret'.
 Proof.
 move=> A B h.
-by rewrite boolp.funeqE => a /=; rewrite /hierarchy.actm /= /ret' FSDistfmap1.
+by rewrite boolp.funeqE => a /=; rewrite /actm /= /ret' FSDistfmap1.
 Qed.
 
-Definition ret : FId ~> [the functor of acto] := Natural.Pack (Natural.Mixin naturality_ret').
+Definition ret : FId ~> [the functor of acto] :=
+  Natural.Pack (Natural.Mixin naturality_ret').
 
 Definition bind : forall A B, acto A -> (A -> acto B) -> acto B :=
   fun A B m f => FSDistBind.d m f.
@@ -80,14 +84,16 @@ Let choiceA : forall (T : Type) (p q r s : prob) (a b c : acto T),
     let ab := (choice r _ a b) in
     choice p _ a bc = choice s _ ab c.
 Proof. by move=> ? ? ? ? ? ? ? ? ? /=; exact: ConvFSDist.convA. Qed.
-Let prob_bindDl : forall p, BindLaws.left_distributive (@hierarchy.bind [the monad of acto]) (choice p).
+Let prob_bindDl p : BindLaws.left_distributive (@hierarchy.bind [the monad of acto]) (choice p).
 Proof.
-move=> p A B m1 m2 k.
+move=> A B m1 m2 k.
 rewrite !(@BindE (choice_of_Type A) (choice_of_Type B)).
 by rewrite ConvFSDist.bind_left_distr.
 Qed.
 
-HB.instance Definition mixin := isMonadProb.Build acto choice0 choice1 choiceC choicemm choiceA prob_bindDl.
+HB.instance Definition mixin := isMonadProb.Build acto choice0 choice1 choiceC
+                                choicemm choiceA prob_bindDl.
 Definition t := MonadProb.Pack (MonadProb.Class mixin).
 
+End monadprobmodel.
 End MonadProbModel.

@@ -37,6 +37,7 @@ From HB Require Import structures.
 (*      Module AdjComp == define a pair of adjoint functors by composition of *)
 (*                        two pairs of adjoint functors                       *)
 (* Module MonadOfAdjoint == monad defined by adjointness                      *)
+(* Module Monad_of_category_monad == interface to monad.v                     *)
 (* Monad_of_category_monad.m == turns a monad over the Type category into     *)
 (*                        a monad in the sense of monad.v                     *)
 (******************************************************************************)
@@ -1119,87 +1120,95 @@ End Exports.
 End Monad_of_bind_ret.
 Export Monad_of_bind_ret.Exports.
 
-(* interface to monad.v *)
 Require Import hierarchy.
+
 Module Monad_of_category_monad.
-Section def.
-Variable (M : Monad.Exports.monad CT).
-Definition m'' : Type -> Type := M.
-Definition f (A B : Type) (h : A -> B) (x : m'' A) : m'' B :=
+Section monad_of_category_monad.
+Variable M : Monad.Exports.monad CT.
+
+Definition acto : Type -> Type := M.
+
+Definition actm (A B : Type) (h : A -> B) (x : acto A) : acto B :=
   (M # hom_Type h) x.
-Lemma fid A : f id = id :> (m'' A -> m'' A).
+
+Lemma fid A : actm id = id :> (acto A -> acto A).
 Proof.
-rewrite /f.
+rewrite /actm.
 have -> : hom_Type id = [hom idfun] by move=> ?; apply hom_ext.
 by rewrite category.functor_id.
 Qed.
+
 Lemma fcomp A B C (g : B -> C) (h : A -> B) :
-  f (g \o h) = f g \o f h :> (m'' A -> m'' C).
+  actm (g \o h) = actm g \o actm h :> (acto A -> acto C).
 Proof.
-rewrite {1}/f.
+rewrite {1}/actm.
 have -> : hom_Type (g \o h) = [hom hom_Type g \o hom_Type h] by apply hom_ext.
 by rewrite category.functor_o.
 Qed.
-HB.instance Definition _ := hierarchy.isFunctor.Build m'' fid fcomp.
-(*Definition m' := hierarchy.Functor.Pack (hierarchy.Functor.Class m'_).*)
 
-(*Import hierarchy.Functor.Exports.*)
+HB.instance Definition _ := hierarchy.isFunctor.Build acto fid fcomp.
 
-Definition ret_ (A : Type) (x : A) : m'' A := (@Monad.Exports.Ret _ M A x).
-Definition join_ (A : Type) (x : m'' (m'' A)) := (@Monad.Exports.Join _ M A x).
+Definition ret_ (A : Type) (x : A) : acto A := @Monad.Exports.Ret _ M A x.
 
-(*Lemma joinE A (x : m' (m' A)) : join x = @Join _ M A x.
-Proof. by []. Qed.*)
+Definition join_ (A : Type) (x : acto (acto A)) := @Monad.Exports.Join _ M A x.
 
-Lemma ret_nat : hierarchy.naturality hierarchy.FId [the functor of m''] ret_.
+Lemma ret_nat : hierarchy.naturality hierarchy.FId [the functor of acto] ret_.
 Proof. move=> ? ? ?; exact: (ret_naturality M). Qed.
-Definition ret : hierarchy.Natural.type hierarchy.FId [the functor of m''] :=
+
+Definition ret : hierarchy.Natural.type hierarchy.FId [the functor of acto] :=
   hierarchy.Natural.Pack (hierarchy.Natural.Mixin ret_nat).
-Lemma join_nat : hierarchy.naturality (hierarchy.FComp [the functor of m''] [the functor of m'']) [the functor of m''] join_.
+
+Lemma join_nat : hierarchy.naturality
+  (hierarchy.FComp [the functor of acto] [the functor of acto])
+  [the functor of acto] join_.
 Proof.
-move=> A B h; apply funext=> x; rewrite /ret /actm /= /f.
+move=> A B h; apply funext=> x; rewrite /ret /hierarchy.actm/= /actm.
 rewrite -[in LHS]compE join_naturality.
 rewrite compE category.FCompE.
-suff -> : (M # (M # hom_Type h)) x = (M # hom_Type (@actm [the functor of m''] _ _ h)) x
-  by [].
+suff -> : (M # (M # hom_Type h)) x =
+         (M # hom_Type ([the functor of acto] # h)%monae) x by [].
 congr ((M # _ ) _).
-by apply/hom_ext/funext.
+exact/hom_ext/funext.
 Qed.
+
 Definition join := hierarchy.Natural.Pack (hierarchy.Natural.Mixin join_nat).
+
 Lemma joinretM : hierarchy.JoinLaws.left_unit ret join.
 Proof.
-by move=> A; apply funext=> x; rewrite /join /ret /= -[in LHS]compE category.joinretM.
+move=> A; apply funext=> x.
+by rewrite /join /ret /= -[in LHS]compE category.joinretM.
 Qed.
-Lemma joinMret (A : Type) : @join A \o (@actm [the functor of m''] _ _ (@ret _)) = id :> (m'' A ->  m'' A).
+
+Lemma joinMret (A : Type) :
+  @join A \o ([the functor of acto] # (@ret _))%monae = id :> (acto A ->  acto A).
 Proof.
-apply funext=> x; rewrite /join /ret /actm /=.
-set i := f _.
-suff -> : i x = (M # Monad.Exports.Ret) x.
+apply funext=> x; rewrite /join /ret /= /hierarchy.actm /=.
+rewrite (_ : actm _ x = (M # Monad.Exports.Ret) x).
   by rewrite -[in LHS]compE category.joinMret.
-rewrite {}/i.
-suff -> : @f A (m'' A) [eta (@Monad.Exports.Ret CT M A)] x =
+suff -> : @actm A (acto A) (@Monad.Exports.Ret CT M A) x =
          (M # Monad.Exports.Ret) x by [].
-rewrite /f.
-suff -> : @hom_Type A (M A) [eta (@Monad.Exports.Ret CT M A)] = Monad.Exports.Ret by [].
+rewrite /actm.
+suff -> : @hom_Type A (M A) (@Monad.Exports.Ret CT M A) = Monad.Exports.Ret by [].
 by apply hom_ext.
 Qed.
+
 Lemma joinA (A : Type) :
-  @join A \o @actm _ _ _ (@join A) = @join _ \o @join _.
+  @join A \o @hierarchy.actm _ _ _ (@join A) = @join _ \o @join _.
 Proof.
-apply funext=> x; rewrite /join /ret /Actm /=.
+apply funext=> x; rewrite /join /ret /=.
 rewrite -[in RHS]compE -category.joinA compE.
 congr (_ _).
-rewrite /actm [in LHS]/=.
-rewrite /f.
-suff -> : (@hom_Type (M (M A)) (M A)
-                    [eta (@Monad.Exports.Join CT M A)]) = Monad.Exports.Join by [].
+rewrite /hierarchy.actm [in LHS]/= /actm.
+suff -> : @hom_Type (M (M A)) (M A) (@Monad.Exports.Join CT M A) =
+         Monad.Exports.Join by [].
 by apply hom_ext.
 Qed.
 
-Let bind (A B : UU0) (m : m'' A) (f : A -> m'' B) : m'' B := @join _ ((@actm _ _ _ f) m).
+Let bind (A B : UU0) (m : acto A) (f : A -> acto B) : acto B :=
+  @join _ ((@hierarchy.actm _ _ _ f) m).
 
-Lemma fmapE : forall (A B : UU0) (f : A -> B) (m : m'' A),
-  (@hierarchy.actm [the functor of m''] _ _ f) m = bind m (@ret _ \o f).
+Lemma fmapE : forall (A B : UU0) (f : A -> B) (m : acto A),
+  ([the functor of acto] # f)%monae m = bind m (@ret _ \o f).
 Proof.
 move=> A B f m.
 rewrite /hierarchy.actm /=.
@@ -1208,16 +1217,16 @@ rewrite -[in RHS]compE.
 rewrite functor_o.
 rewrite compA.
 rewrite joinMret.
-rewrite compidf.
-done.
+by rewrite compidf.
 Qed.
 
-Lemma bindE : forall (A B : UU0) (f : A -> m'' B) (m : m'' A),
-    bind m f = @join _ ((@hierarchy.actm [the functor of m''] _ _ f) m).
+Lemma bindE : forall (A B : UU0) (f : A -> acto B) (m : acto A),
+  bind m f = @join _ (([the functor of acto] # f)%monae m).
 Proof. by []. Qed.
 
-HB.instance Definition mixin := @hierarchy.isMonad.Build m'' ret join bind fmapE bindE joinretM joinMret joinA.
-Definition m : hierarchy.Monad.type := hierarchy.Monad.Pack (hierarchy.Monad.Class mixin).
-End def.
+HB.instance Definition mixin := @hierarchy.isMonad.Build acto ret join bind
+  fmapE bindE joinretM joinMret joinA.
+(*Definition m : hierarchy.Monad.type := hierarchy.Monad.Pack (hierarchy.Monad.Class mixin).*)
+End monad_of_category_monad.
 End Monad_of_category_monad.
 HB.export Monad_of_category_monad.

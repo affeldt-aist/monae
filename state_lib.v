@@ -47,7 +47,7 @@ rewrite_ bindA.
 rewrite_ bindretf.
 rewrite /overwrite.
 Inf rewrite -bindA.
-rewrite_ (@putput _ M) (* TODO: do we need M here? *).
+rewrite_ (@putput S).
 by rewrite -bindA getputskip bindskipf.
 Qed.
 
@@ -58,9 +58,9 @@ Fail Check test_nonce0.*)
 
 Section stateloop_examples.
 Variable (M : loopStateMonad nat).
-Let example min max : M unit := foreach max min (fun i : nat => (get >> Ret tt : M _)).
+Let example min max : M unit := foreach max min (fun i : nat => get >> Ret tt).
 Let sum n : M unit := foreach n O
-  (fun i : nat => (get >>= (fun z => put (z + i)) : M _)).
+  (fun i : nat => get >>= (fun z => put (z + i))).
 
 Lemma sum_test n :
   sum n = get >>= (fun m => put (m + sumn (iota 0 n))).
@@ -286,13 +286,13 @@ Inf rewrite !bindA.
 transitivity (do y <- get; (put s >> get) >>= fun z =>
   do a <- fmap (cons (op z x)) (put (op z x) >> foldr mul (Ret [::]) xs);
   put y >> Ret a)%Do; last by Inf rewrite !bindA.
-rewrite_ (@putget _ M) (* TODO: extra args necessary? *).
+rewrite_ (@putget S).
 rewrite_ bindA.
 rewrite_ bindretf.
 rewrite scanlM_of_scanl_helper.
 transitivity (fmap (cons (op s x)) (do y <- get; put (op s x) >>
   (do a <- foldr mul (Ret [::]) xs; put y >> Ret a)))%Do; last first.
-  congr (fmap _ _); by rewrite_ (@putput _ M) (*TODO: superfluous extra args?*).
+  congr (fmap _ _); by rewrite_ (@putput S).
 transitivity (fmap (cons (op s x)) (protect (scanlM (op s x) xs))); last first.
   congr (fmap _ _); by Inf rewrite -bindA.
 by rewrite -IH fmapE bindretf.
@@ -424,26 +424,26 @@ Definition seq_disjoint {A : eqType} : pred [eqType of (seq A)`2] :=
 Lemma intersect0s (A : eqType) (s : seq A) : intersect [::] s = [::].
 Proof. by elim: s. Qed.
 
-Definition promotable A (p : pred (seq A)) (q : pred (seq A * seq A)) :=
+Definition promotable (A : UU0) (p : pred (seq A)) (q : pred (seq A * seq A)) :=
   forall s t, p s -> p t -> p (s ++ t) = q (s, t).
 
-Lemma segment_closed_suffix A (p : segment_closed.t A) s :
+Lemma segment_closed_suffix (A : UU0) (p : segment_closed.t A) s :
   ~~ p s -> forall t, ~~ p (s ++ t).
 Proof. move=> ps t; apply: contra ps; by case/segment_closed.H. Qed.
 
-Lemma segment_closed_prefix A (p : segment_closed.t A) s :
+Lemma segment_closed_prefix (A : UU0) (p : segment_closed.t A) s :
   ~~ p s -> forall t, ~~ p (t ++ s).
 Proof. move=> ps t; apply: contra ps; by case/segment_closed.H. Qed.
 
 (* assert p distributes over concatenation *)
 Local Open Scope mprog.
-Definition promote_assert (M : failMonad) A
+Definition promote_assert (M : failMonad) (A : UU0)
   (p : pred (seq A)) (q : pred (seq A * seq A)) :=
   (bassert p) \o (fmap ucat) \o mpair =
   (fmap ucat) \o (bassert q) \o mpair \o (bassert p)^`2 :> (_ -> M _).
 Local Close Scope mprog.
 
-Lemma promote_assert_sufficient_condition (M : failMonad) A :
+Lemma promote_assert_sufficient_condition (M : failMonad) (A : UU0) :
   BindLaws.right_zero (@bind M) (@fail _) ->
   forall (p : segment_closed.t A) q, promotable p q ->
   promote_assert M p q.
@@ -519,6 +519,7 @@ move: Hab.
 by rewrite /is_iota /= => /eqP[] {1}->; rewrite -Ha.
 Qed.
 
+Local Obligation Tactic := idtac.
 Program Definition is_iota_is_segment_closed : segment_closed.t nat :=
   @segment_closed.mk _ is_iota _.
 Next Obligation.
