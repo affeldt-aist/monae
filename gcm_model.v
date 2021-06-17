@@ -389,8 +389,7 @@ move=> p a0 a1; apply necset_ext => /=; rewrite predeqE => b0; split.
 - rewrite !necset_convType.convE.
   case=> a [] a0' a0a0'; rewrite conv_pt_setE=> -[] a1' a1a1' <- <- /=.
   by case: f=> f' /= ->; apply conv_in_conv_set; apply imageP.
-
-- rewrite !necset_convType.convE /= => /conv_in_conv_set' [] x [] y [] [] a0' a0a0' <- [] [] a1' a1a1' <- ->.
+- rewrite !necset_convType.convE => /conv_in_conv_set' [] x [] y [] [] a0' a0a0' <- [] [] a1' a1a1' <- ->.
   rewrite affine_image_conv_set /=.
   by apply conv_in_conv_set; apply imageP.
 Qed.

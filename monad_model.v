@@ -144,11 +144,12 @@ End ListMonad.
 
 Module SetMonad.
 Section setmonad.
-Lemma map_id : FunctorLaws.id (@image).
+Local Open Scope classical_set_scope.
+Lemma map_id : FunctorLaws.id (fun T1 T2 f A => f @` A).
 Proof.
 by move=> x; rewrite boolp.funeqE => y; rewrite image_id.
 Qed.
-Lemma map_comp : FunctorLaws.comp (@image).
+Lemma map_comp : FunctorLaws.comp (fun T1 T2 f A => f @` A).
 Proof.
 by move=> A B C g h; rewrite boolp.funeqE => x /=; rewrite image_comp.
 Qed.
