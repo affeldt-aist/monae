@@ -96,7 +96,7 @@ Set Implicit Arguments.
 Unset Strict Implicit.
 Unset Printing Implicit Defensive.
 
-Declare Scope do_notation.
+(* Declare Scope do_notation. *)
 Declare Scope mprog.
 Declare Scope monae_scope.
 Delimit Scope monae_scope with monae.
@@ -741,12 +741,12 @@ Proof.
 move: a b => -[|] b /=; by [rewrite guardT bindskipf | rewrite guardF bindfailf].
 Qed.
 
-Lemma guard_and_split a b c d : guard ([&& a, b, c & d]) = guard a >> guard b >> guard c >> guard d.
+(* Lemma guard_and_split a b c d : guard ([&& a, b, c & d]) = guard a >> guard b >> guard c >> guard d.
 Proof.
   move: a => -[|] /=; [rewrite guardT bindskipf | by rewrite guardF !bindfailf].
   move: b => -[|] /=; [rewrite guardT bindskipf | by rewrite guardF !bindfailf].
   move: c => -[|] /=; by [rewrite guardT bindskipf | rewrite guardF bindfailf].
-Qed.
+Qed. *)
 
 Definition assert {A : UU0} (p : pred A) (a : A) : M A :=
   locked (guard (p a) >> Ret a).
@@ -1071,6 +1071,7 @@ Coercion failFailR0_of_failStateReify : failStateReifyMonad >-> failFailR0ReifyM
 Canonical failFailR0_of_failStateReify.
 End Exports.
 End MonadFailStateReify.
+
 Export MonadFailStateReify.Exports.*)
 
 (* NB: this is experimental, may disappear, see rather foreach in
