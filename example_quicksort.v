@@ -130,8 +130,7 @@ Lemma bind_monotonic_lrefin (M : plusMonad) A B (m : M A) (f1 f2 : A -> M B) :
   (f1 `<.=` f2) -> (m >>= f1 `<=` m >>= f2).
 Proof.
 move=> f12.
-rewrite /refin.
-rewrite -alt_bindDr.
+rewrite /refin -alt_bindDr.
 by bind_ext => a; apply f12.
 Qed.
 
@@ -229,15 +228,46 @@ Lemma guard_splits (p : T) (t : seq T) (C : Type) (f : seq T * seq T -> M C) :
 Proof.
 Admitted.
 
+Lemma all_cons (r : rel T) (x p : T) (xs : seq T) :
+  all (r p) (x :: xs) -> r p x.
+Proof.
+  rewrite /all => /andP[] ? _ //.
+Qed.
+  
+Lemma in_all_r (r : rel T) {r_trans : transitive r} (x p : T) (t : seq T) :
+  mem t x -> all (r p) t -> r p x.
+Proof.
+  elim: t => /= //.
+  move=> a l ih /=.
+  rewrite in_cons => /orP[/eqP|] h /andP[] h1 h2.
+  by subst.
+  move: h h2 => //.
+Qed.
+
+(* Lemma subseq_all p (a b t : seq T) (C : Type) (f : seq T * seq T -> M C) :
+  subseq a t && subseq b t -> 
+  all (<= p) t -> all (<= p) a && all (<= p) b.
+Proof.
+  intros.
+  induction a.
+  induction b. 
+  rewrite //.
+  move: H => /andP[] h1 h2.
+  apply /andP; split => //.
+  rewrite /all /=.
+  exact: H0. *)
+
 Lemma splits_guard (t : seq T) (C : Type) (f : seq T * seq T -> M C) :
   splits t >>= f =
-  (do x <- splits t; (guard (subseq(*modulo perm*) x.1 t) >> guard (subseq x.2 t)) >> f x)%Do.
+  splits t >>= (fun x => (guard (subseq x.1 t) >> guard (subseq x.2 t)) >> f x).
+Proof.
+  (* rewrite 
+  (do x <- splits t; (guard (subseqmodulo perm x.1 t) >> guard (subseq x.2 t)) >> f x)%Do. *)
 Admitted.
 
 Lemma guard_qperm_eq (B : Type) (p : T) (a : seq T) (f : seq T -> M B) :
   guard (all (<= p) a) >>= (fun _ => qperm a >>= f) =
   qperm a >>= (fun x => guard (all (<= p) x) >> f x).
-  (* guard (all (<= p) a) >> (qperm a >>= f) = qperm a >>= (fun x => guard (all (<= p) x) >> f x). *)
 Proof.
 move: p.
 move szn : (size a) => n.
@@ -247,10 +277,11 @@ elim: n f a szn => [f a /eqP|n ih f].
 move=> -[//|h t [tn] p].
 rewrite qperm_consE.
 rewrite {1}/liftM2.
-rewrite [in LHS]bindA.
+rewrite !bindA.
 rewrite /=.
 rewrite guard_and.
 rewrite [in LHS]bindA.
+(* rewrite [in LHS]bindA. *)
 (* 1. guard and split commute *)
 transitivity (
   guard (h <= p) >>
@@ -263,6 +294,13 @@ transitivity (
   rewrite guard_splits.
   rewrite [in LHS]splits_guard.
   rewrite [in RHS]splits_guard.
+  bind_ext => -[a b].
+  rewrite -guard_and /=.
+  move c1 : (subseq a t && subseq b t) => bl.
+  move: c1.
+  case: bl => ?.
+  rewrite guardT !bindskipf.
+
   admit.
 rewrite ![in RHS]bindA.
 transitivity (
@@ -273,10 +311,10 @@ transitivity (
     do x1 <- qperm x0.1; do x2 <- qperm x0.2; Ret (x1 ++ h :: x2);
     f x))%Do
 ).
-  admit.
-bind_ext => -[a b].
+admit.
+(* bind_ext => -[a b].
 rewrite /=.
-rewrite /liftM2.
+rewrite /liftM2. *)
 (* use ih after generalization *)
 Admitted.
 
@@ -510,6 +548,45 @@ Qed.
 
 Definition qsortE := (qsort_nil, qsort_cons).
 
+Lemma lrefin_refl A B (a : A -> M B) :
+ a `<.=` a.
+Proof. rewrite /lrefin /refin => x. by rewrite altmm. Qed.
+
+Lemma lrefin_trans A B (b a c : A -> M B) :
+ a `<.=` b -> b `<.=` c -> a `<.=` c.
+Proof.
+  rewrite /lrefin /refin => h1 h2 x.
+  by rewrite -h2 altA h1.
+Qed.
+
+Lemma refin_refl A (a : M A) :
+ a `<=` a.
+Proof. by rewrite /refin altmm. Qed.
+
+Lemma refin_trans A (b a c : M A) :
+ a `<=` b -> b `<=` c -> a `<=` c.
+Proof. 
+  rewrite /refin => h1 h2.
+  by rewrite -h2 altA h1.
+Qed.
+
+Lemma quicksort_on_lists : Ret \o qsort `<.=` slowsort.
+Proof.
+move=> s.
+  have [n sn] := ubnP (size s); elim: n => // n ih in s sn *.
+  case: s => [|h t] in sn *.
+    rewrite /= qsort_nil slowsort_nil. exact: refin_refl.
+  rewrite /= qsort_cons.
+  move pht : (partition h t) => ht.
+  case: ht => ys zs in pht *.
+  apply: (refin_trans _ (refin_slowsort h t)).
+  rewrite bindretf pht.
+  rewrite -(ih ys).
+  rewrite -(ih zs).
+  repeat rewrite alt_bindDl bindretf.
+  rewrite /refin !altA altmm //.
+Abort.
+
 (* TODO: Ret \o qsort `<.=` slowsort by induction on the length of the input list *)
 
 End slowsort.
@@ -673,36 +750,24 @@ Qed.
 
 Lemma div3 (p : T) (xs : seq T) :
   (@splits M _ xs) >>= (fun '(ys, zs) =>
-  qperm ys >>= (fun ys' => qperm zs >>= (fun zs' =>
+  qperm ys >>= (fun ys' => 
+  qperm zs >>= (fun zs' =>
   guard ([&& sorted ys', sorted zs', all (<= p) ys' & all (>= p) zs']) >>
   Ret (ys' ++ [:: p] ++ zs')))) =
   (@splits M _ xs) >>= (fun '(ys, zs) =>
-  qperm ys >>= (fun ys' => qperm zs >>= (fun zs' =>
-  guard (sorted ys') >> guard (sorted zs') >> guard (all (<= p) ys' && all (>= p) zs') >>
-  Ret (ys' ++ [:: p] ++ zs')))).
+  qperm ys >>= (fun ys' => 
+  qperm zs >>= (fun zs' =>
+  guard (sorted ys') >>= (fun _ => 
+  guard (sorted zs') >>= (fun _ =>
+  guard (all (<= p) ys') >>= (fun _ =>
+  guard (all (>= p) zs') >>= (fun _ =>
+  Ret (ys' ++ [:: p] ++ zs')))))))).
 Proof.
   bind_ext => -[? ?].
   bind_ext => ?.
   bind_ext => ?.
-  by rewrite guard_and_split -!guard_and andbA. (* by (6) *)
+  by rewrite !guard_and !bindA. (* by (6) *)
 Qed.
-
-Lemma div_full (p : T) (xs : seq T) :
-  slowsort M (p :: xs) = 
-  splits xs >>= (fun '(ys, zs) => guard (all (<= p) ys && all (>= p) zs) >>
-  (qperm ys >>= assert sorted) >>= (fun ys' =>
-  (qperm zs >>= assert sorted) >>= (fun zs' =>
-  Ret (ys' ++ [:: p] ++ zs')))).
-Proof.
-  rewrite div1 div2 div3.
-  bind_ext => -[a b].
-  rewrite !bindA.
-  rewrite guardsC. (* ここでBindLaws.right_zeroが出てくるのは... *)
-  rewrite bindA.
-  bind_ext => x.
-  rewrite bindA.
-
-Admitted.
 
 Lemma rev_rev : forall (xs : seq T), rev (rev xs) = xs.
 Proof. by induction xs => //; rewrite rev_cons rev_rcons IHxs. Qed.
@@ -727,18 +792,8 @@ Proof.
   auto. *)
 End Test.
 
-Section TestFunction.
+Section specificationDemo.
 Variable M : plusMonad.
-
-(* split *)
-Example split1 : (@splits M nat [::]) = Ret ([::], [::]).
-by []. Qed.
-Example split2 : (@splits M nat [:: 1; 2]%N) =
-  Ret ([:: 1; 2]%N, [::]%N) [~] Ret ([:: 2]%N, [:: 1]%N) [~]
-  Ret ([:: 1]%N, [:: 2]%N) [~] Ret ([::]%N, [:: 1; 2]%N).
-rewrite /splits bindA.
-repeat rewrite bindretf alt_bindDl !bindretf.
-by rewrite altA. Qed.
 
 (* perm *)
 Example perm1 : (@qperm M nat [::]) = Ret [::].
@@ -758,31 +813,47 @@ repeat rewrite !qpermE /= !bindA !bindretf !alt_bindDl !bindretf /= !/liftM2.
 repeat rewrite !qpermE !bindA bindretf !bindretf /=.
 rewrite -altA altACA !altA //. Qed.
 
+(* split *)
+Example split1 : (@splits M nat [::]) = Ret ([::], [::]).
+by []. Qed.
+Example split2 : (@splits M nat [:: 1; 2]%N) =
+  Ret ([:: 1; 2]%N, [::]%N) [~] Ret ([:: 2]%N, [:: 1]%N) [~]
+  Ret ([:: 1]%N, [:: 2]%N) [~] Ret ([::]%N, [:: 1; 2]%N).
+Proof.
+rewrite /splits bindA.
+repeat rewrite bindretf alt_bindDl !bindretf.
+by rewrite altA. 
+Qed.
+
 (* sorted *)
 Example sorted1 : (@sorted nat (<=%O) [::]%N) = true.
 by []. Qed.
 Example sorted2 : (@sorted nat (<=%O) [:: 1; 2; 3; 4]%N) = true.
-by rewrite /sorted /path /=. Qed.
+Proof.
+rewrite /sorted.
+rewrite /path.
+rewrite /= //. Qed.
 Example sorted3 : (@sorted nat (<=%O) [:: 1; 2; 4; 3]%N) = false.
-by rewrite /sorted /path /=. Qed.
+Proof.
+rewrite /sorted /path.
+rewrite /= //. Qed.
 
 (* filt *)
-Let leN := (fun x y : nat => x <= y)%O.
-Goal filter (leN 2) [:: 1; 2; 3]%N = [:: 2; 3]%N. by rewrite /filter /=. Qed.
-
-Example filt1 : (@assert M _ (sorted leN)) [:: 1; 2; 3]%N = Ret ([:: 1; 2; 3]%N).
+Example filt1 : (@assert M _ (sorted <=%O)) [:: 1; 2; 3]%N = Ret ([:: 1; 2; 3]%N).
 rewrite /assert /guard /sorted /path /=; unlock.
 by rewrite bindskipf. Qed.
-Example filt2 : (@assert M _ (sorted leN)) [:: 2; 1; 3]%N = fail.
+
+Example filt2 : (@assert M _ (sorted <=%O)) [:: 2; 1; 3]%N = fail.
 rewrite /sorted /assert /guard /path /=.
 unlock.
+
 rewrite bindfailf //. Qed.
 
 Variables (d : unit) (T : porderType d).
 (* slowsort *)
 Definition bindskipE := (bindskipf, bindmskip).
-(*Definition bindfailE := (bindfailf, bindmfail).*)
-(*Definition altfailE := (altfailm, altmfail).*)
+(* Definition bindfailE := (bindfailf, bindmfail). *)
+(* Definition altfailE := (altfailm, altmfail). *)
 
 Ltac sub := repeat rewrite !alt_bindDl !bindretf; rewrite bindA; repeat rewrite !qpermE !bindA !bindretf /=.
 Ltac bindSF := rewrite !bindskipf !bindfailf.
@@ -796,7 +867,7 @@ Ltac slowsort_process :=
   repeat rewrite altfailE*).
 
 Example slowsort0 : (@slowsort M _ T [::]) = Ret [::].
-  by slowsort_process.
+by slowsort_process.
 Qed.
 
 Example slowsort1 : (@slowsort M _ _ [:: 1; 2]%N) = Ret [:: 1; 2]%N.
@@ -807,21 +878,11 @@ Example slowsort2 : (@slowsort M _ _ [:: 2; 1]%N) = Ret [:: 1; 2]%N.
 (*  by slowsort_process.
 (* rewrite /slowsort kleisliE.
 rewrite !qpermE /bindA /= !bindretf.
-repeat sl.
+repeat sub.
 rewrite /sorted /assert /guard /path /=; unlock.
 bindSF.
 by rewrite altmfail. *)
 Qed.*) Abort.
-
-Example slowsort3 : (@slowsort M _ _ [:: 2; 1; 3]%N) = Ret [:: 1; 2; 3]%N.
-rewrite /slowsort kleisliE.
-rewrite !qpermE /bindA /= !bindretf.
-repeat sub.
-rewrite /sorted /assert /guard /path /=.
-unlock.
-bindSF.
-by rewrite !altfailm !altmfail.
-Qed.
 
 (* Goal (@slowsort M _ _ [:: 2; 1; 3; 4]%N) = Ret [:: 1; 2; 3; 4]%N.
 rewrite /slowsort kleisliE.
@@ -832,11 +893,11 @@ unlock.
 bindSF.
 by rewrite !altfailm !altmfail.
 Qed. *)
-
+  
 Lemma refin_antisym A (m1 m2 : M A) : (m1 `<=` m2) /\ (m2 `<=` m1) -> m1 = m2.
 Proof. 
-  move => -[h1 h2]. rewrite /refin in h1 h2. rewrite -h2 in h1.
-  move: h1. rewrite altAC altmm h2 //.
+move => -[h1 h2]. rewrite /refin in h1 h2. rewrite -h2 in h1.
+move: h1. rewrite altAC altmm h2 //.
 Qed.
 
 Example refin1 : (@qperm M nat [:: 1]%N) `>=` fail -> true.
@@ -859,6 +920,14 @@ rewrite qpermE !bindA bindretf alt_bindDl bindretf /liftM2.
 repeat rewrite !qpermE !bindA bindretf !bindretf /=.
 by rewrite altA altmm altC.
 Qed.
+    
+    (* Definition eq8_sub (p : T) (xs : seq T) : Ret (partition p xs) `<=` ((@splits M T xs) >>= assert (fun '(ys, zs) => all (<= p) ys && all (>= p) zs)). *)
+Variables (p : nat).
+(* partition *)
+Example part1 : partition 1%N [::] = ([::], [::]).
+Proof. by []. Qed.
+Example part2 : partition 1%N [:: 1; 2]%N = ([:: 1]%N, [:: 2]%N).
+Proof. by []. Qed.
+(* Example spfilt : (@splits M nat [:: 1; 2]%N) >>= assert (fun '(ys, zs) => all (<= 1%N) ys && all (>= 1%N) zs) = Ret ([:: 1]%N, [:: 2]%N) [~] Ret ([::], [:: 1; 2]%N). *)
 
-(* Definition eq8_sub (p : T) (xs : seq T) : Ret (partition p xs) `<=` ((@splits M T xs) >>= assert (fun '(ys, zs) => all (<= p) ys && all (>= p) zs)). *)
-End TestFunction.
+    End specificationDemo.
