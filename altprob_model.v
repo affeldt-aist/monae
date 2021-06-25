@@ -6,7 +6,9 @@ From mathcomp Require Import boolp classical_sets.
 From infotheo Require Import classical_sets_ext Reals_ext Rbigop ssrR fdist.
 From infotheo Require Import fsdist convex necset.
 Require category.
+From HB Require Import structures.
 Require Import monae_lib hierarchy monad_lib proba_lib monad_model gcm_model.
+Require Import category.
 
 (******************************************************************************)
 (*                  Model of the monad type altProbMonad                      *)
@@ -33,14 +35,14 @@ Local Open Scope monae_scope.
 Definition alt A (x y : gcm A) : gcm A := x [+] y.
 Definition choice p A (x y : gcm A) : gcm A := x <| p |> y.
 
-Lemma altA A : associative (@alt A).
+Lemma altA A : ssrfun.associative (@alt A).
 Proof. by move=> x y z; rewrite /alt lubA. Qed.
 
 Lemma image_FSDistfmap A B (x : gcm A) (k : choice_of_Type A -> gcm B) :
   FSDistfmap k @` x = (gcm # k) x.
 Proof.
-rewrite /Actm /= /category.Monad_of_category_monad.f /= /category.id_f /=.
-by rewrite/free_semiCompSemiLattConvType_mor /=; unlock.
+rewrite /hierarchy.actm /= /actm /category.Monad_of_category_monad.actm /=.
+by rewrite /category.id_f /= /free_semiCompSemiLattConvType_mor /=; unlock.
 Qed.
 
 Section funalt_funchoice.
@@ -55,12 +57,11 @@ Local Notation U1 := forget_semiCompSemiLattConvType.
 Lemma FunaltDr (A B : Type) (x y : gcm A) (k : A -> gcm B) :
   (gcm # k) (x [+] y) = (gcm # k) x [+] (gcm # k) y.
 Proof.
-rewrite /hierarchy.Functor.Exports.Actm /=.
-rewrite /Monad_of_category_monad.f /=.
+rewrite /hierarchy.actm /=.
+rewrite /Monad_of_category_monad.actm /=.
 case: (free_semiCompSemiLattConvType_mor
-        (free_convType_mor (free_choiceType_mor (hom_Type k))))=> f /= [] Haf Hbf.
-rewrite Hbf lubE.
-congr biglub.
+        (free_convType_mor (free_choiceType_mor (hom_Type k))))=> f /= [] af ->.
+rewrite lubE; congr biglub.
 apply neset_ext=> /=.
 by rewrite image_setU !image_set1.
 Qed.
@@ -68,11 +69,11 @@ Qed.
 Lemma FunpchoiceDr (A B : Type) (x y : gcm A) (k : A -> gcm B) p :
   (gcm # k) (x <|p|> y) = (gcm # k) x <|p|> (gcm # k) y.
 Proof.
-rewrite /hierarchy.Functor.Exports.Actm /=.
-rewrite /Monad_of_category_monad.f /=.
+rewrite /hierarchy.actm /=.
+rewrite /Monad_of_category_monad.actm /=.
 case: (free_semiCompSemiLattConvType_mor
-        (free_convType_mor (free_choiceType_mor (hom_Type k))))=> f /= [] Haf Hbf.
-by apply Haf.
+  (free_convType_mor (free_choiceType_mor (hom_Type k))))=> f /= [] + _.
+exact.
 Qed.
 End funalt_funchoice.
 
@@ -114,14 +115,14 @@ Local Notation FCo := choice_of_Type.
 Local Notation F1m := free_semiCompSemiLattConvType_mor.
 Local Notation F0m := free_convType_mor.
 
-Lemma bindaltDl : BindLaws.left_distributive (@hierarchy.Bind gcm) alt.
+Lemma bindaltDl : BindLaws.left_distributive (@hierarchy.bind gcm) alt.
 Proof.
 move=> A B x y k.
 rewrite !hierarchy.bindE /alt FunaltDr.
 suff -> : forall T (u v : gcm (gcm T)),
   hierarchy.Join (u [+] v : gcm (gcm T)) = hierarchy.Join u [+] hierarchy.Join v by [].
 move=> T u v.
-rewrite /= /Monad_of_category_monad.join /=.
+rewrite /= /join_ /=.
 rewrite HCompId HIdComp /AdjComp.Eps.
 do 3 rewrite VCompE_nat homfunK functor_o !compE.
 rewrite !functor_id HCompId HIdComp.
@@ -131,18 +132,16 @@ by rewrite affine_F1e0U1PD_alt affine_e1PD_alt.
 Qed.
 End bindaltDl.
 
-Definition P_delta_monadAltMixin : MonadAlt.mixin_of gcm :=
-  MonadAlt.Mixin altA bindaltDl.
-Definition gcmA : altMonad := MonadAlt.Pack (MonadAlt.Class P_delta_monadAltMixin).
+HB.instance Definition P_delta_monadAltMixin :=
+  @isMonadAlt.Build (Monad_of_category_monad.acto Mgcm) alt altA bindaltDl.
 
-Lemma altxx A : idempotent (@Alt gcmA A).
-Proof. by move=> x; rewrite /Alt /= /alt lubxx. Qed.
-Lemma altC A : commutative (@Alt gcmA A).
-Proof. by move=> a b; rewrite /Alt /= /alt /= lubC. Qed.
+Lemma altxx A : idempotent (@alt A).
+Proof. by move=> x; rewrite /= /alt lubxx. Qed.
+Lemma altC A : commutative (@alt A).
+Proof. by move=> a b; rewrite /= /alt /= lubC. Qed.
 
-Definition P_delta_monadAltCIMixin : MonadAltCI.class_of gcmA :=
-  MonadAltCI.Class (MonadAltCI.Mixin altxx altC).
-Definition gcmACI : altCIMonad := MonadAltCI.Pack P_delta_monadAltCIMixin.
+HB.instance Definition gcmACI :=
+  @isMonadAltCI.Build (Monad_of_category_monad.acto Mgcm) altxx altC.
 
 Lemma choice0 A (x y : gcm A) : x <| 0%:pr |> y = y.
 Proof. by rewrite /choice conv0. Qed.
@@ -202,13 +201,14 @@ Local Notation FCo := choice_of_Type.
 Local Notation F1m := free_semiCompSemiLattConvType_mor.
 Local Notation F0m := free_convType_mor.
 
-Lemma bindchoiceDl p : BindLaws.left_distributive (@hierarchy.Bind gcm) (@choice p).
+Lemma bindchoiceDl p : BindLaws.left_distributive (@hierarchy.bind gcm) (@choice p).
 Proof.
 move=> A B x y k.
 rewrite !hierarchy.bindE /choice FunpchoiceDr.
 suff -> : forall T (u v : gcm (gcm T)), hierarchy.Join (u <|p|> v : gcm (gcm T)) = hierarchy.Join u <|p|> hierarchy.Join v by [].
 move=> T u v.
 rewrite /= /Monad_of_category_monad.join /=.
+rewrite /join_ /=.
 rewrite HCompId HIdComp /AdjComp.Eps.
 do 3 rewrite VCompE_nat homfunK functor_o !compE.
 rewrite !functor_id HCompId HIdComp.
@@ -218,42 +218,35 @@ by rewrite affine_F1e0U1PD_conv affine_e1PD_conv.
 Qed.
 End bindchoiceDl.
 
-Definition P_delta_monadProbMixin : MonadProb.mixin_of gcm :=
-  MonadProb.Mixin choice0 choice1 choiceC choicemm choiceA bindchoiceDl.
-Definition P_delta_monadProbMixin' :
-  MonadProb.mixin_of (Monad.Pack (MonadAlt.base (MonadAltCI.base (MonadAltCI.class gcmACI)))) :=
-  P_delta_monadProbMixin.
-Definition gcmp : probMonad :=
-  MonadProb.Pack (MonadProb.Class P_delta_monadProbMixin).
+HB.instance Definition P_delta_monadProbMixin :=
+  isMonadProb.Build (Monad_of_category_monad.acto Mgcm)
+    choice0 choice1 choiceC choicemm choiceA bindchoiceDl.
 
 Lemma choicealtDr A (p : prob) :
-  right_distributive (fun x y : gcmACI A => x <| p |> y) Alt.
+  right_distributive (fun x y : Mgcm A => x <| p |> y) (@alt A).
 Proof. by move=> x y z; rewrite /choice lubDr. Qed.
 
-Definition P_delta_monadAltProbMixin : @MonadAltProb.mixin_of gcmACI choice :=
-  MonadAltProb.Mixin choicealtDr.
-Definition P_delta_monadAltProbMixin' :
-  @MonadAltProb.mixin_of gcmACI (MonadProb.choice P_delta_monadProbMixin) :=
-  P_delta_monadAltProbMixin.
-Definition gcmAP : altProbMonad :=
-  MonadAltProb.Pack (MonadAltProb.Class P_delta_monadAltProbMixin').
+HB.instance Definition gcmAP :=
+  @isMonadAltProb.Build (Monad_of_category_monad.acto Mgcm) choicealtDr.
+
 End P_delta_altProbMonad.
 
-Section examples.
+Section probabilisctic_choice_not_trivial.
 Local Open Scope proba_monad_scope.
 
 (* An example that probabilistic choice in this model is not trivial:
    we can distinguish different probabilities. *)
 Example gcmAP_choice_nontrivial (p q : prob) :
   p <> q ->
-  Ret true <|p|> Ret false <> Ret true <|q|> Ret false :> gcmAP bool.
+  hierarchy.Ret true <|p|> hierarchy.Ret false <>
+  hierarchy.Ret true <|q|> hierarchy.Ret false :> (Monad_of_category_monad.acto Mgcm) bool.
 Proof.
 apply contra_not.
 rewrite !gcm_retE /Choice /= /Conv /= => /(congr1 (@NECSet.car _)).
 rewrite !necset_convType.convE !conv_cset1 /=.
-move/(@set1_inj _ (Conv _ _ _))/(congr1 (@FSDist.f _))/fsfunP/(_ true).
+move/(@classical_sets_ext.set1_inj _ (Conv _ _ _))/(congr1 (@FSDist.f _))/fsfunP/(_ true).
 rewrite !ConvFSDist.dE !FSDist1.dE /=.
 rewrite !(@in_fset1 (choice_of_Type bool)) eqxx /= ifF; last exact/negbTE/eqP.
 by rewrite !mulR1 !mulR0 !addR0; exact: val_inj.
 Qed.
-End examples.
+End probabilisctic_choice_not_trivial.

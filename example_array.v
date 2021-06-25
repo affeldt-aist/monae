@@ -25,10 +25,10 @@ Section marray.
 Variables (E : UU0) (M : arrayMonad E Z_eqType).
 
 Fixpoint readList (i : Z) (n : nat) : M (seq E) :=
-  if n isn't k.+1 then Ret [::] else liftM2 cons (aGet i) (readList (i + 1) k).
+  if n isn't k.+1 then Ret [::] else liftM2 cons (aget i) (readList (i + 1) k).
 
 Fixpoint writeList (i : Z) (s : seq E) : M unit :=
-  if s isn't x :: xs then Ret tt else aPut i x >> writeList (i + 1) xs.
+  if s isn't x :: xs then Ret tt else aput i x >> writeList (i + 1) xs.
 
 Definition writeL (i : Z) (s : seq E) := writeList i s >> Ret (size s).
 

@@ -1,7 +1,9 @@
 (* monae: Monadic equational reasoning in Coq                                 *)
 (* Copyright (C) 2020 monae authors, license: LGPL-2.1-or-later               *)
 From mathcomp Require Import all_ssreflect.
-Require Import imonae_lib ihierarchy imonad_lib.
+Require Import imonae_lib.
+From HB Require Import structures.
+Require Import ihierarchy imonad_lib.
 
 (******************************************************************************)
 (*     Definitions and lemmas using failure and nondeterministic monads       *)
@@ -17,7 +19,6 @@ Require Import imonae_lib ihierarchy imonad_lib.
 (*      permutation s == permutation                                          *)
 (*                       (ref: Sect. 3, mu2019tr2)                            *)
 (*             select == (ref: Sect. 4.4, gibbons2011icfp)                    *)
-(*              perms == type seq A -> M (seq A)                              *)
 (*            mu_perm == definition of perms using unfoldM                    *)
 (*                       (ref: Sect 4.3, mu2017)                              *)
 (*                                                                            *)
@@ -29,25 +30,19 @@ Unset Printing Implicit Defensive.
 
 Local Open Scope monae_scope.
 
-Import Univ.
-
 Definition arb {M : altMonad} : M bool := Ret true [~] Ret false.
 
 Section monadalt_lemmas.
 Variable (M : altMonad).
 
-(* TODO: name ok? *)
-Lemma naturality_nondeter (A B : UU0) (f : A -> B) (p q : M _):
-  (M # f) (p [~] q) = (M # f) p [~] (M # f) q.
-Proof. by rewrite 3!fmapE alt_bindDl. Qed.
-
-Lemma alt_fmapDl (A B : UU0) (f : A -> B) (m1 m2 : M A) :
+Lemma alt_fmapDr (A B : UU0) (f : A -> B) (m1 m2 : M A) :
   (M # f) (m1 [~] m2) = (M # f) m1 [~] (M # f) m2.
 Proof. by rewrite 3!fmapE alt_bindDl. Qed.
 
 End monadalt_lemmas.
 
-Lemma fmap_fail {A B : UU0} (M : failMonad) (f : A -> B) : (M # f) Fail = Fail.
+Lemma fmap_fail {A B : UU0} (M : failMonad) (f : A -> B) :
+  (M # f) fail = fail.
 Proof. by rewrite fmapE bindfailf. Qed.
 
 Lemma well_founded_size A : well_founded (fun x y : seq A => size x < size y).
@@ -264,11 +259,17 @@ Fixpoint subs (s : seq A) : M (seq A) :=
   let t' := subs t in
   fmap (cons h) t' [~] t'.
 
-Fixpoint SUBS (s : seq A) : Functor.acto (Monad.functorType (MonadAlt.monadType M)) _ :=
-  if s isn't h :: t then Ret [::] else
-  let t' : Functor.acto (Monad.functorType (MonadAlt.monadType M)) _ := SUBS t in
-  Alt (((MonadAlt.monadType M) # (cons h)) t') t'.
-
+Fixpoint SUBS (s : list A) : MonadAlt.sort M (list A) :=
+  if s isn't h :: t then
+      @Natural.cpnt ssrfun_idfun_canonical_Functor
+        (@Functor.Pack (Monad.sort (MonadAlt_to_Monad M))
+           (@Functor.Class (Monad.sort (MonadAlt_to_Monad M))
+              (@Monad.isFunctor_mixin (Monad.sort (MonadAlt_to_Monad M))
+                 (Monad.class (MonadAlt_to_Monad M))))) (@ret (MonadAlt_to_Monad M))
+        (list A) (@nil A)
+  else
+      let t' : MonadAlt.sort M (list A) := SUBS t in
+      @alt M (list A) (@actm (MonadAlt_to_Functor M) (list A) (list A) (@cons A h) t') t'.
 Goal subs = SUBS. by []. Abort.
 
 Lemma subs_cons x (xs : seq A) :
@@ -317,11 +318,11 @@ Lemma insert_map (A B : UU0) (f : A -> B) (a : A) :
   insert (f a) \o map f = map f (o) insert a :> (_ -> M _).
 Proof.
 apply fun_ext; elim => [|y xs IH].
-  by rewrite fcompE insertE -(compE (fmap (map f))) (natural RET) compE insertE.
+  by rewrite fcompE insertE -(compE (fmap (map f))) (natural ret) compE insertE.
 apply/esym.
-rewrite fcompE insertE alt_fmapDl.
+rewrite fcompE insertE alt_fmapDr.
 (* first branch *)
-rewrite -(compE (fmap (map f))) (natural RET) FIdf [ in X in X [~] _ ]/=.
+rewrite -(compE (fmap (map f))) (natural ret) FIdf [ in X in X [~] _ ]/=.
 (* second branch *)
 rewrite -fmap_oE (_ : map f \o cons y = cons (f y) \o map f) //.
 by rewrite fmap_oE -(fcompE (map f)) -IH [RHS]/= insertE.
@@ -332,7 +333,7 @@ Lemma perm_o_map (A B : UU0) (f : A -> B) :
   perm \o map f = map f (o) perm :> (seq A -> M (seq B)).
 Proof.
 apply fun_ext; elim => [/=|x xs IH].
-  by rewrite fcompE [perm _]/= -[in RHS]compE (natural RET).
+  by rewrite fcompE [perm _]/= -[in RHS]compE (natural ret).
 by rewrite fcompE [in perm _]/= fmap_bind -insert_map -bind_fmap -fcompE -IH.
 Qed.
 
@@ -342,7 +343,7 @@ Arguments perm {M} {A}.
 
 Section perm_filter.
 Variable M : altMonad.
-Hypothesis altmm : forall A, idempotent (@Alt _ A : M A -> M A -> M A).
+Hypothesis Mmm : forall A, idempotent (@alt _ A : M A -> M A -> M A).
 
 Local Open Scope mprog.
 
@@ -352,18 +353,18 @@ Lemma filter_insertN a : ~~ p a ->
   forall s, (filter p (o) insert a) s = Ret (filter p s) :> M _.
 Proof.
 move=> pa; elim => [|h t IH].
-  by rewrite fcompE insertE -(compE (fmap _)) (natural RET) FIdf /= (negbTE pa).
-rewrite fcompE insertE alt_fmapDl.
-rewrite -(compE (fmap _)) (natural RET) FIdf [in X in X [~] _]/= (negbTE pa).
+  by rewrite fcompE insertE -(compE (fmap _)) (natural ret) FIdf /= (negbTE pa).
+rewrite fcompE insertE alt_fmapDr.
+rewrite -(compE (fmap _)) (natural ret) FIdf [in X in X [~] _]/= (negbTE pa).
 case: ifPn => ph.
 - rewrite -fmap_oE (_ : filter p \o cons h = cons h \o filter p); last first.
     apply fun_ext => x /=; by rewrite ph.
   rewrite fmap_oE.
   move: (IH); rewrite fcompE => ->.
-  by rewrite fmapE /= ph bindretf /= altmm.
+  by rewrite fmapE /= ph bindretf /= Mmm.
 - rewrite -fmap_oE (_ : filter p \o cons h = filter p); last first.
     apply fun_ext => x /=; by rewrite (negbTE ph).
-  move: (IH); rewrite fcompE => -> /=; by rewrite (negbTE ph) altmm.
+  move: (IH); rewrite fcompE => -> /=; by rewrite (negbTE ph) Mmm.
 Qed.
 
 Lemma filter_insertT a : p a ->
@@ -374,19 +375,19 @@ move=> pa; apply fun_ext; elim => [|h t IH].
 rewrite fcompE [in RHS]/=; case: ifPn => ph.
 - rewrite [in RHS]insertE.
   move: (IH); rewrite [in X in X -> _]/= => <-.
-  rewrite [in LHS]insertE alt_fmapDl; congr (_ [~] _).
+  rewrite [in LHS]insertE alt_fmapDr; congr (_ [~] _).
     by rewrite fmapE bindretf /= pa ph.
   rewrite !fmapE /= fcompE bind_fmap bindA.
   rewrite_ bindretf.
   by rewrite /= ph.
-- rewrite [in LHS]insertE alt_fmapDl.
+- rewrite [in LHS]insertE alt_fmapDr.
   rewrite -[in X in _ [~] X = _]fmap_oE.
   rewrite (_ : (filter p \o cons h) = filter p); last first.
     by apply fun_ext => x /=; rewrite (negbTE ph).
   move: (IH); rewrite fcompE => ->.
   rewrite fmapE bindretf /= pa (negbTE ph) [in RHS]insertE; case: (filter _ _) => [|h' t'].
-    by rewrite insertE altmm.
-  by rewrite !insertE altA altmm.
+    by rewrite insertE Mmm.
+  by rewrite !insertE altA Mmm.
 Qed.
 
 (* netys2017 *)
@@ -417,8 +418,8 @@ elim: s a' => [a'|s1 s2 IH a'].
   rewrite cat0s fmapE bindretf insertE altC; congr (_ [~] _).
   by rewrite insertE fmapE bindretf.
 rewrite [in LHS]/= insertE IH.
-rewrite naturality_nondeter [in X in _ [~] X = _]fmapE bindretf.
-rewrite naturality_nondeter [in X in _ = _ [~] X]fmapE bindretf.
+rewrite alt_fmapDr [in X in _ [~] X = _]fmapE bindretf.
+rewrite alt_fmapDr [in X in _ = _ [~] X]fmapE bindretf.
 by rewrite -!fmap_oE altCA.
 Qed.
 
@@ -426,7 +427,7 @@ Lemma rev_insert : rev (o) insert a = insert a \o rev :> (_ -> M _).
 Proof.
 apply fun_ext; elim => [|h t IH].
   by rewrite fcompE insertE fmapE bindretf.
-rewrite fcompE insertE compE alt_fmapDl fmapE bindretf compE [in RHS]rev_cons insert_rcons.
+rewrite fcompE insertE compE alt_fmapDr fmapE bindretf compE [in RHS]rev_cons insert_rcons.
 rewrite rev_cons -cats1 rev_cons -cats1 -catA; congr (_ [~] _).
 move: IH; rewrite fcompE [X in X -> _]/= => <-.
 rewrite -!fmap_oE. congr (fmap _ (insert a t)).
@@ -436,7 +437,7 @@ Qed.
 End altci_insert.
 
 Lemma test_canonical (M : nondetMonad) A (a : M A) (b : A -> M A) :
-  a [~] (Fail >>= b) = a [~] Fail.
+  a [~] (fail >>= b) = a [~] fail.
 Proof.
 Set Printing All.
 Unset Printing All.
@@ -450,17 +451,39 @@ Implicit Types s : seq A.
 Lemma insert_Ret a s : exists m, insert a s = Ret (a :: s) [~] m :> M _.
 Proof.
 elim: s => [|h t [m ih]] /=; last by eexists; rewrite insertE; reflexivity.
-by rewrite insertE; exists Fail; rewrite altmfail.
+by rewrite insertE; exists fail; rewrite altmfail.
 Qed.
 
 Lemma perm_is_alt_ret s : exists m, perm s = Ret s [~] m :> M _.
 Proof.
-elim: s => [|h t [m ih] /=]; first by exists Fail; rewrite altmfail.
+elim: s => [|h t [m ih] /=]; first by exists fail; rewrite altmfail.
 case: (insert_Ret h t) => n Hn.
 by eexists; rewrite ih alt_bindDl bindretf Hn -altA.
 Qed.
 
 End nondet_insert.
+
+Section select.
+Variables (M : nondetMonad) (A : UU0).
+Implicit Types s : seq A.
+
+Fixpoint select s : M (A * seq A)%type :=
+  if s isn't h :: t then fail else
+  (Ret (h, t) [~] select t >>= (fun x => Ret (x.1, h :: x.2))).
+(* NB: see .. for the theory of select *)
+
+End select.
+Arguments select {M} {A}.
+
+Section mu_perm.
+Variables (A : UU0) (M : nondetMonad).
+
+Definition mu_perm : seq A -> M (seq A) :=
+  unfoldM (@well_founded_size _) (@nilp _) select.
+(* NB: see .. for the theory of mu_perm *)
+
+End mu_perm.
+Arguments mu_perm {A} {M}.
 
 Section fastproduct.
 
@@ -477,14 +500,14 @@ Variable M : failMonad.
 Local Open Scope mprog.
 
 Definition work s : M nat :=
-  if O \in s then Fail else Ret (product s).
+  if O \in s then fail else Ret (product s).
 
-Let Work s := if O \in s then @Fail M nat
+Let Work s := if O \in s then @fail M nat
               else Ret (product s).
 
 (* work refined to eliminate multiple traversals *)
 Lemma workE :
-  let next := fun n (mx : M _) => if n == 0 then Fail else fmap (muln n) mx in
+  let next := fun n (mx : M _) => if n == 0 then fail else fmap (muln n) mx in
   work = foldr next (Ret 1).
 Proof.
 apply foldr_universal => // h t; case: ifPn => [/eqP -> //| h0].
@@ -496,10 +519,9 @@ Arguments work {M}.
 
 Variable M : exceptMonad.
 
-Definition fastprod s : M _ := Catch (work s) (Ret O).
+Definition fastprod s : M _ := catch (work s) (Ret O).
 
-Let Fastprod (s : seq nat) :=
-  @Catch M nat (@work (MonadExcept.failMonadType M) s) (Ret O).
+Let Fastprod (s : seq nat) := @catch M nat (work s) (Ret O).
 
 (* fastprod is pure, never throwing an unhandled exception *)
 Lemma fastprodE s : fastprod s = Ret (product s).
@@ -525,13 +547,13 @@ Symbolic Computation 7, 39–55 (1994) *)
 Section continuation_example.
 Variable M : contMonad.
 
-Let wadler94_sect31 : Ret 1 +m Callcc (fun f => Ret 10 +m f 100) = Ret (1 + 100) :> M _.
+Let wadler94_sect31 : Ret 1 +m callcc (fun f => Ret 10 +m f 100) = Ret (1 + 100) :> M _.
 Proof.
 rewrite {1}/addM bindretf.
-rewrite (_ : Callcc _ = Ret 100) ?bindretf //.
-transitivity (Callcc (fun _ : nat -> M nat => Ret 100)); last by rewrite callcc1.
-transitivity (Callcc (fun f : nat -> M nat => Ret 10 >>= (fun a => f 100))); first by rewrite callcc2.
-rewrite callcc3 //; congr Callcc.
+rewrite (_ : callcc _ = Ret 100) ?bindretf //.
+transitivity (callcc (fun _ : nat -> M nat => Ret 100)); last by rewrite callcc1.
+transitivity (callcc (fun f : nat -> M nat => Ret 10 >>= (fun a => f 100))); first by rewrite callcc2.
+rewrite callcc3 //; congr callcc.
 apply fun_ext => g.
 by rewrite bindretf.
 Qed.
@@ -542,29 +564,29 @@ Section shiftreset_examples.
 Variable (M : shiftresetMonad nat).
 
 Let wadler94_sect32_1 :
-  Ret 1 +m (Reset (Ret 10 +m (Shift (fun f : _ -> M nat => f 100 >>= f) : M _)) : M _) =
+  Ret 1 +m (reset (Ret 10 +m (shift (fun f : _ -> M nat => f 100 >>= f) : M _)) : M _) =
   Ret (1 + (10 + (10 + 100))).
 Proof.
 rewrite /addM.
 rewrite bindretf.
 transitivity ((Ret (10 + (10 + 100))) >>= (fun y => Ret (1 + y)) : M _); last first.
   by rewrite bindretf.
-congr (Bind _ _).
+congr (bind _ _).
 rewrite shiftreset3.
-rewrite (_ : do x <- Ret 10; _ = do y <- Shift (@^~ 100) : M _; Ret (10 + (10 + y)))%Do; last first.
+rewrite (_ : do x <- Ret 10; _ = do y <- shift (@^~ 100) : M _; Ret (10 + (10 + y)))%Do; last first.
   by rewrite bindretf.
 by rewrite shiftreset4.
 Qed.
 
 Let wadler94_sect32_2 :
-  Ret 1 +m (Reset (Ret 10 +m (Shift (fun f : _ -> M nat => Ret 100 : M _) : M _)) : M _) =
+  Ret 1 +m (reset (Ret 10 +m (shift (fun f : _ -> M nat => Ret 100 : M _) : M _)) : M _) =
   Ret (1 + 100).
 Proof.
 rewrite /addM.
 rewrite bindretf.
 transitivity (Ret 100 >>= (fun y => Ret (1 + y)) : M _); last first.
   by rewrite bindretf.
-congr (Bind _ _). (* TODO : bind_ext casse *)
+congr (bind _ _). (* TODO : bind_ext casse *)
 rewrite (shiftreset2 _ _).
 by rewrite bindretf.
 Qed.

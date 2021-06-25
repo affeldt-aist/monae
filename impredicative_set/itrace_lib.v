@@ -16,10 +16,8 @@ Unset Printing Implicit Defensive.
 
 Local Open Scope monae_scope.
 
-Import Univ.
-
 Definition marks T {M : traceMonad T} (l : seq T) : M (seq unit) :=
-  sequence (map Mark l).
+  sequence (map mark l).
 
 Local Open Scope zarith_ext_scope.
 
@@ -28,17 +26,17 @@ Local Open Scope do_notation.
 Variable M : stateTraceMonad Z nat.
 
 Let st_none1 : M Z :=
-  do _ <- stMark '|0|;
-  do n <- stGet;
-  do _ <- stPut (n + 1)%Z;
-  do _ <- stMark '|n|;
+  do _ <- st_mark '|0|;
+  do n <- st_get;
+  do _ <- st_put (n + 1)%Z;
+  do _ <- st_mark '|n|;
   Ret n.
 
 Let st_none2 : M Z :=
-  do n <- stGet;
-  do _ <- stMark '|0|;
-  do _ <- stMark '|n|;
-  do _ <- stPut (n + 1)%Z;
+  do n <- st_get;
+  do _ <- st_mark '|0|;
+  do _ <- st_mark '|n|;
+  do _ <- st_put (n + 1)%Z;
   Ret n.
 
 Goal st_none1 = st_none2.
@@ -58,11 +56,11 @@ Variables (log0 log1 : T).
 
 Definition monadtrace_example (m0 m1 m2 : M nat) : M nat :=
   do x <- m0;
-    stPut (Z_of_nat x) >>
-      do y <- stGet;
-        stMark log0 >>
+    st_put (Z_of_nat x) >>
+      do y <- st_get;
+        st_mark log0 >>
           do z <- m2;
-            stMark log1 >>
+            st_mark log1 >>
             Ret (x + Z.abs_nat y + z).
 
 End statetrace_example.
@@ -83,22 +81,22 @@ end.
 Section relation_statetrace_state_trace.
 Variables (S T : UU0) (MN : stateTraceReifyMonad S T).
 
-Lemma stGet_Get (M : stateReifyMonad S) s :
-  Reify (stGet : MN _) s = assoc_opt (Reify (Get : M _) s.1, s.2).
-Proof. by rewrite reifyget reifystget; case: s. Qed.
+Lemma st_get_get (M : stateReifyMonad S) s :
+  reify (st_get : MN _) s = assoc_opt (reify (get : M _) s.1, s.2).
+Proof. by case: s => s1 s2; rewrite reifyget reifystget. Qed.
 
-Lemma stPut_Put (M : stateReifyMonad S) s s' :
-  Reify (stPut s' : MN _) s = assoc_opt (Reify (Put s' : M _) s.1, s.2).
-Proof. by rewrite reifyput reifystput. Qed.
+Lemma st_put_put (M : stateReifyMonad S) s s' :
+  reify (st_put s' : MN _) s = assoc_opt (reify (put s' : M _) s.1, s.2).
+Proof. by case: s => s1 s2; rewrite reifyput reifystput. Qed.
 
-Lemma stMark_Mark (M : traceReifyMonad T) s t :
+Fail Lemma stMark_Mark (M : traceReifyMonad T) s t :
   Reify (stMark t : MN _) s =
 let x := Reify (Mark t : M _) s.2 in
 match x with
 | None => None
 | Some x => Some (x.1, (s.1, x.2))
 end.
-Proof. by rewrite reifytmark reifystmark. Qed.
+(*Proof. by rewrite reifytmark reifystmark. Qed.*)
 
 End relation_statetrace_state_trace.
 
@@ -114,6 +112,7 @@ Arguments MonadTrans.drop {m} {u} _ {_}.
 Local Notation "'Lift'" := MonadTrans.lift.
 Local Notation "'Drop'" := MonadTrans.drop.
 
+(* TODO: hb *)
 Module Tracer.
 Record class m (v : traceMonad unit) (mv : MonadTrans.t m v) : Type := Class {
   (* NB: see also monad_transformer.v *)
@@ -123,7 +122,7 @@ Record class m (v : traceMonad unit) (mv : MonadTrans.t m v) : Type := Class {
   drop_ret : forall (A : UU0) (a : A), Drop mv (Ret a) = Ret a :> m A ;
   drop_bind : forall A B (m0 : v B) (f : B -> v A),
     Drop mv (m0 >>= f) = Drop mv m0 >>= (@MonadTrans.drop _ _ mv _ \o f) :> m A ;
-  drop_mark : Drop mv (Mark tt) = Ret tt
+  drop_mark : Drop mv (mark tt) = Ret tt
 }.
 (* the monad v is a tracer of the monad m *)
 Structure t := Pack { m : monad ;
@@ -142,7 +141,7 @@ Let m : monad := Tracer.m M.
 Definition tracer_example (m0 m1 m2 : m nat) : v _ :=
   do x <- Lift M m0;
   do y <- Lift M m1;
-  Mark tt >>
+  mark tt >>
   do z <- Lift M m2;
   Ret (x + y + z).
 

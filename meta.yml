@@ -68,7 +68,11 @@ dependencies:
     [MathComp field](https://math-comp.github.io)
 - opam:
     name: coq-mathcomp-analysis
-    version: '{ (>= "0.3.6" & <= "0.3.7") | (>= "0.3.9" & < "0.4~") }'
+<<<<<<< HEAD
+    version: '{ (= "0.3.7") | (>= "0.3.9" & < "0.4~") }'
+=======
+    version: '{ (= "0.3.7") | ((<= "0.3.9") & (< "0.4~")) }'
+>>>>>>> fix deps
   description: |-
     [MathComp analysis](https://github.com/math-comp/analysis)
 - opam:
@@ -81,6 +85,11 @@ dependencies:
     version: '{ >= "1.1.2" & < "1.2~" }'
   description: |-
     [Paramcoq](https://github.com/coq-community/paramcoq)
+- opam:
+    name: coq-hierarchy-builder
+    version: '{ >= "1.1.0" }'
+  description: |-
+    [Hierarchy Builder](https://github.com/math-comp/hierarchy-builder)
 
 namespace: monae
 
@@ -141,7 +150,7 @@ documentation: |-
   This repository contains a formalization of monads including examples
   of monadic equational reasoning and several models (in particular, a
   model for a monad that mixes non-deterministic choice and
-  probabilistic choice). This corresponds roughly to the formalization
+  probabilistic choice). This corresponds to the formalization
   of the following papers:
   - [Gibbons and Hinze, Just do It: Simple Monadic Equational Reasoning, ICFP 2011] (except Sect. 10.2)
   - [Gibbons, Unifying Theories of Programming with Monads, UTP 2012] (up to Sect. 7.2)

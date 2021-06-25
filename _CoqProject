@@ -3,6 +3,7 @@
 -arg -w -arg -notation-overridden
 -arg -w -arg -ambiguous-paths
 -arg -w -arg -notation-incompatible-format
+-arg -w -arg -elpi.add-const-for-axiom-or-sectionvar
 
 monae_lib.v
 hierarchy.v
@@ -29,3 +30,4 @@ example_transformer.v
 category_ext.v
 
 -R . monae
+

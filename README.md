@@ -35,6 +35,7 @@ in several examples of monadic equational reasoning.
   - [MathComp analysis](https://github.com/math-comp/analysis)
   - [Infotheo](https://github.com/affeldt-aist/infotheo)
   - [Paramcoq](https://github.com/coq-community/paramcoq)
+  - [Hierarchy Builder](https://github.com/math-comp/hierarchy-builder)
 - Coq namespace: `monae`
 - Related publication(s):
   - [A hierarchy of monadic effects for program verification using equational reasoning](https://staff.aist.go.jp/reynald.affeldt/documents/monae.pdf) doi:[10.1007/978-3-030-33636-3_9](https://doi.org/10.1007/978-3-030-33636-3_9)
@@ -69,7 +70,7 @@ make install
 This repository contains a formalization of monads including examples
 of monadic equational reasoning and several models (in particular, a
 model for a monad that mixes non-deterministic choice and
-probabilistic choice). This corresponds roughly to the formalization
+probabilistic choice). This corresponds to the formalization
 of the following papers:
 - [Gibbons and Hinze, Just do It: Simple Monadic Equational Reasoning, ICFP 2011] (except Sect. 10.2)
 - [Gibbons, Unifying Theories of Programming with Monads, UTP 2012] (up to Sect. 7.2)

@@ -53,7 +53,7 @@ rewrite boolp.funeqE; elim/last_ind => [/=|xs y IH].
   by rewrite fcompE insertE fmapE bindretf.
 rewrite fcompE.
 rewrite insert_rcons.
-rewrite naturality_nondeter fmapE bindretf.
+rewrite alt_fmapDr fmapE bindretf.
 rewrite -fmap_oE.
 have H : forall w, foldl op b \o rcons^~ w = op^~ w \o foldl op b.
   by move=> w; rewrite boolp.funeqE => ws /=; rewrite -cats1 foldl_cat.
@@ -140,7 +140,7 @@ Variables (A B : Type) (b : B) (mul : B -> A -> B) (add : B -> B -> B).
 
 (* TODO(rei): integrate this into a (new?) monad *)
 Hypothesis idempotent_converse :
-  forall C m1 m2 x, m1 [~] m2 = Ret x :> M C -> m1 = @RET M _ x /\ m2 = @RET M _ x.
+  forall C m1 m2 x, m1 [~] m2 = Ret x :> M C -> m1 = ret _ x /\ m2 = ret _ x.
 Hypothesis injective_return : forall C x1 x2,
   Ret x1 = Ret x2 :> M C -> x1 = x2.
 
@@ -154,7 +154,7 @@ have step1 : (Ret \o foldl mul b \o flatten) xss =
   (Ret \o foldl add b \o map (foldl mul b)) xss [~]
   fmap (foldl add b \o map (foldl mul b)) (m : M _).
   rewrite -H /aggregate perm_o_map -fcomp_comp.
-  by rewrite fcompE Hm alt_fmapDl fmapE /= bindretf.
+  by rewrite fcompE Hm alt_fmapDr fmapE /= bindretf.
 apply esym, idempotent_converse in step1.
 case: step1 => step11 step12.
 apply injective_return in step11.
@@ -169,7 +169,7 @@ have step1 : (Ret \o foldl mul b \o flatten) xss =
   (Ret \o foldl add b \o map (foldl mul b)) yss [~]
   fmap (foldl add b \o map (foldl mul b)) m.
   rewrite -H /aggregate perm_o_map -fcomp_comp.
-  by rewrite fcompE K alt_fmapDl fmapE /= bindretf.
+  by rewrite fcompE K alt_fmapDr fmapE /= bindretf.
 have step2 : (foldl mul b \o flatten) xss =
              (foldl add b \o map (foldl mul b)) yss.
   apply esym, idempotent_converse in step1.
@@ -186,7 +186,7 @@ Variable M : nondetMonad.
 Variables (A B : Type) (b : B) (mul : B -> A -> B) (add : B -> B -> B).
 
 Hypothesis idempotent_converse :
-  forall C m1 m2 x, m1 [~] m2 = Ret x :> M C -> m1 = @RET M _ x /\ m2 = @RET M _ x.
+  forall C m1 m2 x, m1 [~] m2 = Ret x :> M C -> m1 = ret _ x /\ m2 = ret _ x.
 Hypothesis injective_return : forall C x1 x2,
   Ret x1 = Ret x2 :> M C -> x1 = x2.
 
@@ -198,7 +198,7 @@ move=> zzs H.
 transitivity (foldl mul b (flatten [:: zs])).
   by rewrite /= cats0.
 transitivity (foldl add b (map (foldl mul b) [:: zs])).
-  have Hm : perm [:: zs] = Ret [:: zs] [~] (@Fail M _).
+  have Hm : perm [:: zs] = Ret [:: zs] [~] (@fail M _).
     by rewrite /= bindretf insertE altmfail.
   by rewrite (lemma45a idempotent_converse injective_return H).
 by rewrite /= -zzs.
@@ -226,7 +226,7 @@ Variable M : nondetCIMonad.
 Variables (A B : Type) (b : B) (mul : B -> A -> B) (add : B -> B -> B).
 
 Hypothesis idempotent_converse :
-  forall C m1 m2 x, m1 [~] m2 = Ret x :> M C -> m1 = @RET M _ x /\ m2 = @RET M _ x.
+  forall C m1 m2 x, m1 [~] m2 = Ret x :> M C -> m1 = ret _ x /\ m2 = ret _ x.
 Hypothesis injective_return : forall C x1 x2,
   Ret x1 = Ret x2 :> M C -> x1 = x2.
 
@@ -267,7 +267,7 @@ Variable M : nondetCIMonad.
 Variables (A B : Type) (b : B) (mul : B -> A -> B) (add : B -> B -> B).
 
 Hypothesis idempotent_converse :
-  forall C m1 m2 x, m1 [~] m2 = Ret x :> M C -> m1 = @RET M _ x /\ m2 = @RET M _ x.
+  forall C m1 m2 x, m1 [~] m2 = Ret x :> M C -> m1 = ret _ x /\ m2 = ret _ x.
 Hypothesis injective_return : forall C x1 x2,
   Ret x1 = Ret x2 :> M C -> x1 = x2.
 
