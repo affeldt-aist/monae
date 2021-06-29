@@ -112,60 +112,6 @@ rewrite {}ih /= !fmapE 2!bindA; bind_ext => -[a b] /=.
 by rewrite bindretf alt_bindDl 2!bindretf.
 Qed.
 
-Lemma guard_splits {d : unit} {T : porderType d} {M : plusMonad} (p : pred T) (t : seq T) (C : Type) (f : seq T * seq T -> M C) :
-  guard (all p t) >> (splits t >>= f)
-  =
-  splits t >>= (fun x => guard (all p x.1) >>
-                         guard (all p x.2) >> f x).
-Proof.
-  elim: t p C f => [p C f|h t ih p C f].
-  by rewrite /= 2!bindretf /= guardT bindmskip.
-  rewrite /= guard_and !bindA ih -bindA.
-  rewrite guardsC; last exact: (@bindmfail M).
-  rewrite bindA.
-  (* bind_ext => -[a b]. (* TODO:  *)
-  rewrite assertE bindA bindretf bindA /=.
-  rewrite [in RHS]alt_bindDl /=.
-  do 2 rewrite bindretf /= guard_and !bindA.
-  rewrite -!bindA.
-  rewrite [in RHS](@guardsC M (@bindmfail M) (all p a)).
-  rewrite !bindA -alt_bindDr.
-  bind_ext; case.
-  rewrite assertE bindmskip -[in RHS]alt_bindDr.
-  bind_ext; case.
-  by rewrite alt_bindDl /= 2!bindretf -alt_bindDr. *)
-Admitted.
-
-Lemma splits_guard_sub {d : unit} {T : porderType d} {M : plusMonad} (p : pred T) (t : seq T) (C : Type) (f : seq T * seq T -> M C) :
-  splits t >>= (fun x => guard (all p t) >> f x) =
-  splits t >>= (fun x => (guard (all p x.1) >> guard (all p x.2)) >> f x).
-Proof.
-  rewrite -guard_splits guardsC; last exact: (@bindmfail M).
-  rewrite bindA.
-  bind_ext => -[a b].
-  by rewrite guardsC; last exact: (@bindmfail M).
-Qed.
-
-Lemma splits_guardC {d : unit} {T : porderType d} {M : plusMonad} (b1 b2 : bool) (t : seq T) (C : Type) (f : seq T * seq T -> M C) :
-  splits t >>= (fun x => guard b1 >> guard b2 >> f x) =
-  splits t >>= (fun x => guard b2 >> guard b1 >> f x).
-Proof. by bind_ext => -[a b]; rewrite -!guard_and andbC. Qed.
-
-Lemma splits_guardA {d : unit} {T : porderType d} {M : plusMonad} (b1 b2 b3 : bool) (t : seq T) (C : Type) (f : seq T * seq T -> M C) :
-  splits t >>= (fun x => guard b1 >> (guard b2 >> guard b3) >> f x) =
-  splits t >>= (fun x => (guard b1 >> guard b2) >> guard b3 >> f x).
-Proof. by bind_ext => -[a b]; rewrite -!guard_and andbA. Qed.
-
-Lemma splits_guardAC {d : unit} {T : porderType d} {M : plusMonad} (b1 b2 b3 : bool) (t : seq T) (C : Type) (f : seq T * seq T -> M C) :
-  splits t >>= (fun x => guard b1 >> guard b2 >> guard b3 >> f x) =
-  splits t >>= (fun x => guard b1 >> guard b3 >> guard b2 >> f x).
-Proof. by bind_ext => -[a b]; rewrite -!guard_and andbAC. Qed.
-
-Lemma splits_guardCA {d : unit} {T : porderType d} {M : plusMonad} (b1 b2 b3 : bool) (t : seq T) (C : Type) (f : seq T * seq T -> M C) :
-  splits t >>= (fun x => guard b1 >> guard b2 >> guard b3 >> f x) =
-  splits t >>= (fun x => guard b3 >> guard b1 >> guard b2 >> f x).
-Proof. by bind_ext => -[a b]; rewrite -!guard_and andbC andbA. Qed.
-
 Lemma all_cons {d : unit} {T : porderType d} (h : T) (p : pred T) (t : seq T) :
   (p h) && all p t = all p (h :: t).
 Proof.
@@ -204,10 +150,77 @@ Proof.
   by rewrite andbA andbCA -andbA !andbA -andbA -andbA andbACA !andbA .
 Qed.
 
-(* Lemma splits_guard_cat_cons {d : unit} {T : porderType d} {M : plusMonad} h (p : pred T) (t : seq T) (C : Type) (f : seq T * seq T -> M C) :
+Lemma guard_splits {d : unit} {T : porderType d} {M : plusMonad} (p : pred T) (t : seq T) (C : Type) (f : seq T * seq T -> M C) :
+guard (all p t) >> (splits t >>= f)
+=
+splits t >>= (fun x => guard (all p x.1) >>
+guard (all p x.2) >> f x).
+Proof.
+  elim: t p C f => [p C f|h t ih p C f].
+  by rewrite /= 2!bindretf /= guardT bindmskip.
+  rewrite /= guard_and !bindA ih -bindA.
+  rewrite guardsC; last exact: (@bindmfail M).
+  rewrite bindA.
+  (* bind_ext => -[a b].
+  rewrite assertE bindA bindretf bindA /=.
+  rewrite [in RHS]alt_bindDl /=.
+  do 2 rewrite bindretf /= guard_and !bindA.
+  rewrite -!bindA.
+  rewrite [in RHS](@guardsC M (@bindmfail M) (all p a)).
+  rewrite !bindA -alt_bindDr.
+  bind_ext; case.
+  rewrite assertE bindmskip -[in RHS]alt_bindDr.
+  bind_ext; case.
+  by rewrite alt_bindDl /= 2!bindretf -alt_bindDr. *)
+Admitted.
+
+Lemma guard_splits' {d : unit} {T : porderType d} {M : plusMonad} (p : pred T) (t : seq T) (C : Type) (f : seq T * seq T -> M C) :
+  splits t >>= (fun x => guard (all p t) >> f x) =
+  splits t >>= (fun x => (guard (all p x.1) >> guard (all p x.2)) >> f x).
+Proof.
+  rewrite -guard_splits guardsC; last exact : (@bindmfail M).
+  rewrite bindA.
+  bind_ext => -[a b].
+  by rewrite guardsC; last exact : (@bindmfail M).
+Qed.
+
+Lemma guard_splits_cons {d : unit} {T : porderType d} {M : plusMonad} h (p : pred T) (t : seq T) (C : Type) (f : seq T * seq T -> M C) :
+  guard (all p (h :: t)) >> (splits t >>= f)
+  =
+  splits t >>= (fun x => guard (all p x.1) >>
+                         guard (all p x.2) >>
+                         guard (p h) >> f x).
+Proof.
+  elim: t p C f h => [p C f h|h0 t ih p C f h].
+  by rewrite /= 2!bindretf /= guardT andbT !bindskipf.
+  rewrite /= guard_and !bindA all_cons ih -bindA.
+  rewrite guardsC; last exact: (@bindmfail M).
+  rewrite bindA.
+  (* bind_ext => -[a b] /=.
+  rewrite assertE bindA bindretf bindA /=.
+  rewrite [in RHS]alt_bindDl /=.
+  rewrite !bindretf /= -![in RHS]guard_and. 
+  rewrite andbC -andbA andbCA andbC !andbA 3!guard_and.
+  rewrite andbC andbAC !andbA 3!guard_and.
+  rewrite !bindA -alt_bindDr.
+  bind_ext; case.
+  rewrite -alt_bindDr.
+  bind_ext; case.
+  rewrite -alt_bindDr.
+  bind_ext; case.
+  rewrite -alt_bindDr.
+  bind_ext; case.
+  by rewrite alt_bindDl 2!bindretf. *)
+Admitted.
+
+Lemma splits_guard_cons' {d : unit} {T : porderType d} {M : plusMonad} h (p : pred T) (t : seq T) (C : Type) (f : seq T * seq T -> M C) :
   splits t >>= (fun x => guard (all p (h :: t)) >> f x) =
   splits t >>= (fun x => guard (all p x.1) >> guard (all p x.2) >> guard (p h) >> f x).
 Proof.
+  elim: t p C f => [p C f|a l ih p C f].
+  by rewrite /splits 2!bindretf /= guardT 2!bindskipf andbT.
+  bind_ext; case.
+  (* rewrite /= andbT.
   rewrite -all_cons guard_and.
   rewrite splits_guardC.
   rewrite splits_guard_sub.
@@ -219,6 +232,7 @@ Proof.
   rewrite (@splits_guardA _ _ M (p h)).
   rewrite splits_guard_sub.
   case: (p h); rewrite (guardT, guardF). *)
+Admitted.
 
 Local Close Scope mprog.
 
@@ -424,12 +438,12 @@ Proof.
   transitivity (
     splits t >>= (fun x => guard (all (<= p) t) >> f x)
   ).
-  rewrite [in RHS]splits_guard_sub.
-  case: (h <= p).
+  (* rewrite [in RHS]splits_guard_sub. *)
+  (* case: (h <= p).
   by rewrite andbC andbT splits_guard_sub.
   rewrite andbC andbF guardF.
   bind_ext => -[a b].
-  rewrite bindfailf.
+  rewrite bindfailf. *)
   (* rewrite -all_cat.
   rewrite guard_and.
   rewrite guardsC.
