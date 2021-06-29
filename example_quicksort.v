@@ -14,6 +14,10 @@ From infotheo Require Import ssr_ext.
 (* TODO: shouldn't prePlusMonad be plusMonad (like list monad) and
    plusMonad be plusCIMonad (like set monad) *)
 
+Reserved Notation "A `<=` B" (at level 70, no associativity).
+Reserved Notation "A `>=` B" (at level 70, no associativity).
+Reserved Notation "A `<.=` B" (at level 70, no associativity).
+
 Set Implicit Arguments.
 Unset Strict Implicit.
 Unset Printing Implicit Defensive.
@@ -23,10 +27,61 @@ Import Order.TTheory.
 Local Open Scope monae_scope.
 Local Open Scope tuple_ext_scope.
 
+
 (* TODO: move *)
 Lemma kleisliE (M : monad) (A B C : UU0) (g : B -> M C) (f : A -> M B) (a : A) :
   (f >=> g) a = (f a) >>= g.
 Proof. by rewrite /kleisli /= join_fmap. Qed.
+
+Definition refin {M : altMonad} A (m1 m2 : M A) : Prop := m1 [~] m2 = m2.
+
+Notation "m1 `<=` m2" := (refin m1 m2) : monae_scope.
+Notation "m1 `>=` m2" := (refin m2 m1) : monae_scope.
+
+Section refin_lemmas.
+Variable M : altCIMonad.
+Lemma refin_refl A (a : M A) : a `<=` a.
+Proof. by rewrite /refin altmm. Qed.
+
+Lemma refin_trans A (b a c : M A) :
+ a `<=` b -> b `<=` c -> a `<=` c.
+Proof. by rewrite /refin => h1 <-; rewrite altA h1. Qed.
+
+Lemma refin_antisym A (a b : M A) :
+a `<=` b -> b `<=` a -> a = b.
+Proof. by rewrite /refin => h1 <-; rewrite altC. Qed.
+End refin_lemmas.
+
+Definition lrefin {M : altMonad} A B (f g : A -> M B) : Prop :=
+  forall x, f x `<=`g x.
+Notation "f `<.=` g" := (lrefin f g) : monae_scope.
+
+Section lrefin_lemmas.
+Variable M : altCIMonad.
+Lemma lrefin_refl A B (a : A -> M B) : a `<.=` a.
+Proof. move => x. exact: refin_refl. Qed.
+
+Lemma lrefin_trans A B (b a c : A -> M B) :
+ a `<.=` b -> b `<.=` c -> a `<.=` c.
+Proof. move => ? ? x. by apply: (@refin_trans _ _ (b x)). Qed.
+
+Lemma lrefin_antisym A B (a b : A -> M B) :
+  a `<.=` b -> b `<.=` a -> a = b.
+Proof. move => ab ba. rewrite boolp.funeqE => x.
+  by apply: refin_antisym. 
+Qed.
+End lrefin_lemmas.
+
+Lemma bind_monotonic_refin (M : altMonad) A B (m1 m2 : M A) (f : A -> M B) :
+  (m1 `<=` m2) -> (m1 >>= f `<=` m2 >>= f).
+Proof. by move=> m12; rewrite /refin -alt_bindDl m12. Qed.
+
+Lemma bind_monotonic_lrefin (M : prePlusMonad) A B (m : M A) (f1 f2 : A -> M B) :
+  (f1 `<.=` f2) -> (m >>= f1 `<=` m >>= f2).
+Proof. 
+  move=> f12; rewrite /refin -alt_bindDr.
+  by bind_ext => a; apply f12.
+Qed.
 
 Fixpoint splits {M : plusMonad} A (s : seq A) : M (seq A * seq A)%type :=
   if s isn't x :: xs then Ret ([::], [::]) else
@@ -41,7 +96,7 @@ Next Obligation. by rewrite (leq_trans (size_bseq b0)). Qed.
 Next Obligation. by rewrite (leq_trans (size_bseq b)). Qed.
 Next Obligation. by rewrite (leq_ltn_trans (size_bseq b0)). Qed.
 
-Goal forall M, @splits M nat [::] = Ret ([::], [::]). by []. Qed.
+(* Goal forall M, @splits M nat [::] = Ret ([::], [::]). by []. Abort. *)
 
 (* Goal forall M, @splits M _ [:: O; 1]%nat = Ret ([::], [::]).
 move=> M.
@@ -56,6 +111,115 @@ elim: s => /= [|h t ih]; first by rewrite fmapE bindretf.
 rewrite {}ih /= !fmapE 2!bindA; bind_ext => -[a b] /=.
 by rewrite bindretf alt_bindDl 2!bindretf.
 Qed.
+
+Lemma guard_splits {d : unit} {T : porderType d} {M : plusMonad} (p : pred T) (t : seq T) (C : Type) (f : seq T * seq T -> M C) :
+  guard (all p t) >> (splits t >>= f)
+  =
+  splits t >>= (fun x => guard (all p x.1) >>
+                         guard (all p x.2) >> f x).
+Proof.
+  elim: t p C f => [p C f|h t ih p C f].
+  by rewrite /= 2!bindretf /= guardT bindmskip.
+  rewrite /= guard_and !bindA ih -bindA.
+  rewrite guardsC; last exact: (@bindmfail M).
+  rewrite bindA.
+  (* bind_ext => -[a b]. (* TODO:  *)
+  rewrite assertE bindA bindretf bindA /=.
+  rewrite [in RHS]alt_bindDl /=.
+  do 2 rewrite bindretf /= guard_and !bindA.
+  rewrite -!bindA.
+  rewrite [in RHS](@guardsC M (@bindmfail M) (all p a)).
+  rewrite !bindA -alt_bindDr.
+  bind_ext; case.
+  rewrite assertE bindmskip -[in RHS]alt_bindDr.
+  bind_ext; case.
+  by rewrite alt_bindDl /= 2!bindretf -alt_bindDr. *)
+Admitted.
+
+Lemma splits_guard_sub {d : unit} {T : porderType d} {M : plusMonad} (p : pred T) (t : seq T) (C : Type) (f : seq T * seq T -> M C) :
+  splits t >>= (fun x => guard (all p t) >> f x) =
+  splits t >>= (fun x => (guard (all p x.1) >> guard (all p x.2)) >> f x).
+Proof.
+  rewrite -guard_splits guardsC; last exact: (@bindmfail M).
+  rewrite bindA.
+  bind_ext => -[a b].
+  by rewrite guardsC; last exact: (@bindmfail M).
+Qed.
+
+Lemma splits_guardC {d : unit} {T : porderType d} {M : plusMonad} (b1 b2 : bool) (t : seq T) (C : Type) (f : seq T * seq T -> M C) :
+  splits t >>= (fun x => guard b1 >> guard b2 >> f x) =
+  splits t >>= (fun x => guard b2 >> guard b1 >> f x).
+Proof. by bind_ext => -[a b]; rewrite -!guard_and andbC. Qed.
+
+Lemma splits_guardA {d : unit} {T : porderType d} {M : plusMonad} (b1 b2 b3 : bool) (t : seq T) (C : Type) (f : seq T * seq T -> M C) :
+  splits t >>= (fun x => guard b1 >> (guard b2 >> guard b3) >> f x) =
+  splits t >>= (fun x => (guard b1 >> guard b2) >> guard b3 >> f x).
+Proof. by bind_ext => -[a b]; rewrite -!guard_and andbA. Qed.
+
+Lemma splits_guardAC {d : unit} {T : porderType d} {M : plusMonad} (b1 b2 b3 : bool) (t : seq T) (C : Type) (f : seq T * seq T -> M C) :
+  splits t >>= (fun x => guard b1 >> guard b2 >> guard b3 >> f x) =
+  splits t >>= (fun x => guard b1 >> guard b3 >> guard b2 >> f x).
+Proof. by bind_ext => -[a b]; rewrite -!guard_and andbAC. Qed.
+
+Lemma splits_guardCA {d : unit} {T : porderType d} {M : plusMonad} (b1 b2 b3 : bool) (t : seq T) (C : Type) (f : seq T * seq T -> M C) :
+  splits t >>= (fun x => guard b1 >> guard b2 >> guard b3 >> f x) =
+  splits t >>= (fun x => guard b3 >> guard b1 >> guard b2 >> f x).
+Proof. by bind_ext => -[a b]; rewrite -!guard_and andbC andbA. Qed.
+
+Lemma all_cons {d : unit} {T : porderType d} (h : T) (p : pred T) (t : seq T) :
+  (p h) && all p t = all p (h :: t).
+Proof.
+  by [].
+Qed.
+
+Lemma rcons_all {d : unit} {T : porderType d} (h : T) (p : pred T) (t : seq T) :
+  p h && all p t = all p (rcons t h).
+Proof.
+  rewrite all_rcons //.
+Abort.
+
+Lemma l_cat_nil {d : unit} {T : porderType d} (l : seq T) :
+  l ++ [::] = l.
+Proof. 
+  by elim: l => [//|a l ih /=]; rewrite ih.
+Qed.
+
+Lemma all_cat {d : unit} {T : porderType d} (p : pred T) (s1 s2 : seq T) :
+  all p s1 && all p s2 = all p (s1 ++ s2).
+Proof.
+  elim: s1 s2 => [//|a l ih] [|a0 l0].
+  by rewrite l_cat_nil andbT.
+  by rewrite /= -(@ih (a0 :: l0)) -all_cons -andbA.
+Qed.
+
+Lemma all_cat_cons {d : unit} {T : porderType d} h (p : pred T) (s1 s2 : seq T) :
+  p h && all p s1 && all p s2 = all p (s1 ++ h :: s2).
+Proof.
+  elim: s1 s2 => [/=|a l ih] [|a0 l0].
+  by rewrite andbC andTb.
+  by rewrite andbC andbA andbT andbC.
+  rewrite -all_cat -!all_cons.
+  by rewrite -andbA -andbC andbAC andbA.
+  rewrite -all_cat -!all_cons.
+  by rewrite andbA andbCA -andbA !andbA -andbA -andbA andbACA !andbA .
+Qed.
+
+(* Lemma splits_guard_cat_cons {d : unit} {T : porderType d} {M : plusMonad} h (p : pred T) (t : seq T) (C : Type) (f : seq T * seq T -> M C) :
+  splits t >>= (fun x => guard (all p (h :: t)) >> f x) =
+  splits t >>= (fun x => guard (all p x.1) >> guard (all p x.2) >> guard (p h) >> f x).
+Proof.
+  rewrite -all_cons guard_and.
+  rewrite splits_guardC.
+  rewrite splits_guard_sub.
+  rewrite guardsC; last exact (@bindmfail M).
+  rewrite 
+  rewrite splits_guardAC.
+  rewrite (@guardsC M _ (p h) _ (guard (all p _))); last exact (@bindmfail M).
+  rewrite -bindA.
+  rewrite (@splits_guardA _ _ M (p h)).
+  rewrite splits_guard_sub.
+  case: (p h); rewrite (guardT, guardF). *)
+
 Local Close Scope mprog.
 
 Section qperm.
@@ -109,30 +273,6 @@ Definition qpermE := (qperm_nil, qperm_cons).
 
 End qperm.
 Arguments qperm {M} {A}.
-
-Definition refin {M : plusMonad} A (m1 m2 : M A) : Prop := m1 [~] m2 = m2.
-
-Reserved Notation "A `<=` B" (at level 70, no associativity).
-Reserved Notation "A `>=` B" (at level 70, no associativity).
-Notation "m1 `<=` m2" := (refin m1 m2) : monae_scope.
-Notation "m1 `>=` m2" := (refin m2 m1) : monae_scope.
-
-Reserved Notation "A `<.=` B" (at level 70, no associativity).
-Definition lrefin {M : plusMonad} A B (f g : A -> M B) : Prop :=
-  forall x, f x `<=`g x.
-Notation "f `<.=` g" := (lrefin f g) : monae_scope.
-
-Lemma bind_monotonic_refin (M : plusMonad) A B (m1 m2 : M A) (f : A -> M B) :
-  (m1 `<=` m2) -> (m1 >>= f `<=` m2 >>= f).
-Proof. by move=> m12; rewrite /refin -alt_bindDl m12. Qed.
-
-Lemma bind_monotonic_lrefin (M : plusMonad) A B (m : M A) (f1 f2 : A -> M B) :
-  (f1 `<.=` f2) -> (m >>= f1 `<=` m >>= f2).
-Proof.
-move=> f12.
-rewrite /refin -alt_bindDr.
-by bind_ext => a; apply f12.
-Qed.
 
 Lemma guard_neg (M : plusMonad) A (p q : bool) (m1 m2 : M A) :
   (if p then m1 else m2) `<=` (guard p >> m1) [~] (guard (~~ p) >> m2).
@@ -219,20 +359,6 @@ Proof.
   done. *)
   elim: xs => [//| a l ih ]. simpl. rewrite ih. done.
 Qed.
-
-Lemma guard_splits (p : T) (t : seq T) (C : Type) (f : seq T * seq T -> M C) :
-  guard (all (<= p) t) >> (splits t >>= f)
-  =
-  splits t >>= (fun x => guard (all (<= p) x.1) >>
-                      guard (all (<= p) x.2) >> f x).
-Proof.
-Admitted.
-
-Lemma all_cons (r : rel T) (x p : T) (xs : seq T) :
-  all (r p) (x :: xs) -> r p x.
-Proof.
-  rewrite /all => /andP[] ? _ //.
-Qed.
   
 Lemma in_all_r (r : rel T) {r_trans : transitive r} (x p : T) (t : seq T) :
   mem t x -> all (r p) t -> r p x.
@@ -257,15 +383,119 @@ Proof.
   rewrite /all /=.
   exact: H0. *)
 
-Lemma splits_guard (t : seq T) (C : Type) (f : seq T * seq T -> M C) :
-  splits t >>= f =
-  splits t >>= (fun x => (guard (subseq x.1 t) >> guard (subseq x.2 t)) >> f x).
+(* Lemma tsplits_guard (t : seq T) (C : Type) (f : (size t).-bseq T * (size t).-bseq T -> M C) :
+  tsplits t >>= f =
+  tsplits t >>= (fun x => (guard (subseq x.1 t) >> guard (subseq x.2 t)) >> f x).
 Proof.
+  elim: t C f => [C f|h t ih f f0] /=.
+  by rewrite 2!bindretf /= eqxx guardT 2!bindskipf.
+  rewrite /= ih !bindA.
+  bind_ext => -[a b] /=.
+  bind_ext; case => a0 b0 /=.
   (* rewrite 
   (do x <- splits t; (guard (subseqmodulo perm x.1 t) >> guard (subseq x.2 t)) >> f x)%Do. *)
+Admitted. *)
+
+Lemma subseq_all (p : T) (s1 s2: seq T) :
+  subseq s1 s2 -> all (<= p) s2 -> all (<= p) s1.
+Proof.
+  elim: s2 s1 => [|x s2 ih] [|y s1] //=.
+  case: eqP => ? s12 /andP[? allps2].
+  apply/andP; split. 
+  by subst. 
+  by rewrite ih.
+  by apply (@ih (y :: s1) s12 allps2).
+Qed.
+
+Lemma subseq_all' (p : T) (s1 s1' s2: seq T) :
+  subseq s1 s2 && subseq s1' s2 -> all (<= p) s2 -> all (<= p) s1 && all (<= p) s1'.
+Proof.
+  move => /andP[h1 h1'] h2.
+  apply/andP; split.
+  by rewrite (@subseq_all p s1 s2).
+  by rewrite (@subseq_all p s1' s2).
+Qed.
+
+Lemma cat_cons_splits B (h p : T) (t : seq T) (f : (seq T * seq T) -> M B) :
+  @splits M _ t >>= (fun x => guard ((h <= p) && all (<= p) t) >> f x) 
+  =
+  splits t >>= (fun x => guard (all (<= p) (x.1 ++ h :: x.2)) >> f x).
+Proof.
+  transitivity (
+    splits t >>= (fun x => guard (all (<= p) t) >> f x)
+  ).
+  rewrite [in RHS]splits_guard_sub.
+  case: (h <= p).
+  by rewrite andbC andbT splits_guard_sub.
+  rewrite andbC andbF guardF.
+  bind_ext => -[a b].
+  rewrite bindfailf.
+  (* rewrite -all_cat.
+  rewrite guard_and.
+  rewrite guardsC.
+  rewrite cons_all.
+  rewrite [in RHS]splits_guard_sub.
+  by []. *)
 Admitted.
 
 Lemma guard_qperm_eq (B : Type) (p : T) (a : seq T) (f : seq T -> M B) :
+  guard (all (<= p) a) >>= (fun _ => qperm a >>= f) =
+  qperm a >>= (fun x => guard (all (<= p) x) >> f x).
+Proof.
+  move: p.
+  move szn : (size a) => n.
+  elim: n f a szn => [f a /eqP|n ih f].
+    rewrite size_eq0 => /eqP ->{a} p.
+    by rewrite qperm_nil 2!bindretf.
+  move=> -[//|h t [tn] p].
+  rewrite qperm_consE {1}/liftM2 !bindA /= guard_and [in LHS]bindA.
+  rewrite -bindA -guard_and /= /liftM2.
+  rewrite guardsC.
+  rewrite bindA.
+
+  bind_ext => ?.
+  rewrite !bindA.
+  bind_ext => ?.
+  rewrite !bindA.
+  bind_ext => ?.
+  rewrite !bindretf.
+  (* rewrite guardT bindskipf.
+  rewrite guard_splits.
+  rewrite -splits_guard_sub /liftM2.
+  (* rewrite [in LHS]bindA. *)
+  (* 1. guard and split commute *)
+  transitivity (
+    guard (h <= p) >>
+    (do x0 <- splits t;
+      guard (all (<= p) t) >>
+      do x <- do x1 <- qperm x0.1; do x2 <- qperm x0.2; Ret (x1 ++ h :: x2);
+      f x)%Do
+  ).
+  bind_ext => -[].
+  by rewrite splits_guard_sub guard_splits.
+
+  rewrite splits_guard_sub /liftM2.
+  
+  case: (h <= p).
+  rewrite guardT bindskipf.
+  rewrite -guard_splits.
+  rewrite guardsC; last exact (@bindmfail M).
+  rewrite bindA.
+  
+  rewrite -splits_guard_sub.
+  bind_ext => -[a b] /=.
+  rewrite !bindA.
+  bind_ext => ?.
+  rewrite !bindA.
+  bind_ext => ?.
+  rewrite !bindretf guardsC; last exact (@bindmfail M).
+  bind_ext => ?.
+  rewrite !assertE.
+  rewrite -guard_and.
+  rewrite -guard_splits. *)
+Admitted.
+
+(* Lemma guard_qperm_eq (B : Type) (p : T) (a : seq T) (f : seq T -> M B) :
   guard (all (<= p) a) >>= (fun _ => qperm a >>= f) =
   qperm a >>= (fun x => guard (all (<= p) x) >> f x).
 Proof.
@@ -294,12 +524,24 @@ transitivity (
   rewrite guard_splits.
   rewrite [in LHS]splits_guard.
   rewrite [in RHS]splits_guard.
-  bind_ext => -[a b].
+  bind_ext => -[a b] /=.
   rewrite -guard_and /=.
-  move c1 : (subseq a t && subseq b t) => bl.
+  (* move c2 : (all (<= p) t) => b2. *)
+  move c1 : (subseq a t && subseq b t) => b1.
   move: c1.
-  case: bl => ?.
+  case: b1 => ?.
   rewrite guardT !bindskipf.
+  rewrite -guard_and.
+  (* all p a && all p b = all p t はsubseqだけだと言えない？　
+  aの要素+bの要素はtの要素を漏れなく表していることを言えなければならない *)
+  rewrite (@subseq_all' p a b t) //.
+  move: c2.
+  case: b2 => ? //. admit.
+  move: c2.
+  case: b2 => ? //. admit.
+  rewrite guardF !bindfailf //.
+
+  by rewrite guardT bindskipf.
 
   admit.
 rewrite ![in RHS]bindA.
@@ -316,7 +558,53 @@ admit.
 rewrite /=.
 rewrite /liftM2. *)
 (* use ih after generalization *)
-Admitted.
+transitivity (
+  guard (h <= p) >>
+  (do x0 <- splits t;
+    guard (all (<= p) t) >>
+    do x <- do x1 <- qperm x0.1; do x2 <- qperm x0.2; Ret (x1 ++ h :: x2);
+    f x)%Do
+).
+Admitted. *)
+(* IDEA *)
+(* transitivity (
+  guard (h <= p) >>
+  (do x0 <- splits t;
+    guard (all (<= p) t) >>
+    do x <- do x1 <- qperm x0.1; do x2 <- qperm x0.2; Ret (x1 ++ h :: x2);
+    f x)%Do
+).
+bind_ext => -[].
+rewrite guard_splits.
+rewrite -splits_guard_sub //.
+rewrite guardsC; last exact: (@bindmfail M).
+rewrite bindA.
+bind_ext => -[a b].
+rewrite guardsC; last exact: (@bindmfail M).
+rewrite !bindA /=.
+bind_ext => x.
+rewrite !bindA.
+bind_ext; case.
+rewrite !bindretf.
+rewrite guardsC; last exact: (@bindmfail M).
+bind_ext => x0.
+rewrite !assertE bindA bindretf assertE /=.
+rewrite -bindA -guard_and.
+rewrite guard_and.
+case: (h <= p).
+rewrite guardT bindmskip bindskipf. admit.
+rewrite guardF. rewrite bindfailf bindA bindfailf. admit.
+move => a0 l.
+bind_ext; case.
+rewrite bindmskip bindskipf. admit.
+rewrite 
+rewrite guard_splits.
+rewrite ih.
+rewrite -guard_and /=.
+move c1 : (subseq a t && subseq b t) => bl.
+move: c1.
+case: bl => ?.
+rewrite guardT !bindskipf. *)
 
 (*
   rewrite guardsC; last exact: (@bindmfail M).
@@ -548,28 +836,6 @@ Qed.
 
 Definition qsortE := (qsort_nil, qsort_cons).
 
-Lemma lrefin_refl A B (a : A -> M B) :
- a `<.=` a.
-Proof. rewrite /lrefin /refin => x. by rewrite altmm. Qed.
-
-Lemma lrefin_trans A B (b a c : A -> M B) :
- a `<.=` b -> b `<.=` c -> a `<.=` c.
-Proof.
-  rewrite /lrefin /refin => h1 h2 x.
-  by rewrite -h2 altA h1.
-Qed.
-
-Lemma refin_refl A (a : M A) :
- a `<=` a.
-Proof. by rewrite /refin altmm. Qed.
-
-Lemma refin_trans A (b a c : M A) :
- a `<=` b -> b `<=` c -> a `<=` c.
-Proof. 
-  rewrite /refin => h1 h2.
-  by rewrite -h2 altA h1.
-Qed.
-
 Lemma quicksort_on_lists : Ret \o qsort `<.=` slowsort.
 Proof.
 move=> s.
@@ -613,7 +879,7 @@ rewrite qperm_cons.
 rewrite splitsE /=.
 Abort.
 
-Section Test.
+Section scratch_saito.
 Variable M : plusMonad.
 Lemma eq1 A B (f : A -> M B) : fail >>= f = fail.
 Proof. by apply: bindfailf. Qed.
@@ -687,21 +953,6 @@ Proof.
   by move/allP : allZs; apply.
 Qed.
 
-Lemma lemma1_l A B (m1 m2 : M A) (f : A -> M B) :
-  m1 `<=` m2 -> (m1 >>= f `<=` m2 >>= f).
-Proof.
-  by move=> m12; rewrite /refin -alt_bindDl m12.
-Qed.
-
-Lemma lemma1_r A B (m : M A) (f1 f2 : A -> M B) :
-  f1 `<.=` f2 -> (m >>= f1) `<=` (m >>= f2).
-Proof.
-  move=> f12. 
-  (* rewrite /refin -eq4.  *)
-  rewrite /refin -alt_bindDr. 
-  by bind_ext => a; rewrite f12.
-Qed.
-
 Lemma eq7 A (p q : bool) (m1 m2 : M A) :
   (if p then m1 else m2) `<=` (guard p >> m1) [~] (guard (~~ p) >> m2).
 Proof.
@@ -772,162 +1023,4 @@ Qed.
 Lemma rev_rev : forall (xs : seq T), rev (rev xs) = xs.
 Proof. by induction xs => //; rewrite rev_cons rev_rcons IHxs. Qed.
 
-(* 
-Lemma sorted_rev (x y : T) (xs : seq T) :
-  sorted (rev (y :: xs)) -> y <= x -> all (<= x) xs -> sorted (rev ([:: x] ++ y :: xs)).
-Proof.
-  move => h1 h2 h3.
-  rewrite rev_cat.
-  apply sorted_cat.
-  done.
-  done.
-  move => a ha b hb.
-  have h23 : all (<= x) (y :: xs).
-  apply sub. apply /andP. done.
-  rewrite rev_cons in ha.
-  apply: (@le_trans _ _ x).
-  move/allP : h3; apply.
-  move/allP : ha; apply.
-  unfold all. by apply/andP; split.
-  auto. *)
-End Test.
-
-Section specificationDemo.
-Variable M : plusMonad.
-
-(* perm *)
-Example perm1 : (@qperm M nat [::]) = Ret [::].
-by rewrite qpermE. Qed.
-Example perm2 : (@qperm M nat [:: 1]%N) = Ret [:: 1]%N.
-by rewrite /= qperm_cons /= bindretf /liftM2 /= qperm_nil 2!bindretf. Qed.
-Example perm3 : (@qperm M nat [:: 2; 1]%N) = Ret [:: 1; 2]%N [~] Ret [:: 2; 1]%N.
-rewrite qpermE !bindA bindretf alt_bindDl bindretf /liftM2.
-by repeat rewrite !qpermE !bindA bindretf !bindretf /=. Qed.
-Example perm4 : (@qperm M nat [:: 3; 2; 1]%N) = Ret [:: 1; 2; 3]%N [~] Ret [:: 1; 3; 2]%N [~]
-                                                Ret [:: 2; 1; 3]%N [~] Ret [:: 2; 3; 1]%N [~]
-                                                Ret [:: 3; 1; 2]%N [~] Ret [:: 3; 2; 1]%N.
-rewrite qpermE !bindA.
-repeat rewrite bindretf alt_bindDl.
-rewrite bindretf /liftM2.
-repeat rewrite !qpermE /= !bindA !bindretf !alt_bindDl !bindretf /= !/liftM2.
-repeat rewrite !qpermE !bindA bindretf !bindretf /=.
-rewrite -altA altACA !altA //. Qed.
-
-(* split *)
-Example split1 : (@splits M nat [::]) = Ret ([::], [::]).
-by []. Qed.
-Example split2 : (@splits M nat [:: 1; 2]%N) =
-  Ret ([:: 1; 2]%N, [::]%N) [~] Ret ([:: 2]%N, [:: 1]%N) [~]
-  Ret ([:: 1]%N, [:: 2]%N) [~] Ret ([::]%N, [:: 1; 2]%N).
-Proof.
-rewrite /splits bindA.
-repeat rewrite bindretf alt_bindDl !bindretf.
-by rewrite altA. 
-Qed.
-
-(* sorted *)
-Example sorted1 : (@sorted nat (<=%O) [::]%N) = true.
-by []. Qed.
-Example sorted2 : (@sorted nat (<=%O) [:: 1; 2; 3; 4]%N) = true.
-Proof.
-rewrite /sorted.
-rewrite /path.
-rewrite /= //. Qed.
-Example sorted3 : (@sorted nat (<=%O) [:: 1; 2; 4; 3]%N) = false.
-Proof.
-rewrite /sorted /path.
-rewrite /= //. Qed.
-
-(* filt *)
-Example filt1 : (@assert M _ (sorted <=%O)) [:: 1; 2; 3]%N = Ret ([:: 1; 2; 3]%N).
-rewrite /assert /guard /sorted /path /=; unlock.
-by rewrite bindskipf. Qed.
-
-Example filt2 : (@assert M _ (sorted <=%O)) [:: 2; 1; 3]%N = fail.
-rewrite /sorted /assert /guard /path /=.
-unlock.
-
-rewrite bindfailf //. Qed.
-
-Variables (d : unit) (T : porderType d).
-(* slowsort *)
-Definition bindskipE := (bindskipf, bindmskip).
-(* Definition bindfailE := (bindfailf, bindmfail). *)
-(* Definition altfailE := (altfailm, altmfail). *)
-
-Ltac sub := repeat rewrite !alt_bindDl !bindretf; rewrite bindA; repeat rewrite !qpermE !bindA !bindretf /=.
-Ltac bindSF := rewrite !bindskipf !bindfailf.
-Ltac slowsort_process := 
-  rewrite /slowsort kleisliE; 
-  rewrite !qpermE /bindA /= !bindretf; 
-  repeat sub;
-  rewrite /sorted /assert /guard /path /=; unlock;
-(*  repeat rewrite bindfailE;*)
-  repeat rewrite bindskipE(*;
-  repeat rewrite altfailE*).
-
-Example slowsort0 : (@slowsort M _ T [::]) = Ret [::].
-by slowsort_process.
-Qed.
-
-Example slowsort1 : (@slowsort M _ _ [:: 1; 2]%N) = Ret [:: 1; 2]%N.
-(*  by slowsort_process.
-Qed.*) Abort.
-
-Example slowsort2 : (@slowsort M _ _ [:: 2; 1]%N) = Ret [:: 1; 2]%N.
-(*  by slowsort_process.
-(* rewrite /slowsort kleisliE.
-rewrite !qpermE /bindA /= !bindretf.
-repeat sub.
-rewrite /sorted /assert /guard /path /=; unlock.
-bindSF.
-by rewrite altmfail. *)
-Qed.*) Abort.
-
-(* Goal (@slowsort M _ _ [:: 2; 1; 3; 4]%N) = Ret [:: 1; 2; 3; 4]%N.
-rewrite /slowsort kleisliE.
-rewrite !qpermE !bindA /= !bindretf.
-repeat sl.
-rewrite /assert /sorted /guard /path /=.
-unlock.
-bindSF.
-by rewrite !altfailm !altmfail.
-Qed. *)
-  
-Lemma refin_antisym A (m1 m2 : M A) : (m1 `<=` m2) /\ (m2 `<=` m1) -> m1 = m2.
-Proof. 
-move => -[h1 h2]. rewrite /refin in h1 h2. rewrite -h2 in h1.
-move: h1. rewrite altAC altmm h2 //.
-Qed.
-
-Example refin1 : (@qperm M nat [:: 1]%N) `>=` fail -> true.
-rewrite /refin.
-rewrite qpermE bindretf /liftM2.
-repeat rewrite !qpermE bindretf !bindretf /=.
-by rewrite altfailm.
-Qed.
-
-Example refin2 : (@qperm M nat [:: 1]%N) `>=` Ret [:: 1]%N -> true.
-rewrite /refin.
-rewrite qpermE bindretf /liftM2.
-repeat rewrite !qpermE bindretf !bindretf /=.
-by rewrite altmm.
-Qed.
-
-Example refin3 : (@qperm M nat [:: 2; 1]%N) `>=` Ret [:: 1; 2]%N -> true.
-rewrite /refin.
-rewrite qpermE !bindA bindretf alt_bindDl bindretf /liftM2.
-repeat rewrite !qpermE !bindA bindretf !bindretf /=.
-by rewrite altA altmm altC.
-Qed.
-    
-    (* Definition eq8_sub (p : T) (xs : seq T) : Ret (partition p xs) `<=` ((@splits M T xs) >>= assert (fun '(ys, zs) => all (<= p) ys && all (>= p) zs)). *)
-Variables (p : nat).
-(* partition *)
-Example part1 : partition 1%N [::] = ([::], [::]).
-Proof. by []. Qed.
-Example part2 : partition 1%N [:: 1; 2]%N = ([:: 1]%N, [:: 2]%N).
-Proof. by []. Qed.
-(* Example spfilt : (@splits M nat [:: 1; 2]%N) >>= assert (fun '(ys, zs) => all (<= 1%N) ys && all (>= 1%N) zs) = Ret ([:: 1]%N, [:: 2]%N) [~] Ret ([::], [:: 1; 2]%N). *)
-
-    End specificationDemo.
+End scratch_saito.
