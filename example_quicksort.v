@@ -2,7 +2,7 @@
 (* Copyright (C) 2020 monae authors, license: LGPL-2.1-or-later               *)
 From mathcomp Require Import all_ssreflect.
 From mathcomp Require boolp.
-Require Import monae_lib hierarchy monad_lib fail_lib.
+Require Import monae_lib hierarchy monad_lib fail_lib state_lib.
 From infotheo Require Import ssr_ext.
 
 (******************************************************************************)
@@ -213,13 +213,14 @@ Proof.
   by rewrite alt_bindDl 2!bindretf. *)
 Admitted.
 
-Lemma splits_guard_cons' {d : unit} {T : porderType d} {M : plusMonad} h (p : pred T) (t : seq T) (C : Type) (f : seq T * seq T -> M C) :
-  splits t >>= (fun x => guard (all p (h :: t)) >> f x) =
+(* Lemma splits_guard_cons' {d : unit} {T : porderType d} {M : plusMonad} h (p : pred T) (t : seq T) (C : Type) (f : seq T * seq T -> M C) :
+  splits t >>= (fun x => guard (all p (x.1 ++ t ::)) >> f x) =
   splits t >>= (fun x => guard (all p x.1) >> guard (all p x.2) >> guard (p h) >> f x).
 Proof.
-  elim: t p C f => [p C f|a l ih p C f].
+Admitted. *)
+  (* elim: t p C f => [p C f|a l ih p C f]. 
   by rewrite /splits 2!bindretf /= guardT 2!bindskipf andbT.
-  bind_ext; case.
+  bind_ext; case.*)
   (* rewrite /= andbT.
   rewrite -all_cons guard_and.
   rewrite splits_guardC.
@@ -232,7 +233,7 @@ Proof.
   rewrite (@splits_guardA _ _ M (p h)).
   rewrite splits_guard_sub.
   case: (p h); rewrite (guardT, guardF). *)
-Admitted.
+(* Admitted. *)
 
 Local Close Scope mprog.
 
@@ -356,23 +357,6 @@ Lemma guard_sub_inv (x p : T) (xs : seq T) (B : Type) (f : seq T -> M B) :
 Proof.
   by [].
 Qed.
-
-Lemma Pxs (s : T) (ss : seq T) (p : seq T -> Prop) :
-  (forall xs : seq T, p xs) -> p (s :: ss).
-Proof.
-  by [].
-Qed.
-
-Lemma tseqt (s : T) (ss : seq T) (p : seq T -> bool) :
-  (forall xs : seq T, p xs) -> p [:: s].
-Proof. by []. Qed.
-
-Lemma app_nil_r (xs : seq T) : xs ++ [::] = xs.
-Proof.
-  (* induction xs.
-  done. *)
-  elim: xs => [//| a l ih ]. simpl. rewrite ih. done.
-Qed.
   
 Lemma in_all_r (r : rel T) {r_trans : transitive r} (x p : T) (t : seq T) :
   mem t x -> all (r p) t -> r p x.
@@ -383,32 +367,6 @@ Proof.
   by subst.
   move: h h2 => //.
 Qed.
-
-(* Lemma subseq_all p (a b t : seq T) (C : Type) (f : seq T * seq T -> M C) :
-  subseq a t && subseq b t -> 
-  all (<= p) t -> all (<= p) a && all (<= p) b.
-Proof.
-  intros.
-  induction a.
-  induction b. 
-  rewrite //.
-  move: H => /andP[] h1 h2.
-  apply /andP; split => //.
-  rewrite /all /=.
-  exact: H0. *)
-
-(* Lemma tsplits_guard (t : seq T) (C : Type) (f : (size t).-bseq T * (size t).-bseq T -> M C) :
-  tsplits t >>= f =
-  tsplits t >>= (fun x => (guard (subseq x.1 t) >> guard (subseq x.2 t)) >> f x).
-Proof.
-  elim: t C f => [C f|h t ih f f0] /=.
-  by rewrite 2!bindretf /= eqxx guardT 2!bindskipf.
-  rewrite /= ih !bindA.
-  bind_ext => -[a b] /=.
-  bind_ext; case => a0 b0 /=.
-  (* rewrite 
-  (do x <- splits t; (guard (subseqmodulo perm x.1 t) >> guard (subseq x.2 t)) >> f x)%Do. *)
-Admitted. *)
 
 Lemma subseq_all (p : T) (s1 s2: seq T) :
   subseq s1 s2 -> all (<= p) s2 -> all (<= p) s1.
@@ -430,7 +388,7 @@ Proof.
   by rewrite (@subseq_all p s1' s2).
 Qed.
 
-Lemma cat_cons_splits B (h p : T) (t : seq T) (f : (seq T * seq T) -> M B) :
+(* Lemma cat_cons_splits B (h p : T) (t : seq T) (f : (seq T * seq T) -> M B) :
   @splits M _ t >>= (fun x => guard ((h <= p) && all (<= p) t) >> f x) 
   =
   splits t >>= (fun x => guard (all (<= p) (x.1 ++ h :: x.2)) >> f x).
@@ -450,263 +408,97 @@ Proof.
   rewrite cons_all.
   rewrite [in RHS]splits_guard_sub.
   by []. *)
-Admitted.
+Admitted. *)
 
-Lemma guard_qperm_eq (B : Type) (p : T) (a : seq T) (f : seq T -> M B) :
-  guard (all (<= p) a) >>= (fun _ => qperm a >>= f) =
-  qperm a >>= (fun x => guard (all (<= p) x) >> f x).
+Definition nondet_plusMonad (M : plusMonad) A (n : M A) :=
+  {m | ndDenote m = n}.
+
+Lemma commute_plusMonad
+  A (m : M A) B (n : M B) C (f : A -> B -> M C) :
+  nondet_plusMonad m -> commute m n f.
+Proof.
+case => x.
+elim: x m n f => [{}A a m n f <-| B0 {}A n0 H0 n1 H1 m n2 f <- |
+  A0 m n f <- | A0 n0 H0 n1 H1 m n2 f <-].
+- rewrite /commute bindretf /=.
+  by under [RHS]eq_bind do rewrite bindretf.
+- rewrite /commute /= !bindA.
+  transitivity (do x <- ndDenote n0; do y <- n2; ndDenote (n1 x) >>= f^~ y)%Do.
+    bind_ext => s.
+    by rewrite (H1 s).
+  rewrite H0 //.
+  bind_ext => b.
+  by rewrite bindA.
+- rewrite /commute /= bindfailf.
+  transitivity (n >> fail : M C).
+    by rewrite (@bindmfail M).
+  bind_ext => b.
+  by rewrite (@bindfailf M).
+- rewrite /commute /= alt_bindDl.
+  transitivity (do y <- n2; ndDenote n0 >>= f^~ y [~]
+                           ndDenote n1 >>= f^~ y)%Do; last first.
+    bind_ext => a.
+    by rewrite alt_bindDl.
+  by rewrite alt_bindDr H0 // H1.
+Qed.
+
+Lemma commute_guard_n
+  (b : bool) B (n : M B) C (f : unit -> B -> M C) :
+  commute (guard b) n f.
+Proof.
+  rewrite /commute.
+  rewrite commute_plusMonad => [//|]; exists (if b then ndRet tt else @ndFail _).
+  by case: ifP; rewrite (guardT, guardF).
+Qed.
+
+Lemma guard_qperm_eq (B : Type) (p : pred T) (a : seq T) (f : seq T -> M B) :
+  guard (all p a) >>= (fun _ => qperm a >>= f) =
+  qperm a >>= (fun x => guard (all p x) >> f x).
 Proof.
   move: p.
-  move szn : (size a) => n.
-  elim: n f a szn => [f a /eqP|n ih f].
-    rewrite size_eq0 => /eqP ->{a} p.
-    by rewrite qperm_nil 2!bindretf.
-  move=> -[//|h t [tn] p].
+  have [n leMn] := ubnP (size a); elim: n => // n ih in a f leMn *.
+  move: a leMn.
+  case. 
+  move=> _ p.
+  by rewrite /= qperm_nil 2!bindretf /=.
+  move => h t.
+  rewrite ltnS => tn p.
   rewrite qperm_consE {1}/liftM2 !bindA /= guard_and [in LHS]bindA.
-  rewrite -bindA -guard_and /= /liftM2.
-  rewrite guardsC.
-  rewrite bindA.
-
-  bind_ext => ?.
-  rewrite !bindA.
-  bind_ext => ?.
-  rewrite !bindA.
-  bind_ext => ?.
-  rewrite !bindretf.
-  (* rewrite guardT bindskipf.
-  rewrite guard_splits.
-  rewrite -splits_guard_sub /liftM2.
-  (* rewrite [in LHS]bindA. *)
-  (* 1. guard and split commute *)
-  transitivity (
-    guard (h <= p) >>
-    (do x0 <- splits t;
-      guard (all (<= p) t) >>
-      do x <- do x1 <- qperm x0.1; do x2 <- qperm x0.2; Ret (x1 ++ h :: x2);
-      f x)%Do
-  ).
-  bind_ext => -[].
-  by rewrite splits_guard_sub guard_splits.
-
-  rewrite splits_guard_sub /liftM2.
-  
-  case: (h <= p).
-  rewrite guardT bindskipf.
-  rewrite -guard_splits.
-  rewrite guardsC; last exact (@bindmfail M).
-  rewrite bindA.
-  
-  rewrite -splits_guard_sub.
+  rewrite -bindA -guard_and (all_cons h).
+  rewrite guard_splits_cons /liftM2.
+  rewrite splitsE /= fmapE !bindA.
   bind_ext => -[a b] /=.
-  rewrite !bindA.
-  bind_ext => ?.
-  rewrite !bindA.
-  bind_ext => ?.
-  rewrite !bindretf guardsC; last exact (@bindmfail M).
-  bind_ext => ?.
-  rewrite !assertE.
-  rewrite -guard_and.
-  rewrite -guard_splits. *)
-Admitted.
-
-(* Lemma guard_qperm_eq (B : Type) (p : T) (a : seq T) (f : seq T -> M B) :
-  guard (all (<= p) a) >>= (fun _ => qperm a >>= f) =
-  qperm a >>= (fun x => guard (all (<= p) x) >> f x).
-Proof.
-move: p.
-move szn : (size a) => n.
-elim: n f a szn => [f a /eqP|n ih f].
-  rewrite size_eq0 => /eqP ->{a} p.
-  by rewrite qperm_nil 2!bindretf.
-move=> -[//|h t [tn] p].
-rewrite qperm_consE.
-rewrite {1}/liftM2.
-rewrite !bindA.
-rewrite /=.
-rewrite guard_and.
-rewrite [in LHS]bindA.
-(* rewrite [in LHS]bindA. *)
-(* 1. guard and split commute *)
-transitivity (
-  guard (h <= p) >>
-  (do x0 <- splits t;
-    guard (all (<= p) t) >>
-    do x <- do x1 <- qperm x0.1; do x2 <- qperm x0.2; Ret (x1 ++ h :: x2);
-    f x)%Do
-).
-  bind_ext => -[].
-  rewrite guard_splits.
-  rewrite [in LHS]splits_guard.
-  rewrite [in RHS]splits_guard.
-  bind_ext => -[a b] /=.
-  rewrite -guard_and /=.
-  (* move c2 : (all (<= p) t) => b2. *)
-  move c1 : (subseq a t && subseq b t) => b1.
-  move: c1.
-  case: b1 => ?.
-  rewrite guardT !bindskipf.
-  rewrite -guard_and.
-  (* all p a && all p b = all p t はsubseqだけだと言えない？　
-  aの要素+bの要素はtの要素を漏れなく表していることを言えなければならない *)
-  rewrite (@subseq_all' p a b t) //.
-  move: c2.
-  case: b2 => ? //. admit.
-  move: c2.
-  case: b2 => ? //. admit.
-  rewrite guardF !bindfailf //.
-
-  by rewrite guardT bindskipf.
-
-  admit.
-rewrite ![in RHS]bindA.
-transitivity (
-  (do x0 <- splits t;
-  guard (h <= p) >>
-   guard (all (<= p) t) >>
-   (do x <-
-    do x1 <- qperm x0.1; do x2 <- qperm x0.2; Ret (x1 ++ h :: x2);
-    f x))%Do
-).
-admit.
-(* bind_ext => -[a b].
-rewrite /=.
-rewrite /liftM2. *)
-(* use ih after generalization *)
-transitivity (
-  guard (h <= p) >>
-  (do x0 <- splits t;
-    guard (all (<= p) t) >>
-    do x <- do x1 <- qperm x0.1; do x2 <- qperm x0.2; Ret (x1 ++ h :: x2);
-    f x)%Do
-).
-Admitted. *)
-(* IDEA *)
-(* transitivity (
-  guard (h <= p) >>
-  (do x0 <- splits t;
-    guard (all (<= p) t) >>
-    do x <- do x1 <- qperm x0.1; do x2 <- qperm x0.2; Ret (x1 ++ h :: x2);
-    f x)%Do
-).
-bind_ext => -[].
-rewrite guard_splits.
-rewrite -splits_guard_sub //.
-rewrite guardsC; last exact: (@bindmfail M).
-rewrite bindA.
-bind_ext => -[a b].
-rewrite guardsC; last exact: (@bindmfail M).
-rewrite !bindA /=.
-bind_ext => x.
-rewrite !bindA.
-bind_ext; case.
-rewrite !bindretf.
-rewrite guardsC; last exact: (@bindmfail M).
-bind_ext => x0.
-rewrite !assertE bindA bindretf assertE /=.
-rewrite -bindA -guard_and.
-rewrite guard_and.
-case: (h <= p).
-rewrite guardT bindmskip bindskipf. admit.
-rewrite guardF. rewrite bindfailf bindA bindfailf. admit.
-move => a0 l.
-bind_ext; case.
-rewrite bindmskip bindskipf. admit.
-rewrite 
-rewrite guard_splits.
-rewrite ih.
-rewrite -guard_and /=.
-move c1 : (subseq a t && subseq b t) => bl.
-move: c1.
-case: bl => ?.
-rewrite guardT !bindskipf. *)
-
-(*
-  rewrite guardsC; last exact: (@bindmfail M).
-  rewrite bindA.  
-  bind_ext => x.
-  rewrite guardsC; last exact: (@bindmfail M).
-  
-  (* rewrite [in LHS]bindA. *)
-  case: (x == a) => //.
-  bind_ext => x1.*)
-
-  (* elim: x => [|a0 l].
-  elim: a => [//|a l].
-  rewrite /=.
-  rewrite /assert /guard; unlock.
-  rewrite bindskipf.
-  elim: a => //= => [| x xs ih ].
-  by rewrite guardT bindskipf qperm_nil 2!bindretf /= guardT bindskipf.
-  rewrite guard_and.
-  rewrite bindA.
-  rewrite qperm_cons.
-  case: (x <= p) => [|].
-  rewrite guardT bindskipf.
-  rewrite //.
-  bind_ext => -[a b].
-  rewrite !bindA.
-  rewrite guardsC. *)
-
-  (* rewrite joinE.
-  rewrite ih.
-  elim: a p f => /= => [p f|x xs ih p f].
-  rewrite guard_sub_inv.
-  subst.
-  elim/ltn_ind: a => [].
-  move: a. *)
-  (* have {ih}.
-  rewrite {}ih.
-  (* (tl  (hd :: tl)). *)
-  unfold guard.
-  rewrite qperm_cons.
-
-  rewrite ih.
-  case tl.
-
-  rewrite /=.
-  apply tseqt.
-  by [].
-  rewrite guard_and; simpl.
-
-  rewrite <- IHa; auto. move: a0.
-  induction a0.
-  rewrite IHa.
-  move: a; induction a.
-  case.
-  rewrite qperm_cons.
-  destruct IHa.
-  move: ih.
-  move: tl.
-
-
-  rewrite guardT.
-  elim tl => [ /= |]; simpl in *.
-  rewrite qperm_nil.
-  rewrite bindskipf.
-  rewrite /=.
-  rewrite <- ih. *)
-  (* rewrite guardT.
-  rewrite bindskipf.
-  rewrite qperm_nil.
-  rewrite bindretf.
-  rewrite bindretf. *)
-
-  (* rewrite sub_inv.
-  elim: (x :: xs).
-
-  simpl.
-
-  rewrite guardsC.
-  rewrite qperm_cons.
-  rewrite ih. *)
+  rewrite 2!bindretf /=.
+  (* transitivity (
+    ((guard (all p b) >> guard (p h)) >> guard (all p a) >>
+    (do x <- do x1 <- qperm a; do x2 <- qperm b; Ret (x1 ++ h :: x2); f x)%Do)
+    ). *)
+  rewrite -2!guard_and andbC andbA andbC andbA 2!guard_and !bindA.
+  rewrite ih; last by rewrite (leq_trans _ tn) //= ltnS size_bseq.
+  (* transitivity (
+    (do x0 <- qperm a; ((guard (p h) >> guard (all p x0)) >> guard (all p b))
+    >> (do x1 <- do x2 <- qperm b; Ret (x0 ++ h :: x2); f x1)%Do)%Do
+  ). *)
+  rewrite -bindA -guard_and commute_guard_n.
+  bind_ext => x0.
+  rewrite -bindA -guard_and andbC andbA andbC andbA 2!guard_and !bindA.
+  rewrite ih; last by rewrite (leq_trans _ tn) //= ltnS size_bseq.
+  (* transitivity (
+    (do x2 <- qperm b; ((guard (p h) >> guard (all p x0)) >> guard (all p x2)) >>
+    (do x3 <- Ret (x0 ++ h :: x2); f x3)%Do)%Do
+  ). *)
+  rewrite -bindA -guard_and commute_guard_n.
+  bind_ext => x1.
+  by rewrite -bindA -!guard_and 2!bindretf all_cat_cons.
+Qed.
 
 Lemma guard_qperm_eq2 (B : Type) (p : T) (a : seq T) (f : seq T -> M B) :
  guard (all (>= p) a) >> (qperm a >>= f) = qperm a >>= (fun x => (guard (all (>= p) x) >> f x)).
-Admitted.
+Proof. by rewrite guard_qperm_eq. Qed.
 
 Lemma guard_qperm_neq (B : Type) (b a : seq T) (r : pred T) (f : seq T -> M B) :
   guard (all r b) >> (qperm a >>= f) =
-    qperm a >>= (fun x => (guard (all r b) >> f x)).
+  qperm a >>= (fun x => (guard (all r b) >> f x)).
 Proof.
 rewrite guardsC; last exact: (@bindmfail M).
 rewrite bindA.
@@ -721,17 +513,21 @@ Lemma refin_slowsort_inductive_case (p : T) (xs : seq T) :
     (qperm zs >>= assert sorted) >>= (fun zs' =>
     Ret (ys' ++ [:: p] ++ zs')))).
 Proof.
-transitivity (splits xs >>= (fun '(ys, zs) =>
-    qperm ys >>= (fun ys' => qperm zs >>= (fun zs' =>
-    assert sorted (ys' ++ [:: p] ++ zs')))) : M _).
+transitivity (
+  splits xs >>= (fun '(ys, zs) =>
+  qperm ys >>= (fun ys' => qperm zs >>= (fun zs' =>
+  assert sorted (ys' ++ [:: p] ++ zs')))) : M _
+).
   rewrite /slowsort /= kleisliE qperm_cons /= !bindA.
   bind_ext => -[a b] /=.
   rewrite /liftM2 bindA; bind_ext => s.
   by rewrite bindA; bind_ext => s'; rewrite bindretf.
-transitivity (splits xs >>= (fun '(ys, zs) =>
-    qperm ys >>= (fun ys' => qperm zs >>= (fun zs' =>
-    guard ([&& sorted ys', sorted zs', all (<= p) ys' & all (>= p) zs']) >>
-    Ret (ys' ++ [:: p] ++ zs')))) : M _).
+transitivity (
+  splits xs >>= (fun '(ys, zs) =>
+  qperm ys >>= (fun ys' => qperm zs >>= (fun zs' =>
+  guard ([&& sorted ys', sorted zs', all (<= p) ys' & all (>= p) zs']) >>
+  Ret (ys' ++ [:: p] ++ zs')))) : M _
+).
   bind_ext => -[a b]; bind_ext => s; bind_ext => s'; rewrite assertE /=.
   by rewrite -sorted_cat_cons.
 bind_ext=> {xs} -[a b].
