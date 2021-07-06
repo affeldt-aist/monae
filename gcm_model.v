@@ -621,7 +621,7 @@ End P_delta_functor.
 
 (* TODO: move *)
 Require monad_lib.
-Require Import hierarchy.
+Require Import hierarchy proba_hierarchy.
 
 Section P_delta_category_monad.
 Import category.

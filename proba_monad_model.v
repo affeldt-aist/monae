@@ -6,10 +6,12 @@ From mathcomp Require boolp.
 From infotheo Require Import Reals_ext ssr_ext fsdist.
 From infotheo Require Import convex.
 From HB Require Import structures.
-Require Import monae_lib hierarchy monad_lib proba_lib.
+Require Import monae_lib hierarchy proba_hierarchy monad_lib proba_lib.
 
 (******************************************************************************)
 (*                     Model for the probability monad                        *)
+(*                                                                            *)
+(* Module MonadProbModel == probMonad using fsdist from infotheo              *)
 (******************************************************************************)
 
 Local Open Scope monae_scope.
@@ -74,7 +76,8 @@ Let choice0 : forall (T : UU0) (a b : acto T), choice 0%:pr _ a b = b.
 Proof. by move=> ? ? ?; exact: ConvFSDist.conv0. Qed.
 Let choice1 : forall (T : UU0) (a b : acto T), choice 1%:pr _ a b = a.
 Proof. by move=> ? ? ?; exact: ConvFSDist.conv1. Qed.
-Let choiceC : forall (T : UU0) p (a b : acto T), choice p _ a b = choice (p.~ %:pr) _ b a.
+Let choiceC : forall (T : UU0) p (a b : acto T),
+  choice p _ a b = choice (p.~ %:pr) _ b a.
 Proof. by move=> ? ? ?; exact: ConvFSDist.convC. Qed.
 Let choicemm : forall (T : Type) p, idempotent (@choice p T).
 Proof. by move=> ? ? ?; exact: ConvFSDist.convmm. Qed.
@@ -84,7 +87,8 @@ Let choiceA : forall (T : Type) (p q r s : prob) (a b c : acto T),
     let ab := (choice r _ a b) in
     choice p _ a bc = choice s _ ab c.
 Proof. by move=> ? ? ? ? ? ? ? ? ? /=; exact: ConvFSDist.convA. Qed.
-Let prob_bindDl p : BindLaws.left_distributive (@hierarchy.bind [the monad of acto]) (choice p).
+Let prob_bindDl p :
+  BindLaws.left_distributive (@hierarchy.bind [the monad of acto]) (choice p).
 Proof.
 move=> A B m1 m2 k.
 rewrite !(@BindE (choice_of_Type A) (choice_of_Type B)).

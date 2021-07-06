@@ -9,6 +9,7 @@ From HB Require Import structures.
 
 (******************************************************************************)
 (*        A formalization of monadic effects over the category Set            *)
+(*       (part 1/2, see proba_hierarchy.v for the probability monads)         *)
 (*                                                                            *)
 (* We consider the type Type of Coq as the category Set and define functors   *)
 (* and a hierarchy of monads on top of functors. These monads are used to     *)
@@ -96,7 +97,6 @@ Reserved Notation "f (o) g" (at level 11).
 Reserved Notation "m >> f" (at level 49).
 Reserved Notation "'fmap' f" (at level 4).
 Reserved Notation "x '[~]' y" (at level 50).
-Reserved Notation "mx <| p |> my" (format "mx  <| p |>  my", at level 49).
 
 Notation "f ~~> g" := (forall A, f A -> g A)
   (at level 51, only parsing) : monae_scope.

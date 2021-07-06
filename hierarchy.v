@@ -2,15 +2,14 @@
 (* Copyright (C) 2020 monae authors, license: LGPL-2.1-or-later               *)
 Ltac typeof X := type of X.
 
-Require Import ssrmatching Reals.
+Require Import ssrmatching.
 From mathcomp Require Import all_ssreflect.
-From mathcomp Require boolp.
-From infotheo Require Import Reals_ext.
 Require Import monae_lib.
 From HB Require Import structures.
 
 (******************************************************************************)
 (*        A formalization of monadic effects over the category Set            *)
+(*       (part 1/2, see proba_hierarchy.v for the probability monads)         *)
 (*                                                                            *)
 (* We consider the type Type of Coq as the category Set and define functors   *)
 (* and a hierarchy of monads on top of functors. These monads are used to     *)
@@ -70,13 +69,6 @@ From HB Require Import structures.
 (*       stateTraceMonad == state + trace                                     *)
 (*  stateTraceReifyMonad == stateTrace + reify                                *)
 (*                                                                            *)
-(* Probability monads:                                                        *)
-(*         probaMonad == probabilistic choice and bind left-distributes over  *)
-(*                       choice                                               *)
-(*        probDrMonad == probaMonad + bind right-distributes over choice      *)
-(*       altProbMonad == combined (probabilistic and nondeterministic) choice *)
-(*    exceptProbMonad == exceptions + probabilistic choice                    *)
-(*                                                                            *)
 (* Freshness monads:                                                          *)
 (*         freshMonad == monad with freshness                                 *)
 (*     failFreshMonad == freshMonad + failure                                 *)
@@ -105,7 +97,6 @@ Reserved Notation "f (o) g" (at level 11).
 Reserved Notation "m >> f" (at level 49).
 Reserved Notation "'fmap' f" (at level 4).
 Reserved Notation "x '[~]' y" (at level 50).
-Reserved Notation "mx <| p |> my" (format "mx  <| p |>  my", at level 49).
 
 Notation "f ~~> g" := (forall A, f A -> g A)
   (at level 51, only parsing) : monae_scope.
@@ -163,6 +154,7 @@ Qed.
 HB.instance Definition _ :=
   isFunctor.Build (f \o g) functorcomposition_id functorcomposition_comp.
 
+(* TODO: consider eliminating *)
 Definition FComp := [the functor of f \o g].
 End functorcomposition.
 
@@ -1038,70 +1030,6 @@ HB.structure Definition MonadStateTraceReify (S T : UU0) :=
   { M of isMonadStateTraceReify S T M & isFunctor M & isMonad M &
          isMonadReify S M & isMonadStateTrace S T M }.
 Notation stateTraceReifyMonad := MonadStateTraceReify.type.
-
-Local Open Scope reals_ext_scope.
-HB.mixin Record isMonadProb (M : UU0 -> UU0) of Monad M := {
-  choice : forall (p : prob) (T : UU0), M T -> M T -> M T ;
-  (* identity axioms *)
-  choice0 : forall (T : UU0) (a b : M T), choice 0%:pr _ a b = b ;
-  choice1 : forall (T : UU0) (a b : M T), choice 1%:pr _ a b = a ;
-  (* skewed commutativity *)
-  choiceC : forall (T : UU0) p (a b : M T), choice p _ a b = choice (p.~ %:pr) _ b a ;
-  choicemm : forall (T : UU0) p, idempotent (@choice p T) ;
-  (* quasi associativity *)
-  choiceA : forall (T : UU0) (p q r s : prob) (a b c : M T),
-    (p = r * s :> R /\ s.~ = p.~ * q.~)%R ->
-    (*NB: needed to preserve the notation in the resulting choiceA lemma, report? *)
-    let bc := choice q _ b c in
-    let ab := choice r _ a b in
-    choice p _ a bc = choice s _ ab c;
-  (* composition distributes leftwards over [probabilistic] choice *)
-  prob_bindDl : forall p, BindLaws.left_distributive (@bind [the monad of M]) (choice p)
-}.
-
-HB.structure Definition MonadProb := {M of isMonadProb M & }.
-Notation "a <| p |> b" := (choice p _ a b).
-Notation probMonad := MonadProb.type.
-Arguments choiceA {_} {_} _ _ _ _ {_} {_} {_}.
-Arguments choiceC {_} {_} _ _ _.
-Arguments choicemm {_} {_} _.
-
-HB.mixin Record isMonadProbDr (M : UU0 -> UU0) of MonadProb M := {
-  (* composition distributes rightwards over [probabilistic] choice *)
-  (* WARNING: this should not be asserted as an axiom in conjunction with
-     distributivity of <||> over [] *)
-  prob_bindDr : forall p, BindLaws.right_distributive (@bind [the monad of M]) (choice p) (* NB: not used *)
-}.
-
-HB.structure Definition MonadProbDr := {M of isMonadProbDr M & }.
-Notation probDrMonad := MonadProbDr.type.
-
-HB.mixin Record isMonadAltProb (M : UU0 -> UU0) of MonadAltCI M & MonadProb M := {
-  choiceDr : forall T p,
-    right_distributive (@choice [the probMonad of M] p T) (fun a b => a [~] b)
-}.
-HB.structure Definition MonadAltProb :=
-  { M of isMonadAltProb M & isFunctor M & isMonad M & isMonadAlt M &
-         isMonadAltCI M & isMonadProb M }.
-Notation altProbMonad := MonadAltProb.type.
-
-Section altprob_lemmas.
-Local Open Scope proba_monad_scope.
-Variable (M : altProbMonad).
-Lemma choiceDl A p :
-  left_distributive (fun x y : M A => x <| p |> y) (fun x y => x [~] y).
-Proof. by move=> x y z; rewrite !(choiceC p) choiceDr. Qed.
-End altprob_lemmas.
-
-HB.mixin Record isMonadExceptProb (M : UU0 -> UU0) of MonadExcept M & MonadProb M := {
-  catchDl : forall (A : UU0) w,
-    left_distributive (@catch [the exceptMonad of M] A) (fun x y => choice w A x y)
-}.
-
-HB.structure Definition MonadExceptProb :=
- { M of isMonadExceptProb M & isFunctor M & isMonad M & isMonadFail M &
-        isMonadExcept M & isMonadProb M }.
-Notation exceptProbMonad := MonadExceptProb.type.
 
 HB.mixin Record isMonadFresh (S : eqType) (M : UU0 -> UU0) of Monad M := {
   fresh : M S
