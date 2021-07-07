@@ -507,13 +507,9 @@ Tactic Notation "With" tactic(tac) "Open" ssrpatternarg(pat) :=
 Tactic Notation "Open" ssrpatternarg(pat) :=
   With (idtac) Open pat.
 
-Tactic Notation "Inf" tactic(tac) :=
-  (With (tac; reflexivity) Open (X in @bind _ _ _ _ X = _ )) ||
-  (With (tac; reflexivity) Open (X in _ = @bind _ _ _ _ X)).
-
-Tactic Notation "rewrite_" constr(lem) :=
-  (With (rewrite lem; reflexivity) Open (X in @bind _ _ _ _ X = _ )) ||
-  (With (rewrite lem; reflexivity) Open (X in _ = @bind _ _ _ _ X)).
+Lemma eq_bind (M : monad) (A B : UU0) (m : M A) (f1 f2 : A -> M B) :
+  f1 =1 f2 -> m >>= f1 = m >>= f2.
+Proof. by move=> f12; congr bind; apply fun_ext. Qed.
 
 Section fmap_and_join.
 Variable M : monad.
@@ -527,7 +523,7 @@ Qed.
 
 Lemma bind_fmap (A B C : UU0) (f : A -> B) (m : M A) (g : B -> M C) :
   fmap f m >>= g = m >>= (g \o f).
-Proof. by rewrite fmapE bindA; rewrite_ bindretf. Qed.
+Proof. by rewrite fmapE bindA; under eq_bind do rewrite bindretf. Qed.
 
 Lemma fmap_if (A B : UU0) (f : A -> B) b (m : M A) a :
   fmap f (if b then m else Ret a) = if b then fmap f m else Ret (f a).
@@ -658,13 +654,11 @@ Lemma guardsC (HM : BindLaws.right_zero (@bind M) (@fail _)) b B (m : M B) :
   guard b >> m = m >>= assert (fun=> b).
 Proof.
 case: guardPn => Hb.
-  rewrite bindskipf.
-  rewrite /assert; unlock; rewrite guardT.
-  rewrite_ bindskipf.
+- rewrite bindskipf.
+  under eq_bind do rewrite assertT.
   by rewrite bindmret.
-rewrite /assert; unlock; rewrite guardF.
-rewrite_ bindfailf.
-by rewrite bindfailf HM.
+- under [RHS]eq_bind do rewrite assertF.
+  by rewrite bindfailf HM.
 Qed.
 
 End guard_assert.

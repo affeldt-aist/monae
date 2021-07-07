@@ -308,7 +308,7 @@ rewrite -mpair_uniform; last 2 first.
   by rewrite /doors Set3.enumE.
 rewrite /play /monty /mpair bindA; bind_ext => x.
 rewrite bindA.
-by rewrite_ bindretf.
+by under [RHS]eq_bind do rewrite bindretf.
 Qed.
 
 Lemma hide_pickE D (f : door -> door -> M D) :
@@ -317,7 +317,7 @@ Lemma hide_pickE D (f : door -> door -> M D) :
 Proof.
 transitivity (mpair (hide, pick) >>= (fun hp => f hp.1 hp.2)).
   rewrite bindA; bind_ext => x.
-  rewrite bindA; by rewrite_ bindretf.
+  by rewrite bindA; under [RHS]eq_bind do rewrite bindretf.
 by rewrite mpair_uniform // /doors Set3.enumE.
 Qed.
 
@@ -328,7 +328,7 @@ transitivity (do hp <- uniform (def, def) (cp doors doors);
                   let h := hp.1 in let p := hp.2 in
                   do t <- tease h p ; Ret (p == h) : M _)%Do.
   bind_ext => x /=.
-  by rewrite_ bindretf.
+  by under eq_bind do rewrite bindretf.
 transitivity (uniform (def, def) (cp doors doors) >>= (fun hp =>
               let h := hp.1 in let p := hp.2 in
               Ret (h == p)) : M _).
@@ -344,7 +344,7 @@ rewrite {1}/play {1}/monty hide_pickE.
 transitivity (do hp <- uniform (def, def) (cp doors doors);
   do t <- tease hp.1 hp.2; Ret ((head def (doors \\ [:: hp.2; t])) == hp.1) : M _)%Do.
   bind_ext => -[h p].
-  rewrite [_.1]/= [_.2]/=; by rewrite_ bindretf.
+  by rewrite [_.1]/= [_.2]/=; under eq_bind do rewrite bindretf.
 transitivity (uniform (def, def) (cp doors doors) >>= (fun hp =>
   if hp.1 == hp.2 then Ret false else Ret true : M _)).
   bind_ext => -[h p].
@@ -405,7 +405,7 @@ Local Open Scope mprog.
 Lemma try_uFFT d : fmap (uncurry (fun a b => a == b)) (try d) = uFFT.
 Proof.
 rewrite fmapE /try bindA.
-rewrite_ bindretf.
+under eq_bind do rewrite bindretf.
 rewrite /pick /monty.pick.
 transitivity ((Ret A <| (/ 3)%:pr |> (Ret B <| (/ 2)%:pr |> Ret C)) >>= (fun p => Ret (d == p)) : M _).
   congr bind; by rewrite /doors Set3.enumE 2!uniform_cons.
@@ -431,7 +431,7 @@ Proof.
 transitivity (fmap (uncurry (fun a b => a == b))
   (do h <- hide_n; do p <- pick def : M _; Ret (h, p)))%Do.
 rewrite fmapE !bindA; bind_ext => y1.
-  rewrite !bindA; by rewrite_ bindretf.
+  by rewrite !bindA; under [RHS]eq_bind do rewrite bindretf.
 rewrite monty_choice_your_choice_combine -!/(try _).
 by rewrite 2!alt_fmapDr !try_uFFT 2!altmm.
 Qed.
@@ -441,7 +441,7 @@ Proof.
 rewrite /play_n /monty /stick.
 transitivity (hide_n >>= (fun h => (pick def : M _) >>=
     (fun p => tease_n h p >> Ret (p == h)))).
-  by bind_ext => d; bind_ext => d'; rewrite_ bindretf.
+  by bind_ext => d; bind_ext => d'; under eq_bind do rewrite bindretf.
 transitivity (hide_n >>= (fun h => (pick def : M _) >>=
     (fun p => Ret (h == p)))).
   bind_ext => d; bind_ext => d'.
@@ -455,16 +455,16 @@ Lemma bcoin23E :
 Proof.
 transitivity (arbitrary def doors >>= (fun h => uniform def doors >>=
     (fun p => Ret (h, p) >>= (fun x => Ret (x.1 != x.2) : M _)))).
-  by bind_ext => h; rewrite_ bindretf.
+  by bind_ext => h; under [RHS]eq_bind do rewrite bindretf.
 transitivity ((arbitrary def doors >>= (fun h => uniform def doors >>=
     (fun p => Ret (h, p) : M _))) >>= (fun x => Ret (x.1 != x.2))).
-  by rewrite bindA; rewrite_ bindA.
+  by rewrite bindA; under [RHS]eq_bind do rewrite bindA.
 rewrite monty_choice_your_choice_combine /pick /monty.pick 2!alt_bindDl.
 have K : forall D, (uniform def doors >>= (fun p : door => Ret (D, p))) >>=
                 (fun x : door * door => Ret (x.1 != x.2)) =
               uniform def doors >>= (fun p : door => Ret (D != p)) :> M _.
   move=> D; rewrite bindA.
-  by rewrite_ bindretf.
+  by under eq_bind do rewrite bindretf.
 rewrite 3!K !(@Set3.uniform_unfold _ _ _ (fun a b => a != b)) !eqxx /=.
 rewrite Set3.a_neq_b Set3.b_neq_c Set3.a_neq_c eq_sym Set3.a_neq_b eq_sym.
 rewrite Set3.a_neq_c eq_sym Set3.b_neq_c choicemm.
@@ -482,7 +482,7 @@ Proof.
 rewrite {1}/play_n {1}/monty /switch.
 transitivity (hide_n >>= (fun h => pick def >>= (fun p => tease_n h p
     >>= (fun t => Ret (h == head def (doors \\ [:: p; t]))))) : M _).
-  by bind_ext => d; bind_ext => d'; rewrite_ bindretf; rewrite_ eq_sym.
+  by bind_ext => d; bind_ext => d'; under eq_bind do rewrite bindretf eq_sym.
 transitivity (hide_n >>= (fun h => pick def >>= (fun p => tease_n h p
     >> if h == p then Ret false else Ret true)) : M _).
   bind_ext => h; bind_ext => p; rewrite /tease_n.
@@ -550,20 +550,14 @@ Lemma monty_f_stick :
 Proof.
 rewrite /play_f /monty hide_pickE.
 rewrite /stick.
-rewrite_ bindretf.
-rewrite_ tease_fE.
-rewrite_ fun_if.
-rewrite_ if_arg.
-rewrite_ uniform_inde.
+under eq_bind do rewrite bindretf tease_fE fun_if if_arg uniform_inde.
 Open (X in _ >>= X).
   transitivity (if x.1 == x.2 then Ret true
     else fail <| (/ 2)%:pr |> ret _ (head def (doors \\ [:: x.1; x.2])) >> Ret false : M _).
     case: ifPn => [/eqP <-|hp]; first by rewrite eqxx.
     by rewrite eq_sym (negbTE hp).
   reflexivity.
-rewrite_ (@prob_bindDl M).
-rewrite_ bindfailf.
-rewrite_ bindretf.
+under eq_bind do rewrite prob_bindDl bindfailf bindretf.
 rewrite (Set3.bcoin13E_pair _ def (fun b => if b then Ret true else fail <| (/ 2)%:pr |> Ret false : M _)) //.
 rewrite /bcoin.
 by rewrite prob_bindDl 2!bindretf.
@@ -576,11 +570,9 @@ Lemma monty_f_switch :
 Proof.
 rewrite /play_f /monty hide_pickE /switch.
 Open (X in _ >>= X).
-  rewrite_ bindretf.
-  reflexivity.
-rewrite_ tease_fE.
-rewrite_ fun_if.
-rewrite_ if_arg.
+  under eq_bind do rewrite bindretf.
+  over.
+under eq_bind do rewrite tease_fE fun_if if_arg.
 Open (X in _ >>= X).
 transitivity (if x.1 == x.2 then uniform def (doors \\ [:: x.1]) >> Ret false
   else

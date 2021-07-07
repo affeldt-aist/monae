@@ -216,7 +216,7 @@ rewrite guard_and 2!bindA (bindA (qperm a)).
 rewrite guard_qperm_neq.
 rewrite guard_qperm_eq.
 bind_ext => s.
-do 3 rewrite_ guard_and.
+do 3 under eq_bind do rewrite guard_and.
 transitivity (qperm b >>=
   (fun x =>
    guard (all (>= p) x) >> (guard (all (<= p) s) >> (guard (sorted x) >> ((guard (sorted s)) >> Ret (s ++ [:: p] ++ x)))) : M _)).
@@ -235,7 +235,7 @@ rewrite boolp.funeqE => s'.
 rewrite -guard_qperm_neq2.
 congr (_ >> _).
 rewrite boolp.funeqE => s2.
-rewrite_ bindA.
+under [RHS]eq_bind do rewrite bindA.
 rewrite assertE bindA bindretf.
 rewrite guardsC; last exact: (@bindmfail M).
 rewrite bindA.

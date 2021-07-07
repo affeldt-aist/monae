@@ -141,7 +141,7 @@ transitivity
    let (ok, uds') := (b && b', uds''') in put uds' >> Ret ok) : M _)%Do; last first.
   rewrite bindA; bind_ext => x.
   case: safe1 => // h t.
-  by rewrite bindA; rewrite_ bindretf.
+  by rewrite bindA; under eq_bind do rewrite bindretf.
 by [].
 Qed.
 
@@ -188,7 +188,7 @@ rewrite (_ : f =
   rewrite {}/f bindA; bind_ext => u.
   case: (safe1 _ _) => a b.
   rewrite 2!bindA bindretf bindA.
-  by rewrite_ bindretf.
+  by under eq_bind do rewrite bindretf.
 rewrite assertE -bindA; congr (_ >> _).
 rewrite -bindA.
 rewrite putgetput.
@@ -224,9 +224,7 @@ rewrite 2!bindA.
 bind_ext => u.
 rewrite guardsC; last exact: bindmfail.
 rewrite 2!bindA.
-rewrite_ assertE.
-rewrite_ bindA.
-by rewrite_ bindretf.
+by under eq_bind do rewrite assertE bindA bindretf.
 Qed.
 
 Definition safe3 crs : M _ := safe2 crs >>= fun b => guard b.
@@ -243,7 +241,7 @@ bind_ext => y.
 rewrite 3!bindA.
 bind_ext; case.
 rewrite !bindA.
-by rewrite_ bindA.
+by under [RHS]eq_bind do rewrite bindA.
 Qed.
 
 Definition step3 B cr (m : M B) := m >>
@@ -412,7 +410,7 @@ transitivity (protect (put (0, [::], [::])%Z >>
     perms (map Z.of_nat (iota 0 n)) >>= foldr opdot_queens (Ret [::]))).
   rewrite -getpermsC /protect; bind_ext => s.
   rewrite !bindA putpermsC.
-  by rewrite_ bindA.
+  by under eq_bind do rewrite bindA.
 rewrite /protect; bind_ext => st.
 by rewrite !bindA.
 Qed.
@@ -516,7 +514,7 @@ rewrite commute_nondetState //; last first.
   by exists (ndBind m (fun y => ndRet (x.1 :: y))).
 bind_ext; case.
 rewrite !bind_fmap !fmap_bind.
-by rewrite_ fcomp_def.
+by under [RHS]eq_bind do rewrite fcomp_def.
 Qed.
 
 End theorem51.
