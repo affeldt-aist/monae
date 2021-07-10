@@ -8,7 +8,7 @@ Require Import monae_lib hierarchy monad_lib fail_lib.
 (*                              Spark example                                 *)
 (*                                                                            *)
 (* see Shin-Cheng Mu, Equational Reasoning for Non-deterministic Monad: A     *)
-(* Case study of {S}park Aggregation, TR-IIS-19-002                           *)
+(* Case study of Spark Aggregation, TR-IIS-19-002                             *)
 (*                                                                            *)
 (******************************************************************************)
 
@@ -88,7 +88,7 @@ rewrite fcompE fmap_bind.
 have opP' : forall (x y : A) (w : seq A), (foldl op b w (.) x) (.) y = (foldl op b w (.) y) (.) x.
   move=> ? ? ?.
   by rewrite opP.
-rewrite_ (lemma32 M opP').
+under eq_bind do rewrite (lemma32 M opP').
 transitivity ((Ret \o foldl op (b (.) x)) xs : M _); last by [].
 rewrite -IH.
 rewrite [in RHS]fcompE.

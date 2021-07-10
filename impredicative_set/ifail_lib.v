@@ -279,19 +279,19 @@ Proof. by []. Qed.
 Lemma subs_cat (xs ys : seq A) :
   (subs (xs ++ ys) = do us <- subs xs; do vs <- subs ys; Ret (us ++ vs))%Do.
 Proof.
-elim: xs ys => [ys |x xs IH ys].
+elim: xs ys => [ys |x xs ih ys].
   by rewrite cat0s /= bindretf bindmret.
 rewrite {1}[in RHS]/subs fmapE -/(subs _) alt_bindDl bindA.
 Open (X in subs xs >>= X).
   rewrite bindretf.
-  rewrite_ cat_cons.
-  reflexivity.
+  under eq_bind do rewrite cat_cons.
+  over.
 rewrite [X in _ = X [~] _](_ : _ = fmap (cons x) (do x0 <- subs xs; do x1 <- subs ys; Ret (x0 ++ x1)))%Do; last first.
   rewrite fmapE bindA.
   bind_ext => x0.
   rewrite bindA.
-  by rewrite_ bindretf.
-by rewrite -IH cat_cons subs_cons.
+  by under [in RHS]eq_bind do rewrite bindretf.
+by rewrite -ih cat_cons subs_cons.
 Qed.
 
 End subsequences_of_a_list.
@@ -378,7 +378,7 @@ rewrite fcompE [in RHS]/=; case: ifPn => ph.
   rewrite [in LHS]insertE alt_fmapDr; congr (_ [~] _).
     by rewrite fmapE bindretf /= pa ph.
   rewrite !fmapE /= fcompE bind_fmap bindA.
-  rewrite_ bindretf.
+  under eq_bind do rewrite bindretf.
   by rewrite /= ph.
 - rewrite [in LHS]insertE alt_fmapDr.
   rewrite -[in X in _ [~] X = _]fmap_oE.
