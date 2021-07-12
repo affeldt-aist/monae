@@ -3,7 +3,7 @@
 Require Import Reals.
 From mathcomp Require Import all_ssreflect.
 From mathcomp Require boolp.
-From infotheo Require Import Reals_ext ssr_ext fsdist.
+From infotheo Require Import Reals_ext fsdist.
 From infotheo Require Import convex.
 From HB Require Import structures.
 Require Import monae_lib hierarchy proba_hierarchy monad_lib proba_lib.
