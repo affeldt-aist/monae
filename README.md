@@ -94,7 +94,8 @@ This library has been applied to other formalizations:
 ## Files
 
 - [monae_lib.v](./monae_lib.v): simple additions to base libraries
-- [hierarchy.v](./hierarchy.v): hierarchy of monadic effects
+- [hierarchy.v](./hierarchy.v): hierarchy of monadic effects (part 1/2)
+- [proba_hierarchy.v](./proba_hierarchy.v): hierarchy of monadic effects (part 2/2)
 - [monad_lib.v](./monad_lib.v): basic lemmas about monads
 - [category.v](./category.v): formalization of categories (generalization of ~hierarchy.v~)
 - [fail_lib.v](./fail_lib.v): lemmas about fail monad and related monads

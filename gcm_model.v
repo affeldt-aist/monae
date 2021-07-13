@@ -4,7 +4,7 @@ Require Import Reals.
 From mathcomp Require Import all_ssreflect.
 From mathcomp Require Import boolp classical_sets.
 From mathcomp Require Import finmap.
-From infotheo Require Import Reals_ext classical_sets_ext Rbigop ssrR ssr_ext.
+From infotheo Require Import Reals_ext Rbigop ssrR.
 From infotheo Require Import fdist fsdist convex necset.
 Require Import monae_lib.
 From HB Require Import structures.
@@ -621,7 +621,7 @@ End P_delta_functor.
 
 (* TODO: move *)
 Require monad_lib.
-Require Import hierarchy.
+Require Import hierarchy proba_hierarchy.
 
 Section P_delta_category_monad.
 Import category.

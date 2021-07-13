@@ -3,7 +3,6 @@
 From mathcomp Require Import all_ssreflect.
 From mathcomp Require boolp.
 Require Import monae_lib hierarchy monad_lib fail_lib state_lib.
-From infotheo Require Import ssr_ext.
 
 (*******************************************************************************)
 (*                                   wip                                       *)
@@ -16,7 +15,6 @@ Unset Printing Implicit Defensive.
 Local Open Scope order_scope.
 Import Order.TTheory.
 Local Open Scope monae_scope.
-Local Open Scope tuple_ext_scope.
 
 From infotheo Require Import ssrZ.
 Require Import ZArith.

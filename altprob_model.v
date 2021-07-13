@@ -7,8 +7,8 @@ From infotheo Require Import classical_sets_ext Reals_ext Rbigop ssrR fdist.
 From infotheo Require Import fsdist convex necset.
 Require category.
 From HB Require Import structures.
-Require Import monae_lib hierarchy monad_lib proba_lib monad_model gcm_model.
-Require Import category.
+Require Import monae_lib hierarchy monad_model proba_hierarchy monad_lib.
+Require Import proba_lib gcm_model category.
 
 (******************************************************************************)
 (*                  Model of the monad type altProbMonad                      *)
