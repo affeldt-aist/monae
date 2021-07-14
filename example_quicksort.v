@@ -2,9 +2,10 @@
 (* Copyright (C) 2020 monae authors, license: LGPL-2.1-or-later               *)
 From mathcomp Require Import all_ssreflect.
 From mathcomp Require boolp.
-Require Import monae_lib hierarchy monad_lib fail_lib state_lib.
+Require Import monae_lib.
+From HB Require Import structures.
+Require Import hierarchy monad_lib fail_lib state_lib.
 From infotheo Require Import ssr_ext.
-(* Require Import Classical. *)
 
 (******************************************************************************)
 (*                            Quicksort example                               *)
@@ -27,6 +28,9 @@ Local Open Scope order_scope.
 Import Order.TTheory.
 Local Open Scope monae_scope.
 Local Open Scope tuple_ext_scope.
+Local Open Scope mprog.
+Local Notation "m >>= f" := (monae.hierarchy.bind m f).
+(* Local Notation "m >>= f" := (Builders_10.Super.bind m f). *)
 
 (* TODO: move *)
 Lemma kleisliE (M : monad) (A B C : UU0) (g : B -> M C) (f : A -> M B) (a : A) :
@@ -230,8 +234,10 @@ Section guard_commute.
     elim: t p A f => [p A f|h t ih p A f].
     by rewrite /= 2!bindretf /= guardT bindmskip.
     rewrite /= guard_and !bindA ih -bindA.
-    rewrite (@guardsC M (@bindmfail M) _) bindA.
-    (* bind_ext => -[a b].
+    rewrite [in RHS]bindA -[in LHS]bindA.  (* TODO : not robust *)
+    rewrite (@guardsC M (@bindmfail M) _).
+    rewrite bindA.
+    bind_ext => -[a b] /=.
     rewrite assertE bindA bindretf bindA /=.
     rewrite [in RHS]alt_bindDl /=.
     do 2 rewrite bindretf /= guard_and !bindA.
@@ -239,8 +245,8 @@ Section guard_commute.
     rewrite [in RHS](@guardsC M (@bindmfail M) (all p a)).
     rewrite !bindA -alt_bindDr.
     bind_ext; case; rewrite assertE bindmskip -[in RHS]alt_bindDr.
-    by bind_ext; case; rewrite alt_bindDl /= 2!bindretf -alt_bindDr. *)
-  Admitted.
+    by bind_ext; case; rewrite alt_bindDl /= 2!bindretf -alt_bindDr.
+  Qed.
 
   Lemma guard_splits' A (p : pred T) (t : seq T) (f : seq T * seq T -> M A) :
     splits t >>= (fun x => guard (all p t) >> f x) =
@@ -502,7 +508,7 @@ Section slowsort.
     case: ifPn => //.
   Qed.
   
-  Lemma refin_partition(p : T) (xs : seq T) :
+  Lemma refin_partition (p : T) (xs : seq T) :
     total (<=%O : rel T) ->
     (Ret (partition p xs) : M (seq T * seq T)%type (*TODO: :> notation for `<=`?*))
     `<=`
@@ -552,16 +558,30 @@ Section slowsort.
     move => hyp.
     rewrite [X in X `>=` _]refin_slowsort_inductive_case.
     rewrite [X in X `>=` _](_ : _ = splits xs >>=
-      (fun yz => guard (is_partition p yz) >> Ret yz) >>=
+      (fun yz => assert (is_partition p) yz) >>=
       fun '(ys, zs) => (qperm ys >>= assert sorted) >>=
       (fun ys' => (qperm zs >>= assert sorted) >>= (fun zs'=> Ret (ys' ++ [:: p] ++ zs')))); last first.
-    rewrite bindA; bind_ext => -[s1 s2];rewrite !bindA; congr (_ >> _).
+    rewrite bindA; bind_ext => -[s1 s2];rewrite !bindA assertE bindA; congr (_ >> _).
     by rewrite boolp.funeqE => -[]; rewrite bindretf bindA.
-  (* apply: bind_monotonic_refin. (* TODO *)
-  have := refin_partition p xs.
-  by rewrite /assert; unlock.
-  Qed. *)
-  Admitted.
+    have := (@bind_monotonic_refin _ _ _ (
+      Builders_10.Super.ret (seq T * seq T)%type (partition p xs)
+      ) (
+      splits xs >>= (fun yz =>
+      assert (is_partition p) yz)
+    ) (
+      fun pat => (let
+      '(ys, zs) := pat in
+       do ys' <- slowsort ys;
+       do zs' <- slowsort zs;
+       Builders_10.Super.ret (seq T) (ys' ++ [:: p] ++ zs'))%Do
+    ) (refin_partition p xs hyp)).
+    rewrite /slowsort. 
+    move/refin_trans; apply.
+    apply: bind_monotonic_lrefin.
+    move => -[a b].
+    rewrite 2!kleisliE.
+    apply: refin_refl. (* TODO : cleanup *)
+  Qed.
 
 End slowsort.
 
