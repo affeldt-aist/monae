@@ -3,7 +3,7 @@
 From mathcomp Require Import all_ssreflect.
 From mathcomp Require boolp.
 Require Import monae_lib.
-From HB Require Import structures.
+(* From HB Require Import structures. *)
 Require Import hierarchy monad_lib fail_lib state_lib.
 From infotheo Require Import ssr_ext.
 
@@ -30,7 +30,7 @@ Local Open Scope monae_scope.
 Local Open Scope tuple_ext_scope.
 Local Open Scope mprog.
 Local Notation "m >>= f" := (monae.hierarchy.bind m f).
-(* Local Notation "m >>= f" := (Builders_10.Super.bind m f). *)
+Local Notation ret x := (monae.hierarchy.ret x).
 
 (* TODO: move *)
 Lemma kleisliE (M : monad) (A B C : UU0) (g : B -> M C) (f : A -> M B) (a : A) :
@@ -559,28 +559,12 @@ Section slowsort.
     rewrite [X in X `>=` _]refin_slowsort_inductive_case.
     rewrite [X in X `>=` _](_ : _ = splits xs >>=
       (fun yz => assert (is_partition p) yz) >>=
-      fun '(ys, zs) => (qperm ys >>= assert sorted) >>=
-      (fun ys' => (qperm zs >>= assert sorted) >>= (fun zs'=> Ret (ys' ++ [:: p] ++ zs')))); last first.
+      fun '(ys, zs) => (slowsort ys) >>=
+      (fun ys' => (slowsort zs) >>= (fun zs'=> Ret (ys' ++ [:: p] ++ zs')))); last first.
     rewrite bindA; bind_ext => -[s1 s2];rewrite !bindA assertE bindA; congr (_ >> _).
-    by rewrite boolp.funeqE => -[]; rewrite bindretf bindA.
-    have := (@bind_monotonic_refin _ _ _ (
-      Builders_10.Super.ret (seq T * seq T)%type (partition p xs)
-      ) (
-      splits xs >>= (fun yz =>
-      assert (is_partition p) yz)
-    ) (
-      fun pat => (let
-      '(ys, zs) := pat in
-       do ys' <- slowsort ys;
-       do zs' <- slowsort zs;
-       Builders_10.Super.ret (seq T) (ys' ++ [:: p] ++ zs'))%Do
-    ) (refin_partition p xs hyp)).
-    rewrite /slowsort. 
-    move/refin_trans; apply.
-    apply: bind_monotonic_lrefin.
-    move => -[a b].
-    rewrite 2!kleisliE.
-    apply: refin_refl. (* TODO : cleanup *)
+    by rewrite boolp.funeqE => -[] /=; rewrite bindretf /slowsort 2!kleisliE bindA.
+    apply: bind_monotonic_refin.
+    by apply: (refin_partition p xs hyp).
   Qed.
 
 End slowsort.
