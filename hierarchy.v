@@ -63,6 +63,7 @@ From HB Require Import structures.
 (*  failStateReifyMonad == stateReify + fail                                  *)
 (*     nondetStateMonad == backtrackable state                                *)
 (*           arrayMonad == array monad                                        *)
+(*   prePlusArrayMonad  == preplus monad + array monad                        *)
 (*                                                                            *)
 (* Trace monads:                                                              *)
 (*            traceMonad == trace monad                                       *)
@@ -988,6 +989,10 @@ HB.mixin Record isMonadArray (S : UU0) (I : eqType) (M : UU0 -> UU0) of Monad M 
 HB.structure Definition MonadArray (S : UU0) (I : eqType) :=
   { M of isMonadArray S I M & isMonad M & isFunctor M }.
 Notation arrayMonad := MonadArray.type.
+
+HB.structure Definition MonadPrePlusArray (S : UU0) (I : eqType) :=
+  { M of MonadPrePlus M & isMonadArray S I M}.
+Notation prePlusArrayMonad := MonadPrePlusArray.type.
 
 HB.mixin Record isMonadTrace (T : UU0) (M : UU0 -> UU0) of Monad M := {
   mark : T -> M unit
