@@ -33,7 +33,7 @@ Local Open Scope latt_scope.
 Local Open Scope monae_scope.
 
 Definition alt A (x y : gcm A) : gcm A := x [+] y.
-Definition choice p A (x y : gcm A) : gcm A := x <| p |> y.
+Definition choice p A (x y : gcm A) : gcm A := x <| p |> y. (*NB: convex_scope *)
 
 Lemma altA A : ssrfun.associative (@alt A).
 Proof. by move=> x y z; rewrite /alt lubA. Qed.
