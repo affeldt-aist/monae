@@ -85,7 +85,8 @@ Fixpoint ipartl (p : E) (i : Z) (ny nz : nat) (nx : nat) : M (nat * nat)%type :=
                    else ipartl p i ny (nz.+1) k)
   end.
 
-(* Program Fixpoint iqsort (i : Z) (n : nat) : M unit := 
+(* Unset Guard Checking.
+Fixpoint iqsort (i : Z) (n : nat) : M unit := 
   match n with
   | 0 => Ret tt
   | n.+1 => aget i >>= (fun p =>
