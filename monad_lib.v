@@ -404,115 +404,6 @@ Qed.
 
 End algebraic_operation_interface.
 
-Definition join_of_bind (F : functor)
-  (b : forall (A B : UU0), F A -> (A -> F B) -> F B) := (fun A : UU0 => (b _ A)^~ id).
-
-HB.factory Record Monad_of_ret_bind (M : UU0 -> UU0) of isFunctor M := {
-  ret : idfun ~> M ;
-  bind : forall (A B : UU0), M A -> (A -> M B) -> M B ;
-  fmapE : forall (A B : UU0) (f : A -> B) (m : M A),
-    ([the functor of M] # f) m = bind _ _ m (@ret _ \o f) ;
-  bindretf : BindLaws.left_neutral bind ret ;
-  bindmret : BindLaws.right_neutral bind ret ;
-  bindA : BindLaws.associative bind
-}.
-HB.builders Context M of Monad_of_ret_bind M.
-
-(*Let Map (A B : UU0) (f : A -> B) (m : M A) := bind m (@ret B \o f).
-Lemma Map_id : FunctorLaws.id Map.
-Proof. by move=> A; rewrite boolp.funeqE => m; rewrite /Map bindmret. Qed.
-Lemma Map_o : FunctorLaws.comp Map.
-Proof.
-move=> A B C g h; rewrite boolp.funeqE => m.
-rewrite /Map compE bindA; congr bind.
-by rewrite boolp.funeqE => a; rewrite bindretf.
-Qed.
-#[verbose]
-HB.instance Definition _(*func_mixin*) :=
-  isFunctor.Build (coucou M) Map_id Map_o.
-(*Let M' := Functor.Pack (Functor.Class func_mixin).*)
-*)
-(*Let Map (A B : UU0) (f : A -> B) := M # f.
-Lemma MapE (A B : UU0) (f : A -> B) m :
-  Map f m = (M # f) m.
-Proof.
-by rewrite /Map.
-Qed.
-Lemma FMapE (A B : UU0) (f : A -> B) m :
-  (M # f) m = bind m (ret B \o f).
-Proof.
-rewrite /Map.
-Admitted.
-(* by []. Qed.*)
-*)
-
-Notation M' := ([the functor of M]).
-
-(*
-Lemma naturality_ret : naturality FId M' ret.
-Proof.
-move=> A B h; rewrite FIdf boolp.funeqE => ?.
-(*by rewrite compE /= /Map MapE /= bindretf.
-Qed.*) Admitted.
-
-Let ret' : idfun ~> M' := Natural.Pack (Natural.Mixin naturality_ret).
-*)
-
-Let bind_Map (A B C : UU0) (f : A -> B) (m : M A) (g : B -> M C) :
-  bind ((M' # f) m) g = bind m (g \o f).
-Proof.
-rewrite fmapE.
-by rewrite bindA; congr bind; by rewrite boolp.funeqE => ?; rewrite bindretf.
-Qed.
-
-Lemma naturality_join : naturality (M' \O M') M' (join_of_bind bind).
-Proof.
-move=> A B h; rewrite boolp.funeqE => mma.
-rewrite /=.
-rewrite fmapE.
-rewrite /join_of_bind.
-rewrite bind_Map.
-rewrite bindA.
-congr bind.
-rewrite boolp.funeqE => /= ma.
-by rewrite compidf fmapE.
-Qed.
-
-Definition join : M' \O M' ~> M' := Natural.Pack (Natural.Mixin naturality_join).
-
-(*Let bindE (A B : UU0) m (f : A -> M' B) : bind m f = join _ ((M' # f) m).
-Proof. by rewrite /join /= /join_of_bind bind_Map. Qed.
-*)
-
-Lemma joinretM : JoinLaws.left_unit ret join.
-Proof.
-rewrite /join => A; rewrite boolp.funeqE => ma /=.
-by rewrite /join_of_bind bindretf.
-Qed.
-
-Lemma joinMret : JoinLaws.right_unit ret join.
-Proof.
-rewrite /join => A; rewrite boolp.funeqE => ma /=.
-by rewrite /join_of_bind bind_Map compidf bindmret.
-Qed.
-
-Lemma joinA : JoinLaws.associativity join.
-Proof.
-move=> A; rewrite boolp.funeqE => mmma.
-by rewrite /join /= /join_of_bind bind_Map compidf bindA.
-Qed.
-
-Lemma bindE : forall (A B : UU0) (f : A -> M B) (m : M A),
-  bind m f = (join) _ (([the functor of M] # f) m).
-Proof.
-move=> A B f m.
-rewrite /join /join_of_bind /=.
-by rewrite bind_Map compidf.
-Qed.
-
-HB.instance Definition _ := isMonad.Build M fmapE bindE joinretM joinMret joinA.
-HB.end.
-
 (*Module Monad_of_ret_bind.
 Section monad_of_ret_bind.
 Variable M : functor.
@@ -534,51 +425,6 @@ Qed.
 HB.instance Definition functor_mixin := @isFunctor.Build _ Map Map_id Map_o.
 Let M' := Functor.Pack (Functor.Class functor_mixin).
 
-Lemma MapE (A B : UU0) (f : A -> B) m : (M' # f) m = bind m (ret B \o f).
-Proof. by []. Qed.
-
-Lemma naturality_ret : naturality FId M' ret.
-Proof.
-move=> A B h; rewrite FIdf boolp.funeqE => ?.
-by rewrite compE /= /Map MapE /= bindretf.
-Qed.
-
-Let ret' : idfun ~> M' := Natural.Pack (Natural.Mixin naturality_ret).
-
-Let bind_Map (A B C : UU0) (f : A -> B) (m : M A) (g : B -> M C) :
-  bind (Map f m) g = bind m (g \o f).
-Proof.
-rewrite /Map bindA; congr bind; by rewrite boolp.funeqE => ?; rewrite bindretf.
-Qed.
-
-Lemma naturality_join : naturality (M' \O M') M' (fun A : UU0 => (bind (B:=A))^~ id).
-Proof.
-move=> A B h; rewrite boolp.funeqE => mma.
-by rewrite !compE /= bind_Map MapE bindA.
-Qed.
-
-Definition join : M' \O M' ~> M' := Natural.Pack (Natural.Mixin naturality_join).
-
-Let bindE (A B : UU0) m (f : A -> M' B) : bind m f = join _ ((M' # f) m).
-Proof. by rewrite /join /= bind_Map. Qed.
-
-Lemma joinretM : JoinLaws.left_unit ret' join.
-Proof.
-rewrite /join => A; rewrite boolp.funeqE => ma /=.
-by rewrite bindretf. Qed.
-
-Lemma joinMret : JoinLaws.right_unit ret' join.
-Proof.
-rewrite /join => A; rewrite boolp.funeqE => ma /=.
-by rewrite bind_Map compidf bindmret.
-Qed.
-
-Lemma joinA : JoinLaws.associativity join.
-Proof.
-move=> A; rewrite boolp.funeqE => mmma.
-by rewrite /join /= bind_Map compidf bindA.
-Qed.
-
 HB.instance Definition monad_mixin := @isMonad.Build M' ret' join joinretM joinMret joinA.
 End monad_of_ret_bind.
 Module Exports.
@@ -588,7 +434,7 @@ End Exports.
 End Monad_of_ret_bind.
 Export Monad_of_ret_bind.Exports.*)
 
-(* TODO: 
+(* TODO:
 Lemma monad_of_ret_bind_ext (F G : functor) (RET1 : FId ~> F) (RET2 : FId ~> G)
   (bind1 : forall A B : UU0, F A -> (A -> F B) -> F B)
   (bind2 : forall A B : UU0, G A -> (A -> G B) -> G B) :
