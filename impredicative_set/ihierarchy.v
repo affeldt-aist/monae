@@ -669,9 +669,13 @@ Definition kleisli (A B C : UU0) (m : B -> M C) (n : A -> M B) : A -> M C :=
 Local Notation "m <=< n" := (kleisli m n).
 Local Notation "m >=> n" := (kleisli n m).
 
-Lemma kleisliE (A B C : UU0) (g : B -> M C) (f : A -> M B) :
+Lemma kleisli_def (A B C : UU0) (g : B -> M C) (f : A -> M B) :
   (f >=> g) = Join \o (M # g) \o f.
 Proof. by []. Qed.
+
+Lemma kleisliE (A B C : UU0) (g : B -> M C) (f : A -> M B) (a : A) :
+  (f >=> g) a = (f a) >>= g.
+Proof. by rewrite /kleisli /= join_fmap. Qed.
 
 Lemma bind_kleisli (A B C : UU0) m (f : A -> M B) (g : B -> M C) :
   m >>= (f >=> g) = (m >>= f) >>= g.

@@ -96,7 +96,7 @@ Set Implicit Arguments.
 Unset Strict Implicit.
 Unset Printing Implicit Defensive.
 
-(* Declare Scope do_notation. *)
+Declare Scope do_notation.
 Declare Scope mprog.
 Declare Scope monae_scope.
 Delimit Scope monae_scope with monae.
@@ -681,9 +681,13 @@ Definition kleisli (A B C : UU0) (m : B -> M C) (n : A -> M B) : A -> M C :=
 Local Notation "m <=< n" := (kleisli m n).
 Local Notation "m >=> n" := (kleisli n m).
 
-Lemma kleisliE (A B C : UU0) (g : B -> M C) (f : A -> M B) :
+Lemma kleisli_def (A B C : UU0) (g : B -> M C) (f : A -> M B) :
   (f >=> g) = Join \o (M # g) \o f.
 Proof. by []. Qed.
+
+Lemma kleisliE (A B C : UU0) (g : B -> M C) (f : A -> M B) (a : A) :
+  (f >=> g) a = (f a) >>= g.
+Proof. by rewrite /kleisli /= join_fmap. Qed.
 
 Lemma bind_kleisli (A B C : UU0) m (f : A -> M B) (g : B -> M C) :
   m >>= (f >=> g) = (m >>= f) >>= g.
@@ -740,13 +744,6 @@ Lemma guard_and a b : guard (a && b) = guard a >> guard b.
 Proof.
 move: a b => -[|] b /=; by [rewrite guardT bindskipf | rewrite guardF bindfailf].
 Qed.
-
-(* Lemma guard_and_split a b c d : guard ([&& a, b, c & d]) = guard a >> guard b >> guard c >> guard d.
-Proof.
-  move: a => -[|] /=; [rewrite guardT bindskipf | by rewrite guardF !bindfailf].
-  move: b => -[|] /=; [rewrite guardT bindskipf | by rewrite guardF !bindfailf].
-  move: c => -[|] /=; by [rewrite guardT bindskipf | rewrite guardF bindfailf].
-Qed. *)
 
 Definition assert {A : UU0} (p : pred A) (a : A) : M A :=
   locked (guard (p a) >> Ret a).
@@ -1037,7 +1034,6 @@ Notation failFailR0ReifyMonad := MonadFailFailR0Reify.type.
 
 HB.structure Definition MonadFailStateReify (S : UU0) := {M of MonadStateReify S M & MonadFailFailR0Reify S M}.
 Notation failStateReifyMonad := MonadFailStateReify.type.
-
 
 (*
 Module MonadFailStateReify.
