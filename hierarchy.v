@@ -1055,7 +1055,7 @@ HB.mixin Record isMonadProb (M : UU0 -> UU0) of Monad M := {
 }.
 
 HB.structure Definition MonadProb := {M of isMonadProb M & }.
-Notation "a <| p |> b" := (choice p _ a b).
+Notation "a <| p |> b" := (choice p _ a b) : proba_monad_scope.
 Notation probMonad := MonadProb.type.
 Arguments choiceA {_} {_} _ _ _ _ {_} {_} {_}.
 Arguments choiceC {_} {_} _ _ _.
