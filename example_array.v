@@ -106,6 +106,48 @@ Proof. *)
   
 (* Qed. *)
 
+Lemma write_read {i : Z} {p} : aput i p >> aget i = aput i p >> Ret p :> M _.
+Proof. by rewrite -[RHS]aputget bindmret. Qed.
+
+Lemma write_readC {i j : Z} {p} : 
+  i != j -> aput i p >> aget j = aget j >>= (fun v => aput i p >> Ret v) :> M _.
+Proof. by move => ?; rewrite -aputgetC // bindmret. Qed.
+
+Lemma writeList_rcons {i : Z} (x : E) (xs : seq E) :
+  writeList i (rcons xs x) = writeList i xs >> aput (i + (size xs)%:Z)%Z x.
+Proof. by rewrite -cats1 writeList_cat /= -bindA bindmskip. Qed.
+
+Lemma introduce_read {i : Z} (p : E) (xs : seq E) :
+  writeList i (p :: xs) >> Ret p =
+  writeList i (p :: xs) >> aget i.
+Proof.
+  rewrite /=.
+  elim/last_ind: xs p i => [/= p i|].
+  by rewrite bindmskip write_read.
+  move => h t ih p i /=.
+  transitivity (
+    (aput i p >> writeList (i + 1) h >> aput (i + 1 + (size h)%:Z)%Z t) >> aget i
+  ); last first. 
+  by rewrite writeList_rcons !bindA.
+  rewrite ![RHS]bindA.
+  rewrite write_readC.
+  rewrite -2![RHS]bindA -ih [RHS]bindA.
+  transitivity (
+    (aput i p >> writeList (i + 1) h >> aput (i + 1 + (size h)%:Z)%Z t) >> Ret p
+  ).
+  by rewrite writeList_rcons !bindA.
+  rewrite !bindA.
+  bind_ext => ?.
+  bind_ext => ?.
+  by rewrite bindretf.
+  apply/negP =>/eqP/esym.
+  apply ltZ_eqF.
+  rewrite -{1}(addZ0 i) -addZA ltZ_add2l.
+  apply addZ_gt0wl => //.
+  apply/leZP.
+  rewrite -natZ0 -leZ_nat //. (* TODO: cleanup *)
+Qed.
+  
 End marray.
 
 
