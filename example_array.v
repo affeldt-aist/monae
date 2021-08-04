@@ -77,35 +77,6 @@ elim: xs i => [|h t ih] i /=; first by rewrite bindretf addZ0.
 by rewrite ih bindA -addZA add1Z natZS.
 Qed.
 
-Fixpoint ipartl (p : E) (i : Z) (ny nz : nat) (nx : nat) : M (nat * nat)%type := 
-  match nx with
-  | 0 => Ret (ny, nz)
-  | k.+1 => aget ((* i + *) (ny + nz)%:Z) >>= (fun x => (* TODO *)
-         if x <= p then swap (i + ny%:Z) (i + ny%:Z + nz%:Z) >> ipartl p i (ny + 1) nz k
-                   else ipartl p i ny (nz.+1) k)
-  end.
-
-(* Unset Guard Checking.
-Fixpoint iqsort (i : Z) (n : nat) : M unit := 
-  match n with
-  | 0 => Ret tt
-  | n.+1 => aget i >>= (fun p =>
-         ipartl p (i) 0 0 n >>= (fun '(ny, nz) =>
-         swap i (i + ny%:Z) >>
-         iqsort i ny >> iqsort (ny%:Z) nz))
-  end. *)
-
-(* Lemma lemma12 {i : Z} {xs : seq E} {p : E} : 
-  writeList i xs >> iqsort i (size xs) `<=` _.
-Proof. *)
-
-(* Lemma lemma13 {i : Z} {ys : seq E} {p : E} : 
-  perm ys >>= (fun ys' => writeList i (ys' ++ [:: p])) `>=` 
-  writeList i (p :: ys) >> swap i (i + (size ys)%:Z).
-Proof. *)
-  
-(* Qed. *)
-
 Lemma write_read {i : Z} {p} : aput i p >> aget i = aput i p >> Ret p :> M _.
 Proof. by rewrite -[RHS]aputget bindmret. Qed.
 
@@ -127,7 +98,7 @@ Proof.
   move => h t ih p i /=.
   transitivity (
     (aput i p >> writeList (i + 1) h >> aput (i + 1 + (size h)%:Z)%Z t) >> aget i
-  ); last first. 
+  ); last first.
   by rewrite writeList_rcons !bindA.
   rewrite ![RHS]bindA.
   rewrite write_readC.
@@ -147,7 +118,108 @@ Proof.
   apply/leZP.
   rewrite -natZ0 -leZ_nat //. (* TODO: cleanup *)
 Qed.
+
+Section dipartl.
+Variables (p : E) (i : Z) (nx : nat).
+
+Local Open Scope nat_scope.
+Local Obligation Tactic := idtac.
+
+Let nx_pair : Type := {x : nat * nat | x.1 + x.2 <= nx}.
+
+Let rel_nx_pair : rel nx_pair := fun x y =>
+  let x1 := (sval x).1 in let x2 := (sval x).2 in
+  let y1 := (sval y).1 in let y2 := (sval y).2 in
+  nx - x1 - x2 < nx - y1 - y2.
+
+Lemma well_founded_rel_nx_pair : well_founded rel_nx_pair.
+Proof.
+apply: (@well_founded_lt_compat _ (fun x => nx - (sval x).1 - (sval x).2)).
+by move=> x y ?; apply/ssrnat.ltP.
+Qed.
+
+Program Fixpoint dipartl' (nynz : nx_pair)
+    (f : forall x, rel_nx_pair x nynz -> M nx_pair) : M nx_pair :=
+  let ny := (sval nynz).1 in
+  let nz := (sval nynz).2 in
+  match Bool.bool_dec (ny + nz == nx) true with
+  | left H =>  Ret _(*ny,nz*)
+  | right H => aget (i + (ny + nz)%:Z)%Z >>= (fun x =>
+    if (x <= p)%O then
+      swap (i + ny%:Z)%Z (i + ny%:Z + nz%:Z)%Z >> @f _ _ (*ny.+1,nz*)
+    else
+      @f _ _ (*ny,nz.+1*))
+  end.
+Next Obligation.
+by move=> [nynz ?] /= _ _ _; exists nynz.
+Defined.
+Next Obligation.
+move=> [[ny nz] nynz] /= _ /negP H _ _ _.
+exists (ny.+1, nz).
+rewrite /= leq_eqVlt (negbTE H) /= in nynz *.
+by rewrite addSn.
+Defined.
+Next Obligation.
+move=> [[ny nz] nynz] /= _ /negP H _ _ _ /=; rewrite /rel_nx_pair /=.
+have {}nynz : ny + nz < nx by move: nynz; rewrite /= ltn_neqAle H.
+destruct nx as [|nx'] => //.
+by rewrite subSS -2!subnDA subSn.
+Defined.
+Next Obligation.
+move=> [[ny nz] nynz] /= _ + _ => /negP H.
+exists (ny, nz.+1).
+rewrite /= leq_eqVlt (negbTE H) /= in nynz *.
+by rewrite addnS.
+Defined.
+Next Obligation.
+move=> [[ny nz] nynz] /= _ /negP H _ _ /=; rewrite /rel_nx_pair /=.
+have {}nynz : ny + nz < nx by move: nynz; rewrite /= ltn_neqAle H.
+destruct nx as [|nx'] => //.
+by rewrite subnS prednK // -subnDA subn_gt0.
+Qed.
+
+Definition dipartl : nx_pair -> M nx_pair :=
+  Fix well_founded_rel_nx_pair (fun _ => M _) dipartl'.
+
+End dipartl.
+
+Print exist.
+
+(*Program Definition ipartl (p : E) (i : Z) (ny nz : nat) (nx : nat) :=
+  (@dipartl p i nx (exist (fun x => x.1 + x.2 <= nx) (ny, nz) _)).*)
+
+Fixpoint ipartl (p : E) (i : Z) (ny nz : nat) (nx : nat) : M (nat * nat)%type :=
+  match nx with
+  | 0 => Ret (ny, nz)
+  | k.+1 => aget (i + (ny + nz)%:Z)%Z >>= (fun x => (* TODO *)
+           if x <= p then
+             swap (i + ny%:Z) (i + ny%:Z + nz%:Z) >> ipartl p i ny.+1 nz k
+           else
+             ipartl p i ny nz.+1 k)
+  end.
+
+Fail Fixpoint iqsort (i : Z) (n : nat) : M unit :=
+  match n with
+  | 0 => Ret tt
+  | n.+1 => aget i >>= (fun p =>
+           @dipartl p (i + 1)%Z n.-1
+             (exist (fun x => x.1 + x.2 <= n) (0, 0) isT) >>= (fun nynz =>
+              let ny := (sval nynz).1 in
+              let nz := (sval nynz).2 in
+              swap i (i + ny%:Z) >>
+              iqsort i ny >> iqsort (i + ny%:Z + 1)%Z nz))
+  end.
+
+(* Lemma lemma12 {i : Z} {xs : seq E} {p : E} : 
+  writeList i xs >> iqsort i (size xs) `<=` _.
+Proof. *)
+
+(* Lemma lemma13 {i : Z} {ys : seq E} {p : E} : 
+  perm ys >>= (fun ys' => writeList i (ys' ++ [:: p])) `>=` 
+  writeList i (p :: ys) >> swap i (i + (size ys)%:Z).
+Proof. *)
   
+(* Qed. *)
+
+
 End marray.
-
-
