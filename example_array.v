@@ -212,16 +212,25 @@ Program Fixpoint iqsort' (ni : (Z * nat))
   match ni.2 with
   | 0 => Ret tt
   | n.+1 => aget ni.1 >>= (fun p =>
-            ipartl p (ni.1 + 1) 0 0 n >>= (fun '(ny, nz) =>
-            swap ni.1 (ni.1 + ny%:Z) >>
-            f (ni.1, ny) _  >> f ((ni.1 + ny%:Z + 1)%Z, nz) _))
+            @dipartl p (ni.1 + 1)%Z n
+              (exist (fun x => x.1 + x.2 <= n) (0, 0) isT) >>= (fun nynz =>
+              let ny := (sval nynz).1 in
+              let nz := (sval nynz).2 in
+              swap ni.1 (ni.1 + ny%:Z) >>
+              f (ni.1, ny) _ >> f ((ni.1 + ny%:Z + 1)%Z, nz) _))
   end.
 Next Obligation.
-rewrite /=.
-move => [i [//|n]] /=.
-Admitted.
+move => [i [//|_]] /= _ n [<-] p [] [ny nz] /= nynz _.
+apply/ssrnat.ltP; rewrite ltnS.
+rewrite (leq_trans _ nynz) //.
+rewrite leq_addr //.
+Qed.
 Next Obligation.
-Admitted.
+move => [i [//|_]] /= _ n [<-] p [] [ny nz] /= nynz _.
+apply/ssrnat.ltP; rewrite ltnS.
+rewrite (leq_trans _ nynz) //.
+rewrite leq_addl //.
+Qed.
 
 Lemma well_founded_lt2 : well_founded (fun x y : (Z * nat) => (x.2 < y.2)%coq_nat).
 Proof. 
@@ -232,28 +241,35 @@ Qed.
 Definition iqsort : (Z * nat) -> M unit :=
   Fix well_founded_lt2 (fun _ => M unit) iqsort'.
 
-Fail Fixpoint iqsort (i : Z) (n : nat) : M unit :=
-  match n with
-  | 0 => Ret tt
-  | n.+1 => aget i >>= (fun p =>
-           @dipartl p (i + 1)%Z n.-1
-             (exist (fun x => x.1 + x.2 <= n) (0, 0) isT) >>= (fun nynz =>
-              let ny := (sval nynz).1 in
-              let nz := (sval nynz).2 in
-              swap i (i + ny%:Z) >>
-              iqsort i ny >> iqsort (i + ny%:Z + 1)%Z nz))
-  end.
+Lemma iqsort'_Fix (ni : (Z * nat))
+  (f g : forall (n'j : (Z * nat)), (n'j.2 < ni.2)%coq_nat -> M unit) :
+  (forall (n'j : (Z * nat)) (p : (n'j.2 < ni.2)%coq_nat), f n'j p = g n'j p) ->
+  iqsort' f = iqsort' g.
+Proof.
+  by move=> ?; congr iqsort'; apply fun_ext_dep => ?; rewrite boolp.funeqE.
+Qed.
 
-(* Lemma lemma12 {i : Z} {xs : seq E} {p : E} : 
-  writeList i xs >> iqsort i (size xs) `<=` _.
-Proof. *)
+Lemma iqsort_nil {i : Z} : iqsort (i, 0) = Ret tt.
+Proof. rewrite /iqsort Fix_eq //; exact: iqsort'_Fix. Qed.
 
-(* Lemma lemma13 {i : Z} {ys : seq E} {p : E} : 
+Lemma iqsort_cons {i : Z} {n : nat}: iqsort (i, n.+1) = aget i >>= (fun p =>
+@dipartl p (i + 1)%Z n
+  (exist (fun x => x.1 + x.2 <= n) (0, 0) isT) >>= (fun nynz =>
+  let ny := (sval nynz).1 in
+  let nz := (sval nynz).2 in
+  swap i (i + ny%:Z) >>
+  iqsort (i, ny) >> iqsort ((i + ny%:Z + 1)%Z, nz))).
+Proof. rewrite [in LHS]/iqsort Fix_eq //=; exact: iqsort'_Fix. Qed.
+
+Lemma lemma12 {i : Z} {xs : seq E} {p : E} : 
+  writeList i xs >> iqsort (i, (size xs)) `<=` (slowsort M xs) >> writeList i xs.
+Proof. 
+  have [n nxs] := ubnP (size xs); elim: n xs => // n ih xs in nxs *.
+Admitted.
+
+Lemma lemma13 {i : Z} {ys : seq E} {p : E} : 
   perm ys >>= (fun ys' => writeList i (ys' ++ [:: p])) `>=` 
   writeList i (p :: ys) >> swap i (i + (size ys)%:Z).
-Proof. *)
-  
-(* Qed. *)
-
+Proof. Abort.
 
 End marray.
