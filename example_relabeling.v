@@ -153,14 +153,14 @@ Lemma dlabels_relabel_is_fold :
 Proof.
 apply foldt_universal.
   (* relabel >=> dlabels \o Tip = drTip *)
-  rewrite kleisliE -(compA (Join \o _)) -(compA Join).
+  rewrite kleisli_def -(compA (Join \o _)) -(compA Join).
   rewrite (_ : _ \o Tip = (M # Tip) \o const fresh) //.
   rewrite (compA (fmap dlabels)) -functor_o.
   rewrite (_ : dlabels \o _ = ret _ \o wrap) //.
   rewrite functor_o 3!compA.
   by rewrite joinMret.
 (* relabel >=> dlabels \o Bin = drBin \o _ *)
-rewrite [in LHS]kleisliE -[in LHS](compA (Join \o _)) -[in LHS](compA Join).
+rewrite [in LHS]kleisli_def -[in LHS](compA (Join \o _)) -[in LHS](compA Join).
 rewrite (_ : _ \o _ Bin = (fmap (uncurry Bin)) \o (mpair \o relabel^`2)); last first.
   by rewrite boolp.funeqE; case.
 rewrite (compA (fmap dlabels)) -functor_o.
