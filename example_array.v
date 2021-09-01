@@ -21,6 +21,24 @@ Local Open Scope tuple_ext_scope.
 From infotheo Require Import ssrZ.
 Require Import ZArith.
 
+Section refin_lemmas.
+Variable M : plusMonad.
+
+Lemma refin_refl A (a : M A) : a `<=` a.
+Proof. by rewrite /refin altmm. Qed.
+
+Lemma refin_trans A (b a c : M A) : a `<=` b -> b `<=` c -> a `<=` c.
+Proof. by rewrite /refin => h1 <-; rewrite altA h1. Qed.
+
+Lemma refin_antisym A (a b : M A) : a `<=` b -> b `<=` a -> a = b.
+Proof. by rewrite /refin => h1 <-; rewrite altC. Qed.
+
+Lemma refin_alt A (m1 m1' m2 m2' : M A) :
+  m1 `<=` m1' -> m2 `<=` m2' -> m1 [~] m2 `<=` m1' [~] m2'.
+Proof. by move=> h1 h2; rewrite /refin altACA h1 h2. Qed.
+
+End refin_lemmas.
+
 Section marray.
 (* Variables (E : UU0) (M : arrayMonad E Z_eqType).
 Variables (d : unit) (T : porderType d). *)
@@ -55,25 +73,67 @@ Fixpoint partl (p : E) (s : (seq E * seq E)%type) (xs : seq E)
 Definition second {A B C} (f : B -> M C) (xy : (A * B)%type) := 
   f xy.2 >>= (fun y' => Ret (xy.1, y')).
 
-(* Unset Guard Checking. *)
-(* Program Fixpoint partl' (p : E) (s : (seq E * seq E * seq E)) 
+(* Require Import FunInd.
+Function partl' (p : E) (yzxs : (seq E * seq E * seq E)) {struct yzxs}
     : M (seq E * seq E)%type :=
-  match s with
+  match yzxs with
   | (ys, zs, [::]) => Ret (ys, zs)
   | (ys, zs, x :: xs) => 
     if x <= p then (@qperm _ _ zs) >>= 
-                (fun zs' => partl' p (ys ++ [:: x], zs', xs))
-              else partl' p (ys, zs ++ [:: x], xs)
+                (fun zs' => 
+                  partl' p ((ys ++ [:: x]), zs', xs))
+              else (@qperm _ _ (zs ++ [:: x])) >>=
+                (fun zs' =>
+                  partl' p (ys, zs', xs))
   end. *)
 
-(* Definition dispatch (x p : E) '(ys, zs, xs) := 
-  if x <= p then perm zs >>= (fun zs' => Ret (ys ++ [:: x], zs', xs))
-            else perm (zs ++ [:: x]) >>= (fun zs' => Ret (ys, zs', zs)). *)
+Fixpoint partl' (p : E) (ys zs xs : seq E) 
+    : M (seq E * seq E)%type :=
+  match xs with
+  | [::] => Ret (ys, zs)
+  | x :: xs => 
+    if x <= p then (@qperm _ _ zs) >>= 
+                (fun zs' => 
+                  partl' p (ys ++ [:: x]) zs' xs)
+              else (@qperm _ _ (zs ++ [:: x])) >>=
+                (fun zs' =>
+                  partl' p ys zs' xs)
+  end.
+
+Definition dispatch (x p : E) '(ys, zs, xs) : M (seq E * seq E * seq E)%type := 
+  if x <= p then qperm zs >>= (fun zs' => Ret (ys ++ [:: x], zs', xs))
+            else qperm (zs ++ [:: x]) >>= (fun zs' => Ret (ys, zs', xs)).
+
+Definition uncurry3 :=
+  (fun (A B C D : UU0) (f : A -> B -> C -> D) (X : A * B * C) =>
+  let (p, c) := X in let (a, b) := p in f a b c).
+
+Definition curry3 :=
+  (fun (A B C D : UU0) (f : A * B * C -> D) =>
+  fun a b c => f (a, b, c)).
+
+Lemma partl'_dispatch (p x : E) (ys zs xs : seq E) :
+  partl' p ys zs (x :: xs) = 
+  dispatch x p (ys, zs, xs) >>= uncurry3 (partl' p).
+Proof.
+  rewrite /dispatch {1}/partl'.
+  case: ifPn.
+  rewrite bindA.
+  move=> _.
+  bind_ext.
+  move=> s.
+  by rewrite bindretf.
+  rewrite bindA.
+  move=> _.
+  bind_ext.
+  move=> s.
+  by rewrite bindretf.
+Qed.
 
 Lemma ipartl_spec (i : Z) (p : E) (ys zs xs : seq E) 
     (ipartl : E -> Z -> (nat * nat * nat)%type -> M (nat * nat)%type) : 
   writeList i (ys ++ zs ++ xs) >> ipartl p i (size ys, size zs, size xs)
-  `<=` second perm (partl p (ys, zs) xs) >>= write2L i.
+  `<=` second qperm (partl p (ys, zs) xs) >>= write2L i.
 Proof. Admitted.
 
 Local Open Scope zarith_ext_scope.
@@ -261,15 +321,109 @@ Lemma iqsort_cons {i : Z} {n : nat}: iqsort (i, n.+1) = aget i >>= (fun p =>
   iqsort (i, ny) >> iqsort ((i + ny%:Z + 1)%Z, nz))).
 Proof. rewrite [in LHS]/iqsort Fix_eq //=; exact: iqsort'_Fix. Qed.
 
-Lemma lemma12 {i : Z} {xs : seq E} {p : E} : 
-  writeList i xs >> iqsort (i, (size xs)) `<=` (slowsort M xs) >> writeList i xs.
-Proof. 
-  have [n nxs] := ubnP (size xs); elim: n xs => // n ih xs in nxs *.
+Lemma write2L_write3L {i : Z} {x p : E} {ys zs xs : seq E} : 
+  uncurry3 (partl' p) (ys, zs, xs) >>= write2L i
+  `>=` write3L i (ys, zs, xs) >>= uncurry3 (ipartl p i).
+Proof.
+  rewrite /write2L /write3L.
 Admitted.
 
-Lemma lemma13 {i : Z} {ys : seq E} {p : E} : 
-  perm ys >>= (fun ys' => writeList i (ys' ++ [:: p])) `>=` 
-  writeList i (p :: ys) >> swap i (i + (size ys)%:Z).
-Proof. Abort.
+Lemma dispatch_write2L_write3L {i : Z} {x p : E} {ys zs xs : seq E} : 
+  dispatch x p (ys, zs, xs) >>= uncurry3 (partl' p) >>= write2L i
+  `>=` dispatch x p (ys, zs, xs) >>= write3L i >>= uncurry3 (ipartl p i).
+Proof.
+  rewrite /write2L /write3L.
+Admitted.
+
+Lemma dispatch_writeList_cat {i : Z} {x p : E} {ys zs xs : seq E} :
+  dispatch x p (ys, zs, xs) >>= write3L i >>= uncurry3 (ipartl p i) =
+  dispatch x p (ys, zs, xs) >>= (fun '(ys', zs', xs) => 
+    writeList i (ys' ++ zs') >> writeList (i + (size (ys' ++ zs'))%:Z) xs >>
+    ipartl p i (size ys') (size zs') (size xs)).
+Proof.
+  rewrite bindA.
+  bind_ext => [[[ys' zs']] xs'].
+  by rewrite /write3L bindA catA writeList_cat bindretf.
+Qed.
+
+Lemma perm_preserves_length {i : Z} {x p : E} {ys zs xs : seq E} : 
+  dispatch x p (ys, zs, xs) >>= (fun '(ys', zs', xs) => 
+  writeList i (ys' ++ zs') >> writeList (i + (size (ys' ++ zs'))%:Z) xs >>
+  ipartl p i (size ys') (size zs') (size xs)) =
+  writeList (i + (size ys)%:Z + (size zs)%:Z + 1) xs >>
+    dispatch x p (ys, zs, xs) >>= (fun '(ys', zs', xs) =>
+    writeList i (ys' ++ zs') >> ipartl p i (size ys') (size zs') (size xs)).
+Proof.
+  (* rewrite size_cat.
+  bind_ext. *)
+Admitted.
+  
+Lemma partl'_writeList (p x : E) (ys zs xs : seq E) (i : Z) :
+  partl' p ys zs (x :: xs) >>= write2L i `>=`
+  writeList (i + (size ys)%:Z + (size zs)%:Z + 1)%Z xs >>
+    if x <= p then qperm zs >>= (fun zs' => writeList i (ys ++ [:: x] ++ zs') >>
+      ipartl p i (size ys + 1) (size zs') (size xs))
+    else qperm (rcons zs x) >>= (fun zs' => writeList i (ys ++ zs') >>
+      ipartl p i (size ys) (size zs') (size xs)).
+Proof.
+  rewrite partl'_dispatch.
+  apply: refin_trans; last first.
+  apply dispatch_write2L_write3L.
+  rewrite dispatch_writeList_cat.
+Admitted.
+
+
+(* TODO: move *)
+Lemma slowsort_nil : slowsort M [::] = Ret [::] :> _ (seq E).
+Proof.
+rewrite /slowsort kleisliE qperm_nil bindretf.
+(* TODO: lemma assert_nil *)
+by rewrite /assert; unlock => /=; rewrite guardT bindskipf.
+Qed.
+
+Lemma perm_involutive : perm >=> perm = perm :> (seq E -> M (seq E)).
+Proof.
+Admitted.
+
+Lemma perm_slowsort : perm >=> (@slowsort M _ _) = (@slowsort M _ _) :> (seq E -> M (seq E)).
+Proof.
+Admitted.
+
+Lemma lemma11 {i : Z} {zs : seq E} {x : E} :
+ perm zs >>= (fun zs' => writeList i (x :: zs')) `>=`
+ writeList i (rcons zs x) >> swap i (i + (size zs)%:Z).
+Proof.
+Admitted.
+
+Lemma lemma13 {i : Z} {ys : seq E} {p : E} :
+ perm ys >>= (fun ys' => writeList i (ys' ++ [:: p])) `>=`
+ writeList i (p :: ys) >> swap i (i + (size ys)%:Z).
+Proof.
+Admitted.
+
+Lemma lemma12 {i : Z} {xs : seq E} :
+ writeList i xs >> iqsort (i, size xs) `<=` slowsort M xs >> writeList i xs.
+Proof.
+have [n nxs] := ubnP (size xs); elim: n xs => // n ih xs in nxs *.
+move: xs => [|p xs] in nxs *.
+ rewrite /= iqsort_nil slowsort_nil.
+ (* NB: lemma? *)
+ by rewrite /refin 2!bindretf altmm.
+set lhs := (X in X `>=` _).
+have : lhs = writeList i (p :: xs) >>
+ (ipartl p (i + 1) 0 0 (size xs) >>= (fun '(ny, nz) => swap i (i + ny%:Z) >>
+   iqsort (i, (*(size ys)?*)ny) >> iqsort ((i + (*(size ys)?*)nz%:Z + 1)%Z,(*(size zs?*) nz))).
+ rewrite {}/lhs.
+ transitivity (
+   partl' p [::] [::] xs >>= (fun '(ys, zs) =>
+     qperm ys >>= (fun ys' => writeList i (ys' ++ [:: p] ++ zs) >>
+       iqsort (i, size ys) >> iqsort ((i + (size ys)%:Z + 1)%Z, size zs)))).
+   admit. (* NB: use perm_involutive, perm_slowsort, writeList_cat + inductive hypothesis *)
+ admit. (* NB: use ipartl_spec and lemma 13 *)
+move=> -> {lhs}.
+apply: bind_monotonic_lrefin.
+case.
+admit. (* use iqsort_cons? *)
+Admitted.
 
 End marray.
