@@ -427,12 +427,88 @@ Proof.
   by rewrite bindretf altmm.
 Admitted.
 
+Lemma write_writeListC (i j : Z) {x : E} {xs : seq E}:
+  (i < j)%Z ->
+  aput i x >> writeList j xs =
+  writeList j xs >> aput i x.
+Proof.
+  elim: xs i j => [|h t ih] i j hyp.
+  by rewrite bindretf bindmskip.
+  rewrite /= -bindA aputC.
+  rewrite !bindA.
+  bind_ext => ?.
+  apply: ih _.
+  (* rewrite add. *)
+Admitted.
+
+Lemma writeList_writeListC {i j : Z} {ys zs : seq E}:
+  (i + (size ys)%:Z < j)%Z ->
+  writeList i ys >> writeList j zs =
+  writeList j zs >> writeList i ys.
+Proof.
+  elim/last_ind: ys zs => [|t h ih] zs.
+  by rewrite bindretf bindmskip.
+  rewrite writeList_rcons bindA size_rcons -addn1.
+  move=> hyp.
+Admitted.
+
+(* page12 *)
+Lemma writeList_ipartl (p x : E) (i : Z) (ys zs xs : seq E) :
+  writeList (i + (size ys)%:Z + (size zs)%:Z + 1) xs >>
+  (if x <= p 
+    then writeList i (ys ++ zs ++ [:: x]) >>
+      swap (i + (size ys)%:Z) (i + (size ys)%:Z + (size zs)%:Z) >>
+      ipartl p i (size ys + 1) (size zs) (size xs)
+    else writeList i (ys ++ zs ++ [:: x]) >>
+      ipartl p i (size ys) (size zs + 1) (size xs)) =
+  writeList i (ys ++ zs ++ (x :: xs)) >>
+    aget (i + (size ys)%:Z + (size zs)%:Z)%Z >>= (fun x' =>
+    if x' <= p
+      then swap (i + (size ys)%:Z) (i + (size ys)%:Z + (size zs)%:Z) >>
+        ipartl p i (size ys + 1) (size zs) (size xs)
+      else ipartl p i (size ys) (size zs) (size xs)).
+Proof.
+  (* step1 *)
+  transitivity (
+    writeList i (ys ++ zs ++ (x :: xs)) >>
+      if x <= p 
+        then swap (i + (size ys)%:Z) (i + (size ys)%:Z + (size zs)%:Z) >>
+          ipartl p i (size ys + 1) (size zs) (size xs)
+        else ipartl p i (size ys) (size zs + 1) (size xs)
+  ).
+  case: ifPn => _.
+  rewrite !writeList_cat -![in LHS]bindA.
+  rewrite writeList_writeListC; last first. admit.
+  rewrite ![LHS]bindA ![RHS]bindA.
+  bind_ext => ?.
+  rewrite -![in LHS]bindA.
+  rewrite writeList_writeListC; last first. admit.
+  rewrite ![LHS]bindA ![RHS]bindA.
+  bind_ext => ?.
+  rewrite /= -[in LHS]bindA write_writeListC; last first. admit.
+  bind_ext => ?.
+  by rewrite bindretf bindA.
+  (* almost same *)
+  rewrite !writeList_cat -![in LHS]bindA.
+  rewrite writeList_writeListC; last first. admit.
+  rewrite ![LHS]bindA ![RHS]bindA.
+  bind_ext => ?.
+  rewrite -![in LHS]bindA.
+  rewrite writeList_writeListC; last first. admit.
+  rewrite ![LHS]bindA ![RHS]bindA.
+  bind_ext => ?.
+  rewrite /= -[in LHS]bindA write_writeListC; last first. admit.
+  bind_ext => ?.
+  by rewrite bindretf. (* TODO: cleanup (distributivity of if) *)
+  (* step 2 *)
+Admitted.
+  
 Lemma lemma10 (p : E) (i : Z) (ys zs xs : seq E) :
   writeList i (ys ++ zs ++ xs) >> ipartl p i (size ys) (size zs) (size xs) `<=`
   partl' p ys zs xs >>= write2L i.
 Proof.
-  elim: xs ys zs. admit.
-  move=> h t ih ys zs.
+  elim: xs ys zs => [|h t ih] ys zs.
+  rewrite /= catA cats0 bindretf /=; exact: refin_refl.
   apply: refin_trans; last first.
   apply: (partl'_writeList _ _ _ ih).
 Admitted.
