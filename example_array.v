@@ -408,18 +408,28 @@ Proof.
   rewrite !bindA.
   bind_ext => ?.
   apply: ih _.
+  by rewrite ltZadd1 leZ_eqVlt; exact: or_intror.
+  apply or_introl.
+  apply/negP => /eqP.
+  by apply ltZ_eqF; assumption.
   (* rewrite add. *)
-Admitted.
+Qed.
 
 Lemma writeList_writeListC {i j : Z} {ys zs : seq E}:
   (i + (size ys)%:Z < j)%Z ->
   writeList i ys >> writeList j zs =
   writeList j zs >> writeList i ys.
 Proof.
-  elim/last_ind: ys zs => [|t h ih] zs.
+  elim: ys zs i j => [|h t ih] zs i j hyp.
   by rewrite bindretf bindmskip.
-  rewrite writeList_rcons bindA size_rcons -addn1.
-  move=> hyp.
+  rewrite /= write_writeListC.
+  rewrite bindA write_writeListC.
+  rewrite -!bindA ih => [//|].
+  move: hyp.
+  rewrite /= => hyp.
+  rewrite -addZA add1Z //. admit.
+  admit.
+  rewrite ltZadd1 leZ_eqVlt; exact: or_introl.
 Admitted.
 
 Lemma addZ_sub {n m : nat} : (n%:Z + m%:Z)%Z = (n + m)%:Z.
@@ -430,13 +440,12 @@ Lemma introduce_read_sub {i : Z} (p : E) (xs : seq E) (f : E -> M (nat * nat)%ty
   writeList i (p :: xs) >> Ret p >> f p =
   writeList i (p :: xs) >> aget i >>= f.
 Proof.
-  rewrite introduce_read.
-  rewrite bindA bindA /= write_writeListC; last first.
+  rewrite introduce_read 2!bindA /=.
+  rewrite write_writeListC; last first.
   rewrite ltZadd1 leZ_eqVlt; exact: or_introl.
-  rewrite !bindA.
-  bind_ext => _.
-  rewrite -!bindA.
-  by rewrite !aputget.
+  rewrite 2!bindA.
+  under [LHS] eq_bind do rewrite -bindA aputget.
+  by under [RHS] eq_bind do rewrite -bindA aputget.
 Qed.
 
 (* page12 *)
