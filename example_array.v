@@ -452,6 +452,23 @@ Proof.
   move=> hyp.
 Admitted.
 
+Lemma addZ_sub {n m : nat} : (n%:Z + m%:Z)%Z = (n + m)%:Z.
+Proof.
+Admitted.
+
+Lemma introduce_read_sub {i : Z} (p : E) (xs : seq E) (f : E -> M (nat * nat)%type):
+  writeList i (p :: xs) >> Ret p >> f p =
+  writeList i (p :: xs) >> aget i >>= f.
+Proof.
+  rewrite introduce_read.
+  rewrite bindA bindA /= write_writeListC; last first.
+  rewrite ltZadd1 leZ_eqVlt; exact: or_introl.
+  rewrite !bindA.
+  bind_ext => _.
+  rewrite -!bindA.
+  by rewrite !aputget.
+Qed.
+
 (* page12 *)
 Lemma writeList_ipartl (p x : E) (i : Z) (ys zs xs : seq E) :
   writeList (i + (size ys)%:Z + (size zs)%:Z + 1) xs >>
@@ -462,11 +479,11 @@ Lemma writeList_ipartl (p x : E) (i : Z) (ys zs xs : seq E) :
     else writeList i (ys ++ zs ++ [:: x]) >>
       ipartl p i (size ys) (size zs + 1) (size xs)) =
   writeList i (ys ++ zs ++ (x :: xs)) >>
-    aget (i + (size ys)%:Z + (size zs)%:Z)%Z >>= (fun x' =>
-    if x' <= p
+    aget (i + (size ys)%:Z + (size zs)%:Z)%Z >>= (fun x =>
+    (if x <= p
       then swap (i + (size ys)%:Z) (i + (size ys)%:Z + (size zs)%:Z) >>
         ipartl p i (size ys + 1) (size zs) (size xs)
-      else ipartl p i (size ys) (size zs) (size xs)).
+      else ipartl p i (size ys) (size zs + 1) (size xs))).
 Proof.
   (* step1 *)
   transitivity (
@@ -476,32 +493,68 @@ Proof.
           ipartl p i (size ys + 1) (size zs) (size xs)
         else ipartl p i (size ys) (size zs + 1) (size xs)
   ).
-  case: ifPn => _.
+  case: ifPn => xp.
   rewrite !writeList_cat -![in LHS]bindA.
-  rewrite writeList_writeListC; last first. admit.
+  rewrite -writeList_writeListC; last first. 
+    rewrite ltZadd1 -addZA leZ_add2l.
+    apply leZ_addr.
+    elim: zs => [//|a l ih /=].
+    rewrite natZS -add1Z addZC.
+    apply (addZ_ge0 _ _ ih) => //.
+    rewrite leZ_eqVlt; exact: or_introl.
   rewrite ![LHS]bindA ![RHS]bindA.
   bind_ext => ?.
   rewrite -![in LHS]bindA.
-  rewrite writeList_writeListC; last first. admit.
+  rewrite -writeList_writeListC; last first.
+    rewrite ltZadd1 -addZA leZ_add2l.
+    rewrite leZ_eqVlt; exact: or_introl.
   rewrite ![LHS]bindA ![RHS]bindA.
   bind_ext => ?.
-  rewrite /= -[in LHS]bindA write_writeListC; last first. admit.
+  rewrite /= -[in LHS]bindA write_writeListC; last first.
+    rewrite ltZadd1 leZ_eqVlt; exact: or_introl.
   bind_ext => ?.
   by rewrite bindretf bindA.
   (* almost same *)
   rewrite !writeList_cat -![in LHS]bindA.
-  rewrite writeList_writeListC; last first. admit.
+  rewrite -writeList_writeListC; last first.
+    rewrite ltZadd1 -addZA leZ_add2l.
+    apply leZ_addr.
+    elim: zs => [//|a l ih /=].
+    rewrite natZS -add1Z addZC.
+    apply (addZ_ge0 _ _ ih) => //.
+    rewrite leZ_eqVlt; exact: or_introl.
   rewrite ![LHS]bindA ![RHS]bindA.
   bind_ext => ?.
   rewrite -![in LHS]bindA.
-  rewrite writeList_writeListC; last first. admit.
+  rewrite -writeList_writeListC; last first.
+    rewrite ltZadd1 -addZA leZ_add2l.
+    rewrite leZ_eqVlt; exact: or_introl.
   rewrite ![LHS]bindA ![RHS]bindA.
   bind_ext => ?.
-  rewrite /= -[in LHS]bindA write_writeListC; last first. admit.
+  rewrite /= -[in LHS]bindA write_writeListC; last first.
+    rewrite ltZadd1 leZ_eqVlt; exact: or_introl. 
   bind_ext => ?.
   by rewrite bindretf. (* TODO: cleanup (distributivity of if) *)
   (* step 2 *)
-Admitted.
+  rewrite bindA catA writeList_cat 2!bindA.
+  rewrite size_cat -addZ_sub addZA.
+  bind_ext => ?.
+  transitivity (
+    writeList (i + (size ys)%:Z + (size zs)%:Z)%Z (x :: xs) >> Ret x >>
+    (if x <= p
+     then
+      swap (i + (size ys)%:Z) (i + (size ys)%:Z + (size zs)%:Z) >>
+      ipartl p i (size ys + 1) (size zs) (size xs)
+     else ipartl p i (size ys) (size zs + 1) (size xs))
+  ). rewrite bindA bindretf //.
+  rewrite (introduce_read_sub x xs (fun x0 => (
+    if x0 <= p
+      then swap (i + (size ys)%:Z) (i + (size ys)%:Z + (size zs)%:Z) >>
+        ipartl p i (size ys + 1) (size zs) (size xs)
+      else ipartl p i (size ys) (size zs + 1) (size xs)))
+  ).
+  by rewrite bindA.
+Qed.
   
 Lemma lemma10 (p : E) (i : Z) (ys zs xs : seq E) :
   writeList i (ys ++ zs ++ xs) >> ipartl p i (size ys) (size zs) (size xs) `<=`
