@@ -408,11 +408,8 @@ Proof.
   rewrite !bindA.
   bind_ext => ?.
   apply: ih _.
-  by rewrite ltZadd1 leZ_eqVlt; exact: or_intror.
-  apply or_introl.
-  apply/negP => /eqP.
-  by apply ltZ_eqF; assumption.
-  (* rewrite add. *)
+  by rewrite ltZadd1; apply ltZW.
+  by left; apply/eqP/ltZ_eqF.
 Qed.
 
 Lemma writeList_writeListC {i j : Z} {ys zs : seq E}:
@@ -425,16 +422,14 @@ Proof.
   rewrite /= write_writeListC.
   rewrite bindA write_writeListC.
   rewrite -!bindA ih => [//|].
-  move: hyp.
-  rewrite /= => hyp.
-  rewrite -addZA add1Z //. admit.
-  admit.
-  rewrite ltZadd1 leZ_eqVlt; exact: or_introl.
-Admitted.
+  by rewrite /= natZS -add1Z (* -> addZ1 *) addZA in hyp.
+  by apply: (leZ_ltZ_trans _ hyp); apply leZ_addr => //; exact: leZZ.
+  by rewrite ltZadd1; exact: leZZ.
+Qed.
 
-Lemma addZ_sub {n m : nat} : (n%:Z + m%:Z)%Z = (n + m)%:Z.
-Proof.
-Admitted.
+(* TODO: move ssrZ *)
+Lemma intRD (n m : nat) : (n + m)%:Z = (n%:Z + m%:Z)%Z.
+Proof. exact: Nat2Z.inj_add. Qed.
 
 Lemma introduce_read_sub {i : Z} (p : E) (xs : seq E) (f : E -> M (nat * nat)%type):
   writeList i (p :: xs) >> Ret p >> f p =
@@ -448,19 +443,29 @@ Proof.
   by under [RHS] eq_bind do rewrite -bindA aputget.
 Qed.
 
+Lemma ltZ_addl a b c : 0 <= b -> a < c -> a < b + c.
+Proof. Admitted.
+
+Lemma ltZ_addr (a b c : Z) : (0 < c -> a <= b -> a < b + c)%Z.
+Proof. Admitted.
+
+Lemma leZ0n (n : nat) : (0 <= n%:Z)%Z.
+Proof. exact: Zle_0_nat. Qed.
+(* Search _ Z.of_nat Z0. *)
+
 (* page12 *)
 Lemma writeList_ipartl (p x : E) (i : Z) (ys zs xs : seq E) :
-  writeList (i + (size ys)%:Z + (size zs)%:Z + 1) xs >>
+  writeList (i + (size ys + size zs)%:Z + 1) xs >>
   (if x <= p 
     then writeList i (ys ++ zs ++ [:: x]) >>
-      swap (i + (size ys)%:Z) (i + (size ys)%:Z + (size zs)%:Z) >>
+      swap (i + (size ys)%:Z) (i + (size ys + size zs)%:Z) >>
       ipartl p i (size ys + 1) (size zs) (size xs)
     else writeList i (ys ++ zs ++ [:: x]) >>
       ipartl p i (size ys) (size zs + 1) (size xs)) =
   writeList i (ys ++ zs ++ (x :: xs)) >>
-    aget (i + (size ys)%:Z + (size zs)%:Z)%Z >>= (fun x =>
+    aget (i + (size ys + size zs)%:Z)%Z >>= (fun x =>
     (if x <= p
-      then swap (i + (size ys)%:Z) (i + (size ys)%:Z + (size zs)%:Z) >>
+      then swap (i + (size ys)%:Z) (i + (size ys + size zs)%:Z) >>
         ipartl p i (size ys + 1) (size zs) (size xs)
       else ipartl p i (size ys) (size zs + 1) (size xs))).
 Proof.
@@ -468,55 +473,47 @@ Proof.
   transitivity (
     writeList i (ys ++ zs ++ (x :: xs)) >>
       if x <= p 
-        then swap (i + (size ys)%:Z) (i + (size ys)%:Z + (size zs)%:Z) >>
+        then swap (i + (size ys)%:Z) (i + (size ys + size zs)%:Z) >>
           ipartl p i (size ys + 1) (size zs) (size xs)
         else ipartl p i (size ys) (size zs + 1) (size xs)
   ).
   case: ifPn => xp.
   rewrite !writeList_cat -![in LHS]bindA.
-  rewrite -writeList_writeListC; last first. 
-    rewrite ltZadd1 -addZA leZ_add2l.
-    apply leZ_addr.
-    elim: zs => [//|a l ih /=].
-    rewrite natZS -add1Z addZC.
-    apply (addZ_ge0 _ _ ih) => //.
-    rewrite leZ_eqVlt; exact: or_introl.
+  rewrite -writeList_writeListC; last first.
+    rewrite intRD -2!addZA addZA. 
+    by apply: (ltZ_addr _ (leZZ _)); rewrite ltZadd1; apply leZ0n.
   rewrite ![LHS]bindA ![RHS]bindA.
   bind_ext => ?.
   rewrite -![in LHS]bindA.
   rewrite -writeList_writeListC; last first.
-    rewrite ltZadd1 -addZA leZ_add2l.
-    rewrite leZ_eqVlt; exact: or_introl.
+    by rewrite intRD addZA; apply /ltZadd1 /leZZ.
   rewrite ![LHS]bindA ![RHS]bindA.
   bind_ext => ?.
   rewrite /= -[in LHS]bindA write_writeListC; last first.
-    rewrite ltZadd1 leZ_eqVlt; exact: or_introl.
+    by rewrite ltZadd1; exact: leZZ.
+  rewrite intRD addZA.
   bind_ext => ?.
   by rewrite bindretf bindA.
   (* almost same *)
   rewrite !writeList_cat -![in LHS]bindA.
   rewrite -writeList_writeListC; last first.
-    rewrite ltZadd1 -addZA leZ_add2l.
-    apply leZ_addr.
-    elim: zs => [//|a l ih /=].
-    rewrite natZS -add1Z addZC.
-    apply (addZ_ge0 _ _ ih) => //.
-    rewrite leZ_eqVlt; exact: or_introl.
+    rewrite intRD -2!addZA addZA. 
+    by apply: (ltZ_addr _ (leZZ _)); rewrite ltZadd1; apply leZ0n.
   rewrite ![LHS]bindA ![RHS]bindA.
   bind_ext => ?.
   rewrite -![in LHS]bindA.
   rewrite -writeList_writeListC; last first.
-    rewrite ltZadd1 -addZA leZ_add2l.
-    rewrite leZ_eqVlt; exact: or_introl.
+    by rewrite intRD addZA; apply /ltZadd1 /leZZ.
   rewrite ![LHS]bindA ![RHS]bindA.
   bind_ext => ?.
   rewrite /= -[in LHS]bindA write_writeListC; last first.
-    rewrite ltZadd1 leZ_eqVlt; exact: or_introl. 
+    by rewrite ltZadd1; exact: leZZ.
+  rewrite intRD addZA.
   bind_ext => ?.
   by rewrite bindretf. (* TODO: cleanup (distributivity of if) *)
   (* step 2 *)
   rewrite bindA catA writeList_cat 2!bindA.
-  rewrite size_cat -addZ_sub addZA.
+  rewrite size_cat intRD addZA.
   bind_ext => ?.
   transitivity (
     writeList (i + (size ys)%:Z + (size zs)%:Z)%Z (x :: xs) >> Ret x >>
@@ -525,7 +522,7 @@ Proof.
       swap (i + (size ys)%:Z) (i + (size ys)%:Z + (size zs)%:Z) >>
       ipartl p i (size ys + 1) (size zs) (size xs)
      else ipartl p i (size ys) (size zs + 1) (size xs))
-  ). rewrite bindA bindretf //.
+  ). by rewrite bindA bindretf.
   rewrite (introduce_read_sub x xs (fun x0 => (
     if x0 <= p
       then swap (i + (size ys)%:Z) (i + (size ys)%:Z + (size zs)%:Z) >>
@@ -554,15 +551,17 @@ Proof.
 Admitted.
 
 Lemma lemma11 {i : Z} {zs : seq E} {x : E} :
- perm zs >>= (fun zs' => writeList i (x :: zs')) `>=`
+ qperm zs >>= (fun zs' => writeList i (x :: zs')) `>=`
  writeList i (rcons zs x) >> swap i (i + (size zs)%:Z).
 Proof.
 Admitted.
 
+(* See postulate introduce-swap *)
 Lemma lemma13 {i : Z} {ys : seq E} {p : E} :
- perm ys >>= (fun ys' => writeList i (ys' ++ [:: p])) `>=`
+ qperm ys >>= (fun ys' => writeList i (rcons ys' p)) `>=`
  writeList i (p :: ys) >> swap i (i + (size ys)%:Z).
 Proof.
+  
 Admitted.
 
 Lemma lemma12 {i : Z} {xs : seq E} :
@@ -574,16 +573,16 @@ move: xs => [|p xs] in nxs *.
  (* NB: lemma? *)
  by rewrite /refin 2!bindretf altmm.
 set lhs := (X in X `>=` _).
-have : lhs = writeList i (p :: xs) >>
+have : lhs `>=` writeList i (p :: xs) >>
  (ipartl p (i + 1) 0 0 (size xs) >>= (fun '(ny, nz) => swap i (i + ny%:Z) >>
    iqsort (i, (*(size ys)?*)ny) >> iqsort ((i + (*(size ys)?*)nz%:Z + 1)%Z,(*(size zs?*) nz))).
  rewrite {}/lhs.
- transitivity (
-   partl' p [::] [::] xs >>= (fun '(ys, zs) =>
+ apply: (@refin_trans _ _ 
+   (partl' p [::] [::] xs >>= (fun '(ys, zs) =>
      qperm ys >>= (fun ys' => writeList i (ys' ++ [:: p] ++ zs) >>
-       iqsort (i, size ys) >> iqsort ((i + (size ys)%:Z + 1)%Z, size zs)))).
+       iqsort (i, size ys) >> iqsort ((i + (size ys)%:Z + 1)%Z, size zs))))); last first.
    admit. (* NB: use perm_involutive, perm_slowsort, writeList_cat + inductive hypothesis *)
- admit. (* NB: use ipartl_spec and lemma 13 *)
+ admit. (* NB: use lemma10 and lemma 13 *)
 move=> -> {lhs}.
 apply: bind_monotonic_lrefin.
 case.
