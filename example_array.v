@@ -382,22 +382,121 @@ Proof.
   by rewrite /write3L bindA catA writeList_cat bindretf.
 Qed.
 
-Lemma perm_preserves_length {i : Z} {x p : E} {ys zs xs : seq E} : 
-  dispatch x p (ys, zs, xs) >>= (fun '(ys', zs', xs) => 
+Let split_pair A n : Type := {x : seq A * seq A | size x.1 + size x.2 = n}.
+
+Program Fixpoint ssplits A (s : seq A) : M (split_pair A (size s))%type :=
+  match s with
+  | [::] => Ret (exist _ ([::], [::]) _)
+  | x :: xs => (do yz <- ssplits xs; Ret (exist _ (x :: yz.1, yz.2) _) [~]
+                                  Ret (exist _ (yz.1, x :: yz.2) _))%Do
+  end.
+Next Obligation. by []. Qed.
+Next Obligation.
+by move=> A [//|x' xs'] x xs [xx' xsxs'] [[a b] /=] <-; rewrite addSn.
+Qed.
+Next Obligation.
+by move=> A [//|x' xs'] x xs [xx' xsxs'] [[a b] /=] <-; rewrite -addnS.
+Qed.
+
+Local Open Scope mprog.
+Lemma splitsE A (s : seq A) :
+  splits s = fmap (fun xy => ((sval xy).1, (sval xy).2)) (ssplits s) :> M _.
+Proof.
+elim: s => [|h t ih]; first by rewrite fmapE /= bindretf.
+rewrite /= fmapE bindA ih /= fmapE !bindA; bind_ext => -[[a b] ab] /=.
+by rewrite bindretf /= alt_bindDl /=; congr (_ [~] _); rewrite bindretf.
+Qed.
+Local Close Scope mprog.
+
+(* NB: can't use the preserves predicate below because the input/output of splits
+   are of different sizes *)
+Lemma splits_preserves_size A (x : seq A) :
+  (splits x >>= fun x' => Ret (x' , size x'.1 + size x'.2)) =
+  (splits x >>= fun x' => Ret (x' , size x)) :> M _.
+Proof.
+move: x => [|x xs]; first by rewrite /= !bindretf.
+rewrite /= !bindA splitsE !fmapE !bindA.
+bind_ext => -[[a b] /= ab].
+by rewrite /= !bindretf !alt_bindDl !bindretf /= addSn addnS ab.
+Qed.
+
+Definition preserves A B (f : A -> M A) (g : A -> B) :=
+  forall x, (f x >>= fun x' => Ret (x' , g x')) = (f x >>= fun x' => Ret (x' , g x)).
+
+Lemma bind_liftM2 A B C (f : seq A -> seq B -> seq C)
+    (m1 : M (seq A)) (m2 : M (seq B)) n :
+  (forall a b, size (f a b) = size a + size b + n) ->
+  liftM2 f m1 m2 >>= (fun x => Ret (x, size x)) =
+  liftM2 (fun a b => (f a.1 b.1, a.2 + b.2 + n))
+          (m1 >>= (fun x => Ret (x, size x)))
+          (m2 >>= (fun x => Ret (x, size x))).
+Proof.
+move=> hf.
+rewrite /liftM2 !bindA; bind_ext => x1.
+rewrite !bindretf !bindA.
+bind_ext=> x2.
+by rewrite !bindretf /= hf.
+Qed.
+Arguments bind_liftM2 {A B C} {f} {m1} {m2} _.
+
+Lemma qperm_preserves_size A : preserves (@qperm _ A) size.
+Proof.
+move=> s.
+have [n ns] := ubnP (size s); elim: n s ns => // n ih s ns.
+move: s => [|p s] in ns *.
+  by rewrite !qperm_nil !bindretf.
+rewrite /= ltnS in ns.
+rewrite qpermE !bindA.
+(*bind_ext => -[a b]. (* we lose the size information *)*)
+rewrite !splitsE !fmapE !bindA.
+bind_ext => -[[a b] /= ab].
+rewrite !bindretf.
+rewrite (bind_liftM2 1%N); last first.
+  by move=> x y; rewrite size_cat /= addn1 -addnS.
+rewrite {1}/liftM2.
+rewrite ih; last by rewrite (leq_trans _ ns)// ltnS -ab leq_addr.
+rewrite /liftM2 !bindA.
+bind_ext => xa.
+rewrite bindretf.
+rewrite ih; last by rewrite (leq_trans _ ns)// ltnS -ab leq_addl.
+rewrite !bindA.
+bind_ext => xb.
+rewrite !bindretf /=.
+by rewrite ab addn1.
+Qed.
+
+Lemma commute_writeList_dispatch i p ys zs xs x :
+  commute (dispatch x p (ys, zs, xs)) (writeList (i + (size ys)%:Z + (size zs)%:Z + 1) xs)
+    (fun pat _ => let: (ys', zs', xs0) := pat in writeList i (ys' ++ zs') >> ipartl p i (size ys') (size zs') (size xs0)).
+Proof.
+apply: commute_plus.
+red.
+eexists.
+Print SyntaxNondet.denote.
+Print dispatch.
+Admitted.
+
+Lemma perm_preserves_length {i : Z} {x p : E} {ys zs xs : seq E} :
+  dispatch x p (ys, zs, xs) >>= (fun '(ys', zs', xs) =>
   writeList i (ys' ++ zs') >> writeList (i + (size (ys' ++ zs'))%:Z) xs >>
   ipartl p i (size ys') (size zs') (size xs)) =
   writeList (i + (size ys)%:Z + (size zs)%:Z + 1) xs >>
     dispatch x p (ys, zs, xs) >>= (fun '(ys', zs', xs) =>
     writeList i (ys' ++ zs') >> ipartl p i (size ys') (size zs') (size xs)).
 Proof.
-  rewrite /dispatch.
-  case: ifPn => xp.
+rewrite [in RHS]bindA.
+rewrite -commute_writeList_dispatch.
+rewrite /dispatch.
+case: ifPn => xp.
   rewrite !bindA.
-  (* bind_ext. *)
+  bind_ext => zs'.
+  rewrite !bindretf.
+  rewrite -writeList_cat.
+  rewrite -bindA.
   (* rewrite size_cat.
   bind_ext. *)
 Admitted.
-  
+
 Lemma partl'_writeList (p x : E) (ys zs xs : seq E) (i : Z) :
   (forall ys zs : seq E, (do x <- partl' p ys zs xs; write2L i x)%Do
     `>=` writeList i (ys ++ zs ++ xs) >>
@@ -711,7 +810,7 @@ have : lhs `>=` writeList i (p :: xs) >>
  (ipartl p (i + 1) 0 0 (size xs) >>= (fun '(ny, nz) => swap i (i + ny%:Z) >>
    iqsort (i, (*(size ys)?*)ny) >> iqsort ((i + (*(size ys)?*)nz%:Z + 1)%Z,(*(size zs?*) nz))).
  rewrite {}/lhs.
- apply: (@refin_trans _ _ 
+ apply: (@refin_trans _ _
    (partl' p [::] [::] xs >>= (fun '(ys, zs) =>
      qperm ys >>= (fun ys' => writeList i (ys' ++ [:: p] ++ zs) >>
        iqsort (i, size ys) >> iqsort ((i + (size ys)%:Z + 1)%Z, size zs))))); last first.
