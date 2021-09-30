@@ -634,3 +634,48 @@ Proof.
 move=> s; rewrite /s sortE /=.
 by repeat rewrite qsortE /=.
 Abort.
+
+Module functional_qsort.
+Require Import Recdef.
+From mathcomp Require Import ssrnat.
+Section qsort_def.
+Variables (d : unit) (T : porderType d).
+Function fqsort (s : seq T) {measure size s} : seq T :=
+  match s with
+  | [::] => [::]
+  | h :: t => let: (ys, zs) := partition h t in
+              fqsort ys ++ h :: fqsort zs
+  end.
+Proof.
+move=> s h t sht ys zs H.
+have := size_partition h t.
+by rewrite H /= => <-; apply/ltP; rewrite ltnS leq_addl.
+move=> s h t sht ys zs H.
+have := size_partition h t.
+by rewrite H /= => <-; apply/ltP; rewrite ltnS leq_addr.
+Defined.
+
+Lemma fqsortE (s : seq T) :
+    fqsort s = 
+    match s with
+    | [::] => [::]
+    | h :: t => let: (ys, zs) := partition h t in
+                fqsort ys ++ h :: fqsort zs
+    end.
+Proof. by functional induction (fqsort s) => [//|]; rewrite e0. Qed.
+
+End qsort_def.
+
+Example qsort_nat :
+  fqsort [:: 3; 42; 230; 1; 67; 2]%N = [:: 1; 2; 3; 42; 67; 230]%N.
+Proof.
+  rewrite fqsortE /=.
+  rewrite fqsortE /=.
+  rewrite fqsortE /=.
+  by rewrite fqsortE.
+Qed.
+
+Eval compute in qsort [:: 3; 42; 230; 1; 67; 2]%N.
+Eval compute in fqsort [:: 3; 42; 230; 1; 67; 2]%N.
+
+End functional_qsort.

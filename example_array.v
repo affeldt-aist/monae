@@ -70,7 +70,7 @@ Fixpoint partl (p : E) (s : (seq E * seq E)%type) (xs : seq E)
 Definition second {A B C} (f : B -> M C) (xy : (A * B)%type) := 
   f xy.2 >>= (fun y' => Ret (xy.1, y')).
 
-(* Require Import FunInd.
+(* Require Import Recdef.
 Function partl' (p : E) (yzxs : (seq E * seq E * seq E)) {struct yzxs}
     : M (seq E * seq E)%type :=
   match yzxs with
@@ -354,6 +354,13 @@ Fixpoint ipartl (p : E) (i : Z) (ny nz : nat) (nx : nat) : M (nat * nat)%type :=
            else
              ipartl p i ny nz.+1 k)
   end.
+
+(* Function iqsort (i : Z) (n : nat) {struct n} : M unit :=
+  match n with 
+  | 0 => Ret tt
+  | k.+1 => aget i >>= (fun p =>
+            ipartl p (i + 1) 0 0 (n-1) >>= (fun '(ny, nz) => swap i (i + ny%:Z) >> iqsort i ny))
+  end. *)
 
 Local Obligation Tactic := idtac.
 Program Fixpoint iqsort' (ni : (Z * nat))
@@ -712,12 +719,115 @@ Proof.
   apply: refin_trans; last first. *)
 Admitted. *)
 
-Lemma qperm_preserves {A} (h : E) (t : seq E) (f : seq E -> M A) :
-  qperm (h :: t) >>= f = qperm (rcons t h) >>= f.
+(* Lemma perm_eq_splits (a b : seq E) :
+   perm_eq a b -> splits a = splits b :> M _.
+Proof.
+move=> ab; have := perm_size ab.
+have [n na] := ubnP (size a); elim: n a b na => // n ih a b na in ab *.
+move=> sz_ab.
+case: a na ab sz_ab => [|a0 a1].
+ by move=> /= _ _ /esym/size0nil ->.
+rewrite ltnS => a1n.
+case: b => // b0 b1 ab [sz_ab1].
+have [ab0|a0b0] := eqVneq a0 b0.
+ rewrite ab0.
+ rewrite ab0 in ab.
+ rewrite perm_cons in ab.
+ rewrite /=.
+ by rewrite (ih _ b1).
+ have a0inb1 := a0 \in b1.
+Abort. *)
+(* Lemma perm_eq_splits (a b : seq E) A (f : seq E -> seq E -> M A)  : perm_eq a b ->
+ (forall x x' y y', perm_eq x x' -> perm_eq y y' -> f x y = f x' y') ->
+ (splits a >>= (fun '(x, y) => f x y)) = (splits b >>= (fun '(x, y) => f x y )).
+Admitted. *)
+Lemma perm_eq_splits (a b : seq E) A (f : seq E -> seq E -> M A)  : perm_eq a b ->
+ (forall x x' y y', (size x <= size a)%nat -> (size y <= size b)%nat ->
+   perm_eq x x' -> perm_eq y y' -> f x y = f x' y') ->
+ (splits a >>= (fun '(x, y) => f x y)) = (splits b >>= (fun '(x, y) => f x y )).
 Proof.
 Admitted.
 
-Lemma qperm_refin {A} (zs : seq E) (f : seq E -> M A) :
+Lemma perm_permutations_ (a b : seq E) :
+  perm_eq a b -> perm_eq (permutations a) (permutations b).
+  (* perm_eq a b -> permutations a = permutations b :> seq _. *)
+Proof.
+  apply perm_permutations.
+Abort.
+
+Lemma perm_eq_qperm (a b : seq E) : 
+  (* perm_eq a b -> perm_eq (qperm a) (qperm b). *)
+  perm_eq a b -> qperm a = qperm b :> M _.
+Proof.
+move=> ab; have := perm_size ab.
+have [n na] := ubnP (size a); elim: n a na b ab => // n ih a na b ab.
+move: a => [|a0 a1] in na ab *.
+ by move=> /esym/size0nil ->.
+move: b ab ih => [//|b0 b1] ab /= ih [ab1n].
+rewrite /= ltnS in na.
+have [ab0|ab0] := eqVneq a0 b0.
+ rewrite -ab0 2!qperm_cons.
+ rewrite ab0 perm_cons in ab.
+ apply perm_eq_splits => // x x' y y' xa1 yb1 xx' yy'.
+ rewrite (ih x _ x') //; last 2 first.
+   by rewrite (leq_ltn_trans xa1).
+   exact: perm_size.
+ rewrite (ih y _ y') //.
+   by rewrite (leq_ltn_trans yb1) // -(perm_size ab).
+ exact: perm_size.
+Admitted.
+
+(* Lemma perm_eq_qperm (a b : seq E) :
+  perm_eq a b -> qperm a = qperm b :> M _.
+Proof.
+  move=> ab; have := perm_size ab.
+  (* have [n Hn] := ubnP (size a). *)
+  move Hn : (size a) => n.
+  elim: n a b ab Hn => [//|n ih] a b ab.
+  (* move=> /size0nil. *)
+  by move=> /size0nil -> /esym/size0nil ->.
+  move: a b ab => [//|a0 a1] [//|b0 b1].
+  move=> ab [a1n] [b1n].
+  have[] := eqVneq a0 b0.
+  move=> ab0.
+  rewrite -ab0.
+  rewrite -ab0 perm_cons in ab.
+  rewrite 2!qperm_cons.
+  apply perm_eq_splits => [//|x x' y y' xx' yy'].
+  rewrite (ih x x').
+  rewrite /liftM2.
+  bind_ext => ?.
+  rewrite (ih y y') //.
+  admit. admit.
+  assumption.
+  admit. admit.
+  
+  apply: perm_size eqab.
+  have [na ana] := ubnP (size a).
+  have [nb bnb] := ubnP (size a).
+  rewrite /perm_eq.
+Admitted. *)
+
+Lemma qperm_preserves (h : E) (t : seq E) :
+  qperm (h :: t) = qperm (rcons t h) :> M _.
+Proof.
+  apply: perm_eq_qperm.
+  by rewrite perm_sym perm_rcons perm_refl.
+Qed.
+
+Lemma qperm_preserves_f {A} (h : E) (t : seq E) (f : seq E -> M A) :
+  qperm (h :: t) >>= f = qperm (rcons t h) >>= f.
+Proof. by rewrite -qperm_preserves. Qed.
+
+Lemma qperm_refin (zs : seq E) :
+  qperm zs `>=` (Ret zs : M _).
+Proof.
+  rewrite /=.
+  elim: zs.
+  rewrite qperm_nil; exact: refin_refl.
+Admitted.
+
+Lemma qperm_refin_f {A} (zs : seq E) (f : seq E -> M A) :
   qperm zs >>= f `>=` Ret zs >>= f.
 Proof.
 Admitted.
@@ -726,14 +836,14 @@ Lemma qperm_refin_rcons {A} (h : E) (t : seq E) (f : seq E -> M A) :
   qperm (h :: t) >>= f `>=` Ret (rcons t h) >>= f.
 Proof.
   rewrite qperm_preserves.
-  apply /(refin_trans _ (@qperm_refin _ _ _)) /refin_refl.
+  apply /(refin_trans _ (@qperm_refin_f _ _ _)) /refin_refl.
 Qed.
 
 Lemma qperm_refin_cons {A} (h : E) (t : seq E) (f : seq E -> M A) :
   qperm (rcons t h) >>= f `>=` Ret (h :: t) >>= f.
 Proof.
   rewrite -qperm_preserves.
-  apply /(refin_trans _ (@qperm_refin _ _ _)) /refin_refl.
+  apply /(refin_trans _ (@qperm_refin_f _ _ _)) /refin_refl.
 Qed.
 
 (* TODO *)
@@ -844,7 +954,7 @@ apply: refin_trans; last first.
   apply: refin_refl.
   (* have: commute *)
   have: commute (qperm zs) (writeList i ys) (fun x0 _ => writeList (i + (size ys)%:Z) ([:: x] ++ x0)).
-  admit.
+  apply: commute_plus; exact: nondetPlus_sub_qperm.
   move->.
 apply: (@refin_trans _ _
   (writeList i ys >> writeList (i + (size ys)%:Z) (rcons zs x) >>
@@ -856,7 +966,7 @@ apply: (@refin_trans _ _
   by rewrite introduce_swap_cons.
 - rewrite writeList_cat -cat_rcons cats0.
   apply refin_refl.
-Admitted.
+Qed.
 
 
 Lemma introduce_read_sub {i : Z} (p : E) (xs : seq E) (f : E -> M (nat * nat)%type):
@@ -960,15 +1070,29 @@ Proof.
   rewrite /= catA cats0 bindretf /=; exact: refin_refl.
   apply: refin_trans; last first.
   apply: (partl'_writeList _ _ _ ih).
+  case: ifPn => hp.
+  (* rewrite -writeList_writeListC. *)
 Admitted.
 
-Lemma qperm_involutive : qperm >=> qperm = qperm :> (seq E -> M (seq E)).
+Lemma qperm_involutive : (qperm >=> qperm) = qperm :> (seq E -> M (seq E)).
 Proof.
+  apply: fun_ext_dep => xs.
+  elim: xs => [|h t ih].
+  by rewrite kleisliE qperm_nil bindretf qperm_nil.
+  rewrite [in RHS]qperm_cons.
 Admitted.
 
-Lemma qperm_slowsort : qperm >=> (@slowsort M _ _) = (@slowsort M _ _) :> (seq E -> M (seq E)).
+Lemma kleisliA A B C D (f : A -> M B) (g : B -> M C) (h : C -> M D) : 
+  f >=> g >=> h = f >=> (g >=> h).
 Proof.
-Admitted.
+  apply: fun_ext_dep => x.
+  rewrite !kleisliE bindA.
+  bind_ext => ?.
+  by rewrite kleisliE.
+Qed.
+  
+Lemma qperm_slowsort : (qperm >=> (@slowsort M _ _)) = (@slowsort M _ _) :> (seq E -> M (seq E)).
+Proof. by rewrite /slowsort -kleisliA qperm_involutive. Qed.
 
 Lemma lemma12 {i : Z} {xs : seq E} :
  writeList i xs >> iqsort (i, size xs) `<=` slowsort xs >> writeList i xs.
@@ -988,7 +1112,7 @@ have : lhs `>=` writeList i (p :: xs) >>
      qperm ys >>= (fun ys' => writeList i (ys' ++ [:: p] ++ zs) >>
        iqsort (i, size ys) >> iqsort ((i + (size ys)%:Z + 1)%Z, size zs))))); last first.
    admit. (* NB: use qperm_involutive, qperm_slowsort, writeList_cat + inductive hypothesis *)
- admit. (* NB: use lemma10 and lemma 13 *)
+   admit. (* NB: use lemma10 and lemma 13 *)
  (*
 move=> -> {lhs}.
 apply: bind_monotonic_lrefin.
