@@ -226,13 +226,13 @@ Local Obligation Tactic := idtac.
 Program Definition qperm' (s : seq A)
     (f : forall s', size s' < size s -> M (seq A)) : M (seq A) :=
   if s isn't x :: xs then Ret [::] else
-    tsplits xs >>= (fun a => let: (ys, zs) := a in liftM2 (fun a b => a ++ [:: x] ++ b) (f ys _) (f zs _)).
+    tsplits xs >>= (fun a => liftM2 (fun a b => a ++ [:: x] ++ b) (f a.1 _) (f a.2 _)).
 Next Obligation.
-move=> [|h t] // ht x xs [xh xst] [a b ys zs] [-> zsb].
+move=> [|h t] // ht x xs [xh xst] [a b] /=.
 by apply: (leq_ltn_trans (size_bseq a)); rewrite xst.
 Qed.
 Next Obligation.
-move=> [|h t] // ht x xs [xh xst] [a b ys zs] [ysa ->].
+move=> [|h t] // ht x xs [xh xst] [a b].
 by apply: (leq_ltn_trans (size_bseq b)); rewrite xst.
 Qed.
 Next Obligation. by move=> /= s _ x xs. Qed.
