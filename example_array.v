@@ -38,6 +38,15 @@ Proof. exact: Zle_0_nat. Qed.
 (* Search _ Z.of_nat Z0. *)
 Local Close Scope zarith_ext_scope.
 
+Lemma kleisliA {M : monad} A B C D (f : A -> M B) (g : B -> M C) (h : C -> M D) : 
+  f >=> g >=> h = f >=> (g >=> h).
+Proof.
+  apply: fun_ext_dep => x.
+  rewrite !kleisliE bindA.
+  bind_ext => ?.
+  by rewrite kleisliE.
+Qed.
+
 Section marray.
 
 Variable (d : unit) (E : porderType d) (M : plusArrayMonad E Z_eqType).
@@ -858,10 +867,7 @@ Proof.
   by rewrite perm_sym perm_rcons perm_refl.
 Qed.
 
-Lemma qperm_preserves_f {A} (h : E) (t : seq E) (f : seq E -> M A) :
-  qperm (h :: t) >>= f = qperm (rcons t h) >>= f.
-Proof. by rewrite -qperm_preserves. Qed.
-
+(* XXXX : postulate return⊑perm in Agda code *)
 Lemma qperm_refin (zs : seq E) :
   qperm zs `>=` (Ret zs : M _).
 Proof.
@@ -870,24 +876,80 @@ Proof.
   rewrite qperm_nil; exact: refin_refl.
 Admitted.
 
-Lemma qperm_refin_f {A} (zs : seq E) (f : seq E -> M A) :
-  qperm zs >>= f `>=` Ret zs >>= f.
+(* XXX *)
+Lemma qperm_refin_rcons (h : E) (t : seq E) :
+  qperm (h :: t) `>=` (Ret (rcons t h) : M _).
+Proof.
+rewrite qperm_preserves.
+exact: qperm_refin.
+Qed.
+
+(* XXX *)
+Lemma qperm_refin_cons (h : E) (t : seq E) :
+  qperm (rcons t h) `>=` (Ret (h :: t) : M _).
+Proof.
+rewrite -qperm_preserves.
+exact: qperm_refin.
+Qed.
+
+(* 参考:perm *)
+Lemma perm_ret (xs : seq E) : perm xs `>=` (Ret xs : M _).
+Proof.
+case: (perm_is_alt_ret M xs).
+by move=> m H; rewrite H /refin altA altmm.
+Qed.
+
+Lemma qperm_Ret a s : exists m, qperm (a :: s) = Ret (a :: s) [~] m :> M (seq E).
+Proof.
+elim: s => [|h t [m ih]] /=. exists fail. 
+by rewrite qpermE /= bindretf qpermE /liftM2 2!bindretf /= altmfail.
+eexists.
+rewrite qpermE /liftM2 /= alt_bindDr.
+rewrite alt_bindDl !bindA.
+under eq_bind do rewrite bindretf.
+Admitted.
+
+Lemma qperm_is_alt_ret (s : seq E): 
+  exists m : M (seq E), qperm s = Ret s [~] m.
+Proof.
+elim: s => [|h t [m ih] /=]; first by exists fail; rewrite altmfail qpermE.
+case: (@qperm_Ret h t) => n Hn.
+by eexists; rewrite Hn.
+Qed.
+
+Lemma qperm_ret (xs : seq E) : qperm xs `>=` (Ret xs : M _).
+Proof.
+by case: (qperm_is_alt_ret xs); move=> m H; rewrite H /refin altA altmm.
+Qed.
+
+Lemma permutations_idem : perm >=> perm = perm :> (seq E -> M _).
+Proof.
+apply: fun_ext_dep => xs.
+rewrite kleisliE.
+elim: xs => [|h t ih].
+by rewrite /= bindretf /=.
+rewrite -perm_ret alt_bindDl bindretf.
+rewrite /= bindA.
+Admitted.
+
+(* TODO: XXX : postulate perm-idempotent in Agda *)
+Lemma qperm_involutive : qperm >=> qperm = qperm :> (seq E -> M (seq E)).
+Proof.
+  apply: fun_ext_dep => xs.
+  rewrite kleisliE.
+  elim: xs => [|h t ih].
+  (* by rewrite kleisliE qperm_nil bindretf qperm_nil. *)
+  (* rewrite [in RHS]qperm_cons. *)
+Admitted.
+  
+(* TODO: XXX : postulate perm-snoc in Agda *)
+Lemma qperm_rcons (xs : seq E) x : 
+  qperm (rcons xs x) = qperm xs >>= (fun xs' => qperm (rcons xs' x)) :> M _.
 Proof.
 Admitted.
 
-Lemma qperm_refin_rcons {A} (h : E) (t : seq E) (f : seq E -> M A) :
-  qperm (h :: t) >>= f `>=` Ret (rcons t h) >>= f.
-Proof.
-  rewrite qperm_preserves.
-  apply /(refin_trans _ (@qperm_refin_f _ _ _)) /refin_refl.
-Qed.
-
-Lemma qperm_refin_cons {A} (h : E) (t : seq E) (f : seq E -> M A) :
-  qperm (rcons t h) >>= f `>=` Ret (h :: t) >>= f.
-Proof.
-  rewrite -qperm_preserves.
-  apply /(refin_trans _ (@qperm_refin_f _ _ _)) /refin_refl.
-Qed.
+Lemma qperm_slowsort : (qperm >=> (@slowsort M _ _)) = (@slowsort M _ _) :> (seq E -> M (seq E)).
+Proof. by rewrite /slowsort -kleisliA qperm_involutive. Qed.
 
 (* TODO *)
 Lemma aput_writeList_cons {i : Z} {x h : E} {t : seq E} :
@@ -964,9 +1026,11 @@ rewrite qperm_nil bindmskip bindretf addZ0 swapii bindmskip.
 by apply: refin_refl.
 move=> h t /= i.
 rewrite bindA writeList_rcons.
-apply: (refin_trans _ (@qperm_refin_rcons _ _ _ _)).
-rewrite bindretf.
 rewrite -aput_writeList_rcons.
+apply: refin_trans; last first.
+  apply: bind_monotonic_refin.
+  exact: qperm_refin_rcons.
+rewrite bindretf.
 apply: refin_refl.
 Qed.
 
@@ -980,10 +1044,12 @@ rewrite qperm_nil bindmskip bindretf addZ0 swapii /= bindmskip.
 by apply: refin_refl.
 move=> t h ih i.
 rewrite /= bindA.
-apply: (refin_trans _ (@qperm_refin_cons _ _ _ _)).
+apply: refin_trans; last first.
+  apply: bind_monotonic_refin.
+  exact: qperm_refin_cons.
 rewrite bindretf -bindA.
 rewrite -aput_writeList_cons.
-by apply: refin_refl.
+exact: refin_refl.
 Qed.
 
 Section lemma10.
@@ -1160,7 +1226,7 @@ apply: (@refin_trans _ _ (
          writeList i (ys ++ zs') >> ipartl p i (size ys) (size zs') (size t))%Do); last first.
       apply: bind_monotonic_lrefin => -[].
       apply: bind_monotonic_refin.
-      admit. (* TODO: qperm refine to Ret *)
+      exact: qperm_refin. (* TODO: qperm refine to Ret *)
     apply: bind_monotonic_lrefin => -[].
     rewrite bindretf cats1 size_rcons addn1.
     exact: refin_refl.
@@ -1181,46 +1247,22 @@ rewrite bindA -addZA -intRD.
 rewrite (addn1 (size ys)).
 rewrite (addn1 (size zs)).
 exact: refin_refl.
-Admitted.
+Qed.
 
 End lemma10.
 
-Lemma ipartlspec (i : Z) (p : E) ys zs xs :
+(* Lemma ipartlspec (i : Z) (p : E) ys zs xs :
   (*write3L i >=> ipartl p i `<=` partl' p >=> write2L i.*)
   (do x <- write3L i (ys, zs, xs); uncurry3 (ipartl p i) x)%Do `<=`
   uncurry3 (partl' p) (ys, zs, xs) >>= (fun '(ys, zs) => write2L i (ys, zs)).
-Proof. Abort.
+Proof. Abort. *)
 
 (* not used 2021-09-24 :first equation on page10 *)
-Lemma ipartl_spec (i : Z) (p : E) (ys zs xs : seq E)
+(* Lemma ipartl_spec (i : Z) (p : E) (ys zs xs : seq E)
     (ipartl : E -> Z -> (nat * nat * nat)%type -> M (nat * nat)%type) :
   writeList i (ys ++ zs ++ xs) >> ipartl p i (size ys, size zs, size xs)
   `<=` second qperm (partl p (ys, zs) xs) >>= write2L i.
-Proof. Abort.
-
-Lemma qperm_involutive : qperm >=> qperm = qperm :> (seq E -> M (seq E)).
-Proof.
-  apply: fun_ext_dep => xs.
-  elim: xs => [|h t ih].
-  by rewrite kleisliE qperm_nil bindretf qperm_nil.
-  rewrite [in RHS]qperm_cons.
-Admitted.
-
-Lemma kleisliA A B C D (f : A -> M B) (g : B -> M C) (h : C -> M D) : 
-  f >=> g >=> h = f >=> (g >=> h).
-Proof.
-  apply: fun_ext_dep => x.
-  rewrite !kleisliE bindA.
-  bind_ext => ?.
-  by rewrite kleisliE.
-Qed.
-  
-Lemma qperm_slowsort : (qperm >=> (@slowsort M _ _)) = (@slowsort M _ _) :> (seq E -> M (seq E)).
-Proof. by rewrite /slowsort -kleisliA qperm_involutive. Qed.
-
-Lemma qperm_rcons (xs : seq E) x : qperm (rcons xs x) = qperm xs >>= (fun xs' => qperm (rcons xs' x)) :> M _.
-Proof.
-Admitted.
+Proof. Abort. *)
 
 Lemma partition_partl a b p xs :
   let x := partition p xs in (a ++ x.1, b ++ x.2) = partl p (a, b) xs.
@@ -1302,8 +1344,9 @@ apply: (@refin_trans M _ (do x <- Ret b; partl' p a x xs)%Do).
   rewrite bindretf.
   exact: refin_refl.
 under [in X in X `>=` _]eq_bind do rewrite bindretf /=.
-(*apply: bind_monotonic_refin.*)
-(*apply: qperm_refin.*) Admitted.
+apply: bind_monotonic_refin.
+exact: qperm_refin. 
+Qed.
 
 (* NB: alternative to dependent types? worth explaining? *)
 Lemma bind_ext_guard A (b : bool) (m1 m2 : M A) :
