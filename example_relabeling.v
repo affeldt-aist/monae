@@ -1,9 +1,7 @@
 (* monae: Monadic equational reasoning in Coq                                 *)
 (* Copyright (C) 2020 monae authors, license: LGPL-2.1-or-later               *)
-Require Import ZArith.
 From mathcomp Require Import all_ssreflect.
 From mathcomp Require boolp.
-From infotheo Require Import ssrZ.
 Require Import monae_lib hierarchy monad_lib fail_lib state_lib.
 
 (******************************************************************************)
