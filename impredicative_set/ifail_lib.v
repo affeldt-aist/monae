@@ -259,18 +259,18 @@ Fixpoint subs (s : seq A) : M (seq A) :=
   let t' := subs t in
   fmap (cons h) t' [~] t'.
 
-Fixpoint SUBS (s : list A) : MonadAlt.sort M (list A) :=
+(*Fixpoint SUBS (s : list A) : MonadAlt.sort M (list A) :=
   if s isn't h :: t then
-      @Natural.cpnt ssrfun_idfun_canonical_Functor
-        (@Functor.Pack (Monad.sort (MonadAlt_to_Monad M))
-           (@Functor.Class (Monad.sort (MonadAlt_to_Monad M))
-              (@Monad.isFunctor_mixin (Monad.sort (MonadAlt_to_Monad M))
-                 (Monad.class (MonadAlt_to_Monad M))))) (@ret (MonadAlt_to_Monad M))
+      @Natural.cpnt ssrfun_idfun__canonical__ihierarchy_Functor
+        (@Functor.Pack (Monad.sort (ihierarchy_MonadAlt__to__ihierarchy_Monad M))
+           (@Functor.Class (Monad.sort (ihierarchy_MonadAlt__to__ihierarchy_Monad M))
+              (@Monad.ihierarchy_isFunctor_mixin (Monad.sort (ihierarchy_MonadAlt__to__ihierarchy_Monad M))
+                 (Monad.class (ihierarchy_MonadAlt__to__ihierarchy_Monad M))))) (@ret (ihierarchy_MonadAlt__to__ihierarchy_Monad M))
         (list A) (@nil A)
   else
       let t' : MonadAlt.sort M (list A) := SUBS t in
-      @alt M (list A) (@actm (MonadAlt_to_Functor M) (list A) (list A) (@cons A h) t') t'.
-Goal subs = SUBS. by []. Abort.
+      @alt M (list A) (@actm (ihierarchy_MonadAlt__to__ihierarchy_Functor M) (list A) (list A) (@cons A h) t') t'.
+Goal subs = SUBS. by []. Abort.*)
 
 Lemma subs_cons x (xs : seq A) :
   subs (x :: xs) = let t' := subs xs in fmap (cons x) t' [~] t'.

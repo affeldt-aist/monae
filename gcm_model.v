@@ -573,7 +573,7 @@ Variable C : convType.
 
 Definition join1' (s : necset {necset C}) : {convex_set C} :=
   CSet.Pack (CSet.Mixin
-    (hull_is_convex (classical_sets.bigsetU s (fun x => if x \in s then (x : set _) else cset0 _)))).
+    (hull_is_convex (\bigcup_(x in s) if x \in s then (x : set _) else cset0 _))).
 
 Lemma join1'_neq0 (s : necset {necset C}) : join1' s != set0 :> set _.
 Proof.
@@ -590,7 +590,7 @@ Definition join1 (s : necset {necset C}) : necset C :=
 Lemma eps1_correct (s : necset {necset C}) : @eps1 _ s = join1 s.
 Proof.
 rewrite eps1E; apply/necset_ext => /=; congr (hull _).
-rewrite /bigsetU; rewrite funeqE => c; rewrite propeqE; split.
+rewrite /bigcup; rewrite funeqE => c; rewrite propeqE; split.
 - by case=> X sX Xc; exists X => //; rewrite -in_setE in sX; rewrite sX.
 - by case=> X sX; rewrite -in_setE in sX; rewrite sX => Xc; exists X => //; rewrite -in_setE.
 Qed.

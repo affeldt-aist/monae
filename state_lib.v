@@ -76,9 +76,7 @@ elim: n => [|n ih].
 rewrite {1}/sum -add1n loop1 bindA; bind_ext => m.
 rewrite -/(sum n) {}ih -bindA putget bindA bindretf putput.
 congr put.
-rewrite add0n (addnC 1).
-rewrite iota_add /= sumn_cat /=.
-by rewrite add0n addn0 /= addnAC addnA.
+by rewrite add0n (addnC 1) iotaD /= sumn_cat /= add0n addn0 /= addnAC addnA.
 Qed.
 End stateloop_examples.
 
@@ -498,7 +496,7 @@ Definition are_adjacent : pred (seq nat * seq nat)%type :=
 Lemma promotable_enum : promotable is_iota are_adjacent.
 Proof.
 move=> s t Hs Ht.
-rewrite /is_iota /= size_cat iota_add.
+rewrite /is_iota /= size_cat iotaD.
 case/boolP : (nilp s) => [/nilP ->{Hs s} /=|s0]; first by rewrite addn0 /are_adjacent.
 rewrite /nilp -lt0n in s0.
 have -> : head 0 (s ++ t) = head 0 s by rewrite -nth0 nth_cat sub0n s0.
@@ -528,7 +526,7 @@ have -> : head 0 b = head 0 a + size a.
   move/(congr1 (fun x => nth 0 x (size a))) : Hab.
   rewrite nth_cat ltnn subnn nth0 => ->; rewrite -nth0 nth_cat lt0n.
   by rewrite a0 nth0 nth_iota // -{1}(addn0 (size a)) ltn_add2l lt0n.
-suff <- : head 0 (a ++ b) = head 0 a by rewrite -iota_add.
+suff <- : head 0 (a ++ b) = head 0 a by rewrite -iotaD.
 by rewrite -nth0 nth_cat lt0n a0.
 Qed.
 

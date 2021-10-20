@@ -205,20 +205,9 @@ Fixpoint splits {M : plusMonad} A (s : seq A) : M (seq A * seq A)%type :=
   if s isn't x :: xs then Ret ([::], [::]) else
     splits xs >>= (fun yz => Ret (x :: yz.1, yz.2) [~] Ret (yz.1, x :: yz.2)).
 
-(* at mathcomp.ssreflect.tuple *)
-Canonical nil_bseq n T := Bseq (isT : @size T [::] <= n).
-Canonical cons_bseq n T x (t : bseq_of n T) :=
-  Bseq (valP t : size (x :: t) <= n.+1).
-
 Lemma leq_bseq_size A (xs : seq A) (b0 : (size xs).-bseq A) :
   (size b0 <= (size xs).+1)%N.
 Proof. by rewrite (leq_trans (size_bseq b0)). Qed.
-
-(* more general definition in mathcomp/.../tuple.v *)
-Definition widen_bseq m n T (lemn : m <= n) (bs : m.-bseq T) : n.-bseq T :=
-  @Bseq n T bs (leq_trans (size_bseq bs) lemn).
-
-Check Bseq.
 
 Fixpoint tsplits {M : plusMonad} A (s : seq A)
     : M ((size s).-bseq A * (size s).-bseq A)%type :=
@@ -235,7 +224,7 @@ Proof. rewrite /= bindretf alt_bindDl !bindretf /=. Abort.
 
 Local Open Scope mprog.
 Lemma splitsE A (s : seq A) :
-  splits s = 
+  splits s =
   fmap (fun '(ys, zs) => (bseqval ys, bseqval zs)) (tsplits s) :> M _.
 Proof.
 elim: s => /= [|h t ih]; first by rewrite fmapE bindretf.
@@ -252,7 +241,7 @@ Variables (d : unit) (T : porderType d).
 
 Require Import Recdef.
 Fail Function qperm (s : seq A) {measure size s} : M (seq A) :=
-  if s isn't x :: xs then Ret [::] else 
+  if s isn't x :: xs then Ret [::] else
     splits xs >>= (fun '(ys, zs) => liftM2 (fun a b => a ++ x :: b) (qperm ys) (qperm zs)).
 
 Local Obligation Tactic := idtac.

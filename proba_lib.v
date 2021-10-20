@@ -36,22 +36,24 @@ Section convex.
 Variable M : probMonad.
 Variable A : Type.
 
-Definition prob_mixin : convex.ConvexSpace.mixin_of (convex.choice_of_Type (M A)).
-apply (@convex.ConvexSpace.Mixin _ (fun p (a b : convex.choice_of_Type (M A)) => choice p A a b)).
-- apply choice1.
-- apply choicemm.
-- apply choiceC.
-- move=> p q a b c.
-  apply (choiceA p q).
+Definition prob_mixin : convex.ConvexSpace.mixin_of (boolp.choice_of_Type (M A)).
+apply (@convex.ConvexSpace.Mixin _
+  (fun p (a b : boolp.choice_of_Type (M A)) => choice p A a b)).
+- exact: choice1.
+- exact: choicemm.
+- exact: choiceC.
+- move=> p q a b c; apply: (choiceA p q).
   by rewrite -fdist.p_is_rs fdist.s_of_pqE onemK.
 Defined.
 
-Definition probConvex := convex.ConvexSpace.Pack (convex.ConvexSpace.Class prob_mixin).
+Definition probConvex := convex.ConvexSpace.Pack
+  (convex.ConvexSpace.Class prob_mixin).
 End convex.
 
 Arguments probConvex {M} {A}.
 
-Fixpoint uniform {M : probMonad} {A : Type} (def(*NB: Coq functions are total*) : A) (s : seq A) : M A :=
+(* NB: the parameter def is because Coq functions are total *)
+Fixpoint uniform {M : probMonad} {A : Type} (def : A) (s : seq A) : M A :=
   match s with
     | [::] => Ret def
     | [:: x] => Ret x
@@ -214,11 +216,11 @@ Variable M : altCIMonad.
 Variable T : Type.
 Definition altCI_semiLattClass :=
   @Class
-    (convex.choice_of_Type (M T))
+    (boolp.choice_of_Type (M T))
     _
     (@Mixin
        _
-       (fun (x y : convex.choice_of_Type (M T)) => x [~] y)
+       (fun (x y : boolp.choice_of_Type (M T)) => x [~] y)
        (@altC M T) (@altA M T) (@altmm M T)).
 Definition altCI_semiLattType := Pack altCI_semiLattClass.
 
@@ -233,7 +235,7 @@ Variable M : altProbMonad.
 Variable T : Type.
 Definition altProb_semiLattConvMixin :
   @mixin_of (altCI_semiLattType M T)
-            (fun p (x y : convex.choice_of_Type (M T)) => x <| p |> y).
+            (fun p (x y : boolp.choice_of_Type (M T)) => x <| p |> y).
 Proof. by refine (Mixin _); exact: choiceDr. Defined.
 Definition altProb_semiLattConvClass :=
   @Class (M T)

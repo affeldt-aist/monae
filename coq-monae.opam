@@ -15,18 +15,18 @@ description: """
 This Coq library contains a hierarchy of monads with their laws used
 in several examples of monadic equational reasoning."""
 
-build: [make "-j%{jobs}%" ]
+build: [make "-j%{jobs}%"]
 install: [make "install_full"]
 depends: [
-  "coq" { (>= "8.13" & < "8.14~") | (= "dev") }
-  "coq-mathcomp-ssreflect" { (>= "1.12.0" & < "1.13~") }
-  "coq-mathcomp-fingroup" { (>= "1.12.0" & < "1.13~") }
-  "coq-mathcomp-algebra" { (>= "1.12.0" & < "1.13~") }
-  "coq-mathcomp-solvable" { (>= "1.12.0" & < "1.13~") }
-  "coq-mathcomp-field" { (>= "1.12.0" & < "1.13~") }
-  "coq-mathcomp-analysis" { (= "0.3.7") | (>= "0.3.9" & < "0.4~") }
-  "coq-infotheo" { >= "0.3.2" & < "0.4~"}
-  "coq-paramcoq" { >= "1.1.2" & < "1.2~" }
+  "coq" { (>= "8.13" & < "8.15~") | (= "dev") }
+  "coq-mathcomp-ssreflect" { (>= "1.13.0" & < "1.14~") | (= "dev")  }
+  "coq-mathcomp-fingroup" { (>= "1.13.0" & < "1.14~") | (= "dev")  }
+  "coq-mathcomp-algebra" { (>= "1.13.0" & < "1.14~") | (= "dev")  }
+  "coq-mathcomp-solvable" { (>= "1.13.0" & < "1.14~") | (= "dev")  }
+  "coq-mathcomp-field" { (>= "1.13.0" & < "1.14~") | (= "dev")  }
+  "coq-mathcomp-analysis" { (>= "0.3.11" & < "0.4~") }
+  "coq-infotheo" { >= "0.3.4" & < "0.4~"}
+  "coq-paramcoq" { >= "1.1.3" & < "1.2~" }
   "coq-hierarchy-builder" { >= "1.1.0" }
 ]
 
@@ -42,6 +42,7 @@ authors: [
   "David Nowak"
   "Takafumi Saikawa"
   "Jacques Garrigue"
+  "Ayumu Saito"
   "Celestine Sauvage"
   "Kazunari Tanaka"
 ]

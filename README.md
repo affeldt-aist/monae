@@ -22,6 +22,7 @@ in several examples of monadic equational reasoning.
   - David Nowak (initial)
   - Takafumi Saikawa (initial)
   - Jacques Garrigue
+  - Ayumu Saito
   - Celestine Sauvage
   - Kazunari Tanaka
 - License: [LGPL-2.1-or-later](LICENSE)
@@ -79,6 +80,7 @@ of the following papers:
 - [Mu, Functional Pearls: Reasoning and Derivation of Monadic Programs, A case study of non-determinism and state, 2017]
   + This is a draft paper. In the first release, we formalized this draft up to Sect. 5.
     The contents have been since superseded by [mu2019tr2] and [mu2019tr3].
+- [Mu and Chiang, Deriving Monadic Quicksort (Declarative Pearl), 2020]
 
 This library has been applied to other formalizations:
 - application to program semantics (see file `smallstep.v`)
@@ -109,7 +111,7 @@ This library has been applied to other formalizations:
 - [proba_monad_model.v](./proba_monad_model.v): concrete model of the probability monad
 - [gcm_model.v](./gcm_model.v): model of the geometrically convex monad
 - [altprob_model.v](./altprob_model.v): model of a monad that mixes non-deterministic choice and probabilistic choice
-- example_*.v: various examples (Spark aggregation, the n-queens puzzle, tree relabeling,  Monty Hall problem, monad transformers, etc.)
+- example_*.v: various examples (Spark aggregation, the n-queens puzzle, tree relabeling,  Monty Hall problem, monad transformers, quicksort, etc.)
 - [smallstep.v](./smallstep.v): semantics for an imperative language, with equivalence operational semantics/denotation and sample imperative programs
 
 ## About Installation with Windows 10
