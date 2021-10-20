@@ -261,11 +261,6 @@ rewrite splitsE /= fmapE bindA; bind_ext => -[s1 s2] /=.
 by rewrite bindretf.
 Qed.
 
-Lemma qperm_consE x xs :
-  qperm (x :: xs) = splits xs >>= (fun z =>
-  liftM2 (fun a b => a ++ [:: x] ++ b) (qperm z.1) (qperm z.2)).
-Proof. by rewrite qperm_cons; bind_ext => -[]. Qed.
-
 Definition qpermE := (qperm_nil, qperm_cons).
 
 End qperm.
@@ -365,7 +360,7 @@ have [n leMn] := ubnP (size a); elim: n => // n ih in a f leMn *.
 case: a leMn => [|h t].
   by move=> _ p; rewrite /= qperm_nil 2!bindretf.
 rewrite ltnS => tn p.
-rewrite qperm_consE {1}/liftM2 !bindA /= guard_and [in LHS]bindA.
+rewrite qperm_cons {1}/liftM2 !bindA /= guard_and [in LHS]bindA.
 rewrite -bindA -guard_and.
 rewrite guard_splits_cons /liftM2.
 rewrite splitsE /= fmapE !bindA /=.
