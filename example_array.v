@@ -289,7 +289,7 @@ Qed.
 Lemma bind_refin_guard A (b : bool) (m1 m2 : M A) : (b -> m1 `>=` m2) ->
   guard b >> m1 `>=` guard b >> m2.
 Proof.
-case: b => [h|_]; first by apply: bind_monotonic_lrefin => -[]; exact: h.
+case: b => [h|_]; first by apply: refin_bindl => -[]; exact: h.
 by rewrite guardF !bindfailf; exact: refin_refl.
 Qed.
 
@@ -428,7 +428,7 @@ dipartl p (i + 1)%Z 0 0 n
   iqsort (i, ny) >> iqsort ((i + ny%:Z + 1)%Z, nz))).
 Proof. rewrite [in LHS]/iqsort Fix_eq //=; exact: iqsort'_Fix. Qed.
 
-Lemma write2L_write3L {i : Z} {p : E} {ys zs xs : seq E} : 
+Lemma write2L_write3L {i : Z} {p : E} {ys zs xs : seq E} :
   (forall ys zs : seq E, (do x <- partl' p ys zs xs; write2L i x)%Do
   `>=` writeList i (ys ++ zs ++ xs) >>
       ipartl p i (size ys) (size zs) (size xs)) ->
@@ -442,33 +442,33 @@ Proof.
   apply refin_refl.
 Qed.
 
-Lemma dispatch_write2L_write3L {i : Z} {x p : E} {ys zs xs : seq E} : 
+Lemma dispatch_write2L_write3L {i : Z} {x p : E} {ys zs xs : seq E} :
   (forall ys zs : seq E, (do x <- partl' p ys zs xs; write2L i x)%Do
   `>=` writeList i (ys ++ zs ++ xs) >>
       ipartl p i (size ys) (size zs) (size xs)) ->
   dispatch x p (ys, zs, xs) >>= uncurry3 (partl' p) >>= write2L i
   `>=` dispatch x p (ys, zs, xs) >>= write3L i >>= uncurry3 (ipartl p i).
 Proof.
-  move=> h.
-  rewrite 2!bindA.
-  rewrite /dispatch.
-  case: ifPn => xp.
+move=> h.
+rewrite 2!bindA.
+rewrite /dispatch.
+case: ifPn => xp.
   rewrite 2!bindA /refin.
-  rewrite bind_monotonic_lrefin //.
+  rewrite refin_bindl => //.
   move=> {}zs.
   rewrite 2!bindretf.
   exact: write2L_write3L h.
-  (* same *)
-  rewrite 2!bindA /refin.
-  rewrite bind_monotonic_lrefin //.
-  move=> {}zs.
-  rewrite 2!bindretf.
-  exact: write2L_write3L h.
+(* same *)
+rewrite 2!bindA /refin.
+rewrite refin_bindl => //.
+move=> {}zs.
+rewrite 2!bindretf.
+exact: write2L_write3L h.
 Qed.
 
 Lemma dispatch_writeList_cat {i : Z} {x p : E} {ys zs xs : seq E} :
   dispatch x p (ys, zs, xs) >>= write3L i >>= uncurry3 (ipartl p i) =
-  dispatch x p (ys, zs, xs) >>= (fun '(ys', zs', xs) => 
+  dispatch x p (ys, zs, xs) >>= (fun '(ys', zs', xs) =>
     writeList i (ys' ++ zs') >> writeList (i + (size (ys' ++ zs'))%:Z) xs >>
     ipartl p i (size ys') (size zs') (size xs)).
 Proof.
@@ -805,7 +805,7 @@ apply: refin_trans; last exact: (dispatch_write2L_write3L h).
 rewrite dispatch_writeList_cat.
 rewrite qperm_preserves_length.
 rewrite /dispatch bindA.
-apply bind_monotonic_lrefin => -[].
+apply refin_bindl => -[].
 case: ifPn => xp. (* TODO:  *)
 - rewrite bindA /refin -alt_bindDr.
   bind_ext => s.
@@ -1233,19 +1233,21 @@ by move=> m H; rewrite H /refin altA altmm.
 Qed.
 
 (* NB: postulate return⊑perm in Agda code *)
-Lemma qperm_refin (A : eqType) (s : seq A) : qperm s `>=` (Ret s : M _).
+Lemma refin_qperm_ret (A : eqType) (s : seq A) : qperm s `>=` (Ret s : M _).
 Proof. by rewrite -perm_qperm; exact: perm_ret. Qed.
 
 Lemma qperm_refin_rcons (A : eqType) h (t : seq A) :
   qperm (h :: t) `>=` (Ret (rcons t h) : M _).
-Proof. by rewrite qperm_preserves; exact: qperm_refin. Qed.
+Proof. by rewrite qperm_preserves; exact: refin_qperm_ret. Qed.
 
 Lemma qperm_refin_cons (A : eqType) h (t : seq A) :
   qperm (rcons t h) `>=` (Ret (h :: t) : M _).
-Proof. by rewrite -qperm_preserves; exact: qperm_refin. Qed.
+Proof. by rewrite -qperm_preserves; exact: refin_qperm_ret. Qed.
 
+(* TODO: move to fail_lib.v *)
 Lemma perm_insertC x y (s : seq E) :
-  (do s' <- perm (rcons s x); insert y s')%Do = (do s' <- insert y s; perm (rcons s' x))%Do :> M _.
+  (do s' <- perm (rcons s x); insert y s')%Do =
+  (do s' <- insert y s; perm (rcons s' x))%Do :> M _.
 Proof.
 have [n ns] := ubnP (size s); elim: n s ns x y => // n ih.
 move=> [/= _ x y|h t].
@@ -1414,11 +1416,8 @@ by apply: refin_refl.
 move=> h t /= i.
 rewrite bindA writeList_rcons.
 rewrite -aput_writeList_rcons.
-apply: refin_trans; last first.
-  apply: bind_monotonic_refin.
-  exact: qperm_refin_rcons.
-rewrite bindretf.
-apply: refin_refl.
+apply: refin_trans; last exact: (refin_bindr _ (qperm_refin_rcons _ _)).
+by rewrite bindretf; exact: refin_refl.
 Qed.
 
 (* See postulate introduce-swap equation13 *)
@@ -1431,9 +1430,7 @@ rewrite qperm_nil bindmskip bindretf addZ0 swapii /= bindmskip.
 by apply: refin_refl.
 move=> t h ih i.
 rewrite /= bindA.
-apply: refin_trans; last first.
-  apply: bind_monotonic_refin.
-  exact: qperm_refin_cons.
+apply: refin_trans; last exact: (refin_bindr _ (qperm_refin_cons _ _)).
 rewrite bindretf -bindA.
 rewrite -aput_writeList_cons.
 exact: refin_refl.
@@ -1447,7 +1444,7 @@ Lemma first_branch (i : Z) (x : E) (ys zs : seq E) :
   writeList i (ys ++ zs ++ [:: x]) >> swap (i + (size ys)%:Z) (i + (size ys)%:Z + (size zs)%:Z).
 Proof.
 apply: refin_trans; last first.
-- apply: bind_monotonic_lrefin => x0.
+- apply: refin_bindl => x0.
   rewrite writeList_cat.
   apply: refin_refl.
   (* have: commute *)
@@ -1611,18 +1608,18 @@ apply: (@refin_trans _ _ (
         (writeList (i + (size ys)%:Z + (size zs)%:Z + 1) t >>
          do zs' <- Ret (rcons zs h);
          writeList i (ys ++ zs') >> ipartl p i (size ys) (size zs') (size t))%Do); last first.
-      apply: bind_monotonic_lrefin => -[].
-      apply: bind_monotonic_refin.
-      exact: qperm_refin. (* TODO: qperm refine to Ret *)
-    apply: bind_monotonic_lrefin => -[].
+      apply: refin_bindl => -[].
+      apply: refin_bindr.
+      exact: refin_qperm_ret.
+    apply: refin_bindl => -[].
     rewrite bindretf cats1 size_rcons addn1.
     exact: refin_refl.
-  apply: bind_monotonic_lrefin => -[].
+  apply: refin_bindl => -[].
   rewrite -[X in X `>=` _](qperm_preserves_size2 zs (fun a b =>
     writeList i (ys ++ [:: h] ++ a) >>
    ipartl p i (size ys + 1) b (size t))).
   rewrite -[in X in X `>=` _]bindA.
-  apply: bind_monotonic_refin.
+  apply: refin_bindr.
   exact: first_branch.
 rewrite -2!addZA !(addZA (size ys)%:Z) -intRD addZA.
 rewrite -[in X in _ >> X]addZA -intRD writeList_ipartl.
@@ -1731,8 +1728,8 @@ apply: (@refin_trans M _ (do x <- Ret b; partl' p a x xs)%Do).
   rewrite bindretf.
   exact: refin_refl.
 under [in X in X `>=` _]eq_bind do rewrite bindretf /=.
-apply: bind_monotonic_refin.
-exact: qperm_refin.
+apply: refin_bindr.
+exact: refin_qperm_ret.
 Qed.
 
 Lemma lemma12 (i : Z) (xs : seq E) : @total E <=%O ->
@@ -1751,7 +1748,7 @@ have step1 : lhs `>=` partl' p [::] [::] xs >>= (fun '(ys, zs) =>
        iqsort (i, size ys) >> iqsort ((i + (size ys)%:Z + 1)%Z, size zs))).
      (* l.342 in IQSOrt.agda *)
   rewrite {}/lhs.
-  apply: refin_trans; last by apply: bind_monotonic_refin;exact: refin_slowsort.
+  apply: refin_trans; last by apply: refin_bindr;exact: refin_slowsort.
   rewrite bindretf.
   rewrite -qperm_slowsort.
   move Hpxs : (partition p xs) => pxs; case: pxs => [ys zs] in Hpxs *.
@@ -1778,7 +1775,7 @@ have step1 : lhs `>=` partl' p [::] [::] xs >>= (fun '(ys, zs) =>
     by rewrite -partition_partl /=; case: partition.
   rewrite parti_partl.
   apply: refin_trans.
-    by apply: bind_monotonic_refin; apply partl_partl'.
+    by apply: refin_bindr; apply partl_partl'.
   rewrite /second /=.
   move L : (partl p _ xs) => l.
   case: l L => a' b' L *.
@@ -1787,7 +1784,7 @@ have step1 : lhs `>=` partl' p [::] [::] xs >>= (fun '(ys, zs) =>
   move: L; rewrite -parti_partl Hpxs => -[<-{a'} <-{b'}].
   under eq_bind do rewrite bindretf.
   rewrite bind_qperm_guard [in X in _ `>=` X]bind_qperm_guard.
-  apply: bind_monotonic_lrefin => zs'.
+  apply: refin_bindl => zs'.
   apply: bind_refin_guard => /eqP zszs'.
   apply: (@refin_trans _ _ (
     (do ys' <- qperm ys;
@@ -1804,7 +1801,7 @@ have step1 : lhs `>=` partl' p [::] [::] xs >>= (fun '(ys, zs) =>
     iqsort ((i + b%:Z + 1)%Z, size zs'))).
   rewrite bind_qperm_guard (*NB: interesting?*).
   rewrite [in X in X `>=` _]bind_qperm_guard.
-  apply: bind_monotonic_lrefin => ys'.
+  apply: refin_bindl => ys'.
   apply: bind_refin_guard => /eqP sz_ys_ys'.
   rewrite writeList_cat writeList_writeListC; last exact: leZZ.
   rewrite (bindA _ _ (fun _ => iqsort (i, size ys'))).
@@ -1814,11 +1811,11 @@ have step1 : lhs `>=` partl' p [::] [::] xs >>= (fun '(ys, zs) =>
       ((do x <- slowsort ys'; writeList i x)%Do))) >>
       iqsort ((i + (size ys')%:Z + 1)%Z, size zs'))).
     rewrite !bindA.
-    apply: bind_monotonic_lrefin => -[].
-    apply: bind_monotonic_lrefin => -[].
+    apply: refin_bindl => -[].
+    apply: refin_bindl => -[].
     rewrite !bindretf.
     rewrite -!bindA.
-    apply: bind_monotonic_refin.
+    apply: refin_bindr.
     apply: ih.
     rewrite -sz_ys_ys'.
     move: nxs.
@@ -1833,7 +1830,7 @@ have step1 : lhs `>=` partl' p [::] [::] xs >>= (fun '(ys, zs) =>
     by apply: commute_plus; exact: nondetPlus_sub_slowsort.
   rewrite (slowsort_preserves_size2 _ (fun a b => writeList (i + b%:Z + 1) zs' >> ((writeList (i + b%:Z) [:: p] >> writeList i a >> iqsort ((i + b%:Z + 1)%Z, size zs')))%Do)).
   rewrite bind_slowsort_guard [in X in X `>=` _]bind_slowsort_guard.
-  apply: bind_monotonic_lrefin => ys''.
+  apply: refin_bindl => ys''.
   apply: bind_refin_guard => /eqP ys'ys''.
   rewrite -bindA.
   rewrite -(@writeList_writeListC _ _ ys''); last first.
@@ -1847,7 +1844,7 @@ have step1 : lhs `>=` partl' p [::] [::] xs >>= (fun '(ys, zs) =>
   rewrite -(@writeList_writeListC _ _ _ zs'); last first.
     by rewrite size_cat /= intRD addZA; exact: leZZ.
   rewrite cats1 bindA.
-  apply: bind_monotonic_lrefin => -[].
+  apply: refin_bindl => -[].
   rewrite size_rcons -addZA natZS.
   rewrite Z.add_1_r.
   apply: ih.
@@ -1865,15 +1862,15 @@ have step2 : lhs `>=`
      (writeList i (p :: ys) >> swap i (i + (size ys)%:Z)) >>
      (iqsort (i, size ys)) >> iqsort ((i + (size ys)%:Z + 1)%Z, size zs)))%Do.
   rewrite {}/lhs.
-  apply: bind_monotonic_lrefin => -[ys sz].
+  apply: refin_bindl => -[ys sz].
   rewrite 4!bindA.
-  apply: bind_monotonic_lrefin => -[].
+  apply: refin_bindl => -[].
   under [in X in X `>=` _]eq_bind do rewrite cats1.
   rewrite -2![in X in X `>=` _]bindA.
   rewrite [in X in X `>=` _](bindA _ (fun _ => iqsort _) (fun _ => iqsort _)).
   rewrite -2![in X in _ `>=` X]bindA.
   rewrite (bindA _ (fun _ => iqsort _) (fun _ => iqsort _)).
-  apply: bind_monotonic_refin.
+  apply: refin_bindr.
   exact: introduce_swap_rcons.
 apply: (refin_trans _ step2) => {step2} {lhs}.
 set lhs := (X in X `>=` _).
@@ -1885,13 +1882,13 @@ have step3 : lhs `>=`
      (swap i (i + (size ys)%:Z)) >>
      (iqsort (i, size ys)) >> iqsort ((i + (size ys)%:Z + 1)%Z, size zs)))%Do.
   rewrite {}/lhs.
-  apply: bind_monotonic_lrefin => -[ys zs].
+  apply: refin_bindl => -[ys zs].
   rewrite -bindA.
-  do 3 apply: bind_monotonic_refin.
+  do 3 apply: refin_bindr.
   rewrite -writeList_writeListC; last first.
     by rewrite -addZA /= Z.add_1_r natZS; exact: leZZ.
   rewrite /= bindA.
-  apply: bind_monotonic_lrefin => -[].
+  apply: refin_bindl => -[].
   rewrite writeList_cat -addZA (addZC 1%Z) addZA.
   exact: refin_refl.
 apply: (refin_trans _ step3) => {step3} {lhs}.
@@ -1905,7 +1902,7 @@ have step4 : lhs `>=`
   rewrite {}/lhs.
   rewrite bindA -[in X in _ `>=` X](_ : commute (partl' p [::] [::] xs) (aput i p) _); last first.
     by apply: commute_plus; exact: nondetPlus_sub_qpartl'.
-  apply: bind_monotonic_lrefin => -[a b].
+  apply: refin_bindl => -[a b].
   rewrite !bindA.
   exact: refin_refl.
 apply: (refin_trans _ step4) => {step4} {lhs}.
@@ -1918,11 +1915,11 @@ have step5 : lhs `>=`
      (iqsort (i, sys)) >> iqsort ((i + (sys)%:Z + 1)%Z, szs))))%Do.
   rewrite {}/lhs.
   rewrite !bindA.
-  apply: bind_monotonic_lrefin => -[].
-  apply: bind_monotonic_lrefin => -[a b].
+  apply: refin_bindl => -[].
+  apply: refin_bindl => -[a b].
   rewrite 2!bindA.
   rewrite [in X in _ `>=` X]bindA.
-  apply: bind_monotonic_lrefin => -[].
+  apply: refin_bindl => -[].
   rewrite bindretf.
   rewrite bindA.
   exact: refin_refl.
@@ -1935,9 +1932,9 @@ have step6 : lhs `>=`
      (swap i (i + (sys)%:Z)) >>
      (iqsort (i, sys)) >> iqsort ((i + (sys)%:Z + 1)%Z, szs))))%Do.
   rewrite {}/lhs.
-  apply: bind_monotonic_refin.
+  apply: refin_bindr.
   rewrite bindA.
-  apply: bind_monotonic_lrefin => -[].
+  apply: refin_bindl => -[].
   exact: lemma10.
 apply: (refin_trans _ step6) => {step6} {lhs}.
 set lhs := (X in X `>=` _).
@@ -1951,9 +1948,9 @@ have step7 : lhs `>=`
   rewrite [in X in _ `>=` X]/=.
   rewrite 2![in X in _ `>=` X]bindA.
   rewrite bindA.
-  apply: bind_monotonic_lrefin => -[].
+  apply: refin_bindl => -[].
   rewrite bindA /= bindA.
-  apply: bind_monotonic_lrefin => -[].
+  apply: refin_bindl => -[].
   rewrite 2!bindretf /uncurry3.
   exact: refin_refl.
 apply: (refin_trans _ step7) => {step7} {lhs}.
@@ -1965,15 +1962,15 @@ have step8 : lhs `>=`
      (swap i (i + (sys)%:Z)) >>
      (iqsort (i, sys)) >> iqsort ((i + (sys)%:Z + 1)%Z, szs))))%Do.
   rewrite {}/lhs.
-  apply: bind_monotonic_refin.
+  apply: refin_bindr.
   rewrite introduce_read.
   by apply: refin_refl.
 apply: (refin_trans _ step8) => {step8} {lhs}.
 rewrite bindA.
-apply: bind_monotonic_lrefin => -[].
+apply: refin_bindl => -[].
 rewrite /=.
 rewrite iqsort_cons.
-apply: bind_monotonic_lrefin => x.
+apply: refin_bindl => x.
 clear nxs.
 rewrite ipartlE // fmapE bindA.
 under [in X in X `>=` _]eq_bind do rewrite bindretf.
