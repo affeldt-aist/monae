@@ -30,6 +30,7 @@ From infotheo Require Import ssr_ext.
 (*        slowsort s == choose a sorted list among all permutations of s      *)
 (*           qsort s == sort s by quicksort                                   *)
 (*                      type: seq T -> seq T                                  *)
+(* functional_qsort.fqsort == same as qsort but defined with Function         *)
 (*                                                                            *)
 (* Reference:                                                                 *)
 (* - [1] Shin-Cheng Mu, Tsung-Ju Chiang, Declarative Pearl: Deriving Monadic  *)
@@ -149,10 +150,6 @@ case: guardPn => [nyx|_ _].
 by rewrite /refin altfailm.
 Qed.
 
-Lemma bind_monotonic_refin (M : altMonad) A B (m1 m2 : M A) (f : A -> M B) :
-  (m1 `<=` m2) -> (m1 >>= f `<=` m2 >>= f).
-Proof. by move=> m12; rewrite /refin -alt_bindDl m12. Qed.
-
 Definition lrefin {M : altMonad} A B (f g : A -> M B) := forall x, f x `<=`g x.
 
 Notation "f `<.=` g" := (lrefin f g) : monae_scope.
@@ -171,9 +168,26 @@ Proof. move => ? ?; rewrite boolp.funeqE => ?; exact: refin_antisym. Qed.
 
 End lrefin_lemmas.
 
-Lemma bind_monotonic_lrefin (M : prePlusMonad) A B (m : M A) (f1 f2 : A -> M B) :
-  (f1 `<.=` f2) -> (m >>= f1 `<=` m >>= f2).
-Proof. by move=> f12; rewrite /refin -alt_bindDr; bind_ext => a; apply f12. Qed.
+Lemma refin_bindr (M : altMonad) A B (m1 m2 : M A) (f : A -> M B) :
+  (m1 `<=` m2) -> (m1 >>= f `<=` m2 >>= f).
+Proof. by move=> m12; rewrite /refin -alt_bindDl m12. Qed.
+
+Lemma refin_bindl (M : prePlusMonad) A B (m : M A) (f g : A -> M B) :
+  (f `<.=` g) -> (m >>= f `<=` m >>= g).
+Proof. by move=> fg; rewrite /refin -alt_bindDr; bind_ext => a; exact: fg. Qed.
+
+Lemma refin_bind (M : plusMonad) A B {m n : M A} {f g : A -> M B} :
+  m `<=` n -> f `<.=` g -> (m >>= f) `<=` (n >>= g).
+Proof.
+by move=> mn /refin_bindl ?; exact: (refin_trans _ (refin_bindr _ mn)).
+Qed.
+
+Lemma refin_liftM2 (M : plusMonad) A B C {f : A -> B -> C} {m1 n1 : M A} {m2 n2 : M B} :
+  m1 `<=` n1 -> m2 `<=` n2 -> liftM2 f m1 m2 `<=` liftM2 f n1 n2.
+Proof.
+move=> mn1 mn2; rewrite /liftM2.
+by apply: (refin_bind mn1 _) => a; exact: refin_bindr.
+Qed.
 
 Lemma guard_neg (M : plusMonad) A (p : bool) (m1 m2 : M A) :
   (if p then m1 else m2) `<=` (guard p >> m1) [~] (guard (~~ p) >> m2).
@@ -440,15 +454,13 @@ rewrite bindA.
 under eq_bind do rewrite alt_bindDl 2!bindretf 2!assertE.
 under eq_bind do rewrite 2!is_partition_consE 2!guard_and 2!bindA.
 apply: (@refin_trans _ _ _); last first.
-  apply: bind_monotonic_lrefin => x0.
-  apply: refin_alt.
-  apply: refin_refl.
-  apply: bind_monotonic_refin.
-  apply: refin_guard_le.
-  assumption.
+  apply: refin_bindl => x0.
+  apply: (refin_alt (refin_refl _)).
+  apply: refin_bindr.
+  exact: (refin_guard_le _ _ _ t).
 apply: (@refin_trans _ _ _); last first.
-  apply: bind_monotonic_lrefin => x1.
-  by apply: guard_neg.
+  apply: refin_bindl => x1.
+  exact: guard_neg.
 under eq_bind do rewrite -bind_if.
 apply: (@refin_trans _ _ (
   (do a <- splits xs;
@@ -459,9 +471,7 @@ apply: (@refin_trans _ _ (
   by rewrite bindretf /= (altmm (_ : M _)).
 under eq_bind do rewrite -bindA -assertE.
 rewrite -bindA.
-apply: (@refin_trans _ _ _); last first.
-  apply: bind_monotonic_refin.
-  by apply: ih.
+apply: (@refin_trans _ _ _); last exact/refin_bindr/ih.
 rewrite bindretf.
 by case: ifPn => xp; exact: refin_refl.
 Qed.
@@ -543,8 +553,7 @@ rewrite [X in X `>=` _](_ : _ = splits xs >>=
     (fun ys' => (slowsort zs) >>= (fun zs'=> Ret (ys' ++ [:: p] ++ zs')))); last first.
   rewrite bindA; bind_ext => -[s1 s2];rewrite !bindA assertE bindA; congr (_ >> _).
   by rewrite boolp.funeqE => -[] /=; rewrite bindretf /slowsort 2!kleisliE bindA.
-apply: bind_monotonic_refin.
-by apply: (refin_partition M p xs hyp).
+exact/refin_bindr/(refin_partition M p xs hyp).
 Qed.
 
 End slowsort.
@@ -592,29 +601,24 @@ Qed.
 
 Definition qsortE := (qsort_nil, qsort_cons).
 
-Lemma quicksort_slowsort : total (<=%O : rel T) -> Ret \o qsort `<.=` (slowsort : _ -> M _).
+Lemma quicksort_slowsort : total (<=%O : rel T) ->
+  Ret \o qsort `<.=` (slowsort : _ -> M _).
 Proof.
 move=> hyp s.
 have [n sn] := ubnP (size s); elim: n => // n ih in s sn *.
 case: s => [|h t] in sn *.
   by rewrite /= qsort_nil slowsort_nil; exact: refin_refl.
+rewrite ltnS /= in sn.
 rewrite /= qsort_cons.
-move pht : (partition h t) => ht.
-case: ht => ys zs in pht *.
+move pht : (partition h t) => ht; case: ht pht => ys zs pht.
 apply: (refin_trans _ (refin_slowsort M h t hyp)).
 rewrite bindretf pht.
-rewrite -(ih ys).
-  rewrite -(ih zs).
-    repeat rewrite alt_bindDl bindretf.
-    by rewrite /refin !altA altmm.
-  move: sn; rewrite ltnS /=.
-  have := (size_partition h t); rewrite pht /= => <-.
-  have : (size zs <= size ys + size zs)%N by rewrite leq_addl.
-  by apply: leq_ltn_trans.
-move: sn; rewrite ltnS /=.
-have := size_partition h t; rewrite pht /= => <-.
-have: (size ys <= size ys + size zs)%N by rewrite leq_addr.
-by apply: leq_ltn_trans.
+rewrite -(ih ys); last first.
+  by rewrite (leq_trans _ sn)// ltnS -(size_partition h t) pht leq_addr.
+rewrite -(ih zs); last first.
+  by rewrite (leq_trans _ sn)// ltnS -(size_partition h t) pht leq_addl.
+do 2 rewrite alt_bindDl bindretf.
+by rewrite /refin !altA altmm. (* TODO: needs lemma *)
 Qed.
 
 End qsort.
@@ -630,6 +634,7 @@ move=> s; rewrite /s sortE /=.
 by repeat rewrite qsortE /=.
 Abort.
 
+(* NB: experiment with a version of qsort written with Function *)
 Module functional_qsort.
 Require Import Recdef.
 From mathcomp Require Import ssrnat.
@@ -640,6 +645,8 @@ Function fqsort (s : seq T) {measure size s} : seq T :=
   (* if s isn't h :: t then [::]
   else let: (ys, zs) := partition h t in
        fqsort ys ++ [:: h] ++ fqsort zs. *)
+  (* NB: not using match causes problems when applying fqsort_ind
+     which is automatically generated *)
   match s with
   | [::] => [::]
   | h :: t => let: (ys, zs) := partition h t in
@@ -654,77 +661,39 @@ have := size_partition h t.
 by rewrite H /= => <-; apply/ltP; rewrite ltnS leq_addr.
 Defined.
 
-Lemma fqsortE (s : seq T) :
-    fqsort s = 
-    match s with
-    | [::] => [::]
-    | h :: t => let: (ys, zs) := partition h t in
-                fqsort ys ++ h :: fqsort zs
-    end.
-Proof. by rewrite fqsort_equation. Qed.
-(* by functional induction (fqsort s) => [//|]; rewrite e0. Qed. *)
-
-Lemma bind_mono A B {m n : M A} {f g : A -> M B} :
-  m `<=` n -> f `<.=` g -> (m >>= f) `<=` (n >>= g).
-Proof.
-move=> mn fg.
-apply: refin_trans; last first.
-apply: bind_monotonic_refin mn.
-apply: bind_monotonic_lrefin fg.
-Qed.
-
-Lemma liftM2_mono A B C {f : A -> B -> C} {m₁ n₁ : M A} {m₂ n₂ : M B} :
-            m₁ `<=` n₁ -> m₂ `<=` n₂ -> liftM2 f m₁ m₂ `<=` liftM2 f n₁ n₂.
-Proof. 
-move=> mn1 mn2; rewrite /liftM2.
-apply: (bind_mono mn1 _) => x.
-apply: bind_monotonic_refin mn2.
-Qed.
-
-Function slowsort' (xs : seq T) {measure size xs} : M (seq T) :=
-  (* if xs isn't h :: t then Ret [::]
-  else let: (ys, zs) := partition h t in
+Definition partition_slowsort (xs : seq T) : M (seq T) :=
+  if xs isn't h :: t then Ret [::] else
+  let: (ys, zs) := partition h t in
   liftM2 (fun a b => a ++ [:: h] ++ b) (slowsort ys) (slowsort zs).
-Defined. *)
-  match xs with 
-  | [::] => Ret [::]
-  | h :: t => let: (ys, zs) := partition h t in
-    liftM2 (fun a b => a ++ [:: h] ++ b) (slowsort ys) (slowsort zs)
-  end.
-Defined.
 
-Lemma slowsort'_spec : (total (<=%O : rel T)) -> slowsort' `<.=` slowsort.
+Lemma refin_partition_slowsort : total (<=%O : rel T) ->
+  partition_slowsort `<.=` slowsort.
 Proof.
-move => hyp s.
-elim: s => [|p xs ih].
-  by rewrite slowsort_nil slowsort'_equation; exact: refin_refl.
+move => hyp [|p xs]; first by rewrite slowsort_nil; exact: refin_refl.
 rewrite [X in X `>=` _]refin_slowsort_inductive_case.
 rewrite [X in X `>=` _](_ : _ = splits xs >>=
     (fun yz => assert (is_partition p) yz) >>=
-    fun '(ys, zs) => (slowsort ys) >>=
-    (fun ys' => (slowsort zs) >>= (fun zs'=> Ret (ys' ++ [:: p] ++ zs')))); last first.
-  rewrite bindA; bind_ext => -[s1 s2];rewrite !bindA assertE bindA; congr (_ >> _).
-  by rewrite boolp.funeqE => -[] /=; rewrite bindretf /slowsort 2!kleisliE bindA.
-apply: (@refin_trans _ _ (
-  Ret (partition p xs) >>= (fun '(ys, zs) => 
-  slowsort ys >>= (fun ys' =>
-  slowsort zs >>= (fun zs' => Ret (ys' ++ p :: zs'))))
-)).
-by rewrite slowsort'_equation bindretf; exact: refin_refl.
-apply: bind_monotonic_refin.
-by apply: (refin_partition M p xs hyp).
+    fun '(ys, zs) => slowsort ys >>=
+    (fun ys' => slowsort zs >>= (fun zs'=> Ret (ys' ++ [:: p] ++ zs')))); last first.
+  rewrite bindA; bind_ext => -[s1 s2];rewrite !bindA assertE bindA.
+  bind_ext => -[] /=.
+  by rewrite bindretf /slowsort 2!kleisliE bindA.
+rewrite /=.
+apply: refin_trans; last exact/refin_bindr/refin_partition.
+by rewrite bindretf; exact: refin_refl.
 Qed.
 
-Lemma fqsort_spec : (total (<=%O : rel T)) -> Ret \o fqsort `<.=` (slowsort : seq T -> M _).
+Lemma refin_fqsort : (total (<=%O : rel T)) ->
+  Ret \o fqsort `<.=` (slowsort : seq T -> M _).
 Proof.
 move=> hyp s => /=.
 apply fqsort_ind => [s0 _|s0 h t sht ys zs pht ihys ihzs].
 (* apply fqsort_ind => [s0 h t sht ys zs pht ihys ihzs|s0 x sx H]; last first. *)
-rewrite slowsort_nil; exact: refin_refl.
-apply: refin_trans; last by apply: (slowsort'_spec hyp).
-rewrite slowsort'_equation pht.
-apply: refin_trans; last by apply: (liftM2_mono ihys ihzs).
-rewrite /liftM2 2!bindretf.
+  by rewrite slowsort_nil; exact: refin_refl.
+apply: (refin_trans _ (refin_partition_slowsort hyp _)).
+rewrite /= pht.
+apply: refin_trans; last exact: (refin_liftM2 ihys ihzs).
+rewrite /liftM2 2!bindretf. (*TODO: lemma*)
 exact: refin_refl.
 Qed.
 
@@ -733,11 +702,11 @@ End qsort_def.
 Example qsort_nat :
   fqsort [:: 3; 42; 230; 1; 67; 2]%N = [:: 1; 2; 3; 42; 67; 230]%N.
 Proof.
-rewrite fqsortE /=.
-rewrite fqsortE /=.
-rewrite fqsortE /=.
-by rewrite fqsortE.
+do 4 rewrite fqsort_equation /=.
+reflexivity.
 Qed.
 
 Eval compute in qsort [:: 3; 42; 230; 1; 67; 2]%N.
 Eval compute in fqsort [:: 3; 42; 230; 1; 67; 2]%N.
+
+End functional_qsort.
