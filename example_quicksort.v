@@ -240,7 +240,7 @@ Local Obligation Tactic := idtac.
 Program Definition qperm' (s : seq A)
     (f : forall s', size s' < size s -> M (seq A)) : M (seq A) :=
   if s isn't x :: xs then Ret [::] else
-    tsplits xs >>= (fun a => liftM2 (fun a b => a ++ [:: x] ++ b) (f a.1 _) (f a.2 _)).
+    tsplits xs >>= (fun a => liftM2 (fun a b => a ++ x :: b) (f a.1 _) (f a.2 _)).
 Next Obligation.
 move=> [|h t] // ht x xs [xh xst] [a b] /=.
 by apply: (leq_ltn_trans (size_bseq a)); rewrite xst.
@@ -268,7 +268,7 @@ Proof. by rewrite /qperm (Fix_eq _ _ _ qperm'_Fix). Qed.
 
 Lemma qperm_cons x xs :
   qperm (x :: xs) = splits xs >>= (fun '(ys, zs) =>
-                    liftM2 (fun a b => a ++ [:: x] ++ b) (qperm ys) (qperm zs)).
+                    liftM2 (fun a b => a ++ x :: b) (qperm ys) (qperm zs)).
 Proof.
 rewrite {1}/qperm {1}(Fix_eq _ _ _ qperm'_Fix) /=.
 rewrite splitsE /= fmapE bindA; bind_ext => -[s1 s2] /=.
@@ -497,12 +497,12 @@ Lemma refin_slowsort_inductive_case (p : T) (xs : seq T) :
   splits xs >>= (fun yz => guard (is_partition p yz) >>
     (qperm yz.1 >>= assert sorted) >>= (fun ys' =>
     (qperm yz.2 >>= assert sorted) >>= (fun zs' =>
-    Ret (ys' ++ [:: p] ++ zs')))).
+    Ret (ys' ++ p :: zs')))).
 Proof.
 transitivity (
   splits xs >>= (fun '(ys, zs) =>
   qperm ys >>= (fun ys' => qperm zs >>= (fun zs' =>
-  assert sorted (ys' ++ [:: p] ++ zs')))) : M _).
+  assert sorted (ys' ++ p :: zs')))) : M _).
   rewrite /slowsort kleisliE qperm_cons !bindA.
   bind_ext => -[a b] /=.
   rewrite /liftM2 bindA; bind_ext => s.
@@ -511,7 +511,7 @@ transitivity (
   splits xs >>= (fun '(ys, zs) =>
   qperm ys >>= (fun ys' => qperm zs >>= (fun zs' =>
   guard ([&& sorted ys', sorted zs', all (<= p) ys' & all (>= p) zs']) >>
-  Ret (ys' ++ [:: p] ++ zs')))) : M _).
+  Ret (ys' ++ p :: zs')))) : M _).
   bind_ext => -[a b]; bind_ext => s; bind_ext => s'; rewrite assertE /=.
   by rewrite -sorted_cat_cons'.
 bind_ext=> {xs} -[a b].
@@ -523,7 +523,7 @@ under [LHS]eq_bind do rewrite 3!guard_and.
 transitivity (
   qperm b >>= (fun x =>
   guard (all (>= p) x) >> (guard (all (<= p) s) >>
-  (guard (sorted x) >> ((guard (sorted s)) >> Ret (s ++ [:: p] ++ x)))) : M _)).
+  (guard (sorted x) >> ((guard (sorted s)) >> Ret (s ++ p :: x)))) : M _)).
   bind_ext => s'.
   rewrite -!bindA -!guard_and.
   by rewrite andbC (andbC _ (all (<= p) s)) (andbC (sorted s)) !andbA.
@@ -543,14 +543,14 @@ Lemma refin_slowsort (p : T) (xs : seq T) :
   (total (<=%O : rel T)) ->
   slowsort (p :: xs) `>=`
   Ret (partition p xs) >>= (fun '(ys, zs) =>
-    slowsort ys >>= (fun ys' => slowsort zs >>= (fun zs' => Ret (ys' ++ [:: p] ++ zs'))) : M _).
+    slowsort ys >>= (fun ys' => slowsort zs >>= (fun zs' => Ret (ys' ++ p :: zs'))) : M _).
 Proof.
 move => hyp.
 rewrite [X in X `>=` _]refin_slowsort_inductive_case.
 rewrite [X in X `>=` _](_ : _ = splits xs >>=
     (fun yz => assert (is_partition p) yz) >>=
     fun '(ys, zs) => (slowsort ys) >>=
-    (fun ys' => (slowsort zs) >>= (fun zs'=> Ret (ys' ++ [:: p] ++ zs')))); last first.
+    (fun ys' => (slowsort zs) >>= (fun zs'=> Ret (ys' ++ p :: zs')))); last first.
   rewrite bindA; bind_ext => -[s1 s2];rewrite !bindA assertE bindA; congr (_ >> _).
   by rewrite boolp.funeqE => -[] /=; rewrite bindretf /slowsort 2!kleisliE bindA.
 exact/refin_bindr/(refin_partition M p xs hyp).
@@ -567,7 +567,7 @@ Program Fixpoint qsort' (s : seq T)
     (f : forall s', (size s' < size s)%N -> seq T) : seq T :=
   if s isn't p :: xs then [::] else
   let: (ys, zs) := partition p xs in
-  f ys _ ++ [:: p] ++ f zs _.
+  f ys _ ++ p :: f zs _.
 Next Obligation.
 have := size_partition p xs.
 by rewrite -Heq_anonymous /= => <-; rewrite ltnS leq_addr.
@@ -593,7 +593,7 @@ Proof. by rewrite /qsort Fix_eq //; exact: qsort'_Fix. Qed.
 
 Lemma qsort_cons p (xs : seq T) :
   qsort (p :: xs) = let: (ys, zs) := partition p xs in
-                    qsort ys ++ [:: p] ++ qsort zs.
+                    qsort ys ++ p :: qsort zs.
 Proof.
 rewrite [in LHS]/qsort Fix_eq /=; last exact: qsort'_Fix.
 by move s12 : (partition p xs) => h; case: h s12.
@@ -644,7 +644,7 @@ Variables (d : unit) (T : porderType d).
 Function fqsort (s : seq T) {measure size s} : seq T :=
   (* if s isn't h :: t then [::]
   else let: (ys, zs) := partition h t in
-       fqsort ys ++ [:: h] ++ fqsort zs. *)
+       fqsort ys ++ h :: fqsort zs. *)
   (* NB: not using match causes problems when applying fqsort_ind
      which is automatically generated *)
   match s with
@@ -664,7 +664,7 @@ Defined.
 Definition partition_slowsort (xs : seq T) : M (seq T) :=
   if xs isn't h :: t then Ret [::] else
   let: (ys, zs) := partition h t in
-  liftM2 (fun a b => a ++ [:: h] ++ b) (slowsort ys) (slowsort zs).
+  liftM2 (fun a b => a ++ h :: b) (slowsort ys) (slowsort zs).
 
 Lemma refin_partition_slowsort : total (<=%O : rel T) ->
   partition_slowsort `<.=` slowsort.
@@ -674,7 +674,7 @@ rewrite [X in X `>=` _]refin_slowsort_inductive_case.
 rewrite [X in X `>=` _](_ : _ = splits xs >>=
     (fun yz => assert (is_partition p) yz) >>=
     fun '(ys, zs) => slowsort ys >>=
-    (fun ys' => slowsort zs >>= (fun zs'=> Ret (ys' ++ [:: p] ++ zs')))); last first.
+    (fun ys' => slowsort zs >>= (fun zs'=> Ret (ys' ++ p :: zs')))); last first.
   rewrite bindA; bind_ext => -[s1 s2];rewrite !bindA assertE bindA.
   bind_ext => -[] /=.
   by rewrite bindretf /slowsort 2!kleisliE bindA.
