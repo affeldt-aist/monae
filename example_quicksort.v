@@ -210,14 +210,16 @@ Canonical nil_bseq n T := Bseq (isT : @size T [::] <= n).
 Canonical cons_bseq n T x (t : bseq_of n T) :=
   Bseq (valP t : size (x :: t) <= n.+1).
 
-Program Fixpoint tsplits {M : plusMonad} A (s : seq A) 
+Lemma leq_bseq_size A (xs : seq A) (b0 : (size xs).-bseq A) :
+  (size b0 <= (size xs).+1)%N.
+Proof. by rewrite (leq_trans (size_bseq b0)). Qed.
+
+Fixpoint tsplits {M : plusMonad} A (s : seq A)
     : M ((size s).-bseq A * (size s).-bseq A)%type :=
   if s isn't x :: xs then Ret ([bseq of [::]], [bseq of [::]])
-  else tsplits xs >>= (fun '(ys, zs) => 
-    Ret ([bseq of x :: ys], @Bseq _ _ zs _) [~]
-    Ret (@Bseq _ _ ys _, [bseq of x :: zs])).
-Next Obligation. by rewrite (leq_trans (size_bseq b0)). Qed.
-Next Obligation. by rewrite (leq_trans (size_bseq b)). Qed.
+  else tsplits xs >>= (fun '(ys, zs) =>
+    Ret ([bseq of x :: ys], Bseq (leq_bseq_size zs)) [~]
+    Ret (Bseq (leq_bseq_size ys), [bseq of x :: zs])).
 
 Local Lemma splits_nat_nil : @splits M nat [::] = Ret ([::], [::]).
 Proof. by []. Abort.
