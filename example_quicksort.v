@@ -205,14 +205,21 @@ Fixpoint splits {M : plusMonad} A (s : seq A) : M (seq A * seq A)%type :=
   if s isn't x :: xs then Ret ([::], [::]) else
     splits xs >>= (fun yz => Ret (x :: yz.1, yz.2) [~] Ret (yz.1, x :: yz.2)).
 
-Program Fixpoint tsplits {M : plusMonad} A (s : seq A) : M ((size s).-bseq A * (size s).-bseq A)%type :=
-  if s isn't x :: xs then Ret (bseq0 _  _, bseq0 _ _) (*TODO: try to use [bseq of [::]]*) else
-    tsplits xs >>= (fun '(ys, zs) => Ret (@Bseq _ _ (x :: ys) _ , @Bseq _ _ zs _) [~]
-                                      Ret (@Bseq _ _  ys _, @Bseq _ _ (x :: zs) _)).
-Next Obligation. by rewrite (leq_ltn_trans (size_bseq b)). Qed.
-Next Obligation. by rewrite (leq_trans (size_bseq b0)). Qed.
-Next Obligation. by rewrite (leq_trans (size_bseq b)). Qed.
-Next Obligation. by rewrite (leq_ltn_trans (size_bseq b0)). Qed.
+(* at mathcomp.ssreflect.tuple *)
+Canonical nil_bseq n T := Bseq (isT : @size T [::] <= n).
+Canonical cons_bseq n T x (t : bseq_of n T) :=
+  Bseq (valP t : size (x :: t) <= n.+1).
+
+Lemma leq_bseq_size A (xs : seq A) (b0 : (size xs).-bseq A) :
+  (size b0 <= (size xs).+1)%N.
+Proof. by rewrite (leq_trans (size_bseq b0)). Qed.
+
+Fixpoint tsplits {M : plusMonad} A (s : seq A)
+    : M ((size s).-bseq A * (size s).-bseq A)%type :=
+  if s isn't x :: xs then Ret ([bseq of [::]], [bseq of [::]])
+  else tsplits xs >>= (fun '(ys, zs) =>
+    Ret ([bseq of x :: ys], Bseq (leq_bseq_size zs)) [~]
+    Ret (Bseq (leq_bseq_size ys), [bseq of x :: zs])).
 
 Local Lemma splits_nat_nil : @splits M nat [::] = Ret ([::], [::]).
 Proof. by []. Abort.
@@ -222,7 +229,8 @@ Proof. rewrite /= bindretf alt_bindDl !bindretf /=. Abort.
 
 Local Open Scope mprog.
 Lemma splitsE A (s : seq A) :
-  splits s = fmap (fun xy => (bseqval xy.1, bseqval xy.2)) (tsplits s) :> M _.
+  splits s = 
+  fmap (fun '(ys, zs) => (bseqval ys, bseqval zs)) (tsplits s) :> M _.
 Proof.
 elim: s => /= [|h t ih]; first by rewrite fmapE bindretf.
 rewrite {}ih /= !fmapE 2!bindA; bind_ext => -[a b] /=.
@@ -236,20 +244,25 @@ Section qperm.
 Variables (M : plusMonad) (A : UU0).
 Variables (d : unit) (T : porderType d).
 
+Require Import Recdef.
+Fail Function qperm (s : seq A) {measure size s} : M (seq A) :=
+  if s isn't x :: xs then Ret [::] else 
+    splits xs >>= (fun '(ys, zs) => liftM2 (fun a b => a ++ x :: b) (qperm ys) (qperm zs)).
+
 Local Obligation Tactic := idtac.
 Program Definition qperm' (s : seq A)
     (f : forall s', size s' < size s -> M (seq A)) : M (seq A) :=
   if s isn't x :: xs then Ret [::] else
-    tsplits xs >>= (fun a => liftM2 (fun a b => a ++ x :: b) (f a.1 _) (f a.2 _)).
+    tsplits xs >>= (fun '(ys, zs) => liftM2 (fun a b => a ++ x :: b) (f ys _) (f zs _)).
 Next Obligation.
-move=> [|h t] // ht x xs [xh xst] [a b] /=.
-by apply: (leq_ltn_trans (size_bseq a)); rewrite xst.
+move=> [|h t] // ht x xs [xh xst] [a b] ys _ _ .
+by apply: (leq_ltn_trans (size_bseq ys)); rewrite xst.
 Qed.
 Next Obligation.
-move=> [|h t] // ht x xs [xh xst] [a b].
-by apply: (leq_ltn_trans (size_bseq b)); rewrite xst.
+move=> [|h t] // ht x xs [xh xst] [a b] _ zs _.
+by apply: (leq_ltn_trans (size_bseq zs)); rewrite xst.
 Qed.
-Next Obligation. by move=> /= s _ x xs. Qed.
+Next Obligation. by []. Qed.
 
 Definition qperm : seq A -> M (seq A) :=
   Fix (@well_founded_size _) (fun _ => M _) qperm'.

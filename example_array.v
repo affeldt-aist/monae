@@ -603,15 +603,9 @@ Proof.
 elim: s => [|h t ih]; first by exists (ndRet (bseq0 0 A, bseq0 0 A)).
 have [syn syn_tsplits] := ih.
 exists (ndBind syn (fun '(a, b) => ndAlt
-   (ndRet
-      (Bseq (example_quicksort.tsplits_obligation_1 h (erefl (a, b))),
-       Bseq (example_quicksort.tsplits_obligation_2 h (erefl (a, b)))))
-   (ndRet
-      (Bseq (example_quicksort.tsplits_obligation_3 h (erefl (a, b))),
-       Bseq (example_quicksort.tsplits_obligation_4 h (erefl (a, b)))))
-   )) (*TODO: name tsplits_obligation_x*).
-rewrite /= syn_tsplits.
-by bind_ext => -[].
+    (ndRet ([bseq of h :: a], Bseq (leq_bseq_size b)))
+    (ndRet (Bseq (leq_bseq_size a), [bseq of h :: b])))).
+by rewrite /= syn_tsplits; bind_ext => -[].
 Qed.
 
 Lemma nondetPlus_sub_liftM2 A B C f ma mb :
