@@ -214,12 +214,18 @@ Lemma leq_bseq_size A (xs : seq A) (b0 : (size xs).-bseq A) :
   (size b0 <= (size xs).+1)%N.
 Proof. by rewrite (leq_trans (size_bseq b0)). Qed.
 
+(* more general definition in mathcomp/.../tuple.v *)
+Definition widen_bseq m n T (lemn : m <= n) (bs : m.-bseq T) : n.-bseq T :=
+  @Bseq n T bs (leq_trans (size_bseq bs) lemn).
+
+Check Bseq.
+
 Fixpoint tsplits {M : plusMonad} A (s : seq A)
     : M ((size s).-bseq A * (size s).-bseq A)%type :=
   if s isn't x :: xs then Ret ([bseq of [::]], [bseq of [::]])
   else tsplits xs >>= (fun '(ys, zs) =>
-    Ret ([bseq of x :: ys], Bseq (leq_bseq_size zs)) [~]
-    Ret (Bseq (leq_bseq_size ys), [bseq of x :: zs])).
+    Ret ([bseq of x :: ys], widen_bseq (leqnSn _) zs) [~]
+    Ret (widen_bseq (leqnSn _) ys, [bseq of x :: zs])).
 
 Local Lemma splits_nat_nil : @splits M nat [::] = Ret ([::], [::]).
 Proof. by []. Abort.
