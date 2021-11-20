@@ -125,7 +125,7 @@ Proof. by rewrite /refin altA altmm. Qed.
 
 (* TODO: move?*)
 Definition preserves {M : monad} A B (f : A -> M A) (g : A -> B) :=
-  forall x, (f x >>= fun x' => Ret (x' , g x')) = (f x >>= fun x' => Ret (x' , g x)).
+  forall x, (f x >>= fun y => Ret (y, g y)) = (f x >>= fun y => Ret (y, g x)).
 
 Section more_about_liftM2.
 
@@ -170,7 +170,7 @@ Qed.
 
 Lemma nondetPlus_sub_tsplits A (s : seq A) : nondetPlus_sub (tsplits s : M _).
 Proof.
-elim: s => [|h t ih]; first by exists (ndRet (bseq0 0 A, bseq0 0 A)).
+elim: s => [|h t ih]; first by exists (ndRet ([bseq], [bseq])).
 have [syn syn_tsplits] := ih.
 exists (ndBind syn (fun '(a, b) => ndAlt
     (ndRet ([bseq of h :: a], widen_bseq (leqnSn _) b))
@@ -1318,12 +1318,12 @@ Lemma qperm_rcons (E : eqType) (s : seq E) x :
 Proof. by rewrite -perm_qperm monae_perm_rcons. Qed.
 
 (* NB: postulate perm-idempotent in Agda *)
-Lemma qperm_involutive (E : eqType) : qperm >=> qperm = qperm :> (seq E -> M (seq E)).
+Lemma qperm_idempotent (E : eqType) : qperm >=> qperm = qperm :> (seq E -> M (seq E)).
 Proof. by rewrite -perm_qperm permutations_idem. Qed.
 
 Lemma qperm_slowsort (d : unit) (E : porderType d) :
   (qperm >=> (@slowsort M _ _)) = (@slowsort M _ _) :> (seq E -> M (seq E)).
-Proof. by rewrite /slowsort -kleisliA qperm_involutive. Qed.
+Proof. by rewrite /slowsort -kleisliA qperm_idempotent. Qed.
 
 End more_about_qperm.
 
@@ -1622,7 +1622,7 @@ rewrite (_ : (_, _, t) =
 rewrite fun_if.
 rewrite 2![in LHS]kleisliE.
 have -> : snd3 qperm (rcons a h, b, t) = qperm b >>= (fun zs' => snd3 qperm (rcons a h, zs', t)).
-  by rewrite {1}/snd3 /= -{1}qperm_involutive kleisliE bindA.
+  by rewrite {1}/snd3 /= -{1}qperm_idempotent kleisliE bindA.
 have -> : snd3 qperm (a, rcons b h, t) = qperm b >>= (fun zs' => snd3 qperm (a, rcons zs' h, t)).
   rewrite {1}/snd3 /= qperm_rcons bindA.
   by under eq_bind do rewrite -cats1.

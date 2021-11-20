@@ -828,9 +828,7 @@ rewrite /sum -add1n loop1 /liftC bindA; bind_ext => m.
 rewrite -/(sum n) {}ih -bindA.
 rewrite putget bindA bindretf putput.
 congr put.
-rewrite add0n (addnC 1).
-rewrite iota_add /= sumn_cat /=.
-by rewrite add0n addn0 /= addnAC addnA.
+by rewrite add0n (addnC 1) iotaD /= sumn_cat /= add0n addn0 /= addnAC addnA.
 Qed.
 
 Example sum_from_0_to_10 : M unit :=

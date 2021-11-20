@@ -4,6 +4,7 @@ Declare ML Module "paramcoq".
 
 From mathcomp Require Import all_ssreflect.
 From HB Require Import structures.
+Unset Universe Checking.
 Require Import monae_lib hierarchy monad_lib fmt_lifting monad_model.
 
 (******************************************************************************)
@@ -19,8 +20,6 @@ Require Import monae_lib hierarchy monad_lib fmt_lifting monad_model.
 (******************************************************************************)
 
 Local Open Scope monae_scope.
-
-Unset Universe Checking.
 
 Set Bullet Behavior "Strict Subproofs".
 

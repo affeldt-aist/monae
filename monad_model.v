@@ -183,20 +183,20 @@ rewrite boolp.propeqE; split.
 by rewrite /set1 => ->{b} /=; exists a.
 Qed.
 Let ret : FId ~> set := Natural.Pack (Natural.Mixin naturality_ret).
-Let bind := fun A B => @bigsetU B A.
+Let bind := fun A B => @bigcup B A.
 Let left_neutral : BindLaws.left_neutral bind ret.
 Proof. move=> ? ? ? ?; exact: bigcup_set1. Qed.
 Let right_neutral : BindLaws.right_neutral bind ret.
 Proof.
-by move=> ? ?; rewrite /bind classical_sets_ext.bigcup_of_singleton image_id.
+by move=> ? ?; rewrite /bind bigcup_imset1 image_id.
 Qed.
 Let associative : BindLaws.associative bind.
 Proof. move=> ? ? ? ? ? ?; exact: bigsetUA. Qed.
 Let fmapE (A B : UU0) (f : A -> B) (m : set A) :
   ([the functor of set] # f) m = bind m (@ret _ \o f).
 Proof.
-rewrite /= /actm /bind /= -classical_sets_ext.bigcup_image.
-by rewrite classical_sets_ext.bigcup_of_singleton image_comp.
+rewrite /= /actm /bind /= -bigcup_image.
+by rewrite bigcup_imset1 image_comp.
 Qed.
 HB.instance Definition _ := @Monad_of_ret_bind.Build set ret bind fmapE
   left_neutral right_neutral associative.
@@ -205,7 +205,7 @@ End SetMonad.
 HB.export SetMonad.
 
 Lemma SetMonadE (A B : UU0) (M := [the monad of set]) (m : M A) (f : A -> M B) :
-  m >>= f = bigsetU m f.
+  m >>= f = bigcup m f.
 Proof. by []. Qed.
 
 Module ExceptMonad.
@@ -861,7 +861,7 @@ HB.instance Definition _ := isMonadAlt.Build ListMonad.acto altA alt_bindDl.
 End list.
 
 (* NB: was at the top of the file *)
-Lemma setUDl : @BindLaws.left_distributive [the functor of set] (fun I A => @bigsetU A I) (@setU).
+Lemma setUDl : @BindLaws.left_distributive [the functor of set] (fun I A => @bigcup A I) (@setU).
 Proof.
 move=> A B /= p q r; rewrite boolp.funeqE => b; rewrite boolp.propeqE; split.
 move=> -[a [?|?] ?]; by [left; exists a | right; exists a].
@@ -1193,15 +1193,15 @@ Variable S : Type.
 Local Obligation Tactic := try by [].
 
 Definition acto : Type -> Type :=
-  fun A => S -> {fset (convex.choice_of_Type A * convex.choice_of_Type S)}.
+  fun A => S -> {fset (boolp.choice_of_Type A * boolp.choice_of_Type S)}.
 
 Let ret_component := fun A (a : A) s =>
-  [fset (a : convex.choice_of_Type A, s : convex.choice_of_Type S)].
+  [fset (a : boolp.choice_of_Type A, s : boolp.choice_of_Type S)].
 
 Let bind := fun A B (m : acto A)
-  (f : A -> S -> {fset (convex.choice_of_Type B * convex.choice_of_Type S)}) =>
-  fun s => \bigcup_(i <- (fun x : [choiceType of convex.choice_of_Type A *
-                                           convex.choice_of_Type S] => f x.1 x.2) @` (m s))
+  (f : A -> S -> {fset (boolp.choice_of_Type B * boolp.choice_of_Type S)}) =>
+  fun s => \bigcup_(i <- (fun x : [choiceType of boolp.choice_of_Type A *
+                                           boolp.choice_of_Type S] => f x.1 x.2) @` (m s))
                  i.
 
 Definition map A B (f : A -> B) (m : acto A) : acto B :=
@@ -1279,7 +1279,7 @@ Let H1 : BindLaws.right_neutral bind ret.
 Proof.
 move=> A B /=; rewrite boolp.funeqE => s.
 apply/fsetP => /= x; apply/bigfcupP'; case: ifPn => xBs.
-  set x' := (x : [choiceType of convex.choice_of_Type A * convex.choice_of_Type S]).
+  set x' := (x : [choiceType of boolp.choice_of_Type A * boolp.choice_of_Type S]).
   exists [fset x']; last by rewrite inE.
     apply/imfsetP; exists x' => //=.
   by case: x'.
@@ -1289,8 +1289,9 @@ Qed.
 Let H2 : BindLaws.associative bind.
 Proof.
 move=> A B C /= m f g; rewrite boolp.funeqE => s.
-have @g' : convex.choice_of_Type B -> convex.choice_of_Type S -> {fset convex.choice_of_Type C * convex.choice_of_Type S}.
-  move=> b' s'; exact: (g b' s').
+have @g' : boolp.choice_of_Type B -> boolp.choice_of_Type S ->
+    {fset boolp.choice_of_Type C * boolp.choice_of_Type S}.
+  by move=> b' s'; exact: (g b' s').
 apply/fsetP => /= x; apply/bigfcupP'/bigfcupP'; case => /= CS  /imfsetP[/=].
 - move=> bs /bigfcupP'[/= BS]  /imfsetP[/= sa] sams ->{BS} bsfsa ->{CS} xgbs.
   exists (\bigcup_(i <- [fset g' x0.1 x0.2 | x0 in f sa.1 sa.2]) i).
@@ -1298,13 +1299,13 @@ apply/fsetP => /= x; apply/bigfcupP'/bigfcupP'; case => /= CS  /imfsetP[/=].
   apply/bigfcupP'; exists (g bs.1 bs.2) => //; by apply/imfsetP => /=; exists bs.
 - move=> sa sams ->{CS} /bigfcupP'[/= CS]  /imfsetP[/= bs] bsfsa ->{CS} xgbs.
   exists (g bs.1 bs.2) => //; apply/imfsetP => /=; exists bs => //.
-  apply/bigfcupP' => /=; exists (f sa.1 sa.2) => //; by apply/imfsetP => /=; exists sa.
+  by apply/bigfcupP' => /=; exists (f sa.1 sa.2) => //; apply/imfsetP => /=; exists sa.
 Qed.
 Let fmapE (A B : UU0) (f : A -> B) (m : [the functor of acto] A) : ([the functor of acto] # f) m = @bind _ _ m (@ret _ \o f).
 Proof. by []. Qed.
 HB.instance Definition _ := @Monad_of_ret_bind.Build acto ret bind fmapE H0 H1 H2.
 Lemma BindE (A B : Type) m (f : A -> [the monad of acto] B) :
-  m >>= f = fun s => \bigcup_(i <- (fun x : [choiceType of convex.choice_of_Type A * convex.choice_of_Type S] => f x.1 x.2) @` (m s)) i.
+  m >>= f = fun s => \bigcup_(i <- (fun x : [choiceType of boolp.choice_of_Type A * boolp.choice_of_Type S] => f x.1 x.2) @` (m s)) i.
 Proof.
 rewrite boolp.funeqE => s.
 rewrite bindE /= /join_of_bind /= /bind /=.
@@ -1333,15 +1334,15 @@ End monad.
 
 Section state.
 Variable S : Type.
-Let get := (fun s => [fset (s : convex.choice_of_Type S , s : convex.choice_of_Type S)]) : (acto S S).
-Let put := (fun s => (fun _ => [fset (tt : convex.choice_of_Type unit, s : convex.choice_of_Type S)])) : S -> (acto S unit).
+Let get := (fun s => [fset (s : boolp.choice_of_Type S, s : boolp.choice_of_Type S)]) : (acto S S).
+Let put := (fun s => (fun _ => [fset (tt : boolp.choice_of_Type unit, s : boolp.choice_of_Type S)])) : S -> (acto S unit).
 Let putput : forall s s', put s >> put s' = put s'.
 Proof.
 move=> s s'; rewrite boolp.funeqE => s''.
 rewrite BindE; apply/fsetP => /= x; apply/bigfcupP'/fset1P.
 - by case => /= x0 /imfsetP[/= x1] /fset1P _ -> /fset1P.
 - move=> -> /=.
-  exists [fset ((tt, s') : [choiceType of convex.choice_of_Type unit * convex.choice_of_Type S])] => /=; last first.
+  exists [fset ((tt, s') : [choiceType of boolp.choice_of_Type unit * boolp.choice_of_Type S])] => /=; last first.
     exact/fset1P.
   apply/imfsetP => /=; exists (tt, s) => //; exact/fset1P.
 Qed.
@@ -1350,11 +1351,11 @@ Proof.
 move=> s; rewrite boolp.funeqE => s'.
 rewrite 2!BindE /=; apply/fsetP => /= x; apply/bigfcupP'/bigfcupP'.
 - case => /= x0 /imfsetP[/= x1] /fset1P -> -> /fset1P ->.
-  exists [fset ((s, s) : [choiceType of convex.choice_of_Type S * convex.choice_of_Type S])]; last first.
+  exists [fset ((s, s) : [choiceType of boolp.choice_of_Type S * boolp.choice_of_Type S])]; last first.
     exact/fset1P.
   apply/imfsetP => /=; exists (tt, s) => //; exact/fset1P.
 - case => /= x0 /imfsetP[/= x1] /fset1P -> -> /fset1P ->.
-  exists [fset ((s ,s) : [choiceType of convex.choice_of_Type S * convex.choice_of_Type S])]; last first.
+  exists [fset ((s ,s) : [choiceType of boolp.choice_of_Type S * boolp.choice_of_Type S])]; last first.
     exact/fset1P.
   apply/imfsetP => /=; exists (tt, s) => //; exact/fset1P.
 Qed.
@@ -1363,7 +1364,7 @@ Proof.
 rewrite boolp.funeqE => s.
 rewrite BindE /skip /= /Ret; apply/fsetP => /= x; apply/bigfcupP'/idP.
 - case => /= x0 /imfsetP[/= x1] /fset1P -> -> /fset1P ->; exact/fset1P.
-- move/fset1P => ->; exists [fset ((tt, s) : [choiceType of convex.choice_of_Type unit * convex.choice_of_Type S])]; last first.
+- move/fset1P => ->; exists [fset ((tt, s) : [choiceType of boolp.choice_of_Type unit * boolp.choice_of_Type S])]; last first.
     exact/fset1P.
   apply/imfsetP; exists (s, s) => //; by rewrite inE.
 Qed.
@@ -1376,11 +1377,11 @@ rewrite 2!BindE; apply/fsetP => x; apply/bigfcupP'/bigfcupP'.
   rewrite BindE => /bigfcupP'[/= x2] /imfsetP[/= x3] /fset1P -> -> xkss.
   exists (k s s s) => //; apply/imfsetP; exists (s, s) => //; by rewrite inE.
 - case => /= x0 /imfsetP[/= x1] /fset1P -> -> /= xksss.
-  have @k' : convex.choice_of_Type S -> convex.choice_of_Type S -> (convex.choice_of_Type S -> {fset convex.choice_of_Type A * convex.choice_of_Type S}).
+  have @k' : boolp.choice_of_Type S -> boolp.choice_of_Type S -> (boolp.choice_of_Type S -> {fset boolp.choice_of_Type A * boolp.choice_of_Type S}).
     move=> a b s'; exact: (k a b s').
-  exists (\bigcup_(i <- [fset k' (s, s).1 x2.1 x2.2 | x2 in [fset (((s, s).2, (s, s).2) : [choiceType of convex.choice_of_Type S * convex.choice_of_Type S])]]) i).
+  exists (\bigcup_(i <- [fset k' (s, s).1 x2.1 x2.2 | x2 in [fset (((s, s).2, (s, s).2) : [choiceType of boolp.choice_of_Type S * boolp.choice_of_Type S])]]) i).
     apply/imfsetP ; exists (s, s); by [rewrite inE | rewrite BindE].
-  apply/bigfcupP'; exists (k s s s) => //;   apply/imfsetP; exists (s, s) => //=; exact/fset1P.
+  by apply/bigfcupP'; exists (k s s s) => //; apply/imfsetP; exists (s, s) => //=; exact/fset1P.
 Qed.
 
 HB.instance Definition _ := isMonadState.Build S (acto S) putput putget getputskip getget.
@@ -1394,7 +1395,7 @@ Let bindfailf : BindLaws.left_zero (@bind _ ) fail.
 Proof.
 move=> A B g; rewrite boolp.funeqE => s; apply/fsetP => x; rewrite inE BindE; apply/negbTE.
 apply/bigfcupP'; case => /= x0 /imfsetP[/= sa].
-by rewrite (@in_fset0 [choiceType of convex.choice_of_Type A * convex.choice_of_Type S]).
+by rewrite (@in_fset0 [choiceType of boolp.choice_of_Type A * boolp.choice_of_Type S]).
 Qed.
 
 HB.instance Definition _ := isMonadFail.Build (acto S) bindfailf.
@@ -1403,7 +1404,7 @@ End fail.
 Section alt.
 Variable S : choiceType.
 Let M := [the monad of acto S].
-Let alt := (fun (A : Type) (a b : S -> {fset [choiceType of convex.choice_of_Type A * convex.choice_of_Type S]}) (s : S) => a s `|` b s).
+Let alt := (fun (A : Type) (a b : S -> {fset [choiceType of boolp.choice_of_Type A * boolp.choice_of_Type S]}) (s : S) => a s `|` b s).
 Let altA : forall T : UU0, ssrfun.associative (@alt T).
 Proof. by move=> A a b c; rewrite boolp.funeqE => s; rewrite /alt fsetUA. Qed.
 Let alt_bindDl : BindLaws.left_distributive (@bind M) (@alt).
@@ -1439,7 +1440,7 @@ Proof.
 move=> A B /= g; rewrite !BindE /=; rewrite boolp.funeqE => s; apply/fsetP => /= sa.
 apply/idP/idP/bigfcupP'.
 case => /= SA /imfsetP[/= bs bsgs ->{SA}].
-by rewrite (@in_fset0 [choiceType of convex.choice_of_Type A * convex.choice_of_Type S]).
+by rewrite (@in_fset0 [choiceType of boolp.choice_of_Type A * boolp.choice_of_Type S]).
 Qed.
 HB.instance Definition _ := isMonadFailR0.Build (acto S) yyy.
 End failR0monad.
