@@ -1087,7 +1087,7 @@ HB.mixin Record isMonadArray (S : UU0) (I : eqType) (M : UU0 -> UU0) of Monad M 
   aputput : forall i s s', aput i s >> aput i s' = aput i s' ;
   aputget : forall i s (A : UU0) (k : S -> M A), aput i s >> aget i >>= k =
       aput i s >> k s ;
-  agetpustskip : forall i, aget i >>= aput i = skip ;
+  agetputskip : forall i, aget i >>= aput i = skip ;
   agetget : forall i (A : UU0) (k : S -> S -> M A),
     aget i >>= (fun s => aget i >>= k s) = aget i >>= fun s => k s s ;
   agetC : forall i j (A : UU0) (k : S -> S -> M A),

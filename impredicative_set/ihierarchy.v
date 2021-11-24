@@ -1023,7 +1023,6 @@ Notation failFailR0ReifyMonad := MonadFailFailR0Reify.type.
 HB.structure Definition MonadFailStateReify (S : UU0) := {M of MonadStateReify S M & MonadFailFailR0Reify S M}.
 Notation failStateReifyMonad := MonadFailStateReify.type.
 
-
 (*
 Module MonadFailStateReify.
 Record class_of (S : UU0) (M : UU0 -> UU0) := Class {
@@ -1056,6 +1055,7 @@ Coercion failFailR0_of_failStateReify : failStateReifyMonad >-> failFailR0ReifyM
 Canonical failFailR0_of_failStateReify.
 End Exports.
 End MonadFailStateReify.
+
 Export MonadFailStateReify.Exports.*)
 
 (* NB: this is experimental, may disappear, see rather foreach in
@@ -1075,7 +1075,7 @@ HB.mixin Record isMonadArray (S : UU0) (I : eqType) (M : UU0 -> UU0) of Monad M 
   aputput : forall i s s', aput i s >> aput i s' = aput i s' ;
   aputget : forall i s (A : UU0) (k : S -> M A), aput i s >> aget i >>= k =
       aput i s >> k s ;
-  agetpustskip : forall i, aget i >>= aput i = skip ;
+  agetputskip : forall i, aget i >>= aput i = skip ;
   agetget : forall i (A : UU0) (k : S -> S -> M A),
     aget i >>= (fun s => aget i >>= k s) = aget i >>= fun s => k s s ;
   agetC : forall i j (A : UU0) (k : S -> S -> M A),
@@ -1091,6 +1091,10 @@ HB.mixin Record isMonadArray (S : UU0) (I : eqType) (M : UU0 -> UU0) of Monad M 
 HB.structure Definition MonadArray (S : UU0) (I : eqType) :=
   { M of isMonadArray S I M & isMonad M & isFunctor M }.
 Notation arrayMonad := MonadArray.type.
+
+HB.structure Definition MonadPlusArray (S : UU0) (I : eqType) :=
+  { M of MonadPlus M & isMonadArray S I M}.
+Notation plusArrayMonad := MonadPlusArray.type.
 
 HB.mixin Record isMonadTrace (T : UU0) (M : UU0 -> UU0) of Monad M := {
   mark : T -> M unit

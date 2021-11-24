@@ -51,7 +51,7 @@ Example split2 : (@splits M nat [:: 1; 2]%N) =
 Proof.
 rewrite /splits bindA.
 repeat rewrite bindretf alt_bindDl !bindretf.
-by rewrite altA. 
+by rewrite altA.
 Qed.
 
 (* sorted *)
@@ -83,15 +83,15 @@ Definition altfailE := (altfailm, altmfail). *)
 
 Ltac sub := repeat rewrite !alt_bindDl !bindretf; rewrite bindA; repeat rewrite !qpermE !bindA !bindretf /=.
 Ltac bindSF := rewrite !bindskipf !bindfailf.
-Ltac slowsort_process := 
-  rewrite /slowsort kleisliE; 
-  rewrite !qpermE /bindA /= !bindretf; 
+Ltac slowsort_process :=
+  rewrite /slowsort kleisliE;
+  rewrite !qpermE /bindA /= !bindretf;
   repeat sub;
   rewrite /sorted /assert /guard /path /=; unlock;
   (* repeat rewrite bindfailE; *)
   repeat rewrite bindskipE.
   (* repeat rewrite altfailE. *)
-  
+
 Example slowsort0 : (@slowsort M _ T [::]) = Ret [::].
 by slowsort_process.
 Qed.
@@ -115,15 +115,15 @@ End specificationDemo.
 Section monadDemo.
 Variable M : monad.
 
-Definition ret : nat -> M nat := 
+Definition ret : nat -> M nat :=
     fun n => Ret n.
-Definition func : nat -> M nat := 
+Definition func : nat -> M nat :=
     fun n => Ret (n+1).
 Example bind1 : ret 1 >>= ret = ret 1.
 rewrite /ret bindretf. done. Qed.
 Example __ : ret 1 >>= func = ret 2.
 rewrite /ret /func bindretf. done. Qed.
-    
+
 End monadDemo.
 
 Section plusMonadDemo.

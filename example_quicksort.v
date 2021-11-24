@@ -102,13 +102,6 @@ End sorted.
 
 Local Open Scope monae_scope.
 
-(* TODO: move *)
-Lemma bind_if (M : monad) A B {b : bool} {m : M A} {f g : A -> M B} :
-  m >>= (fun x => if b then f x else g x)
-  = (if b then (m >>= (fun x => f x))
-          else (m >>= (fun x => g x))).
-Proof. by case: ifPn. Qed.
-
 Reserved Notation "m1 `<=` m2" (at level 70, no associativity).
 Reserved Notation "m2 `>=` m1" (at level 70, no associativity).
 Reserved Notation "f `<.=` g" (at level 70, no associativity).
