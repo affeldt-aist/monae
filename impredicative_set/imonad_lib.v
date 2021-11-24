@@ -40,6 +40,11 @@ Unset Printing Implicit Defensive.
 
 Local Open Scope monae_scope.
 
+Lemma bind_if (M : monad) A B {b : bool} {m : M A} {f g : A -> M B} :
+  m >>= (fun x => if b then f x else g x) =
+    if b then m >>= (fun x => f x) else m >>= (fun x => g x).
+Proof. by case: ifPn. Qed.
+
 Local Open Scope mprog.
 Lemma mfoldl_rev {M : monad} (T R : UU0) (f : R -> T -> R) (z : R) (s : seq T -> M (seq T)) :
   foldl f z (o) (rev (o) s) = foldr (fun x => f^~ x) z (o) s.

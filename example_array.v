@@ -239,7 +239,7 @@ Lemma swapii i : swap i i = skip.
 Proof.
 rewrite /swap agetget.
 under eq_bind do rewrite aputput.
-by rewrite agetpustskip.
+by rewrite agetputskip.
 Qed.
 
 Fixpoint writeList i (s : seq E) : M unit :=
