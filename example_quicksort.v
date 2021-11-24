@@ -40,6 +40,9 @@ From infotheo Require Import ssr_ext.
 (* TODO: shouldn't prePlusMonad be plusMonad (like list monad) and
     plusMonad be plusCIMonad (like set monad)? *)
 
+Reserved Notation "m1 `<=` m2" (at level 70, no associativity).
+Reserved Notation "f `<.=` g" (at level 70, no associativity).
+
 Set Implicit Arguments.
 Unset Strict Implicit.
 Unset Printing Implicit Defensive.
@@ -102,10 +105,6 @@ End sorted.
 
 Local Open Scope monae_scope.
 
-Reserved Notation "m1 `<=` m2" (at level 70, no associativity).
-Reserved Notation "m2 `>=` m1" (at level 70, no associativity).
-Reserved Notation "f `<.=` g" (at level 70, no associativity).
-
 Local Open Scope tuple_ext_scope.
 Local Open Scope mprog.
 (*Local Notation "m >>= f" := (monae.hierarchy.bind m f).
@@ -114,7 +113,6 @@ Local Notation ret x := (monae.hierarchy.ret x).*)
 Definition refin (M : altMonad) A (m1 m2 : M A) : Prop := m1 [~] m2 = m2.
 
 Notation "m1 `<=` m2" := (refin m1 m2) : monae_scope.
-Notation "m1 `>=` m2" := (refin m2 m1) : monae_scope.
 
 Section refin_lemmas.
 Variable M : altCIMonad.
@@ -135,7 +133,7 @@ Proof. by move=> h1 h2; rewrite /refin altACA h1 h2. Qed.
 End refin_lemmas.
 
 Lemma refin_guard_le (M : plusMonad) (d : unit) (T : porderType d) (x y : T) :
-  total (<=%O : rel T) -> guard (x <= y) `>=` (guard (~~ (y <= x)) : M _).
+  total (<=%O : rel T) -> (guard (~~ (y <= x)) : M _) `<=` guard (x <= y).
 Proof.
 case: guardPn => [nyx|_ _].
   rewrite /total => /(_ x y).
@@ -541,14 +539,14 @@ by rewrite assertE !bindA 2!bindretf assertE.
 Qed.
 
 Lemma refin_slowsort (p : T) (xs : seq T) :
-  (total (<=%O : rel T)) ->
-  slowsort (p :: xs) `>=`
+  total (<=%O : rel T) ->
   Ret (partition p xs) >>= (fun '(ys, zs) =>
-    slowsort ys >>= (fun ys' => slowsort zs >>= (fun zs' => Ret (ys' ++ p :: zs'))) : M _).
+    slowsort ys >>= (fun ys' => slowsort zs >>= (fun zs' => Ret (ys' ++ p :: zs'))) : M _)
+    `<=` slowsort (p :: xs).
 Proof.
 move => hyp.
-rewrite [X in X `>=` _]refin_slowsort_inductive_case.
-rewrite [X in X `>=` _](_ : _ = splits xs >>=
+rewrite [X in _ `<=` X]refin_slowsort_inductive_case.
+rewrite [X in _ `<=` X](_ : _ = splits xs >>=
     (fun yz => assert (is_partition p) yz) >>=
     fun '(ys, zs) => (slowsort ys) >>=
     (fun ys' => (slowsort zs) >>= (fun zs'=> Ret (ys' ++ p :: zs')))); last first.
@@ -671,8 +669,8 @@ Lemma refin_partition_slowsort : total (<=%O : rel T) ->
   partition_slowsort `<.=` slowsort.
 Proof.
 move => hyp [|p xs]; first by rewrite slowsort_nil; exact: refin_refl.
-rewrite [X in X `>=` _]refin_slowsort_inductive_case.
-rewrite [X in X `>=` _](_ : _ = splits xs >>=
+rewrite [X in _ `<=` X]refin_slowsort_inductive_case.
+rewrite [X in _ `<=` X](_ : _ = splits xs >>=
     (fun yz => assert (is_partition p) yz) >>=
     fun '(ys, zs) => slowsort ys >>=
     (fun ys' => slowsort zs >>= (fun zs'=> Ret (ys' ++ p :: zs')))); last first.
