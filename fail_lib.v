@@ -762,7 +762,8 @@ Proof. by move=> h1 h2; rewrite /refin altACA h1 h2. Qed.
 End refin_lemmas.
 
 Lemma refin_guard_le (M : plusMonad) (d : unit) (T : porderType d) (x y : T) :
-  total (<=%O : rel T) -> (guard (~~ (y <= x)%O) : M _) `<=` guard (x <= y)%O.
+  (total (<=%O : rel T)) ->
+  (guard (~~ (y <= x)%O) : M _) `<=` guard (x <= y)%O.
 Proof.
 case: guardPn => [nyx|_ _].
   rewrite /total => /(_ x y).

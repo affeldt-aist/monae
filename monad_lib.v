@@ -11,6 +11,7 @@ Require Import hierarchy.
 (******************************************************************************)
 (*  Properties and examples of functors, natural transformations, and monads  *)
 (*                                                                            *)
+(*            liftM2 h m1 m2 == as in Haskell                                 *)
 (*                       NId == identity natural transformation               *)
 (*                        \v == vertical composition of natural               *)
 (*                              transformations                               *)
@@ -55,8 +56,23 @@ bind_ext => ?; by rewrite bindretf /= -foldl_rev.
 Qed.
 Local Close Scope mprog.
 
-Definition liftM2 {M : monad} (A B C : UU0) (oplus : A -> B -> C) m1 m2 : M C :=
-  m1 >>= (fun x1 => m2 >>= (fun x2 => Ret (oplus x1 x2))).
+Definition liftM2 {M : monad} (A B C : UU0) (h : A -> B -> C) m1 m2 : M C :=
+  m1 >>= (fun a => m2 >>= (fun b => Ret (h a b))).
+
+Section liftM2_lemmas.
+Variables (M : monad) (A B C : UU0) (h : A -> B -> C).
+
+Lemma liftM2E m1 m2 D (f : C -> M D) : liftM2 h m1 m2 >>= f =
+  m1 >>= (fun x => m2 >>= fun y => f (h x y)) :> M _.
+Proof.
+rewrite /liftM2 bindA; under eq_bind do rewrite bindA.
+by bind_ext => s; under eq_bind do rewrite bindretf.
+Qed.
+
+Lemma liftM2_ret a b : liftM2 h (Ret a) (Ret b) = Ret (h a b) :> M _.
+Proof. by rewrite /liftM2 !bindretf. Qed.
+
+End liftM2_lemmas.
 
 Definition Squaring (A : UU0) := (A * A)%type.
 Notation "A `2" := (Squaring A).

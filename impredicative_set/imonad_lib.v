@@ -10,6 +10,7 @@ Require Import ihierarchy.
 (******************************************************************************)
 (*  Properties and examples of functors, natural transformations, and monads  *)
 (*                                                                            *)
+(*            liftM2 h m1 m2 == as in Haskell                                 *)
 (*                       NId == identity natural transformation               *)
 (*                        \v == vertical composition of natural               *)
 (*                              transformations                               *)

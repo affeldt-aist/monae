@@ -646,7 +646,7 @@ Lemma lrefin_trans A B (b a c : A -> M B) : a `<.=` b -> b `<.=` c -> a `<.=` c.
 Proof. by move => ? ? ?; exact: refin_trans. Qed.
 
 Lemma lrefin_antisym A B (a b : A -> M B) : a `<.=` b -> b `<.=` a -> a = b.
-Proof. move => ? ?; rewrite boolp.funeqE => ?; exact: refin_antisym. Qed.
+Proof. move => ? ?; apply fun_ext => ?; exact: refin_antisym. Qed.
 
 End lrefin_lemmas.
 
@@ -664,7 +664,7 @@ Proof.
 by move=> mn /refin_bindl ?; exact: (refin_trans _ (refin_bindr _ mn)).
 Qed.
 
-Lemma refin_liftM2 (M : plusMonad) A B C {f : A -> B -> C} {m1 n1 : M A} {m2 n2 : M B} :
+Lemma refin_liftM2 (M : plusMonad) (A B C : UU0) {f : A -> B -> C} {m1 n1 : M A} {m2 n2 : M B} :
   m1 `<=` n1 -> m2 `<=` n2 -> liftM2 f m1 m2 `<=` liftM2 f n1 n2.
 Proof.
 move=> mn1 mn2; rewrite /liftM2.

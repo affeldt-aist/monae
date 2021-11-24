@@ -46,7 +46,7 @@ Local Open Scope order_scope.
 Section sorted.
 Variables (d : unit) (T : porderType d).
 
-Lemma sorted_cons (r : rel T) (r_trans : transitive r) x (xs : seq T) :
+Let sorted_cons (r : rel T) (r_trans : transitive r) x (xs : seq T) :
   sorted r (x :: xs) = sorted r xs && all (r x) xs.
 Proof.
 apply/idP/idP => [ /= xxs |/andP[ _ /path_min_sorted /= ->//]].
@@ -54,7 +54,7 @@ rewrite (order_path_min r_trans xxs) ?andbT//.
 exact: path_sorted xxs.
 Qed.
 
-Lemma sorted_rcons (r : rel T) (r_trans : transitive r) x (xs : seq T) :
+Let sorted_rcons (r : rel T) (r_trans : transitive r) x (xs : seq T) :
   sorted r (rcons xs x) = sorted r xs && all (r^~ x) xs.
 Proof.
 rewrite -rev_sorted rev_rcons sorted_cons.
@@ -64,29 +64,31 @@ Qed.
 
 Local Notation sorted := (sorted <=%O).
 
-Lemma sorted_cons' x (xs : seq T) :
+Let sorted_cons' x (xs : seq T) :
   sorted (x :: xs) = sorted xs && all (<=%O x) xs.
 Proof. by rewrite sorted_cons //; exact le_trans. Qed.
 
-Lemma sorted_rcons' x (xs : seq T) :
+Let sorted_rcons' x (xs : seq T) :
   sorted (rcons xs x) = sorted xs && all (>=%O x) xs.
 Proof. by rewrite sorted_rcons //; apply le_trans. Qed.
 
-Lemma sorted_cat' (a b : seq T) : sorted (a ++ b) -> sorted a && sorted b.
+Let sorted_cat' (a b : seq T) : sorted (a ++ b) -> sorted a && sorted b.
 Proof.
 elim: a b => //= h t ih b; rewrite cat_path => /andP[-> /=].
 exact: path_sorted.
 Qed.
 
-Lemma sorted_cat_cons' (x : T) (ys zs : seq T) :
+(* TODO: try to reuse sorted lemmas from MathComp *)
+Lemma sorted_cat_cons (x : T) (ys zs : seq T) :
   sorted (ys ++ x :: zs) = [&& sorted ys, sorted zs, all (<= x) ys & all (>= x) zs].
 Proof.
 apply/idP/idP => [|].
-  rewrite -cat1s => H; apply/and4P; split; move: H.
-  - by move/sorted_cat' => /andP[].
-  - by move/sorted_cat'; rewrite sorted_cons' => /and3P[].
-  - by rewrite -cat_rcons => /sorted_cat'/andP[]; rewrite sorted_rcons' => /andP[].
-  - by move/sorted_cat' => /andP[_]; rewrite sorted_cons' => /andP[].
+  move=> h; apply/and4P; split.
+  - by apply: (subseq_le_sorted _ h) => //; apply: prefix_subseq.
+  - apply: (subseq_le_sorted _ h) => //; rewrite -cat_rcons.
+    exact: suffix_subseq.
+  - by move: h; rewrite -cat_rcons => /sorted_cat'/andP[]; rewrite sorted_rcons' => /andP[].
+  - by move: h; move/sorted_cat' => /andP[_]; rewrite sorted_cons' => /andP[].
 case/and4P => ss ss' ps ps'; apply sorted_cat => //.
   by rewrite sorted_cons' ss' ps'.
 move => a ain b bin; apply (@le_trans _ _ x).
@@ -169,9 +171,9 @@ Lemma qperm'_Fix (s : seq A) (f g : forall y, (size y < size s)%N -> M (seq A)) 
   (forall y (p : (size y < size s)%N), f y p = g y p) -> qperm' f = qperm' g.
 Proof.
 move=> H; rewrite /qperm'; case: s f g H => // h t f g H.
-bind_ext => -[a b] /=; rewrite /liftM2 H (_ : f = g) //.
-apply fun_ext_dep => s.
-by rewrite boolp.funeqE=> p; exact: H.
+bind_ext => -[a b] /=.
+rewrite (_ : f = g) //; apply fun_ext_dep => s.
+by rewrite boolp.funeqE => sht; exact: H.
 Qed.
 
 Lemma qperm_nil : qperm [::] = Ret [::].
@@ -191,6 +193,7 @@ Definition qpermE := (qperm_nil, qperm_cons).
 End qperm.
 Arguments qperm {M} {A}.
 
+(* TODO: move *)
 Section guard_commute.
 Variable M : plusMonad.
 Variables (d : unit) (T : porderType d).
@@ -285,9 +288,9 @@ have [n leMn] := ubnP (size a); elim: n => // n ih in a f leMn *.
 case: a leMn => [|h t].
   by move=> _ p; rewrite /= qperm_nil 2!bindretf.
 rewrite ltnS => tn p.
-rewrite qperm_cons {1}/liftM2 !bindA /= guard_and [in LHS]bindA.
+rewrite qperm_cons !bindA /= guard_and [in LHS]bindA.
 rewrite -bindA -guard_and.
-rewrite guard_splits_cons /liftM2.
+rewrite guard_splits_cons.
 rewrite splitsE /= fmapE !bindA /=.
 bind_ext => -[a b] /=.
 rewrite 2!bindretf /=.
@@ -350,6 +353,12 @@ elim: s p => //= x xs ih p; have {ih} := ih p.
 move H : (partition p xs) => h; case: h H => a b ab /= abxs.
 by case: ifPn => xp /=; rewrite ?(addSn,addnS) abxs.
 Qed.
+
+End partition.
+
+Section partition.
+Variable M : plusMonad.
+Variables (d : unit) (T : porderType d).
 
 Lemma refin_partition (p : T) (xs : seq T) :
   total (<=%O : rel T) ->
@@ -414,17 +423,16 @@ transitivity (
   splits xs >>= (fun '(ys, zs) =>
   qperm ys >>= (fun ys' => qperm zs >>= (fun zs' =>
   assert sorted (ys' ++ p :: zs')))) : M _).
-  rewrite /slowsort kleisliE qperm_cons !bindA.
+  rewrite /slowsort kleisliE qperm_cons bindA.
   bind_ext => -[a b] /=.
-  rewrite /liftM2 bindA; bind_ext => s.
-  by rewrite bindA; bind_ext => s'; rewrite bindretf.
+  by rewrite liftM2E.
 transitivity (
   splits xs >>= (fun '(ys, zs) =>
   qperm ys >>= (fun ys' => qperm zs >>= (fun zs' =>
   guard ([&& sorted ys', sorted zs', all (<= p) ys' & all (>= p) zs']) >>
   Ret (ys' ++ p :: zs')))) : M _).
   bind_ext => -[a b]; bind_ext => s; bind_ext => s'; rewrite assertE /=.
-  by rewrite -sorted_cat_cons'.
+  by rewrite -sorted_cat_cons.
 bind_ext=> {xs} -[a b].
 rewrite guard_and 2!bindA (bindA (qperm a)).
 rewrite guard_qperm_neq.
@@ -603,9 +611,8 @@ apply fqsort_ind => [s0 _|s0 h t sht ys zs pht ihys ihzs].
   by rewrite slowsort_nil; exact: refin_refl.
 apply: (refin_trans _ (refin_partition_slowsort hyp _)).
 rewrite /= pht.
-apply: refin_trans; last exact: (refin_liftM2 ihys ihzs).
-rewrite /liftM2 2!bindretf. (*TODO: lemma*)
-exact: refin_refl.
+apply: (refin_trans _ (refin_liftM2 ihys ihzs)).
+by rewrite liftM2_ret; exact: refin_refl.
 Qed.
 
 End qsort_def.
