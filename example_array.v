@@ -1523,7 +1523,7 @@ Lemma ipartl_tr_partl (p : E) (i : Z) (xs zs ys : seq E) :
 Proof.
 elim: xs i p zs ys => [|h t ih] i p zs ys.
   rewrite /= bindretf cats0.
-  set lhs := (X in X `>=` _); set rhs := (X in _ `>=` X).
+  set lhs := (X in _ `<=` X); set rhs := (X in X `<=` _).
   suff : lhs = rhs by move=> ->; exact: refin_refl.
   rewrite /lhs /rhs.
   by rewrite bindA bindretf.
@@ -1560,10 +1560,10 @@ apply: (@refin_trans _ _ (
     rewrite bindretf size_rcons addn1 rcons_cat.
     exact: refin_refl.
   apply: refin_bindl => -[].
-  rewrite -[X in X `>=` _](qperm_preserves_size2 zs (fun a b =>
+  rewrite -[X in _ `<=` X](qperm_preserves_size2 zs (fun a b =>
     writeList i (ys ++ h :: a) >>
    ipartl p i (size ys + 1) b (size t))).
-  rewrite -[in X in X `>=` _]bindA.
+  rewrite -[in X in _ `<=` X]bindA.
   apply: refin_bindr.
   exact: first_branch.
 rewrite -2!addZA !(addZA (size ys)%:Z) -intRD addZA.
@@ -1612,8 +1612,8 @@ rewrite (_ : (if _ then _ else _) =
   by case: ifPn.
 apply: refin_trans; last first.
   exact: ih.
-set lhs := (X in X `>=` _).
-set rhs := (X in _ `>=` X).
+set lhs := (X in _ `<=` X).
+set rhs := (X in X `<=` _).
 suff : lhs = rhs by move=> ->; exact: refin_refl.
 rewrite {}/lhs {}/rhs.
 rewrite (_ : (_, _, t) =
@@ -1660,7 +1660,7 @@ rewrite kleisliE /snd3 /=.
 rewrite bindA.
 apply: (@refin_trans _ _ (do x <- Ret b; tr_partl p a x xs)%Do).
   by rewrite bindretf; exact: refin_refl.
-under [in X in X `>=` _]eq_bind do rewrite bindretf /=.
+under [in X in _ `<=` X]eq_bind do rewrite bindretf /=.
 apply: refin_bindr.
 exact: refin_qperm_ret.
 Qed.
@@ -1674,7 +1674,7 @@ have [n nxs] := ubnP (size xs); elim: n xs i => // n ih xs i in nxs *.
 move: xs => [|p xs] in nxs *.
  rewrite /= iqsort_nil slowsort_nil.
  by rewrite 2!bindretf /=; exact: refin_refl.
-set lhs := (X in X `>=` _).
+set lhs := (X in _ `<=` X).
 have step1 :
      tr_partl p [::] [::] xs >>= (fun '(ys, zs) =>
      writeList (i + (size ys)%:Z + 1)%Z zs >>
@@ -1690,7 +1690,7 @@ have step1 :
   move Hpxs : (partition p xs) => pxs; case: pxs => [ys zs] in Hpxs *.
   rewrite 2!kleisliE.
   rewrite !bindA.
-  rewrite [X in X `>=` _](_ : _ =
+  rewrite [X in _ `<=` X](_ : _ =
     (do zs'' <- qperm zs; do ys'' <- qperm ys;
      do ys' <- slowsort ys''; do zs' <- slowsort zs'';
      writeList i (ys' ++ p :: zs'))%Do); last first.
@@ -1719,7 +1719,7 @@ have step1 :
   rewrite bindA.
   move: L; rewrite -partition_partl Hpxs => -[<-{a'} <-{b'}].
   under eq_bind do rewrite bindretf.
-  rewrite bind_qperm_guard [in X in _ `>=` X]bind_qperm_guard.
+  rewrite bind_qperm_guard [in X in X `<=` _]bind_qperm_guard.
   apply: refin_bindl => zs'.
   apply: bind_refin_guard => /eqP zszs'.
   apply: (@refin_trans _ _ (
@@ -1736,7 +1736,7 @@ have step1 :
     (writeList (i + b%:Z + 1) zs' >> (writeList i (rcons a p) >> iqsort (i, b))) >>
     iqsort ((i + b%:Z + 1)%Z, size zs'))).
   rewrite bind_qperm_guard (*NB: interesting?*).
-  rewrite [in X in X `>=` _]bind_qperm_guard.
+  rewrite [in X in _ `<=` X]bind_qperm_guard.
   apply: refin_bindl => ys'.
   apply: bind_refin_guard => /eqP sz_ys_ys'.
   rewrite -cats1.
@@ -1760,20 +1760,20 @@ have step1 :
     apply: leq_trans.
     rewrite ltnS.
     by rewrite -(size_partition p xs) Hpxs /= leq_addr.
-  rewrite -[in X in _ `>=` X](_ : commute (slowsort ys') _ _); last first.
+  rewrite -[in X in X `<=` _](_ : commute (slowsort ys') _ _); last first.
     by apply: commute_plus; exact: nondetPlus_sub_slowsort.
   rewrite !bindA.
-  rewrite -[in X in _ `>=` X](_ : commute (slowsort ys') _ _); last first.
+  rewrite -[in X in X `<=` _](_ : commute (slowsort ys') _ _); last first.
     by apply: commute_plus; exact: nondetPlus_sub_slowsort.
   rewrite (slowsort_preserves_size2 _ (fun a b => writeList (i + b%:Z + 1) zs' >> ((writeList (i + b%:Z) [:: p] >> writeList i a >> iqsort ((i + b%:Z + 1)%Z, size zs')))%Do)).
-  rewrite bind_slowsort_guard [in X in X `>=` _]bind_slowsort_guard.
+  rewrite bind_slowsort_guard [in X in _ `<=` X]bind_slowsort_guard.
   apply: refin_bindl => ys''.
   apply: bind_refin_guard => /eqP ys'ys''.
   rewrite -bindA.
   rewrite -(@writeListC _ _ _ _ _ ys''); last first.
     exact: leZZ.
-  under [in X in X `>=` _]eq_bind do rewrite -cat_rcons.
-  under [in X in X `>=` _]eq_bind do rewrite writeList_cat.
+  under [in X in _ `<=` X]eq_bind do rewrite -cat_rcons.
+  under [in X in _ `<=` X]eq_bind do rewrite writeList_cat.
   rewrite (_ : commute (slowsort zs') _ _); last first.
     apply: commute_plus.
     exact: nondetPlus_sub_slowsort.
@@ -1790,7 +1790,7 @@ have step1 :
   rewrite (leq_trans _ nxs) // ltnS.
   by rewrite -(size_partition p xs) Hpxs /= leq_addl.
 apply: (refin_trans _ step1) => {step1} {lhs}.
-set lhs := (X in X `>=` _).
+set lhs := (X in _ `<=` X).
 have step2 :
   (do pat <- tr_partl p [::] [::] xs;
    (let
@@ -1804,14 +1804,14 @@ have step2 :
   apply: refin_bindl => -[ys sz].
   rewrite 4!bindA.
   apply: refin_bindl => -[].
-  rewrite -2![in X in X `>=` _]bindA.
-  rewrite [in X in X `>=` _](bindA _ (fun _ => iqsort _) (fun _ => iqsort _)).
-  rewrite -2![in X in _ `>=` X]bindA.
+  rewrite -2![in X in _ `<=` X]bindA.
+  rewrite [in X in _ `<=` X](bindA _ (fun _ => iqsort _) (fun _ => iqsort _)).
+  rewrite -2![in X in X `<=` _]bindA.
   rewrite (bindA _ (fun _ => iqsort _) (fun _ => iqsort _)).
   apply: refin_bindr.
   exact: introduce_swap_rcons.
 apply: (refin_trans _ step2) => {step2} {lhs}.
-set lhs := (X in X `>=` _).
+set lhs := (X in _ `<=` X).
 have step3 :
   (do pat <- tr_partl p [::] [::] xs;
    (let
@@ -1832,7 +1832,7 @@ have step3 :
   rewrite writeList_cat -addZA (addZC 1%Z) addZA.
   exact: refin_refl.
 apply: (refin_trans _ step3) => {step3} {lhs}.
-set lhs := (X in X `>=` _).
+set lhs := (X in _ `<=` X).
 have step4 :
   (aput i p >>
    tr_partl p [::] [::] xs >>= (fun '(ys, zs) =>
@@ -1842,13 +1842,13 @@ have step4 :
   `<=`
   lhs.
   rewrite {}/lhs.
-  rewrite bindA -[in X in _ `>=` X](_ : commute (tr_partl p [::] [::] xs) (aput i p) _); last first.
+  rewrite bindA -[in X in X `<=` _](_ : commute (tr_partl p [::] [::] xs) (aput i p) _); last first.
     by apply: commute_plus; exact: nondetPlus_sub_tr_partl.
   apply: refin_bindl => -[a b].
   rewrite !bindA.
   exact: refin_refl.
 apply: (refin_trans _ step4) => {step4} {lhs}.
-set lhs := (X in X `>=` _).
+set lhs := (X in _ `<=` X).
 have step5 :
   ((aput i p >>
    tr_partl p [::] [::] xs >>= (fun '(ys, zs) =>
@@ -1862,13 +1862,13 @@ have step5 :
   apply: refin_bindl => -[].
   apply: refin_bindl => -[a b].
   rewrite 2!bindA.
-  rewrite [in X in _ `>=` X]bindA.
+  rewrite [in X in X `<=` _]bindA.
   apply: refin_bindl => -[].
   rewrite bindretf.
   rewrite bindA.
   exact: refin_refl.
 apply: (refin_trans _ step5) => {step5} {lhs}.
-set lhs := (X in X `>=` _).
+set lhs := (X in _ `<=` X).
 have step6 :
   (((aput i p >>
    (write3L (i + 1)%Z ([::], [::], xs) >>= uncurry3 (ipartl p (i + 1)%Z))) >>=
@@ -1883,7 +1883,7 @@ have step6 :
   apply: refin_bindl => -[].
   exact: ipartl_tr_partl.
 apply: (refin_trans _ step6) => {step6} {lhs}.
-set lhs := (X in X `>=` _).
+set lhs := (X in _ `<=` X).
 have step7 :
   ((writeList i (p :: xs) >> Ret p) >>= (fun p =>
    (ipartl p (i + 1)%Z) 0 0 (size xs) >>=
@@ -1893,8 +1893,8 @@ have step7 :
    `<=`
    lhs.
   rewrite {}/lhs.
-  rewrite [in X in _ `>=` X]/=.
-  rewrite 2![in X in _ `>=` X]bindA.
+  rewrite [in X in X `<=` _]/=.
+  rewrite 2![in X in X `<=` _]bindA.
   rewrite bindA.
   apply: refin_bindl => -[].
   rewrite bindA /= bindA.
@@ -1902,7 +1902,7 @@ have step7 :
   rewrite 2!bindretf /uncurry3.
   exact: refin_refl.
 apply: (refin_trans _ step7) => {step7} {lhs}.
-set lhs := (X in X `>=` _).
+set lhs := (X in _ `<=` X).
 have step8 :
   ((writeList i (p :: xs) >> aget i) >>= (fun p =>
    (ipartl p (i + 1)%Z) 0 0 (size xs) >>=
@@ -1924,8 +1924,8 @@ apply: refin_bindl => x.
 clear nxs.
 rewrite ipartlE //.
 rewrite fmapE.
-rewrite [in X in X `>=` _]bindA.
-under [in X in X `>=` _]eq_bind do rewrite bindretf.
+rewrite [in X in _ `<=` X]bindA.
+under [in X in _ `<=` X]eq_bind do rewrite bindretf.
 rewrite bindA.
 exact: refin_refl.
 Qed.
