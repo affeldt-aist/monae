@@ -21,8 +21,15 @@ Require Import ihierarchy imonad_lib.
 (*             select == (ref: Sect. 4.4, gibbons2011icfp)                    *)
 (*            mu_perm == definition of perms using unfoldM                    *)
 (*                       (ref: Sect 4.3, mu2017)                              *)
+(*         m1 `<=` m2 == m1 refines m2, i.e., every result of m1 is a         *)
+(*                       possible result of m2                                *)
+(*          f `<.=` g == refinement relation lifted to functions, i.e.,       *)
+(*                       forall x, f x `<=` g x                               *)
 (*                                                                            *)
 (******************************************************************************)
+
+Reserved Notation "m1 `<=` m2" (at level 70, no associativity).
+Reserved Notation "f `<.=` g" (at level 70, no associativity).
 
 Set Implicit Arguments.
 Unset Strict Implicit.
@@ -592,3 +599,86 @@ by rewrite bindretf.
 Qed.
 
 End shiftreset_examples.
+
+Section refin.
+Definition refin (M : altMonad) A (m1 m2 : M A) : Prop := m1 [~] m2 = m2.
+
+Local Notation "m1 `<=` m2" := (refin m1 m2).
+
+Section refin_lemmas.
+Variable M : altCIMonad.
+
+Lemma refin_refl A (a : M A) : a `<=` a.
+Proof. by rewrite /refin altmm. Qed.
+
+Lemma refin_trans A (b a c : M A) : a `<=` b -> b `<=` c -> a `<=` c.
+Proof. by rewrite /refin => h1 <-; rewrite altA h1. Qed.
+
+Lemma refin_antisym A (a b : M A) : a `<=` b -> b `<=` a -> a = b.
+Proof. by rewrite /refin => h1 <-; rewrite altC. Qed.
+
+Lemma refin_alt A (m1 m1' m2 m2' : M A) :
+  m1 `<=` m1' -> m2 `<=` m2' -> m1 [~] m2 `<=` m1' [~] m2'.
+Proof. by move=> h1 h2; rewrite /refin altACA h1 h2. Qed.
+
+End refin_lemmas.
+
+Lemma refin_guard_le (M : plusMonad) (d : unit) (T : porderType d) (x y : T) :
+  total (<=%O : rel T) -> (guard (~~ (y <= x)%O) : M _) `<=` guard (x <= y)%O.
+Proof.
+case: guardPn => [nyx|_ _].
+  rewrite /total => /(_ x y).
+  by rewrite (negbTE nyx) orbF => ->; rewrite guardT; exact: refin_refl.
+by rewrite /refin altfailm.
+Qed.
+
+Definition lrefin {M : altMonad} A B (f g : A -> M B) := forall x, f x `<=`g x.
+
+Local Notation "f `<.=` g" := (lrefin f g).
+
+Section lrefin_lemmas.
+Variable M : altCIMonad.
+
+Lemma lrefin_refl A B (a : A -> M B) : a `<.=` a.
+Proof. by move => ?; exact: refin_refl. Qed.
+
+Lemma lrefin_trans A B (b a c : A -> M B) : a `<.=` b -> b `<.=` c -> a `<.=` c.
+Proof. by move => ? ? ?; exact: refin_trans. Qed.
+
+Lemma lrefin_antisym A B (a b : A -> M B) : a `<.=` b -> b `<.=` a -> a = b.
+Proof. move => ? ?; rewrite boolp.funeqE => ?; exact: refin_antisym. Qed.
+
+End lrefin_lemmas.
+
+Lemma refin_bindr (M : altMonad) A B (m1 m2 : M A) (f : A -> M B) :
+  (m1 `<=` m2) -> (m1 >>= f `<=` m2 >>= f).
+Proof. by move=> m12; rewrite /refin -alt_bindDl m12. Qed.
+
+Lemma refin_bindl (M : prePlusMonad) A B (m : M A) (f g : A -> M B) :
+  (f `<.=` g) -> (m >>= f `<=` m >>= g).
+Proof. by move=> fg; rewrite /refin -alt_bindDr; bind_ext => a; exact: fg. Qed.
+
+Lemma refin_bind (M : plusMonad) A B {m n : M A} {f g : A -> M B} :
+  m `<=` n -> f `<.=` g -> (m >>= f) `<=` (n >>= g).
+Proof.
+by move=> mn /refin_bindl ?; exact: (refin_trans _ (refin_bindr _ mn)).
+Qed.
+
+Lemma refin_liftM2 (M : plusMonad) A B C {f : A -> B -> C} {m1 n1 : M A} {m2 n2 : M B} :
+  m1 `<=` n1 -> m2 `<=` n2 -> liftM2 f m1 m2 `<=` liftM2 f n1 n2.
+Proof.
+move=> mn1 mn2; rewrite /liftM2.
+by apply: (refin_bind mn1 _) => a; exact: refin_bindr.
+Qed.
+
+Lemma guard_neg (M : plusMonad) A (p : bool) (m1 m2 : M A) :
+  (if p then m1 else m2) `<=` (guard p >> m1) [~] (guard (~~ p) >> m2).
+Proof.
+rewrite /refin; case: ifPn => /= [pT|pF]; rewrite !(guardT,guardF).
+by rewrite bindskipf bindfailf altA altmm.
+by rewrite bindfailf bindskipf altCA altmm.
+Qed.
+End refin.
+
+Notation "m1 `<=` m2" := (refin m1 m2).
+Notation "f `<.=` g" := (lrefin f g).
