@@ -15,10 +15,12 @@ Require Import ihierarchy imonad_lib.
 (*                       def if the list is empty                             *)
 (*             subs s == subsequence of a list                                *)
 (*                       (ref: Sect. 3.1, gibbons2012utp)                     *)
-(*         insert a s == insertion                                            *)
-(*      permutation s == permutation                                          *)
+(*         insert a s == insert a in the list s nondeterministically          *)
+(*            iperm s == nondeterministic permutation of the list s, defined  *)
+(*                       as a Fixpoint using insert                           *)
 (*                       (ref: Sect. 3, mu2019tr2)                            *)
 (*             select == (ref: Sect. 4.4, gibbons2011icfp)                    *)
+(*              perms == type seq A -> M (seq A)                              *)
 (*            mu_perm == definition of perms using unfoldM                    *)
 (*                       (ref: Sect 4.3, mu2017)                              *)
 (*         m1 `<=` m2 == m1 refines m2, i.e., every result of m1 is a         *)
@@ -303,22 +305,25 @@ Qed.
 
 End subsequences_of_a_list.
 
-Section permutation_and_insertion.
-Variable M : altMonad.
+Section insert.
+Context {M : altMonad} {A : UU0}.
 Local Open Scope mprog.
 
-Fixpoint insert {A : UU0} (a : A) (s : seq A) : M (seq A) :=
+Fixpoint insert (a : A) (s : seq A) : M (seq A) :=
   if s isn't h :: t then Ret [:: a] else
   Ret (a :: h :: t) [~] fmap (cons h) (insert a t).
-Arguments insert : simpl never.
 
-Lemma insertE (A : UU0) (a : A) s :
+Lemma insertE (a : A) s :
   insert a s = if s isn't h :: t then Ret [:: a] else
   Ret (a :: h :: t) [~] fmap (cons h) (insert a t).
 Proof. by case: s. Qed.
 
-Fixpoint perm {A : UU0} (s : seq A) : M (seq A) :=
-  if s isn't h :: t then Ret [::] else perm t >>= insert h.
+End insert.
+Arguments insert : simpl never.
+
+Section insert_altMonad.
+Variable M : altMonad.
+Local Open Scope mprog.
 
 (* see also netys2017 *)
 Lemma insert_map (A B : UU0) (f : A -> B) (a : A) :
@@ -335,24 +340,7 @@ rewrite -fmap_oE (_ : map f \o cons y = cons (f y) \o map f) //.
 by rewrite fmap_oE -(fcompE (map f)) -IH [RHS]/= insertE.
 Qed.
 
-(* lemma 3.3 in mu2019tr2 *)
-Lemma perm_o_map (A B : UU0) (f : A -> B) :
-  perm \o map f = map f (o) perm :> (seq A -> M (seq B)).
-Proof.
-apply fun_ext; elim => [/=|x xs IH].
-  by rewrite fcompE [perm _]/= -[in RHS]compE (natural ret).
-by rewrite fcompE [in perm _]/= fmap_bind -insert_map -bind_fmap -fcompE -IH.
-Qed.
-
-End permutation_and_insertion.
-Arguments insert {M} {A} : simpl never.
-Arguments perm {M} {A}.
-
-Section perm_filter.
-Variable M : altMonad.
 Hypothesis Mmm : forall A, idempotent (@alt _ A : M A -> M A -> M A).
-
-Local Open Scope mprog.
 
 Variables (A : UU0) (p : pred A).
 
@@ -397,23 +385,10 @@ rewrite fcompE [in RHS]/=; case: ifPn => ph.
   by rewrite !insertE altA Mmm.
 Qed.
 
-(* netys2017 *)
-Lemma perm_filter : perm \o filter p = filter p (o) perm :> (_ -> M _).
-Proof.
-apply fun_ext; elim => [|h t /= IH].
-  by rewrite fcompE fmapE bindretf.
-case: ifPn => ph.
-  rewrite [in LHS]/= IH [in LHS]fcomp_def compE [in LHS]bind_fmap.
-  rewrite [in RHS]fcomp_def compE -/(fmap _ _) [in RHS]fmap_bind; bind_ext => s.
-  by rewrite filter_insertT.
-rewrite fcompE fmap_bind IH fcompE fmapE; bind_ext => s.
-by rewrite filter_insertN.
-Qed.
-
-End perm_filter.
+End insert_altMonad.
 
 (* mu2019tr2, Sect. 3, see also netsys2017 *)
-Section altci_insert.
+Section insert_altCIMonad.
 Variables (M : altCIMonad) (A : UU0) (a : A).
 Local Open Scope mprog.
 
@@ -432,16 +407,16 @@ Qed.
 
 Lemma rev_insert : rev (o) insert a = insert a \o rev :> (_ -> M _).
 Proof.
-apply fun_ext; elim => [|h t IH].
+apply fun_ext; elim => [|h t ih].
   by rewrite fcompE insertE fmapE bindretf.
-rewrite fcompE insertE compE alt_fmapDr fmapE bindretf compE [in RHS]rev_cons insert_rcons.
-rewrite rev_cons -cats1 rev_cons -cats1 -catA; congr (_ [~] _).
-move: IH; rewrite fcompE [X in X -> _]/= => <-.
+rewrite fcompE insertE compE alt_fmapDr fmapE bindretf compE [in RHS]rev_cons.
+rewrite insert_rcons rev_cons -cats1 rev_cons -cats1 -catA; congr (_ [~] _).
+move: ih; rewrite fcompE [X in X -> _]/= => <-.
 rewrite -!fmap_oE. congr (fmap _ (insert a t)).
 by apply fun_ext => s; rewrite /= -rev_cons.
 Qed.
 
-End altci_insert.
+End insert_altCIMonad.
 
 Lemma test_canonical (M : nondetMonad) A (a : M A) (b : A -> M A) :
   a [~] (fail >>= b) = a [~] fail.
@@ -451,8 +426,55 @@ Unset Printing All.
 by rewrite bindfailf.
 Abort.
 
-Section nondet_insert.
-Variables (M : nondetMonad) (A : UU0).
+Section insert_plusMonad.
+Variable M : plusMonad.
+
+Lemma insertC (A : UU0) a b (s : seq A) :
+  (do x <- insert b s; insert a x = do x <- insert a s; insert b x :> M _)%Do.
+Proof.
+have [n ns] := ubnP (size s); elim: n s ns a b => // n ih s ns a b.
+case: s ns => [|h t].
+  by rewrite !insertE !bindretf !insertE altC !fmapE !bindretf.
+rewrite ltnS /= => ns.
+rewrite (insertE _ (h :: t)) alt_bindDl bindretf.
+rewrite [in LHS](insertE _ [:: b, h & t]) [in LHS](insertE _ (h :: t)).
+rewrite [in RHS](insertE _ (h :: t)) [in RHS]alt_bindDl bindretf.
+rewrite 2![in RHS]insertE.
+rewrite [in LHS]alt_fmapDr ![in LHS]altA [in LHS](altC (Ret [:: a, b, h & t])).
+rewrite -!altA; congr (_ [~] _); first by rewrite fmapE bindretf.
+rewrite alt_fmapDr -!altA; congr (_ [~] _); first by rewrite fmapE bindretf.
+rewrite [in LHS]altC bind_fmap /= [in LHS]/comp /=.
+under eq_bind do rewrite insertE.
+rewrite alt_bindDr.
+under [in X in (_ [~] X) [~] _]eq_bind do rewrite fmapE.
+rewrite -bindA [in LHS]ih // [in RHS]altC bind_fmap /= [in RHS]/comp /=.
+under [in RHS]eq_bind do rewrite insertE.
+rewrite alt_bindDr [in RHS]altC -!altA; congr (_ [~] _).
+  rewrite !fmapE !bindA.
+  by under [in RHS]eq_bind do rewrite !bindretf.
+rewrite [in RHS]altC; congr (_ [~] _); last first.
+  rewrite !fmapE !bindA.
+  by under eq_bind do rewrite bindretf.
+rewrite bindA.
+by under [in RHS]eq_bind do rewrite fmapE.
+Qed.
+
+Lemma insert_cat (A : UU0) h (a b : seq A) u :
+  insert h (a ++ u :: b) = (do x <- insert h a; Ret (x ++ u :: b))%Do [~]
+                          (do x <- insert h b; Ret (a ++ u :: x))%Do :> M _.
+Proof.
+elim: a h u b => [h u b|a1 a2 ih h u b].
+  by rewrite /= (insertE h nil) bindretf insertE fmapE.
+rewrite cat_cons [in LHS]insertE [u :: b]lock /= -lock [in LHS]ih.
+rewrite [in RHS]insertE [in RHS]alt_bindDl bindretf -altA; congr (_ [~] _).
+rewrite [in RHS]bind_fmap [in LHS]fmapE [in LHS]alt_bindDl !bindA.
+by congr (_ [~] _); under eq_bind do rewrite bindretf.
+Qed.
+
+End insert_plusMonad.
+
+Section insert_nondetMonad.
+Context {M : nondetMonad} {A : UU0}.
 Implicit Types s : seq A.
 
 Lemma insert_Ret a s : exists m, insert a s = Ret (a :: s) [~] m :> M _.
@@ -461,14 +483,89 @@ elim: s => [|h t [m ih]] /=; last by eexists; rewrite insertE; reflexivity.
 by rewrite insertE; exists fail; rewrite altmfail.
 Qed.
 
-Lemma perm_is_alt_ret s : exists m, perm s = Ret s [~] m :> M _.
+End insert_nondetMonad.
+
+Fixpoint iperm {M : altMonad} {A : UU0} (s : seq A) : M (seq A) :=
+  if s isn't h :: t then Ret [::] else iperm t >>= insert h.
+
+Section iperm_altMonad.
+Context {M : altMonad}.
+Local Open Scope mprog.
+
+(* lemma 3.3 in mu2019tr2 *)
+Lemma iperm_o_map (A B : UU0) (f : A -> B) :
+  iperm \o map f = map f (o) iperm :> (_ -> M _).
+Proof.
+apply fun_ext; elim => [/=|x xs IH].
+  by rewrite fcompE [iperm _]/= -[in RHS]compE (natural ret).
+by rewrite fcompE [in iperm _]/= fmap_bind -insert_map -bind_fmap -fcompE -IH.
+Qed.
+
+Hypothesis Mmm : forall A, idempotent (@alt _ A : M A -> M A -> M A).
+
+Variables (A : UU0) (p : pred A).
+
+(* netys2017 *)
+Lemma iperm_filter : iperm \o filter p = filter p (o) iperm :> (_ -> M _).
+Proof.
+apply fun_ext; elim => [|h t /= IH].
+  by rewrite fcompE fmapE bindretf.
+case: ifPn => ph.
+  rewrite [in LHS]/= IH [in LHS]fcomp_def compE [in LHS]bind_fmap.
+  rewrite [in RHS]fcomp_def compE -/(fmap _ _) [in RHS]fmap_bind; bind_ext => s.
+  by rewrite filter_insertT.
+rewrite fcompE fmap_bind IH fcompE fmapE; bind_ext => s.
+by rewrite filter_insertN.
+Qed.
+
+End iperm_altMonad.
+
+Section iperm_nondetMonad.
+Context {M : nondetMonad} {A : UU0}.
+Implicit Types s : seq A.
+
+Lemma iperm_is_alt_ret s : exists m, iperm s = Ret s [~] m :> M _.
 Proof.
 elim: s => [|h t [m ih] /=]; first by exists fail; rewrite altmfail.
-case: (insert_Ret h t) => n Hn.
+case: (@insert_Ret M A h t) => n Hn.
 by eexists; rewrite ih alt_bindDl bindretf Hn -altA.
 Qed.
 
-End nondet_insert.
+End iperm_nondetMonad.
+
+(* TODO: move *)
+Lemma mem_rcons_cat (A : eqType) (b : seq A) h : h \in b ->
+  exists b1 b2, b = rcons b1 h ++ b2.
+Proof.
+move=> hb; exists (take (index h b) b), (drop (index h b).+1 b).
+rewrite -cats1 -catA -{1}(cat_take_drop (index h b) b); congr (_ ++ _) => /=.
+by rewrite -{2}(nth_index h hb) -drop_nth // index_mem.
+Qed.
+
+Section iperm_plusMonad.
+Context {M : plusMonad}.
+
+Lemma iperm_insert {A : UU0} a b (s t : seq A) :
+  (do x <- iperm (b :: s ++ t); insert a x =
+   do x <- iperm (rcons s a ++ t); insert b x :> M _)%Do.
+Proof.
+elim: s => [/=|h tl ih] in a b t *.
+  rewrite !bindA.
+  by under eq_bind do rewrite insertC.
+rewrite [h :: tl]lock /= -lock.
+rewrite ih /= !bindA.
+suff : (do x <- iperm (rcons tl b ++ t); do x0 <- insert a x; insert h x0 =
+    do x <- iperm (rcons tl a ++ t); do x0 <- insert b x; insert h x0 :> M _)%Do.
+  under eq_bind do rewrite insertC.
+  move=> ->.
+  by under eq_bind do rewrite insertC.
+rewrite -bindA -ih /= -bindA.
+rewrite -[in RHS]ih /= !bindA.
+bind_ext => a'.
+by rewrite -bindA insertC bindA.
+Qed.
+
+End iperm_plusMonad.
 
 Section select.
 Variables (M : nondetMonad) (A : UU0).
@@ -624,7 +721,8 @@ Proof. by move=> h1 h2; rewrite /refin altACA h1 h2. Qed.
 End refin_lemmas.
 
 Lemma refin_guard_le (M : plusMonad) (d : unit) (T : porderType d) (x y : T) :
-  total (<=%O : rel T) -> (guard (~~ (y <= x)%O) : M _) `<=` guard (x <= y)%O.
+  (total (<=%O : rel T)) ->
+  (guard (~~ (y <= x)%O) : M _) `<=` guard (x <= y)%O.
 Proof.
 case: guardPn => [nyx|_ _].
   rewrite /total => /(_ x y).

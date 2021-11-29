@@ -32,7 +32,7 @@ Let Partition A := seq A.
 Let RDD A := seq (Partition A).
 
 Definition aggregate : RDD A -> M B :=
-  foldl add b (o) (perm \o map (foldl mul b)).
+  foldl add b (o) (iperm \o map (foldl mul b)).
 
 End definitions.
 Arguments aggregate {M A B}.
@@ -80,7 +80,7 @@ Variables (A B : Type) (op : B -> A -> B).
 Local Notation "x (.) y" := (op x y) (at level 11).
 Hypothesis opP : forall (x y : A) (w : B), (w (.) x) (.) y = (w (.) y) (.) x.
 
-Lemma lemma31 b : foldl op b (o) perm = Ret \o foldl op b :> (_ -> M _).
+Lemma lemma31 b : foldl op b (o) iperm = Ret \o foldl op b :> (_ -> M _).
 Proof.
 rewrite boolp.funeqE => xs; move: xs b; elim => [/=|x xs IH] b.
   by rewrite fcompE fmapE bindretf.
@@ -149,11 +149,11 @@ Hypothesis H : aggregate b mul add = Ret \o foldl mul b \o flatten :> (_ -> M _)
 Lemma lemma45a (xss : seq (seq A)) :
   foldl mul b (flatten xss) = foldl add b (map (foldl mul b) xss).
 Proof.
-case: (perm_is_alt_ret M xss) => m Hm.
+case: (@iperm_is_alt_ret M _ xss) => m Hm.
 have step1 : (Ret \o foldl mul b \o flatten) xss =
   (Ret \o foldl add b \o map (foldl mul b)) xss [~]
   fmap (foldl add b \o map (foldl mul b)) (m : M _).
-  rewrite -H /aggregate perm_o_map -fcomp_comp.
+  rewrite -H /aggregate iperm_o_map -fcomp_comp.
   by rewrite fcompE Hm alt_fmapDr fmapE /= bindretf.
 apply esym, idempotent_converse in step1.
 case: step1 => step11 step12.
@@ -161,14 +161,14 @@ apply injective_return in step11.
 by rewrite -step11.
 Qed.
 
-Lemma lemma45b (m : M _) (xss yss : seq (seq A)) : perm xss = Ret yss [~] m ->
+Lemma lemma45b (m : M _) (xss yss : seq (seq A)) : iperm xss = Ret yss [~] m ->
   foldl add b (map (foldl mul b) xss) = foldl add b (map (foldl mul b) yss).
 Proof.
 move=> K.
 have step1 : (Ret \o foldl mul b \o flatten) xss =
   (Ret \o foldl add b \o map (foldl mul b)) yss [~]
   fmap (foldl add b \o map (foldl mul b)) m.
-  rewrite -H /aggregate perm_o_map -fcomp_comp.
+  rewrite -H /aggregate iperm_o_map -fcomp_comp.
   by rewrite fcompE K alt_fmapDr fmapE /= bindretf.
 have step2 : (foldl mul b \o flatten) xss =
              (foldl add b \o map (foldl mul b)) yss.
@@ -198,7 +198,7 @@ move=> zzs H.
 transitivity (foldl mul b (flatten [:: zs])).
   by rewrite /= cats0.
 transitivity (foldl add b (map (foldl mul b) [:: zs])).
-  have Hm : perm [:: zs] = Ret [:: zs] [~] (@fail M _).
+  have Hm : iperm [:: zs] = Ret [:: zs] [~] fail :> M _.
     by rewrite /= bindretf insertE altmfail.
   by rewrite (lemma45a idempotent_converse injective_return H).
 by rewrite /= -zzs.
@@ -212,8 +212,8 @@ move=> zzs H.
 transitivity (foldl mul b (flatten [:: zs; [::]])).
   by rewrite /= cats0.
 transitivity (foldl add b (map (foldl mul b) [:: zs; [::]])).
-  have [m Hm] : exists m : M _, perm [:: zs; [::]] = Ret [:: zs; [::]] [~] m.
-    exact: perm_is_alt_ret.
+  have [m Hm] : exists m : M _, iperm [:: zs; [::]] = Ret [:: zs; [::]] [~] m.
+    exact: iperm_is_alt_ret.
   by rewrite (lemma45a idempotent_converse injective_return H).
 rewrite /= -zzs.
 by rewrite -(@theorem46lid _ zs).
@@ -243,8 +243,8 @@ transitivity (foldl add b (map (foldl mul b) [:: xs; ys])).
   rewrite -(theorem46rid idempotent_converse injective_return yys) //.
   by rewrite -(theorem46lid idempotent_converse injective_return xxs).
 transitivity (foldl add b (map (foldl mul b) [:: ys; xs])).
-  have [m Hm] : exists m : M _, perm [:: xs; ys] = Ret [:: ys; xs] [~] m.
-    have [m Hm] := perm_is_alt_ret M [:: ys; xs].
+  have [m Hm] : exists m : M _, iperm [:: xs; ys] = Ret [:: ys; xs] [~] m.
+    have [m Hm] := @iperm_is_alt_ret M _ [:: ys; xs].
     by exists m; rewrite -Hm /= !bindretf !insertE !fmapE !bindretf /= altC.
   by rewrite (lemma45b idempotent_converse injective_return H Hm).
 by rewrite /= -xxs -yys -(theorem46lid idempotent_converse injective_return yys).
@@ -281,7 +281,7 @@ split; first by [].
 move=> xs ys.
 rewrite (_ : xs ++ ys = flatten [:: xs; ys]); last by rewrite /= cats0.
 transitivity (foldl add b (map (foldl mul b) [:: xs; ys])).
-  case: (perm_is_alt_ret M [:: xs; ys]) => m Hm.
+  case: (@iperm_is_alt_ret M _ [:: xs; ys]) => m Hm.
   by rewrite (lemma45a idempotent_converse injective_return H).
 transitivity (add (foldl mul b xs) (add (foldl mul b ys) b)).
   rewrite /=.
