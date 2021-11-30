@@ -675,39 +675,47 @@ End fmap_and_join.
 
 Section kleisli.
 Variable M : monad.
+Implicit Types A B C D : UU0.
 
-Definition kleisli (A B C : UU0) (m : B -> M C) (n : A -> M B) : A -> M C :=
+Definition kleisli A B C (m : B -> M C) (n : A -> M B) : A -> M C :=
   Join \o (M # m) \o n.
 Local Notation "m <=< n" := (kleisli m n).
 Local Notation "m >=> n" := (kleisli n m).
 
-Lemma kleisli_def (A B C : UU0) (g : B -> M C) (f : A -> M B) :
+Lemma kleisli_def A B C (g : B -> M C) (f : A -> M B) :
   (f >=> g) = Join \o (M # g) \o f.
 Proof. by []. Qed.
 
-Lemma kleisliE (A B C : UU0) (g : B -> M C) (f : A -> M B) (a : A) :
+Lemma kleisliE A B C (g : B -> M C) (f : A -> M B) (a : A) :
   (f >=> g) a = (f a) >>= g.
 Proof. by rewrite /kleisli /= join_fmap. Qed.
 
-Lemma bind_kleisli (A B C : UU0) m (f : A -> M B) (g : B -> M C) :
+Lemma bind_kleisli A B C m (f : A -> M B) (g : B -> M C) :
   m >>= (f >=> g) = (m >>= f) >>= g.
 Proof. by rewrite bindA; bind_ext => a; rewrite /kleisli !compE join_fmap. Qed.
 
-Lemma ret_kleisli (A B : UU0) (k : A -> M B) : Ret >=> k = k.
+Lemma ret_kleisli A B (k : A -> M B) : Ret >=> k = k.
 Proof. by rewrite /kleisli -compA (natural ret) FIdf compA joinretM. Qed.
 
 Local Open Scope mprog.
-Lemma fcomp_kleisli (A B C D : UU0) (f : A -> B) (g : C -> M A) (h : D -> M C) :
+Lemma fcomp_kleisli A B C D (f : A -> B) (g : C -> M A) (h : D -> M C) :
   f (o) (g <=< h) = (f (o) g) <=< h.
 Proof.
 rewrite /kleisli 2!fcomp_def 2!(compA (fmap f)) natural [in RHS]functor_o.
 by rewrite -compA.
 Qed.
 
-Lemma kleisli_fcomp (A B C : UU0) (f : A -> M B) (g : B -> A) (h : C -> M B) :
+Lemma kleisli_fcomp A B C (f : A -> M B) (g : B -> A) (h : C -> M B) :
   ((f \o g) <=< h) = f <=< (g (o) h).
 Proof. by rewrite /kleisli fcomp_def functor_o 2!compA. Qed.
 Local Close Scope mprog.
+
+Lemma kleisliA A B C D (f : A -> M B) (g : B -> M C) (h : C -> M D) :
+  f >=> g >=> h = f >=> (g >=> h).
+Proof.
+apply: fun_ext_dep => a; rewrite !kleisliE bindA.
+by under [in RHS]eq_bind do rewrite kleisliE.
+Qed.
 
 End kleisli.
 Notation "m <=< n" := (kleisli m n) : monae_scope.

@@ -528,7 +528,7 @@ Lemma queensBodyE : queensBody M =
 Proof.
 rewrite /queensBody boolp.funeqE => -[|h t].
 - rewrite /= permsE /= hyloME ?bindretf //; exact: decr_size_select.
-- by rewrite [h :: t]lock -theorem51 /kleisli /= join_fmap perms_mu_perm.
+- by rewrite [h :: t]lock -theorem51 /kleisli /= join_fmap perms_uperm.
 Qed.
 
 Local Open Scope mprog.

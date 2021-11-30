@@ -380,7 +380,7 @@ apply: (@refin_trans _ _ _); last first.
   exact: (refin_guard_le _ _ _ t).
 apply: (@refin_trans _ _ _); last first.
   apply: refin_bindl => x1.
-  exact: guard_neg.
+  exact: refin_if_guard.
 under eq_bind do rewrite -bind_if.
 apply: (@refin_trans _ _ (
   (do a <- splits xs;

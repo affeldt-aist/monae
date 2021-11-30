@@ -9,25 +9,33 @@ Require Import ihierarchy imonad_lib.
 (*     Definitions and lemmas using failure and nondeterministic monads       *)
 (*                                                                            *)
 (*                arb == arbitrary nondeterministic choice between booleans   *)
-(*      foldM/unfoldM                                                         *)
-(*              hyloM                                                         *)
+(*              foldM                                                         *)
+(*      unfoldM p f y == generates a list a from a seed y, if p y holds the   *)
+(*                       generation stops,otherwise an element and a new seed *)
+(*                       of generated using f                                 *)
+(*              hyloM == [2, Sect. 5.1]                                       *)
+(*                                                                            *)
 (*    arbitrary def s == nondeterministic choice of an element in the list s, *)
 (*                       def if the list is empty                             *)
 (*             subs s == subsequence of a list                                *)
 (*                       (ref: Sect. 3.1, gibbons2012utp)                     *)
 (*         insert a s == insert a in the list s nondeterministically          *)
 (*            iperm s == nondeterministic permutation of the list s, defined  *)
-(*                       as a Fixpoint using insert                           *)
-(*                       (ref: Sect. 3, mu2019tr2)                            *)
-(*             select == (ref: Sect. 4.4, gibbons2011icfp)                    *)
-(*              perms == type seq A -> M (seq A)                              *)
-(*            mu_perm == definition of perms using unfoldM                    *)
-(*                       (ref: Sect 4.3, mu2017)                              *)
+(*                       as a Fixpoint using insert [1, Sect. 3]              *)
+(*           select s == nondeterministically splits the list s into a pair   *)
+(*                       of one chosen element and the rest [3, Sect. 4.4]    *)
+(*                       [2, Sect. 3.2]                                       *)
+(*            uperm s == nondeterministically computes a permutation of s,    *)
+(*                       defined using unfoldM and select [2, Sect. 3.2]      *)
 (*         m1 `<=` m2 == m1 refines m2, i.e., every result of m1 is a         *)
 (*                       possible result of m2                                *)
 (*          f `<.=` g == refinement relation lifted to functions, i.e.,       *)
 (*                       forall x, f x `<=` g x                               *)
 (*                                                                            *)
+(* ref:                                                                       *)
+(* - [1] mu2019tr2                                                            *)
+(* - [2] mu2019tr3                                                            *)
+(* - [3] gibbons2011icfp                                                      *)
 (******************************************************************************)
 
 Reserved Notation "m1 `<=` m2" (at level 70, no associativity).
@@ -120,7 +128,6 @@ End unfoldM_failMonad.
 End unfoldM.
 Arguments unfoldM : simpl never.
 
-(* section 5.1, mu2019tr3 *)
 Section hyloM.
 Variables (M : failMonad) (A B C : UU0).
 Variables (op : A -> M C -> M C) (e : C) (p : pred B) (f : B -> M (A * B)%type).
@@ -253,6 +260,28 @@ Proof.
 elim: s a m => // h [_ a m _|h' t ih a m _].
   by rewrite arbitrary1 bindretf.
 by rewrite arbitrary_cons // alt_bindDl ih // bindretf altmm.
+Qed.
+
+Lemma arbitrary_flatten (A : UU0) def (s : seq A) (f : A -> A) : (0 < size s)%nat ->
+  (do x <- arbitrary def s; Ret (f x))%Do =
+  arbitrary def (flatten [seq [:: f y] | y <- s]) :> M _.
+Proof.
+elim: s f => // a [_ f _ /=|h t ih f _].
+  by rewrite /arbitrary /= bindretf.
+rewrite [h :: t]lock /= -lock [in RHS]arbitrary_cons// -ih//.
+by rewrite arbitrary_cons// alt_bindDl bindretf.
+Qed.
+
+Lemma arbitrary_flatten2 (A : UU0) def (s : seq A) (f g : A -> A) : (0 < size s)%nat ->
+  (do x <- arbitrary def s; Ret (f x) [~] Ret (g x))%Do =
+  arbitrary def (flatten [seq [:: f y; g y] | y <- s]) :> M _.
+Proof.
+elim: s def f g => //.
+move=> h [|t1 t2] ih def f g _.
+  by rewrite /= arbitrary1 bindretf arbitrary_cons //.
+rewrite [t1 :: t2]lock /= -lock [in RHS]arbitrary_cons//.
+rewrite [in RHS]arbitrary_cons// -ih// arbitrary_cons//.
+by rewrite alt_bindDl bindretf altA.
 Qed.
 
 End arbitrary_lemmas.
@@ -533,15 +562,6 @@ Qed.
 
 End iperm_nondetMonad.
 
-(* TODO: move *)
-Lemma mem_rcons_cat (A : eqType) (b : seq A) h : h \in b ->
-  exists b1 b2, b = rcons b1 h ++ b2.
-Proof.
-move=> hb; exists (take (index h b) b), (drop (index h b).+1 b).
-rewrite -cats1 -catA -{1}(cat_take_drop (index h b) b); congr (_ ++ _) => /=.
-by rewrite -{2}(nth_index h hb) -drop_nth // index_mem.
-Qed.
-
 Section iperm_plusMonad.
 Context {M : plusMonad}.
 
@@ -552,16 +572,13 @@ Proof.
 elim: s => [/=|h tl ih] in a b t *.
   rewrite !bindA.
   by under eq_bind do rewrite insertC.
-rewrite [h :: tl]lock /= -lock.
-rewrite ih /= !bindA.
+rewrite [h :: tl]lock /= -lock ih /= !bindA.
 suff : (do x <- iperm (rcons tl b ++ t); do x0 <- insert a x; insert h x0 =
     do x <- iperm (rcons tl a ++ t); do x0 <- insert b x; insert h x0 :> M _)%Do.
   under eq_bind do rewrite insertC.
   move=> ->.
   by under eq_bind do rewrite insertC.
-rewrite -bindA -ih /= -bindA.
-rewrite -[in RHS]ih /= !bindA.
-bind_ext => a'.
+rewrite -bindA -ih /= -bindA -[in RHS]ih /= !bindA; bind_ext => a'.
 by rewrite -bindA insertC bindA.
 Qed.
 
@@ -579,15 +596,15 @@ Fixpoint select s : M (A * seq A)%type :=
 End select.
 Arguments select {M} {A}.
 
-Section mu_perm.
+Section uperm.
 Variables (A : UU0) (M : nondetMonad).
 
-Definition mu_perm : seq A -> M (seq A) :=
+Definition uperm : seq A -> M (seq A) :=
   unfoldM (@well_founded_size _) (@nilp _) select.
 (* NB: see .. for the theory of mu_perm *)
 
-End mu_perm.
-Arguments mu_perm {A} {M}.
+End uperm.
+Arguments uperm {A} {M}.
 
 Section fastproduct.
 
@@ -697,13 +714,20 @@ Qed.
 
 End shiftreset_examples.
 
-Section refin.
+Lemma bind_ext_guard {M : failMonad} (A : UU0) (b : bool) (m1 m2 : M A) :
+  (b -> m1 = m2) ->  guard b >> m1 = guard b >> m2.
+Proof. by case: b => [->//|_]; rewrite guardF !bindfailf. Qed.
+
 Definition refin (M : altMonad) A (m1 m2 : M A) : Prop := m1 [~] m2 = m2.
+Notation "m1 `<=` m2" := (refin m1 m2).
 
-Local Notation "m1 `<=` m2" := (refin m1 m2).
+Lemma refin_bindr (M : altMonad) A B (m1 m2 : M A) (f : A -> M B) :
+  (m1 `<=` m2) -> (m1 >>= f `<=` m2 >>= f).
+Proof. by move=> m12; rewrite /refin -alt_bindDl m12. Qed.
 
-Section refin_lemmas.
+Section refin_lemmas_altCIMonad.
 Variable M : altCIMonad.
+Implicit Types A : UU0.
 
 Lemma refin_refl A (a : M A) : a `<=` a.
 Proof. by rewrite /refin altmm. Qed.
@@ -718,23 +742,15 @@ Lemma refin_alt A (m1 m1' m2 m2' : M A) :
   m1 `<=` m1' -> m2 `<=` m2' -> m1 [~] m2 `<=` m1' [~] m2'.
 Proof. by move=> h1 h2; rewrite /refin altACA h1 h2. Qed.
 
-End refin_lemmas.
+Lemma refinR A (a b : M A) : a `<=` a [~] b.
+Proof. by rewrite /refin altA altmm. Qed.
 
-Lemma refin_guard_le (M : plusMonad) (d : unit) (T : porderType d) (x y : T) :
-  (total (<=%O : rel T)) ->
-  (guard (~~ (y <= x)%O) : M _) `<=` guard (x <= y)%O.
-Proof.
-case: guardPn => [nyx|_ _].
-  rewrite /total => /(_ x y).
-  by rewrite (negbTE nyx) orbF => ->; rewrite guardT; exact: refin_refl.
-by rewrite /refin altfailm.
-Qed.
+End refin_lemmas_altCIMonad.
 
 Definition lrefin {M : altMonad} A B (f g : A -> M B) := forall x, f x `<=`g x.
+Notation "f `<.=` g" := (lrefin f g).
 
-Local Notation "f `<.=` g" := (lrefin f g).
-
-Section lrefin_lemmas.
+Section lrefin_lemmas_altCIMonad.
 Variable M : altCIMonad.
 
 Lemma lrefin_refl A B (a : A -> M B) : a `<.=` a.
@@ -745,12 +761,7 @@ Proof. by move => ? ? ?; exact: refin_trans. Qed.
 
 Lemma lrefin_antisym A B (a b : A -> M B) : a `<.=` b -> b `<.=` a -> a = b.
 Proof. move => ? ?; apply fun_ext => ?; exact: refin_antisym. Qed.
-
-End lrefin_lemmas.
-
-Lemma refin_bindr (M : altMonad) A B (m1 m2 : M A) (f : A -> M B) :
-  (m1 `<=` m2) -> (m1 >>= f `<=` m2 >>= f).
-Proof. by move=> m12; rewrite /refin -alt_bindDl m12. Qed.
+End lrefin_lemmas_altCIMonad.
 
 Lemma refin_bindl (M : prePlusMonad) A B (m : M A) (f g : A -> M B) :
   (f `<.=` g) -> (m >>= f `<=` m >>= g).
@@ -762,21 +773,46 @@ Proof.
 by move=> mn /refin_bindl ?; exact: (refin_trans _ (refin_bindr _ mn)).
 Qed.
 
-Lemma refin_liftM2 (M : plusMonad) (A B C : UU0) {f : A -> B -> C} {m1 n1 : M A} {m2 n2 : M B} :
+Lemma refin_liftM2 (M : plusMonad) (A B C : UU0) {f : A -> B -> C}
+    {m1 n1 : M A} {m2 n2 : M B} :
   m1 `<=` n1 -> m2 `<=` n2 -> liftM2 f m1 m2 `<=` liftM2 f n1 n2.
 Proof.
 move=> mn1 mn2; rewrite /liftM2.
 by apply: (refin_bind mn1 _) => a; exact: refin_bindr.
 Qed.
 
-Lemma guard_neg (M : plusMonad) A (p : bool) (m1 m2 : M A) :
+Lemma refin_guard_le (M : plusMonad) (d : unit) (T : porderType d) (x y : T) :
+  total (<=%O : rel T) -> (guard (~~ (y <= x)%O) : M _) `<=` guard (x <= y)%O.
+Proof.
+case: guardPn => [nyx /(_ x y)|_ _]; last by rewrite /refin altfailm.
+by rewrite (negbTE nyx) orbF => ->; rewrite guardT; exact: refin_refl.
+Qed.
+
+Lemma refin_if_guard (M : plusMonad) A (p : bool) (m1 m2 : M A) :
   (if p then m1 else m2) `<=` (guard p >> m1) [~] (guard (~~ p) >> m2).
 Proof.
 rewrite /refin; case: ifPn => /= [pT|pF]; rewrite !(guardT,guardF).
 by rewrite bindskipf bindfailf altA altmm.
 by rewrite bindfailf bindskipf altCA altmm.
 Qed.
-End refin.
 
-Notation "m1 `<=` m2" := (refin m1 m2).
-Notation "f `<.=` g" := (lrefin f g).
+(* NB: worth explaining *)
+Lemma refin_bind_guard {M : plusMonad} A (b : bool) (m1 m2 : M A) :
+  (b -> m2 `<=` m1) -> guard b >> m2 `<=` guard b >> m1.
+Proof.
+case: b => [h|_]; first by apply: refin_bindl => -[]; exact: h.
+by rewrite guardF !bindfailf; exact: refin_refl.
+Qed.
+
+Lemma refin_ret_insert (M : altCIMonad) (A : UU0) h (t : seq A) :
+  Ret (h :: t) `<=` (insert h t : M _).
+Proof.
+elim: t h => [h|t1 t2 ih h]; first by rewrite insertE; exact: refin_refl.
+by rewrite insertE; exact: refinR.
+Qed.
+
+Lemma refin_ret_iperm (M : plusMonad) (A : UU0) (s : seq A) :
+  (Ret s : M _) `<=` iperm s.
+Proof.
+by case: (@iperm_is_alt_ret M _ s) => m ->; rewrite /refin altA altmm.
+Qed.

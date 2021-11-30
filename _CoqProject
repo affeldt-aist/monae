@@ -10,6 +10,7 @@ hierarchy.v
 monad_lib.v
 fail_lib.v
 state_lib.v
+array_lib.v
 trace_lib.v
 proba_lib.v
 monad_composition.v
