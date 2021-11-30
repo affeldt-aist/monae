@@ -180,6 +180,7 @@ documentation: |-
   - [category.v](./category.v): formalization of categories (generalization of ~hierarchy.v~)
   - [fail_lib.v](./fail_lib.v): lemmas about fail monad and related monads
   - [state_lib.v](./state_lib.v): lemmas about state-related monads
+  - [array_lib.v](./array_lib.v): lemmas about the array monad
   - [trace_lib.v](./trace_lib.v): lemmas about about the state-trace monad
   - [proba_lib.v](./proba_lib.v): about the probability monad
   - [monad_composition.v](./monad_composition.v): composing monads
