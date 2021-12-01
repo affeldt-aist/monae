@@ -574,7 +574,7 @@ Proof. by rewrite compA joinA. Qed.*)
 End monad_lemmas.
 Arguments bind {s A B} : simpl never.
 
-Notation "'do' x <- m ; e" := (bind m (fun x => e)) : do_notation.
+Notation "'do' x <- m ; e" := (bind m (fun x => e)) (only parsing) : do_notation.
 Notation "'do' x : T <- m ; e" := (bind m (fun x : T => e)) (only parsing) : do_notation.
 Delimit Scope do_notation with Do.
 Notation "m >>= f" := (bind m f) : monae_scope.
