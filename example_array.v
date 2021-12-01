@@ -745,9 +745,8 @@ Section more_about_perm.
 Variable (M : plusMonad).
 
 Lemma iperm_cons_splits (A : eqType) (s : seq A) u :
-  iperm (u :: s) = (do a <- splits s;
-                  (let '(ys, zs) := a in
-                   liftM2 (fun x y => x ++ u :: y) (iperm ys) (iperm zs)))%Do :> M _.
+  iperm (u :: s) = splits s >>= (fun '(ys, zs) =>
+                  liftM2 (fun x y => x ++ u :: y) (iperm ys) (iperm zs)) :> M _.
 Proof.
 have [n ns] := ubnP (size s); elim: n s ns => // n ih s ns.
 move: s ns => [|h t] ns.
@@ -1438,7 +1437,7 @@ Lemma qperm_preserves_guard B (p : pred E) (a : seq E) (f : seq E -> M B) :
   qperm a >>= (fun x => guard (all p a) >> f x) =
   qperm a >>= (fun x => guard (all p x) >> f x).
 Proof.
-  rewrite -guard_qperm_eq -bindA.
+  rewrite -guard_all_qperm -bindA.
   rewrite (@guardsC M (@bindmfail M) _) bindA.
   bind_ext => ?.
   rewrite /assert; unlock.
