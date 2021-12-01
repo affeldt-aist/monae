@@ -24,7 +24,7 @@ example_spark.v
 example_nqueens.v
 example_relabeling.v
 example_quicksort.v
-example_array.v
+example_iquicksort.v
 example_monty.v
 smallstep.v
 example_transformer.v

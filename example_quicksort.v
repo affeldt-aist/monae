@@ -13,10 +13,6 @@ From infotheo Require Import ssr_ext.
 (* This file provides a formalization of quicksort on lists as proved in      *)
 (* [1, Sect. 4]. The main lemmas is quicksort_slowsort.                       *)
 (*                                                                            *)
-(*          splits s == split a list nondeterministically                     *)
-(*                      type: seq A -> M (seq A * seq A) with M : plusMonad   *)
-(*         tsplits s == same as split with an enriched return type            *)
-(*                      M ((size s).-bseq A * (size s).-bseq A))              *)
 (*           qperm s == permute the list s                                    *)
 (*                      type: seq A -> M (seq A) with M : plusMonad           *)
 (* is_partition p (s, t) == elements of s are smaller or equal to p, and      *)
@@ -101,44 +97,6 @@ End sorted.
 Local Open Scope monae_scope.
 Local Open Scope tuple_ext_scope.
 Local Open Scope mprog.
-
-Section splits.
-Variable M : plusMonad.
-Variables (d : unit) (T : porderType d).
-
-Fixpoint splits {M : plusMonad} A (s : seq A) : M (seq A * seq A)%type :=
-  if s isn't x :: xs then Ret ([::], [::]) else
-    splits xs >>= (fun yz => Ret (x :: yz.1, yz.2) [~] Ret (yz.1, x :: yz.2)).
-
-Lemma leq_bseq_size A (xs : seq A) (b0 : (size xs).-bseq A) :
-  (size b0 <= (size xs).+1)%N.
-Proof. by rewrite (leq_trans (size_bseq b0)). Qed.
-
-Fixpoint tsplits {M : plusMonad} A (s : seq A)
-    : M ((size s).-bseq A * (size s).-bseq A)%type :=
-  if s isn't x :: xs then Ret ([bseq of [::]], [bseq of [::]])
-  else tsplits xs >>= (fun '(ys, zs) =>
-    Ret ([bseq of x :: ys], widen_bseq (leqnSn _) zs) [~]
-    Ret (widen_bseq (leqnSn _) ys, [bseq of x :: zs])).
-
-Local Lemma splits_nat_nil : @splits M nat [::] = Ret ([::], [::]).
-Proof. by []. Abort.
-
-Local Lemma splits_nat_01 : @splits M _ [:: O; 1]%nat = Ret ([::], [::]).
-Proof. rewrite /= bindretf alt_bindDl !bindretf /=. Abort.
-
-Local Open Scope mprog.
-Lemma splitsE A (s : seq A) :
-  splits s =
-  fmap (fun '(ys, zs) => (bseqval ys, bseqval zs)) (tsplits s) :> M _.
-Proof.
-elim: s => /= [|h t ih]; first by rewrite fmapE bindretf.
-rewrite {}ih /= !fmapE 2!bindA; bind_ext => -[a b] /=.
-by rewrite bindretf alt_bindDl 2!bindretf.
-Qed.
-Local Close Scope mprog.
-
-End splits.
 
 Section qperm.
 Variables (M : plusMonad) (A : UU0).
