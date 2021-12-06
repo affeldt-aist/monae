@@ -969,6 +969,9 @@ Lemma refin_bindr (M : altMonad) A B (m1 m2 : M A) (f : A -> M B) :
   (m1 `<=` m2) -> (m1 >>= f `<=` m2 >>= f).
 Proof. by move=> m12; rewrite /refin -alt_bindDl m12. Qed.
 
+Import Order.TTheory.
+Local Open Scope order_scope.
+
 Section refin_lemmas_altCIMonad.
 Variable M : altCIMonad.
 Implicit Types A : UU0.
@@ -1025,11 +1028,13 @@ move=> mn1 mn2; rewrite /liftM2.
 by apply: (refin_bind mn1 _) => a; exact: refin_bindr.
 Qed.
 
-Lemma refin_guard_le (M : plusMonad) (d : unit) (T : porderType d) (x y : T) :
-  total (<=%O : rel T) -> (guard (~~ (y <= x)%O) : M _) `<=` guard (x <= y)%O.
+Lemma refin_guard_le (M : plusMonad) (d : unit) (T : orderType d) (x y : T) :
+  (guard (~~ (y <= x)%O) : M _) `<=` guard (x <= y)%O.
 Proof.
-case: guardPn => [nyx /(_ x y)|_ _]; last by rewrite /refin altfailm.
-by rewrite (negbTE nyx) orbF => ->; rewrite guardT; exact: refin_refl.
+rewrite -ltNge le_eqVlt.
+case: guardPn => H.
+rewrite orbT guardT; exact: refin_refl.
+by rewrite orbF /refin altfailm.
 Qed.
 
 Lemma refin_if_guard (M : plusMonad) A (p : bool) (m1 m2 : M A) :
@@ -1063,7 +1068,7 @@ Qed.
 
 Section splits.
 Variable M : plusMonad.
-Variables (d : unit) (T : porderType d).
+Variables (d : unit) (T : orderType d).
 
 Fixpoint splits {M : plusMonad} A (s : seq A) : M (seq A * seq A)%type :=
   if s isn't x :: xs then Ret ([::], [::]) else

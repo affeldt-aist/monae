@@ -145,7 +145,7 @@ rewrite bindretf.
 by case: (nondetPlus_sub_liftM2_qperm _ _).
 Qed.
 
-Lemma nondetPlus_sub_slowsort d (A : porderType d) (s : seq A) :
+Lemma nondetPlus_sub_slowsort d (A : orderType d) (s : seq A) :
   nondetPlus_sub (slowsort s : M _).
 Proof.
 rewrite /slowsort.
@@ -167,7 +167,7 @@ End more_about_qperm.
 Local Open Scope zarith_ext_scope.
 
 Section partl.
-Variable (d : unit) (E : porderType d) (M : plusArrayMonad E Z_eqType).
+Variable (d : unit) (E : orderType d) (M : plusArrayMonad E Z_eqType).
 
 Fixpoint partl (p : E) (s : (seq E * seq E)%type) (xs : seq E)
     : (seq E * seq E)%type :=
@@ -186,7 +186,7 @@ Qed.
 End partl.
 
 Section tr_partl.
-Variable (d : unit) (E : porderType d) (M : plusArrayMonad E Z_eqType).
+Variable (d : unit) (E : orderType d) (M : plusArrayMonad E Z_eqType).
 
 Fixpoint tr_partl (p : E) (ys zs xs : seq E) : M (seq E * seq E)%type :=
   if xs is x :: xs then
@@ -243,7 +243,7 @@ Arguments tr_partl {d E M}.
 Arguments dispatch {d E M}.
 
 Section ipartl.
-Variable (d : unit) (E : porderType d) (M : plusArrayMonad E Z_eqType).
+Variable (d : unit) (E : orderType d) (M : plusArrayMonad E Z_eqType).
 
 (*
 Fixpoint ipartl (p : E) (i : Z) (ny nz : nat) (nx : nat) : M (nat * nat)%type :=
@@ -356,7 +356,7 @@ Lemma dispatch_writeList_cat (i : Z) (x p : E) (ys zs xs : seq E) :
 Proof.
 rewrite bindA.
 bind_ext => [[[ys' zs']] xs'].
-by rewrite /write3L bindA catA writeList_cat bindretf.
+by rewrite /write3L !bindA catA writeList_cat bindretf bindA.
 Qed.
 
 End ipartl.
@@ -515,7 +515,7 @@ rewrite eqxx guardT.
 by under [in RHS]eq_bind do rewrite bindskipf.
 Qed.
 
-Lemma slowsort_preserves_size {d : unit} {E : porderType d} : preserves (@slowsort M _ E) size.
+Lemma slowsort_preserves_size {d : unit} {E : orderType d} : preserves (@slowsort M _ E) size.
 Proof.
 move=> s.
 have [n ns] := ubnP (size s); elim: n s ns => // n ih s ns.
@@ -530,7 +530,7 @@ apply: bind_ext_guard => _.
 by rewrite 2!bindretf.
 Qed.
 
-Lemma slowsort_preserves_size2 {d : unit} {E : porderType d} (x : seq E) B (f : seq E -> nat -> M B) :
+Lemma slowsort_preserves_size2 {d : unit} {E : orderType d} (x : seq E) B (f : seq E -> nat -> M B) :
   (do x' <- slowsort x; f x' (size x))%Do = (do x' <- slowsort x; f x' (size x'))%Do :> M _.
 Proof.
 transitivity ((do x' <- (do y <- slowsort x; Ret (y, size y)); f x'.1 x'.2)%Do).
@@ -538,7 +538,7 @@ transitivity ((do x' <- (do y <- slowsort x; Ret (y, size y)); f x'.1 x'.2)%Do).
 by rewrite bindA; bind_ext => s; rewrite bindretf.
 Qed.
 
-Lemma bind_slowsort_guard {d : unit} {E : porderType d} (s : seq E) B (f : seq E -> M B) :
+Lemma bind_slowsort_guard {d : unit} {E : orderType d} (s : seq E) B (f : seq E -> M B) :
   (do x <- slowsort s; f x = do x <- slowsort s; guard (size s == size x) >> f x)%Do.
 Proof.
 rewrite -(slowsort_preserves_size2 s (fun a b => guard (size s == b) >> f a)).
@@ -549,7 +549,7 @@ Qed.
 End ssplits.
 
 Section ssplits_iqsort.
-Variable (d : unit) (E : porderType d) (M : plusArrayMonad E Z_eqType).
+Variable (d : unit) (E : orderType d) (M : plusArrayMonad E Z_eqType).
 
 (* page 11 step 4 *)
 Lemma qperm_preserves_length (i : Z) (x p : E) (ys zs xs : seq E) :
@@ -629,7 +629,7 @@ Qed.
 End ssplits_iqsort.
 
 Section fsplits.
-Variable (d : unit) (E : porderType d) (M : plusArrayMonad E Z_eqType).
+Variable (d : unit) (E : orderType d) (M : plusArrayMonad E Z_eqType).
 
 Lemma gt0_flatten A (s : seq A) (f : A -> A) : (0 < size s)%nat ->
   (0 < size (flatten [seq [:: f y] | y <- s]))%nat.
@@ -823,14 +823,14 @@ Proof. by rewrite -iperm_qperm iperm_rcons_bind. Qed.
 Lemma qperm_idempotent (E : eqType) : qperm >=> qperm = qperm :> (seq E -> M (seq E)).
 Proof. by rewrite -iperm_qperm iperm_idempotent. Qed.
 
-Lemma qperm_slowsort (d : unit) (E : porderType d) :
+Lemma qperm_slowsort (d : unit) (E : orderType d) :
   (qperm >=> (@slowsort M _ _)) = (@slowsort M _ _) :> (seq E -> M (seq E)).
 Proof. by rewrite /slowsort -kleisliA qperm_idempotent. Qed.
 
 End more_about_qperm.
 
 Section iqsort.
-Variable (d : unit) (E : porderType d) (M : plusArrayMonad E Z_eqType).
+Variable (d : unit) (E : orderType d) (M : plusArrayMonad E Z_eqType).
 
 (*Fixpoint iqsort (i : Z) (n : nat) : M unit :=
   match n with

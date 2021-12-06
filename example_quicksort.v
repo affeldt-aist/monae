@@ -5,7 +5,8 @@ From mathcomp Require boolp.
 Require Import monae_lib.
 (* From HB Require Import structures. *)
 Require Import hierarchy monad_lib fail_lib state_lib.
-From infotheo Require Import ssr_ext.
+From infotheo Require Import ssr_ext. (* FIXME: remove? *)
+Require Import Recdef.
 
 (******************************************************************************)
 (*                            Quicksort example                               *)
@@ -40,7 +41,7 @@ Import Order.TTheory.
 Local Open Scope order_scope.
 
 Section sorted.
-Variables (d : unit) (T : porderType d).
+Variables (d : unit) (T : orderType d).
 
 Let sorted_cons (r : rel T) (r_trans : transitive r) x (xs : seq T) :
   sorted r (x :: xs) = sorted r xs && all (r x) xs.
@@ -74,7 +75,7 @@ elim: a b => //= h t ih b; rewrite cat_path => /andP[-> /=].
 exact: path_sorted.
 Qed.
 
-(* TODO: try to reuse sorted lemmas from MathComp *)
+(* FIXME: try to reuse sorted lemmas from MathComp *)
 Lemma sorted_cat_cons (x : T) (ys zs : seq T) :
   sorted (ys ++ x :: zs) = [&& sorted ys, sorted zs, all (<= x) ys & all (>= x) zs].
 Proof.
@@ -85,7 +86,7 @@ apply/idP/idP => [|].
     exact: suffix_subseq.
   - by move: h; rewrite -cat_rcons => /sorted_cat'/andP[]; rewrite sorted_rcons' => /andP[].
   - by move: h; move/sorted_cat' => /andP[_]; rewrite sorted_cons' => /andP[].
-case/and4P => ss ss' ps ps'; apply sorted_cat => //.
+case/and4P => ss ss' ps ps'; apply (@sorted_cat _) => //.
   by rewrite sorted_cons' ss' ps'.
 move => a ain b bin; apply (@le_trans _ _ x).
 - by move: ps => /allP; apply.
@@ -100,9 +101,8 @@ Local Open Scope mprog.
 
 Section qperm.
 Variables (M : plusMonad) (A : UU0).
-Variables (d : unit) (T : porderType d).
+Variables (d : unit) (T : orderType d).
 
-Require Import Recdef.
 Fail Function qperm (s : seq A) {measure size s} : M (seq A) :=
   if s isn't x :: xs then Ret [::] else
     splits xs >>= (fun '(ys, zs) => liftM2 (fun a b => a ++ x :: b) (qperm ys) (qperm zs)).
@@ -154,7 +154,7 @@ Arguments qperm {M} {A}.
 (* TODO: move *)
 Section guard_commute.
 Variable M : plusMonad.
-Variables (d : unit) (T : porderType d).
+Variables (d : unit) (T : orderType d).
 
 (* NB: on the model of nondetState_sub in state_lib.v *)
 Definition nondetPlus_sub (M : plusMonad) A (n : M A) :=
@@ -203,7 +203,7 @@ Proof.
 elim: t p A f => [p A f|h t ih p A f].
   by rewrite /= 2!bindretf /= guardT bindmskip.
 rewrite /= guard_and !bindA ih -bindA.
-rewrite [in RHS]bindA -[in LHS]bindA. (* TODO : not robust *)
+rewrite [in RHS]bindA -[in LHS]bindA. (* TODO: not robust *)
 rewrite (@guardsC M (@bindmfail M) _).
 rewrite bindA.
 bind_ext => -[a b] /=.
@@ -261,7 +261,7 @@ End guard_commute.
 
 Section partition.
 Variable M : plusMonad.
-Variables (d : unit) (T : porderType d).
+Variables (d : unit) (T : orderType d).
 
 Definition is_partition p (yz : seq T * seq T) :=
   all (<= p) yz.1 && all (>= p) yz.2.
@@ -293,15 +293,13 @@ End partition.
 
 Section partition.
 Variable M : plusMonad.
-Variables (d : unit) (T : porderType d).
+Variables (d : unit) (T : orderType d).
 
 Lemma refin_partition (p : T) (xs : seq T) :
-  total (<=%O : rel T) ->
   (Ret (partition p xs) : M (seq T * seq T)%type (*TODO: :> notation for `<=`?*))
   `<=`
   splits xs >>= assert (is_partition p).
 Proof.
-move => t.
 elim: xs p => [p /=|x xs ih p].
   by rewrite /is_partition bindretf /refin /= !assertE !all_nil /= guardT bindskipf altmm.
 rewrite /=.
@@ -312,7 +310,7 @@ apply: (@refin_trans _ _ _); last first.
   apply: refin_bindl => x0.
   apply: (refin_alt (refin_refl _)).
   apply: refin_bindr.
-  exact: (refin_guard_le _ _ _ t).
+  exact: (refin_guard_le _ _ _).
 apply: (@refin_trans _ _ _); last first.
   apply: refin_bindl => x1.
   exact: refin_if_guard.
@@ -321,21 +319,21 @@ apply: (@refin_trans _ _ (
   (do a <- splits xs;
   guard (is_partition p a) >> (Ret a >>= (fun a =>
   (if x <= p then Ret (x :: a.1, a.2) else Ret (a.1, x :: a.2)))))%Do)); last first.
-  rewrite /refin -alt_bindDr.
+  rewrite /refin -alt_bindDr. (* TODO: apply refin_bindr ? *)
   bind_ext => -[? ?] /=.
   by rewrite bindretf /= (altmm (_ : M _)).
 under eq_bind do rewrite -bindA -assertE.
 rewrite -bindA.
 apply: (@refin_trans _ _ _); last exact/refin_bindr/ih.
 rewrite bindretf.
-by case: ifPn => xp; exact: refin_refl.
+case: ifPn => xp; exact: refin_refl.
 Qed.
 
 End partition.
 
 Section slowsort.
 Variable M : plusMonad.
-Variables (d : unit) (T : porderType d).
+Variables (d : unit) (T : orderType d).
 
 Local Notation sorted := (sorted <=%O).
 
@@ -366,21 +364,21 @@ rewrite guard_and !bindA (commute_guard_n (all (>= p) b)) guard_all_qperm.
 bind_ext=> a'.
 rewrite assertE bindA (@guardsC M (@bindmfail M) (sorted a')) bindretf !bindA.
 rewrite guard_all_qperm commute_guard_n; bind_ext => b'.
-rewrite assertE sorted_cat_cons /=.
+rewrite assertE sorted_cat_cons.
 rewrite andbA andbCA guard_and !bindA; bind_ext => -[].
 rewrite andbC guard_and bindA; bind_ext => -[].
 rewrite assertE andbC guard_and 2!bindA; bind_ext => -[].
 by rewrite 2!bindretf assertE.
 Qed.
 
-Lemma refin_slowsort p s : total (<=%O : rel T) ->
+Lemma refin_slowsort p s :
   Ret (partition p s) >>= (fun '(a, b) =>
   slowsort a >>= (fun a' => slowsort b >>= (fun b' => Ret (a' ++ p :: b'))))
   `<=`
   slowsort (p :: s).
 Proof.
-move=> htot; rewrite slowsort_splits.
-apply: refin_trans; first exact/refin_bindr/(refin_partition M p s htot).
+rewrite slowsort_splits.
+apply: refin_trans; first exact/refin_bindr/(refin_partition M p s).
 rewrite bindA; apply: refin_bindl => -[a b].
 rewrite assertE (bindA _ (fun _ => Ret (a, b))) bindretf /= bindA.
 exact: refin_refl.
@@ -391,7 +389,7 @@ Arguments slowsort {M} {_} {_}.
 
 Section qsort.
 Variable M : plusMonad.
-Variables (d : unit) (T : porderType d).
+Variables (d : unit) (T : orderType d).
 
 Program Fixpoint qsort' (s : seq T)
     (f : forall s', (size s' < size s)%N -> seq T) : seq T :=
@@ -441,7 +439,7 @@ case: s sn => [sn|h t].
 rewrite ltnS /= => sn.
 rewrite qsort_cons.
 move htab : (partition h t) => ht; case: ht => a b in htab *.
-apply: (refin_trans _ (refin_slowsort M h t htot)).
+apply: (refin_trans _ (refin_slowsort M h t)).
 rewrite bindretf htab.
 rewrite -(ih a); last first.
   by rewrite (leq_trans _ sn)// ltnS -(size_partition h t) htab leq_addr.
@@ -470,7 +468,7 @@ Require Import Recdef.
 From mathcomp Require Import ssrnat.
 Section qsort_def.
 Variables (M : plusMonad).
-Variables (d : unit) (T : porderType d).
+Variables (d : unit) (T : orderType d).
 Function fqsort (s : seq T) {measure size s} : seq T :=
   (* if s isn't h :: t then [::]
   else let: (ys, zs) := partition h t in
@@ -496,10 +494,10 @@ Definition partition_slowsort (xs : seq T) : M (seq T) :=
   let: (ys, zs) := partition h t in
   liftM2 (fun a b => a ++ h :: b) (slowsort ys) (slowsort zs).
 
-Lemma refin_partition_slowsort : total (<=%O : rel T) ->
+Lemma refin_partition_slowsort :
   partition_slowsort `<.=` slowsort.
 Proof.
-move => hyp [|p xs]; first by rewrite slowsort_nil; exact: refin_refl.
+move => [|p xs]; first by rewrite slowsort_nil; exact: refin_refl.
 rewrite [X in _ `<=` X]slowsort_splits.
 rewrite [X in _ `<=` X](_ : _ = splits xs >>=
     (fun yz => assert (is_partition p) yz) >>=
@@ -513,14 +511,14 @@ apply: refin_trans; last exact/refin_bindr/refin_partition.
 by rewrite bindretf; exact: refin_refl.
 Qed.
 
-Lemma refin_fqsort : (total (<=%O : rel T)) ->
+Lemma refin_fqsort :
   Ret \o fqsort `<.=` (slowsort : seq T -> M _).
 Proof.
-move=> hyp s => /=.
+move=> s => /=.
 apply fqsort_ind => [s0 _|s0 h t sht ys zs pht ihys ihzs].
 (* apply fqsort_ind => [s0 h t sht ys zs pht ihys ihzs|s0 x sx H]; last first. *)
   by rewrite slowsort_nil; exact: refin_refl.
-apply: (refin_trans _ (refin_partition_slowsort hyp _)).
+apply: (refin_trans _ (refin_partition_slowsort _)).
 rewrite /= pht.
 apply: (refin_trans _ (refin_liftM2 ihys ihzs)).
 by rewrite liftM2_ret; exact: refin_refl.
