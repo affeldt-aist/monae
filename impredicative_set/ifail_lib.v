@@ -47,6 +47,15 @@ Unset Printing Implicit Defensive.
 
 Local Open Scope monae_scope.
 
+(* TODO: move *)
+Lemma mem_rcons_cat (A : eqType) (b : seq A) h : h \in b ->
+  exists b1 b2, b = rcons b1 h ++ b2.
+Proof.
+move=> hb; exists (take (index h b) b), (drop (index h b).+1 b).
+rewrite -cats1 -catA -{1}(cat_take_drop (index h b) b); congr (_ ++ _) => /=.
+by rewrite -{2}(nth_index h hb) -drop_nth // index_mem.
+Qed.
+
 Definition arb {M : altMonad} : M bool := Ret true [~] Ret false.
 
 Section monadalt_lemmas.
@@ -725,6 +734,9 @@ Lemma refin_bindr (M : altMonad) A B (m1 m2 : M A) (f : A -> M B) :
   (m1 `<=` m2) -> (m1 >>= f `<=` m2 >>= f).
 Proof. by move=> m12; rewrite /refin -alt_bindDl m12. Qed.
 
+Import Order.TTheory.
+Local Open Scope order_scope.
+
 Section refin_lemmas_altCIMonad.
 Variable M : altCIMonad.
 Implicit Types A : UU0.
@@ -781,11 +793,13 @@ move=> mn1 mn2; rewrite /liftM2.
 by apply: (refin_bind mn1 _) => a; exact: refin_bindr.
 Qed.
 
-Lemma refin_guard_le (M : plusMonad) (d : unit) (T : porderType d) (x y : T) :
-  total (<=%O : rel T) -> (guard (~~ (y <= x)%O) : M _) `<=` guard (x <= y)%O.
+Lemma refin_guard_le (M : plusMonad) (d : unit) (T : orderType d) (x y : T) :
+  (guard (~~ (y <= x)%O) : M _) `<=` guard (x <= y)%O.
 Proof.
-case: guardPn => [nyx /(_ x y)|_ _]; last by rewrite /refin altfailm.
-by rewrite (negbTE nyx) orbF => ->; rewrite guardT; exact: refin_refl.
+rewrite -ltNge le_eqVlt.
+case: guardPn => H.
+rewrite orbT guardT; exact: refin_refl.
+by rewrite orbF /refin altfailm.
 Qed.
 
 Lemma refin_if_guard (M : plusMonad) A (p : bool) (m1 m2 : M A) :
@@ -816,3 +830,23 @@ Lemma refin_ret_iperm (M : plusMonad) (A : UU0) (s : seq A) :
 Proof.
 by case: (@iperm_is_alt_ret M _ s) => m ->; rewrite /refin altA altmm.
 Qed.
+
+Section splits.
+Variable M : plusMonad.
+Variables (d : unit) (T : orderType d).
+
+Fixpoint splits {M : plusMonad} (A : UU0) (s : seq A) : M (seq A * seq A)%type :=
+  if s isn't x :: xs then Ret ([::], [::]) else
+    splits xs >>= (fun yz => Ret (x :: yz.1, yz.2) [~] Ret (yz.1, x :: yz.2)).
+
+Lemma leq_bseq_size (A : UU0) (xs : seq A) (b0 : (size xs).-bseq A) :
+  (size b0 <= (size xs).+1)%N.
+Proof. by rewrite (leq_trans (size_bseq b0)). Qed.
+
+Local Lemma splits_nat_nil : @splits M nat [::] = Ret ([::], [::]).
+Proof. by []. Abort.
+
+Local Lemma splits_nat_01 : @splits M _ [:: O; 1]%nat = Ret ([::], [::]).
+Proof. rewrite /= bindretf alt_bindDl !bindretf /=. Abort.
+
+End splits.

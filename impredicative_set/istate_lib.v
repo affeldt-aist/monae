@@ -13,7 +13,9 @@ Require Import ihierarchy imonad_lib ifail_lib.
 (*        protect n := get >>= (fun x => n >>= overwrite x)                   *)
 (* putpermsC                                                                  *)
 (*   perms is independent of the state and so commutes with put               *)
-(* commute (ref: definition 4.2, mu2019tr3)                                   *)
+(* nondetState_sub m == m is a computation of the nondetStateMonad that       *)
+(*                      can be written with the syntax of                     *)
+(*                      the nondeterministic monad                            *)
 (* Section loop (ref: section 4.1, mu2019tr3)                                 *)
 (*   scanlM                                                                   *)
 (*   scanlM_of_scanl (ref: theorem 4.1, mu2019tr3)                            *)
@@ -86,8 +88,6 @@ Lemma getput_prepend (S : UU0) (M : nondetStateMonad S) A (m : M A) :
   m = get >>= (fun x => put x >> m).
 Proof. by rewrite -{2}(bindskipf m) -bindA getputskip 2!bindskipf. Qed.
 
-Definition commute {M : monad} A B (m : M A) (n : M B) C (f : A -> B -> M C) : Prop :=
-  m >>= (fun x => n >>= (fun y => f x y)) = n >>= (fun y => m >>= (fun x => f x y)) :> M _.
 
 Section loop.
 Variables (A S : UU0) (M : stateMonad S) (op : S -> A -> S).

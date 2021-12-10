@@ -1075,15 +1075,15 @@ Section splits.
 Variable M : plusMonad.
 Variables (d : unit) (T : orderType d).
 
-Fixpoint splits {M : plusMonad} A (s : seq A) : M (seq A * seq A)%type :=
+Fixpoint splits {M : plusMonad} (A : UU0) (s : seq A) : M (seq A * seq A)%type :=
   if s isn't x :: xs then Ret ([::], [::]) else
     splits xs >>= (fun yz => Ret (x :: yz.1, yz.2) [~] Ret (yz.1, x :: yz.2)).
 
-Lemma leq_bseq_size A (xs : seq A) (b0 : (size xs).-bseq A) :
+Lemma leq_bseq_size (A : UU0) (xs : seq A) (b0 : (size xs).-bseq A) :
   (size b0 <= (size xs).+1)%N.
 Proof. by rewrite (leq_trans (size_bseq b0)). Qed.
 
-Fixpoint tsplits {M : plusMonad} A (s : seq A)
+Fixpoint tsplits {M : plusMonad} (A : UU0) (s : seq A)
     : M ((size s).-bseq A * (size s).-bseq A)%type :=
   if s isn't x :: xs then Ret ([bseq of [::]], [bseq of [::]])
   else tsplits xs >>= (fun '(ys, zs) =>
