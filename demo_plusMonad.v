@@ -3,7 +3,6 @@ From mathcomp Require boolp.
 Require Import monae_lib hierarchy monad_lib fail_lib example_quicksort.
 From infotheo Require Import ssr_ext.
 
-
 Set Implicit Arguments.
 Unset Strict Implicit.
 Unset Printing Implicit Defensive.
@@ -75,7 +74,7 @@ Example filt2 : (@assert M _ (sorted (<=%O))) [:: 2; 1; 3]%N = fail.
 rewrite /sorted /assert /guard /path /=; unlock.
 rewrite bindfailf //. Qed.
 
-Variables (d : unit) (T : porderType d).
+Variables (d : unit) (T : orderType d).
 (* slowsort *)
 Definition bindskipE := (bindskipf, bindmskip).
 (* Definition bindfailE := (bindfailf, bindmfail).

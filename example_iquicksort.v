@@ -73,56 +73,8 @@ End dassert.
 Definition preserves {M : monad} A B (f : A -> M A) (g : A -> B) :=
   forall x, (f x >>= fun y => Ret (y, g y)) = (f x >>= fun y => Ret (y, g x)).
 
-Section more_about_liftM2.
-
-Lemma bind_liftM2 {M : monad} A B C (f : seq A -> seq B -> seq C)
-    (m1 : M (seq A)) (m2 : M (seq B)) n :
-  (forall a b, size (f a b) = size a + size b + n) ->
-  liftM2 f m1 m2 >>= (fun x => Ret (x, size x)) =
-  liftM2 (fun a b => (f a.1 b.1, a.2 + b.2 + n))
-          (m1 >>= (fun x => Ret (x, size x)))
-          (m2 >>= (fun x => Ret (x, size x))).
-Proof.
-move=> hf.
-rewrite /liftM2 !bindA; bind_ext => x1.
-rewrite !bindretf !bindA.
-bind_ext=> x2.
-by rewrite !bindretf /= hf.
-Qed.
-
-Lemma nondetPlus_sub_liftM2 {M : plusMonad} A B C (f : A -> B -> C) (ma : M A) (mb : M B) :
-  nondetPlus_sub ma -> nondetPlus_sub mb ->
-  nondetPlus_sub (liftM2 f ma mb).
-Proof.
-move=> [s1 s1_ma] [s2 s2_mb].
-exists (ndBind s1 (fun a => ndBind s2 (fun b => ndRet (f a b)))).
-by rewrite /= s1_ma s2_mb.
-Qed.
-
-End more_about_liftM2.
-Arguments bind_liftM2 {M A B C} {f} m1 m2 n.
-
 Section more_about_qperm.
 Variable M : plusMonad.
-
-Lemma nondetPlus_sub_splits A (s : seq A) : nondetPlus_sub (splits s : M _).
-Proof.
-elim: s => [|h t ih /=]; first by exists (ndRet ([::], [::])).
-have [syn syn_splits] := ih.
-exists (ndBind syn (fun '(a, b) => ndAlt (ndRet (h :: a, b)) (ndRet (a, h :: b)))).
-rewrite /= syn_splits.
-by bind_ext => -[].
-Qed.
-
-Lemma nondetPlus_sub_tsplits A (s : seq A) : nondetPlus_sub (tsplits s : M _).
-Proof.
-elim: s => [|h t ih]; first by exists (ndRet ([bseq], [bseq])).
-have [syn syn_tsplits] := ih.
-exists (ndBind syn (fun '(a, b) => ndAlt
-    (ndRet ([bseq of h :: a], widen_bseq (leqnSn _) b))
-    (ndRet (widen_bseq (leqnSn _) a, [bseq of h :: b])))).
-by rewrite /= syn_tsplits; bind_ext => -[].
-Qed.
 
 Lemma nondetPlus_sub_qperm A (s : seq A) : nondetPlus_sub (qperm s : M _).
 Proof.
@@ -132,7 +84,7 @@ rewrite qperm_cons.
 rewrite splitsE.
 rewrite fmapE (*TODO: broken ret notation*).
 rewrite bindA.
-have [syn syn_tsplits] := nondetPlus_sub_tsplits t.
+have [syn syn_tsplits] := nondetPlus_sub_tsplits M t.
 have nondetPlus_sub_liftM2_qperm : forall a b : (size t).-bseq A,
   nondetPlus_sub (liftM2 (fun x y => x ++ h :: y) (qperm a) (qperm b : M _)).
   move=> a b; apply nondetPlus_sub_liftM2 => //; apply: ih.
@@ -145,7 +97,7 @@ rewrite bindretf.
 by case: (nondetPlus_sub_liftM2_qperm _ _).
 Qed.
 
-Lemma nondetPlus_sub_slowsort d (A : porderType d) (s : seq A) :
+Lemma nondetPlus_sub_slowsort d (A : orderType d) (s : seq A) :
   nondetPlus_sub (slowsort s : M _).
 Proof.
 rewrite /slowsort.
@@ -167,7 +119,7 @@ End more_about_qperm.
 Local Open Scope zarith_ext_scope.
 
 Section partl.
-Variable (d : unit) (E : porderType d) (M : plusArrayMonad E Z_eqType).
+Variable (d : unit) (E : orderType d) (M : plusArrayMonad E Z_eqType).
 
 Fixpoint partl (p : E) (s : (seq E * seq E)%type) (xs : seq E)
     : (seq E * seq E)%type :=
@@ -186,7 +138,7 @@ Qed.
 End partl.
 
 Section tr_partl.
-Variable (d : unit) (E : porderType d) (M : plusArrayMonad E Z_eqType).
+Variable (d : unit) (E : orderType d) (M : plusArrayMonad E Z_eqType).
 
 Fixpoint tr_partl (p : E) (ys zs xs : seq E) : M (seq E * seq E)%type :=
   if xs is x :: xs then
@@ -243,7 +195,7 @@ Arguments tr_partl {d E M}.
 Arguments dispatch {d E M}.
 
 Section ipartl.
-Variable (d : unit) (E : porderType d) (M : plusArrayMonad E Z_eqType).
+Variable (d : unit) (E : orderType d) (M : plusArrayMonad E Z_eqType).
 
 (*
 Fixpoint ipartl (p : E) (i : Z) (ny nz : nat) (nx : nat) : M (nat * nat)%type :=
@@ -356,7 +308,7 @@ Lemma dispatch_writeList_cat (i : Z) (x p : E) (ys zs xs : seq E) :
 Proof.
 rewrite bindA.
 bind_ext => [[[ys' zs']] xs'].
-by rewrite /write3L bindA catA writeList_cat bindretf.
+by rewrite /write3L !bindA catA writeList_cat bindretf bindA.
 Qed.
 
 End ipartl.
@@ -485,7 +437,7 @@ rewrite qpermE !bindA.
 rewrite !splitsEssplits !fmapE !bindA.
 bind_ext => -[[a b] /= ab].
 rewrite !bindretf.
-rewrite (bind_liftM2 _ _ 1%N); last first.
+rewrite (bind_liftM2_size _ _ 1%N); last first.
   by move=> x y; rewrite size_cat /= addn1 -addnS.
 rewrite {1}/liftM2.
 rewrite ih; last by rewrite (leq_trans _ ns)// ltnS -ab leq_addr.
@@ -515,7 +467,7 @@ rewrite eqxx guardT.
 by under [in RHS]eq_bind do rewrite bindskipf.
 Qed.
 
-Lemma slowsort_preserves_size {d : unit} {E : porderType d} : preserves (@slowsort M _ E) size.
+Lemma slowsort_preserves_size {d : unit} {E : orderType d} : preserves (@slowsort M _ E) size.
 Proof.
 move=> s.
 have [n ns] := ubnP (size s); elim: n s ns => // n ih s ns.
@@ -530,7 +482,7 @@ apply: bind_ext_guard => _.
 by rewrite 2!bindretf.
 Qed.
 
-Lemma slowsort_preserves_size2 {d : unit} {E : porderType d} (x : seq E) B (f : seq E -> nat -> M B) :
+Lemma slowsort_preserves_size2 {d : unit} {E : orderType d} (x : seq E) B (f : seq E -> nat -> M B) :
   (do x' <- slowsort x; f x' (size x))%Do = (do x' <- slowsort x; f x' (size x'))%Do :> M _.
 Proof.
 transitivity ((do x' <- (do y <- slowsort x; Ret (y, size y)); f x'.1 x'.2)%Do).
@@ -538,7 +490,7 @@ transitivity ((do x' <- (do y <- slowsort x; Ret (y, size y)); f x'.1 x'.2)%Do).
 by rewrite bindA; bind_ext => s; rewrite bindretf.
 Qed.
 
-Lemma bind_slowsort_guard {d : unit} {E : porderType d} (s : seq E) B (f : seq E -> M B) :
+Lemma bind_slowsort_guard {d : unit} {E : orderType d} (s : seq E) B (f : seq E -> M B) :
   (do x <- slowsort s; f x = do x <- slowsort s; guard (size s == size x) >> f x)%Do.
 Proof.
 rewrite -(slowsort_preserves_size2 s (fun a b => guard (size s == b) >> f a)).
@@ -548,8 +500,27 @@ Qed.
 
 End ssplits.
 
+Section slowsort.
+Variable M : plusMonad.
+Variables (d : unit) (E : orderType d).
+
+Lemma refin_slowsort (p : E) (s : seq E) :
+  Ret (partition p s) >>= (fun '(a, b) =>
+  slowsort a >>= (fun a' => slowsort b >>= (fun b' => Ret (a' ++ p :: b'))))
+  `<=`
+  (slowsort (p :: s) : M _).
+Proof.
+rewrite slowsort_splits.
+apply: refin_trans; first exact/refin_bindr/(partition_spec M p s).
+rewrite bindA; apply: refin_bindl => -[a b].
+rewrite assertE (bindA _ (fun _ => Ret (a, b))) bindretf /= bindA.
+exact: refin_refl.
+Qed.
+
+End slowsort.
+
 Section ssplits_iqsort.
-Variable (d : unit) (E : porderType d) (M : plusArrayMonad E Z_eqType).
+Variable (d : unit) (E : orderType d) (M : plusArrayMonad E Z_eqType).
 
 (* page 11 step 4 *)
 Lemma qperm_preserves_length (i : Z) (x p : E) (ys zs xs : seq E) :
@@ -629,7 +600,7 @@ Qed.
 End ssplits_iqsort.
 
 Section fsplits.
-Variable (d : unit) (E : porderType d) (M : plusArrayMonad E Z_eqType).
+Variable (d : unit) (E : orderType d) (M : plusArrayMonad E Z_eqType).
 
 Lemma gt0_flatten A (s : seq A) (f : A -> A) : (0 < size s)%nat ->
   (0 < size (flatten [seq [:: f y] | y <- s]))%nat.
@@ -727,20 +698,6 @@ Qed.
 
 End fsplits.
 
-Section more_about_insert.
-Variable (M : plusMonad).
-
-Lemma nondetPlus_sub_insert A (s : seq A) a : nondetPlus_sub (@insert M _ a s).
-Proof.
-elim: s => /= [|h t ih]; first by exists (ndRet [:: a]).
-rewrite insertE /=.
-have [syn synE] := ih.
-exists (ndAlt (ndRet [:: a, h & t]) (ndBind syn (fun x => ndRet (h :: x)))) => /=.
-by rewrite synE fmapE.
-Qed.
-
-End more_about_insert.
-
 Section more_about_perm.
 Variable (M : plusMonad).
 
@@ -823,14 +780,14 @@ Proof. by rewrite -iperm_qperm iperm_rcons_bind. Qed.
 Lemma qperm_idempotent (E : eqType) : qperm >=> qperm = qperm :> (seq E -> M (seq E)).
 Proof. by rewrite -iperm_qperm iperm_idempotent. Qed.
 
-Lemma qperm_slowsort (d : unit) (E : porderType d) :
+Lemma qperm_slowsort (d : unit) (E : orderType d) :
   (qperm >=> (@slowsort M _ _)) = (@slowsort M _ _) :> (seq E -> M (seq E)).
 Proof. by rewrite /slowsort -kleisliA qperm_idempotent. Qed.
 
 End more_about_qperm.
 
 Section iqsort.
-Variable (d : unit) (E : porderType d) (M : plusArrayMonad E Z_eqType).
+Variable (d : unit) (E : orderType d) (M : plusArrayMonad E Z_eqType).
 
 (*Fixpoint iqsort (i : Z) (n : nat) : M unit :=
   match n with
@@ -1186,7 +1143,7 @@ have step1 :
      lhs.
      (* l.342 in IQSOrt.agda *)
   rewrite {}/lhs.
-  apply: refin_trans; last by apply: refin_bindr;exact: refin_slowsort.
+  apply: refin_trans; last by apply: refin_bindr; exact: refin_slowsort.
   rewrite bindretf.
   rewrite -qperm_slowsort.
   move Hpxs : (partition p xs) => pxs; case: pxs => [ys zs] in Hpxs *.

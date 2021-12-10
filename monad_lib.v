@@ -27,6 +27,8 @@ Require Import hierarchy.
 (*           algebraicity op == the operation op is algebraic                 *)
 (*          E .-aoperation M == algebraic E.-operation M                      *)
 (*         Monad_of_ret_bind == factory to build a monad from ret and bind    *)
+(*             commute m n f := (m >>= n >>= f) = (n >>= m >>= f)             *) 
+(*                              (ref: definition 4.2, mu2019tr3)              *)
 (*                                                                            *)
 (******************************************************************************)
 
@@ -72,7 +74,23 @@ Qed.
 Lemma liftM2_ret a b : liftM2 h (Ret a) (Ret b) = Ret (h a b) :> M _.
 Proof. by rewrite /liftM2 !bindretf. Qed.
 
+Lemma bind_liftM2_size (f : seq A -> seq B -> seq C)
+    (m1 : M (seq A)) (m2 : M (seq B)) n :
+  (forall a b, size (f a b) = size a + size b + n) ->
+  liftM2 f m1 m2 >>= (fun x => Ret (x, size x)) =
+  liftM2 (fun a b => (f a.1 b.1, a.2 + b.2 + n))
+          (m1 >>= (fun x => Ret (x, size x)))
+          (m2 >>= (fun x => Ret (x, size x))).
+Proof.
+move=> hf.
+rewrite /liftM2 !bindA; bind_ext => x1.
+rewrite !bindretf !bindA.
+bind_ext=> x2.
+by rewrite !bindretf /= hf.
+Qed.
+
 End liftM2_lemmas.
+Arguments bind_liftM2_size {M A B C} {f} m1 m2 n.
 
 Definition Squaring (A : UU0) := (A * A)%type.
 Notation "A `2" := (Squaring A).
@@ -520,6 +538,9 @@ rewrite compE mpairE compE bind_fmap; bind_ext => a2.
 rewrite fcompE fmap_bind 2!compE bind_fmap; bind_ext => a3.
 by rewrite fcompE -(compE (M # f^`2)) (natural ret) FIdf.
 Qed.
+
+Definition commute {M : monad} A B (m : M A) (n : M B) C (f : A -> B -> M C) : Prop :=
+  m >>= (fun x => n >>= (fun y => f x y)) = n >>= (fun y => m >>= (fun x => f x y)) :> M _.
 
 (*Local Notation "[ \o f , .. , g , h ]" := (f \o .. (g \o h) ..)
   (at level 0) (*, format "[ \o '['  f , '/' .. , '/' g , '/' h ']' ]"

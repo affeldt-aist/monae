@@ -11,7 +11,9 @@ Require Import hierarchy monad_lib fail_lib.
 (*                                                                            *)
 (* putpermsC                                                                  *)
 (*   perms is independent of the state and so commutes with put               *)
-(* commute (ref: definition 4.2, mu2019tr3)                                   *)
+(* nondetState_sub m == m is a computation of the nondetStateMonad that       *)
+(*                      can be written with the syntax of                     *)
+(*                      the nondeterministic monad                            *)
 (* Section loop (ref: section 4.1, mu2019tr3)                                 *)
 (*   scanlM                                                                   *)
 (*   scanlM_of_scanl (ref: theorem 4.1, mu2019tr3)                            *)
@@ -211,9 +213,6 @@ rewrite !bindretf /g.
 case: Bool.bool_dec => // x2t.
 case: (IH x2) => // x0 <-; by rewrite fmapE.
 Qed.
-
-Definition commute {M : monad} A B (m : M A) (n : M B) C (f : A -> B -> M C) : Prop :=
-  m >>= (fun x => n >>= (fun y => f x y)) = n >>= (fun y => m >>= (fun x => f x y)) :> M _.
 
 Lemma commute_nondetState S (M : nondetStateMonad S)
   A (m : M A) B (n : M B) C (f : A -> B -> M C) :
