@@ -41,6 +41,11 @@ Require Import hierarchy monad_lib.
 (*                      type: seq A -> M (seq A * seq A) with M : plusMonad   *)
 (*         tsplits s == same as split with an enriched return type            *)
 (*                      M ((size s).-bseq A * (size s).-bseq A))              *)
+(*      nondetSyntax == syntax of nondeterministic monad                      *)
+(*                      (constructors: ndRet ndBind ndFail ndAlt)             *)
+(*        ndDenote x == semantics of x : nondetSytax                          *)
+(*  nondetPlus_sub m == m is a computation of the plusMonad that can be       *)
+(*                      written with the syntax of the nondeterministic monad *)
 (*                                                                            *)
 (* ref:                                                                       *)
 (* - [1] mu2019tr2                                                            *)
@@ -1103,3 +1108,71 @@ Qed.
 Local Close Scope mprog.
 
 End splits.
+
+Section commute.
+Variable M : plusMonad.
+Variables (d : unit) (T : orderType d).
+
+(* NB: on the model of nondetState_sub in state_lib.v *)
+Definition nondetPlus_sub (M : plusMonad) A (n : M A) :=
+  {m | ndDenote m = n}.
+
+Lemma nondetPlus_sub_insert A (s : seq A) a : nondetPlus_sub (@insert M _ a s).
+Proof.
+elim: s => /= [|h t ih]; first by exists (ndRet [:: a]).
+rewrite insertE /=.
+have [syn synE] := ih.
+exists (ndAlt (ndRet [:: a, h & t]) (ndBind syn (fun x => ndRet (h :: x)))) => /=.
+by rewrite synE fmapE.
+Qed.
+
+Lemma nondetPlus_sub_splits A (s : seq A) : nondetPlus_sub (splits s : M _).
+Proof.
+elim: s => [|h t ih /=]; first by exists (ndRet ([::], [::])).
+have [syn syn_splits] := ih.
+exists (ndBind syn (fun '(a, b) => ndAlt (ndRet (h :: a, b)) (ndRet (a, h :: b)))).
+rewrite /= syn_splits.
+by bind_ext => -[].
+Qed.
+
+Lemma nondetPlus_sub_tsplits A (s : seq A) : nondetPlus_sub (tsplits s : M _).
+Proof.
+elim: s => [|h t ih]; first by exists (ndRet ([bseq], [bseq])).
+have [syn syn_tsplits] := ih.
+exists (ndBind syn (fun '(a, b) => ndAlt
+    (ndRet ([bseq of h :: a], widen_bseq (leqnSn _) b))
+    (ndRet (widen_bseq (leqnSn _) a, [bseq of h :: b])))).
+by rewrite /= syn_tsplits; bind_ext => -[].
+Qed.
+
+Lemma nondetPlus_sub_liftM2 A B C (f : A -> B -> C) (ma : M A) (mb : M B) :
+  nondetPlus_sub ma -> nondetPlus_sub mb ->
+  nondetPlus_sub (liftM2 f ma mb).
+Proof.
+move=> [s1 s1_ma] [s2 s2_mb].
+exists (ndBind s1 (fun a => ndBind s2 (fun b => ndRet (f a b)))).
+by rewrite /= s1_ma s2_mb.
+Qed.
+
+Lemma commute_plus
+  A (m : M A) B (n : M B) C (f : A -> B -> M C) :
+  nondetPlus_sub m -> commute m n f.
+Proof.
+case=> x.
+elim: x m n f => [{}A a m n f <-| D {}A n0 ih0 n1 ih1 m n2 f <- |
+  D m n f <- | D n0 ih0 n1 ih1 m n2 f <-].
+- rewrite /commute bindretf.
+  by under [RHS]eq_bind do rewrite bindretf.
+- rewrite /commute /= bindA.
+  under eq_bind. move=> x; rewrite (ih1 x) //. over.
+  rewrite ih0 //.
+  by under eq_bind do rewrite -bindA.
+- rewrite /commute /= bindfailf.
+  under eq_bind do rewrite bindfailf.
+  by rewrite bindmfail.
+- rewrite /commute /= alt_bindDl.
+  under [RHS]eq_bind do rewrite alt_bindDl.
+  by rewrite alt_bindDr ih0 // ih1 //.
+Qed.
+
+End commute.
