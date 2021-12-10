@@ -159,7 +159,7 @@ Qed.
 Lemma functorcomposition_comp : FunctorLaws.comp functorcomposition.
 Proof.
 rewrite /FunctorLaws.comp => A B C g' h; rewrite /functorcomposition.
-rewrite boolp.funeqE => m; by rewrite [in RHS]compE 2!functor_o.
+by rewrite boolp.funeqE => m; rewrite [in RHS]compE 2!functor_o.
 Qed.
 HB.instance Definition _ :=
   isFunctor.Build (f \o g) functorcomposition_id functorcomposition_comp.
@@ -168,6 +168,7 @@ HB.instance Definition _ :=
 Definition FComp := [the functor of f \o g].
 End functorcomposition.
 
+(* TODO: consider eliminating *)
 Notation "f \O g" := (FComp f g) : monae_scope.
 
 Section functorcomposition_lemmas.
@@ -251,11 +252,13 @@ Arguments naturality : clear implicits.
 HB.structure Definition nattrans (M N : functor) := {f of isNatural M N f}.*)
 
 Module Natural.
-Record mixin_of (M N : functor) (f : M ~~> N) := Mixin { _ : naturality M N f }.
-Structure type (M N : functor) := Pack
-  { cpnt : M ~~> N ; mixin : mixin_of cpnt }.
-Definition type_of (M N : functor) (phM : @phantom (UU0 -> UU0) M) (phN : @phantom (UU0 -> UU0) N) :=
-  @type M N.
+Section natural.
+Variables M N : functor.
+Record mixin_of (f : M ~~> N) := Mixin { _ : naturality M N f }.
+Structure type := Pack { cpnt : M ~~> N ; mixin : mixin_of cpnt }.
+Definition type_of (phM : @phantom (UU0 -> UU0) M) (phN : @phantom (UU0 -> UU0) N) :=
+  type.
+End natural.
 Module Exports.
 Notation nattrans := type.
 Coercion cpnt : type >-> Funclass.
@@ -479,10 +482,9 @@ move=> A; rewrite boolp.funeqE => mmma.
 by rewrite /join /= /join_of_bind bind_Map compidf bindA.
 Qed.
 
-Lemma bindE : forall (A B : UU0) (f : A -> M B) (m : M A),
-  bind m f = (join) _ (([the functor of M] # f) m).
+Lemma bindE (A B : UU0) (f : A -> M B) (m : M A) :
+  bind m f = (join) _ ((M' # f) m).
 Proof.
-move=> A B f m.
 rewrite /join /join_of_bind /=.
 by rewrite bind_Map compidf.
 Qed.

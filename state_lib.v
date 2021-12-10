@@ -9,6 +9,8 @@ Require Import hierarchy monad_lib fail_lib.
 (******************************************************************************)
 (*              Definitions and lemmas about state monads                     *)
 (*                                                                            *)
+(*    overwrite s a := put s >> Ret s                                         *)
+(*        protect n := get >>= (fun x => n >>= overwrite x)                   *)
 (* putpermsC                                                                  *)
 (*   perms is independent of the state and so commutes with put               *)
 (* nondetState_sub m == m is a computation of the nondetStateMonad that       *)

@@ -9,6 +9,8 @@ Require Import ihierarchy imonad_lib ifail_lib.
 (******************************************************************************)
 (*              Definitions and lemmas about state monads                     *)
 (*                                                                            *)
+(*    overwrite s a := put s >> Ret s                                         *)
+(*        protect n := get >>= (fun x => n >>= overwrite x)                   *)
 (* putpermsC                                                                  *)
 (*   perms is independent of the state and so commutes with put               *)
 (* commute (ref: definition 4.2, mu2019tr3)                                   *)
