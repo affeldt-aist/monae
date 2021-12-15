@@ -45,6 +45,13 @@ Qed.
 Fixpoint writeList i (s : seq E) : M unit :=
   if s isn't x :: xs then Ret tt else aput i x >> writeList (i + 1) xs.
 
+Lemma writeList1 i (x : E) : writeList i [:: x] = aput i x.
+Proof. by rewrite /writeList bindmskip. Qed.
+
+Lemma writeList_cons i (x : E) (xs : seq E) :
+  writeList i (x :: xs) = aput i x >> writeList (i + 1) xs.
+Proof. by []. Qed.
+
 Lemma aput_writeListC i j (x : E) (xs : seq E) : (i < j)%Z ->
   aput i x >> writeList j xs = writeList j xs >> aput i x.
 Proof.
@@ -58,33 +65,21 @@ Qed.
 Lemma writeListC i j (ys zs : seq E) : (i + (size ys)%:Z <= j)%Z ->
   writeList i ys >> writeList j zs = writeList j zs >> writeList i ys.
 Proof.
-elim: ys zs i j => [|h t ih] zs i j hyp.
-  by rewrite bindretf bindmskip.
+elim: ys zs i j => [|h t ih] zs i j hyp; first by rewrite bindretf bindmskip.
 rewrite /= aput_writeListC; last by rewrite ltZadd1; exact: leZZ.
-rewrite bindA aput_writeListC; last first.
-  apply: (ltZ_leZ_trans _ hyp).
-  by apply: ltZ_addr => //; exact: leZZ.
-rewrite -!bindA ih => [//|].
-by rewrite /= natZS -add1Z addZA in hyp.
+rewrite bindA aput_writeListC; last exact/ltZ_leZ_trans/hyp/ltZ_addr/leZZ.
+rewrite /= natZS -add1Z addZA in hyp.
+by rewrite -!bindA ih.
 Qed.
 
 Lemma aput_writeListCR i j (x : E) (xs : seq E) : (j + (size xs)%:Z <= i)%Z ->
   aput i x >> writeList j xs = writeList j xs >> aput i x.
-Proof.
-move=> ?.
-have -> : aput i x = writeList i [:: x].
-  by rewrite /= bindmskip.
-by rewrite writeListC.
-Qed.
+Proof. by move=> ?; rewrite -writeList1 writeListC. Qed.
 
-Lemma writeList_cons i (x : E) (xs : seq E) :
-  writeList i (x :: xs) = aput i x >> writeList (i + 1) xs.
-Proof. by []. Qed.
-
-Lemma writeList_cat i (s t : seq E) :
-  writeList i (s ++ t) = writeList i s >> writeList (i + (size s)%:Z) t.
+Lemma writeList_cat i (s1 s2 : seq E) :
+  writeList i (s1 ++ s2) = writeList i s1 >> writeList (i + (size s1)%:Z) s2.
 Proof.
-elim: s i => [|h tl ih] i /=; first by rewrite bindretf addZ0.
+elim: s1 i => [|h t ih] i /=; first by rewrite bindretf addZ0.
 by rewrite ih bindA -addZA add1Z natZS.
 Qed.
 
@@ -110,20 +105,14 @@ Proof. by move => ?; rewrite -aputgetC // bindmret. Qed.
 Lemma writeListRet i (p : E) (s : seq E) :
   writeList i (p :: s) >> Ret p = writeList i (p :: s) >> aget i.
 Proof.
-rewrite /=.
 elim/last_ind: s p i => [|h t ih] /= p i.
   by rewrite bindmskip write_read.
-transitivity ((aput i p >> writeList (i + 1) h >>
-               aput (i + 1 + (size h)%:Z)%Z t) >> aget i); last first.
-  by rewrite writeList_rcons !bindA.
-rewrite ![RHS]bindA write_readC; last first.
+rewrite writeList_rcons 2![in RHS]bindA.
+rewrite write_readC; last first.
   apply/eqP/gtZ_eqF; rewrite addZC; apply/ltZ_addl; first exact/leZ0n.
   exact/ltZadd1/leZZ.
 rewrite -2![RHS]bindA -ih [RHS]bindA.
-transitivity ((aput i p >> writeList (i + 1) h >>
-               aput (i + 1 + (size h)%:Z)%Z t) >> Ret p).
-  by rewrite writeList_rcons !bindA.
-rewrite !bindA; bind_ext => -[].
+rewrite !bindA; bind_ext => _.
 by under [in RHS]eq_bind do rewrite bindretf.
 Qed.
 
@@ -140,8 +129,7 @@ under [RHS] eq_bind do rewrite -bindA.
 rewrite aputget -bindA size_rcons -addZA natZS -add1Z.
 under [RHS] eq_bind do rewrite -!bindA.
 rewrite aputgetC; last first.
-  apply/eqP/ltZ_eqF; rewrite addZA addZC; apply/ltZ_addl.
-    exact/leZ0n.
+  apply/eqP/ltZ_eqF; rewrite addZA addZC; apply/ltZ_addl; first exact/leZ0n.
   by apply/ltZ_addr => //; exact: leZZ.
 rewrite -!bindA aputget aputput aputC; last by right.
 by rewrite bindA aputput.

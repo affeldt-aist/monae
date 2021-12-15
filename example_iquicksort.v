@@ -872,6 +872,7 @@ Lemma iqsort_cons (i : Z) (n : nat) : iqsort (i, n.+1) = aget i >>= (fun p =>
 Proof. by rewrite [in LHS]/iqsort Fix_eq //=; exact: iqsort'_Fix. Qed.
 
 (* eqn 11 *)
+(* TODO: move array_lib *)
 Lemma introduce_aswap_cons (i : Z) (x : E) (zs : seq E) :
   (writeList i (rcons zs x) >> aswap i (i + (size zs)%:Z) : M _)
   `<=`
@@ -1125,10 +1126,10 @@ exact: refin_qperm_ret.
 Qed.
 
 (* eqn 12 *)
-Lemma iqsort_slowsort (i : Z) (xs : seq E) : @total E <=%O ->
+Lemma iqsort_slowsort (i : Z) (xs : seq E) :
   writeList i xs >> iqsort (i, size xs) `<=` slowsort xs >>= writeList i.
 Proof.
-move=> total_E.
+(* move=> total_E. *)
 have [n nxs] := ubnP (size xs); elim: n xs i => // n ih xs i in nxs *.
 move: xs => [|p xs] in nxs *.
  rewrite /= iqsort_nil slowsort_nil.
