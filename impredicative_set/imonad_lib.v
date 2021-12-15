@@ -11,6 +11,7 @@ Require Import ihierarchy.
 (*  Properties and examples of functors, natural transformations, and monads  *)
 (*                                                                            *)
 (*            liftM2 h m1 m2 == as in Haskell                                 *)
+(*      examples of functors : squaring, curry_F, uncurry_F, exponential_F    *)
 (*                       NId == identity natural transformation               *)
 (*                        \v == vertical composition of natural               *)
 (*                              transformations                               *)
@@ -21,13 +22,17 @@ Require Import ihierarchy.
 (*                    F -| G == adjoint functors                              *)
 (*   Module monad_of_adjoint == derivation of a monad from an adjunction      *)
 (* Section composite_adjoint == composition of adjunctions                    *)
+(*                                                                            *)
 (*            E.-operation M == sigma operation for a monad M given a         *)
 (*                              functor E                                     *)
 (*           algebraicity op == the operation op is algebraic                 *)
 (*          E .-aoperation M == algebraic E.-operation M                      *)
-(*         Monad_of_ret_bind == factory to build a monad from ret and bind    *)
-(*             commute m n f := (m >>= n >>= f) = (n >>= m >>= f)             *) 
+(*                                                                            *)
+(*                  mpair xy := xy.1 >>= (fun u => xy.2 >>=                   *)
+(*                                (fun v => (Ret (u, v)))                     *)
+(*             commute m n f := (m >>= n >>= f) = (n >>= m >>= f)             *)
 (*                              (ref: definition 4.2, mu2019tr3)              *)
+(*                  rep n mx == mx >> mx >> ... >> mx, n times                *)
 (*                                                                            *)
 (******************************************************************************)
 
@@ -442,36 +447,6 @@ Qed.
 
 End algebraic_operation_interface.
 
-(*Module Monad_of_ret_bind.
-Section monad_of_ret_bind.
-Variable M : functor.
-Variable ret : idfun ~> M.
-Variable bind : forall (A B : UU0), M A -> (A -> M B) -> M B.
-Hypothesis bindretf : BindLaws.left_neutral bind ret.
-Hypothesis bindmret : BindLaws.right_neutral bind ret.
-Hypothesis bindA : BindLaws.associative bind.
-
-Definition Map (A B : UU0) (f : A -> B) (m : M A) := bind m (@ret B \o f).
-Lemma Map_id : FunctorLaws.id Map.
-Proof. by move=> A; apply fun_ext => m; rewrite /Map bindmret. Qed.
-Lemma Map_o : FunctorLaws.comp Map.
-Proof.
-move=> A B C g h; apply fun_ext => m.
-rewrite /Map compE bindA; congr bind.
-by apply fun_ext => a; rewrite bindretf.
-Qed.
-HB.instance Definition functor_mixin := @isFunctor.Build _ Map Map_id Map_o.
-Let M' := Functor.Pack (Functor.Class functor_mixin).
-
-HB.instance Definition monad_mixin := @isMonad.Build M' ret' join joinretM joinMret joinA.
-End monad_of_ret_bind.
-Module Exports.
-Definition Monad_of_ret_bind (M : functor) (ret : idfun ~> M) bind (a : BindLaws.left_neutral bind ret) (b : BindLaws.right_neutral bind ret) (c : BindLaws.associative bind) :=
-  Monad.Pack (Monad.Class (monad_mixin a b c)).
-End Exports.
-End Monad_of_ret_bind.
-Export Monad_of_ret_bind.Exports.*)
-
 (* TODO:
 Lemma monad_of_ret_bind_ext (F G : functor) (RET1 : FId ~> F) (RET2 : FId ~> G)
   (bind1 : forall A B : UU0, F A -> (A -> F B) -> F B)
@@ -604,7 +579,6 @@ Local Close Scope test_scope.
 *)
 
 Section rep.
-
 Variable M : monad.
 
 Fixpoint rep (n : nat) (mx : M unit) : M unit :=
@@ -626,6 +600,7 @@ Qed.
 
 End rep.
 
+(* example from Gibbons and Hinze, ICFP 2011 *)
 Section MonadCount.
 
 Variable M : monad.

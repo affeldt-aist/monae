@@ -28,11 +28,11 @@ From HB Require Import structures.
 (*                       F ~> G                                               *)
 (*    Module JoinLaws == join laws of a monad                                 *)
 (*            isMonad == mixin of monad                                       *)
+(*                >>= == notation for the standard bind operator              *)
 (*              monad == type of monads                                       *)
 (*                Ret == natural transformation FId ~> M for a monad M        *)
 (*               Join == natural transformation M \O M ~> M for a monad M     *)
 (*    Module BindLaws == bind laws of a monad                                 *)
-(*                >>= == notation for the standard bind operator              *)
 (*                                                                            *)
 (* Failure and nondeterministic monads:                                       *)
 (*          failMonad == failure monad                                        *)
@@ -332,6 +332,13 @@ HB.mixin Record isMonad (M : UU0 -> UU0) of Functor M := {
 HB.structure Definition Monad := {M of isMonad M &}.
 Notation monad := Monad.type.
 
+Arguments bind {s A B} : simpl never.
+Notation "m >>= f" := (bind m f) : monae_scope.
+
+Lemma eq_bind (M : monad) (A B : UU0) (m : M A) (f1 f2 : A -> M B) :
+  f1 =1 f2 -> m >>= f1 = m >>= f2.
+Proof. by move=> f12; congr bind; apply: fun_ext. Qed.
+
 Module BindLaws.
 Section bindlaws.
 Variable M : functor.
@@ -383,75 +390,29 @@ HB.factory Record Monad_of_ret_bind (M : UU0 -> UU0) of isFunctor M := {
 }.
 
 Definition join_of_bind (F : functor)
-  (b : forall (A B : UU0), F A -> (A -> F B) -> F B) := (fun A : UU0 => (b _ A)^~ id).
+    (b : forall (A B : UU0), F A -> (A -> F B) -> F B) :=
+  (fun A : UU0 => (b _ A)^~ id).
 
 HB.builders Context M of Monad_of_ret_bind M.
 
-(*Let Map (A B : UU0) (f : A -> B) (m : M A) := bind m (@ret B \o f).
-Lemma Map_id : FunctorLaws.id Map.
-Proof. by move=> A; rewrite boolp.funeqE => m; rewrite /Map bindmret. Qed.
-Lemma Map_o : FunctorLaws.comp Map.
-Proof.
-move=> A B C g h; rewrite boolp.funeqE => m.
-rewrite /Map compE bindA; congr bind.
-by rewrite boolp.funeqE => a; rewrite bindretf.
-Qed.
-#[verbose]
-HB.instance Definition _(*func_mixin*) :=
-  isFunctor.Build (coucou M) Map_id Map_o.
-(*Let M' := Functor.Pack (Functor.Class func_mixin).*)
-*)
-(*Let Map (A B : UU0) (f : A -> B) := M # f.
-Lemma MapE (A B : UU0) (f : A -> B) m :
-  Map f m = (M # f) m.
-Proof.
-by rewrite /Map.
-Qed.
-Lemma FMapE (A B : UU0) (f : A -> B) m :
-  (M # f) m = bind m (ret B \o f).
-Proof.
-rewrite /Map.
-Admitted.
-(* by []. Qed.*)
-*)
-
-Notation M' := ([the functor of M]).
-
-(*
-Lemma naturality_ret : naturality FId M' ret.
-Proof.
-move=> A B h; rewrite FIdf boolp.funeqE => ?.
-(*by rewrite compE /= /Map MapE /= bindretf.
-Qed.*) Admitted.
-
-Let ret' : idfun ~> M' := Natural.Pack (Natural.Mixin naturality_ret).
-*)
+Let M' := [the functor of M].
 
 Let bind_Map (A B C : UU0) (f : A -> B) (m : M A) (g : B -> M C) :
   bind ((M' # f) m) g = bind m (g \o f).
 Proof.
-rewrite fmapE.
-by rewrite bindA; congr bind; apply fun_ext => ?; rewrite bindretf.
+rewrite fmapE bindA; congr bind.
+by apply fun_ext => ?; rewrite bindretf.
 Qed.
 
 Lemma naturality_join : naturality (M' \O M') M' (join_of_bind bind).
 Proof.
-move=> A B h; apply: fun_ext => mma.
-rewrite /=.
-rewrite fmapE.
-rewrite /join_of_bind.
-rewrite bind_Map.
-rewrite bindA.
-congr bind.
-apply fun_ext => ma.
-by rewrite compidf fmapE.
+move=> A B h; apply: fun_ext => mma /=.
+rewrite fmapE /join_of_bind bindA bind_Map; congr bind.
+by apply fun_ext => ma; rewrite compidf fmapE.
 Qed.
 
-Definition join : M' \O M' ~> M' := Natural.Pack (Natural.Mixin naturality_join).
-
-(*Let bindE (A B : UU0) m (f : A -> M' B) : bind m f = join _ ((M' # f) m).
-Proof. by rewrite /join /= /join_of_bind bind_Map. Qed.
-*)
+Definition join : M' \O M' ~> M' :=
+  Natural.Pack (Natural.Mixin naturality_join).
 
 Lemma joinretM : JoinLaws.left_unit ret join.
 Proof.
@@ -472,11 +433,8 @@ by rewrite /join /= /join_of_bind bind_Map compidf bindA.
 Qed.
 
 Lemma bindE (A B : UU0) (f : A -> M B) (m : M A) :
-  bind m f = (join) _ ((M' # f) m).
-Proof.
-rewrite /join /join_of_bind /=.
-by rewrite bind_Map compidf.
-Qed.
+  bind m f = join _ ((M' # f) m).
+Proof. by rewrite /join /join_of_bind /=; rewrite bind_Map compidf. Qed.
 
 HB.instance Definition _ := isMonad.Build M fmapE bindE joinretM joinMret joinA.
 HB.end.
@@ -517,16 +475,10 @@ End from_join_laws_to_bind_laws.
 
 Section monad_lemmas.
 Variable M : monad.
-Local Notation M' := (Monad.sort M).
-(*Definition Bind A B (x : M A) (f : A -> M B) : M B := @bind_of_join M (@join M) A B x f.
-Arguments Bind {A B} : simpl never.*)
-Local Notation "m >>= f" := (bind _ _ m f).
-(*Lemma bindE (A B : UU0) : forall x (f : A -> M B), x >>= f = Join ((M' # f) x).
-Proof. by []. Qed.*)
 Lemma bindretf : BindLaws.left_neutral (@bind M) (@ret _).
 Proof.
 move: (@bindretf_derived M ret join joinretM).
-rewrite (_ : bind_of_join _ = bind) //.
+rewrite (_ : bind_of_join _ = @bind M) //.
 apply fun_ext_dep => A.
 apply fun_ext_dep => B.
 apply fun_ext_dep => m.
@@ -536,7 +488,7 @@ Qed.
 Lemma bindmret : BindLaws.right_neutral (@bind M) (@ret _).
 Proof.
 move: (@bindmret_derived M ret join joinMret).
-rewrite (_ : bind_of_join _ = bind) //.
+rewrite (_ : bind_of_join _ = @bind M) //.
 apply fun_ext_dep => A.
 apply fun_ext_dep => B.
 apply fun_ext_dep => m.
@@ -546,7 +498,7 @@ Qed.
 Lemma bindA : BindLaws.associative (@bind M).
 Proof.
 move: (@bindA_derived M join joinA).
-rewrite (_ : bind_of_join _ = bind) //.
+rewrite (_ : bind_of_join _ = @bind M) //.
 apply fun_ext_dep => A.
 apply fun_ext_dep => B.
 apply fun_ext_dep => m.
@@ -554,21 +506,11 @@ apply fun_ext_dep => f.
 by rewrite bindE.
 Qed.
 
-(*Lemma bindE' (A B : Type) : Bind = fun x (f : A -> M B) => Join ((M # f) x).
-Proof. by []. Qed.*)
-(*Lemma joinretM' A C (f:C->_) : @Join M A \o (@Ret M (M A) \o f) = f.
-Proof. by rewrite compA joinretM. Qed.*)
-(*Lemma joinMret' A C (f:C->_) : @Join M A \o (M # @Ret M A \o f) = f.
-Proof. by rewrite compA joinMret. Qed.*)
-(*Lemma joinA' A C (f:C->_) : @Join M A \o (M # @Join M A \o f) = @Join M A \o (@Join M (M A) \o f).
-Proof. by rewrite compA joinA. Qed.*)
 End monad_lemmas.
-Arguments bind {s A B} : simpl never.
 
-Notation "'do' x <- m ; e" := (bind m (fun x => e)) : do_notation.
+Notation "'do' x <- m ; e" := (bind m (fun x => e)) (only parsing) : do_notation.
 Notation "'do' x : T <- m ; e" := (bind m (fun x : T => e)) (only parsing) : do_notation.
 Delimit Scope do_notation with Do.
-Notation "m >>= f" := (bind m f) : monae_scope.
 Notation "m >> f" := (bind m (fun _ => f)) : monae_scope.
 
 Fixpoint sequence (M : monad) A (s : seq (M A)) : M (seq A) :=
@@ -618,19 +560,9 @@ Tactic Notation "With" tactic(tac) "Open" ssrpatternarg(pat) :=
 Tactic Notation "Open" ssrpatternarg(pat) :=
   With (idtac) Open pat.
 
-Lemma eq_bind (M : monad) (A B : UU0) (m : M A) (f1 f2 : A -> M B) :
-  f1 =1 f2 -> m >>= f1 = m >>= f2.
-Proof. by move=> f12; congr bind; apply fun_ext. Qed.
-
 Section fmap_and_join.
 Variable M : monad.
 Local Open Scope mprog.
-
-Lemma fmapE' (A B : UU0) (f : A -> B) (m : M _) : fmap f m = m >>= (Ret \o f).
-Proof.
-by rewrite fmapE.
-(*by rewrite bindE [in RHS]functor_o [in RHS]compE -[in RHS](compE Join) joinMret. TODO *)
-Qed.
 
 Lemma bind_fmap (A B C : UU0) (f : A -> B) (m : M A) (g : B -> M C) :
   fmap f m >>= g = m >>= (g \o f).

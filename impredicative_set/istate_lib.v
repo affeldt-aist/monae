@@ -410,3 +410,24 @@ Definition swap {S : UU0} {I : eqType} {M : arrayMonad S I} (i j : I) : M unit :
    do y <- aget j ;
    aput i y >>
    aput j x)%Do.
+
+Section tick_fusion.
+Variables (M : stateMonad nat).
+
+Definition tick : M unit := get >>= (put \o succn).
+
+Lemma tick_fusion n : rep n tick = get >>= (put \o addn n).
+Proof.
+elim: n => [|n ih]; first by rewrite /= -getputskip.
+rewrite /= /tick ih.
+rewrite bindA.
+bind_ext => m.
+rewrite -bindA.
+rewrite putget.
+rewrite bindA.
+rewrite bindretf.
+rewrite putput.
+by rewrite /= addSnnS.
+Qed.
+
+End tick_fusion.

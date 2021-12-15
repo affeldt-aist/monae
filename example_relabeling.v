@@ -41,8 +41,7 @@ End foldt_universal.
 
 Definition size_Tree (t : Tree) := foldt (const 1) uaddn t.
 
-Lemma size_Tree_Bin :
-  size_Tree \o uncurry Bin = uaddn \o size_Tree^`2.
+Lemma size_Tree_Bin : size_Tree \o uncurry Bin = uaddn \o size_Tree^`2.
 Proof. by rewrite boolp.funeqE; case. Qed.
 
 Fixpoint labels (t : Tree) : seq A :=
@@ -76,12 +75,12 @@ Definition dlabels {N : failMonad} : Tree Symbol -> N (seq Symbol) :=
   foldt (Ret \o wrap) drBin.
 
 Lemma dlabelsC t u (m : _ -> _ -> M (seq Symbol * seq Symbol)%type) :
-  (do x <- dlabels t; do x0 <- relabel u; m x0 x =
-   do x0 <- relabel u; do x <- dlabels t; m x0 x)%Do.
+  dlabels t >>= (fun x => relabel u >>= fun x0 => m x0 x) =
+  relabel u >>= (fun x0 => dlabels t >>= fun x => m x0 x).
 Proof.
 elim: t u m => [a u /= m|t1 H1 t2 H2 u m].
-  rewrite /dlabels /= bindretf; bind_ext => u'.
-  by rewrite bindretf.
+  rewrite /dlabels /= bindretf.
+  by under [in RHS]eq_bind do rewrite bindretf.
 rewrite (_ : dlabels _ = drBin (dlabels t1, dlabels t2)) //.
 rewrite [in RHS]/drBin [in RHS]/bassert 2!compE ![in RHS]bindA.
 transitivity (do x0 <- relabel u;
@@ -118,7 +117,7 @@ Qed.
 (* see gibbons2011icfp Sect. 9.3 *)
 Lemma join_and_pairs :
   (Join \o (M # mpair) \o mpair) \o ((fmap dlabels) \o relabel)^`2 =
-  (mpair \o Join^`2) \o            ((fmap dlabels) \o relabel)^`2.
+  (mpair \o Join^`2) \o             ((fmap dlabels) \o relabel)^`2.
 Proof.
 rewrite boolp.funeqE => -[x1 x2].
 rewrite 3!compE.
@@ -141,38 +140,38 @@ rewrite -dlabelsC.
 bind_ext => ?.
 rewrite /=.
 rewrite bindA.
-bind_ext => ?.
-by rewrite bindretf.
+by under [in RHS]eq_bind do rewrite bindretf.
 Qed.
 
 (* first property of Sect. 9.3 *)
-Lemma dlabels_relabel_is_fold :
-  relabel >=> dlabels = foldt drTip drBin.
+Lemma dlabels_relabel_is_fold : relabel >=> dlabels = foldt drTip drBin.
 Proof.
 apply foldt_universal.
   (* relabel >=> dlabels \o Tip = drTip *)
-  rewrite kleisli_def -(compA (Join \o _)) -(compA Join).
-  rewrite (_ : _ \o Tip = (M # Tip) \o const fresh) //.
+  rewrite kleisli_def -3!compA.
+  rewrite (_ : relabel \o Tip = (M # Tip) \o const fresh) //.
   rewrite (compA (fmap dlabels)) -functor_o.
-  rewrite (_ : dlabels \o _ = ret _ \o wrap) //.
-  rewrite functor_o 3!compA.
-  by rewrite joinMret.
+  rewrite (_ : dlabels \o Tip = ret _ \o wrap) //.
+  rewrite functor_o.
+  by rewrite compA (compA Join) joinMret compidf.
 (* relabel >=> dlabels \o Bin = drBin \o _ *)
-rewrite [in LHS]kleisli_def -[in LHS](compA (Join \o _)) -[in LHS](compA Join).
-rewrite (_ : _ \o _ Bin = (fmap (uncurry Bin)) \o (mpair \o relabel^`2)); last first.
+rewrite [in LHS]kleisli_def -(compA _ relabel).
+rewrite (_ : _ \o _ Bin =
+    (fmap (uncurry Bin)) \o mpair \o relabel^`2); last first.
   by rewrite boolp.funeqE; case.
-rewrite (compA (fmap dlabels)) -functor_o.
-rewrite (_ : _ \o _ Bin = (fmap ucat) \o bassert q \o mpair \o dlabels^`2); last first.
+rewrite -(compA (fmap (uncurry Bin))) -compA (compA (fmap dlabels)) -functor_o.
+rewrite (_ : _ \o _ Bin =
+    (fmap ucat) \o bassert q \o mpair \o dlabels^`2); last first.
   by rewrite boolp.funeqE; case.
 transitivity ((fmap ucat) \o Join \o (fmap (bassert q \o mpair)) \o mpair \o
     (fmap dlabels \o relabel)^`2).
-  rewrite -2![in LHS](compA (fmap ucat)) [in LHS]functor_o.
-  rewrite -[in LHS](compA (fmap _)) [in LHS](compA (Join \o _) (fmap _)).
-  rewrite compfid natural -2![in RHS]compA; congr (_ \o _).
-  by rewrite [in LHS]functor_o -[in LHS]compA naturality_mpair.
-rewrite functor_o (compA _ (fmap (bassert q))) -(compA _ _ (fmap (bassert q))).
+  rewrite [in RHS]natural -3![in RHS]compA; congr (_ \o _).
+  rewrite -[in RHS]naturality_mpair 2![RHS]compA; congr (_ \o _).
+  by rewrite -[X in _ = X \o _]functor_o -[RHS]functor_o -compA.
+rewrite -(compA (fmap ucat)) [X in Join \o X]functor_o (compA Join).
 rewrite commutativity_of_assertions. (* first non-trivial step *)
-rewrite (compA _ (bassert q)) -(compA _ _ (fmap mpair)) -(compA _ _ mpair) -(compA _ _ (_^`2)).
+rewrite -(compA _ Join) (compA _ (bassert q)).
+rewrite -(compA _ _ mpair) -(compA _ (_ \o mpair)).
 by rewrite join_and_pairs. (* second non-trivial step *)
 Qed.
 

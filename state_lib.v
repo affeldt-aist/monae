@@ -670,3 +670,24 @@ rewrite aputC //; by left.
 Qed.
 
 End monadarray_example.
+
+Section tick_fusion.
+Variables (M : stateMonad nat).
+
+Definition tick : M unit := get >>= (put \o succn).
+
+Lemma tick_fusion n : rep n tick = get >>= (put \o addn n).
+Proof.
+elim: n => [|n ih]; first by rewrite /= -getputskip.
+rewrite /= /tick ih.
+rewrite bindA.
+bind_ext => m.
+rewrite -bindA.
+rewrite putget.
+rewrite bindA.
+rewrite bindretf.
+rewrite putput.
+by rewrite /= addSnnS.
+Qed.
+
+End tick_fusion.
