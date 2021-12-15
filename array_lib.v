@@ -45,8 +45,7 @@ Qed.
 Fixpoint writeList i (s : seq E) : M unit :=
   if s isn't x :: xs then Ret tt else aput i x >> writeList (i + 1) xs.
 
-Lemma writeList_x i (x : E) :
-  writeList i [:: x] = aput i x.
+Lemma writeList1 i (x : E) : writeList i [:: x] = aput i x.
 Proof. by rewrite /writeList bindmskip. Qed.
 
 Lemma writeList_cons i (x : E) (xs : seq E) :
@@ -75,7 +74,7 @@ Qed.
 
 Lemma aput_writeListCR i j (x : E) (xs : seq E) : (j + (size xs)%:Z <= i)%Z ->
   aput i x >> writeList j xs = writeList j xs >> aput i x.
-Proof. by move=> ?; rewrite -writeList_x writeListC. Qed.
+Proof. by move=> ?; rewrite -writeList1 writeListC. Qed.
 
 Lemma writeList_cat i (s1 s2 : seq E) :
   writeList i (s1 ++ s2) = writeList i s1 >> writeList (i + (size s1)%:Z) s2.
