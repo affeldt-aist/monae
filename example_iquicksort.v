@@ -1083,16 +1083,4 @@ under [in X in _ `<=` X]eq_bind do rewrite bindretf.
 exact: refin_refl.
 Qed.
 
-Lemma qperm_preserves_guard B (p : pred E) (a : seq E) (f : seq E -> M B) :
-  (* guard (all p a) >>= (fun _ => qperm a >>= f) = *)
-  qperm a >>= (fun x => guard (all p a) >> f x) =
-  qperm a >>= (fun x => guard (all p x) >> f x).
-Proof.
-  rewrite -guard_all_qperm -bindA.
-  rewrite (@guardsC M (@bindmfail M) _) bindA.
-  bind_ext => ?.
-  rewrite /assert; unlock.
-  by rewrite bindA bindretf.
-Qed.
-
 End iqsort.

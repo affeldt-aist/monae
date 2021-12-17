@@ -77,46 +77,39 @@ by case: ifP; rewrite (guardT, guardF).
 Qed.
 
 Lemma guard_splits A (p : pred T) (t : seq T) (f : seq T * seq T -> M A) :
-  guard (all p t) >> (splits t >>= f) =
+  splits t >>= (fun x => guard (all p t) >> f x) =
   splits t >>= (fun x => guard (all p x.1) >> guard (all p x.2) >> f x).
 Proof.
+rewrite -commute_guard.
 elim: t p A f => [|h t ih] p A f.
   by rewrite 2!bindretf guardT bindmskip.
-rewrite guard_and !bindA ih -bindA.
-rewrite commute_guard bindA.
-bind_ext => -[a b].
-rewrite [in RHS]alt_bindDl 2!bindretf 2!guard_and !bindA.
-rewrite alt_bindDl 2!bindretf !alt_bindDr.
+rewrite [LHS]/= guard_and 2!bindA ih.
+rewrite /= commute_guard bindA.
+bind_ext => -[a b] /=.
+rewrite !alt_bindDl !bindretf /= !guard_and !bindA !alt_bindDr.
 by congr (_ [~] _); rewrite commute_guard.
-Qed.
-
-Lemma guard_splits_cons A h (p : pred T) (t : seq T) (f : seq T * seq T -> M A) :
-  guard (all p (h :: t)) >> (splits t >>= f) =
-  splits t >>= (fun x => guard (all p x.1) >>
-                         guard (all p x.2) >>
-                         guard (p h) >> f x).
-Proof.
-rewrite guard_and bindA guard_splits commute_guard.
-by bind_ext => -[a b]; rewrite -bindA -!guard_and andbC.
 Qed.
 
 (* NB: corresponds to perm-preserves-all? *)
 Lemma guard_all_qperm B (p : pred T) s (f : seq T -> M B) :
-  guard (all p s) >>= (fun _ => qperm s >>= f) =
+  qperm s >>= (fun x => guard (all p s) >> f x) =
   qperm s >>= (fun x => guard (all p x) >> f x).
 Proof.
+rewrite -commute_guard.
 have [n leMn] := ubnP (size s); elim: n => // n ih in s f leMn *.
-case: s leMn => [|h t]; first by move=> _; rewrite qperm_nil 2!bindretf.
+case: s leMn => [|h t]; first by move=> _; rewrite qperm_nil !bindretf.
 rewrite ltnS => tn.
-rewrite qperm_cons bindA guard_splits_cons bindA.
-rewrite splitsE fmapE 2!bindA; bind_ext => -[? ?] /=.
-rewrite 2!bindretf -2!guard_and -andbA andbC guard_and 2!bindA.
+rewrite qperm_cons !bindA /= guard_and bindA (commute_guard (all p t)).
+rewrite guard_splits splitsE fmapE 2!bindA commute_guard.
+bind_ext => -[a b]; rewrite 2!bindretf !bindA /=.
+rewrite (commute_guard (all p b)).
 rewrite ih; last by rewrite (leq_trans _ tn) //= ltnS size_bseq.
-rewrite commute_guard [in RHS]bindA; bind_ext => a'.
-rewrite -bindA -guard_and -andbA andbC guard_and !bindA.
+rewrite (commute_guard (p h)).
+bind_ext => a'; rewrite !bindA (commute_guard (p h)).
 rewrite ih; last by rewrite (leq_trans _ tn) //= ltnS size_bseq.
-rewrite commute_guard; bind_ext => b'.
-by rewrite -bindA -!guard_and 2!bindretf -all_rcons -cat_rcons all_cat.
+rewrite (commute_guard (p h)) commute_guard.
+bind_ext => b'; rewrite !bindretf all_cat /= andbA andbAC !guard_and !bindA.
+by under eq_bind do rewrite commute_guard.
 Qed.
 
 End guard_commute.
@@ -187,9 +180,8 @@ Local Notation sorted := (sorted <=%O).
 Definition slowsort : seq T -> M (seq T) := (qperm >=> assert sorted).
 
 Lemma slowsort_nil : slowsort [::] = Ret [::].
-Proof.
-rewrite /slowsort.
-by rewrite kleisliE qpermE bindretf assertE guardT bindskipf.
+Proof. 
+by rewrite /slowsort kleisliE qpermE bindretf assertE guardT bindskipf.
 Qed.
 
 Lemma slowsort_cons p xs : slowsort (p :: xs) =
@@ -206,10 +198,10 @@ Lemma slowsort_splits p s : slowsort (p :: s) =
 Proof.
 rewrite slowsort_cons; bind_ext=> {s} -[a b].
 rewrite /is_partition /slowsort !kleisliE.
-rewrite guard_and !bindA (commute_guard (all (>= p) b)) guard_all_qperm.
+rewrite guard_and !bindA (commute_guard (all (>= p) b)) commute_guard guard_all_qperm.
 bind_ext=> a'; rewrite commute_guard assertE bindA bindretf bindA.
 rewrite (commute_guard (sorted a')).
-rewrite (commute_guard (all (<= p) a')) guard_all_qperm.
+rewrite (commute_guard (all (<= p) a')) commute_guard guard_all_qperm.
 bind_ext=> b'; rewrite commute_guard !assertE bindA bindretf.
 by rewrite sorted_cat_cons andbC -!andbA andbC !guard_and !bindA.
 Qed.
