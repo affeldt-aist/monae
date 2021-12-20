@@ -13,6 +13,10 @@ Definition fun_ext_dep := @FunctionalExtensionality.functional_extensionality_de
 
 (******************************************************************************)
 (*      Shared notations and easy definitions/lemmas of general interest      *)
+(*                                                                            *)
+(*    curry/uncurry == currying for pairs                                     *)
+(*  curry3/uncurry3 == currying for triples                                   *)
+(*                                                                            *)
 (******************************************************************************)
 
 Set Implicit Arguments.
@@ -104,6 +108,15 @@ Proof. by move=> f; apply fun_ext; case. Qed.
 Lemma uncurryK f : cancel uncurry curry.
 Proof. by []. Qed.
 End curry.
+
+Section curry3.
+Variables A B C D : Type.
+
+Definition uncurry3 (f : A -> B -> C -> D) (x : A * B * C) :=
+  let '(a, b, c) := x in f a b c.
+
+Definition curry3 (f : A * B * C -> D) := fun a b c => f (a, b, c).
+End curry3.
 
 Definition ucat {A} := uncurry (@cat A).
 

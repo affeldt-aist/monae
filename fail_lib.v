@@ -984,6 +984,9 @@ Implicit Types A : UU0.
 Lemma refin_refl A (a : M A) : a `<=` a.
 Proof. by rewrite /refin altmm. Qed.
 
+Lemma eq_refin A (a b : M A) : a = b -> a `<=` b.
+Proof. by move=> ->; exact: refin_refl. Qed.
+
 Lemma refin_trans A (b a c : M A) : a `<=` b -> b `<=` c -> a `<=` c.
 Proof. by rewrite /refin => h1 <-; rewrite altA h1. Qed.
 

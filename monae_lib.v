@@ -8,11 +8,14 @@ Definition proof_irr := boolp.Prop_irrelevance.
 
 Definition eq_rect_eq := @ProofIrrelevance.ProofIrrelevanceTheory.Eq_rect_eq.eq_rect_eq.
 
-(* TODO: PR to analysis *)
 Definition fun_ext_dep := boolp.functional_extensionality_dep.
 
 (******************************************************************************)
 (*      Shared notations and easy definitions/lemmas of general interest      *)
+(*                                                                            *)
+(*    curry/uncurry == currying for pairs                                     *)
+(*  curry3/uncurry3 == currying for triples                                   *)
+(*                                                                            *)
 (******************************************************************************)
 
 Set Implicit Arguments.
@@ -105,6 +108,15 @@ Lemma uncurryK f : cancel uncurry curry.
 Proof. by []. Qed.
 End curry.
 
+Section curry3.
+Variables A B C D : Type.
+
+Definition uncurry3 (f : A -> B -> C -> D) (x : A * B * C) :=
+  let '(a, b, c) := x in f a b c.
+
+Definition curry3 (f : A * B * C -> D) := fun a b c => f (a, b, c).
+End curry3.
+
 Definition ucat {A} := uncurry (@cat A).
 
 Definition uaddn := uncurry addn.
@@ -128,3 +140,7 @@ Lemma compidf A B (f : A -> B) : id \o f = f. Proof. by []. Qed.
 
 Lemma compE A B C (g : B -> C) (f : A -> B) a : (g \o f) a = g (f a).
 Proof. by []. Qed.
+
+Lemma if_pair A B b (x : A) y (u : A) (v : B) :
+  (if b then (x, y) else (u, v)) = (if b then x else u, if b then y else v).
+Proof. by case: ifPn. Qed.

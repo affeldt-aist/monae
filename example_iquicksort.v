@@ -50,16 +50,44 @@ split => [/eqP/not_Zeq//|[ab|ba]].
 - exact/eqP/gtZ_eqF.
 Qed.
 
-Definition second {M : monad} {A B C} (f : B -> M C) (xy : A * B) :=
-  f xy.2 >>= (fun y' => Ret (xy.1, y')).
+Definition apply_pair_snd (M : monad) (A B C : UU0) (f : B -> M C) (ab : A * B)
+    : M (A * C)%type :=
+  f ab.2 >>= (fun c => Ret (ab.1, c)).
 
-Definition uncurry3 :=
-  (fun (A B C D : UU0) (f : A -> B -> C -> D) (X : A * B * C) =>
-  let (p, c) := X in let (a, b) := p in f a b c).
+Lemma apply_pair_snd_uncurry3 (M : monad) (A B B' C D : UU0) (f : B -> M B')
+  (a : A) (b : B) (c : C) (g : A -> B' -> C -> M D) :
+  apply_pair_snd f (a, b) >>= (fun x => uncurry3 g (x, c)) =
+  f b >>= g a ^~ c.
+Proof.
+rewrite /apply_pair_snd /= bindA; bind_ext => b'.
+by rewrite bindretf.
+Qed.
 
-Definition curry3 :=
-  (fun (A B C D : UU0) (f : A * B * C -> D) =>
-  fun a b c => f (a, b, c)).
+Definition apply_triple_snd (M : monad) (A B C D : UU0) (f : B -> M D)
+    (abc : A * B * C) : M (A * D * C)%type :=
+  f abc.1.2 >>= (fun d => Ret (abc.1.1, d, abc.2)).
+
+Lemma apply_triple_sndE (M : monad) (A B C D : UU0) (f : B -> M D) (a : A)
+    (b : B) (c : C) :
+  apply_triple_snd f (a, b, c) =
+  apply_pair_snd f (a, b) >>= (fun x => Ret (x, c)).
+Proof.
+rewrite /apply_pair_snd /= bindA.
+by under [in RHS]eq_bind do rewrite bindretf.
+Qed.
+
+Lemma apply_triple_snd_kleisli (M : monad) {A B C D F : UU0}
+    (f : B -> M D) (g : D -> M F) (a : A) (b : B) (c : C) :
+  apply_triple_snd (f >=> g) (a, b, c) =
+    f b >>= (fun b' => apply_triple_snd g (a, b', c)).
+Proof.
+rewrite apply_triple_sndE.
+rewrite /apply_pair_snd.
+rewrite kleisliE /= !bindA; bind_ext => d'.
+rewrite apply_triple_sndE.
+rewrite /apply_pair_snd /=.
+by rewrite bindA.
+Qed.
 
 Section dassert.
 Context {M : failMonad} (N : failMonad) (A : Type) (p : pred A).
@@ -82,7 +110,7 @@ have [n sn] := ubnP (size s); elim: n s => // n ih s in sn *.
 move: s => [|h t] in sn *; first by exists (ndRet [::]); rewrite qperm_nil.
 rewrite qperm_cons.
 rewrite splitsE.
-rewrite fmapE (*TODO: broken ret notation*).
+rewrite fmapE.
 rewrite bindA.
 have [syn syn_tsplits] := nondetPlus_sub_tsplits M t.
 have nondetPlus_sub_liftM2_qperm : forall a b : (size t).-bseq A,
@@ -197,21 +225,10 @@ Arguments dispatch {d E M}.
 Section ipartl.
 Variable (d : unit) (E : orderType d) (M : plusArrayMonad E Z_eqType).
 
-(*
-Fixpoint ipartl (p : E) (i : Z) (ny nz : nat) (nx : nat) : M (nat * nat)%type :=
-  match nx with
-  | 0 => Ret (ny, nz)
-  | k.+1 => aget ((* i + *) (ny + nz)%:Z) >>= (fun x => (* TODO *)
-         if x <= p then swap (i + ny%:Z) (i + ny%:Z + nz%:Z) >> ipartl p i (ny + 1) nz k
-                   else ipartl p i ny (nz.+1) k)
-  end.
-
 (* Lemma lemma13 {i : Z} {ys : seq E} {p : E} :
   perm ys >>= (fun ys' => writeList i (ys' ++ [:: p])) `>=`
   writeList i (p :: ys) >> swap i (i + (size ys)%:Z).
 Proof. *)
-
-*)
 
 Fixpoint ipartl (p : E) (i : Z) (ny nz : nat) (nx : nat) : M (nat * nat)%type :=
   match nx with
@@ -225,7 +242,8 @@ Fixpoint ipartl (p : E) (i : Z) (ny nz : nat) (nx : nat) : M (nat * nat)%type :=
 
 Lemma ipartl_guard (p : E) (i : Z) ny nz (nx : nat) :
   ipartl p i ny nz nx =
-    ipartl p i ny nz nx >>= (fun '(a, b) => (guard ((a <= nx + ny + nz)&&(b <= nx + ny + nz))%nat >> Ret (a, b))) :> M _.
+  ipartl p i ny nz nx >>= (fun '(a, b) =>
+    (guard ((a <= nx + ny + nz)&&(b <= nx + ny + nz))%nat >> Ret (a, b))) :> M _.
 Proof.
 elim: nx ny nz => [ny nz|].
   rewrite /= bindretf.
@@ -275,7 +293,7 @@ Lemma write3L_ipartl (i : Z) (p : E) (ys zs xs : seq E) :
   (forall ys zs,
     (writeList i (ys ++ zs ++ xs) >> ipartl p i (size ys) (size zs) (size xs))
     `<=`
-    (do x <- tr_partl p ys zs xs; write2L i x)%Do) ->
+    (tr_partl p ys zs xs >>= write2L i)) ->
   write3L i (ys, zs, xs) >>= uncurry3 (ipartl p i)
   `<=`
   uncurry3 (tr_partl p) (ys, zs, xs) >>= write2L i.
@@ -290,7 +308,7 @@ Lemma dispatch_write3L_ipartl (i : Z) (x p : E) (ys zs xs : seq E) :
   (forall ys zs,
     writeList i (ys ++ zs ++ xs) >> ipartl p i (size ys) (size zs) (size xs)
     `<=`
-    (do x <- tr_partl p ys zs xs; write2L i x)%Do) ->
+    (tr_partl p ys zs xs >>= write2L i)) ->
   dispatch x p (ys, zs, xs) >>= write3L i >>= uncurry3 (ipartl p i)
   `<=`
   dispatch x p (ys, zs, xs) >>= uncurry3 (tr_partl p) >>= write2L i.
@@ -325,8 +343,8 @@ Local Obligation Tactic := idtac.
 Program Fixpoint ssplits A (s : seq A) : M (split_pair A (size s))%type :=
   match s with
   | [::] => Ret (exist _ ([::], [::]) _)
-  | x :: xs => (do yz <- ssplits xs; Ret (exist _ (x :: yz.1, yz.2) _) [~]
-                                  Ret (exist _ (yz.1, x :: yz.2) _))%Do
+  | x :: xs => (ssplits xs >>= fun yz => Ret (exist _ (x :: yz.1, yz.2) _) [~]
+                                    Ret (exist _ (yz.1, x :: yz.2) _))
   end.
 Next Obligation. by []. Qed.
 Next Obligation.
@@ -347,8 +365,8 @@ Qed.
 Local Close Scope mprog.
 
 Lemma splits_preserves_subseq (A : eqType) (s : seq A) :
-  splits s = (do x <- splits s;
-    guard [&& subseq x.1 s, subseq x.2 s & (perm_eq (x.1 ++ x.2) s)] >> Ret x)%Do :> M _.
+  splits s = splits s >>= (fun x =>
+    guard [&& subseq x.1 s, subseq x.2 s & (perm_eq (x.1 ++ x.2) s)] >> Ret x):> M _.
 Proof.
 have [n ns] := ubnP (size s); elim: n s ns => // n ih s ns.
 move: s => [|h t] in ns *.
@@ -378,7 +396,7 @@ Qed.
 
 (* NB: not used *)
 Lemma qperm_preserves_elements (A : eqType) (s : seq A) :
-  qperm s = (do x <- qperm s; guard (perm_eq x s) >> Ret x)%Do :> M _.
+  qperm s = qperm s >>= (fun x => guard (perm_eq x s) >> Ret x) :> M _.
 Proof.
 have [n ns] := ubnP (size s); elim: n s ns => // n ih s ns.
 move: s => [|h t] in ns *.
@@ -452,7 +470,7 @@ Qed.
 
 (* NB: easier to user than qperm_preserves_size? worth explaining? *)
 Lemma qperm_preserves_size2 A (x : seq A) B (f : seq A -> nat -> M B) :
-  (do x' <- qperm x; f x' (size x))%Do = (do x' <- qperm x; f x' (size x'))%Do :> M _.
+  (qperm x >>= f^~ (size x)) = qperm x >>= (fun x' => f x' (size x')) :> M _.
 Proof.
 transitivity ((do x' <- (do y <- qperm x; Ret (y, size y)); f x'.1 x'.2)%Do).
   by rewrite qperm_preserves_size bindA; bind_ext => s; rewrite bindretf.
@@ -573,7 +591,7 @@ Lemma tr_partl_writeList (p x : E) (ys zs xs : seq E) (i : Z) :
   (forall ys zs,
        (writeList i (ys ++ zs ++ xs) >> ipartl p i (size ys) (size zs) (size xs) : M _)
        `<=`
-       (do x <- tr_partl p ys zs xs; write2L i x)%Do) ->
+       (tr_partl p ys zs xs >>= write2L i)) ->
   (writeList (i + (size ys)%:Z + (size zs)%:Z + 1)%Z xs >>
    if x <= p then qperm zs >>= (fun zs' => writeList i (ys ++ x :: zs') >>
      ipartl p i (size ys + 1) (size zs') (size xs))
@@ -977,9 +995,9 @@ Qed.
 
 (* specification of ipartl, eqn 10, p.10  *)
 Lemma ipartl_tr_partl (p : E) (i : Z) (xs zs ys : seq E) :
-  (do x <- write3L i (ys, zs, xs); uncurry3 (ipartl p i) x)%Do
+  (write3L i (ys, zs, xs) >>= uncurry3 (ipartl p i))
   `<=`
-  (do x <- tr_partl p ys zs xs; (let '(ys, zs) := x in write2L i (ys, zs)) : M _)%Do.
+  (tr_partl p ys zs xs >>= write2L i : M _).
 Proof.
 elim: xs i p zs ys => [|h t ih] i p zs ys.
   rewrite /= bindretf cats0.
@@ -1051,78 +1069,43 @@ Proof. Abort. *)
   `<=` second qperm (partl p (ys, zs) xs) >>= write2L i.
 Proof. Abort. *)
 
-Definition snd3 {A B C D} (f : B -> M D) (xyz : A * B * C) : M (A * D * C)%type :=
-  f xyz.1.2 >>= (fun y' => Ret (xyz.1.1, y', xyz.2)).
-
-(* NB: this really comes from Mu's code... *)
-Lemma go a b p xs : (snd3 qperm >=> (fun x => tr_partl p x.1.1 x.1.2 x.2)) (a, b, xs) `<=` second qperm (partl p (a, b) xs).
+Lemma refin_qperm_tr_partl_qperm_partl a b p xs :
+  (apply_triple_snd qperm >=> uncurry3 (tr_partl p)) (a, b, xs) `<=`
+  (apply_pair_snd qperm (partl (p : E) (a, b) xs) : M _).
 Proof.
 elim: xs p a b => [/=|h t ih] p a b.
-  rewrite /second /=.
-  rewrite (_ : (do y' <- qperm b; Ret (a, y'))%Do = (do y' <- qperm b; Ret (a, y', [::]) >>= (fun x => tr_partl p x.1.1 x.1.2 x.2))%Do); last first.
-    by under [in RHS]eq_bind do rewrite bindretf /=.
-  rewrite -bindA.
-  rewrite /snd3 /= kleisliE /=.
+  rewrite kleisliE apply_triple_sndE bindA.
+  under eq_bind do rewrite bindretf /=.
+  rewrite -[X in _ `<=` X]bindmret.
+  apply: refin_bindl => -[x y].
   exact: refin_refl.
-rewrite /=.
-rewrite -if_arg.
-rewrite -fun_if.
-rewrite (_ : (if _ then _ else _) =
-             (if h <= p then rcons a h else a, if h <= p then b else rcons b h)); last first.
-  by case: ifPn.
-apply: refin_trans; last first.
-  exact: ih.
-set lhs := (X in _ `<=` X).
-set rhs := (X in X `<=` _).
-suff : lhs = rhs by move=> ->; exact: refin_refl.
-rewrite {}/lhs {}/rhs.
-rewrite (_ : (_, _, t) =
-              (if h <= p then (rcons a h, b, t) else (a, rcons b h, t))); last first.
-  by case: ifPn.
-rewrite fun_if.
-rewrite 2![in LHS]kleisliE.
-have -> : snd3 qperm (rcons a h, b, t) = qperm b >>= (fun zs' => snd3 qperm (rcons a h, zs', t)).
-  by rewrite {1}/snd3 /= -{1}qperm_idempotent kleisliE bindA.
-have -> : snd3 qperm (a, rcons b h, t) = qperm b >>= (fun zs' => snd3 qperm (a, rcons zs' h, t)).
-  rewrite {1}/snd3 /= qperm_rcons bindA.
-  by under eq_bind do rewrite -cats1.
-rewrite !bindA -bind_if.
-transitivity ((do x <- qperm b; (if h <= p
-    then snd3 qperm (rcons a h, x, t)
-    else snd3 qperm (a, rcons x h, t)) >>= (fun x0 => tr_partl p x0.1.1 x0.1.2 x0.2)))%Do.
-  by bind_ext => xs; case: ifPn.
-transitivity (
-  (do x <- qperm b;
-   if h <= p then snd3 qperm (rcons a h, x, t) >>= uncurry3 (tr_partl p) else
-                 snd3 qperm (a, rcons x h, t) >>= uncurry3 (tr_partl p))%Do
-).
-  bind_ext => xs; case: ifPn => hp; (rewrite /uncurry3 /=;
-    rewrite !bindA;
-    under eq_bind do rewrite !bindretf /=;
-    by under [in RHS]eq_bind do rewrite !bindretf /=).
-under eq_bind do rewrite !bindA /=.
-transitivity (do x0 <- qperm b; tr_partl p a x0 (h :: t) : M _)%Do.
-  bind_ext => x0 /=.
-  by case: ifPn => hp; under eq_bind do rewrite bindretf.
-rewrite kleisliE.
-rewrite /snd3.
-rewrite bindA.
-by under [RHS]eq_bind do rewrite bindretf.
+rewrite [in X in _ `<=` X]/= -if_arg -fun_if if_pair(*if inside args*).
+apply/(refin_trans _ (ih _ _ _))/eq_refin/esym.
+rewrite -if_pair -[in LHS](if_same (h <= p) t) -if_pair(*if outside args*).
+rewrite [in LHS]kleisliE -[X in apply_triple_snd X _]qperm_idempotent fun_if.
+rewrite 2!apply_triple_snd_kleisli qperm_rcons bindA -bind_if bindA.
+rewrite [RHS]kleisliE [in RHS]apply_triple_sndE [in RHS]bindA.
+rewrite [in RHS]/apply_pair_snd /= [in RHS]bindA.
+do 2 under [RHS]eq_bind do rewrite bindretf.
+bind_ext => b'.
+rewrite -apply_triple_snd_kleisli qperm_idempotent if_bind.
+rewrite !bindA /=.
+under eq_bind do rewrite bindretf.
+by under [in X in if _ then _ else X]eq_bind do rewrite bindretf.
 Qed.
 
 (* partl'-spec *)
-Lemma partl_tr_partl a b p xs :
-  (tr_partl p a b xs : M _)%Do `<=` second qperm (partl p (a, b) xs).
+Lemma refin_partl_tr_qperm_partl a b p xs :
+  tr_partl (M := M) p a b xs `<=` apply_pair_snd qperm (partl p (a, b) xs).
 Proof.
-apply: refin_trans; last first.
-  by apply: go.
-rewrite kleisliE /snd3 /=.
+apply: refin_trans; last exact: refin_qperm_tr_partl_qperm_partl.
+rewrite kleisliE.
+rewrite apply_triple_sndE.
 rewrite bindA.
-apply: (@refin_trans _ _ (do x <- Ret b; tr_partl p a x xs)%Do).
-  by rewrite bindretf; exact: refin_refl.
-under [in X in _ `<=` X]eq_bind do rewrite bindretf /=.
-apply: refin_bindr.
-exact: refin_qperm_ret.
+under [in X in _ `<=` X]eq_bind do rewrite bindretf.
+rewrite apply_pair_snd_uncurry3.
+rewrite -[X in X `<=` _](bindretf b ((tr_partl p a)^~ xs)).
+exact/refin_bindr/refin_qperm_ret.
 Qed.
 
 (* eqn 12 *)
@@ -1171,8 +1154,8 @@ have step1 :
     by rewrite partlE /=; case: partition.
   rewrite partition_partl.
   apply: refin_trans.
-    by apply: refin_bindr; apply: partl_tr_partl.
-  rewrite /second /=.
+    by apply: refin_bindr; apply: refin_partl_tr_qperm_partl.
+  rewrite /apply_pair_snd /=.
   move L : (partl p _ xs) => l.
   case: l L => a' b' L *.
   simpl.
@@ -1205,7 +1188,7 @@ have step1 :
   apply: (@refin_trans _ _ (
       (writeList (i + (size ys')%:Z + 1) zs' >>
       (writeList (i + (size ys')%:Z) [:: p] >>
-      (do x <- slowsort ys'; writeList i x)%Do)) >>
+      (slowsort ys' >>= writeList i))) >>
       iqsort ((i + (size ys')%:Z + 1)%Z, size zs'))).
     rewrite !bindA.
     apply: refin_bindl => -[].
