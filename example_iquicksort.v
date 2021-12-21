@@ -50,6 +50,11 @@ split => [/eqP/not_Zeq//|[ab|ba]].
 - exact/eqP/gtZ_eqF.
 Qed.
 
+(* TODO: move to infotheo *)
+Lemma addZAC : right_commutative Zplus. Proof. by move=> ? ? ?; ring. Qed.
+
+Lemma addZCA : left_commutative Zplus. Proof. by move=> ? ? ?; ring. Qed.
+
 Definition apply_pair_snd (M : monad) (A B C : UU0) (f : B -> M C) (ab : A * B)
     : M (A * C)%type :=
   f ab.2 >>= (fun c => Ret (ab.1, c)).
@@ -157,11 +162,14 @@ Fixpoint partl (p : E) (s : (seq E * seq E)%type) (xs : seq E)
   else s.
 
 Lemma partlE s t p u : let x := partition p u in
-  partl p (s, t) u= (s ++ x.1, t ++ x.2).
+  partl p (s, t) u = (s ++ x.1, t ++ x.2).
 Proof.
 elim: u p s t => [|h tl ih] /= p a b; first by rewrite !cats0.
 by case: ifPn => hp; rewrite ih /= -cats1 /= -catA.
 Qed.
+
+Lemma partition_partl p xs : partition p xs = partl p ([::], [::]) xs.
+Proof. by rewrite partlE /=; case: partition. Qed.
 
 End partl.
 
@@ -268,14 +276,20 @@ rewrite bindretf.
 by rewrite addSnnS addnS addSnnS abnk guardT bindskipf.
 Qed.
 
+Definition dipartlT (y z x : nat) :=
+  {n : nat * nat | (n.1 <= x + y + z) && (n.2 <= x + y + z)}.
+
+Definition dipartlT1 (y z x : nat) (a : dipartlT y z x) : nat := (sval a).1.
+Definition dipartlT2 (y z x : nat) (a : dipartlT y z x) : nat := (sval a).2.
+
 Definition dipartl (p : E) (i : Z) (y z x : nat) :
-  M {n | (n.1 <= x + y + z) && (n.2 <= x + y + z) } :=
+  M (dipartlT y z x) :=
   ipartl p i y z x >>=
     (dassert [pred n | (n.1 <= x + y + z) && (n.2 <= x + y + z)]).
 
 Local Open Scope mprog.
 Lemma ipartlE p i n :
-  ipartl p i 0 0 n = fmap (fun x => ((sval x).1, (sval x).2)) (dipartl p i 0 0 n).
+  ipartl p i 0 0 n = fmap (fun x => (dipartlT1 x, dipartlT2 x)) (dipartl p i 0 0 n).
 Proof.
 rewrite fmapE /= /dipartl !bindA.
 rewrite ipartl_guard !bindA.
@@ -883,8 +897,8 @@ Proof. by rewrite /iqsort Fix_eq //; exact: iqsort'_Fix. Qed.
 
 Lemma iqsort_cons (i : Z) (n : nat) : iqsort (i, n.+1) = aget i >>= (fun p =>
   dipartl p (i + 1)%Z 0 0 n >>= (fun nynz =>
-    let ny := (sval nynz).1 in
-    let nz := (sval nynz).2 in
+    let ny := dipartlT1 nynz in
+    let nz := dipartlT2 nynz in
     aswap i (i + ny%:Z) >>
     iqsort (i, ny) >> iqsort ((i + ny%:Z + 1)%Z, nz))).
 Proof. by rewrite [in LHS]/iqsort Fix_eq //=; exact: iqsort'_Fix. Qed.
@@ -923,23 +937,23 @@ Qed.
 
 (* bottom of the page 11, used in the proof of lemma 10 *)
 Lemma first_branch (i : Z) (x : E) (ys zs : seq E) :
-  (writeList i (rcons (ys ++ zs) x) >>
-   aswap (i + (size ys)%:Z) (i + (size ys)%:Z + (size zs)%:Z) : M _)
+  writeList i (rcons (ys ++ zs) x) >>
+    aswap (M := M) (i + (size ys)%:Z) (i + (size ys)%:Z + (size zs)%:Z)
   `<=`
   qperm zs >>= (fun zs' => writeList i (ys ++ x :: zs')).
 Proof.
 apply: refin_trans; last first.
-  apply: refin_bindl => x0.
+  apply: refin_bindl => s.
   rewrite writeList_cat.
   exact: refin_refl.
-have -> : commute (qperm zs) (writeList i ys) (fun s _ => writeList (i + (size ys)%:Z) (x :: s) : M _).
-  by apply: commute_plus; exact: nondetPlus_sub_qperm.
+have -> : commute (qperm zs) (writeList i ys) _.
+  by move=> N A k; apply/commute_plus/nondetPlus_sub_qperm.
 apply: (@refin_trans _ _
   (writeList i ys >> writeList (i + (size ys)%:Z) (rcons zs x) >>
     aswap (i + (size ys)%:Z) (i + (size ys)%:Z + (size zs)%:Z))); last first.
   rewrite !bindA.
   rewrite /refin -alt_bindDr.
-  bind_ext => ?.
+  bind_ext => -[].
   by rewrite introduce_aswap_cons.
 by rewrite rcons_cat writeList_cat; exact: refin_refl.
 Qed.
@@ -976,7 +990,7 @@ transitivity (writeList i (ys ++ zs ++ (x :: xs)) >>
     by rewrite {1}size_cat [in RHS]intRD size_cat addZA bindA cats1.
 rewrite bindA catA writeList_cat 2!bindA.
 rewrite size_cat intRD addZA.
-bind_ext => ?.
+bind_ext => -[].
 transitivity (
   writeList (i + (size ys)%:Z + (size zs)%:Z)%Z (x :: xs) >> Ret x >>
   (if x <= p then
@@ -995,28 +1009,21 @@ Qed.
 
 (* specification of ipartl, eqn 10, p.10  *)
 Lemma ipartl_tr_partl (p : E) (i : Z) (xs zs ys : seq E) :
-  (write3L i (ys, zs, xs) >>= uncurry3 (ipartl p i))
+  write3L i (ys, zs, xs) >>= uncurry3 (ipartl p i)
   `<=`
-  (tr_partl p ys zs xs >>= write2L i : M _).
+  tr_partl (M := M) p ys zs xs >>= write2L i.
 Proof.
 elim: xs i p zs ys => [|h t ih] i p zs ys.
-  rewrite /= bindretf cats0.
-  set lhs := (X in _ `<=` X); set rhs := (X in X `<=` _).
-  suff : lhs = rhs by move=> ->; exact: refin_refl.
-  rewrite /lhs /rhs.
-  by rewrite bindA bindretf.
-have Htmp : (forall ys0 zs0,
-    (writeList i (ys0 ++ zs0 ++ t) >> ipartl p i (size ys0) (size zs0) (size t) : M _)
-    `<=`
-    (do x <- tr_partl p ys0 zs0 t; write2L i x)%Do).
+  apply/eq_refin.
+  by rewrite /= bindretf cats0 bindA bindretf.
+have : (forall ys zs,
+    writeList i (ys ++ zs ++ t) >> ipartl (M := M) p i (size ys) (size zs) (size t)
+    `<=` tr_partl p ys zs t >>= write2L i).
   move=> {}ys {}zs.
-  apply: refin_trans; last exact: (ih i p).
-  rewrite /write3L.
-  rewrite bindA.
-  rewrite bindretf.
-  rewrite /uncurry3.
+  apply: (refin_trans _ (ih i p _ _)).
+  rewrite /write3L bindA bindretf /uncurry3.
   exact: refin_refl.
-have := @tr_partl_writeList _ E M p h ys zs t i Htmp.
+move=> /(@tr_partl_writeList _ E M p h ys zs t i).
 apply: refin_trans.
 apply: (@refin_trans _ _ (
   writeList (i + (size ys)%:Z + (size zs)%:Z + 1) t >>
@@ -1025,19 +1032,15 @@ apply: (@refin_trans _ _ (
         aswap (i + (size ys)%:Z) (i + (size ys)%:Z + (size zs)%:Z) >>
         ipartl p i (size ys + 1) (size zs) (size t)
    else writeList i (rcons (ys ++ zs) h) >>
-        ipartl p i (size ys) (size zs + 1) (size t) ))); last first.
+        ipartl p i (size ys) (size zs + 1) (size t)))); last first.
+  apply: refin_bindl => -[].
   case: ifPn => hp; last first.
-    apply: (@refin_trans _ _
-        (writeList (i + (size ys)%:Z + (size zs)%:Z + 1) t >>
-         do zs' <- Ret (rcons zs h);
-         writeList i (ys ++ zs') >> ipartl p i (size ys) (size zs') (size t))%Do); last first.
-      apply: refin_bindl => -[].
+    apply: (@refin_trans _ _ (Ret (rcons zs h) >>= fun zs' =>
+         writeList i (ys ++ zs') >> ipartl p i (size ys) (size zs') (size t))); last first.
       apply: refin_bindr.
       exact: refin_qperm_ret.
-    apply: refin_bindl => -[].
     rewrite bindretf size_rcons addn1 rcons_cat.
     exact: refin_refl.
-  apply: refin_bindl => -[].
   rewrite -[X in _ `<=` X](qperm_preserves_size2 zs (fun a b =>
     writeList i (ys ++ h :: a) >>
    ipartl p i (size ys + 1) b (size t))).
@@ -1115,75 +1118,54 @@ Proof.
 (* move=> total_E. *)
 have [n nxs] := ubnP (size xs); elim: n xs i => // n ih xs i in nxs *.
 move: xs => [|p xs] in nxs *.
- rewrite /= iqsort_nil slowsort_nil.
- by rewrite 2!bindretf /=; exact: refin_refl.
-set lhs := (X in _ `<=` X).
-have step1 :
-     tr_partl p [::] [::] xs >>= (fun '(ys, zs) =>
+  by rewrite /= iqsort_nil slowsort_nil 2!bindretf /=; exact: refin_refl.
+(* step 1 *)
+apply: (@refin_trans _ _ (tr_partl p [::] [::] xs >>= (fun '(ys, zs) =>
      writeList (i + (size ys)%:Z + 1)%Z zs >>
      qperm ys >>= (fun ys' => writeList i (rcons ys' p) >>
-       iqsort (i, size ys) >> iqsort ((i + (size ys)%:Z + 1)%Z, size zs)))
-     `<=`
-     lhs.
+       iqsort (i, size ys) >> iqsort ((i + (size ys)%:Z + 1)%Z, size zs))))); last first.
      (* l.342 in IQSOrt.agda *)
-  rewrite {}/lhs.
+  (* step 1a: refin slowsort *)
   apply: refin_trans; last by apply: refin_bindr; exact: refin_slowsort.
   rewrite bindretf.
-  rewrite -qperm_slowsort.
-  move Hpxs : (partition p xs) => pxs; case: pxs => [ys zs] in Hpxs *.
-  rewrite 2!kleisliE.
-  rewrite !bindA.
+  move pxs : (partition p xs) => tmp; case: tmp => [ys zs] in pxs *.
+  (* step 1b: introduce qperm's and commute *)
+  rewrite -qperm_slowsort 2!kleisliE !bindA.
   rewrite [X in _ `<=` X](_ : _ =
-    (do zs'' <- qperm zs; do ys'' <- qperm ys;
-     do ys' <- slowsort ys''; do zs' <- slowsort zs'';
-     writeList i (ys' ++ p :: zs'))%Do); last first.
+    (do zs'' <- qperm zs; do ys'' <- qperm ys; do ys' <- slowsort ys'';
+     do zs' <- slowsort zs''; writeList i (ys' ++ p :: zs'))%Do); last first.
     have -> : @commute M _ _ (qperm zs) (qperm ys) _ _.
-      by move=> T f; apply: commute_plus; exact: nondetPlus_sub_qperm.
-    bind_ext => ys''.
-    rewrite !bindA.
-    under eq_bind do rewrite !bindA.
-    have <- : @commute M _ _ (qperm zs) (slowsort ys'') _ _.
-      by move=> T f; apply: commute_plus; exact: nondetPlus_sub_qperm.
-    bind_ext => zs''.
-    under eq_bind do rewrite bindA.
+      by move=> *; exact/commute_plus/nondetPlus_sub_qperm.
     bind_ext => ys'.
+    rewrite !bindA; under eq_bind do rewrite !bindA.
+    have <- : @commute M _ _ (qperm zs) (slowsort ys') _ _.
+      by move=> *; exact/commute_plus/nondetPlus_sub_qperm.
     bind_ext => zs'.
-    by rewrite bindretf.
-  move/(congr1 (fun x => x.2)) : (Hpxs) => /= <-.
-  have partition_partl : partition p xs = partl p ([::], [::]) xs.
-    by rewrite partlE /=; case: partition.
-  rewrite partition_partl.
+    under eq_bind do rewrite bindA.
+    bind_ext => ys''.
+    by under eq_bind do rewrite bindretf.
+  (* step 1c: refine tr_partl to partl *)
   apply: refin_trans.
-    by apply: refin_bindr; apply: refin_partl_tr_qperm_partl.
-  rewrite /apply_pair_snd /=.
-  move L : (partl p _ xs) => l.
-  case: l L => a' b' L *.
-  simpl.
-  rewrite bindA.
-  move: L; rewrite -partition_partl Hpxs => -[<-{a'} <-{b'}].
+    exact/refin_bindr/refin_partl_tr_qperm_partl.
+  (* step 1d: execute the first qperm and record size information *)
+  rewrite -partition_partl pxs bindA /=.
   under eq_bind do rewrite bindretf.
-  rewrite bind_qperm_guard [in X in X `<=` _]bind_qperm_guard.
+  rewrite bind_qperm_guard [in X in X `<=` _]bind_qperm_guard(*NB: interesting?*).
   apply: refin_bindl => zs'.
   apply: refin_bind_guard => /eqP zszs'.
-  apply: (@refin_trans _ _ (
-    (do ys' <- qperm ys;
-        writeList (i + (size ys)%:Z + 1) zs' >>
-        (writeList i (rcons ys' p) >> iqsort (i, size ys)) >>
-        iqsort ((i + (size ys)%:Z + 1)%Z, size zs'))%Do)).
-    rewrite -!bindA.
-    have -> : commute (qperm ys) (writeList (i + (size ys)%:Z + 1) zs' : M _) _.
-      by move=> T f; apply: commute_plus; exact: nondetPlus_sub_qperm.
-    rewrite -!bindA.
-    exact: refin_refl.
+  (* step 1e: commutation *)
+  rewrite ![in X in X `<=` _]bindA.
+  have <- : commute (qperm ys) (writeList (i + (size ys)%:Z + 1) zs' : M _) _.
+    by move=> T f; exact/commute_plus/nondetPlus_sub_qperm.
+  (* step 1f: qperm_preserves_size2, execute the second qperm and record size information *)
   rewrite (qperm_preserves_size2 ys (fun a b =>
-    (writeList (i + b%:Z + 1) zs' >> (writeList i (rcons a p) >> iqsort (i, b))) >>
-    iqsort ((i + b%:Z + 1)%Z, size zs'))).
-  rewrite bind_qperm_guard (*NB: interesting?*).
-  rewrite [in X in _ `<=` X]bind_qperm_guard.
+    (writeList (i + b%:Z + 1) zs' >> (writeList i (rcons a p) >> iqsort (i, b) >>
+    iqsort ((i + b%:Z + 1)%Z, size zs'))))).
+  rewrite bind_qperm_guard [in X in _ `<=` X]bind_qperm_guard (*NB: interesting?*).
   apply: refin_bindl => ys'.
-  apply: refin_bind_guard => /eqP sz_ys_ys'.
-  rewrite -cats1.
-  rewrite writeList_cat writeListC; last exact: leZZ.
+  apply: refin_bind_guard => /eqP ysys'.
+  (* step 1g: ih *)
+  rewrite -cats1 writeList_cat writeListC; last exact: leZZ.
   rewrite (bindA _ _ (fun _ => iqsort (i, size ys'))).
   apply: (@refin_trans _ _ (
       (writeList (i + (size ys')%:Z + 1) zs' >>
@@ -1191,59 +1173,39 @@ have step1 :
       (slowsort ys' >>= writeList i))) >>
       iqsort ((i + (size ys')%:Z + 1)%Z, size zs'))).
     rewrite !bindA.
-    apply: refin_bindl => -[].
-    apply: refin_bindl => -[].
-    rewrite !bindretf.
-    rewrite -!bindA.
-    apply: refin_bindr.
-    apply: ih.
-    rewrite -sz_ys_ys'.
-    move: nxs.
-    rewrite /= ltnS.
-    apply: leq_trans.
-    rewrite ltnS.
-    by rewrite -(size_partition p xs) Hpxs /= leq_addr.
+    do 2 apply: refin_bindl => -[].
+    rewrite 2!bindretf -2!bindA; apply/refin_bindr/ih.
+    move: nxs; rewrite /= ltnS; apply: leq_ltn_trans.
+    by rewrite -ysys' -(size_partition p xs) pxs /= leq_addr.
+  (* step 1h: slowsort_preserves_size2 *)
   rewrite -[in X in X `<=` _](_ : commute (slowsort ys') _ _); last first.
-    by apply: commute_plus; exact: nondetPlus_sub_slowsort.
+    exact/commute_plus/nondetPlus_sub_slowsort.
   rewrite !bindA.
   rewrite -[in X in X `<=` _](_ : commute (slowsort ys') _ _); last first.
-    by apply: commute_plus; exact: nondetPlus_sub_slowsort.
-  rewrite (slowsort_preserves_size2 _ (fun a b => writeList (i + b%:Z + 1) zs' >> ((writeList (i + b%:Z) [:: p] >> writeList i a >> iqsort ((i + b%:Z + 1)%Z, size zs')))%Do)).
+    exact/commute_plus/nondetPlus_sub_slowsort.
+  rewrite (slowsort_preserves_size2 _
+    (fun a b => writeList (i + b%:Z + 1) zs' >>
+      (writeList (i + b%:Z) [:: p] >> writeList i a >> iqsort ((i + b%:Z + 1)%Z, size zs')))).
   rewrite bind_slowsort_guard [in X in _ `<=` X]bind_slowsort_guard.
   apply: refin_bindl => ys''.
   apply: refin_bind_guard => /eqP ys'ys''.
-  rewrite -bindA.
-  rewrite -(@writeListC _ _ _ _ _ ys''); last first.
-    exact: leZZ.
+  rewrite -bindA -(writeListC _ _ ys''); last exact: leZZ.
   under [in X in _ `<=` X]eq_bind do rewrite -cat_rcons.
   under [in X in _ `<=` X]eq_bind do rewrite writeList_cat.
   rewrite (_ : commute (slowsort zs') _ _); last first.
-    apply: commute_plus.
-    exact: nondetPlus_sub_slowsort.
-  rewrite -(writeList_cat i ys'' [:: p]).
-  rewrite -(@writeListC _ _ _ _ _ _ zs'); last first.
+    exact/commute_plus/nondetPlus_sub_slowsort.
+  rewrite -(writeList_cat i ys'' [:: p]) -(writeListC _ _ _ zs'); last first.
     by rewrite size_cat /= intRD addZA; exact: leZZ.
-  rewrite cats1 bindA.
-  apply: refin_bindl => -[].
-  rewrite size_rcons -addZA natZS.
-  rewrite Z.add_1_r.
-  apply: ih.
-  rewrite -zszs'.
-  rewrite /= ltnS in nxs.
-  rewrite (leq_trans _ nxs) // ltnS.
-  by rewrite -(size_partition p xs) Hpxs /= leq_addl.
-apply: (refin_trans _ step1) => {step1} {lhs}.
-set lhs := (X in _ `<=` X).
-have step2 :
-  (do pat <- tr_partl p [::] [::] xs;
-   (let
-    '(ys, zs) := pat in
+  (* step 1i: ih *)
+  rewrite cats1 bindA; apply: refin_bindl => -[].
+  rewrite size_rcons natZS -Z.add_1_r -addZA; apply: ih.
+  move: nxs; rewrite /= ltnS; apply: leq_ltn_trans.
+  by rewrite -zszs' -(size_partition p xs) pxs /= leq_addl.
+(* step 2: introduce_aswap_rcons *)
+apply: (@refin_trans _ _ (tr_partl p [::] [::] xs >>= (fun '(ys, zs) =>
      writeList (i + (size ys)%:Z + 1) zs >>
      (writeList i (p :: ys) >> aswap i (i + (size ys)%:Z)) >>
-     (iqsort (i, size ys)) >> iqsort ((i + (size ys)%:Z + 1)%Z, size zs)))%Do
-  `<=`
-  lhs.
-  rewrite {}/lhs.
+     (iqsort (i, size ys)) >> iqsort ((i + (size ys)%:Z + 1)%Z, size zs)))); last first.
   apply: refin_bindl => -[ys sz].
   rewrite 4!bindA.
   apply: refin_bindl => -[].
@@ -1253,123 +1215,54 @@ have step2 :
   rewrite (bindA _ (fun _ => iqsort _) (fun _ => iqsort _)).
   apply: refin_bindr.
   exact: introduce_aswap_rcons.
-apply: (refin_trans _ step2) => {step2} {lhs}.
-set lhs := (X in _ `<=` X).
-have step3 :
-  (do pat <- tr_partl p [::] [::] xs;
-   (let
-    '(ys, zs) := pat in
+(* step 3: commute *)
+rewrite [X in _ `<=` X](_ : _ = tr_partl p [::] [::] xs >>= (fun '(ys, zs) =>
      aput i p >> writeList (i + 1)%Z (ys ++ zs) >>
      (aswap i (i + (size ys)%:Z)) >>
-     (iqsort (i, size ys)) >> iqsort ((i + (size ys)%:Z + 1)%Z, size zs)))%Do
-  `<=`
-  lhs.
-  rewrite {}/lhs.
-  apply: refin_bindl => -[ys zs].
-  rewrite -bindA.
-  do 3 apply: refin_bindr.
-  rewrite -writeListC; last first.
+     (iqsort (i, size ys)) >> iqsort ((i + (size ys)%:Z + 1)%Z, size zs))); last first.
+  bind_ext => -[ys zs].
+  rewrite -bindA -writeListC; last first.
     by rewrite -addZA /= Z.add_1_r natZS; exact: leZZ.
-  rewrite /= bindA.
-  apply: refin_bindl => -[].
-  rewrite writeList_cat -addZA (addZC 1%Z) addZA.
-  exact: refin_refl.
-apply: (refin_trans _ step3) => {step3} {lhs}.
-set lhs := (X in _ `<=` X).
-have step4 :
-  (aput i p >>
+  by rewrite /= bindA writeList_cat addZAC !bindA.
+(* step 4: commute *)
+rewrite [X in _ `<=` X](_ : _ = aput i p >>
    tr_partl p [::] [::] xs >>= (fun '(ys, zs) =>
    ( writeList (i + 1)%Z (ys ++ zs) >>
      (aswap i (i + (size ys)%:Z)) >>
-     (iqsort (i, size ys)) >> iqsort ((i + (size ys)%:Z + 1)%Z, size zs))))%Do
-  `<=`
-  lhs.
-  rewrite {}/lhs.
-  rewrite bindA -[in X in X `<=` _](_ : commute (tr_partl p [::] [::] xs) (aput i p) _); last first.
-    by apply: commute_plus; exact: nondetPlus_sub_tr_partl.
-  apply: refin_bindl => -[a b].
-  rewrite !bindA.
-  exact: refin_refl.
-apply: (refin_trans _ step4) => {step4} {lhs}.
-set lhs := (X in _ `<=` X).
-have step5 :
-  ((aput i p >>
-   tr_partl p [::] [::] xs >>= (fun '(ys, zs) =>
+     (iqsort (i, size ys)) >> iqsort ((i + (size ys)%:Z + 1)%Z, size zs)))); last first.
+  rewrite [RHS]bindA -(_ : commute (tr_partl p [::] [::] xs) (aput i p) _); last first.
+    exact/commute_plus/nondetPlus_sub_tr_partl.
+  by bind_ext=> -[a b]; rewrite !bindA.
+(* step 5 *)
+rewrite [X in _ `<=` X](_ : _ = aput i p >>
+  tr_partl p [::] [::] xs >>= (fun '(ys, zs) =>
     write2L (i + 1)%Z (ys, zs)) >>= (fun '(sys, szs) =>
-     (aswap i (i + (sys)%:Z)) >>
-     (iqsort (i, sys)) >> iqsort ((i + (sys)%:Z + 1)%Z, szs))))%Do
-  `<=`
-  lhs.
-  rewrite {}/lhs.
-  rewrite !bindA.
-  apply: refin_bindl => -[].
-  apply: refin_bindl => -[a b].
-  rewrite 2!bindA.
-  rewrite [in X in X `<=` _]bindA.
-  apply: refin_bindl => -[].
-  rewrite bindretf.
+     (aswap i (i + sys%:Z)) >>
+     (iqsort (i, sys)) >> iqsort ((i + (sys)%:Z + 1)%Z, szs))); last first.
+  rewrite [in RHS]bindA; bind_ext => -[a b].
+  rewrite 2!bindA /write2L [RHS]bindA; bind_ext => -[].
+  by rewrite bindretf bindA.
+rewrite {nxs}.
+(* step 6: ipartl_tr_partl *)
+rewrite [in X in _ `<=` X](bindA (aput i p)).
+apply: refin_trans; last first.
   rewrite bindA.
-  exact: refin_refl.
-apply: (refin_trans _ step5) => {step5} {lhs}.
-set lhs := (X in _ `<=` X).
-have step6 :
-  (((aput i p >>
-   (write3L (i + 1)%Z ([::], [::], xs) >>= uncurry3 (ipartl p (i + 1)%Z))) >>=
-   (fun '(sys, szs) =>
-     (aswap i (i + (sys)%:Z)) >>
-     (iqsort (i, sys)) >> iqsort ((i + (sys)%:Z + 1)%Z, szs))))%Do
-  `<=`
-  lhs.
-  rewrite {}/lhs.
+  apply: refin_bindl => ttt.
   apply: refin_bindr.
-  rewrite bindA.
-  apply: refin_bindl => -[].
   exact: ipartl_tr_partl.
-apply: (refin_trans _ step6) => {step6} {lhs}.
-set lhs := (X in _ `<=` X).
-have step7 :
-  ((writeList i (p :: xs) >> Ret p) >>= (fun p =>
-   (ipartl p (i + 1)%Z) 0 0 (size xs) >>=
-   (fun '(sys, szs) =>
-     (aswap i (i + (sys)%:Z)) >>
-     (iqsort (i, sys)) >> iqsort ((i + (sys)%:Z + 1)%Z, szs))))%Do
-   `<=`
-   lhs.
-  rewrite {}/lhs.
-  rewrite [in X in X `<=` _]/=.
-  rewrite 2![in X in X `<=` _]bindA.
-  rewrite bindA.
-  apply: refin_bindl => -[].
-  rewrite bindA /= bindA.
-  apply: refin_bindl => -[].
-  rewrite 2!bindretf /uncurry3.
-  exact: refin_refl.
-apply: (refin_trans _ step7) => {step7} {lhs}.
-set lhs := (X in _ `<=` X).
-have step8 :
-  ((writeList i (p :: xs) >> aget i) >>= (fun p =>
-   (ipartl p (i + 1)%Z) 0 0 (size xs) >>=
-   (fun '(sys, szs) =>
-     (aswap i (i + (sys)%:Z)) >>
-     (iqsort (i, sys)) >> iqsort ((i + (sys)%:Z + 1)%Z, szs))))%Do
-  `<=`
-   lhs.
-  rewrite {}/lhs.
-  apply: refin_bindr.
-  rewrite writeListRet.
-  by apply: refin_refl.
-apply: (refin_trans _ step8) => {step8} {lhs}.
-rewrite bindA.
+(* step 7 *)
+rewrite -[in X in _ `<=` X]bindA.
+rewrite (_ : aput i p >> _ = (writeList i (p :: xs) >> Ret p) >>=
+    (fun p => ipartl p (i + 1)%Z 0 0 (size xs))); last first.
+  rewrite /= bindA -[in LHS](bindA (aput i p)) [in RHS]bindA; bind_ext => -[].
+  by rewrite 2!bindretf /uncurry3.
+(* step 8 *)
+rewrite writeListRet 2![in X in _ `<=` X]bindA.
 apply: refin_bindl => -[].
-rewrite /=.
-rewrite iqsort_cons.
+rewrite /= iqsort_cons.
 apply: refin_bindl => x.
-clear nxs.
-rewrite ipartlE //.
-rewrite fmapE.
-rewrite [in X in _ `<=` X]bindA.
+rewrite ipartlE //= fmapE [in X in _ `<=` X]bindA.
 under [in X in _ `<=` X]eq_bind do rewrite bindretf.
-rewrite bindA.
 exact: refin_refl.
 Qed.
 

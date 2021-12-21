@@ -29,6 +29,7 @@ From HB Require Import structures.
 (*    Module JoinLaws == join laws of a monad                                 *)
 (*            isMonad == mixin of monad                                       *)
 (*                >>= == notation for the standard bind operator              *)
+(*             m >> f := m >>= (fun _ => f)                                   *)
 (*              monad == type of monads                                       *)
 (*                Ret == natural transformation FId ~> M for a monad M        *)
 (*               Join == natural transformation M \O M ~> M for a monad M     *)
