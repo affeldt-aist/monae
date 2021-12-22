@@ -13,8 +13,6 @@ Require Import Recdef.
 (* This file provides a formalization of quicksort on lists as proved in      *)
 (* [1, Sect. 4]. The main lemmas is quicksort_slowsort.                       *)
 (*                                                                            *)
-(*           qperm s == permute the list s                                    *)
-(*                      type: seq A -> M (seq A) with M : plusMonad           *)
 (* is_partition p (s, t) == elements of s are smaller or equal to p, and      *)
 (*                          elements of t are greater of equal to p           *)
 (*     partition p s == partitions s into a partition w.r.t. p                *)
@@ -66,62 +64,12 @@ Local Open Scope monae_scope.
 Local Open Scope tuple_ext_scope.
 Local Open Scope mprog.
 
-Section qperm.
-Variables (M : plusMonad) (A : UU0).
-Variables (d : unit) (T : orderType d).
-
-Local Obligation Tactic := idtac.
-Program Definition qperm' (s : seq A) 
-  (f : forall s', size s' < size s -> M (seq A)) : M (seq A) :=
-  if s isn't x :: xs then Ret [::] else
-    tsplits xs >>= (fun '(ys, zs) => liftM2 (fun a b => a ++ x :: b) (f ys _) (f zs _)).
-Next Obligation.
-move=> [|h t] // ht x xs [xh ->] [a b] ys _ _ .
-exact: (leq_ltn_trans (size_bseq ys)).
-Qed.
-Next Obligation.
-move=> [|h t] // ht x xs [xh ->] [a b] _ zs _.
-exact: (leq_ltn_trans (size_bseq zs)).
-Qed.
-Next Obligation. by []. Qed.
-
-Definition qperm : seq A -> M (seq A) :=
-  Fix (@well_founded_size _) (fun _ => M _) qperm'.
-
-Lemma qperm'_Fix (s : seq A) 
-  (f g : forall y, (size y < size s)%N -> M (seq A)) :
-  (forall y (p : (size y < size s)%N), f y p = g y p) -> qperm' f = qperm' g.
-Proof.
-move=> H; rewrite /qperm'; case: s f g H => // h t f g H.
-bind_ext => -[a b] /=.
-rewrite (_ : f = g) //; apply fun_ext_dep => s.
-rewrite boolp.funeqE => ?; exact: H.
-Qed.
-
-Lemma qperm_nil : qperm [::] = Ret [::].
-Proof. by rewrite /qperm (Fix_eq _ _ _ qperm'_Fix). Qed.
-
-Lemma qperm_cons x xs :
-  qperm (x :: xs) = 
-  splits xs >>= (fun '(ys, zs) =>
-    liftM2 (fun a b => a ++ x :: b) (qperm ys) (qperm zs)).
-Proof.
-rewrite {1}/qperm {1}(Fix_eq _ _ _ qperm'_Fix) /=.
-rewrite splitsE /= fmapE bindA; bind_ext => -[? ?].
-by rewrite bindretf.
-Qed.
-
-Definition qpermE := (qperm_nil, qperm_cons).
-
-End qperm.
-Arguments qperm {M} {A}.
-
 (* TODO: move *)
 Section guard_commute.
 Variable M : plusMonad.
 Variables (d : unit) (T : orderType d).
 
-Lemma commute_guard_n (b : bool) B (n : M B) C (f : unit -> B -> M C) :
+Lemma commute_guard (b : bool) B (n : M B) C (f : unit -> B -> M C) :
   commute (guard b) n f.
 Proof.
 apply commute_plus; exists (if b then ndRet tt else @ndFail _).
@@ -135,11 +83,11 @@ Proof.
 elim: t p A f => [|h t ih] p A f.
   by rewrite 2!bindretf guardT bindmskip.
 rewrite guard_and !bindA ih -bindA.
-rewrite commute_guard_n bindA.
+rewrite commute_guard bindA.
 bind_ext => -[a b].
 rewrite [in RHS]alt_bindDl 2!bindretf 2!guard_and !bindA.
 rewrite alt_bindDl 2!bindretf !alt_bindDr.
-by congr (_ [~] _); rewrite commute_guard_n.
+by congr (_ [~] _); rewrite commute_guard.
 Qed.
 
 Lemma guard_splits_cons A h (p : pred T) (t : seq T) (f : seq T * seq T -> M A) :
@@ -148,7 +96,7 @@ Lemma guard_splits_cons A h (p : pred T) (t : seq T) (f : seq T * seq T -> M A) 
                          guard (all p x.2) >>
                          guard (p h) >> f x).
 Proof.
-rewrite guard_and bindA guard_splits commute_guard_n.
+rewrite guard_and bindA guard_splits commute_guard.
 by bind_ext => -[a b]; rewrite -bindA -!guard_and andbC.
 Qed.
 
@@ -164,10 +112,10 @@ rewrite qperm_cons bindA guard_splits_cons bindA.
 rewrite splitsE fmapE 2!bindA; bind_ext => -[? ?] /=.
 rewrite 2!bindretf -2!guard_and -andbA andbC guard_and 2!bindA.
 rewrite ih; last by rewrite (leq_trans _ tn) //= ltnS size_bseq.
-rewrite commute_guard_n [in RHS]bindA; bind_ext => a'.
+rewrite commute_guard [in RHS]bindA; bind_ext => a'.
 rewrite -bindA -guard_and -andbA andbC guard_and !bindA.
 rewrite ih; last by rewrite (leq_trans _ tn) //= ltnS size_bseq.
-rewrite commute_guard_n; bind_ext => b'.
+rewrite commute_guard; bind_ext => b'.
 by rewrite -bindA -!guard_and 2!bindretf -all_rcons -cat_rcons all_cat.
 Qed.
 
@@ -217,8 +165,8 @@ apply: (refin_trans _ (refin_bindl _ _)); last first => [yz|].
 apply: (refin_trans _ (refin_bindl _ _)); last first => [yz|].
   exact: refin_if_guard.
 under eq_bind do rewrite -bind_if.
-apply: (@refin_trans _ _ (splits xs >>= 
-  fun a => guard (is_partition p a) >> (Ret a >>= 
+apply: (@refin_trans _ _ (splits xs >>=
+  fun a => guard (is_partition p a) >> (Ret a >>=
   fun a => (if x <= p then Ret (x :: a.1, a.2)
     else Ret (a.1, x :: a.2))))); last first.
   apply: refin_bindl => ?; apply: refin_bindl => ?.
@@ -258,11 +206,11 @@ Lemma slowsort_splits p s : slowsort (p :: s) =
 Proof.
 rewrite slowsort_cons; bind_ext=> {s} -[a b].
 rewrite /is_partition /slowsort !kleisliE.
-rewrite guard_and !bindA (commute_guard_n (all (>= p) b)) guard_all_qperm.
-bind_ext=> a'; rewrite commute_guard_n assertE bindA bindretf bindA.
-rewrite (commute_guard_n (sorted a')).
-rewrite (commute_guard_n (all (<= p) a')) guard_all_qperm.
-bind_ext=> b'; rewrite commute_guard_n !assertE bindA bindretf.
+rewrite guard_and !bindA (commute_guard (all (>= p) b)) guard_all_qperm.
+bind_ext=> a'; rewrite commute_guard assertE bindA bindretf bindA.
+rewrite (commute_guard (sorted a')).
+rewrite (commute_guard (all (<= p) a')) guard_all_qperm.
+bind_ext=> b'; rewrite commute_guard !assertE bindA bindretf.
 by rewrite sorted_cat_cons andbC -!andbA andbC !guard_and !bindA.
 Qed.
 
@@ -273,7 +221,7 @@ Section qsort.
 Variables (M : plusMonad).
 Variables (d : unit) (T : orderType d).
 Function qsort (s : seq T) {measure size s} : seq T :=
-  (* if s is h :: t 
+  (* if s is h :: t
   then let '(ys, zs) := partition h t in
        qsort ys ++ h :: qsort zs
   else [::]. *)
@@ -303,9 +251,9 @@ move; elim => [/=|h t ih].
 rewrite slowsort_nil; exact: refin_refl.
 rewrite slowsort_splits.
 apply: (@refin_trans _ _ (splits t >>= fun yz =>
-    assert (is_partition h) yz >>= 
-    fun '(ys, zs) => slowsort ys >>= 
-    fun ys' : seq T => slowsort zs >>= 
+    assert (is_partition h) yz >>=
+    fun '(ys, zs) => slowsort ys >>=
+    fun ys' : seq T => slowsort zs >>=
     fun zs' => Ret (ys' ++ h :: zs'))); last first.
 apply: refin_bindl => -[? ?].
 rewrite assertE !bindA bindretf; exact: refin_refl.

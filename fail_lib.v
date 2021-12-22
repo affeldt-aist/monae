@@ -33,14 +33,16 @@ Require Import hierarchy monad_lib.
 (*                       computes a permutation of s using (t)select          *)
 (*            uperm s == nondeterministically computes a permutation of s,    *)
 (*                       defined using unfoldM and select [2, Sect. 3.2]      *)
-(*         m1 `<=` m2 == m1 refines m2, i.e., every result of m1 is a         *)
-(*                       possible result of m2                                *)
-(*          f `<.=` g == refinement relation lifted to functions, i.e.,       *)
-(*                       forall x, f x `<=` g x                               *)
 (*          splits s == split a list nondeterministically                     *)
 (*                      type: seq A -> M (seq A * seq A) with M : plusMonad   *)
 (*         tsplits s == same as split with an enriched return type            *)
 (*                      M ((size s).-bseq A * (size s).-bseq A))              *)
+(*           qperm s == permute the list s                                    *)
+(*                      type: seq A -> M (seq A) with M : plusMonad           *)
+(*         m1 `<=` m2 == m1 refines m2, i.e., every result of m1 is a         *)
+(*                       possible result of m2                                *)
+(*          f `<.=` g == refinement relation lifted to functions, i.e.,       *)
+(*                       forall x, f x `<=` g x                               *)
 (*      nondetSyntax == syntax of nondeterministic monad                      *)
 (*                      (constructors: ndRet ndBind ndFail ndAlt)             *)
 (*        ndDenote x == semantics of x : nondetSytax                          *)
@@ -51,6 +53,7 @@ Require Import hierarchy monad_lib.
 (* - [1] mu2019tr2                                                            *)
 (* - [2] mu2019tr3                                                            *)
 (* - [3] gibbons2011icfp                                                      *)
+(* - [4] mu2020flops                                                          *)
 (******************************************************************************)
 
 Reserved Notation "m1 `<=` m2" (at level 70, no associativity).
@@ -828,6 +831,93 @@ Qed.
 End uperm.
 Arguments uperm {A} {M}.
 
+Section splits.
+Variable M : plusMonad.
+Variables (d : unit) (T : orderType d).
+
+Fixpoint splits {M : plusMonad} (A : UU0) (s : seq A) : M (seq A * seq A)%type :=
+  if s isn't x :: xs then Ret ([::], [::]) else
+    splits xs >>= (fun yz => Ret (x :: yz.1, yz.2) [~] Ret (yz.1, x :: yz.2)).
+
+Lemma leq_bseq_size (A : UU0) (xs : seq A) (b0 : (size xs).-bseq A) :
+  (size b0 <= (size xs).+1)%N.
+Proof. by rewrite (leq_trans (size_bseq b0)). Qed.
+
+Fixpoint tsplits {M : plusMonad} (A : UU0) (s : seq A)
+    : M ((size s).-bseq A * (size s).-bseq A)%type :=
+  if s isn't x :: xs then Ret ([bseq of [::]], [bseq of [::]])
+  else tsplits xs >>= (fun '(ys, zs) =>
+    Ret ([bseq of x :: ys], widen_bseq (leqnSn _) zs) [~]
+    Ret (widen_bseq (leqnSn _) ys, [bseq of x :: zs])).
+
+Local Lemma splits_nat_nil : @splits M nat [::] = Ret ([::], [::]).
+Proof. by []. Abort.
+
+Local Lemma splits_nat_01 : @splits M _ [:: O; 1]%nat = Ret ([::], [::]).
+Proof. rewrite /= bindretf alt_bindDl !bindretf /=. Abort.
+
+Local Open Scope mprog.
+Lemma splitsE A (s : seq A) :
+  splits s =
+  fmap (fun '(ys, zs) => (bseqval ys, bseqval zs)) (tsplits s) :> M _.
+Proof.
+elim: s => /= [|h t ih]; first by rewrite fmapE bindretf.
+rewrite {}ih /= !fmapE 2!bindA; bind_ext => -[a b] /=.
+by rewrite bindretf alt_bindDl 2!bindretf.
+Qed.
+Local Close Scope mprog.
+
+End splits.
+
+Section qperm.
+Variables (M : plusMonad) (A : UU0) (d : unit) (T : orderType d).
+
+Local Obligation Tactic := idtac.
+Program Definition qperm' (s : seq A)
+  (f : forall s', size s' < size s -> M (seq A)) : M (seq A) :=
+  if s isn't x :: xs then Ret [::] else
+    tsplits xs >>=
+      (fun '(ys, zs) => liftM2 (fun a b => a ++ x :: b) (f ys _) (f zs _)).
+Next Obligation.
+move=> [|h t] // ht x xs [xh ->] [a b] ys _ _ .
+exact: (leq_ltn_trans (size_bseq ys)).
+Qed.
+Next Obligation.
+move=> [|h t] // ht x xs [xh ->] [a b] _ zs _.
+exact: (leq_ltn_trans (size_bseq zs)).
+Qed.
+Next Obligation. by []. Qed.
+
+Definition qperm : seq A -> M (seq A) :=
+  Fix (@well_founded_size _) (fun _ => M _) qperm'.
+
+Lemma qperm'_Fix (s : seq A)
+  (f g : forall y, (size y < size s)%N -> M (seq A)) :
+  (forall y (p : (size y < size s)%N), f y p = g y p) -> qperm' f = qperm' g.
+Proof.
+move=> H; rewrite /qperm'; case: s f g H => // h t f g H.
+bind_ext => -[a b] /=.
+rewrite (_ : f = g) //; apply fun_ext_dep => s.
+by rewrite boolp.funeqE => ?; exact: H.
+Qed.
+
+Lemma qperm_nil : qperm [::] = Ret [::].
+Proof. by rewrite /qperm (Fix_eq _ _ _ qperm'_Fix). Qed.
+
+Lemma qperm_cons x xs : qperm (x :: xs) =
+  splits xs >>= (fun '(ys, zs) =>
+    liftM2 (fun a b => a ++ x :: b) (qperm ys) (qperm zs)).
+Proof.
+rewrite {1}/qperm {1}(Fix_eq _ _ _ qperm'_Fix) /=.
+rewrite splitsE /= fmapE bindA; bind_ext => -[? ?].
+by rewrite bindretf.
+Qed.
+
+Definition qpermE := (qperm_nil, qperm_cons).
+
+End qperm.
+Arguments qperm {M} {A}.
+
 Module SyntaxNondet.
 
 Inductive t : Type -> Type :=
@@ -855,6 +945,7 @@ End Exports.
 End SyntaxNondet.
 Export SyntaxNondet.Exports.
 
+(* TODO: move *)
 Section fastproduct.
 
 Definition product := foldr muln 1.
@@ -1073,44 +1164,6 @@ Lemma refin_ret_iperm (M : plusMonad) (A : UU0) (s : seq A) :
 Proof.
 by case: (@iperm_is_alt_ret M _ s) => m ->; rewrite /refin altA altmm.
 Qed.
-
-Section splits.
-Variable M : plusMonad.
-Variables (d : unit) (T : orderType d).
-
-Fixpoint splits {M : plusMonad} (A : UU0) (s : seq A) : M (seq A * seq A)%type :=
-  if s isn't x :: xs then Ret ([::], [::]) else
-    splits xs >>= (fun yz => Ret (x :: yz.1, yz.2) [~] Ret (yz.1, x :: yz.2)).
-
-Lemma leq_bseq_size (A : UU0) (xs : seq A) (b0 : (size xs).-bseq A) :
-  (size b0 <= (size xs).+1)%N.
-Proof. by rewrite (leq_trans (size_bseq b0)). Qed.
-
-Fixpoint tsplits {M : plusMonad} (A : UU0) (s : seq A)
-    : M ((size s).-bseq A * (size s).-bseq A)%type :=
-  if s isn't x :: xs then Ret ([bseq of [::]], [bseq of [::]])
-  else tsplits xs >>= (fun '(ys, zs) =>
-    Ret ([bseq of x :: ys], widen_bseq (leqnSn _) zs) [~]
-    Ret (widen_bseq (leqnSn _) ys, [bseq of x :: zs])).
-
-Local Lemma splits_nat_nil : @splits M nat [::] = Ret ([::], [::]).
-Proof. by []. Abort.
-
-Local Lemma splits_nat_01 : @splits M _ [:: O; 1]%nat = Ret ([::], [::]).
-Proof. rewrite /= bindretf alt_bindDl !bindretf /=. Abort.
-
-Local Open Scope mprog.
-Lemma splitsE A (s : seq A) :
-  splits s =
-  fmap (fun '(ys, zs) => (bseqval ys, bseqval zs)) (tsplits s) :> M _.
-Proof.
-elim: s => /= [|h t ih]; first by rewrite fmapE bindretf.
-rewrite {}ih /= !fmapE 2!bindA; bind_ext => -[a b] /=.
-by rewrite bindretf alt_bindDl 2!bindretf.
-Qed.
-Local Close Scope mprog.
-
-End splits.
 
 Section commute.
 Variable M : plusMonad.
