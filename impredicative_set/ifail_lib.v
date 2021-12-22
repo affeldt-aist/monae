@@ -36,6 +36,7 @@ Require Import ihierarchy imonad_lib.
 (* - [1] mu2019tr2                                                            *)
 (* - [2] mu2019tr3                                                            *)
 (* - [3] gibbons2011icfp                                                      *)
+(* - [4] mu2020flops                                                          *)
 (******************************************************************************)
 
 Reserved Notation "m1 `<=` m2" (at level 70, no associativity).
@@ -615,6 +616,7 @@ Definition uperm : seq A -> M (seq A) :=
 End uperm.
 Arguments uperm {A} {M}.
 
+(* TODO: move this example *)
 Section fastproduct.
 
 Definition product := foldr muln 1.

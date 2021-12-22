@@ -29,7 +29,7 @@ Local Open Scope monae_scope.
 Local Open Scope zarith_ext_scope.
 
 Section marray.
-Context {d : unit} {E : porderType d} {M : plusArrayMonad E Z_eqType}.
+Context {d : unit} {E : porderType d} {M : arrayMonad E Z_eqType}.
 Implicit Type i j : Z.
 
 Definition aswap i j : M unit :=
@@ -74,7 +74,7 @@ Qed.
 
 Lemma aput_writeListCR i j (x : E) (xs : seq E) : (j + (size xs)%:Z <= i)%Z ->
   aput i x >> writeList j xs = writeList j xs >> aput i x.
-Proof. by move=> ?; rewrite -writeList1 writeListC. Qed.
+Proof. by move=> ?; rewrite -writeList1 -writeListC. Qed.
 
 Lemma writeList_cat i (s1 s2 : seq E) :
   writeList i (s1 ++ s2) = writeList i s1 >> writeList (i + (size s1)%:Z) s2.
@@ -94,18 +94,18 @@ Definition write2L i '(s, t) := writeList i (s ++ t) >> Ret (size s, size t).
 Definition write3L i '(s, t, u) :=
   writeList i (s ++ t ++ u) >> Ret (size s, size t, size u).
 
-Lemma write_read i p : aput i p >> aget i = aput i p >> Ret p :> M _.
+Lemma write_read i x : aput i x >> aget i = aput i x >> Ret x :> M _.
 Proof. by rewrite -[RHS]aputget bindmret. Qed.
 
-Lemma write_readC i j p : i != j ->
-  aput i p >> aget j = aget j >>= (fun v => aput i p >> Ret v) :> M _.
+Lemma write_readC i j x : i != j ->
+  aput i x >> aget j = aget j >>= (fun v => aput i x >> Ret v) :> M _.
 Proof. by move => ?; rewrite -aputgetC // bindmret. Qed.
 
-(* see postulate introduce-read in the Agda code *)
-Lemma writeListRet i (p : E) (s : seq E) :
-  writeList i (p :: s) >> Ret p = writeList i (p :: s) >> aget i.
+(* see postulate introduce-read in IQsort.agda *)
+Lemma writeListRet i x (s : seq E) :
+  writeList i (x :: s) >> Ret x = writeList i (x :: s) >> aget i.
 Proof.
-elim/last_ind: s p i => [|h t ih] /= p i.
+elim/last_ind: s x i => [|h t ih] /= x i.
   by rewrite bindmskip write_read.
 rewrite writeList_rcons 2![in RHS]bindA.
 rewrite write_readC; last first.
@@ -155,11 +155,9 @@ rewrite aputget aputC; last by right.
 by rewrite -!bindA aputput bindA aputput.
 Qed.
 
-(* TODO: rename *)
-(* NB: used in the proof of writeList_ipartl *)
-Lemma introduce_read_sub i (p : E) (xs : seq E) (f : E -> M (nat * nat)%type):
-  writeList i (p :: xs) >> Ret p >> f p =
-  writeList i (p :: xs) >> aget i >>= f.
+Lemma writeList_ret_aget i x (s : seq E) (f : E -> M (nat * nat)%type):
+  writeList i (x :: s) >> Ret x >> f x =
+  writeList i (x :: s) >> aget i >>= f.
 Proof.
 rewrite writeListRet 2!bindA /=.
 rewrite aput_writeListC; last by apply/ltZ_addr => //; exact: leZZ.

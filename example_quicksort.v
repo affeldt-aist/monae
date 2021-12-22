@@ -214,6 +214,22 @@ bind_ext=> b'; rewrite commute_guard !assertE bindA bindretf.
 by rewrite sorted_cat_cons andbC -!andbA andbC !guard_and !bindA.
 Qed.
 
+Lemma nondetPlus_sub_slowsort (s : seq T) : nondetPlus_sub (slowsort s : M _).
+Proof.
+rewrite /slowsort kleisliE.
+have [syn syn_qperm] := nondetPlus_sub_qperm M s.
+exists (ndBind syn (fun a => ndBind
+  (if sorted a then ndRet tt else ndFail unit)
+  (fun _ : unit => ndRet a))).
+rewrite /= syn_qperm; bind_ext => s'.
+case: ifPn => sorteds'.
+  by rewrite /= bindretf assertE sorteds' guardT bindskipf.
+by rewrite /= assertE (negbTE sorteds') guardF bindfailf.
+Qed.
+
+Lemma qperm_slowsort : (qperm >=> slowsort) = slowsort :> (seq T -> M (seq T)).
+Proof. by rewrite /slowsort -kleisliA qperm_idempotent. Qed.
+
 End slowsort.
 Arguments slowsort {M} {_} {_}.
 

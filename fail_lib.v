@@ -20,6 +20,9 @@ Require Import hierarchy monad_lib.
 (*                       def if the list is empty                             *)
 (*             subs s == subsequence of a list                                *)
 (*                       (ref: Sect. 3.1, gibbons2012utp)                     *)
+(*      nondetSyntax == syntax of nondeterministic monad                      *)
+(*                      (constructors: ndRet ndBind ndFail ndAlt)             *)
+(*        ndDenote x == semantics of x : nondetSyntax                         *)
 (*         insert a s == insert a in the list s nondeterministically          *)
 (*            iperm s == nondeterministic permutation of the list s, defined  *)
 (*                       as a Fixpoint using insert [1, Sect. 3]              *)
@@ -39,15 +42,12 @@ Require Import hierarchy monad_lib.
 (*                      M ((size s).-bseq A * (size s).-bseq A))              *)
 (*           qperm s == permute the list s                                    *)
 (*                      type: seq A -> M (seq A) with M : plusMonad           *)
+(*  nondetPlus_sub m == m is a computation of the plusMonad that can be       *)
+(*                      written with the syntax of the nondeterministic monad *)
 (*         m1 `<=` m2 == m1 refines m2, i.e., every result of m1 is a         *)
 (*                       possible result of m2                                *)
 (*          f `<.=` g == refinement relation lifted to functions, i.e.,       *)
 (*                       forall x, f x `<=` g x                               *)
-(*      nondetSyntax == syntax of nondeterministic monad                      *)
-(*                      (constructors: ndRet ndBind ndFail ndAlt)             *)
-(*        ndDenote x == semantics of x : nondetSytax                          *)
-(*  nondetPlus_sub m == m is a computation of the plusMonad that can be       *)
-(*                      written with the syntax of the nondeterministic monad *)
 (*                                                                            *)
 (* ref:                                                                       *)
 (* - [1] mu2019tr2                                                            *)
@@ -388,6 +388,33 @@ by rewrite -ih cat_cons subs_cons.
 Qed.
 
 End subsequences_of_a_list.
+
+Module SyntaxNondet.
+
+Inductive t : Type -> Type :=
+| ret : forall A, A -> t A
+| bind : forall B A, t B -> (B -> t A) -> t A
+| fail : forall A, t A
+| alt : forall A, t A -> t A -> t A.
+
+Fixpoint denote {M : nondetMonad} {A} (m : t A) : M A :=
+  match m with
+  | ret A a => Ret a
+  | bind A B m f => denote m >>= (fun x => denote (f x))
+  | fail A => hierarchy.fail
+  | alt A m1 m2 => denote m1 [~] denote m2
+  end.
+
+Module Exports.
+Notation nondetSyntax := t.
+Notation ndAlt := alt.
+Notation ndRet := ret.
+Notation ndBind := bind.
+Notation ndFail := fail.
+Notation ndDenote := denote.
+End Exports.
+End SyntaxNondet.
+Export SyntaxNondet.Exports.
 
 Section insert.
 Context {M : altMonad} {A : UU0}.
@@ -832,10 +859,9 @@ End uperm.
 Arguments uperm {A} {M}.
 
 Section splits.
-Variable M : plusMonad.
-Variables (d : unit) (T : orderType d).
+Context {M : altMonad}.
 
-Fixpoint splits {M : plusMonad} (A : UU0) (s : seq A) : M (seq A * seq A)%type :=
+Fixpoint splits (A : UU0) (s : seq A) : M (seq A * seq A)%type :=
   if s isn't x :: xs then Ret ([::], [::]) else
     splits xs >>= (fun yz => Ret (x :: yz.1, yz.2) [~] Ret (yz.1, x :: yz.2)).
 
@@ -843,17 +869,17 @@ Lemma leq_bseq_size (A : UU0) (xs : seq A) (b0 : (size xs).-bseq A) :
   (size b0 <= (size xs).+1)%N.
 Proof. by rewrite (leq_trans (size_bseq b0)). Qed.
 
-Fixpoint tsplits {M : plusMonad} (A : UU0) (s : seq A)
+Fixpoint tsplits (A : UU0) (s : seq A)
     : M ((size s).-bseq A * (size s).-bseq A)%type :=
   if s isn't x :: xs then Ret ([bseq of [::]], [bseq of [::]])
   else tsplits xs >>= (fun '(ys, zs) =>
     Ret ([bseq of x :: ys], widen_bseq (leqnSn _) zs) [~]
     Ret (widen_bseq (leqnSn _) ys, [bseq of x :: zs])).
 
-Local Lemma splits_nat_nil : @splits M nat [::] = Ret ([::], [::]).
+Local Lemma splits_nat_nil : @splits nat [::] = Ret ([::], [::]).
 Proof. by []. Abort.
 
-Local Lemma splits_nat_01 : @splits M _ [:: O; 1]%nat = Ret ([::], [::]).
+Local Lemma splits_nat_01 : @splits _ [:: O; 1]%nat = Ret ([::], [::]).
 Proof. rewrite /= bindretf alt_bindDl !bindretf /=. Abort.
 
 Local Open Scope mprog.
@@ -868,6 +894,38 @@ Qed.
 Local Close Scope mprog.
 
 End splits.
+
+(* TODO: move earlier in the file *)
+Lemma bind_ext_guard {M : failMonad} (A : UU0) (b : bool) (m1 m2 : M A) :
+  (b -> m1 = m2) ->  guard b >> m1 = guard b >> m2.
+Proof. by case: b => [->//|_]; rewrite guardF !bindfailf. Qed.
+
+Section splits_nondetMonad.
+Context {M : nondetMonad}.
+
+Lemma splits_guard_subseq (A : eqType) (s : seq A) :
+  splits s = splits s >>= (fun x =>
+    guard [&& subseq x.1 s, subseq x.2 s & perm_eq (x.1 ++ x.2) s] >> Ret x) :> M _.
+Proof.
+have [n ns] := ubnP (size s); elim: n s ns => // n ih s ns.
+move: s ns => [ns |h t].
+  by rewrite bindretf perm_refl guardT bindskipf.
+rewrite [in X in X -> _]/= ltnS => ns.
+rewrite [in LHS]/= [splits (h :: t)]/= bindA.
+rewrite ih // [in LHS]bindA [in RHS]bindA; bind_ext => -[a b].
+rewrite [subseq]lock /= -lock.
+rewrite [in LHS]bindA [in RHS]bindA.
+apply: bind_ext_guard => /and3P[ta tb abt]; rewrite [subseq]lock /= -lock.
+rewrite !bindretf alt_bindDl !bindretf; congr (_ [~] _).
+  rewrite [subseq (_ :: _) _]/= eqxx ta andTb perm_cons abt andbT.
+  by rewrite (subseq_trans tb (subseq_cons _ _)) guardT bindskipf.
+rewrite (subseq_trans ta (subseq_cons _ _)) andTb.
+rewrite [subseq (_ :: _) _]/= eqxx tb andTb.
+rewrite -cat_rcons -cats1 -catA perm_catCA perm_cons abt.
+by rewrite guardT bindskipf.
+Qed.
+
+End splits_nondetMonad.
 
 Section qperm.
 Variables (M : plusMonad) (A : UU0) (d : unit) (T : orderType d).
@@ -918,34 +976,7 @@ Definition qpermE := (qperm_nil, qperm_cons).
 End qperm.
 Arguments qperm {M} {A}.
 
-Module SyntaxNondet.
-
-Inductive t : Type -> Type :=
-| ret : forall A, A -> t A
-| bind : forall B A, t B -> (B -> t A) -> t A
-| fail : forall A, t A
-| alt : forall A, t A -> t A -> t A.
-
-Fixpoint denote {M : nondetMonad} {A} (m : t A) : M A :=
-  match m with
-  | ret A a => Ret a
-  | bind A B m f => denote m >>= (fun x => denote (f x))
-  | fail A => hierarchy.fail
-  | alt A m1 m2 => denote m1 [~] denote m2
-  end.
-
-Module Exports.
-Notation nondetSyntax := t.
-Notation ndAlt := alt.
-Notation ndRet := ret.
-Notation ndBind := bind.
-Notation ndFail := fail.
-Notation ndDenote := denote.
-End Exports.
-End SyntaxNondet.
-Export SyntaxNondet.Exports.
-
-(* TODO: move *)
+(* TODO: move this example *)
 Section fastproduct.
 
 Definition product := foldr muln 1.
@@ -1054,16 +1085,154 @@ Qed.
 
 End shiftreset_examples.
 
-Lemma bind_ext_guard {M : failMonad} (A : UU0) (b : bool) (m1 m2 : M A) :
-  (b -> m1 = m2) ->  guard b >> m1 = guard b >> m2.
-Proof. by case: b => [->//|_]; rewrite guardF !bindfailf. Qed.
-
 Definition refin (M : altMonad) A (m1 m2 : M A) : Prop := m1 [~] m2 = m2.
 Notation "m1 `<=` m2" := (refin m1 m2).
 
 Lemma refin_bindr (M : altMonad) A B (m1 m2 : M A) (f : A -> M B) :
   (m1 `<=` m2) -> (m1 >>= f `<=` m2 >>= f).
 Proof. by move=> m12; rewrite /refin -alt_bindDl m12. Qed.
+
+Section commute.
+Variable M : plusMonad.
+Variables (d : unit) (T : orderType d).
+
+(* NB: on the model of nondetState_sub in state_lib.v *)
+Definition nondetPlus_sub A (n : M A) := {m | ndDenote m = n}.
+
+Lemma nondetPlus_sub_insert A (s : seq A) a : nondetPlus_sub (@insert M _ a s).
+Proof.
+elim: s => /= [|h t ih]; first by exists (ndRet [:: a]).
+rewrite insertE /=.
+have [syn synE] := ih.
+exists (ndAlt (ndRet [:: a, h & t]) (ndBind syn (fun x => ndRet (h :: x)))) => /=.
+by rewrite synE fmapE.
+Qed.
+
+Lemma nondetPlus_sub_splits A (s : seq A) : nondetPlus_sub (splits s : M _).
+Proof.
+elim: s => [|h t ih /=]; first by exists (ndRet ([::], [::])).
+have [syn syn_splits] := ih.
+exists (ndBind syn (fun '(a, b) => ndAlt (ndRet (h :: a, b)) (ndRet (a, h :: b)))).
+rewrite /= syn_splits.
+by bind_ext => -[].
+Qed.
+
+Lemma nondetPlus_sub_tsplits A (s : seq A) : nondetPlus_sub (tsplits s : M _).
+Proof.
+elim: s => [|h t ih]; first by exists (ndRet ([bseq], [bseq])).
+have [syn syn_tsplits] := ih.
+exists (ndBind syn (fun '(a, b) => ndAlt
+    (ndRet ([bseq of h :: a], widen_bseq (leqnSn _) b))
+    (ndRet (widen_bseq (leqnSn _) a, [bseq of h :: b])))).
+by rewrite /= syn_tsplits; bind_ext => -[].
+Qed.
+
+Lemma nondetPlus_sub_liftM2 A B C (f : A -> B -> C) (ma : M A) (mb : M B) :
+  nondetPlus_sub ma -> nondetPlus_sub mb ->
+  nondetPlus_sub (liftM2 f ma mb).
+Proof.
+move=> [s1 s1_ma] [s2 s2_mb].
+exists (ndBind s1 (fun a => ndBind s2 (fun b => ndRet (f a b)))).
+by rewrite /= s1_ma s2_mb.
+Qed.
+
+Lemma nondetPlus_sub_qperm A (s : seq A) : nondetPlus_sub (qperm s : M _).
+Proof.
+have [n sn] := ubnP (size s); elim: n s => // n ih s in sn *.
+move: s => [|h t] in sn *; first by exists (ndRet [::]); rewrite qperm_nil.
+rewrite qperm_cons splitsE fmapE bindA.
+have [syn syn_tsplits] := nondetPlus_sub_tsplits t.
+have nondetPlus_sub_liftM2_qperm : forall a b : (size t).-bseq A,
+  nondetPlus_sub (liftM2 (fun x y => x ++ h :: y) (qperm a) (qperm b : M _)).
+  move=> a b; apply nondetPlus_sub_liftM2 => //; apply: ih.
+  - by rewrite (leq_ltn_trans (size_bseq a)).
+  - by rewrite (leq_ltn_trans (size_bseq b)).
+exists (ndBind syn (fun a => sval (nondetPlus_sub_liftM2_qperm a.1 a.2))).
+rewrite /= syn_tsplits; bind_ext => -[a b] /=.
+by rewrite bindretf; case: (nondetPlus_sub_liftM2_qperm _ _).
+Qed.
+
+Lemma commute_plus
+  A (m : M A) B (n : M B) C (f : A -> B -> M C) :
+  nondetPlus_sub m -> commute m n f.
+Proof.
+case=> x.
+elim: x m n f => [{}A a m n f <-| D {}A n0 ih0 n1 ih1 m n2 f <- |
+  D m n f <- | D n0 ih0 n1 ih1 m n2 f <-].
+- rewrite /commute bindretf.
+  by under [RHS]eq_bind do rewrite bindretf.
+- rewrite /commute /= bindA.
+  under eq_bind. move=> x; rewrite (ih1 x) //. over.
+  rewrite ih0 //.
+  by under eq_bind do rewrite -bindA.
+- rewrite /commute /= bindfailf.
+  under eq_bind do rewrite bindfailf.
+  by rewrite bindmfail.
+- rewrite /commute /= alt_bindDl.
+  under [RHS]eq_bind do rewrite alt_bindDl.
+  by rewrite alt_bindDr ih0 // ih1 //.
+Qed.
+
+End commute.
+
+Section splits_plusMonad.
+Context {M : plusMonad}.
+
+Lemma iperm_cons_splits (A : eqType) (s : seq A) p :
+  iperm (p :: s) = splits s >>= (fun '(ys, zs) =>
+                  liftM2 (fun x y => x ++ p :: y) (iperm ys) (iperm zs)) :> M _.
+Proof.
+have [n ns] := ubnP (size s); elim: n s ns => // n ih s ns.
+move: s ns => [ns |h t].
+  by rewrite /= bindretf insertE bindretf /= /liftM2 /= !bindretf.
+rewrite [in X in X -> _]/= ltnS => ns.
+rewrite [in RHS]/= bindA.
+under eq_bind do rewrite alt_bindDl 2!bindretf.
+transitivity (iperm [:: h, p & t] : M _).
+  by apply: perm_eq_iperm; rewrite -cat1s -(cat1s h) perm_catCA.
+rewrite [p :: t]lock /= -lock ih // bindA; bind_ext => -[a b] /=.
+rewrite liftM2E /liftM2 /= bindA -alt_bindDr; bind_ext => a'.
+rewrite bindA (_ : commute (insert h a') _ _) //; last first.
+  exact/commute_plus/nondetPlus_sub_insert.
+rewrite -alt_bindDr.
+by under eq_bind do rewrite insert_cat.
+Qed.
+
+End splits_plusMonad.
+
+Section qperm_lemmas.
+Context {M : plusMonad} {A : eqType}.
+
+Lemma iperm_qperm : @iperm M A = @qperm M A.
+Proof.
+rewrite boolp.funeqE => s.
+have [n ns] := ubnP (size s); elim: n s ns => // n ih s ns.
+move: s ns => [na |h t]; first by rewrite qperm_nil.
+rewrite [in X in X -> _]/= ltnS => ns.
+rewrite qperm_cons iperm_cons_splits splits_guard_subseq !bindA.
+bind_ext => -[a b] /=; rewrite !bindA.
+apply: bind_ext_guard => /and3P[ta tb _].
+rewrite !bindretf ih; last first.
+  by rewrite (leq_trans _ ns)// ltnS; apply: size_subseq.
+by rewrite ih // (leq_trans _ ns)// ltnS; apply: size_subseq.
+Qed.
+
+Lemma perm_eq_qperm (a b : seq A) : perm_eq a b -> qperm a = qperm b :> M _.
+Proof. by rewrite -!iperm_qperm; exact: perm_eq_iperm. Qed.
+
+Lemma qperm_cons_rcons h (t : seq A) : qperm (h :: t) = qperm (rcons t h) :> M _.
+Proof. by apply: perm_eq_qperm; rewrite perm_sym perm_rcons perm_refl. Qed.
+
+(* NB: postulate perm-snoc in Nondet.agda *)
+Lemma qperm_rcons (s : seq A) x :
+  qperm (rcons s x) = qperm s >>= (fun s' => qperm (rcons s' x)) :> M _.
+Proof. by rewrite -iperm_qperm iperm_rcons_bind. Qed.
+
+(* NB: postulate perm-idempotent in Nondet.agda *)
+Lemma qperm_idempotent : qperm >=> qperm = qperm :> (seq A -> M (seq A)).
+Proof. by rewrite -iperm_qperm iperm_idempotent. Qed.
+
+End qperm_lemmas.
 
 Import Order.TTheory.
 Local Open Scope order_scope.
@@ -1164,71 +1333,3 @@ Lemma refin_ret_iperm (M : plusMonad) (A : UU0) (s : seq A) :
 Proof.
 by case: (@iperm_is_alt_ret M _ s) => m ->; rewrite /refin altA altmm.
 Qed.
-
-Section commute.
-Variable M : plusMonad.
-Variables (d : unit) (T : orderType d).
-
-(* NB: on the model of nondetState_sub in state_lib.v *)
-Definition nondetPlus_sub (M : plusMonad) A (n : M A) :=
-  {m | ndDenote m = n}.
-
-Lemma nondetPlus_sub_insert A (s : seq A) a : nondetPlus_sub (@insert M _ a s).
-Proof.
-elim: s => /= [|h t ih]; first by exists (ndRet [:: a]).
-rewrite insertE /=.
-have [syn synE] := ih.
-exists (ndAlt (ndRet [:: a, h & t]) (ndBind syn (fun x => ndRet (h :: x)))) => /=.
-by rewrite synE fmapE.
-Qed.
-
-Lemma nondetPlus_sub_splits A (s : seq A) : nondetPlus_sub (splits s : M _).
-Proof.
-elim: s => [|h t ih /=]; first by exists (ndRet ([::], [::])).
-have [syn syn_splits] := ih.
-exists (ndBind syn (fun '(a, b) => ndAlt (ndRet (h :: a, b)) (ndRet (a, h :: b)))).
-rewrite /= syn_splits.
-by bind_ext => -[].
-Qed.
-
-Lemma nondetPlus_sub_tsplits A (s : seq A) : nondetPlus_sub (tsplits s : M _).
-Proof.
-elim: s => [|h t ih]; first by exists (ndRet ([bseq], [bseq])).
-have [syn syn_tsplits] := ih.
-exists (ndBind syn (fun '(a, b) => ndAlt
-    (ndRet ([bseq of h :: a], widen_bseq (leqnSn _) b))
-    (ndRet (widen_bseq (leqnSn _) a, [bseq of h :: b])))).
-by rewrite /= syn_tsplits; bind_ext => -[].
-Qed.
-
-Lemma nondetPlus_sub_liftM2 A B C (f : A -> B -> C) (ma : M A) (mb : M B) :
-  nondetPlus_sub ma -> nondetPlus_sub mb ->
-  nondetPlus_sub (liftM2 f ma mb).
-Proof.
-move=> [s1 s1_ma] [s2 s2_mb].
-exists (ndBind s1 (fun a => ndBind s2 (fun b => ndRet (f a b)))).
-by rewrite /= s1_ma s2_mb.
-Qed.
-
-Lemma commute_plus
-  A (m : M A) B (n : M B) C (f : A -> B -> M C) :
-  nondetPlus_sub m -> commute m n f.
-Proof.
-case=> x.
-elim: x m n f => [{}A a m n f <-| D {}A n0 ih0 n1 ih1 m n2 f <- |
-  D m n f <- | D n0 ih0 n1 ih1 m n2 f <-].
-- rewrite /commute bindretf.
-  by under [RHS]eq_bind do rewrite bindretf.
-- rewrite /commute /= bindA.
-  under eq_bind. move=> x; rewrite (ih1 x) //. over.
-  rewrite ih0 //.
-  by under eq_bind do rewrite -bindA.
-- rewrite /commute /= bindfailf.
-  under eq_bind do rewrite bindfailf.
-  by rewrite bindmfail.
-- rewrite /commute /= alt_bindDl.
-  under [RHS]eq_bind do rewrite alt_bindDl.
-  by rewrite alt_bindDr ih0 // ih1 //.
-Qed.
-
-End commute.
