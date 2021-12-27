@@ -648,7 +648,7 @@ End more_about_qperm.
 Section refin_qperm_writeList.
 Variable (d : unit) (E : orderType d) (M : plusArrayMonad E Z_eqType).
 
-(* eqn 11 in mu2020flops *)
+(* eqn 11 in mu2020flops, introduce-swap in IPartl.agda *)
 Lemma refin_qperm_writeList_cons (i : Z) x (s : seq E) :
   writeList i (rcons s x) >> aswap (M := M) i (i + (size s)%:Z)
   `<=`

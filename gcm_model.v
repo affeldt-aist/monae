@@ -646,18 +646,6 @@ unlock => /=.
 by rewrite eta0E eta1E.
 Qed.
 
-Section move_to_classical_sets_ext.
-Lemma eq_bigcup_cond :
-  forall (T U : Type) (P Q : set U) (X Y : U -> set T),
-  P = Q -> (forall i, P i -> X i = Y i) ->
-  \bigcup_(i in P) X i = \bigcup_(i in Q) Y i.
-Proof.
-move=> ? ? P Q X Y pq XY.
-by rewrite eqEsubset; split=> x; case=> j; rewrite -?pq=> ?; rewrite -?XY // => ?;
-  eexists j; rewrite -?pq // -XY //.
-Qed.
-End move_to_classical_sets_ext.
-
 Local Notation F1 := free_semiCompSemiLattConvType.
 Local Notation F0 := free_convType.
 Local Notation FC := free_choiceType.
@@ -684,8 +672,8 @@ have-> : F1J = @necset_join.F1join0 _ :> (_ -> _).
   rewrite /F1J /= /necset_join.F1join0' /=.
   rewrite /free_semiCompSemiLattConvType_mor; unlock=> /=.
   by rewrite eps0E /=.
-congr hull; apply eq_bigcup_cond=> //= x nXx.
-by case/boolP: (x \in necset_join.F1join0 X)=> [|/negP]; rewrite in_setE.
+congr hull; apply: classical_sets.eq_bigcup; first by rewrite -eqEsubset.
+by move=> x nXx; case: ifPn => // /negP; rewrite in_setE.
 Qed.
 
 End gcm_opsE.
