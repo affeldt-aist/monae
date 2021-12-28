@@ -180,7 +180,7 @@ Local Notation sorted := (sorted <=%O).
 Definition slowsort : seq T -> M (seq T) := (qperm >=> assert sorted).
 
 Lemma slowsort_nil : slowsort [::] = Ret [::].
-Proof. 
+Proof.
 by rewrite /slowsort kleisliE qpermE bindretf assertE guardT bindskipf.
 Qed.
 
@@ -204,6 +204,19 @@ rewrite (commute_guard (sorted a')).
 rewrite (commute_guard (all (<= p) a')) commute_guard guard_all_qperm.
 bind_ext=> b'; rewrite commute_guard !assertE bindA bindretf.
 by rewrite sorted_cat_cons andbC -!andbA andbC !guard_and !bindA.
+Qed.
+
+Lemma refin_partition_slowsort (p : T) (s : seq T) :
+  Ret (partition p s) >>= (fun '(a, b) =>
+  slowsort a >>= (fun a' => slowsort b >>= (fun b' => Ret (a' ++ p :: b'))))
+  `<=`
+  (slowsort (p :: s) : M _).
+Proof.
+rewrite slowsort_splits.
+apply: refin_trans; first exact/refin_bindr/(partition_spec M p s).
+rewrite bindA; apply: refin_bindl => -[a b].
+rewrite assertE (bindA _ (fun _ => Ret (a, b))) bindretf /= bindA.
+exact: refin_refl.
 Qed.
 
 Lemma nondetPlus_sub_slowsort (s : seq T) : nondetPlus_sub (slowsort s : M _).

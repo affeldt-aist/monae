@@ -170,3 +170,52 @@ Fixpoint readList i (n : nat) : M (seq E) :=
   if n isn't k.+1 then Ret [::] else liftM2 cons (aget i) (readList (i + 1) k).
 
 End marray.
+
+Section refin_writeList_aswap.
+Variable (d : unit) (E : orderType d) (M : plusArrayMonad E Z_eqType).
+
+(* eqn 13 in mu2020flops, postulate introduce-swap in IQSort.agda *)
+Lemma refin_writeList_cons_aswap (i : Z) x (s : seq E) :
+  writeList i (x :: s) >> aswap (M := M) i (i + (size s)%:Z)
+  `<=`
+  qperm s >>= (fun s' => writeList i (rcons s' x)).
+Proof.
+elim/last_ind: s => [|t h ih] /=.
+  rewrite qperm_nil bindmskip bindretf addZ0 aswapxx /= bindmskip.
+  exact: refin_refl.
+rewrite bindA.
+apply: (refin_trans _ (refin_bindr _ (qperm_refin_cons _ _ _))).
+by rewrite bindretf -bindA -writeList_aswap; exact: refin_refl.
+Qed.
+
+(* eqn 11 in mu2020flops, introduce-swap in IPartl.agda *)
+Lemma refin_writeList_rcons_aswap (i : Z) x (s : seq E) :
+  writeList i (rcons s x) >> aswap (M := M) i (i + (size s)%:Z)
+  `<=`
+  qperm s >>= (fun s' => writeList (M := M) i (x :: s')).
+Proof.
+case: s => [|h t] /=.
+  rewrite qperm_nil bindmskip bindretf addZ0 aswapxx bindmskip.
+  exact: refin_refl.
+rewrite bindA writeList_rcons -aput_writeList_rcons.
+apply: (refin_trans _ (refin_bindr _ (qperm_refin_rcons _ _ _))).
+by rewrite bindretf; exact: refin_refl.
+Qed.
+
+(* bottom of the page 11, used in the proof of lemma 10 *)
+Lemma refin_writeList_rcons_cat_aswap (i : Z) x (ys zs : seq E) :
+  writeList i (rcons (ys ++ zs) x) >>
+    aswap (M := M) (i + (size ys)%:Z) (i + (size (ys ++ zs))%:Z)
+  `<=`
+  qperm zs >>= (fun zs' => writeList i (ys ++ x :: zs')).
+Proof.
+under [in X in _ `<=` X]eq_bind do rewrite writeList_cat.
+have -> : commute (qperm zs) _ _.
+  by move=> *; exact/commute_plus/nondetPlus_sub_qperm.
+rewrite rcons_cat writeList_cat bindA.
+apply: refin_bindl => -[].
+rewrite size_cat intRD addZA.
+exact: refin_writeList_rcons_aswap.
+Qed.
+
+End refin_writeList_aswap.

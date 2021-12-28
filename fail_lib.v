@@ -1333,3 +1333,16 @@ Lemma refin_ret_iperm (M : plusMonad) (A : UU0) (s : seq A) :
 Proof.
 by case: (@iperm_is_alt_ret M _ s) => m ->; rewrite /refin altA altmm.
 Qed.
+
+(* NB: postulate return⊑perm in in Nondet.agda *)
+Lemma refin_qperm_ret (M : plusMonad) (A : eqType) (s : seq A) :
+  (Ret s : M _) `<=` qperm s.
+Proof. by rewrite -iperm_qperm; exact: refin_ret_iperm. Qed.
+
+Lemma qperm_refin_rcons (M : plusMonad) (A : eqType) h (t : seq A) :
+  (Ret (rcons t h) : M _) `<=` qperm (h :: t).
+Proof. by rewrite qperm_cons_rcons; exact: refin_qperm_ret. Qed.
+
+Lemma qperm_refin_cons (M : plusMonad) (A : eqType) h (t : seq A) :
+  (Ret (h :: t) : M _) `<=` qperm (rcons t h).
+Proof. by rewrite -qperm_cons_rcons; exact: refin_qperm_ret. Qed.
