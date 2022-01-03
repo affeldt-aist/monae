@@ -91,8 +91,17 @@ Definition writeL i (s : seq E) := writeList i s >> Ret (size s).
 
 Definition write2L i '(s, t) := writeList i (s ++ t) >> Ret (size s, size t).
 
+Lemma write2LE i a b D (f : nat * nat -> M D) :
+  write2L i (a, b) >>= f = writeList i (a ++ b) >> f (size a, size b).
+Proof. by rewrite /write2L bindA bindretf. Qed.
+
 Definition write3L i '(s, t, u) :=
   writeList i (s ++ t ++ u) >> Ret (size s, size t, size u).
+
+Lemma write3LE i x D (f : nat * nat * nat -> M D) :
+  write3L i x >>= f = let '(s, t, u) := x in
+    writeList i (s ++ t ++ u) >> f (size s, size t, size u).
+Proof. by move: x => -[[x y] z]; rewrite /write3L bindA bindretf. Qed.
 
 Lemma write_read i x : aput i x >> aget i = aput i x >> Ret x :> M _.
 Proof. by rewrite -[RHS]aputget bindmret. Qed.

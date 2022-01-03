@@ -81,10 +81,8 @@ Lemma guard_splits A (p : pred T) (t : seq T) (f : seq T * seq T -> M A) :
   splits t >>= (fun x => guard (all p x.1) >> guard (all p x.2) >> f x).
 Proof.
 rewrite -commute_guard.
-elim: t p A f => [|h t ih] p A f.
-  by rewrite 2!bindretf guardT bindmskip.
-rewrite [LHS]/= guard_and 2!bindA ih.
-rewrite /= commute_guard bindA.
+elim: t => [|h t ih] in p A f *; first by rewrite 2!bindretf guardT bindmskip.
+rewrite [LHS]/= guard_and 2!bindA ih /= commute_guard bindA.
 bind_ext => -[a b] /=.
 rewrite !alt_bindDl !bindretf /= !guard_and !bindA !alt_bindDr.
 by congr (_ [~] _); rewrite commute_guard.
@@ -115,8 +113,7 @@ Qed.
 End guard_commute.
 
 Section partition.
-Variable M : plusMonad.
-Variables (d : unit) (T : orderType d).
+Variables (M : plusMonad) (d : unit) (T : orderType d).
 
 Definition is_partition p (yz : seq T * seq T) :=
   all (<= p) yz.1 && all (>= p) yz.2.
@@ -145,16 +142,15 @@ by case: ifPn => xp; rewrite ?(addSn,addnS) abxs.
 Qed.
 
 Lemma partition_spec (p : T) (xs : seq T) :
-  ((@ret M _) \o partition p) xs `<=`
-  splits xs >>= assert (is_partition p).
+  ((@ret M _) \o partition p) xs `<=` splits xs >>= assert (is_partition p).
 Proof.
 elim: xs p => [/=|x xs ih] p.
-rewrite /is_partition bindretf !assertE /= guardT bindskipf; exact: refin_refl.
+  rewrite bindretf !assertE /is_partition guardT bindskipf; exact: refin_refl.
 rewrite /= bindA.
 under eq_bind do rewrite alt_bindDl 2!bindretf 2!assertE.
 under eq_bind do rewrite 2!is_partition_consE 2!guard_and 2!bindA.
 apply: (refin_trans _ (refin_bindl _ _)); last first => [yz|].
-  exact /(refin_alt (refin_refl _)) /refin_bindr /refin_guard_le.
+  exact/(refin_alt (refin_refl _))/refin_bindr/refin_guard_le.
 apply: (refin_trans _ (refin_bindl _ _)); last first => [yz|].
   exact: refin_if_guard.
 under eq_bind do rewrite -bind_if.
@@ -172,8 +168,7 @@ Qed.
 End partition.
 
 Section slowsort.
-Variable M : plusMonad.
-Variables (d : unit) (T : orderType d).
+Variables (M : plusMonad) (d : unit) (T : orderType d).
 
 Local Notation sorted := (sorted <=%O).
 
@@ -198,7 +193,8 @@ Lemma slowsort_splits p s : slowsort (p :: s) =
 Proof.
 rewrite slowsort_cons; bind_ext=> {s} -[a b].
 rewrite /is_partition /slowsort !kleisliE.
-rewrite guard_and !bindA (commute_guard (all (>= p) b)) commute_guard guard_all_qperm.
+rewrite guard_and !bindA (commute_guard (all (>= p) b)) commute_guard.
+rewrite guard_all_qperm.
 bind_ext=> a'; rewrite commute_guard assertE bindA bindretf bindA.
 rewrite (commute_guard (sorted a')).
 rewrite (commute_guard (all (<= p) a')) commute_guard guard_all_qperm.
@@ -206,7 +202,7 @@ bind_ext=> b'; rewrite commute_guard !assertE bindA bindretf.
 by rewrite sorted_cat_cons andbC -!andbA andbC !guard_and !bindA.
 Qed.
 
-Lemma refin_partition_slowsort (p : T) (s : seq T) :
+Lemma refin_partition_slowsort p s :
   Ret (partition p s) >>= (fun '(a, b) =>
   slowsort a >>= (fun a' => slowsort b >>= (fun b' => Ret (a' ++ p :: b'))))
   `<=`
@@ -219,7 +215,7 @@ rewrite assertE (bindA _ (fun _ => Ret (a, b))) bindretf /= bindA.
 exact: refin_refl.
 Qed.
 
-Lemma nondetPlus_sub_slowsort (s : seq T) : nondetPlus_sub (slowsort s : M _).
+Lemma nondetPlus_sub_slowsort s : nondetPlus_sub (slowsort s : M _).
 Proof.
 rewrite /slowsort kleisliE.
 have [syn syn_qperm] := nondetPlus_sub_qperm M s.
@@ -265,8 +261,7 @@ Definition partition_slowsort (xs : seq T) : M (seq T) :=
   let: (ys, zs) := partition h t in
   liftM2 (fun a b => a ++ h :: b) (slowsort ys) (slowsort zs).
 
-Lemma partition_slowsort_spec :
-  partition_slowsort `<.=` slowsort.
+Lemma partition_slowsort_spec : partition_slowsort `<.=` slowsort.
 Proof.
 move; elim => [/=|h t ih].
 rewrite slowsort_nil; exact: refin_refl.
@@ -282,8 +277,7 @@ rewrite -bindA; apply: refin_trans; last exact/refin_bindr/partition_spec.
 rewrite bindretf /partition_slowsort; exact: refin_refl.
 Qed.
 
-Lemma qsort_spec :
-  Ret \o qsort `<.=` (@slowsort M _ _).
+Lemma qsort_spec : Ret \o qsort `<.=` (@slowsort M _ _).
 Proof.
 move=> s /=.
 apply qsort_ind => [{}s _|{}s h t _ ys zs pht ihys ihzs]. (* qsort_ind *)

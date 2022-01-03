@@ -20,9 +20,9 @@ Require Import hierarchy monad_lib.
 (*                       def if the list is empty                             *)
 (*             subs s == subsequence of a list                                *)
 (*                       (ref: Sect. 3.1, gibbons2012utp)                     *)
-(*      nondetSyntax == syntax of nondeterministic monad                      *)
-(*                      (constructors: ndRet ndBind ndFail ndAlt)             *)
-(*        ndDenote x == semantics of x : nondetSyntax                         *)
+(*       nondetSyntax == syntax of nondeterministic monad                     *)
+(*                       (constructors: ndRet ndBind ndFail ndAlt)            *)
+(*         ndDenote x == semantics of x : nondetSyntax                        *)
 (*         insert a s == insert a in the list s nondeterministically          *)
 (*            iperm s == nondeterministic permutation of the list s, defined  *)
 (*                       as a Fixpoint using insert [1, Sect. 3]              *)
@@ -36,14 +36,19 @@ Require Import hierarchy monad_lib.
 (*                       computes a permutation of s using (t)select          *)
 (*            uperm s == nondeterministically computes a permutation of s,    *)
 (*                       defined using unfoldM and select [2, Sect. 3.2]      *)
-(*          splits s == split a list nondeterministically                     *)
-(*                      type: seq A -> M (seq A * seq A) with M : plusMonad   *)
-(*         tsplits s == same as split with an enriched return type            *)
-(*                      M ((size s).-bseq A * (size s).-bseq A))              *)
-(*           qperm s == permute the list s                                    *)
+(*        dassert p a == computation of type M {x | p x} that fails if a does *)
+(*                       not satisfy p or return a otherwise (with a proof    *)
+(*                       that is satisfies p)                                 *)
+(*           splits s == split a list nondeterministically                    *)
+(*                       type: seq A -> M (seq A * seq A) with M : plusMonad  *)
+(*      splits_bseq s == same as split with an enriched return type           *)
+(*                       M ((size s).-bseq A * (size s).-bseq A))             *)
+(*          dsplits s == same as split with an enriched return type           *)
+(*                       M {x : seq A * seq A | size x.1 + size x.2 == n}     *)
+(*            qperm s == permute the list s                                   *)
 (*                      type: seq A -> M (seq A) with M : plusMonad           *)
-(*  nondetPlus_sub m == m is a computation of the plusMonad that can be       *)
-(*                      written with the syntax of the nondeterministic monad *)
+(*   nondetPlus_sub m == m is a computation of the plusMonad that can be      *)
+(*                       written with the syntax of the nondeterministic monad*)
 (*         m1 `<=` m2 == m1 refines m2, i.e., every result of m1 is a         *)
 (*                       possible result of m2                                *)
 (*          f `<.=` g == refinement relation lifted to functions, i.e.,       *)
@@ -858,34 +863,31 @@ Qed.
 End uperm.
 Arguments uperm {A} {M}.
 
-Section splits.
-Context {M : altMonad}.
+Section dassert.
+Context {M : failMonad} (N : failMonad) (A : UU0) (p : pred A).
 
-Fixpoint splits (A : UU0) (s : seq A) : M (seq A * seq A)%type :=
+Definition dassert (a : A) : M { a | p a } :=
+  if Bool.bool_dec (p a) true is left pa then Ret (exist _ _ pa) else fail.
+
+End dassert.
+
+Section splits.
+Context {M : altMonad} {A : UU0}.
+Implicit Types s : seq A.
+
+Fixpoint splits s : M (seq A * seq A)%type :=
   if s isn't x :: xs then Ret ([::], [::]) else
     splits xs >>= (fun yz => Ret (x :: yz.1, yz.2) [~] Ret (yz.1, x :: yz.2)).
 
-Lemma leq_bseq_size (A : UU0) (xs : seq A) (b0 : (size xs).-bseq A) :
-  (size b0 <= (size xs).+1)%N.
-Proof. by rewrite (leq_trans (size_bseq b0)). Qed.
-
-Fixpoint tsplits (A : UU0) (s : seq A)
-    : M ((size s).-bseq A * (size s).-bseq A)%type :=
+Fixpoint splits_bseq s : M ((size s).-bseq A * (size s).-bseq A)%type :=
   if s isn't x :: xs then Ret ([bseq of [::]], [bseq of [::]])
-  else tsplits xs >>= (fun '(ys, zs) =>
+  else splits_bseq xs >>= (fun '(ys, zs) =>
     Ret ([bseq of x :: ys], widen_bseq (leqnSn _) zs) [~]
     Ret (widen_bseq (leqnSn _) ys, [bseq of x :: zs])).
 
-Local Lemma splits_nat_nil : @splits nat [::] = Ret ([::], [::]).
-Proof. by []. Abort.
-
-Local Lemma splits_nat_01 : @splits _ [:: O; 1]%nat = Ret ([::], [::]).
-Proof. rewrite /= bindretf alt_bindDl !bindretf /=. Abort.
-
 Local Open Scope mprog.
-Lemma splitsE A (s : seq A) :
-  splits s =
-  fmap (fun '(ys, zs) => (bseqval ys, bseqval zs)) (tsplits s) :> M _.
+Lemma splitsE s : splits s =
+  fmap (fun '(ys, zs) => (bseqval ys, bseqval zs)) (splits_bseq s) :> M _.
 Proof.
 elim: s => /= [|h t ih]; first by rewrite fmapE bindretf.
 rewrite {}ih /= !fmapE 2!bindA; bind_ext => -[a b] /=.
@@ -895,9 +897,17 @@ Local Close Scope mprog.
 
 End splits.
 
+Local Lemma splits_nat_nil (M : altMonad) :
+  @splits M nat [::] = Ret ([::], [::]).
+Proof. by []. Abort.
+
+Local Lemma splits_nat_01 (M : altMonad) :
+  @splits M _ [:: O; 1]%nat = Ret ([::], [::]).
+Proof. rewrite /= bindretf alt_bindDl !bindretf /=. Abort.
+
 (* TODO: move earlier in the file *)
 Lemma bind_ext_guard {M : failMonad} (A : UU0) (b : bool) (m1 m2 : M A) :
-  (b -> m1 = m2) ->  guard b >> m1 = guard b >> m2.
+  (b -> m1 = m2) -> guard b >> m1 = guard b >> m2.
 Proof. by case: b => [->//|_]; rewrite guardF !bindfailf. Qed.
 
 Section splits_nondetMonad.
@@ -925,7 +935,39 @@ rewrite -cat_rcons -cats1 -catA perm_catCA perm_cons abt.
 by rewrite guardT bindskipf.
 Qed.
 
+Definition dsplitsT (A : UU0) n := {x : seq A * seq A | size x.1 + size x.2 == n}.
+Definition dsplitsT1 (A : UU0) n (a : dsplitsT A n) : seq A := (sval a).1.
+Definition dsplitsT2 (A : UU0) n (a : dsplitsT A n) : seq A := (sval a).2.
+
+Definition dsplits (A : UU0) (s : seq A) : M (dsplitsT A (size s)) :=
+  splits s >>= dassert [pred n | size n.1 + size n.2 == size s].
+
 End splits_nondetMonad.
+
+Section splits_plusMonad.
+Context {M : plusMonad}.
+
+Lemma splits_guard (A : UU0) (s : seq A) :
+  splits s = splits s >>=
+    (fun x => guard (size x.1 + size x.2 == size s) >> Ret x) :> M _.
+Proof.
+elim: s => [|h t ih]; first by rewrite bindretf addn0 eqxx guardT bindskipf.
+rewrite /= {1}ih !bindA; bind_ext => -[a b] /=.
+by rewrite alt_bindDl !bindretf /= bindA bindretf alt_bindDr addSn addnS eqSS.
+Qed.
+
+Local Open Scope mprog.
+Lemma dsplitsE (A : UU0) (s : seq A) :
+  splits s = fmap (fun x => (dsplitsT1 x, dsplitsT2 x)) (dsplits s) :> M _.
+Proof.
+rewrite fmapE /dsplits /= bindA [LHS]splits_guard; bind_ext => -[a b].
+rewrite /dassert; case: Bool.bool_dec => /= [|/negP] abs.
+  by rewrite !bindretf /= abs guardT bindskipf.
+by rewrite (negbTE abs) guardF 2!bindfailf.
+Qed.
+Local Close Scope mprog.
+
+End splits_plusMonad.
 
 Section qperm.
 Variables (M : plusMonad) (A : UU0) (d : unit) (T : orderType d).
@@ -934,7 +976,7 @@ Local Obligation Tactic := idtac.
 Program Definition qperm' (s : seq A)
   (f : forall s', size s' < size s -> M (seq A)) : M (seq A) :=
   if s isn't x :: xs then Ret [::] else
-    tsplits xs >>=
+    splits_bseq xs >>=
       (fun '(ys, zs) => liftM2 (fun a b => a ++ x :: b) (f ys _) (f zs _)).
 Next Obligation.
 move=> [|h t] // ht x xs [xh ->] [a b] ys _ _ .
@@ -1092,6 +1134,11 @@ Lemma refin_bindr (M : altMonad) A B (m1 m2 : M A) (f : A -> M B) :
   (m1 `<=` m2) -> (m1 >>= f `<=` m2 >>= f).
 Proof. by move=> m12; rewrite /refin -alt_bindDl m12. Qed.
 
+Lemma refin_if (M : altMonad) A (m1 m2 m1' m2' : M A) (b : bool) :
+  (b -> m1 `<=` m1') -> (~~ b -> m2 `<=` m2') ->
+  (if b then m1 else m2) `<=` (if b then m1' else m2').
+Proof. by case: b => [+ _|_]; exact. Qed.
+
 Section commute.
 Variable M : plusMonad.
 Variables (d : unit) (T : orderType d).
@@ -1117,7 +1164,8 @@ rewrite /= syn_splits.
 by bind_ext => -[].
 Qed.
 
-Lemma nondetPlus_sub_tsplits A (s : seq A) : nondetPlus_sub (tsplits s : M _).
+Lemma nondetPlus_sub_splits_bseq A (s : seq A) :
+  nondetPlus_sub (splits_bseq s : M _).
 Proof.
 elim: s => [|h t ih]; first by exists (ndRet ([bseq], [bseq])).
 have [syn syn_tsplits] := ih.
@@ -1141,7 +1189,7 @@ Proof.
 have [n sn] := ubnP (size s); elim: n s => // n ih s in sn *.
 move: s => [|h t] in sn *; first by exists (ndRet [::]); rewrite qperm_nil.
 rewrite qperm_cons splitsE fmapE bindA.
-have [syn syn_tsplits] := nondetPlus_sub_tsplits t.
+have [syn syn_tsplits] := nondetPlus_sub_splits_bseq t.
 have nondetPlus_sub_liftM2_qperm : forall a b : (size t).-bseq A,
   nondetPlus_sub (liftM2 (fun x y => x ++ h :: y) (qperm a) (qperm b : M _)).
   move=> a b; apply nondetPlus_sub_liftM2 => //; apply: ih.
