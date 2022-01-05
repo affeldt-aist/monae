@@ -2,12 +2,13 @@
 (* Copyright (C) 2020 monae authors, license: LGPL-2.1-or-later               *)
 From mathcomp Require Import all_ssreflect.
 From mathcomp Require boolp.
+Require Import ZArith.
 Require Import monae_lib hierarchy monad_lib fail_lib state_lib.
 Require Import array_lib example_quicksort.
-From infotheo Require Import ssr_ext.
+From infotheo Require Import ssr_ext ssrZ.
 
 (******************************************************************************)
-(*                  Quicksort with the Array Monad (WIP)                      *)
+(*                      Quicksort with the Array Monad                        *)
 (*                                                                            *)
 (*    partl p (s, t) u == partition u into (x, y) w.r.t. pivot p and returns  *)
 (*                        (s ++ x, t ++ y)                                    *)
@@ -38,20 +39,6 @@ Local Open Scope order_scope.
 Import Order.Theory.
 Local Open Scope monae_scope.
 Local Open Scope tuple_ext_scope.
-
-From infotheo Require Import ssrZ.
-Require Import ZArith.
-
-(* NB: to appear in the next version of infotheo *)
-Lemma addZAC : right_commutative Zplus. Proof. by move=> ? ? ?; ring. Qed.
-
-Lemma addZCA : left_commutative Zplus. Proof. by move=> ? ? ?; ring. Qed.
-
-Lemma neq_Zlt (a b : Z) : (a != b) <-> (a < b)%Z \/ (b < a)%Z.
-Proof.
-by split => [/eqP/not_Zeq//|[ab|ba]]; [exact/eqP/ltZ_eqF|exact/eqP/gtZ_eqF].
-Qed.
-(* /NB: to appear in the next version of infotheo *)
 
 (* TODO: move to monad.v *)
 Section apply_monad.
