@@ -283,6 +283,7 @@ Definition partition_slowsort (xs : seq T) : M (seq T) :=
   let: (ys, zs) := partition h t in
   liftM2 (fun a b => a ++ h :: b) (slowsort ys) (slowsort zs).
 
+(* NB: slowsort'-spec in Nondet.agda *)
 Lemma partition_slowsort_spec : partition_slowsort `<.=` slowsort.
 Proof.
 move; elim => [/=|h t ih].

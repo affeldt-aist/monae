@@ -77,7 +77,7 @@ dependencies:
     [MathComp analysis](https://github.com/math-comp/analysis)
 - opam:
     name: coq-infotheo
-    version: '{ >= "0.3.4" & < "0.4~"}'
+    version: '{ >= "0.3.5" & < "0.4~"}'
   description: |-
     [Infotheo](https://github.com/affeldt-aist/infotheo)
 - opam:

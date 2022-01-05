@@ -1118,6 +1118,7 @@ Qed.
 Program Definition exceptFMT : FMT := @Fmt.Pack (exceptT X)
   (@Fmt.Class _ (fun M N nt => hmapX nt) monadMret_hmapX
     monadMbind_hmapX _ hmapX_v hmapX_lift).
+Next Obligation. by intuition. Qed.
 
 End exceptFMT.
 
@@ -1224,6 +1225,7 @@ Qed.
 Program Definition stateFMT : FMT := @Fmt.Pack T
   (@Fmt.Class _ (fun M N nt => hmapS nt) monadMret_hmapS
     monadMbind_hmapS _ hmapS_v hmapS_lift).
+Next Obligation. by intuition. Qed.
 
 End Fmt_stateT.
 
@@ -1295,6 +1297,7 @@ Qed.
 Program Definition envFMT : FMT := @Fmt.Pack T
   (@Fmt.Class _ (fun M N nt => hmapEnv nt) monadMret_hmapEnv
     monadMbind_hmapEnv _ hmapEnv_v hmapEnv_lift).
+Next Obligation. by intuition. Qed.
 
 End Fmt_envT.
 
@@ -1379,5 +1382,6 @@ Qed.
 Program Definition outputFMT : FMT := @Fmt.Pack T
   (@Fmt.Class _ (fun M N nt => hmapO nt) monadMret_hmapO
     monadMbind_hmapO _ hmapO_v hmapO_lift).
+Next Obligation. by intuition. Qed.
 
 End Fmt_outputT.
