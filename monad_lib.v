@@ -33,6 +33,8 @@ Require Import hierarchy.
 (*                                (fun v => (Ret (u, v)))                     *)
 (*             commute m n f := (m >>= n >>= f) = (n >>= m >>= f)             *)
 (*                              (ref: definition 4.2, mu2019tr3)              *)
+(*             preserves f g := the monadic function f : A -> M A preserves   *)
+(*                              the value of the function g : A -> B          *)
 (*                  rep n mx == mx >> mx >> ... >> mx, n times                *)
 (*                                                                            *)
 (******************************************************************************)
@@ -519,6 +521,9 @@ Qed.
 
 Definition commute {M : monad} A B (m : M A) (n : M B) C (f : A -> B -> M C) : Prop :=
   m >>= (fun x => n >>= (fun y => f x y)) = n >>= (fun y => m >>= (fun x => f x y)) :> M _.
+
+Definition preserves {M : monad} A B (f : A -> M A) (g : A -> B) :=
+  forall x, (f x >>= fun y => Ret (y, g y)) = (f x >>= fun y => Ret (y, g x)).
 
 (*Local Notation "[ \o f , .. , g , h ]" := (f \o .. (g \o h) ..)
   (at level 0) (*, format "[ \o '['  f , '/' .. , '/' g , '/' h ']' ]"

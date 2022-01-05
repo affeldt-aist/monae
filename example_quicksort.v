@@ -27,9 +27,6 @@ Require Import Recdef.
 (*       Quicksort, FLOPS 2020                                                *)
 (******************************************************************************)
 
-(* TODO: shouldn't prePlusMonad be plusMonad (like list monad) and
-    plusMonad be plusCIMonad (like set monad)? *)
-
 Set Implicit Arguments.
 Unset Strict Implicit.
 Unset Printing Implicit Defensive.
@@ -65,16 +62,9 @@ Local Open Scope tuple_ext_scope.
 Local Open Scope mprog.
 
 (* TODO: move *)
-Section guard_commute.
+Section guard_qperm.
 Variable M : plusMonad.
 Variables (d : unit) (T : orderType d).
-
-Lemma commute_guard (b : bool) B (n : M B) C (f : unit -> B -> M C) :
-  commute (guard b) n f.
-Proof.
-apply commute_plus; exists (if b then ndRet tt else @ndFail _).
-by case: ifP; rewrite (guardT, guardF).
-Qed.
 
 Lemma guard_splits A (p : pred T) (t : seq T) (f : seq T * seq T -> M A) :
   splits t >>= (fun x => guard (all p t) >> f x) =
@@ -110,7 +100,7 @@ bind_ext => b'; rewrite !bindretf all_cat /= andbA andbAC !guard_and !bindA.
 by under eq_bind do rewrite commute_guard.
 Qed.
 
-End guard_commute.
+End guard_qperm.
 
 Section partition.
 Variables (M : plusMonad) (d : unit) (T : orderType d).
@@ -233,6 +223,38 @@ Proof. by rewrite /slowsort -kleisliA qperm_idempotent. Qed.
 
 End slowsort.
 Arguments slowsort {M} {_} {_}.
+
+Section slowsort_preserves.
+Context (M : plusMonad) {d : unit} {E : orderType d}.
+
+Let slowsort_preserves_size : preserves (@slowsort M _ E) size.
+Proof.
+move=> s; have [n ns] := ubnP (size s); elim: n s ns => // n ih s ns.
+move: s ns => [ns|p s]; first by rewrite /= slowsort_nil 2!bindretf.
+rewrite /= ltnS => ns; rewrite /slowsort kleisliE !bindA.
+rewrite (qperm_preserves_size2 _
+  (fun a b => assert (sorted <=%O) a >>= (fun x' => Ret (x', b)))).
+bind_ext => ht; rewrite assertE 2!bindA; apply: bind_ext_guard => _.
+by rewrite 2!bindretf.
+Qed.
+
+Lemma slowsort_preserves_size2 (x : seq E) B (f : seq E -> nat -> M B) :
+  (slowsort x >>= fun x' => f x' (size x)) =
+  (slowsort x >>= fun x' => f x' (size x')) :> M _.
+Proof.
+transitivity (slowsort x >>= (fun y => Ret (y, size y)) >>= (fun z => f z.1 z.2)).
+  by rewrite slowsort_preserves_size bindA; bind_ext => s; rewrite bindretf.
+by rewrite bindA; bind_ext => s; rewrite bindretf.
+Qed.
+
+Lemma bind_slowsort_guard (s : seq E) B (f : seq E -> M B) :
+  (slowsort s >>= f) = slowsort s >>= (fun x => guard (size s == size x) >> f x).
+Proof.
+rewrite -(slowsort_preserves_size2 s (fun a b => guard (size s == b) >> f a)).
+by rewrite eqxx guardT; under [in RHS]eq_bind do rewrite bindskipf.
+Qed.
+
+End slowsort_preserves.
 
 Section qsort.
 Variables (M : plusMonad).
