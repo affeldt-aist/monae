@@ -161,25 +161,28 @@ End qperm_partl.
 Arguments qperm_partl {d E M}.
 
 Section ipartl.
-Variable (d : unit) (E : orderType d) (M : plusArrayMonad E Z_eqType).
+Variables (d : unit) (T : orderType d).
 
-(* Lemma lemma13 {i : Z} {ys : seq E} {p : E} :
-  perm ys >>= (fun ys' => writeList i (ys' ++ [:: p])) `>=`
-  writeList i (p :: ys) >> swap i (i + (size ys)%:Z).
-Proof. *)
+Section arrayMonad.
+Variable M : arrayMonad T Z_eqType.
 
-Fixpoint ipartl (p : E) (i : Z) (ny nz : nat) (nx : nat) : M (nat * nat)%type :=
-  match nx with
-  | 0 => Ret (ny, nz)
-  | k.+1 => aget (i + (ny + nz)%:Z)%Z >>= (fun x => (* TODO *)
-           if x <= p then
-             aswap (i + ny%:Z) (i + ny%:Z + nz%:Z) >> ipartl p i ny.+1 nz k
-           else
-             ipartl p i ny nz.+1 k)
-  end.
+Fixpoint ipartl p i ny nz nx : M (nat * nat)%type :=
+  if nx is k.+1 then
+    aget (i + (ny + nz)%:Z)%Z >>= (fun x =>
+      if x <= p then
+        aswap (i + ny%:Z) (i + ny%:Z + nz%:Z) >> ipartl p i ny.+1 nz k
+      else
+        ipartl p i ny nz.+1 k)
+  else Ret (ny, nz).
 
-Lemma ipartl_guard (p : E) (i : Z) ny nz (nx : nat) :
-  ipartl p i ny nz nx =
+End arrayMonad.
+Arguments ipartl {M}.
+
+Section plusArrayMonad.
+Variable M : plusArrayMonad T Z_eqType.
+
+Lemma ipartl_guard p i ny nz nx :
+  ipartl (M := M) p i ny nz nx =
   ipartl p i ny nz nx >>= (fun '(a, b) =>
     (guard ((a <= nx + ny + nz) && (b <= nx + ny + nz))%nat >> Ret (a, b))).
 Proof.
@@ -192,19 +195,26 @@ rewrite /= [in RHS]bindA; bind_ext => x; case: ifPn => xp.
   by under [in RHS]eq_bind do rewrite addSnnS -addnA addSnnS addnA.
 Qed.
 
-Definition dipartlT (y z x : nat) :=
+End plusArrayMonad.
+End ipartl.
+Arguments ipartl {d T M}.
+
+Section dipartl.
+Variables (d : unit) (T : orderType d) (M : plusArrayMonad T Z_eqType).
+
+Definition dipartlT y z x :=
   {n : nat * nat | (n.1 <= x + y + z) && (n.2 <= x + y + z)}.
 
-Definition dipartlT1 (y z x : nat) (a : dipartlT y z x) : nat := (sval a).1.
-Definition dipartlT2 (y z x : nat) (a : dipartlT y z x) : nat := (sval a).2.
+Definition dipartlT1 y z x (a : dipartlT y z x) : nat := (sval a).1.
+Definition dipartlT2 y z x (a : dipartlT y z x) : nat := (sval a).2.
 
-Definition dipartl (p : E) (i : Z) (y z x : nat) : M (dipartlT y z x) :=
+Definition dipartl p i y z x : M (dipartlT y z x) :=
   ipartl p i y z x >>=
     dassert [pred n | (n.1 <= x + y + z) && (n.2 <= x + y + z)].
 
 Local Open Scope mprog.
-Lemma ipartlE p i n :
-  ipartl p i 0 0 n = fmap (fun x => (dipartlT1 x, dipartlT2 x)) (dipartl p i 0 0 n).
+Lemma ipartlE p i n : ipartl p i 0 0 n =
+  fmap (fun x => (dipartlT1 x, dipartlT2 x)) (dipartl p i 0 0 n).
 Proof.
 rewrite fmapE /dipartl bindA ipartl_guard bindA; bind_ext => -[a b].
 rewrite bindA; apply: bind_ext_guard => /andP[na nb].
@@ -215,13 +225,13 @@ Qed.
 Local Close Scope mprog.
 
 Section refin_dispatch_write3L_ipartl.
-Variables (i : Z) (p : E) (xs : seq E).
+Variables (i : Z) (p : T) (xs : seq T).
 Hypothesis ih : forall ys zs,
-  writeList i (ys ++ zs ++ xs) >> ipartl p i (size ys) (size zs) (size xs)
+  writeList i (ys ++ zs ++ xs) >> ipartl (M := M) p i (size ys) (size zs) (size xs)
   `<=` qperm_partl p ys zs xs >>= write2L i.
 
 Let refin_write3L_ipartl x :
-  write3L i (x, xs) >>= uncurry3 (ipartl p i)
+  write3L i (x, xs) >>= uncurry3 (ipartl (M := M) p i)
   `<=` uncurry3 (qperm_partl p) (x, xs) >>= write2L i.
 Proof.
 case: x => ys zs.
@@ -229,7 +239,7 @@ by apply: refin_trans (ih _ _); rewrite bindA bindretf; exact: refin_refl.
 Qed.
 
 Lemma refin_dispatch_write3L_ipartl x ys zs :
-  dispatch x p (ys, zs, xs) >>= write3L i >>= uncurry3 (ipartl p i)
+  dispatch x p (ys, zs, xs) >>= write3L i >>= uncurry3 (ipartl (M := M) p i)
   `<=` dispatch x p (ys, zs, xs) >>= uncurry3 (qperm_partl p) >>= write2L i.
 Proof.
 by rewrite /dispatch !if_bind; apply: refin_if => _; rewrite !bindA;
@@ -237,9 +247,8 @@ by rewrite /dispatch !if_bind; apply: refin_if => _; rewrite !bindA;
 Qed.
 End refin_dispatch_write3L_ipartl.
 
-End ipartl.
-Arguments ipartl {d E M}.
-Arguments dipartl {d E M}.
+End dipartl.
+Arguments dipartl {d T M}.
 
 (* top of page 11 *)
 Section derivation_qperm_partl_ipartl.
@@ -410,40 +419,10 @@ Qed.
 
 End refin_ipartl.
 
-Section iqsort.
-Variable (d : unit) (E : orderType d) (M : plusArrayMonad E Z_eqType).
-Implicit Types i : Z.
+Section iqsort_def.
+Variables (d : unit) (T : orderType d) (M : plusArrayMonad T Z_eqType).
 
 Local Obligation Tactic := idtac.
-
-(* failed attempts *)
-(*Fixpoint iqsort (i : Z) (n : nat) : M unit :=
-  match n with
-  | 0 => Ret tt
-  | n.+1 => aget i >>= (fun p =>
-         ipartl p (i) 0 0 n >>= (fun '(ny, nz) =>
-         aswap i (i + ny%:Z) >>
-         iqsort i ny >> iqsort (ny%:Z) nz))
-  end.*)
-
-(*Function iqsort (i : Z) (n : nat) {measure n} : M unit :=
-  match n with
-  | 0 => Ret tt
-  | k.+1 => aget i >>= (fun p =>
-            ipartl p (i + 1) 0 0 (n-1) >>= (fun '(ny, nz) => aswap i (i + ny%:Z) >> iqsort i ny))
-  end.*)
-
-(*Program Fixpoint iqsort' (ni : (Z * nat))
-    (f : forall (n'j : (Z * nat)), (n'j.2 < ni.2)%coq_nat -> M unit) : M unit :=
-  match ni.2 with
-  | 0 => Ret tt
-  | n.+1 => aget ni.1 >>= (fun p =>
-            ipartl p (ni.1 + 1)%Z 0 0 n >>= (fun '(ny, nz) =>
-              aswap ni.1 (ni.1 + ny%:Z) >>
-              f (ni.1, ny) _ >> f ((ni.1 + ny%:Z + 1)%Z, nz) _))
-  end.
-Next Obligation.
-move => [i [//|n']] /= _ n [<-] p [a b] /= a' _ [-> _] _.*)
 
 Program Fixpoint iqsort' ni
     (f : forall mj, (mj.2 < ni.2)%coq_nat -> M unit) : M unit :=
@@ -494,9 +473,16 @@ Lemma iqsort_cons i (n : nat) : iqsort (i, n.+1) = aget i >>= (fun p =>
     iqsort (i, ny) >> iqsort ((i + ny%:Z + 1)%Z, nz))).
 Proof. by rewrite [in LHS]/iqsort Fix_eq //=; exact: iqsort'_Fix. Qed.
 
+End iqsort_def.
+Arguments iqsort {d T M}.
+
+Section iqsort_spec.
+Variable (d : unit) (E : orderType d) (M : plusArrayMonad E Z_eqType).
+Implicit Types i : Z.
+
 (* eqn 12 page 13 *)
-Lemma iqsort_slowsort i (xs : seq E) :
-  writeList i xs >> iqsort (i, size xs) `<=` slowsort xs >>= writeList i.
+Lemma iqsort_slowsort i xs :
+  writeList i xs >> iqsort (M := M) (i, size xs) `<=` slowsort xs >>= writeList i.
 Proof.
 have [n nxs] := ubnP (size xs); elim: n xs i => // n ih xs i in nxs *.
 move: xs => [|p xs] in nxs *.
@@ -530,7 +516,7 @@ apply: (@refin_trans _ _ (qperm_partl p [::] [::] xs >>= (fun '(ys, zs) =>
   (* step 1d: execute the first qperm and record size information *)
   rewrite -partition_partl pxs bindA /=.
   under eq_bind do rewrite bindretf.
-  rewrite bind_qperm_guard [in X in X `<=` _]bind_qperm_guard(*NB: interesting?*).
+  rewrite bind_qperm_guard [in X in _ `<=` X]bind_qperm_guard(*NB: interesting?*).
   apply: refin_bindl => zs'.
   apply: refin_bind_guard => /eqP zszs'.
   (* step 1e: commutation *)
@@ -635,10 +621,11 @@ rewrite (_ : aput i p >> _ = (writeList i (p :: xs) >> Ret p) >>=
 rewrite writeListRet 2![in X in _ `<=` X]bindA.
 apply: refin_bindl => -[].
 rewrite /= iqsort_cons.
+rewrite bindA.
 apply: refin_bindl => x.
 rewrite ipartlE /= fmapE [in X in _ `<=` X]bindA.
 under [in X in _ `<=` X]eq_bind do rewrite bindretf.
 exact: refin_refl.
 Qed.
 
-End iqsort.
+End iqsort_spec.

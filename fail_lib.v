@@ -952,8 +952,8 @@ Definition dsplits (A : UU0) (s : seq A) : M (dsplitsT A (size s)) :=
 
 End splits_nondetMonad.
 
-Section splits_plusMonad.
-Context {M : plusMonad}.
+Section splits_prePlusMonad.
+Context {M : prePlusMonad}.
 
 Lemma splits_guard (A : UU0) (s : seq A) :
   splits s = splits s >>=
@@ -975,10 +975,10 @@ by rewrite (negbTE abs) guardF 2!bindfailf.
 Qed.
 Local Close Scope mprog.
 
-End splits_plusMonad.
+End splits_prePlusMonad.
 
 Section qperm.
-Variables (M : plusMonad) (A : UU0) (d : unit) (T : orderType d).
+Variables (M : altMonad) (A : UU0) (d : unit) (T : orderType d).
 
 Local Obligation Tactic := idtac.
 Program Definition qperm' (s : seq A)
@@ -1026,8 +1026,8 @@ Definition qpermE := (qperm_nil, qperm_cons).
 End qperm.
 Arguments qperm {M} {A}.
 
-Section qperm_preserves.
-Variable M : plusMonad.
+Section qperm_preserves_nondetMonad.
+Variable M : nondetMonad.
 
 (* NB: not used *)
 Lemma qperm_preserves_elements (A : eqType) (s : seq A) :
@@ -1047,6 +1047,11 @@ rewrite !bindA; bind_ext => b'; rewrite !bindA; apply: bind_ext_guard => bb'.
 rewrite !bindretf -[in X in _ = X >> _]cat_rcons -cats1 -catA perm_catCA.
 by rewrite perm_cons (perm_trans (perm_cat aa' bb') abt) guardT bindskipf.
 Qed.
+
+End qperm_preserves_nondetMonad.
+
+Section qperm_preserves_prePlusMonad.
+Variable M : prePlusMonad.
 
 Let qperm_preserves_size A : preserves (@qperm M A) size.
 Proof.
@@ -1080,7 +1085,7 @@ rewrite eqxx guardT.
 by under [in RHS]eq_bind do rewrite bindskipf.
 Qed.
 
-End qperm_preserves.
+End qperm_preserves_prePlusMonad.
 
 (* TODO: move this example *)
 Section fastproduct.
