@@ -223,6 +223,30 @@ Proof. by rewrite /slowsort -kleisliA qperm_idempotent. Qed.
 End slowsort.
 Arguments slowsort {M} {_} {_}.
 
+Section slowsort_example.
+Variable M : plusMonad.
+
+Let bindskipE := (bindskipf, bindmskip).
+
+Ltac sub := repeat rewrite !alt_bindDl !bindretf;
+            rewrite bindA;
+            repeat rewrite !qpermE !bindA !bindretf /=.
+Ltac bindSF := rewrite !bindskipf !bindfailf.
+
+Variables (d : unit) (T : orderType d).
+
+Example slowsort2 : @slowsort M _ _ [:: 2; 1]%N = Ret [:: 1; 2]%N.
+Proof.
+rewrite /slowsort kleisliE.
+rewrite !qpermE /bindA /= !bindretf.
+repeat sub.
+rewrite /sorted /assert /guard /path /=; unlock.
+bindSF.
+by rewrite altmfail.
+Qed.
+
+End slowsort_example.
+
 Section slowsort_preserves.
 Context (M : plusMonad) {d : unit} {E : orderType d}.
 

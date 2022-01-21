@@ -29,6 +29,5 @@ example_monty.v
 smallstep.v
 example_transformer.v
 category_ext.v
-demo_plusMonad.v
 
 -R . monae

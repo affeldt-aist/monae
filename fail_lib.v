@@ -910,13 +910,22 @@ Local Close Scope mprog.
 
 End splits.
 
-Local Lemma splits_nat_nil (M : altMonad) :
-  @splits M nat [::] = Ret ([::], [::]).
-Proof. by []. Abort.
+Section splits_examples.
+Variable M : altMonad.
 
-Local Lemma splits_nat_01 (M : altMonad) :
-  @splits M _ [:: O; 1]%nat = Ret ([::], [::]).
-Proof. rewrite /= bindretf alt_bindDl !bindretf /=. Abort.
+Example splits0 : @splits M nat [::] = Ret ([::], [::]).
+Proof. by []. Qed.
+
+Example splits2 : @splits M nat [:: 1; 2] =
+  Ret ([:: 1; 2], [::]) [~] Ret ([:: 2], [:: 1]) [~]
+  Ret ([:: 1], [:: 2]) [~] Ret ([::], [:: 1; 2]).
+Proof.
+rewrite /splits bindA.
+repeat rewrite bindretf alt_bindDl !bindretf.
+by rewrite altA.
+Qed.
+
+End splits_examples.
 
 Section splits_nondetMonad.
 Context {M : nondetMonad}.
@@ -1025,6 +1034,38 @@ Definition qpermE := (qperm_nil, qperm_cons).
 
 End qperm.
 Arguments qperm {M} {A}.
+
+Section qperm_examples.
+Variable M : altCIMonad.
+
+Example perm1 : qperm [:: 1]%N = Ret [:: 1] :> M (seq nat).
+Proof.
+rewrite qperm_cons /=.
+rewrite bindretf.
+rewrite qperm_nil.
+by rewrite liftM2_ret.
+Qed.
+
+Example perm2 : qperm [:: 2; 1] = Ret [:: 1; 2] [~] Ret [:: 2; 1] :> M (seq nat).
+Proof.
+rewrite qpermE !bindA bindretf alt_bindDl bindretf /liftM2.
+by repeat rewrite !qpermE !bindA bindretf !bindretf /=.
+Qed.
+
+Example perm3 :
+  qperm [:: 3; 2; 1] = Ret [:: 1; 2; 3] [~] Ret [:: 1; 3; 2] [~]
+                      Ret [:: 2; 1; 3] [~] Ret [:: 2; 3; 1] [~]
+                      Ret [:: 3; 1; 2] [~] Ret [:: 3; 2; 1] :> M (seq nat).
+Proof.
+rewrite qpermE !bindA.
+repeat rewrite bindretf alt_bindDl.
+rewrite bindretf /liftM2.
+repeat rewrite !qpermE /= !bindA !bindretf !alt_bindDl !bindretf /= !/liftM2.
+repeat rewrite !qpermE !bindA bindretf !bindretf /=.
+by rewrite -altA altACA !altA.
+Qed.
+
+End qperm_examples.
 
 Section qperm_preserves_nondetMonad.
 Variable M : nondetMonad.
