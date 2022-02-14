@@ -116,10 +116,10 @@ Lemma commute_dispatch_writeList i p ys zs xs x A
           (fun x (_ : unit) => f x).
 Proof.
 apply: commute_plus; rewrite /dispatch; case: ifPn => xp.
-  have [syn syn_qperm] := nondetPlus_sub_qperm M zs.
+  have [syn syn_qperm] := @nondetPlus_sub_qperm M _ zs.
   exists (ndBind syn (fun s => ndRet (rcons ys x, s, xs))).
   by rewrite /= syn_qperm.
-have [syn syn_qperm] := nondetPlus_sub_qperm M (rcons zs x).
+have [syn syn_qperm] := @nondetPlus_sub_qperm M _ (rcons zs x).
 by exists (ndBind syn (fun s => ndRet (ys, s, xs))); rewrite /= syn_qperm.
 Qed.
 
@@ -141,10 +141,10 @@ Lemma nondetPlus_sub_qperm_partl p (s a b : seq E) :
 Proof.
 elim: s p a b => [p a b|h t ih p a b /=]; first by exists (ndRet (a, b)).
 case: ifPn => hp.
-  have [syn synE] := nondetPlus_sub_qperm M b.
+  have [syn synE] := @nondetPlus_sub_qperm M _ b.
   exists (ndBind syn (fun zs' => sval (ih p (rcons a h) zs'))) => /=.
   by rewrite synE /=; bind_ext => ?; case: ih.
-have [syn synE] := nondetPlus_sub_qperm M (rcons b h).
+have [syn synE] := @nondetPlus_sub_qperm M _ (rcons b h).
 exists (ndBind syn (fun zs' => sval (ih p a zs'))) => /=.
 by rewrite synE /=; bind_ext => ?; case: ih.
 Qed.

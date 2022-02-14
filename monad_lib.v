@@ -588,7 +588,7 @@ Local Close Scope test_scope.
 *)
 
 Section rep.
-Variable M : monad.
+Context {M : monad}.
 
 Fixpoint rep n (mx : M unit) := if n is n.+1 then mx >> rep n mx else skip.
 

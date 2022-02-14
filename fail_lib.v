@@ -867,7 +867,7 @@ End uperm.
 Arguments uperm {A} {M}.
 
 Section dassert.
-Context {M : failMonad} (A : UU0).
+Context {M : failMonad} {A : UU0}.
 
 Definition dassert (p : pred A) a : M { a | p a } :=
   if Bool.bool_dec (p a) true is left pa then Ret (exist _ _ pa) else fail.
@@ -1230,7 +1230,7 @@ rewrite /addM.
 rewrite bindretf.
 transitivity (Ret 100 >>= (fun y => Ret (1 + y)) : M _); last first.
   by rewrite bindretf.
-congr (bind _ _). (* TODO : bind_ext casse *)
+congr (bind _ _).
 rewrite (shiftreset2 _ _).
 by rewrite bindretf.
 Qed.
@@ -1250,8 +1250,7 @@ Lemma refin_if (M : altMonad) A (m1 m2 m1' m2' : M A) (b : bool) :
 Proof. by case: b => [+ _|_]; exact. Qed.
 
 Section commute.
-Variable M : plusMonad.
-Variables (d : unit) (T : orderType d).
+Context {M : plusMonad}.
 
 (* NB: on the model of nondetState_sub in state_lib.v *)
 Definition nondetPlus_sub A (n : M A) := {m | ndDenote m = n}.
@@ -1326,7 +1325,7 @@ case=> x; elim: x m n f => [{}A a m n f <-| D {}A n0 ih0 n1 ih1 m n2 f <- |
   by rewrite alt_bindDr ih0 // ih1.
 Qed.
 
-Lemma commute_guard (b : bool) B (n : M B) C (f : unit -> B -> M C) :
+Lemma commute_plus_guard (b : bool) B (n : M B) C (f : unit -> B -> M C) :
   commute (guard b) n f.
 Proof.
 apply commute_plus; exists (if b then ndRet tt else @ndFail _).

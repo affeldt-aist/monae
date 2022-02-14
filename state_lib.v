@@ -672,7 +672,7 @@ Qed.
 End monadarray_example.
 
 Section tick_fusion.
-Variables (M : stateMonad nat).
+Context {M : stateMonad nat}.
 
 Definition tick : M unit := get >>= (put \o succn).
 

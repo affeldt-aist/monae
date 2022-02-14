@@ -69,12 +69,12 @@ Lemma guard_splits A (p : pred T) (t : seq T) (f : seq T * seq T -> M A) :
   splits t >>= (fun x => guard (all p t) >> f x) =
   splits t >>= (fun x => guard (all p x.1) >> guard (all p x.2) >> f x).
 Proof.
-rewrite -commute_guard.
+rewrite -commute_plus_guard.
 elim: t => [|h t ih] in p A f *; first by rewrite 2!bindretf guardT bindmskip.
-rewrite [LHS]/= guard_and 2!bindA ih /= commute_guard bindA.
+rewrite [LHS]/= guard_and 2!bindA ih /= commute_plus_guard bindA.
 bind_ext => -[a b] /=.
 rewrite !alt_bindDl !bindretf /= !guard_and !bindA !alt_bindDr.
-by congr (_ [~] _); rewrite commute_guard.
+by congr (_ [~] _); rewrite commute_plus_guard.
 Qed.
 
 (* NB: corresponds to perm-preserves-all? *)
@@ -82,21 +82,21 @@ Lemma guard_all_qperm B (p : pred T) s (f : seq T -> M B) :
   qperm s >>= (fun x => guard (all p s) >> f x) =
   qperm s >>= (fun x => guard (all p x) >> f x).
 Proof.
-rewrite -commute_guard.
+rewrite -commute_plus_guard.
 have [n leMn] := ubnP (size s); elim: n => // n ih in s f leMn *.
 case: s leMn => [|h t]; first by move=> _; rewrite qperm_nil !bindretf.
 rewrite ltnS => tn.
-rewrite qperm_cons !bindA /= guard_and bindA (commute_guard (all p t)).
-rewrite guard_splits splitsE fmapE 2!bindA commute_guard.
+rewrite qperm_cons !bindA /= guard_and bindA (commute_plus_guard (all p t)).
+rewrite guard_splits splitsE fmapE 2!bindA commute_plus_guard.
 bind_ext => -[a b]; rewrite 2!bindretf !bindA /=.
-rewrite (commute_guard (all p b)).
+rewrite (commute_plus_guard (all p b)).
 rewrite ih; last by rewrite (leq_trans _ tn) //= ltnS size_bseq.
-rewrite (commute_guard (p h)).
-bind_ext => a'; rewrite !bindA (commute_guard (p h)).
+rewrite (commute_plus_guard (p h)).
+bind_ext => a'; rewrite !bindA (commute_plus_guard (p h)).
 rewrite ih; last by rewrite (leq_trans _ tn) //= ltnS size_bseq.
-rewrite (commute_guard (p h)) commute_guard.
+rewrite (commute_plus_guard (p h)) commute_plus_guard.
 bind_ext => b'; rewrite !bindretf all_cat /= andbA andbAC !guard_and !bindA.
-by under eq_bind do rewrite commute_guard.
+by under eq_bind do rewrite commute_plus_guard.
 Qed.
 
 End guard_qperm.
@@ -182,12 +182,12 @@ Lemma slowsort_splits p s : slowsort (p :: s) =
 Proof.
 rewrite slowsort_cons; bind_ext=> {s} -[a b].
 rewrite /is_partition /slowsort !kleisliE.
-rewrite guard_and !bindA (commute_guard (all (>= p) b)) commute_guard.
+rewrite guard_and !bindA (commute_plus_guard (all (>= p) b)) commute_plus_guard.
 rewrite guard_all_qperm.
-bind_ext=> a'; rewrite commute_guard assertE bindA bindretf bindA.
-rewrite (commute_guard (sorted a')).
-rewrite (commute_guard (all (<= p) a')) commute_guard guard_all_qperm.
-bind_ext=> b'; rewrite commute_guard !assertE bindA bindretf.
+bind_ext=> a'; rewrite commute_plus_guard assertE bindA bindretf bindA.
+rewrite (commute_plus_guard (sorted a')).
+rewrite (commute_plus_guard (all (<= p) a')) commute_plus_guard guard_all_qperm.
+bind_ext=> b'; rewrite commute_plus_guard !assertE bindA bindretf.
 by rewrite sorted_cat_cons andbC -!andbA andbC !guard_and !bindA.
 Qed.
 
@@ -207,7 +207,7 @@ Qed.
 Lemma nondetPlus_sub_slowsort s : nondetPlus_sub (slowsort s : M _).
 Proof.
 rewrite /slowsort kleisliE.
-have [syn syn_qperm] := nondetPlus_sub_qperm M s.
+have [syn syn_qperm] := @nondetPlus_sub_qperm M _ s.
 exists (ndBind syn (fun a => ndBind
   (if sorted a then ndRet tt else ndFail unit)
   (fun _ : unit => ndRet a))).
