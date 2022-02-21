@@ -1148,18 +1148,27 @@ Qed.
 
 HB.instance Definition _ := hierarchy.isFunctor.Build acto fid fcomp.
 
-Definition ret_ (A : Type) (x : A) : acto A := @Monad.Exports.Ret _ M A x.
+Definition ret_ : forall A, idfun A -> acto A := fun A (x : A) => @Monad.Exports.Ret _ M A x.
 
-Definition join_ (A : Type) (x : acto (acto A)) := @Monad.Exports.Join _ M A x.
+(*Definition ret_ (A : Type) (x : A) : acto A := @Monad.Exports.Ret _ M A x.*)
+
+Definition join_ : forall A, [the functor of [the functor of acto] \o [the functor of acto]] A ->
+                        [the functor of acto] A :=
+  fun A => @Monad.Exports.Join _ M A.
+
+(*Definition join_ (A : Type) (x : acto (acto A)) := @Monad.Exports.Join _ M A x.*)
 
 Lemma ret_nat : hierarchy.naturality hierarchy.FId [the functor of acto] ret_.
 Proof. move=> ? ? ?; exact: (ret_naturality M). Qed.
 
-Definition ret : hierarchy.Natural.type hierarchy.FId [the functor of acto] :=
-  hierarchy.Natural.Pack (hierarchy.Natural.Mixin ret_nat).
+HB.instance Definition _ := hierarchy.isNatural.Build _ [the functor of acto] ret_ ret_nat.
+
+Definition ret : hierarchy.Nattrans.type hierarchy.FId [the functor of acto] :=
+  [the nattrans _ _ of ret_].
+(*  hierarchy.Natural.Pack (hierarchy.Natural.Mixin ret_nat).*)
 
 Lemma join_nat : hierarchy.naturality
-  (hierarchy.FComp [the functor of acto] [the functor of acto])
+  [the functor of [the functor of acto] \o [the functor of acto]]
   [the functor of acto] join_.
 Proof.
 move=> A B h; apply funext=> x; rewrite /ret /hierarchy.actm/= /actm.
@@ -1171,12 +1180,19 @@ congr ((M # _ ) _).
 exact/hom_ext/funext.
 Qed.
 
-Definition join := hierarchy.Natural.Pack (hierarchy.Natural.Mixin join_nat).
+HB.instance Definition _ := hierarchy.isNatural.Build
+  _ [the functor of acto]
+  join_ join_nat.
+(*Definition join := hierarchy.Natural.Pack (hierarchy.Natural.Mixin join_nat).*)
+Definition join := [the nattrans _ _ of join_].
 
 Lemma joinretM : hierarchy.JoinLaws.left_unit ret join.
 Proof.
 move=> A; apply funext=> x.
-by rewrite /join /ret /= -[in LHS]compE category.joinretM.
+rewrite /join /ret.
+rewrite /=.
+rewrite /join_ /ret_ /=.
+by rewrite -[in LHS]compE category.joinretM.
 Qed.
 
 Lemma joinMret (A : Type) :
@@ -1184,6 +1200,7 @@ Lemma joinMret (A : Type) :
 Proof.
 apply funext=> x; rewrite /join /ret /= /hierarchy.actm /=.
 rewrite (_ : actm _ x = (M # Monad.Exports.Ret) x).
+  rewrite /join_ /ret_ /=.
   by rewrite -[in LHS]compE category.joinMret.
 suff -> : @actm A (acto A) (@Monad.Exports.Ret CT M A) x =
          (M # Monad.Exports.Ret) x by [].
@@ -1196,6 +1213,7 @@ Lemma joinA (A : Type) :
   @join A \o @hierarchy.actm _ _ _ (@join A) = @join _ \o @join _.
 Proof.
 apply funext=> x; rewrite /join /ret /=.
+rewrite /join_ /ret_ /=.
 rewrite -[in RHS]compE -category.joinA compE.
 congr (_ _).
 rewrite /hierarchy.actm [in LHS]/= /actm.

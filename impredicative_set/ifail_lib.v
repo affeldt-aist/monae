@@ -368,7 +368,7 @@ Local Open Scope mprog.
 Lemma insert_map (A B : UU0) (f : A -> B) (a : A) :
   insert (f a) \o map f = map f (o) insert a :> (_ -> M _).
 Proof.
-apply fun_ext; elim => [|y xs IH].
+apply funext; elim => [|y xs IH].
   by rewrite fcompE insertE -(compE (fmap (map f))) (natural ret) compE insertE.
 apply/esym.
 rewrite fcompE insertE alt_fmapDr.
@@ -392,19 +392,19 @@ rewrite fcompE insertE alt_fmapDr.
 rewrite -(compE (fmap _)) (natural ret) FIdf [in X in X [~] _]/= (negbTE pa).
 case: ifPn => ph.
 - rewrite -fmap_oE (_ : filter p \o cons h = cons h \o filter p); last first.
-    apply fun_ext => x /=; by rewrite ph.
+    by apply funext => x /=; rewrite ph.
   rewrite fmap_oE.
   move: (IH); rewrite fcompE => ->.
   by rewrite fmapE /= ph bindretf /= Mmm.
 - rewrite -fmap_oE (_ : filter p \o cons h = filter p); last first.
-    apply fun_ext => x /=; by rewrite (negbTE ph).
-  move: (IH); rewrite fcompE => -> /=; by rewrite (negbTE ph) Mmm.
+    by apply funext => x /=; rewrite (negbTE ph).
+  by move: (IH); rewrite fcompE => -> /=; rewrite (negbTE ph) Mmm.
 Qed.
 
 Lemma filter_insertT a : p a ->
   filter p (o) insert a = insert a \o filter p :> (_ -> M _).
 Proof.
-move=> pa; apply fun_ext; elim => [|h t IH].
+move=> pa; apply funext; elim => [|h t IH].
   by rewrite fcompE !insertE fmapE bindretf /= pa.
 rewrite fcompE [in RHS]/=; case: ifPn => ph.
 - rewrite [in RHS]insertE.
@@ -417,7 +417,7 @@ rewrite fcompE [in RHS]/=; case: ifPn => ph.
 - rewrite [in LHS]insertE alt_fmapDr.
   rewrite -[in X in _ [~] X = _]fmap_oE.
   rewrite (_ : (filter p \o cons h) = filter p); last first.
-    by apply fun_ext => x /=; rewrite (negbTE ph).
+    by apply funext => x /=; rewrite (negbTE ph).
   move: (IH); rewrite fcompE => ->.
   rewrite fmapE bindretf /= pa (negbTE ph) [in RHS]insertE; case: (filter _ _) => [|h' t'].
     by rewrite insertE Mmm.
@@ -446,13 +446,13 @@ Qed.
 
 Lemma rev_insert : rev (o) insert a = insert a \o rev :> (_ -> M _).
 Proof.
-apply fun_ext; elim => [|h t ih].
+apply funext; elim => [|h t ih].
   by rewrite fcompE insertE fmapE bindretf.
 rewrite fcompE insertE compE alt_fmapDr fmapE bindretf compE [in RHS]rev_cons.
 rewrite insert_rcons rev_cons -cats1 rev_cons -cats1 -catA; congr (_ [~] _).
 move: ih; rewrite fcompE [X in X -> _]/= => <-.
 rewrite -!fmap_oE. congr (fmap _ (insert a t)).
-by apply fun_ext => s; rewrite /= -rev_cons.
+by apply funext => s; rewrite /= -rev_cons.
 Qed.
 
 End insert_altCIMonad.
@@ -535,7 +535,7 @@ Local Open Scope mprog.
 Lemma iperm_o_map (A B : UU0) (f : A -> B) :
   iperm \o map f = map f (o) iperm :> (_ -> M _).
 Proof.
-apply fun_ext; elim => [/=|x xs IH].
+apply funext; elim => [/=|x xs IH].
   by rewrite fcompE [iperm _]/= -[in RHS]compE (natural ret).
 by rewrite fcompE [in iperm _]/= fmap_bind -insert_map -bind_fmap -fcompE -IH.
 Qed.
@@ -547,7 +547,7 @@ Variables (A : UU0) (p : pred A).
 (* netys2017 *)
 Lemma iperm_filter : iperm \o filter p = filter p (o) iperm :> (_ -> M _).
 Proof.
-apply fun_ext; elim => [|h t /= IH].
+apply funext; elim => [|h t /= IH].
   by rewrite fcompE fmapE bindretf.
 case: ifPn => ph.
   rewrite [in LHS]/= IH [in LHS]fcomp_def compE [in LHS]bind_fmap.
@@ -686,8 +686,7 @@ rewrite (_ : callcc _ = Ret 100) ?bindretf //.
 transitivity (callcc (fun _ : nat -> M nat => Ret 100)); last by rewrite callcc1.
 transitivity (callcc (fun f : nat -> M nat => Ret 10 >>= (fun a => f 100))); first by rewrite callcc2.
 rewrite callcc3 //; congr callcc.
-apply fun_ext => g.
-by rewrite bindretf.
+by apply funext => g; rewrite bindretf.
 Qed.
 
 End continuation_example.
@@ -777,7 +776,7 @@ Lemma lrefin_trans A B (b a c : A -> M B) : a `<.=` b -> b `<.=` c -> a `<.=` c.
 Proof. by move => ? ? ?; exact: refin_trans. Qed.
 
 Lemma lrefin_antisym A B (a b : A -> M B) : a `<.=` b -> b `<.=` a -> a = b.
-Proof. move => ? ?; apply fun_ext => ?; exact: refin_antisym. Qed.
+Proof. move => ? ?; apply funext => ?; exact: refin_antisym. Qed.
 End lrefin_lemmas_altCIMonad.
 
 Lemma refin_bindl (M : prePlusMonad) A B (m : M A) (f g : A -> M B) :

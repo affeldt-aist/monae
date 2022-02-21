@@ -22,35 +22,39 @@ Section monadprobmodel.
 
 Definition acto : UU0 -> UU0 := fun A => {dist (choice_of_Type A)}.
 
-Lemma map_id : @FunctorLaws.id (FSDist.t \o choice_of_Type)
+Let map_id : @FunctorLaws.id (FSDist.t \o choice_of_Type)
   (fun A B => @FSDistfmap (choice_of_Type A) (choice_of_Type B)).
 Proof. by move=> A; exact: (FSDistfmap_id _). Qed.
 
-Lemma map_comp : @FunctorLaws.comp (FSDist.t \o choice_of_Type)
+Let map_comp : @FunctorLaws.comp (FSDist.t \o choice_of_Type)
   (fun A B => @FSDistfmap (choice_of_Type A) (choice_of_Type B)).
 Proof. by move=> A B C g h; exact: FSDistfmap_comp. Qed.
 
 HB.instance Definition _ := isFunctor.Build acto map_id map_comp.
 
-Definition ret' : forall A, A -> {dist (choice_of_Type A)} :=
+Local Notation M' := [the functor of acto].
+
+Definition ret : FId ~~> M' :=
   fun A a => FSDist1.d (a : choice_of_Type A).
 
-Lemma naturality_ret' : naturality FId [the functor of acto] ret'.
+Let naturality_ret : naturality FId M' ret.
 Proof.
 move=> A B h.
-by rewrite boolp.funeqE => a /=; rewrite /actm /= /ret' FSDistfmap1.
+by rewrite boolp.funeqE => a /=; rewrite /actm /= /ret FSDistfmap1.
 Qed.
 
-Definition ret : FId ~> [the functor of acto] :=
-  Natural.Pack (Natural.Mixin naturality_ret').
+HB.instance Definition _ := isNatural.Build
+  _ M' ret naturality_ret.
 
 Definition bind : forall A B, acto A -> (A -> acto B) -> acto B :=
   fun A B m f => FSDistBind.d m f.
 
-Lemma left_neutral : BindLaws.left_neutral bind ret.
+Let left_neutral : BindLaws.left_neutral bind ret.
 Proof. by move=> ? ? ? ?; exact: FSDistBind1f. Qed.
+
 Lemma right_neutral : BindLaws.right_neutral bind ret.
 Proof. by move=> ? ?; exact: FSDistBindp1. Qed.
+
 Lemma associative : BindLaws.associative bind.
 Proof. by move=> A B C m f g; exact: FSDistBindA. Qed.
 
@@ -59,7 +63,7 @@ Lemma fmapE (A B : UU0) (f : A -> B) (m : acto A) :
 Proof. by []. Qed.
 
 HB.instance Definition _ := @Monad_of_ret_bind.Build
-  acto ret bind fmapE left_neutral right_neutral associative.
+  acto [the _ ~> _ of ret] bind fmapE left_neutral right_neutral associative.
 
 Lemma BindE (A B : choiceType) m (f : A -> [the monad of acto] B) :
   (m >>= f) = FSDistBind.d m f.
@@ -70,12 +74,12 @@ Qed.
 Local Open Scope reals_ext_scope.
 
 Let choice := (fun p A => @ConvFSDist.d (choice_of_Type A) p).
-Let choice0 : forall (T : UU0) (a b : acto T), choice 0%:pr _ a b = b.
-Proof. by move=> ? ? ?; exact: ConvFSDist.conv0. Qed.
-Let choice1 : forall (T : UU0) (a b : acto T), choice 1%:pr _ a b = a.
-Proof. by move=> ? ? ?; exact: ConvFSDist.conv1. Qed.
-Let choiceC : forall (T : UU0) p (a b : acto T), choice p _ a b = choice (p.~ %:pr) _ b a.
-Proof. by move=> ? ? ?; exact: ConvFSDist.convC. Qed.
+Let choice0 (T : UU0) : forall (a b : acto T), choice 0%:pr _ a b = b.
+Proof. by move=> ? ?; exact: ConvFSDist.conv0. Qed.
+Let choice1 (T : UU0) : forall (a b : acto T), choice 1%:pr _ a b = a.
+Proof. by move=> ? ?; exact: ConvFSDist.conv1. Qed.
+Let choiceC (T : UU0) : forall p (a b : acto T), choice p _ a b = choice (p.~ %:pr) _ b a.
+Proof. by move=> ? ?; exact: ConvFSDist.convC. Qed.
 Let choicemm : forall (T : Type) p, idempotent (@choice p T).
 Proof. by move=> ? ? ?; exact: ConvFSDist.convmm. Qed.
 Let choiceA : forall (T : Type) (p q r s : prob) (a b c : acto T),
@@ -91,8 +95,8 @@ rewrite !(@BindE (choice_of_Type A) (choice_of_Type B)).
 by rewrite ConvFSDist.bind_left_distr.
 Qed.
 
-HB.instance Definition mixin := isMonadProb.Build acto choice0 choice1 choiceC
-                                choicemm choiceA prob_bindDl.
+HB.instance Definition mixin := isMonadProb.Build
+  acto choice0 choice1 choiceC choicemm choiceA prob_bindDl.
 Definition t := MonadProb.Pack (MonadProb.Class mixin).
 
 End monadprobmodel.

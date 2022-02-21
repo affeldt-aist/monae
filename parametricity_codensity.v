@@ -24,7 +24,7 @@ Local Open Scope monae_scope.
 Set Bullet Behavior "Strict Subproofs".
 
 Lemma Actm_exponenial_FE (M : monad) (X Y : UU0) (f : X -> Y) :
-  forall A eX, ((exponential_F A \O M) # f) eX = M # f \o eX.
+  forall A eX, ([the functor of (exponential_F A \o M)] # f) eX = M # f \o eX.
 Proof. by []. Qed.
 
 (******************************************************************************)
@@ -50,7 +50,7 @@ Variable m : T.
 
 Axiom param : T_R m m.
 
-Lemma naturality : naturality (exponential_F A \O M) M m.
+Lemma naturality : naturality [the functor of (exponential_F A \o M)] M m.
 Proof.
 move=> X Y f; rewrite boolp.funeqE => eX.
 by apply (param X Y (fun x y => (M # f) x = y)) => a _ <-.
@@ -85,7 +85,7 @@ Variable m : T.
 
 Axiom param : T_R m m.
 
-Lemma naturality : naturality (exponential_F A \O M) M m.
+Lemma naturality : naturality [the functor of (exponential_F A \o M)] M m.
 Proof.
 move=> X Y f; rewrite boolp.funeqE => eX.
 set rhs := RHS.
@@ -111,7 +111,7 @@ Let M := [the monad of option_monad].
 
 Variable m : MK M A.
 
-Lemma naturality : naturality (exponential_F A \O M) M m.
+Lemma naturality : naturality [the functor of (exponential_F A \o M)] M m.
 Proof. exact: Exception.naturality. Qed.
 
 End option_naturality.
@@ -142,7 +142,7 @@ Variable m : T.
 
 Axiom param : T_R m m.
 
-Lemma naturality : naturality (exponential_F A \O M) M m.
+Lemma naturality : naturality [the functor of (exponential_F A \o M)] M m.
 Proof.
 move=> X Y f /=; rewrite boolp.funeqE => eX.
 set rhs := RHS.
@@ -181,7 +181,7 @@ Variable m : T.
 
 Axiom param : T_R m m.
 
-Lemma Actm_ModelMonadStateE' (X Y : UU0) (f : X -> Y) (eX : (exponential_F A \O M) X) a (s : S):
+Lemma Actm_ModelMonadStateE' (X Y : UU0) (f : X -> Y) (eX : (exponential_F A \o M) X) a (s : S):
   (M # f \o eX) a s = let (x, y) := eX a s in (f x, y).
 Proof. by []. Qed.
 
@@ -190,7 +190,7 @@ Lemma Actm_ModelMonadStateE (X Y : UU0) (f : X -> Y) (eX : A -> S -> (X * S)) (s
   (M # f \o mX) eX s = (let (x, y) := mX eX s in (f x, y)).
 Proof. by []. Qed.
 
-Lemma naturality : naturality (exponential_F A \O M) M m.
+Lemma naturality : naturality [the functor of (exponential_F A \o M)] M m.
 Proof.
 move=> X Y f; rewrite boolp.funeqE => eX.
 set rhs := RHS.

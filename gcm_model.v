@@ -695,7 +695,7 @@ Proof. by []. Qed.
 Import comps_notation hierarchy.
 Local Open Scope monae_scope.
 Lemma JoinE T :
-  (Join : (N \O N) T -> N T) = (Join : (M \O M) T -> M T).
+  (Join : (N \o N) T -> N T) = (Join : (M \o M) T -> M T).
 Proof.
 apply funext => t /=.
 rewrite /join_.
