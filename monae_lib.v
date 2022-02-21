@@ -91,20 +91,16 @@ Section curry.
 Variables A B C : Type.
 Implicit Types f : A -> B -> C.
 
-Definition uncurry f := prod_curry f.
-
 Lemma uncurryE f a b : (uncurry f) (a, b) = f a b. Proof. by []. Qed.
-
-Definition curry (g : A * B -> C) : A -> B -> C := fun a b => g (a, b).
 
 Lemma curryE D a b (g : A * B -> C) (h : _ -> D) :
   h (curry g a b) = (h \o g) (a, b).
 Proof. by []. Qed.
 
-Lemma curryK : cancel curry uncurry.
+Lemma curryK : cancel (@curry A B C) uncurry.
 Proof. by move=> f; rewrite boolp.funeqE; case. Qed.
 
-Lemma uncurryK f : cancel uncurry curry.
+Lemma uncurryK f : cancel (@uncurry A B C) curry.
 Proof. by []. Qed.
 End curry.
 

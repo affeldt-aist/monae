@@ -655,7 +655,7 @@ move=> A B f t.
 rewrite ExceptMonadE.
 rewrite /handle_op /=.
 rewrite /handle /=.
-rewrite /uncurry /prod_curry /Datatypes.uncurry /=.
+rewrite /uncurry /=.
 case: t => -[z//|a] g /=.
 rewrite ExceptMonadE.
 case: (f a) => // z.
@@ -1161,7 +1161,7 @@ Let reifybind : forall (A B : UU0) (m : M A) (f : A -> M B) s,
 Proof.
 move=> A B m0 f s.
 rewrite StateMonadE.
-rewrite /uncurry /prod_curry /Datatypes.uncurry /=.
+rewrite /uncurry /=.
 rewrite /comp /= /reify /=.
 by case (m0 s).
 Qed.
