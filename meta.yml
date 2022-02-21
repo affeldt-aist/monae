@@ -36,7 +36,7 @@ license:
 
 supported_coq_versions:
   text: Coq 8.13
-  opam: '{ (>= "8.13" & < "8.15~") | (= "dev") }'
+  opam: '{ (>= "8.13" & < "8.16~") | (= "dev") }'
 
 tested_coq_opam_versions:
 - version: '1.13.0-coq-8.13'
@@ -55,27 +55,27 @@ tested_coq_opam_versions:
 dependencies:
 - opam:
     name: coq-mathcomp-ssreflect
-    version: '{ (>= "1.13.0" & < "1.14~") | (= "dev")  }'
+    version: '{ (>= "1.13.0" & < "1.15~") | (= "dev")  }'
   description: |-
     [MathComp ssreflect](https://math-comp.github.io)
 - opam:
     name: coq-mathcomp-fingroup
-    version: '{ (>= "1.13.0" & < "1.14~") | (= "dev")  }'
+    version: '{ (>= "1.13.0" & < "1.15~") | (= "dev")  }'
   description: |-
     [MathComp fingroup](https://math-comp.github.io)
 - opam:
     name: coq-mathcomp-algebra
-    version: '{ (>= "1.13.0" & < "1.14~") | (= "dev")  }'
+    version: '{ (>= "1.13.0" & < "1.15~") | (= "dev")  }'
   description: |-
     [MathComp algebra](https://math-comp.github.io)
 - opam:
     name: coq-mathcomp-solvable
-    version: '{ (>= "1.13.0" & < "1.14~") | (= "dev")  }'
+    version: '{ (>= "1.13.0" & < "1.15~") | (= "dev")  }'
   description: |-
     [MathComp solvable](https://math-comp.github.io)
 - opam:
     name: coq-mathcomp-field
-    version: '{ (>= "1.13.0" & < "1.14~") | (= "dev")  }'
+    version: '{ (>= "1.13.0" & < "1.15~") | (= "dev")  }'
   description: |-
     [MathComp field](https://math-comp.github.io)
 - opam:
