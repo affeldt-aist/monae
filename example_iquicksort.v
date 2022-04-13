@@ -424,6 +424,57 @@ Variables (d : unit) (T : orderType d) (M : plusArrayMonad T Z_eqType).
 
 Local Obligation Tactic := idtac.
 
+(* failed attempts *)
+(*Fixpoint iqsort (i : Z) (n : nat) : M unit :=
+  match n with
+  | 0 => Ret tt
+  | n.+1 => aget i >>= (fun p =>
+         ipartl p (i) 0 0 n >>= (fun '(ny, nz) =>
+         aswap i (i + ny%:Z) >>
+         iqsort i ny >> iqsort (ny%:Z) nz))
+  end.*)
+
+(*Function iqsort (i : Z) (n : nat) {measure n} : M unit :=
+  match n with
+  | 0 => Ret tt
+  | k.+1 => aget i >>= (fun p =>
+            ipartl p (i + 1) 0 0 (n-1) >>= (fun '(ny, nz) => aswap i (i + ny%:Z) >> iqsort i ny))
+  end.*)
+
+(*Program Fixpoint iqsort' (ni : (Z * nat))
+    (f : forall (n'j : (Z * nat)), (n'j.2 < ni.2)%coq_nat -> M unit) : M unit :=
+  match ni.2 with
+  | 0 => Ret tt
+  | n.+1 => aget ni.1 >>= (fun p =>
+            ipartl p (ni.1 + 1)%Z 0 0 n >>= (fun '(ny, nz) =>
+              aswap ni.1 (ni.1 + ny%:Z) >>
+              f (ni.1, ny) _ >> f ((ni.1 + ny%:Z + 1)%Z, nz) _))
+  end.
+Next Obligation.
+move => [i [//|n']] /= _ n [<-] p [a b] /= a' _ [-> _] _.*)
+
+(* From Equations Require Import Equations. *)
+
+(* Equations? qperm (s : seq A) : M (seq A) by wf (size s) lt :=
+| [::] => Ret [::]
+| x :: xs => 
+  splits_bseq xs >>= 
+    (fun '(ys, zs) => liftM2 (fun a b => a ++ x :: b) (qperm ys : M (seq A)) (qperm zs)).
+Proof.
+apply /ltP.
+exact: (leq_ltn_trans (size_bseq b)).
+apply /ltP.
+exact: (leq_ltn_trans (size_bseq b0)).
+Defined. *)
+
+(* Set Printing All.
+Equations? iqsort n i : M unit by wf n lt :=
+iqsort O i := Ret tt ;
+iqsort n.+1 i := aget i >>= (fun p =>
+  dipartl p (i + 1) 0 0 n >>= (fun '(ny, nz) =>
+  aswap i (i + ny%:Z) >>
+  iqsort ny i >> iqsort nz (i + ny%:Z + 1)%Z)). *)
+
 Program Fixpoint iqsort' ni
     (f : forall mj, (mj.2 < ni.2)%coq_nat -> M unit) : M unit :=
   match ni.2 with

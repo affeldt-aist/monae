@@ -1160,3 +1160,5 @@ HB.structure Definition MonadFailFresh (S : eqType) :=
   { M of isMonadFailFresh S M & isFunctor M & isMonad M & isMonadFresh S M &
          isMonadFail M }.
 Notation failFreshMonad := MonadFailFresh.type.
+
+(* HB.graph "hier.dot". *)

@@ -6,6 +6,7 @@ Require Import monae_lib.
 Require Import hierarchy monad_lib fail_lib state_lib.
 From infotheo Require Import ssr_ext.
 Require Import Recdef.
+From Equations Require Import Equations.
 
 (******************************************************************************)
 (*                            Quicksort example                               *)
@@ -127,7 +128,8 @@ Lemma size_partition p (s : seq T) :
 Proof.
 elim: s p => //= x xs ih p; have {ih} := ih p.
 move H : (partition p xs) => h; case: h H => a b ab /= abxs.
-by case: ifPn => xp; rewrite ?(addSn,addnS) abxs.
+by case: ifPn => xp; rewrite !(addSn,addnS) abxs. 
+(* ! was ? :conflict with Equations TODO bug report *)
 Qed.
 
 Lemma partition_spec (p : T) (xs : seq T) :
@@ -136,10 +138,15 @@ Proof.
 elim: xs p => [/=|x xs ih] p.
   rewrite bindretf !assertE /is_partition guardT bindskipf; exact: refin_refl.
 rewrite /= bindA.
-under eq_bind do rewrite alt_bindDl 2!bindretf 2!assertE.
-under eq_bind do rewrite 2!is_partition_consE 2!guard_and 2!bindA.
 apply: (refin_trans _ (refin_bindl _ _)); last first => [yz|].
-  exact/(refin_alt (refin_refl _))/refin_bindr/refin_guard_le.
+rewrite alt_bindDl 2!bindretf 2!assertE.
+rewrite 2!is_partition_consE 2!guard_and 2!bindA.
+exact/(refin_alt (refin_refl _))/refin_bindr/refin_guard_le.
+(* under eq_bind do rewrite alt_bindDl 2!bindretf 2!assertE.
+under eq_bind do rewrite 2!is_partition_consE 2!guard_and 2!bindA. *)
+(* apply: (refin_trans _ (refin_bindl _ _)); last first => [yz|]. *)
+  (* apply (refin_alt). *)
+  (* exact/(refin_alt (refin_refl _))/refin_bindr/refin_guard_le. *)
 apply: (refin_trans _ (refin_bindl _ _)); last first => [yz|].
   exact: refin_if_guard.
 under eq_bind do rewrite -bind_if.
@@ -254,7 +261,7 @@ Let slowsort_preserves_size : preserves (@slowsort M _ E) size.
 Proof.
 move=> s; have [n ns] := ubnP (size s); elim: n s ns => // n ih s ns.
 move: s ns => [ns|p s]; first by rewrite /= slowsort_nil 2!bindretf.
-rewrite /= ltnS => ns; rewrite /slowsort kleisliE !bindA.
+rewrite /= ltnS => ns. rewrite /slowsort kleisliE bindA [RHS]bindA.
 rewrite (qperm_preserves_size2 _
   (fun a b => assert (sorted <=%O) a >>= (fun x' => Ret (x', b)))).
 bind_ext => ht; rewrite assertE 2!bindA; apply: bind_ext_guard => _.
@@ -282,23 +289,18 @@ End slowsort_preserves.
 Section qsort.
 Variables (M : plusMonad).
 Variables (d : unit) (T : orderType d).
-Function qsort (s : seq T) {measure size s} : seq T :=
-  (* if s is h :: t
-  then let '(ys, zs) := partition h t in
-       qsort ys ++ h :: qsort zs
-  else [::]. *)
-  (* NB: not using match causes problems when applying fqsort_ind
-     which is automatically generated *)
-  match s with
-  | [::] => [::]
-  | h :: t => let: (ys, zs) := partition h t in
-              qsort ys ++ h :: qsort zs
-  end.
+
+(* let *)
+Equations? qsort (s : seq T) : (seq T) by wf (size s) lt :=
+| [::] => [::]
+| h :: t => qsort (partition h t).1 ++ h :: qsort (partition h t).2.
+(* let: (ys, zs) := partition h t in
+qsort ys ++ h :: qsort zs. *)
 Proof.
-move=> s h t _ ys zs pht_yz; have := size_partition h t.
-by rewrite pht_yz /= => <-; apply/ltP; rewrite ltnS leq_addl.
-move=> s h t _ ys zs pht_yz; have := size_partition h t.
-by rewrite pht_yz /= => <-; apply/ltP; rewrite ltnS leq_addr.
+have := size_partition h t.
+by move=> <-; apply /ltP; rewrite ltnS leq_addr.
+have := size_partition h t.
+by move=> <-; apply /ltP; rewrite ltnS leq_addl.
 Defined.
 
 Definition partition_slowsort (xs : seq T) : M (seq T) :=
@@ -326,11 +328,39 @@ Qed.
 Lemma qsort_spec : Ret \o qsort `<.=` (@slowsort M _ _).
 Proof.
 move=> s /=.
-apply qsort_ind => [{}s _|{}s h t _ ys zs pht ihys ihzs]. (* qsort_ind *)
+apply qsort_elim => [|h t ihys ihzs].
   rewrite slowsort_nil; exact: refin_refl.
-apply: (refin_trans _ (partition_slowsort_spec _)); rewrite /= pht.
+apply: (refin_trans _ (partition_slowsort_spec _)).
+rewrite /=.
+move H : (partition h t) => ht.
+move: ht H => [ys zs] /= pht.
+rewrite pht in ihys ihzs.
 apply: (refin_trans _ (refin_liftM2 ihys ihzs)).
 rewrite liftM2_ret; exact: refin_refl.
 Qed.
 
 End qsort.
+
+Module qsort_function.
+Section qsort_function.
+Variables (M : plusMonad) (d : unit) (T : orderType d).
+Function qsort (s : seq T) {measure size s} : seq T :=
+  (* if s is h :: t
+  then let '(ys, zs) := partition h t in
+       qsort ys ++ h :: qsort zs
+  else [::]. *)
+  (* NB: not using match causes problems when applying fqsort_ind
+     which is automatically generated *)
+  match s with
+  | [::] => [::]
+  | h :: t => let: (ys, zs) := partition h t in
+              qsort ys ++ h :: qsort zs
+  end.
+Proof.
+move=> s h t _ ys zs pht_yz; have := size_partition h t.
+by rewrite pht_yz /= => <-; apply/ltP; rewrite ltnS leq_addl.
+move=> s h t _ ys zs pht_yz; have := size_partition h t.
+by rewrite pht_yz /= => <-; apply/ltP; rewrite ltnS leq_addr.
+Defined.
+End qsort_function.
+End qsort_function.
