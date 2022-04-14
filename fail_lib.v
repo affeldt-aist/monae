@@ -720,7 +720,7 @@ Qed.
 
 Lemma iperm_idempotent (E : eqType) : iperm >=> iperm = iperm :> (seq E -> M _).
 Proof.
-apply: fun_ext_dep => s; rewrite kleisliE.
+apply: funext_dep => s; rewrite kleisliE.
 elim: s => [|h t ih]; first by rewrite /= bindretf.
 rewrite /= -[in RHS]ih !bindA; bind_ext.
 elim/last_ind => [|s x _].
@@ -1014,8 +1014,8 @@ Lemma qperm'_Fix (s : seq A)
 Proof.
 move=> H; rewrite /qperm'; case: s f g H => // h t f g H.
 bind_ext => -[a b] /=.
-rewrite (_ : f = g) //; apply fun_ext_dep => s.
-by rewrite boolp.funeqE => ?; exact: H.
+rewrite (_ : f = g) //; apply funext_dep => s.
+by apply boolp.funext => ?; exact: H.
 Qed.
 
 Lemma qperm_nil : qperm [::] = Ret [::].

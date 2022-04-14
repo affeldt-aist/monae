@@ -84,7 +84,7 @@ Qed.
 Lemma bindmret (A : UU0) (m : failPState A) :
 bind m ret = m.
 Proof.
-apply fun_ext => s.
+apply funext => s.
 unfold bind.
 destruct (m s) as [[|]]; reflexivity.
 Qed.
@@ -94,7 +94,7 @@ Lemma bindA
   (f : A -> failPState B) (g : B -> failPState C) :
 bind (bind m f) g = bind m (fun x => bind (f x) g).
 Proof.
-apply fun_ext => s.
+apply funext => s.
 unfold bind.
 destruct (m s) as [[|]]; reflexivity.
 Qed.
@@ -151,9 +151,8 @@ Section with_stateT_of_failMonad.
 Variable N : failMonad.
 Let M : monad := stateT nat N.
 Let incr : M unit := get >>= (put \o succn).
-Let prog T : M unit := incr >> Lift (stateT nat) N T fail >> incr.
-
-Goal forall T, prog T = Lift (stateT nat) N unit fail.
+Let prog T : M unit := incr >> Lift [the monadT of stateT nat] N T fail >> incr.
+Goal forall T, prog T = Lift [the monadT of stateT nat] N unit fail.
 Proof.
 move=> T; rewrite /prog.
 rewrite bindA.
@@ -162,8 +161,10 @@ Abort.
 End with_stateT_of_failMonad.
 
 Section with_exceptT_of_stateMonad.
-Definition LGet S (M : stateMonad S) := Lift (exceptT unit) M S (@get S M).
-Definition LPut S (M : stateMonad S) := Lift (exceptT unit) M unit \o (@put S M).
+Definition LGet S (M : stateMonad S) :=
+  Lift [the monadT of exceptT unit] M S (@get S M).
+Definition LPut S (M : stateMonad S) :=
+  Lift [the monadT of exceptT unit] M unit \o (@put S M).
 
 Variable N : stateMonad nat.
 Let M : monad := exceptT unit N.
@@ -184,9 +185,10 @@ Section incr_fail_incr_model.
 
 Lemma bindLmfail (M := [the monad of option_monad]) S T U (m : stateT S M U)
     (FAIL := @throw unit T tt) :
-  m >> Lift (stateT S) M T FAIL = Lift (stateT S) M T FAIL.
+  m >> Lift [the monadT of stateT S] M T FAIL =
+  Lift [the monadT of stateT S] M T FAIL.
 Proof.
-rewrite -!liftSE /liftS; apply fun_ext => s.
+rewrite /= /liftS; apply funext => s.
 rewrite ExceptMonadE.
 rewrite {1}bindE /= {1}/join_of_bind /= {1}/bindS /=.
 rewrite {1}bindE /= {1}/join_of_bind /=.
@@ -200,9 +202,9 @@ Let M : monad := [the stateMonad nat of MS nat N].
 Let FAIL T := @throw unit T tt.
 
 Let incr : M unit := get >>= (put \o succn).
-Let prog T : M unit := incr >> Lift (stateT nat) N T (@FAIL T) >> incr.
-
-Goal forall T, prog T = Lift (stateT nat) N unit (@FAIL unit).
+Let prog T : M unit :=
+  incr >> Lift [the monadT of stateT nat] N T (@FAIL T) >> incr.
+Goal forall T, prog T = Lift [the monadT of stateT nat] N unit (@FAIL unit).
 Proof.
 move=> T; rewrite /prog.
 rewrite bindLmfail.

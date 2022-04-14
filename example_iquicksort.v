@@ -459,7 +459,7 @@ Lemma iqsort'_Fix (ni : (Z * nat))
   (forall (n'j : (Z * nat)) (p : (n'j.2 < ni.2)%coq_nat), f n'j p = g n'j p) ->
   iqsort' f = iqsort' g.
 Proof.
-  by move=> ?; congr iqsort'; apply fun_ext_dep => ?; rewrite boolp.funeqE.
+  by move=> ?; congr iqsort'; apply funext_dep => ?; apply boolp.funext.
 Qed.
 
 Lemma iqsort_nil i : iqsort (i, 0) = Ret tt.
