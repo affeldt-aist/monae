@@ -26,7 +26,7 @@ in several examples of monadic equational reasoning.
   - Celestine Sauvage
   - Kazunari Tanaka
 - License: [LGPL-2.1-or-later](LICENSE)
-- Compatible Coq versions: Coq 8.13
+- Compatible Coq versions: Coq 8.14
 - Additional dependencies:
   - [MathComp ssreflect](https://math-comp.github.io)
   - [MathComp fingroup](https://math-comp.github.io)
@@ -37,6 +37,7 @@ in several examples of monadic equational reasoning.
   - [Infotheo](https://github.com/affeldt-aist/infotheo)
   - [Paramcoq](https://github.com/coq-community/paramcoq)
   - [Hierarchy Builder](https://github.com/math-comp/hierarchy-builder)
+  - [Coq-Equations](https://github.com/mattam82/Coq-Equations)
 - Coq namespace: `monae`
 - Related publication(s):
   - [A hierarchy of monadic effects for program verification using equational reasoning](https://staff.aist.go.jp/reynald.affeldt/documents/monae.pdf) doi:[10.1007/978-3-030-33636-3_9](https://doi.org/10.1007/978-3-030-33636-3_9)

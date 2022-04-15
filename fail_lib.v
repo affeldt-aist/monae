@@ -986,8 +986,46 @@ Local Close Scope mprog.
 
 End splits_prePlusMonad.
 
+From Equations Require Import Equations.
+
 Section qperm.
 Variables (M : altMonad) (A : UU0) (d : unit) (T : orderType d).
+
+Equations? qperm (s : seq A) : M (seq A) by wf (size s) lt :=
+| [::] => Ret [::]
+| x :: xs => 
+  splits_bseq xs >>= 
+    (fun '(ys, zs) => liftM2 (fun a b => a ++ x :: b) (qperm ys : M (seq A)) (qperm zs)).
+Proof.
+apply /ltP.
+exact: (leq_ltn_trans (size_bseq ys)).
+apply /ltP.
+exact: (leq_ltn_trans (size_bseq zs)).
+Defined.
+
+Lemma qperm_nil : qperm [::] = Ret [::].
+Proof. by []. Qed.
+(* by rewrite /qperm (Fix_eq _ _ _ qperm'_Fix). Qed. *)
+
+Lemma qperm_cons x xs : qperm (x :: xs) =
+  splits xs >>= (fun '(ys, zs) =>
+    liftM2 (fun a b => a ++ x :: b) (qperm ys) (qperm zs)).
+Proof.
+rewrite qperm_equation_2 splitsE fmapE bindA; bind_ext => -[? ?].
+by rewrite bindretf.
+(* rewrite {1}/qperm {1}(Fix_eq _ _ _ qperm'_Fix) /=.
+rewrite splitsE /= fmapE bindA; bind_ext => -[? ?].
+by rewrite bindretf. *)
+Qed.
+
+Definition qpermE := (qperm_nil, qperm_cons).
+
+End qperm.
+Arguments qperm {M} {A}.
+ 
+Module qperm_function.
+Section qperm_function.
+Variables (M : plusMonad) (A : UU0) (d : unit) (T : orderType d).
 
 Local Obligation Tactic := idtac.
 Program Definition qperm' (s : seq A)
@@ -1017,23 +1055,8 @@ bind_ext => -[a b] /=.
 rewrite (_ : f = g) //; apply funext_dep => s.
 by apply boolp.funext => ?; exact: H.
 Qed.
-
-Lemma qperm_nil : qperm [::] = Ret [::].
-Proof. by rewrite /qperm (Fix_eq _ _ _ qperm'_Fix). Qed.
-
-Lemma qperm_cons x xs : qperm (x :: xs) =
-  splits xs >>= (fun '(ys, zs) =>
-    liftM2 (fun a b => a ++ x :: b) (qperm ys) (qperm zs)).
-Proof.
-rewrite {1}/qperm {1}(Fix_eq _ _ _ qperm'_Fix) /=.
-rewrite splitsE /= fmapE bindA; bind_ext => -[? ?].
-by rewrite bindretf.
-Qed.
-
-Definition qpermE := (qperm_nil, qperm_cons).
-
-End qperm.
-Arguments qperm {M} {A}.
+End qperm_function.
+End qperm_function.
 
 Section qperm_examples.
 Variable M : altCIMonad.
@@ -1363,7 +1386,15 @@ Section qperm_lemmas.
 Context {M : plusMonad} {A : eqType}.
 
 Lemma iperm_qperm : @iperm M A = @qperm M A.
-Proof.
+Proof. 
+rewrite boolp.funeqE => s.
+apply qperm_elim => [//|h t ihys ihzs].
+rewrite iperm_cons_splits splitsE fmapE bindA.
+bind_ext => -[a b]; rewrite bindretf.
+by rewrite (ihys (a, b) _ b) (ihzs (a, b) a).
+Qed.
+
+(* (* old version *)
 rewrite boolp.funeqE => s.
 have [n ns] := ubnP (size s); elim: n s ns => // n ih s ns.
 move: s ns => [na |h t]; first by rewrite qperm_nil.
@@ -1373,8 +1404,7 @@ bind_ext => -[a b] /=; rewrite !bindA.
 apply: bind_ext_guard => /and3P[ta tb _].
 rewrite !bindretf ih; last first.
   by rewrite (leq_trans _ ns)// ltnS; apply: size_subseq.
-by rewrite ih // (leq_trans _ ns)// ltnS; apply: size_subseq.
-Qed.
+by rewrite ih // (leq_trans _ ns)// ltnS; apply: size_subseq. *)
 
 Lemma perm_eq_qperm (a b : seq A) : perm_eq a b -> qperm a = qperm b :> M _.
 Proof. by rewrite -!iperm_qperm; exact: perm_eq_iperm. Qed.
