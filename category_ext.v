@@ -1,6 +1,7 @@
 From mathcomp Require Import all_ssreflect.
 From mathcomp Require Import boolp.
 Require Import monae_lib category.
+From HB Require Import structures.
 
 (******************************************************************************)
 (*                    Extra definitions in category theory                    *)
@@ -41,14 +42,21 @@ Definition slice_category_inhom' :
   forall b c : slice, (slice_category_obj b -> slice_category_obj c) -> Prop.
 Proof.
 case=> b gb [] c gc /= f.
-exact ((Hom.apply gb) = gc \o f).
+exact ((Hom.sort gb) = gc \o f).
 Defined.
 Definition slice_category_inhom := Eval hnf in slice_category_inhom'.
-Definition slice__category_mixin : Category.mixin_of slice.
-refine (@Category.Mixin slice slice_category_obj slice_category_inhom _ _).
-- by case.
-- by case=> b hb [] c hc [] d hd /= f g -> ->.
-Defined.
+Local Notation el := slice_category_obj.
+Local Notation inhom := slice_category_inhom.
+Lemma slice_category_id :
+  forall a : slice, inhom (@idfun (el a)).
+Proof. by case. Qed.
+Lemma slice_category_comp :
+  forall (aa ba ca : slice) (f : el aa -> el ba) (g : el ba -> el ca),
+    inhom f -> inhom g -> inhom (g \o f).
+Proof. by case=> aa haa [] ba hba [] ca hca /= f g -> ->. Qed.
+HB.instance Definition _ :=
+  isCategory.Build slice slice_category_obj slice_category_inhom
+                   slice_category_id slice_category_comp.
 End def.
 End SliceCategory.
 
@@ -56,7 +64,7 @@ End SliceCategory.
 Module ProductCategory.
 Section def.
 Variable C D : category.
-Definition obj := (C * D)%type.
+Notation obj := (C * D)%type.
 Definition ele (X : obj) : Type := (el X.1 + el X.2)%type.
 Definition separated (X Y : obj) (f : ele X -> ele Y) : Prop :=
   (forall x : el X.1, exists y : el Y.1, f (inl x) = inl y) /\
@@ -92,7 +100,7 @@ case: X=> X1 X2; case:Y=> Y1 Y2 /= f [] /= Hf1 Hf2 x.
 by case: (cid (Hf2 x))=> y ->.
 Qed.
 Definition inhom (A B : obj) (f : ele A -> ele B) : Prop :=
-  exists H : separated f, InHom (sepfst H) /\ InHom (sepsnd H).
+  exists H : separated f, inhom _ _ (sepfst H) /\ inhom _ _ (sepsnd H).
 Lemma idfun_separated (X : obj) : @separated X X idfun.
 Proof. by split; move=> x; exists x. Qed.
 Lemma comp_separated (X Y Z : obj) (f :ele X -> ele Y) (g : ele Y -> ele Z) :
@@ -133,30 +141,36 @@ suff: inr (A:=el Z.1) (sepsnd (comp_separated Hf Hg) x) = inr (sepsnd Hg (sepsnd
   by move => [=].
 by rewrite 3!sepsndK.
 Qed.
-Definition mixin : Category.mixin_of (C * D).
-refine (@Category.Mixin obj ele inhom _ _).
-- by move=> X; exists (idfun_separated X); rewrite sepfst_idfun sepsnd_idfun; split; apply idfun_in_hom.
-- by move=> X Y Z f g [] sf [] homfl homfr [] sg [] homgl homgr ; exists (comp_separated sf sg); rewrite sepfst_comp sepsnd_comp; split; apply funcomp_in_hom.
-Defined.
+Lemma idfun_inhom (X : obj) : @inhom X X idfun.
+Proof.
+exists (idfun_separated X); rewrite sepfst_idfun sepsnd_idfun;
+  split; exact: idfun_inhom.
+Qed.
+Lemma comp_inhom X Y Z (f : ele X -> ele Y) (g : ele Y -> ele Z) :
+  inhom f -> inhom g -> inhom (g \o f).
+Proof.
+move=> [] sf [] homfl homfr [] sg [] homgl homgr.
+exists (comp_separated sf sg).
+rewrite sepfst_comp sepsnd_comp; split; exact: funcomp_inhom.
+Qed.
+HB.instance Definition mixin :=
+  isCategory.Build obj ele inhom
+                   idfun_inhom comp_inhom.
 End def.
 End ProductCategory.
-Definition productCategory (C D : category) := Category.Pack (ProductCategory.mixin C D).
-
-Canonical productCategory.
+HB.export ProductCategory.
 
 Section prodcat_homfstsnd.
 Variables A B : category.
 Section homfstsnd.
 Let _homfst (x y : A * B) (f : {hom x,y}) : {hom x.1, y.1}.
-case:f => f.
-case/cid=> sf [] Hf _.
+case:f => f -[[]] /cid [] sf [] Hf _.
 exact: (HomPack _ _ _ Hf).
 Defined.
 Definition homfst := Eval hnf in _homfst.
 Let _homsnd (x y : A * B) (f : {hom x,y}) : {hom x.2, y.2}.
-case:f => f.
-case/cid=> sf [] _ Hf.
-exact: (HomPack _ _ _ Hf).
+case:f => f -[[]] /cid  [] sf [] _ Hg.
+exact: (HomPack _ _ _ Hg).
 Defined.
 Definition homsnd := Eval hnf in _homsnd.
 End homfstsnd.
@@ -178,8 +192,8 @@ Proof.
 rewrite /homfst /=.
 case: cid => //= gh [gh1 gh2].
 apply/hom_ext => /=.
-destruct g as [g g'].
-destruct f as [f f'].
+destruct g as [g [[g']]].
+destruct f as [f [[f']]].
 case: cid => g_ [g1 g2].
 case: cid => f_ [f1 f2] /=.
 rewrite -ProductCategory.sepfst_comp.
@@ -192,8 +206,8 @@ Proof.
 rewrite /homsnd /=.
 case: cid => //= gh [gh1 gh2].
 apply/hom_ext => /=.
-destruct g as [g g'].
-destruct f as [f f'].
+destruct g as [g [[g']]].
+destruct f as [f [[f']]].
 case: cid => g_ [g1 g2].
 case: cid => f_ [f1 f2] /=.
 rewrite -ProductCategory.sepsnd_comp.
@@ -202,13 +216,13 @@ exact/proof_irr.
 Qed.
 Lemma homfstK (x y : A * B) (f : {hom x,y}) (i : el x.1) : inl (homfst f i) = f (inl i).
 Proof.
-case: f=> /= f Hf.
+case: f=> /= f [[Hf]].
 case: (cid _)=> -[] sf1 sf2 [] Hf1 Hf2 /=.
 by case: (cid _)=> j ->.
 Qed.
 Lemma homsndK (x y : A * B) (f : {hom x,y}) (i : el x.2) : inr (homsnd f i) = f (inr i).
 Proof.
-case: f=> /= f Hf.
+case: f=> /= f [[Hf]].
 case: (cid _)=> -[] sf1 sf2 [] Hf1 Hf2 /=.
 by case: (cid _)=> j ->.
 Qed.
@@ -219,28 +233,28 @@ Variables A B : category.
 Variables a1 a2 : A.
 Variables b1 b2 : B.
 Variables (f : {hom a1, a2}) (g : {hom b1, b2}).
-Let C := productCategory A B.
+Let C := [the category of (prod A B)].
 Definition pairhom' (ab : el a1 + el b1) : el a2 + el b2 :=
   match ab with
   | inl a => inl (f a)
   | inr b => inr (g b)
   end.
 Lemma pairhom'_in_hom :
-  @InHom C _ _ (pairhom' : el (a1,b1).1 + el (a1,b1).2 ->
-                           el (a2,b2).1 + el (a2,b2).2).
+  inhom (pairhom' : el (a1,b1).1 + el (a1,b1).2 ->
+                    el (a2,b2).1 + el (a2,b2).2).
 Proof.
-rewrite /InHom /= /ProductCategory.inhom /=.
+rewrite /inhom /= /ProductCategory.inhom /=.
 set s := ProductCategory.separated _.
 have [/= s1 s2] : s by split => /= x; [exists (f x) | exists (g x)].
 exists (conj s1 s2); split.
 - set h := ProductCategory.sepfst _.
-  rewrite (_ : h = f); first exact: Hom.class.
+  rewrite (_ : h = f); first exact: isHom_inhom.
   by rewrite boolp.funeqE => ?; rewrite /h /=; case: cid => ? [].
 - set h := ProductCategory.sepsnd _.
-  rewrite (_ : h = g); first exact: Hom.class.
+  rewrite (_ : h = g); first exact: isHom_inhom.
   by rewrite boolp.funeqE => ?; rewrite /h /=; case: cid => ? [].
 Qed.
-Definition pairhom : {hom (a1, b1), (a2, b2)} := Hom.Pack _ _ pairhom'_in_hom.
+Definition pairhom : {hom (a1, b1), (a2, b2)} := HomPack _ _ _ pairhom'_in_hom.
 End prodCat_pairhom.
 
 Section pairhom_idfun.
@@ -294,48 +308,47 @@ End pairhomK.
 Module papply_left.
 Section def.
 Variables A B C : category.
-Variable F' : {functor (productCategory A B) -> C}.
+Variable F' : {functor [the category of (prod A B)] -> C}.
 Variable a : A.
 Definition F_obj : B -> C := fun b => F' (a, b).
 Definition F_mor (b1 b2 : B) (f : {hom b1, b2}) : {hom F_obj b1, F_obj b2} :=
   F' # pairhom [hom idfun] f.
-Program Definition mixin_of := @Functor.Mixin _ _ F_obj F_mor _ _.
-Next Obligation.
+Let F_id_hom : FunctorLaws.id F_mor.
 move=> D; rewrite /F_mor; set h := pairhom _ _.
 rewrite (_ : h = [hom idfun]) ?functor_id_hom //.
 by apply/hom_ext => /=; rewrite boolp.funeqE; case.
 Qed.
-Next Obligation.
+Let F_o_hom : FunctorLaws.comp F_mor.
 move=> b b0 b1 g h; rewrite /F_mor; set i := pairhom _ _.
 rewrite (_ : i = [hom (pairhom [hom idfun] g) \o
                       (pairhom [hom idfun] h)]) ?functor_o_hom //.
 by apply/hom_ext => /=; rewrite boolp.funeqE; case.
 Qed.
-Definition F := Functor.Pack (Phant _) mixin_of.
+(*HB.instance Definition _ := isFunctor.Build _ _ _ F_id_hom F_o_hom.*)
+Definition F := FunctorPack F_id_hom F_o_hom.
 End def.
 End papply_left.
 
 Module papply_right.
 Section def.
 Variables A B C : category.
-Variable F' : {functor (productCategory A B) -> C}.
+Variable F' : {functor [the category of (prod A B)] -> C}.
 Variable b : B.
 Definition F_obj : A -> C := fun a => F' (a, b).
 Definition F_mor (a1 a2 : A) (f : {hom a1, a2}) : {hom F_obj a1, F_obj a2} :=
   F' # pairhom f [hom idfun].
-Program Definition mixin_of := @Functor.Mixin _ _ F_obj F_mor _ _.
-Next Obligation.
+Let F_id_hom : FunctorLaws.id F_mor.
 move=> D; rewrite /F_mor; set h := pairhom _ _.
 rewrite (_ : h = [hom idfun]) ?functor_id_hom //.
 by apply/hom_ext => /=; rewrite boolp.funeqE; case.
 Qed.
-Next Obligation.
+Let F_o_hom : FunctorLaws.comp F_mor.
 move=> a a0 a1 g h; rewrite /F_mor; set i := pairhom _ _.
 rewrite (_ : i = [hom (pairhom g [hom idfun]) \o
                       (pairhom h [hom idfun])]) ?functor_o_hom //.
 by apply/hom_ext => /=; rewrite boolp.funeqE; case.
 Qed.
-Definition F := Functor.Pack (Phant _) mixin_of.
+Definition F := FunctorPack F_id_hom F_o_hom.
 End def.
 End papply_right.
 
@@ -353,40 +366,38 @@ Local Notation B := (B1 * B2)%type.
 Definition acto (x : A) : B := pair (F1 x.1) (F2 x.2).
 Definition actm (x y : A) (f : {hom x,y}) : {hom acto x, acto y} :=
   pairhom (F1 # homfst f) (F2 # homsnd f).
-Program Definition mixin_of := @Functor.Mixin _ _ acto actm _ _.
-Next Obligation.
+Let law_id : FunctorLaws.id actm.
 move=> a.
 by rewrite /actm homfst_idfun homsnd_idfun 2!functor_id_hom pairhom_idfun.
 Qed.
-Next Obligation.
+Let law_o : FunctorLaws.comp actm.
 move=> [] a1 a2 [] b1 b2 [] c1 c2 g h.
 by rewrite /actm homfst_comp homsnd_comp 2!functor_o_hom pairhom_comp.
 Qed.
-Definition F := Functor.Pack (Phant _) mixin_of.
+Definition F := FunctorPack law_id law_o.
 End def.
 End ProductFunctor.
 
 Module alpha_left.
 Section alpha_left.
 Variables A B C D : category.
-Variable F' : {functor (productCategory (productCategory A B) C) -> D}.
+Variable F' : {functor [the category of ((A * B) * C)%type] -> D}.
 Variables (a : A) (b : B).
 Definition acto : C -> D := papply_left.F F' (a, b).
 Definition actm (c1 c2 : C) (f : {hom c1, c2}) : {hom acto c1, acto c2} :=
   F' # pairhom [hom idfun] f.
-Program Definition mixin_of := @Functor.Mixin _ _ acto actm _ _.
-Next Obligation.
+Let law_id : FunctorLaws.id actm.
 move=> c0; rewrite /actm; set h := pairhom _ _.
 rewrite (_ : h = [hom idfun]) ?functor_id_hom //.
 by apply/hom_ext => /=; rewrite boolp.funeqE; case.
 Qed.
-Next Obligation.
+Let law_o : FunctorLaws.comp actm.
 move=> c c0 c1 g h; rewrite /actm; set i := pairhom _ _.
 rewrite (_ : i = [hom (pairhom [hom idfun] g) \o
                       (pairhom [hom idfun] h)]) ?functor_o_hom //.
 by apply/hom_ext => /=; rewrite boolp.funeqE; case.
 Qed.
-Definition F : {functor C -> D} := Functor.Pack (Phant _) mixin_of.
+Definition F : {functor C -> D} := FunctorPack law_id law_o.
 End alpha_left.
 End alpha_left.
 
@@ -451,15 +462,14 @@ Variables A B C : category.
 Definition acto (x : A * (B * C)) : A * B * C :=  match x with (a,(b,c)) => ((a,b),c) end.
 Definition actm (x y : A * (B * C)) : {hom x,y} -> {hom acto x, acto y} :=
 match x with (xa,(xb,xc)) => match y with (ya,(yb,yc)) => fun f => pairhom (pairhom (homfst f) (homfst (homsnd f))) (homsnd (homsnd f)) end end.
-Program Definition mixin_of := @Functor.Mixin _ _ acto actm _ _ .
-Next Obligation.
+Let law_id : FunctorLaws.id actm.
 case=> a [] b c.
 by rewrite /actm 2!homsnd_idfun 2!homfst_idfun 2!pairhom_idfun.
 Qed.
-Next Obligation.
+Let law_o : FunctorLaws.comp actm.
 case=> xa [] xb xc [] ya [] yb yc [] za [] zb zc g h.
 by rewrite /actm !homsnd_comp !homfst_comp !pairhom_comp.
 Qed.
-Definition F := Functor.Pack (Phant _) mixin_of.
+Definition F := FunctorPack law_id law_o.
 End def.
 End ProductCategoryAssoc.

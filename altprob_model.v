@@ -41,8 +41,8 @@ Proof. by move=> x y z; rewrite /alt lubA. Qed.
 Lemma image_FSDistfmap A B (x : gcm A) (k : choice_of_Type A -> gcm B) :
   FSDistfmap k @` x = (gcm # k) x.
 Proof.
-rewrite /hierarchy.actm /= /actm /category.Monad_of_category_monad.actm /=.
-by rewrite /category.id_f /= /free_semiCompSemiLattConvType_mor /=; unlock.
+rewrite /hierarchy.actm /= /actm !FCompE /category.actm /=.
+by rewrite /free_semiCompSemiLattConvType_mor /=; unlock.
 Qed.
 
 Section funalt_funchoice.
@@ -57,23 +57,15 @@ Local Notation U1 := forget_semiCompSemiLattConvType.
 Lemma FunaltDr (A B : Type) (x y : gcm A) (k : A -> gcm B) :
   (gcm # k) (x [+] y) = (gcm # k) x [+] (gcm # k) y.
 Proof.
-rewrite /hierarchy.actm /=.
-rewrite /Monad_of_category_monad.actm /=.
-case: (free_semiCompSemiLattConvType_mor
-        (free_convType_mor (free_choiceType_mor (hom_Type k))))=> f /= [] af ->.
-rewrite lubE; congr biglub.
-apply neset_ext=> /=.
-by rewrite image_setU !image_set1.
+rewrite /hierarchy.actm /= /Monad_of_category_monad.actm /=.
+by rewrite scsl_hom_is_lubmorph.
 Qed.
 
 Lemma FunpchoiceDr (A B : Type) (x y : gcm A) (k : A -> gcm B) p :
   (gcm # k) (x <|p|> y) = (gcm # k) x <|p|> (gcm # k) y.
 Proof.
-rewrite /hierarchy.actm /=.
-rewrite /Monad_of_category_monad.actm /=.
-case: (free_semiCompSemiLattConvType_mor
-  (free_convType_mor (free_choiceType_mor (hom_Type k))))=> f /= [] + _.
-exact.
+rewrite /hierarchy.actm /= /Monad_of_category_monad.actm /=.
+by rewrite scsl_hom_is_affine.
 Qed.
 End funalt_funchoice.
 
@@ -90,24 +82,12 @@ Local Notation U1 := forget_semiCompSemiLattConvType.
 Lemma affine_F1e0U1PD_alt T (u v : gcm (gcm T)) :
   (F1 # eps0 (U1 (P_delta_left T)))%category (u [+] v) =
   (F1 # eps0 (U1 (P_delta_left T)))%category u [+] (F1 # eps0 (U1 (P_delta_left T)))%category v.
-Proof.
-case: ((F1 # eps0 (U1 (P_delta_left T)))%category)=> f /= [] Haf Hbf.
-rewrite !lubE Hbf.
-congr biglub.
-apply neset_ext=> /=.
-by rewrite image_setU !image_set1.
-Qed.
+Proof. by rewrite scsl_hom_is_lubmorph. Qed.
 
 Lemma affine_e1PD_alt T (x y : el (F1 (FId (U1 (P_delta_left T))))) :
   (eps1 (P_delta_left T)) (x [+] y) =
   (eps1 (P_delta_left T)) x [+] (eps1 (P_delta_left T)) y.
-Proof.
-case: (eps1 (P_delta_left T))=> f /= [] Haf Hbf.
-rewrite !lubE Hbf.
-congr biglub.
-apply neset_ext=> /=.
-by rewrite image_setU !image_set1.
-Qed.
+Proof. by rewrite scsl_hom_is_lubmorph. Qed.
 
 Local Notation F1o := necset_semiCompSemiLattConvType.
 Local Notation F0o := FSDist_convType.
@@ -118,17 +98,8 @@ Local Notation F0m := free_convType_mor.
 Lemma bindaltDl : BindLaws.left_distributive (@hierarchy.bind gcm) alt.
 Proof.
 move=> A B x y k.
-rewrite !hierarchy.bindE /alt FunaltDr.
-suff -> : forall T (u v : gcm (gcm T)),
-  hierarchy.Join (u [+] v : gcm (gcm T)) = hierarchy.Join u [+] hierarchy.Join v by [].
-move=> T u v.
-rewrite /= /join_ /=.
-rewrite HCompId HIdComp /AdjComp.Eps.
-do 3 rewrite VCompE_nat homfunK functor_o !compE.
-rewrite !functor_id HCompId HIdComp.
-rewrite (_ : epsC (U0 (U1 (F1o (F0o (FCo T))))) = [NEq _, _] _) ?hom_ext ?epsCE //.
-rewrite NEqE !functor_id_hom.
-by rewrite affine_F1e0U1PD_alt affine_e1PD_alt.
+rewrite hierarchy.bindE /= /join_ -category.bindE.
+by rewrite scsl_hom_is_lubmorph.
 Qed.
 End bindaltDl.
 
@@ -183,16 +154,14 @@ Lemma affine_F1e0U1PD_conv T (u v : gcm (gcm T)) p :
   ((F1 # eps0 (U1 (P_delta_left T))) (u <|p|> v) =
    (F1 # eps0 (U1 (P_delta_left T))) u <|p|> (F1 # eps0 (U1 (P_delta_left T))) v)%category.
 Proof.
-case: ((F1 # eps0 (U1 (P_delta_left T)))%category)=> f /= [] Haf Hbf.
-by apply: Haf.
+by rewrite scsl_hom_is_affine.
 Qed.
 
 Lemma affine_e1PD_conv T (x y : el (F1 (FId (U1 (P_delta_left T))))) p :
   (eps1 (P_delta_left T)) (x <|p|> y) =
   (eps1 (P_delta_left T)) x <|p|> (eps1 (P_delta_left T)) y.
 Proof.
-rewrite eps1E -biglub_conv_setD; congr (|_| _); apply/neset_ext => /=.
-by rewrite -necset_convType.conv_conv_set.
+by rewrite scsl_hom_is_affine.
 Qed.
 
 Local Notation F1o := necset_semiCompSemiLattConvType.
@@ -204,17 +173,8 @@ Local Notation F0m := free_convType_mor.
 Lemma bindchoiceDl p : BindLaws.left_distributive (@hierarchy.bind gcm) (@choice p).
 Proof.
 move=> A B x y k.
-rewrite !hierarchy.bindE /choice FunpchoiceDr.
-suff -> : forall T (u v : gcm (gcm T)), hierarchy.Join (u <|p|> v : gcm (gcm T)) = hierarchy.Join u <|p|> hierarchy.Join v by [].
-move=> T u v.
-rewrite /= /Monad_of_category_monad.join /=.
-rewrite /join_ /=.
-rewrite HCompId HIdComp /AdjComp.Eps.
-do 3 rewrite VCompE_nat homfunK functor_o !compE.
-rewrite !functor_id HCompId HIdComp.
-rewrite (_ : epsC (U0 (U1 (F1o (F0o (FCo T))))) = [NEq _, _] _) ?hom_ext ?epsCE //.
-rewrite NEqE !functor_id_hom.
-by rewrite affine_F1e0U1PD_conv affine_e1PD_conv.
+rewrite hierarchy.bindE /= /join_ -category.bindE.
+by rewrite scsl_hom_is_affine.
 Qed.
 End bindchoiceDl.
 
