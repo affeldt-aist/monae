@@ -36,9 +36,9 @@ Section convex.
 Variable M : probMonad.
 Variable A : Type.
 
-Definition prob_mixin : convex.ConvexSpace.mixin_of (boolp.choice_of_Type (M A)).
+Definition prob_mixin : convex.ConvexSpace.mixin_of (convex.choice_of_Type (M A)).
 apply (@convex.ConvexSpace.Mixin _
-  (fun p (a b : boolp.choice_of_Type (M A)) => choice p A a b)).
+  (fun p (a b : convex.choice_of_Type (M A)) => choice p A a b)).
 - exact: choice1.
 - exact: choicemm.
 - exact: choiceC.
@@ -216,11 +216,11 @@ Variable M : altCIMonad.
 Variable T : Type.
 Definition altCI_semiLattClass :=
   @Class
-    (boolp.choice_of_Type (M T))
+    (convex.choice_of_Type (M T))
     _
     (@Mixin
        _
-       (fun (x y : boolp.choice_of_Type (M T)) => x [~] y)
+       (fun (x y : convex.choice_of_Type (M T)) => x [~] y)
        (@altC M T) (@altA M T) (@altmm M T)).
 Definition altCI_semiLattType := Pack altCI_semiLattClass.
 
@@ -235,7 +235,7 @@ Variable M : altProbMonad.
 Variable T : Type.
 Definition altProb_semiLattConvMixin :
   @mixin_of (altCI_semiLattType M T)
-            (fun p (x y : boolp.choice_of_Type (M T)) => x <| p |> y).
+            (fun p (x y : convex.choice_of_Type (M T)) => x <| p |> y).
 Proof. by refine (Mixin _); exact: choiceDr. Defined.
 Definition altProb_semiLattConvClass :=
   @Class (M T)

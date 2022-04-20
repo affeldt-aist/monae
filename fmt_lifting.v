@@ -29,9 +29,9 @@ Require Import monae_lib hierarchy monad_lib monad_transformer.
 (*                                                                            *)
 (* WARNING:                                                                   *)
 (* Do `make sect5` to compile it, `make clean5` to clean it. Unlike the rest  *)
-(* of monae, it requires some form of impredicativity. That is why it is      *)
-(* type-checked with Unset Universe Checking. See the directory               *)
-(* impredicative_set for a version where this check isn't disabled.           *)
+(* of monae, it requires some form of impredicativity. That is why this file  *)
+(* uses Unset/Set Universe Checking. See the directory impredicative_set for  *)
+(* a version where this check isn't disabled.                                 *)
 (******************************************************************************)
 
 Set Implicit Arguments.
@@ -39,8 +39,6 @@ Unset Strict Implicit.
 Unset Printing Implicit Defensive.
 
 Local Open Scope monae_scope.
-
-Unset Universe Checking.
 
 Definition MK (m : UU0 -> UU0) (A : UU0) := forall (B : UU0), (A -> m B) -> m B.
 
@@ -120,6 +118,7 @@ Definition codensityT := fun M : monad => [the monad of MK M].
 HB.instance Definition _ :=
   isMonadT.Build codensityT (fun M => [the monadM _ _ of @liftK M]).
 
+Unset Universe Checking.
 Section kappa.
 Variables (M : monad) (E : functor) (op : E.-operation M).
 
@@ -131,7 +130,7 @@ Lemma naturality_kappa' : naturality _ _ kappa'.
 Proof.
 move=> A B h; rewrite /kappa'; apply boolp.funext => ea; rewrite [in RHS]/=.
 transitivity (fun B0 (k : B -> M B0) => op B0 ((E # (k \o h)) ea)) => //.
-by apply funext_dep => C; apply boolp.funext => D; rewrite functor_o.
+(*by apply funext_dep => C; apply boolp.funext => D; rewrite functor_o.*)
 Qed.
 
 HB.instance Definition _ := isNatural.Build
@@ -161,9 +160,9 @@ Lemma natural_from_component : naturality (codensityT M) M from_component.
 Proof.
 move=> A B h; apply boolp.funext => m /=.
 rewrite [RHS](_ : _ = m B (Ret \o h)) //. (* by definition of from *)
-rewrite -natural.
+(*rewrite -natural.
 rewrite [LHS](_ : _ = (M # h \o m A) Ret) //. (* by definition of from *)
-by rewrite naturality_MK.
+by rewrite naturality_MK.*)
 Qed.
 
 HB.instance Definition _ :=
@@ -178,6 +177,7 @@ by apply boolp.funext => m /=; rewrite /from_component/= /liftK /= bindmret.
 Qed.
 
 End from.
+Set Universe Checking.
 
 Section psi_kappa.
 Variables (E : functor) (M : monad) (op : E.-operation M).
@@ -204,9 +204,9 @@ End psi_kappa.
 
 Section uniform_sigma_lifting.
 Variables (E : functor) (M : monad) (op : E.-operation M) (t : fmt).
-Hypothesis naturality_MK : forall (A : UU0) (m : MK M A), naturality_MK m.
+(*Hypothesis naturality_MK : forall (A : UU0) (m : MK M A), naturality_MK m.*)
 
-Let op1 : t (codensityT M) ~> t M := hmap t (from naturality_MK).
+Let op1 : t (codensityT M) ~> t M := hmap t (from M).
 Let op2 := alifting (psik op) (Lift t _).
 Let op3 : [the functor of E \o t M] ~> [the functor of E \o t (codensityT M)] :=
   E ## hmap t (Lift [the monadT of codensityT] M).
@@ -229,7 +229,7 @@ transitivity (op1 X \o
   (op2 X \o E # Lift t (codensityT M) X) \o E # Lift [the monadT of codensityT] M X).
   by rewrite vcompE -compA.
 rewrite -uniform_algebraic_lifting.
-transitivity (Lift t M X \o from naturality_MK X \o (psik op) X \o
+transitivity (Lift t M X \o from M (*naturality_MK*) X \o (psik op) X \o
   E # Lift [the monadT of codensityT] M X).
   congr (_ \o _).
   by rewrite compA natural_hmap.
@@ -254,7 +254,7 @@ Let op' : E \o stateT S M ~~> stateT S M :=
   fun (X : UU0) t s => op (X * S)%type ((E # tau s) t).
 
 Lemma slifting_stateT (X : UU0) :
-  (slifting op [the fmt of stateT S] naturality_MK) X = @op' _.
+  (slifting op [the fmt of stateT S] (*naturality_MK*)) X = @op' _.
 Proof.
 apply boolp.funext => emx.
 rewrite /op'.
@@ -298,7 +298,7 @@ Variable Z : UU0.
 Let op' : E \o exceptT Z M ~~> exceptT Z M := fun (Y : UU0) => @op _.
 
 Lemma slifting_exceptT (X : UU0) :
-  (slifting op [the fmt of exceptT Z] naturality_MK) X = @op' X.
+  (slifting op [the fmt of exceptT Z] (*naturality_MK*)) X = @op' X.
 Proof.
 apply boolp.funext => emx.
 rewrite /op'.
@@ -332,7 +332,7 @@ Let op' : E \o envT Env M ~~> envT Env M :=
   fun (X : UU0) t => fun e => op X ((E # tau e) t).
 
 Lemma slifting_envT (X : UU0) :
-  (slifting op [the fmt of envT Env] naturality_MK) X = @op' _.
+  (slifting op [the fmt of envT Env] (*naturality_MK*)) X = @op' _.
 Proof.
 apply boolp.funext => emx.
 rewrite /op'.
@@ -368,7 +368,7 @@ Let op' : E \o outputT R M ~~> outputT R M :=
   fun (X : UU0) => @op (X * seq R)%type.
 
 Lemma slifting_outputT (X : UU0) :
-  (slifting op [the fmt of outputT R] naturality_MK) X = @op' _.
+  (slifting op [the fmt of outputT R] (*naturality_MK*)) X = @op' _.
 Proof.
 apply boolp.funext => emx.
 rewrite /op'.
@@ -403,6 +403,8 @@ End slifting_outputT.
 
 End slifting_instances.
 
+Unset Universe Checking.
+
 (* proposition 28 *)
 Section slifting_alifting_coincide.
 
@@ -411,10 +413,10 @@ Hypothesis naturality_MK : forall (A : UU0) (m : MK M A),
   naturality_MK m.
 
 Lemma slifting_alifting_stateFMT (S : UU0) (t := [the fmt of stateT S]) :
-  slifting aop t naturality_MK = alifting aop (Lift t M).
+  slifting aop t (*naturality_MK*) = alifting aop (Lift t M).
 Proof.
 apply nattrans_ext => X.
-rewrite (slifting_stateT aop naturality_MK S).
+rewrite (slifting_stateT aop (*naturality_MK*) S).
 apply boolp.funext => m; apply boolp.funext => s.
 rewrite /alifting.
 rewrite /=.
@@ -434,10 +436,10 @@ by rewrite 2!bindretf.
 Qed.
 
 Lemma slifting_alifting_exceptFMT (Z : UU0) (t := [the fmt of exceptT Z]) :
-  slifting aop t naturality_MK = alifting aop (Lift t M).
+  slifting aop t (*naturality_MK*) = alifting aop (Lift t M).
 Proof.
 apply nattrans_ext => X.
-rewrite (slifting_exceptT aop naturality_MK Z).
+rewrite (slifting_exceptT aop (*naturality_MK*) Z).
 apply boolp.funext => m.
 rewrite /alifting.
 rewrite /=.
@@ -451,15 +453,15 @@ rewrite -functor_o.
 rewrite -[RHS](compE _ (E # _)).
 rewrite -functor_o.
 rewrite (_ : _ \o Ret = id) ?functor_id //.
-apply boolp.funext => n /=.
-by rewrite 2!bindretf.
+(*apply boolp.funext => n /=.
+by rewrite 2!bindretf.*)
 Qed.
 
 Lemma slifting_alifting_envFMT (Env : UU0) (t := [the fmt of envT Env]) :
-  slifting aop t naturality_MK = alifting aop (Lift t M).
+  slifting aop t (*naturality_MK*) = alifting aop (Lift t M).
 Proof.
 apply nattrans_ext => X.
-rewrite (slifting_envT aop naturality_MK Env).
+rewrite (slifting_envT aop (*naturality_MK*) Env).
 apply boolp.funext => m; apply boolp.funext => e.
 rewrite /alifting.
 rewrite /=.
@@ -476,10 +478,10 @@ by rewrite bindretf.
 Qed.
 
 Lemma slifting_alifting_outputFMT (R : UU0) (t := [the fmt of outputT R]) :
-  slifting aop t naturality_MK = alifting aop (Lift t M).
+  slifting aop t (*naturality_MK*) = alifting aop (Lift t M).
 Proof.
 apply nattrans_ext => X.
-rewrite (slifting_outputT aop naturality_MK R).
+rewrite (slifting_outputT aop (*naturality_MK*) R).
 apply boolp.funext => m.
 rewrite /alifting.
 rewrite /=.
@@ -492,15 +494,17 @@ rewrite -[RHS](compE _ (E # _)).
 rewrite -functor_o.
 rewrite -[RHS](compE _ (E # _)).
 rewrite -functor_o.
-rewrite (_ : _ \o Ret = id) ?functor_id //.
-apply boolp.funext => n /=.
+by rewrite (_ : _ \o Ret = id) ?functor_id //.
+(*apply boolp.funext => n /=.
 rewrite 2!bindretf.
 Open (X in _ >>= X).
   by case : x => ? ?; rewrite cat0s.
-by rewrite bindmret.
+by rewrite bindmret.*)
 Qed.
 
 End slifting_alifting_coincide.
+
+Set Universe Checking.
 
 Require Import monad_model.
 
@@ -521,7 +525,7 @@ Definition localKT (f : Env -> Env) : T (codensityT M) ~~> T (codensityT M) :=
 
 Definition localT (f : Env -> Env) : T M ~~> T M :=
   fun X t => let t' := hmap T (Lift [the monadT of codensityT] M) X t in
-  hmap T (from naturality_MK) X (localKT f t').
+  hmap T (from (*naturality_MK*) M) X (localKT f t').
 
 End slifting_local_FMT.
 
@@ -535,7 +539,7 @@ Let local_stateT' : (E \o stateT S M) ~~> (stateT S M) :=
   fun X => uncurry (@local_stateT ^~ X).
 
 Lemma local_stateTE (X : UU0) :
-  (slifting local [the fmt of stateT S] naturality_MK) X = @local_stateT' X.
+  (slifting local [the fmt of stateT S] (*naturality_MK*)) X = @local_stateT' X.
 Proof. by rewrite slifting_stateT; apply boolp.funext => -[]. Qed.
 End slifting_local_stateT.
 
@@ -548,7 +552,7 @@ Let local_exceptT' : (E \o exceptT Z M) ~~> (exceptT Z M) :=
   fun X => uncurry (@local_exceptT ^~ X).
 
 Lemma local_exceptTE (X : UU0) :
-  (slifting local [the fmt of exceptT Z] naturality_MK) X = @local_exceptT' X.
+  (slifting local [the fmt of exceptT Z] (*naturality_MK*)) X = @local_exceptT' X.
 Proof. by rewrite slifting_exceptT; apply boolp.funext => -[]. Qed.
 
 End slifting_local_exceptT.
@@ -562,7 +566,7 @@ Let local_envT' : E \o envT Z M ~~> envT Z M :=
   fun X => uncurry (@local_envT ^~ X).
 
 Lemma local_envTE (X : UU0) :
-  (slifting local [the fmt of envT Z] naturality_MK) X = @local_envT' X.
+  (slifting local [the fmt of envT Z] (*naturality_MK*)) X = @local_envT' X.
 Proof.
 rewrite slifting_envT.
 by apply boolp.funext => -[].
@@ -578,7 +582,7 @@ Let local_outputT' : E \o outputT R M ~~> outputT R M :=
   fun (X : UU0) => uncurry (@local_outputT ^~ X).
 
 Lemma local_outputTE (X : UU0) :
-  (slifting local [the fmt of outputT R] naturality_MK) X = @local_outputT' X.
+  (slifting local [the fmt of outputT R] (*naturality_MK*)) X = @local_outputT' X.
 Proof. by rewrite slifting_outputT; apply boolp.funext => -[]. Qed.
 End slifting_local_outputT.
 
@@ -604,7 +608,7 @@ Let handle_stateT' : (E \o stateT S M) ~~> (stateT S M) :=
   fun (X : UU0) => uncurry (@handle_stateT X).
 
 Lemma handle_stateTE (X : UU0) :
-  (slifting handle [the fmt of stateT S] naturality_MK) X = @handle_stateT' X.
+  (slifting handle [the fmt of stateT S] (*naturality_MK*)) X = @handle_stateT' X.
 Proof. by rewrite slifting_stateT; apply boolp.funext => -[m f]. Qed.
 End slifting_handle_stateT.
 
@@ -620,7 +624,7 @@ Let handle_exceptT' : E \o exceptT Z M ~~> exceptT Z M :=
   fun (X : UU0) => uncurry (@handle_exceptT X).
 
 Lemma handle_exceptTE (X : UU0) :
-  (slifting handle [the fmt of exceptT Z] naturality_MK) X = @handle_exceptT' X.
+  (slifting handle [the fmt of exceptT Z] (*naturality_MK*)) X = @handle_exceptT' X.
 Proof. by rewrite slifting_exceptT; exact: boolp.funext. Qed.
 End slifting_handle_exceptT.
 
@@ -636,7 +640,7 @@ Let handle_envT' : E \o envT Z M ~~> envT Z M :=
   fun (X : UU0) => uncurry (@handle_envT X).
 
 Lemma handle_envTE (X : UU0) :
-  (slifting handle [the fmt of envT Z] naturality_MK) X = @handle_envT' X.
+  (slifting handle [the fmt of envT Z] (*naturality_MK*)) X = @handle_envT' X.
 Proof.
 by rewrite slifting_envT; apply boolp.funext => -[m f]; exact: boolp.funext.
 Qed.
@@ -654,7 +658,7 @@ Let handle_outputT' : E \o outputT R M ~~> outputT R M :=
   fun (X : UU0) => uncurry (@handle_outputT X).
 
 Lemma handle_outputTE (X : UU0) :
-  (slifting handle [the fmt of outputT R] naturality_MK) X = @handle_outputT' X.
+  (slifting handle [the fmt of outputT R] (*naturality_MK*)) X = @handle_outputT' X.
 Proof. by rewrite slifting_outputT; apply boolp.funext => -[]. Qed.
 End slifting_handle_outputT.
 
@@ -675,7 +679,7 @@ Definition flush_stateT : stateT S M ~~> stateT S M :=
   fun (X : UU0) t s => let: (x, _) := t s in (x, [::]).
 
 Lemma flush_stateTE (X : UU0) :
-  (slifting flush [the fmt of stateT S] naturality_MK) X = @flush_stateT X.
+  (slifting flush [the fmt of stateT S] (*naturality_MK*)) X = @flush_stateT X.
 Proof. by rewrite slifting_stateT. Qed.
 End slifting_flush_stateT.
 
@@ -689,7 +693,7 @@ Let flush_exceptT' : E \o exceptT Z M ~~> exceptT Z M :=
   fun (X : UU0) c => let : (x, _) := c in (x, [::]).
 
 Lemma flush_exceptTE (X : UU0) :
-  (slifting flush [the fmt of exceptT Z] naturality_MK) X = @flush_exceptT' X.
+  (slifting flush [the fmt of exceptT Z] (*naturality_MK*)) X = @flush_exceptT' X.
 Proof. by rewrite slifting_exceptT. Qed.
 End slifting_flush_exceptT.
 
@@ -699,7 +703,7 @@ Definition flush_envT : envT Z M ~~>  envT Z M :=
   fun (X : UU0) t e => let: (x, _) := t e in (x, [::]).
 
 Lemma flush_envTE (X : UU0) :
-  (slifting flush [the fmt of envT Z] naturality_MK) X = @flush_envT X.
+  (slifting flush [the fmt of envT Z] (*naturality_MK*)) X = @flush_envT X.
 Proof. by rewrite slifting_envT. Qed.
 End slifting_flush_envT.
 
@@ -712,7 +716,7 @@ Let flush_outputT' : E \o outputT R M ~~> outputT R M :=
   fun (X : UU0) e => let: (pw, w') := e in (pw, [::]).
 
 Lemma flush_outputTE (X : UU0) :
-  (slifting flush [the fmt of outputT R] naturality_MK) X = @flush_outputT' X.
+  (slifting flush [the fmt of outputT R] (*naturality_MK*)) X = @flush_outputT' X.
 Proof. by rewrite slifting_outputT; exact: boolp.funext. Qed.
 End slifting_flush_outputT.
 

@@ -15,7 +15,7 @@ Require Import monae_lib hierarchy monad_lib proba_lib.
 Local Open Scope monae_scope.
 Local Open Scope proba_scope.
 
-Notation choice_of_Type := boolp.choice_of_Type.
+Notation choice_of_Type := convex.choice_of_Type.
 
 Module MonadProbModel.
 Section monadprobmodel.
