@@ -30,7 +30,7 @@ Require Import hierarchy monad_lib fail_lib state_lib.
 (*                       operation op and a monad morphism e                  *)
 (* uniform_algebraic_lifting == Theorem: alifting is a lifting                *)
 (*                                                                            *)
-(*                FMT == functorial monad transformer                         *)
+(*                fmt == functorial monad transformer                         *)
 (*                       instances:                                           *)
 (*                       - exceptFMT                                          *)
 (*                       - stateFMT                                           *)

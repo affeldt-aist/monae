@@ -164,15 +164,13 @@ Lemma homfst_idfun x : homfst (x:=x) [hom idfun] = [hom idfun].
 Proof.
 apply/hom_ext; rewrite boolp.funeqE => x1 /=.
 case: cid => i [i1 i2] /=.
-rewrite (_ : i = ProductCategory.idfun_separated _) ?ProductCategory.sepfst_idfun //.
-exact/Prop_irrelevance.
+by rewrite (_ : i = ProductCategory.idfun_separated _) ?ProductCategory.sepfst_idfun.
 Qed.
 Lemma homsnd_idfun x : homsnd (x:=x) [hom idfun] = [hom idfun].
 Proof.
 apply/hom_ext; rewrite boolp.funeqE => x1 /=.
 case: cid => i [i1 i2] /=.
-rewrite (_ : i = ProductCategory.idfun_separated _) ?ProductCategory.sepsnd_idfun //.
-exact/Prop_irrelevance.
+by rewrite (_ : i = ProductCategory.idfun_separated _) ?ProductCategory.sepsnd_idfun.
 Qed.
 Lemma homfst_comp (x y z : A * B) (f : {hom x,y}) (g : {hom y,z}) :
   homfst [hom g \o f] = [hom homfst g \o homfst f].

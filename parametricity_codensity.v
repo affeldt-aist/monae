@@ -4,8 +4,11 @@ Declare ML Module "paramcoq".
 
 From mathcomp Require Import all_ssreflect.
 From HB Require Import structures.
+Require Import monae_lib hierarchy monad_lib.
 Unset Universe Checking.
-Require Import monae_lib hierarchy monad_lib fmt_lifting monad_model.
+Require Import fmt_lifting.
+Set Universe Checking.
+Require Import monad_model.
 
 (******************************************************************************)
 (* Instantiations of uniform lifting (Theorem 27 of [Mauro Jaskelioff,        *)
@@ -29,6 +32,7 @@ Proof. by []. Qed.
 
 (******************************************************************************)
 
+Unset Universe Checking.
 Module Identity.
 Section identity_naturality.
 Variable A : UU0.
@@ -58,11 +62,13 @@ Qed.
 
 End identity_naturality.
 End Identity.
+Set Universe Checking.
 
-Check uniform_sigma_lifting (M := [the monad of idfun]) _ _ Identity.naturality.
+Check uniform_sigma_lifting (M := [the monad of idfun])(* _ _ Identity.naturality*).
 
 (******************************************************************************)
 
+Unset Universe Checking.
 Module Exception.
 Section exception_naturality.
 Variables Z A : UU0.
@@ -97,12 +103,14 @@ Qed.
 
 End exception_naturality.
 End Exception.
+Set Universe Checking.
 
 Check fun Z => uniform_sigma_lifting
-  (M := [the monad of ExceptMonad.acto Z]) _ _ (Exception.naturality Z).
+  (M := [the monad of ExceptMonad.acto Z]) (*_ _ (Exception.naturality Z)*).
 
 (******************************************************************************)
 
+Unset Universe Checking.
 Module Option.
 Section option_naturality.
 Variable A : UU0.
@@ -116,11 +124,13 @@ Proof. exact: Exception.naturality. Qed.
 
 End option_naturality.
 End Option.
+Set Universe Checking.
 
-Check uniform_sigma_lifting (M := [the monad of option_monad]) _ _ Option.naturality.
+Check uniform_sigma_lifting (M := [the monad of option_monad]) (*_ _ Option.naturality*).
 
 (******************************************************************************)
 
+Unset Universe Checking.
 Module List.
 Section list_naturality.
 Variable A : UU0.
@@ -154,11 +164,13 @@ Qed.
 
 End list_naturality.
 End List.
+Set Universe Checking.
 
-Check uniform_sigma_lifting (M := [the monad of ListMonad.acto]) _ _ List.naturality.
+Check uniform_sigma_lifting (M := [the monad of ListMonad.acto]) (*_ _ List.naturality*).
 
 (******************************************************************************)
 
+Unset Universe Checking.
 Module State.
 Section state_naturality.
 Variable S A : UU0.
@@ -205,6 +217,7 @@ by rewrite Actm_ModelMonadStateE -xs1 fxy s12.
 Qed.
 End state_naturality.
 End State.
+Set Universe Checking.
 
 Check fun S => uniform_sigma_lifting
-  (M := [the monad of StateMonad.acto S]) _ _ (State.naturality S).
+  (M := [the monad of StateMonad.acto S]) (*_ _ (State.naturality S)*).
