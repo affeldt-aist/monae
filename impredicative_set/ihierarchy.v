@@ -121,8 +121,8 @@ HB.mixin Record isFunctor (F : UU0 -> UU0) := {
   functor_id : FunctorLaws.id actm ;
   functor_o : FunctorLaws.comp actm }.
 
+#[short(type=functor)]
 HB.structure Definition Functor := {F of isFunctor F}.
-Notation functor := Functor.type.
 
 Notation "F # g" := (@actm F _ _ g) : monae_scope.
 Notation "'fmap' f" := (_ # f) : mprog.
@@ -192,7 +192,8 @@ Arguments fcomp : simpl never.
 Lemma functor_ext (F G : functor) :
   forall (H : Functor.sort F = Functor.sort G),
   @actm G =
-  eq_rect _ (fun m : UU0 -> UU0 => forall A B : UU0, (A -> B) -> m A -> m B) (@actm F) _ H  ->
+  eq_rect _ (fun m : UU0 -> UU0 => forall A B : UU0, (A -> B) -> m A -> m B)
+            (@actm F) _ H  ->
   G = F.
 Proof.
 move: F G => [F [[HF1 HF2 HF3]]] [G [[HG1 HG2 HG3]]] /= H.
@@ -215,9 +216,9 @@ Arguments naturality : clear implicits.
 HB.mixin Record isNatural (F G : functor) (f : F ~~> G) := {
   natural : naturality F G f }.
 
+#[short(type=nattrans)]
 HB.structure Definition Nattrans (F G : functor) := {f of isNatural F G f}.
 Arguments natural {F G} s.
-Notation nattrans := Nattrans.type.
 Notation "f ~> g" := (nattrans f g) : monae_scope.
 
 Section natrans_lemmas.
@@ -292,11 +293,10 @@ HB.mixin Record isMonad (F : UU0 -> UU0) of Functor F := {
     bind A B m f = join B (([the functor of F] # f) m) ;
   joinretM : JoinLaws.left_unit ret join ;
   joinMret : JoinLaws.right_unit ret join ;
-  joinA : JoinLaws.associativity join
-}.
+  joinA : JoinLaws.associativity join }.
 
+#[short(type=monad)]
 HB.structure Definition Monad := {F of isMonad F &}.
-Notation monad := Monad.type.
 
 Arguments bind {s A B} : simpl never.
 Notation "m >>= f" := (bind m f) : monae_scope.
@@ -369,7 +369,8 @@ rewrite fmapE bindA; congr bind.
 by apply funext => ?; rewrite bindretf.
 Qed.
 
-Lemma naturality_join : naturality [the functor of F \o F] F (join_of_bind bind).
+Lemma naturality_join :
+  naturality [the functor of F \o F] F (join_of_bind bind).
 Proof.
 move=> A B h; apply funext => mma /=.
 rewrite fmapE /join_of_bind bindA bind_Map; congr bind.
@@ -477,7 +478,8 @@ Qed.
 End monad_lemmas.
 
 Notation "'do' x <- m ; e" := (bind m (fun x => e)) (only parsing) : do_notation.
-Notation "'do' x : T <- m ; e" := (bind m (fun x : T => e)) (only parsing) : do_notation.
+Notation "'do' x : T <- m ; e" :=
+  (bind m (fun x : T => e)) (only parsing) : do_notation.
 Delimit Scope do_notation with Do.
 Notation "m >> f" := (bind m (fun _ => f)) : monae_scope.
 
@@ -543,7 +545,8 @@ Proof. case: ifPn => Hb //; by rewrite fmapE bindretf. Qed.
 Lemma fmap_bind (A B C : UU0) (f : A -> B) m (g : C -> M A) :
   fmap f (m >>= g) = m >>= (f (o) g).
 Proof.
-rewrite fcomp_def fmapE bindA; bind_ext => c; by rewrite compE -/(fmap _ _) fmapE.
+rewrite fcomp_def fmapE bindA; bind_ext => c.
+by rewrite compE -/(fmap _ _) fmapE.
 Qed.
 
 Lemma skip_fmap (A B : UU0) (f : A -> B) (mb : M B) ma :
@@ -614,16 +617,14 @@ Notation "m >=> n" := (kleisli n m) : monae_scope.
 
 HB.mixin Record isMonadFail (M : UU0 -> UU0) of Monad M := {
   fail : forall A : UU0, M A;
-  (* exceptions are left-zeros of sequential composition *)
-  bindfailf : BindLaws.left_zero (@bind [the monad of M]) fail (* fail A >>= f = fail B *)
-}.
+    (* exceptions are left-zeros of sequential composition *)
+    bindfailf : BindLaws.left_zero (@bind [the monad of M]) fail
+    (* fail A >>= f = fail B *) }.
 
+#[short(type=failMonad)]
 HB.structure Definition MonadFail := {M of isMonadFail M & }.
-Notation failMonad := MonadFail.type.
 
 Arguments bindfailf [_].
-
-(*Definition Fail (M : failMonad) := @fail M.*)
 Arguments fail {_} {_}.
 
 Section guard_assert.
@@ -647,7 +648,8 @@ Qed.
 Definition assert {A : UU0} (p : pred A) (a : A) : M A :=
   locked (guard (p a) >> Ret a).
 
-Lemma assertE {A : UU0} (p : pred A) (a : A) : assert p a = guard (p a) >> Ret a.
+Lemma assertE {A : UU0} (p : pred A) (a : A) :
+  assert p a = guard (p a) >> Ret a.
 Proof. by rewrite /assert; unlock. Qed.
 
 Lemma assertT {A : UU0} (a : A) : assert xpredT a = Ret a.
@@ -694,46 +696,52 @@ HB.mixin Record isMonadAlt (M : UU0 -> UU0) of Monad M := {
   (* composition distributes leftwards over choice *)
   alt_bindDl : BindLaws.left_distributive (@bind [the monad of M]) alt
 (* in general, composition does not distribute rightwards over choice *)
-(* NB: no bindDr to accommodate both angelic and demonic interpretations of nondeterminism *)
-}.
+(* NB: no bindDr to accommodate both angelic and demonic interpretations of
+   nondeterminism *) }.
 
+#[short(type=altMonad)]
 HB.structure Definition MonadAlt := {M of isMonadAlt M & }.
 
 Notation "a [~] b" := (@alt _ _ a b). (* infix notation *)
 
-Notation altMonad := MonadAlt.type.
-
 HB.mixin Record isMonadAltCI (M : UU0 -> UU0) of MonadAlt M := {
   altmm : forall A : UU0, idempotent (@alt [the altMonad of M] A) ;
-  altC : forall A : UU0, commutative (@alt [the altMonad of M] A)
-}.
+  altC : forall A : UU0, commutative (@alt [the altMonad of M] A) }.
 
+#[short(type=altCIMonad)]
 HB.structure Definition MonadAltCI := {M of isMonadAltCI M & }.
-Notation altCIMonad := MonadAltCI.type.
 
 Arguments altC {_} {_}.
 Arguments altmm {_} {_}.
 
 Section altci_lemmas.
 Variable (M : altCIMonad).
+
 Lemma altCA A : @left_commutative (M A) (M A) (fun x y => x [~] y).
 Proof. by move=> x y z; rewrite altA altC altA altC (altC x). Qed.
+
 Lemma altAC A : @right_commutative (M A) (M A) (fun x y => x [~] y).
 Proof. move=> x y z; by rewrite altC altA (altC x). Qed.
+
 Lemma altACA A : @interchange (M A) (fun x y => x [~] y) (fun x y => x [~] y).
 Proof. move=> x y z t; rewrite !altA; congr (_ [~] _); by rewrite altAC. Qed.
+
 End altci_lemmas.
 
 HB.mixin Record isMonadNondet (M : UU0 -> UU0) of MonadFail M & MonadAlt M := {
-  altfailm : @BindLaws.left_id [the functor of M] (@fail [the failMonad of M]) (@alt [the altMonad of M]);
-  altmfail : @BindLaws.right_id [the functor of M] (@fail [the failMonad of M]) (@alt [the altMonad of M])
-}.
+  altfailm :
+    @BindLaws.left_id [the functor of M] (@fail [the failMonad of M])
+                                         (@alt [the altMonad of M]);
+  altmfail :
+    @BindLaws.right_id [the functor of M] (@fail [the failMonad of M])
+                                          (@alt [the altMonad of M]) }.
 
-HB.structure Definition MonadNondet := {M of isMonadNondet M & MonadFail M & MonadAlt M}.
-Notation nondetMonad := MonadNondet.type.
+#[short(type=nondetMonad)]
+HB.structure Definition MonadNondet :=
+  {M of isMonadNondet M & MonadFail M & MonadAlt M}.
 
+#[short(type=nondetCIMonad)]
 HB.structure Definition MonadCINondet := {M of MonadAltCI M & MonadNondet M}.
-Notation nondetCIMonad := MonadCINondet.type.
 
 Section nondet_big.
 Variables (M : nondetMonad) (A : UU0).
@@ -748,22 +756,21 @@ Qed.
 
 End nondet_big.
 
-HB.mixin Record isMonadFailR0 (M : UU0 -> UU0) of MonadFail M := {
-  bindmfail : BindLaws.right_zero (@bind [the monad of M]) (@fail _)
-}.
+HB.mixin Record isMonadFailR0 (M : UU0 -> UU0) of MonadFail M :=
+ { bindmfail : BindLaws.right_zero (@bind [the monad of M]) (@fail _) }.
 
+#[short(type=failR0Monad)]
 HB.structure Definition MonadFailR0 := {M of isMonadFailR0 M & }.
-Notation failR0Monad := MonadFailR0.type.
 
-HB.mixin Record isMonadPrePlus (M : UU0 -> UU0) of MonadNondet M & MonadFailR0 M := {
-  alt_bindDr : BindLaws.right_distributive (@bind [the monad of M]) (@alt _)
-}.
+HB.mixin Record isMonadPrePlus (M : UU0 -> UU0)
+    of MonadNondet M & MonadFailR0 M :=
+  { alt_bindDr : BindLaws.right_distributive (@bind [the monad of M]) (@alt _) }.
 
+#[short(type=prePlusMonad)]
 HB.structure Definition MonadPrePlus := {M of isMonadPrePlus M & }.
-Notation prePlusMonad := MonadPrePlus.type.
 
+#[short(type=plusMonad)]
 HB.structure Definition MonadPlus := {M of MonadCINondet M & MonadPrePlus M}.
-Notation plusMonad := MonadPlus.type.
 
 HB.mixin Record isMonadExcept (M : UU0 -> UU0) of MonadFail M := {
   catch : forall A, M A -> M A -> M A ;
@@ -773,75 +780,77 @@ HB.mixin Record isMonadExcept (M : UU0 -> UU0) of MonadFail M := {
   catchA : forall A, associative (@catch A) ;
   (* unexceptional bodies need no handler *)
   catchret : forall A x, @left_zero (M A) (M A) (Ret x) (@catch A)
-  (* NB: left-zero of sequential composition inherited from failMonad *)
-}.
+  (* NB: left-zero of sequential composition inherited from failMonad *) }.
 
+#[short(type=exceptMonad)]
 HB.structure Definition MonadExcept := {M of isMonadExcept M & }.
-Notation exceptMonad := MonadExcept.type.
 
-(*Definition Catch (M : exceptMonad) := @catch M.*)
 Arguments catch {_} {_}.
 
 HB.mixin Record isMonadContinuation (M : UU0 -> UU0) of Monad M := {
 (* NB: interface is wip *)
-   callcc : forall A B : UU0, ((A -> M B) -> M A) -> M A;
-   callcc0 : forall (A B : UU0) (g : (A -> M B) -> M A) (k : B -> M B),
-     @callcc _ _ (fun f => g (fun x => f x >>= k)) = @callcc _ _ g; (* see Sect. 7.2 of [Schrijvers, 19] *)
-   callcc1 : forall (A B : UU0) (m : M B), @callcc _ _ (fun _ : B -> M A => m) = m ; (* see Sect. 3.3 of [Wadler, 94] *)
-   callcc2 : forall (A B C : UU0) (m : M A) x (k : A -> B -> M C),
-     @callcc _ _ (fun f : _ -> M _ => m >>= (fun a => f x >>= (fun b => k a b))) =
-     @callcc _ _ (fun f : _ -> M _ => m >> f x) ;
-   callcc3 : forall (A B : UU0) (m : M A) b,
-     @callcc _ _ (fun f : B -> M B => m >> f b) =
-     @callcc _ _ (fun _ : B -> M B => m >> Ret b)
-}.
+  callcc : forall A B : UU0, ((A -> M B) -> M A) -> M A;
+  callcc0 : forall (A B : UU0) (g : (A -> M B) -> M A) (k : B -> M B),
+    @callcc _ _ (fun f => g (fun x => f x >>= k)) = @callcc _ _ g
+    (* see Sect. 7.2 of [Schrijvers, 19] *);
+  callcc1 : forall (A B : UU0) (m : M B),
+    @callcc _ _ (fun _ : B -> M A => m) = m
+    (* see Sect. 3.3 of [Wadler, 94] *);
+  callcc2 : forall (A B C : UU0) (m : M A) x (k : A -> B -> M C),
+    @callcc _ _ (fun f : _ -> M _ => m >>= (fun a => f x >>= (fun b => k a b)))
+    = @callcc _ _ (fun f : _ -> M _ => m >> f x) ;
+  callcc3 : forall (A B : UU0) (m : M A) b,
+    @callcc _ _ (fun f : B -> M B => m >> f b) =
+    @callcc _ _ (fun _ : B -> M B => m >> Ret b) }.
 
+#[short(type=contMonad)]
 HB.structure Definition MonadContinuation := {M of isMonadContinuation M & }.
-Notation contMonad := MonadContinuation.type.
-(*Definition Callcc (M : contMonad) := @callcc M.*)
 Arguments callcc {_} {_} {_}.
 
-HB.mixin Record isMonadShiftReset (U : UU0) (M : UU0 -> UU0) of MonadContinuation M := {
+HB.mixin Record isMonadShiftReset (U : UU0) (M : UU0 -> UU0)
+    of MonadContinuation M := {
   shift : forall A : UU0, ((A -> M U) -> M U) -> M A ;
   reset : M U -> M U ;
   shiftreset0 : forall (A : UU0) (m : M A), @shift _ (fun k => m >>= k) = m ;
     (* see Sect. 3.3 of [Wadler, 94] *)
-  shiftreset1 : forall (A B : UU0) (h : (A -> M B) -> M A),
-    callcc h = @shift _ (fun k' => h (fun x => @shift _ (fun k'' => k' x)) >>= k') ;
+  shiftreset1 : forall (A B : UU0) (h : (A -> M B) -> M A), callcc h =
+    @shift _ (fun k' => h (fun x => @shift _ (fun k'' => k' x)) >>= k') ;
     (* see Sect. 3.3 of [Wadler, 94] *)
   shiftreset2 : forall (A : UU0) (c : A) (c': U) (k : A -> U -> _),
-    (reset (do x <- Ret c; do y <- @shift _ (fun _ => Ret c'); k x y) = Ret c >> Ret c')%Do ;
+    (reset (do x <- Ret c; do y <- @shift _ (fun _ => Ret c'); k x y) =
+     Ret c >> Ret c')%Do ;
   shiftreset3 : forall (c c' : U) (k : U -> U -> _),
-    (reset (do x <- Ret c; do y <- @shift _ (fun f => do v <- f c'; f v); Ret (k x y)) =
-     reset (do x <- Ret c; do y <- @shift _ (fun f => f c'); Ret (k x (k x y))))%Do ;
+    (reset (do x <- Ret c; do y <- @shift _ (fun f => do v <- f c'; f v);
+            Ret (k x y)) =
+     reset (do x <- Ret c; do y <- @shift _ (fun f => f c');
+            Ret (k x (k x y))))%Do ;
   shiftreset4 : forall (c : U) k,
-    (reset (do y <- @shift _ (@^~ c); Ret (k y)) = Ret (k c))%Do
-}.
+    (reset (do y <- @shift _ (@^~ c); Ret (k y)) = Ret (k c))%Do }.
 
+#[short(type=shiftresetMonad)]
 HB.structure Definition MonadShiftReset U := {M of isMonadShiftReset U M & }.
-Notation shiftresetMonad := MonadShiftReset.type.
-(*Definition Shift U (M : shiftresetMonad U) := @shift U M.*)
 Arguments shift {_} {_} {_}.
-(*Definition Reset U (M : shiftresetMonad U) := @reset U M.
-Arguments Reset {_} {_}.*)
 
 (* NB: wip, no model *)
 (* Sect. 7.2 of [Tom Schrijvers & al., Monad Transformers and Modular
 Algebraic Eﬀects: What Binds Them Together, Haskell 2019] *)
 HB.mixin Record isMonadJump (ref : UU0 -> UU0) (M : UU0 -> UU0) of Monad M := {
-   jump : forall A B : UU0, ref A -> A -> M B;
-   sub : forall A B : UU0, (ref A -> M B) -> (A -> M B) -> M B;
-   jump0 : forall (A B : UU0) k x, @sub _ _ (fun r => @jump A B r x) k = k x ;
-   jump1 : forall (A B : UU0) p k, @sub A B (fun _ => p) k = p;
-   jump2 : forall (A B : UU0) p r', @sub _ _ p (@jump A B r') = p r';
-   jump3 : forall (A B : UU0) (p : ref A -> ref B -> M B) (k1 : A -> M B) k2,
-     @sub _ _ (fun r1 : ref A => @sub _ _ (fun r2 => p r1 r2) (k2 r1)) k1 =
-     @sub _ _ (fun r2 : ref B => @sub _ _ (fun r1 => p r1 r2) k1) (fun x => @sub _ _ (k2^~ x) k1); (*NB: differs from [Schrijvers et al. 19]*)
-   jump4 : forall (A B : UU0) r x k, (@jump A B r x) >>= k = @jump A B r x;
-   jump5 : forall (A B : UU0) p q k, @sub A B p q >>= k = @sub A B (p >=> k) (q >=> k)
-}.
+  jump : forall A B : UU0, ref A -> A -> M B;
+  sub : forall A B : UU0, (ref A -> M B) -> (A -> M B) -> M B;
+  jump0 : forall (A B : UU0) k x, @sub _ _ (fun r => @jump A B r x) k = k x ;
+  jump1 : forall (A B : UU0) p k, @sub A B (fun _ => p) k = p;
+  jump2 : forall (A B : UU0) p r', @sub _ _ p (@jump A B r') = p r';
+  jump3 : forall (A B : UU0) (p : ref A -> ref B -> M B) (k1 : A -> M B) k2,
+    @sub _ _ (fun r1 : ref A => @sub _ _ (fun r2 => p r1 r2) (k2 r1)) k1 =
+    @sub _ _ (fun r2 : ref B => @sub _ _ (fun r1 => p r1 r2) k1)
+             (fun x => @sub _ _ (k2^~ x) k1)
+    (*NB: differs from [Schrijvers et al. 19]*);
+  jump4 : forall (A B : UU0) r x k, (@jump A B r x) >>= k = @jump A B r x;
+  jump5 : forall (A B : UU0) p q k,
+    @sub A B p q >>= k = @sub A B (p >=> k) (q >=> k) }.
+
+#[short(type=jumpMonad)]
 HB.structure Definition MonadJump ref := {M of isMonadJump ref M & }.
-Notation jumpMonad := MonadJump.type.
 Definition Jump ref (M : jumpMonad ref) := @jump ref M.
 Arguments Jump {_} {_} {_} {_}.
 Definition Sub ref (M : jumpMonad ref) := @sub ref M.
@@ -856,48 +865,52 @@ HB.mixin Record isMonadState (S : UU0) (M : UU0 -> UU0) of Monad M := {
   getget : forall (A : UU0) (k : S -> S -> M A),
     get >>= (fun s => get >>= k s) = get >>= fun s => k s s }.
 
+#[short(type=stateMonad)]
 HB.structure Definition MonadState (S : UU0) := { M of isMonadState S M & }.
-Notation stateMonad := MonadState.type.
 
 (*NB: explicit join newly added*)
+#[short(type=failStateMonad)]
 HB.structure Definition MonadFailState (S : UU0) :=
   { M of isMonadFail M & isMonadState S M & isMonad M & isFunctor M }.
-Notation failStateMonad := MonadFailState.type.
 
 (*NB: explicit join newly added*)
+#[short(type=failR0StateMonad)]
 HB.structure Definition MonadFailR0State (S : UU0) :=
-  { M of isMonadFailR0 M & isMonadState S M & isMonadFail M & isMonad M & isFunctor M }.
-Notation failR0StateMonad := MonadFailR0State.type.
+  { M of isMonadFailR0 M & isMonadState S M & isMonadFail M & isMonad M &
+         isFunctor M }.
 
+#[short(type=nondetStateMonad)]
 HB.structure Definition MonadNondetState (S : UU0) :=
   { M of MonadPrePlus M & MonadState S M }.
-Notation nondetStateMonad := MonadNondetState.type.
 
 HB.mixin Record isMonadStateRun (S : UU0) (N : monad)
    (M : UU0 -> UU0) of MonadState S M := {
   runStateT : forall A : UU0, M A -> S -> N (A * S)%type ;
-  runStateTret : forall (A : UU0) (a : A) (s : S), @runStateT _ (Ret a) s = Ret (a, s) ;
+  runStateTret : forall (A : UU0) (a : A) (s : S),
+    @runStateT _ (Ret a) s = Ret (a, s) ;
   runStateTbind : forall (A B : UU0) (m : M A) (f : A -> M B) (s : S),
-    @runStateT _ (m >>= f) s = @runStateT _ m s >>= fun x => @runStateT _ (f x.1) x.2 ;
+    @runStateT _ (m >>= f) s =
+    @runStateT _ m s >>= fun x => @runStateT _ (f x.1) x.2 ;
   runStateTget : forall s : S, @runStateT _ get s = Ret (s, s) ;
   runStateTput : forall s' s : S, @runStateT _ (put s') s = Ret (tt, s') }.
 
+#[short(type=stateRunMonad)]
 HB.structure Definition MonadStateRun (S : UU0) (N : monad) :=
   {M of isMonadStateRun S N M & }.
-Notation stateRunMonad := MonadStateRun.type.
 Arguments runStateT {_} {_} {_} {_}.
 
-HB.mixin Record isMonadExceptStateRun (S : UU0) (N : exceptMonad)
-   (M : UU0 -> UU0) of MonadStateRun S N M & MonadExcept M
-  := Mixin {
+HB.mixin Record isMonadExceptStateRun
+    (S : UU0) (N : exceptMonad) (M : UU0 -> UU0)
+    of MonadStateRun S N M & MonadExcept M := Mixin {
   runStateTfail : forall (A : UU0) (s : S),
     runStateT (@fail [the exceptMonad of M] A) s = @fail N _ ;
   runStateTcatch : forall (A : UU0) (s : S) (m1 m2 : M A),
-    runStateT (@catch [the exceptMonad of M] _ m1 m2) s = @catch N _ (runStateT m1 s) (runStateT m2 s) }.
+    runStateT (@catch [the exceptMonad of M] _ m1 m2) s =
+    @catch N _ (runStateT m1 s) (runStateT m2 s) }.
 
+#[short(type=exceptStateRunMonad)]
 HB.structure Definition MonadExceptStateRun (S : UU0) (N : exceptMonad) :=
   {M of isMonadExceptStateRun S N M & }.
-Notation exceptStateRunMonad := MonadExceptStateRun.type.
 
 HB.mixin Record isMonadReify (S : UU0) (M : UU0 -> UU0) of Monad M := {
   reify : forall A : UU0, M A -> S -> option (A * S)%type ;
@@ -906,81 +919,54 @@ HB.mixin Record isMonadReify (S : UU0) (M : UU0 -> UU0) of Monad M := {
       @reify _ (m >>= f) s = match @reify _ m s with
                              | Some a's' => @reify _ (f a's'.1) a's'.2
                              | None => None
-                             end
-}.
+                             end }.
 
+#[short(type=reifyMonad)]
 HB.structure Definition MonadReify (S : UU0) := {M of isMonadReify S M & }.
-Notation reifyMonad := MonadReify.type.
 Arguments reify {_} {_} {_}.
 
-HB.mixin Record isMonadStateReify (S : UU0) (M : UU0 -> UU0) of MonadReify S M & MonadState S M := {
+HB.mixin Record isMonadStateReify (S : UU0) (M : UU0 -> UU0)
+    of MonadReify S M & MonadState S M := {
   reifyget : forall s, reify (@get _ [the stateMonad S of M]) s = Some (s, s) ;
-  reifyput : forall s s', reify (@put _ [the stateMonad S of M] s') s = Some (tt, s')
-}.
+  reifyput : forall s s',
+    reify (@put _ [the stateMonad S of M] s') s = Some (tt, s') }.
 
-HB.structure Definition MonadStateReify (S : UU0) := {M of isMonadStateReify S M &}.
-Notation stateReifyMonad := MonadStateReify.type.
+#[short(type=stateReifyMonad)]
+HB.structure Definition MonadStateReify (S : UU0) :=
+  {M of isMonadStateReify S M &}.
 
-HB.mixin Record isMonadFailReify (S : UU0) (M : UU0 -> UU0) of MonadReify S M & MonadFail M := {
-  reifyfail : forall S' (s : S), reify (@fail [the failMonad of M] S') s = None
-}.
+HB.mixin Record isMonadFailReify (S : UU0) (M : UU0 -> UU0)
+    of MonadReify S M & MonadFail M :=
+  { reifyfail : forall S' (s : S),
+      reify (@fail [the failMonad of M] S') s = None }.
 
-HB.structure Definition MonadFailReify (S : UU0) := {M of isMonadFailReify S M & }.
-Notation failReifyMonad := MonadFailReify.type.
+#[short(type=failReifyMonad)]
+HB.structure Definition MonadFailReify (S : UU0) :=
+  {M of isMonadFailReify S M & }.
 
-HB.structure Definition MonadFailFailR0Reify (S : UU0) := {M of MonadFailReify S M & MonadFailR0 M}.
-Notation failFailR0ReifyMonad := MonadFailFailR0Reify.type.
+#[short(type=failFailR0ReifyMonad)]
+HB.structure Definition MonadFailFailR0Reify (S : UU0) :=
+  {M of MonadFailReify S M & MonadFailR0 M}.
 
-HB.structure Definition MonadFailStateReify (S : UU0) := {M of MonadStateReify S M & MonadFailFailR0Reify S M}.
-Notation failStateReifyMonad := MonadFailStateReify.type.
-
-(*
-Module MonadFailStateReify.
-Record class_of (S : UU0) (M : UU0 -> UU0) := Class {
-  base : MonadStateReify.class_of S M ;
-  mixin_fail : MonadFail.mixin_of (Monad.Pack (MonadReify.base (MonadStateReify.base base))) ;
-  mixin_failReify : @MonadFailReify.mixin_of S (MonadReify.Pack (MonadStateReify.base base)) (@Fail (MonadFail.Pack (MonadFail.Class mixin_fail))) ;
-  mixin_failR0 : @MonadFailR0.mixin_of (MonadFail.Pack (MonadFail.Class mixin_fail)) ;
- }.
-Structure type (S : UU0) := Pack { acto : UU0 -> UU0 ; class : class_of S acto }.
-Definition failStateMonadType (S : UU0) (M : type S) := MonadStateReify.Pack (base (class M)).
-Definition fail_of_failStateReify (S : UU0) (M : type S) :=
-  MonadFail.Pack (MonadFail.Class (mixin_fail (class M))).
-Definition failReify_of_failStateReify (S : UU0) (M : type S) :=
-  MonadFailReify.Pack (MonadFailReify.Class (mixin_failReify (class M))).
-Definition failR0_of_failStateReify (S : UU0) (M : type S) :=
-  MonadFailR0.Pack (MonadFailR0.Class (mixin_failR0 (class M))).
-Definition failFailR0_of_failStateReify (S : UU0) (M : type S) :=
-  MonadFailFailR0Reify.Pack (@MonadFailFailR0Reify.Class _ _ (MonadFailReify.class (failReify_of_failStateReify M)) (mixin_failR0 (class M))).
-Module Exports.
-Notation failStateReifyMonad := type.
-Coercion failStateMonadType : failStateReifyMonad >-> stateReifyMonad.
-Canonical failStateMonadType.
-Coercion fail_of_failStateReify : failStateReifyMonad >-> failMonad.
-Canonical fail_of_failStateReify.
-Coercion failReify_of_failStateReify : failStateReifyMonad >-> failReifyMonad.
-Canonical failReify_of_failStateReify.
-Coercion failR0_of_failStateReify : failStateReifyMonad >-> failR0Monad.
-Canonical failR0_of_failStateReify.
-Coercion failFailR0_of_failStateReify : failStateReifyMonad >-> failFailR0ReifyMonad.
-Canonical failFailR0_of_failStateReify.
-End Exports.
-End MonadFailStateReify.
-
-Export MonadFailStateReify.Exports.*)
+#[short(type=failStateReifyMonad)]
+HB.structure Definition MonadFailStateReify (S : UU0) :=
+  {M of MonadStateReify S M & MonadFailFailR0Reify S M}.
 
 (* NB: this is experimental, may disappear, see rather foreach in
-monad_transformer because it is more general *)
-HB.mixin Record isMonadStateLoop (S : UU0) (M : UU0 -> UU0) of MonadState S M := {
+   monad_transformer because it is more general *)
+HB.mixin Record isMonadStateLoop (S : UU0) (M : UU0 -> UU0)
+    of MonadState S M := {
   foreach : nat -> nat -> (nat -> M unit) -> M unit ;
   loop0 : forall m body, foreach m m body = Ret tt ;
-  loop1 : forall m n body, foreach (m.+1 + n) m body =
-     (body (m + n)) >> foreach (m + n) m body :> M unit }.
+  loop1 : forall m n body,
+    foreach (m.+1 + n) m body = (body (m + n)) >> foreach (m + n) m body }.
 
-HB.structure Definition MonadStateLoop (S : UU0) := {M of isMonadStateLoop S M & }.
-Notation loopStateMonad := MonadStateLoop.type.
+#[short(type=loopStateMonad)]
+HB.structure Definition MonadStateLoop (S : UU0) :=
+  {M of isMonadStateLoop S M & }.
 
-HB.mixin Record isMonadArray (S : UU0) (I : eqType) (M : UU0 -> UU0) of Monad M := {
+HB.mixin Record isMonadArray (S : UU0) (I : eqType) (M : UU0 -> UU0)
+    of Monad M := {
   aget : I -> M S ;
   aput : I -> S -> M unit ;
   aputput : forall i s s', aput i s >> aput i s' = aput i s' ;
@@ -996,29 +982,26 @@ HB.mixin Record isMonadArray (S : UU0) (I : eqType) (M : UU0 -> UU0) of Monad M 
     aput i u >> aput j v = aput j v >> aput i u ;
   aputgetC : forall i j u (A : UU0) (k : S -> M A), i != j ->
     aput i u >> aget j >>= k =
-    aget j >>= (fun v => aput i u >> k v)
-}.
+    aget j >>= (fun v => aput i u >> k v) }.
 
+#[short(type=arrayMonad)]
 HB.structure Definition MonadArray (S : UU0) (I : eqType) :=
   { M of isMonadArray S I M & isMonad M & isFunctor M }.
-Notation arrayMonad := MonadArray.type.
 
+#[short(type=plusArrayMonad)]
 HB.structure Definition MonadPlusArray (S : UU0) (I : eqType) :=
   { M of MonadPlus M & isMonadArray S I M}.
-Notation plusArrayMonad := MonadPlusArray.type.
 
-HB.mixin Record isMonadTrace (T : UU0) (M : UU0 -> UU0) of Monad M := {
-  mark : T -> M unit
-}.
+HB.mixin Record isMonadTrace (T : UU0) (M : UU0 -> UU0) of Monad M :=
+ { mark : T -> M unit }.
 
+#[short(type=traceMonad)]
 HB.structure Definition MonadTrace (T : UU0) := {M of isMonadTrace T M & }.
-Notation traceMonad := MonadTrace.type.
 
-HB.mixin Record isMonadTraceReify (T : UU0) (M : UU0 -> UU0) of
-    MonadReify (seq T) M & MonadTrace T M := {
+HB.mixin Record isMonadTraceReify (T : UU0) (M : UU0 -> UU0)
+    of MonadReify (seq T) M & MonadTrace T M := {
   reifytmark : forall t l,
-    reify (@mark _ [the traceMonad T of M] t) l = Some (tt, rcons l t)
-}.
+    reify (@mark _ [the traceMonad T of M] t) l = Some (tt, rcons l t) }.
 
 HB.mixin Record isMonadStateTrace (S T : UU0) (M : UU0 -> UU0) of Monad M := {
   st_get : M S ;
@@ -1028,36 +1011,37 @@ HB.mixin Record isMonadStateTrace (S T : UU0) (M : UU0 -> UU0) of Monad M := {
   st_putget : forall s, st_put s >> st_get = st_put s >> Ret s ;
   st_getputskip : st_get >>= st_put = skip ;
   st_getget : forall (A : UU0) (k : S -> S -> M A),
-      st_get >>= (fun s => st_get >>= k s) = st_get >>= fun s => k s s ;
+    st_get >>= (fun s => st_get >>= k s) = st_get >>= fun s => k s s ;
   st_putmark : forall s e, st_put s >> st_mark e = st_mark e >> st_put s ;
-  st_getmark : forall e (k : _ -> M S), st_get >>= (fun v => st_mark e >> k v) =
-                         st_mark e >> st_get >>= k
-}.
+  st_getmark : forall e (k : _ -> M S),
+    st_get >>= (fun v => st_mark e >> k v) = st_mark e >> st_get >>= k }.
 
+#[short(type=stateTraceMonad)]
 HB.structure Definition MonadStateTrace (S T : UU0) :=
   { M of isMonadStateTrace S T M & isMonad M & isFunctor M }.
-Notation stateTraceMonad := MonadStateTrace.type.
 
 HB.mixin Record isMonadStateTraceReify (S T : UU0) (M : UU0 -> UU0)
     of MonadReify (S * seq T)%type M & MonadStateTrace S T M := {
   reifystget : forall s l,
-    reify (@st_get _ _ [the stateTraceMonad S T of M]) (s, l) = Some (s, (s, l)) ;
+    reify (@st_get _ _ [the stateTraceMonad S T of M]) (s, l) =
+    Some (s, (s, l)) ;
   reifystput : forall s l s',
-    reify (@st_put _ _ [the stateTraceMonad S T of M] s') (s, l) = Some (tt, (s', l)) ;
+    reify (@st_put _ _ [the stateTraceMonad S T of M] s') (s, l) =
+    Some (tt, (s', l)) ;
   reifystmark : forall t s l,
-    reify (@st_mark _ _ [the stateTraceMonad S T of M] t) (s, l) = Some (tt, (s, rcons l t))
-}.
+    reify (@st_mark _ _ [the stateTraceMonad S T of M] t) (s, l) =
+    Some (tt, (s, rcons l t)) }.
+
+#[short(type=stateTraceReifyMonad)]
 HB.structure Definition MonadStateTraceReify (S T : UU0) :=
   { M of isMonadStateTraceReify S T M & isFunctor M & isMonad M &
          isMonadReify S M & isMonadStateTrace S T M }.
-Notation stateTraceReifyMonad := MonadStateTraceReify.type.
 
-HB.mixin Record isMonadFresh (S : UU0) (M : UU0 -> UU0) of Monad M := {
-  fresh : M S
-}.
+HB.mixin Record isMonadFresh (S : UU0) (M : UU0 -> UU0) of Monad M :=
+  { fresh : M S }.
 
+#[short(type=freshMonad)]
 HB.structure Definition MonadFresh (S : UU0) := {M of isMonadFresh S M & }.
-Notation freshMonad:= MonadFresh.type.
 
 Module segment_closed.
 Record t A := mk {
@@ -1067,12 +1051,11 @@ End segment_closed.
 Definition segment_closed_p A := @segment_closed.p A.
 Coercion segment_closed_p : segment_closed.t >-> pred.
 
-Definition symbols S (M : freshMonad S) := fun n => sequence (nseq n (@fresh _ M)).
-Arguments symbols {_} {_}.
+Definition symbols {S} {M : freshMonad S} :=
+  fun n => sequence (nseq n (@fresh _ M)).
 
 HB.mixin Record isMonadFailFresh (S : UU0) (M : UU0 -> UU0)
     of MonadFresh S M & MonadFail M := Mixin {
-(*  symbols := fun n => sequence (nseq n fresh);*)
   (* generated symbols are indeed fresh (specification of fresh) *)
   distinct : segment_closed.t S ;
   bassert_symbols : bassert distinct \o (@symbols _ [the freshMonad S of M]) =
@@ -1081,7 +1064,7 @@ HB.mixin Record isMonadFailFresh (S : UU0) (M : UU0 -> UU0)
   failfresh_bindmfail : BindLaws.right_zero (@bind [the monad of M]) (@fail _)
 }.
 
+#[short(type=failFreshMonad)]
 HB.structure Definition MonadFailFresh (S : UU0) :=
   { M of isMonadFailFresh S M & isFunctor M & isMonad M & isMonadFresh S M &
          isMonadFail M }.
-Notation failFreshMonad := MonadFailFresh.type.
