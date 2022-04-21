@@ -123,7 +123,6 @@ publications:
 
 #make_target: [
 #  [make "-j%{jobs}%"]
-#  [make "sect5"]
 #  [make "-C" "impredicative_set"]
 #]
 #
@@ -148,7 +147,6 @@ build: |-
   git clone https://github.com/affeldt-aist/monae.git
   cd monae
   make -j 4
-  make sect5
   make -C impredicative_set
   make install
   ```
@@ -195,7 +193,7 @@ documentation: |-
   - [monad_composition.v](./monad_composition.v): composing monads
   - [monad_transformer.v](./monad_transformer.v): monad transformers
     + completed by `ifmt_lifting.v` and `iparametricty_codensity.v` in the directory `impredicative_set`
-      * the directory `impredicative_set` contains a lighter version of Monae where monads live in `Set` and that compiles with `impredicate-set`
+      * the directory `impredicative_set` contains a lighter version of Monae where monads live in `Set` and that compiles with `impredicative-set`
   - [monad_model.v](./monad_model.v): concrete models of monads (up to state and trace monads)
   - [proba_monad_model.v](./proba_monad_model.v): concrete model of the probability monad
   - [gcm_model.v](./gcm_model.v): model of the geometrically convex monad
@@ -203,7 +201,7 @@ documentation: |-
   - example_*.v: various examples (Spark aggregation, the n-queens puzzle, tree relabeling,  Monty Hall problem, monad transformers, quicksort, etc.)
   - [smallstep.v](./smallstep.v): semantics for an imperative language, with equivalence operational semantics/denotation and sample imperative programs
 
-  ## About Installation with Windows 10
+  ## About Installation with Windows 10 or 11
  
   Installation of monae on Windows is less simple.
   First install infotheo following the [instructions for Windows 10](https://github.com/affeldt-aist/infotheo).
