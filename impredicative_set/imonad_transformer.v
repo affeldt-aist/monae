@@ -953,12 +953,23 @@ HB.mixin Record isFMT (t : monad -> monad) of MonadT t & Functorial t := {
     MonadMLaws.ret (hmap [the functorial of t] e) ;
   fmt_bind : forall (M N : monad) (e : monadM M N),
     MonadMLaws.bind (hmap [the functorial of t] e) ;
-  natural_hmap : forall (M N : monad) (n : M ~> N) (X : UU0),
-    hmap [the functorial of t] n X \o Lift [the monadT of t] M X =
-    Lift [the monadT of t] N X \o n X }.
+  natural_hmap : forall (M N : monad) (n : M ~> N),
+    hmap [the functorial of t] n \v Lift [the monadT of t] M =
+    Lift [the monadT of t] N \v n }.
 
 #[short(type=fmt)]
 HB.structure Definition FMT := {t of isFMT t & isFunctorial t & isMonadT t}.
+
+Section fmt_lemmas.
+
+Lemma natural_hmapE (t : fmt) (M N : monad) (n : M ~> N) (X : UU0) :
+  hmap t n X \o Lift t M X = Lift t N X \o n X.
+Proof.
+have /nattrans_ext/(_ X)/= := @natural_hmap t M N n.
+by rewrite !vcompE.
+Qed.
+
+End fmt_lemmas.
 
 Section exceptFMT.
 Variable X : UU0.
@@ -1011,10 +1022,10 @@ Qed.
 
 Let hmapX_lift :
   let h := fun F G FG => [the _ ~> _ of hmapX' FG] in
-  forall (M N : monad) (n : M ~> N) X,
-  h M N n X \o Lift T M X = Lift T N X \o n X.
+  forall (M N : monad) (n : M ~> N),
+  h M N n \v Lift T M = Lift T N \v n.
 Proof.
-move=> h M N t A.
+move=> h M N t; apply/nattrans_ext => A/=; rewrite !vcompE/=.
 rewrite /hmapX' /=.
 rewrite /liftX /=.
 rewrite /retX /=.
@@ -1088,10 +1099,10 @@ Qed.
 
 Let hmapS_lift :
   let h := fun F G FG => [the _ ~> _ of hmapS FG] in
-  forall (M N : monad) (n : M ~> N) X,
-  h M N n X \o Lift T M X = Lift T N X \o n X.
+  forall (M N : monad) (n : M ~> N),
+  h M N n \v Lift T M = Lift T N \v n.
 Proof.
-move=> h M N t A /=.
+move=> h M N t; apply/nattrans_ext => A /=; rewrite !vcompE/=.
 rewrite /hmapS /=.
 rewrite /liftS /=.
 apply funext => ma /=.
@@ -1182,10 +1193,11 @@ Qed.
 
 Let hmapEnv_lift :
   let h := fun F G FG => [the _ ~> _ of hmapEnv FG] in
-  forall (M N : monad) (n : M ~> N) X,
-  h M N n X \o Lift T M X = Lift T N X \o n X.
+  forall (M N : monad) (n : M ~> N),
+  h M N n \v Lift T M = Lift T N \v n.
 Proof.
-by move=> h M N t A /=; rewrite /hmapEnv/= /liftEnv/=; exact: funext.
+move=> h M N t; apply/nattrans_ext => A /=; rewrite !vcompE/=.
+by rewrite /hmapEnv/= /liftEnv/=; exact: funext.
 Qed.
 
 HB.instance Definition _ := isFMT.Build (envT E)
@@ -1251,10 +1263,10 @@ Qed.
 
 Let hmapO_lift :
   let h := fun F G FG => [the _ ~> _ of hmapO FG] in
-  forall (M N : monad) (n : M ~> N) X,
-  h M N n X \o Lift T M X = Lift T N X \o n X.
+  forall (M N : monad) (n : M ~> N),
+  h M N n \v Lift T M = Lift T N \v n.
 Proof.
-move=> h M N t A.
+move=> h M N t; apply/nattrans_ext => A /=; rewrite !vcompE/=.
 rewrite /hmapO /= /liftO /=.
 apply funext => ma /=.
 rewrite -!fmapE.
