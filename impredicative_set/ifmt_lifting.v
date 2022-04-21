@@ -215,7 +215,7 @@ transitivity ((op1 \v op2) X \o
     ((E # Lift t (codensityT M) X) \o
     (E # Lift [the monadT of codensityT] M X))).
   congr (_ \o _); rewrite /op3.
-  by rewrite -functor_o -natural_hmap functor_app_naturalE -(@functor_o E).
+  by rewrite -functor_o -natural_hmapE functor_app_naturalE -(@functor_o E).
 transitivity (op1 X \o
   (op2 X \o E # Lift t (codensityT M) X) \o E # Lift [the monadT of codensityT] M X).
   by rewrite vcompE -compA.
@@ -223,7 +223,7 @@ rewrite -uniform_algebraic_lifting.
 transitivity (Lift t M X \o from naturality_MK X \o (psik op) X \o
   E # Lift [the monadT of codensityT] M X).
   congr (_ \o _).
-  by rewrite compA natural_hmap.
+  by rewrite compA natural_hmapE.
 rewrite -2!compA.
 congr (_ \o _).
 by rewrite compA -psikE.
