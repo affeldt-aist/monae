@@ -21,14 +21,3 @@ _CoqProject Makefile: ;
 install_full: all
 	$(MAKE) install
 	$(MAKE) -C impredicative_set install
-
-# This last entry is only to support work-in-progress.
-
-COQ5 = coqc -w -notation-overridden -R . monae
-
-sect5: all
-	$(COQ5) fmt_lifting.v
-	$(COQ5) parametricity_codensity.v
-
-clean5:
-	rm -f *.vo *.glob *.vok *.vos

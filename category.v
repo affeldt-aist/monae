@@ -1124,7 +1124,7 @@ Require Import hierarchy.
 
 Module Monad_of_category_monad.
 Section monad_of_category_monad.
-Variable M : Monad.Exports.monad CT.
+Variable M : category.Monad.Exports.monad CT.
 
 Definition acto : Type -> Type := M.
 

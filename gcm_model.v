@@ -631,7 +631,8 @@ Definition A1 := AdjointFunctors.mk triL1 triR1.
 Definition Aprob := adj_comp AC A0.
 Definition Agcm := adj_comp Aprob A1.
 Definition Mgcm := Monad_of_adjoint Agcm.
-Definition gcm := [the hierarchy.monad of Monad_of_category_monad.acto Mgcm].
+Definition gcm :=
+  [the hierarchy.Monad.Exports.monad of Monad_of_category_monad.acto Mgcm].
 
 Section gcm_opsE.
 Import hierarchy.
@@ -686,8 +687,8 @@ Import category.
 (* probability monad built directly *)
 Definition M := proba_monad_model.MonadProbModel.t.
 (* probability monad built using adjunctions *)
-Definition N :=
- [the hierarchy.monad of Monad_of_category_monad.acto (Monad_of_adjoint Aprob)].
+Definition N := [the hierarchy.Monad.Exports.monad of
+  Monad_of_category_monad.acto (Monad_of_adjoint Aprob)].
 
 Lemma actmE T : N T = M T.
 Proof. by []. Qed.
