@@ -29,7 +29,9 @@ Require Import ihierarchy imonad_lib ifail_lib istate_lib.
 (*                       operation op and a monad morphism e                  *)
 (* uniform_algebraic_lifting == Theorem: alifting is a lifting                *)
 (*                                                                            *)
-(*                FMT == functorial monad transformer                         *)
+(*         functorial == type of functors where the action on objects as type *)
+(*                       monad -> monad                                       *)
+(*                fmt == type of functorial monad transformers                *)
 (*                       instances:                                           *)
 (*                       - exceptFMT                                          *)
 (*                       - stateFMT                                           *)
@@ -49,22 +51,21 @@ Section monadmlaws.
 Variables (M N : monad).
 Definition ret (e : M ~~> N) := forall A : UU0, e A \o Ret = Ret.
 Definition bind (e : M ~~> N) := forall (A B : UU0) (m : M A) (f : A -> M B),
-    e B (m >>= f) = e A m >>= (e B \o f).
+  e B (m >>= f) = e A m >>= (e B \o f).
 End monadmlaws.
 End MonadMLaws.
 
 HB.mixin Record isMonadM (M N : monad) (e : M ~~> N) := {
   monadMret : MonadMLaws.ret e ;
-  monadMbind : MonadMLaws.bind e
-}.
+  monadMbind : MonadMLaws.bind e }.
+
+#[short(type=monadM)]
 HB.structure Definition MonadM (M N : monad) :=
   {e of isMonadM M N e & isNatural M N e}.
-Notation monadM := MonadM.type.
 
 HB.factory Record isMonadM_of_ret_bind (M N : monad) (e : M ~~> N) := {
   monadMret : MonadMLaws.ret e ;
-  monadMbind : MonadMLaws.bind e
-}.
+  monadMbind : MonadMLaws.bind e }.
 
 HB.builders Context (M N : monad) (e : M ~~> N) of isMonadM_of_ret_bind M N e.
 
@@ -80,8 +81,9 @@ HB.end.
 
 HB.mixin Record isMonadT (T : monad -> monad) := {
   Lift : forall M, monadM M (T M) }.
+
+#[short(type=monadT)]
 HB.structure Definition MonadT := {T of isMonadT T}.
-Notation monadT := MonadT.type.
 Arguments Lift : clear implicits.
 
 Section state_monad_transformer.
@@ -935,32 +937,28 @@ by rewrite -[in LHS](phiK op).
 Qed.
 End uniform_algebraic_lifting.
 
-HB.mixin Record isFMT0 (t : monad -> monad) := {
+HB.mixin Record isFunctorial (t : monad -> monad) := {
   hmap : forall (M N : monad), (M ~> N) -> (t M ~> t N) ;
-  fmt_ret : forall (M N : monad) (e : monadM M N), MonadMLaws.ret (hmap M N e) ;
-  fmt_bind : forall (M N : monad) (e : monadM M N), MonadMLaws.bind (hmap M N e)
-}.
-HB.structure Definition FMT0 := {t of isFMT0 t}.
-Notation fmt0 := FMT0.type.
+  functorial_id : forall (M : monad),
+    hmap _ _ [the _ ~> _ of NId M] = [the _ ~> _ of NId (t M)] ;
+  functorial_o : forall (M N P : monad) (t : M ~> N) (s : N ~> P),
+    hmap _ _ (s \v t) = hmap _ _ s \v hmap _ _ t }.
+
+#[short(type=functorial)]
+HB.structure Definition Functorial := {t of isFunctorial t}.
 Arguments hmap _ {M N} _.
 
-HB.mixin Record isFMT1 (u : monad -> monad) of FMT0 u := {
-  fmt_NId : forall (M : monad),
-    hmap [the fmt0 of u] [the _ ~> _ of NId M] =
-    [the _ ~> _ of NId ([the fmt0 of u] M)] ;
-  fmt_vcomp : forall (M N P : monad) (t : M ~> N) (s : N ~> P),
-    hmap [the fmt0 of u] s \v hmap [the fmt0 of u] t =
-    hmap [the fmt0 of u] (s \v t) }.
-HB.structure Definition FMT1 := {t of isFMT1 t & }.
-Notation fmt1 := FMT1.type.
-
-HB.mixin Record isFMT (t : monad -> monad) of MonadT t & FMT1 t := {
+HB.mixin Record isFMT (t : monad -> monad) of MonadT t & Functorial t := {
+  fmt_ret : forall (M N : monad) (e : monadM M N),
+    MonadMLaws.ret (hmap [the functorial of t] e) ;
+  fmt_bind : forall (M N : monad) (e : monadM M N),
+    MonadMLaws.bind (hmap [the functorial of t] e) ;
   natural_hmap : forall (M N : monad) (n : M ~> N) (X : UU0),
-    hmap [the fmt1 of t] n X \o Lift [the monadT of t] M X =
-    Lift [the monadT of t] N X \o n X
-}.
-HB.structure Definition FMT := {t of isFMT t & isFMT1 t & isMonadT t}.
-Notation fmt := FMT.type.
+    hmap [the functorial of t] n X \o Lift [the monadT of t] M X =
+    Lift [the monadT of t] N X \o n X }.
+
+#[short(type=fmt)]
+HB.structure Definition FMT := {t of isFMT t & isFunctorial t & isMonadT t}.
 
 Section exceptFMT.
 Variable X : UU0.
@@ -980,6 +978,19 @@ Qed.
 HB.instance Definition hmapX (F G : monad) (tau : F ~> G) :=
   isNatural.Build (T F) (T G) (hmapX' tau) (naturality_hmapX' tau).
 
+Let hmapX_NId (M : monad) :
+  [the _ ~> _ of hmapX' [the _ ~> _ of NId M]] = [the _ ~> _ of NId (T M)].
+Proof. by apply/nattrans_ext => A. Qed.
+
+Let hmapX_v (M N P : monad) (t : M ~> N) (s : N ~> P) :
+  [the _ ~> _ of hmapX' (s \v t)] =
+  [the _ ~> _ of hmapX' s] \v [the _ ~> _ of hmapX' t].
+Proof.
+by apply/nattrans_ext => /= A; rewrite vcompE /= /hmapX'/= vcompE.
+Qed.
+
+HB.instance Definition _ := isFunctorial.Build (exceptT X) hmapX_NId hmapX_v.
+
 Let monadMret_hmapX (F G : monad) (e : monadM F G) :
   MonadMLaws.ret (hmapX' e).
 Proof.
@@ -996,17 +1007,6 @@ rewrite !monadMbind /=.
 congr (bind (e (X + A)%type m) _).
 apply funext => -[x/=|//].
 by rewrite -(compE (e _)) monadMret.
-Qed.
-
-Let hmapX_NId (M : monad) :
-  [the _ ~> _ of hmapX' [the _ ~> _ of NId M]] = [the _ ~> _ of NId (T M)].
-Proof. by apply/nattrans_ext => A. Qed.
-
-Let hmapX_v (M N P : monad) (t : M ~> N) (s : N ~> P) :
-  [the _ ~> _ of hmapX' s] \v [the _ ~> _ of hmapX' t] =
-  [the _ ~> _ of hmapX' (s \v t)].
-Proof.
-by apply/nattrans_ext => /= A; rewrite vcompE /= /hmapX'/= vcompE.
 Qed.
 
 Let hmapX_lift :
@@ -1029,12 +1029,8 @@ rewrite -(compE (N # inr)).
 by rewrite (natural t).
 Qed.
 
-HB.instance Definition _ := isFMT0.Build
-  (exceptT X) monadMret_hmapX monadMbind_hmapX.
-
-HB.instance Definition _ := isFMT1.Build (exceptT X) hmapX_NId hmapX_v.
-
-HB.instance Definition _ := isFMT.Build (exceptT X) hmapX_lift.
+HB.instance Definition _ := isFMT.Build (exceptT X)
+  monadMret_hmapX monadMbind_hmapX  hmapX_lift.
 
 End exceptFMT.
 
@@ -1060,6 +1056,19 @@ Qed.
 HB.instance Definition _ (F G : monad) (tau : F ~> G) := isNatural.Build
   (T F) (T G) (hmapS tau) (naturality_hmapS tau).
 
+Let hmapS_NId (M : monad) :
+  [the _ ~> _ of hmapS [the _ ~> _ of NId M]] = [the _ ~> _ of NId (T M)].
+Proof. by apply/nattrans_ext. Qed.
+
+Let hmapS_v (M N P : monad) (t : M ~> N) (s : N ~> P) :
+  [the _ ~> _ of hmapS (s \v t)] =
+  [the _ ~> _ of hmapS s] \v [the _ ~> _ of hmapS t].
+Proof.
+by apply/nattrans_ext => A /=; rewrite vcompE/= /hmapS/= vcompE.
+Qed.
+
+HB.instance Definition _ := isFunctorial.Build (stateT S) hmapS_NId hmapS_v.
+
 Let monadMret_hmapS (F G : monad) (e : monadM F G) :
   MonadMLaws.ret (hmapS e).
 Proof.
@@ -1075,17 +1084,6 @@ move=> A B m f.
 rewrite /hmapS /=; apply funext => s.
 rewrite /= 2!bindE /= /join_of_bind /bindS /= 2!bind_fmap.
 by rewrite monadMbind.
-Qed.
-
-Let hmapS_NId (M : monad) :
-  [the _ ~> _ of hmapS [the _ ~> _ of NId M]] = [the _ ~> _ of NId (T M)].
-Proof. by apply/nattrans_ext. Qed.
-
-Let hmapS_v (M N P : monad) (t : M ~> N) (s : N ~> P) :
-  [the _ ~> _ of hmapS s] \v [the _ ~> _ of hmapS t] =
-  [the _ ~> _ of hmapS (s \v t)].
-Proof.
-by apply/nattrans_ext => A /=; rewrite vcompE/= /hmapS/= vcompE.
 Qed.
 
 Let hmapS_lift :
@@ -1126,11 +1124,8 @@ rewrite compidf.
 by rewrite -(compE _ (t A)).
 Qed.
 
-HB.instance Definition _ := isFMT0.Build (stateT S) monadMret_hmapS monadMbind_hmapS.
-
-HB.instance Definition _ := isFMT1.Build (stateT S) hmapS_NId hmapS_v.
-
-HB.instance Definition _ := isFMT.Build (stateT S) hmapS_lift.
+HB.instance Definition _ := isFMT.Build (stateT S)
+  monadMret_hmapS monadMbind_hmapS hmapS_lift.
 
 End Fmt_stateT.
 
@@ -1157,6 +1152,17 @@ Qed.
 HB.instance Definition _ (F G : monad) (tau : F ~> G) :=
   isNatural.Build (T F) (T G) (hmapEnv tau) (naturality_hmapEnv tau).
 
+Let hmapEnv_NId (M : monad) :
+  [the _ ~> _ of hmapEnv [the _ ~> _ of NId M]] = [the _ ~> _ of NId (T M)].
+Proof. by apply nattrans_ext. Qed.
+
+Let hmapEnv_v (M N P : monad) (t : M ~> N) (s : N ~> P) :
+  [the _ ~> _ of hmapEnv (s \v t)] =
+  [the _ ~> _ of hmapEnv s] \v [the _ ~> _ of hmapEnv t].
+Proof. by apply/nattrans_ext => A /=; rewrite vcompE/= /hmapEnv vcompE. Qed.
+
+HB.instance Definition _ := isFunctorial.Build (envT E) hmapEnv_NId hmapEnv_v.
+
 Let monadMret_hmapEnv (F G : monad) (e : monadM F G) :
   MonadMLaws.ret (hmapEnv e).
 Proof.
@@ -1174,15 +1180,6 @@ rewrite /= 2!bindE /= /join_of_bind /bindEnv /= 2!bind_fmap.
 by rewrite monadMbind.
 Qed.
 
-Let hmapEnv_NId (M : monad) :
-  [the _ ~> _ of hmapEnv [the _ ~> _ of NId M]] = [the _ ~> _ of NId (T M)].
-Proof. by apply nattrans_ext. Qed.
-
-Let hmapEnv_v (M N P : monad) (t : M ~> N) (s : N ~> P) :
-  [the _ ~> _ of hmapEnv s] \v [the _ ~> _ of hmapEnv t] =
-  [the _ ~> _ of hmapEnv (s \v t)].
-Proof. by apply/nattrans_ext => A /=; rewrite vcompE/= /hmapEnv vcompE. Qed.
-
 Let hmapEnv_lift :
   let h := fun F G FG => [the _ ~> _ of hmapEnv FG] in
   forall (M N : monad) (n : M ~> N) X,
@@ -1191,11 +1188,8 @@ Proof.
 by move=> h M N t A /=; rewrite /hmapEnv/= /liftEnv/=; exact: funext.
 Qed.
 
-HB.instance Definition _ := isFMT0.Build (envT E) monadMret_hmapEnv monadMbind_hmapEnv.
-
-HB.instance Definition _ := isFMT1.Build (envT E) hmapEnv_NId hmapEnv_v.
-
-HB.instance Definition _ := isFMT.Build (envT E) hmapEnv_lift.
+HB.instance Definition _ := isFMT.Build (envT E)
+  monadMret_hmapEnv monadMbind_hmapEnv hmapEnv_lift.
 
 End Fmt_envT.
 
@@ -1222,6 +1216,17 @@ Qed.
 HB.instance Definition _ (F G : monad) (tau : F ~> G) :=
   isNatural.Build (T F) (T G) (hmapO tau) (naturality_hmapO tau).
 
+Let hmapO_NId (M : monad) :
+  [the _ ~> _ of hmapO [the _ ~> _ of NId M]] = [the _ ~> _ of NId (T M)].
+Proof. by apply nattrans_ext. Qed.
+
+Let hmapO_v (M N P : monad) (t : M ~> N) (s : N ~> P) :
+  [the _ ~> _ of hmapO (s \v t)] =
+  [the _ ~> _ of hmapO s] \v [the _ ~> _ of hmapO t].
+Proof. by apply/nattrans_ext => A /=; rewrite vcompE/= /hmapO/= vcompE. Qed.
+
+HB.instance Definition _ := isFunctorial.Build (outputT R) hmapO_NId hmapO_v.
+
 Let monadMret_hmapO (F G : monad) (e : monadM F G) :
   MonadMLaws.ret (hmapO e).
 Proof.
@@ -1244,15 +1249,6 @@ rewrite -[LHS](compE _ Ret (h, _)).
 by rewrite monadMret.
 Qed.
 
-Let hmapO_NId (M : monad) :
-  [the _ ~> _ of hmapO [the _ ~> _ of NId M]] = [the _ ~> _ of NId (T M)].
-Proof. by apply nattrans_ext. Qed.
-
-Let hmapO_v (M N P : monad) (t : M ~> N) (s : N ~> P) :
-  [the _ ~> _ of hmapO s] \v [the _ ~> _ of hmapO t] =
-  [the _ ~> _ of hmapO (s \v t)].
-Proof. by apply/nattrans_ext => A /=; rewrite vcompE/= /hmapO/= vcompE. Qed.
-
 Let hmapO_lift :
   let h := fun F G FG => [the _ ~> _ of hmapO FG] in
   forall (M N : monad) (n : M ~> N) X,
@@ -1266,11 +1262,7 @@ rewrite -(compE _ (t A)).
 by rewrite natural.
 Qed.
 
-HB.instance Definition _ := isFMT0.Build
-  (outputT R) monadMret_hmapO monadMbind_hmapO.
-
-HB.instance Definition _ := isFMT1.Build (outputT R) hmapO_NId hmapO_v.
-
-HB.instance Definition _ := isFMT.Build (outputT R) hmapO_lift.
+HB.instance Definition _ := isFMT.Build (outputT R)
+  monadMret_hmapO monadMbind_hmapO hmapO_lift.
 
 End Fmt_outputT.
