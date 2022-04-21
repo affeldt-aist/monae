@@ -76,7 +76,7 @@ dependencies:
     [MathComp field](https://math-comp.github.io)
 - opam:
     name: coq-mathcomp-analysis
-    version: '{ (>= "0.3.11" & < "0.4~") }'
+    version: '{ (>= "0.4.0") & (< "0.6~")}'
   description: |-
     [MathComp analysis](https://github.com/math-comp/analysis)
 - opam:
