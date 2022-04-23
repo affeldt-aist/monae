@@ -19,6 +19,7 @@ Require Import ihierarchy.
 (*                              transformations                               *)
 (*                    F ## n == application of the functor F to the natural   *)
 (*                              transformation n                              *)
+(*                      fork == the natural transformation fun A a => (a, a)  *)
 (*                    F -| G == adjoint functors                              *)
 (*   Module monad_of_adjoint == derivation of a monad from an adjunction      *)
 (* Section composite_adjoint == composition of adjunctions                    *)
@@ -177,11 +178,18 @@ Arguments NId C [A].
 
 Section vertical_composition.
 Variables (C D E : functor) (g : D ~> E) (f : C ~> D).
+
 Definition vcomp := locked (fun (A : UU0) => g A \o f A).
+
 Definition natural_vcomp : naturality _ _ vcomp.
-Proof. by move=> A B h; rewrite /vcomp; unlock; rewrite compA natural -compA natural. Qed.
+Proof.
+by move=> A B h; rewrite /vcomp; unlock; rewrite compA natural -compA natural.
+Qed.
+
 HB.instance Definition _ := isNatural.Build C E vcomp natural_vcomp.
+
 Definition VComp : C ~> E := [the C ~> E of vcomp].
+
 End vertical_composition.
 
 Notation "f \v g" := [the _ ~> _ of vcomp f g].
@@ -196,8 +204,10 @@ Proof. by apply/nattrans_ext => a /=; rewrite !vcompE. Qed.
 
 Section horizontal_composition.
 Variables (F G F' G' : functor) (s : F ~> G) (t : F' ~> G').
+
 Definition hcomp : F' \o F ~~> G' \o G :=
   fun (A : UU0) => @t (G A) \o F' # (@s A).
+
 Lemma natural_hcomp :
   naturality [the functor of F' \o F] [the functor of G' \o G] hcomp.
 Proof.
@@ -205,28 +215,37 @@ move=> A B h.
 rewrite [LHS]compA (natural t) -[LHS]compA -[in RHS]compA.
 by congr (_ \o _); rewrite FCompE -2!functor_o (natural s).
 Qed.
+
 HB.instance Definition _ := isNatural.Build
   [the functor of F' \o F] [the functor of G' \o G] hcomp natural_hcomp.
+
 Definition HComp : [the functor of F' \o F] ~> [the functor of G' \o G] :=
   [the _ ~> _ of hcomp].
+
 End horizontal_composition.
 
 Notation "f \h g" := (HComp g f).
 
 Section functor_natural_transformation.
 Variables (S F G : functor) (nt : F ~> G).
+
 Definition fun_app_nt : S \o F ~~> S \o G :=
   fun (A : UU0) => S # (nt A).
+
 Lemma natural_fun_app_nt :
   naturality [the functor of S \o F] [the functor of S \o G] fun_app_nt.
 Proof.
 by move=> *; rewrite /fun_app_nt 2!FCompE -2!(@functor_o S) natural.
 Qed.
+
 HB.instance Definition _ := isNatural.Build
   [the functor of S \o F] [the functor of S \o G] fun_app_nt natural_fun_app_nt.
-Definition functor_app_natural : [the functor of S \o F] ~> [the functor of S \o G] :=
-  [the nattrans _ _ of fun_app_nt].
+
+Definition functor_app_natural :
+    [the functor of S \o F] ~> [the functor of S \o G] :=
+  [the _ ~> _ of fun_app_nt].
 End functor_natural_transformation.
+
 Arguments functor_app_natural S {_} {_}.
 Notation "F '##' g" := (functor_app_natural F g).
 
@@ -235,14 +254,18 @@ Lemma functor_app_naturalE (S F G : functor) (nt : F ~> G) X :
 Proof. by []. Qed.
 
 Lemma functor_app_natural_hcomp (S F G : functor) (nt : F ~> G) :
-  S ## nt = [the nattrans _ _ of NId S] \h nt.
+  S ## nt = [the _ ~> _ of NId S] \h nt.
 Proof. by apply nattrans_ext => a; rewrite functor_app_naturalE. Qed.
 
 Section natural_transformation_example.
 Definition fork' : FId ~~> squaring := fun (A : UU0) (a : A) => (a, a).
+
 Lemma fork_natural : naturality _ _ fork'. Proof. by []. Qed.
+
 HB.instance Definition _ := isNatural.Build FId squaring fork' fork_natural.
+
 Definition fork : FId ~> squaring := [the _ ~> _ of fork'].
+
 End natural_transformation_example.
 
 Definition eta_type (f g : functor) := FId ~> [the functor of g \o f].
@@ -566,6 +589,9 @@ Qed.
 
 Definition commute {M : monad} A B (m : M A) (n : M B) C (f : A -> B -> M C) : Prop :=
   m >>= (fun x => n >>= (fun y => f x y)) = n >>= (fun y => m >>= (fun x => f x y)) :> M _.
+
+Definition preserves {M : monad} A B (f : A -> M A) (g : A -> B) :=
+  forall x, (f x >>= fun y => Ret (y, g y)) = (f x >>= fun y => Ret (y, g x)).
 
 (*Local Notation "[ \o f , .. , g , h ]" := (f \o .. (g \o h) ..)
   (at level 0) (*, format "[ \o '['  f , '/' .. , '/' g , '/' h ']' ]"

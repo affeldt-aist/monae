@@ -184,7 +184,7 @@ case: cid => g_ [g1 g2].
 case: cid => f_ [f1 f2] /=.
 rewrite -ProductCategory.sepfst_comp.
 congr (ProductCategory.sepfst _ _).
-exact/Prop_irrelevance.
+exact/proof_irr.
 Qed.
 Lemma homsnd_comp (x y z : A * B) (f : {hom x,y}) (g : {hom y,z}) :
   homsnd [hom g \o f] = [hom homsnd g \o homsnd f].
@@ -198,7 +198,7 @@ case: cid => g_ [g1 g2].
 case: cid => f_ [f1 f2] /=.
 rewrite -ProductCategory.sepsnd_comp.
 congr (ProductCategory.sepsnd _ _).
-exact/Prop_irrelevance.
+exact/proof_irr.
 Qed.
 Lemma homfstK (x y : A * B) (f : {hom x,y}) (i : el x.1) : inl (homfst f i) = f (inl i).
 Proof.

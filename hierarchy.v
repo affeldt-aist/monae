@@ -243,7 +243,7 @@ suff : Hf = Hg by move=> ->.
 case: Hf => -[Hf].
 case: Hg => -[Hg].
 do 2 f_equal.
-exact: boolp.Prop_irrelevance.
+exact: proof_irr.
 Qed.
 End natrans_lemmas.
 

@@ -62,7 +62,6 @@ To instead build and install manually (with GNU `make`), do:
 git clone https://github.com/affeldt-aist/monae.git
 cd monae
 make -j 4
-make -C impredicative_set
 make install
 ```
 

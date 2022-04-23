@@ -13,6 +13,7 @@ Definition funext_dep := boolp.functional_extensionality_dep.
 (******************************************************************************)
 (*      Shared notations and easy definitions/lemmas of general interest      *)
 (*                                                                            *)
+(*           foldr1                                                           *)
 (*    curry/uncurry == currying for pairs                                     *)
 (*  curry3/uncurry3 == currying for triples                                   *)
 (*                                                                            *)
@@ -66,7 +67,7 @@ Variable (g : seq T -> R).
 Hypothesis H1 : g nil = r.
 Hypothesis H2 : forall h t, g (h :: t) = f h (g t).
 Lemma foldr_universal : g = foldr f r.
-Proof. rewrite boolp.funeqE; elim => // h t ih /=; by rewrite H2 ih. Qed.
+Proof. by apply boolp.funext; elim => // h t ih /=; rewrite H2 ih. Qed.
 Lemma foldr_universal_ext x : g x = foldr f r x.
 Proof. by rewrite -(foldr_universal). Qed.
 End universal.
@@ -76,7 +77,7 @@ Variables (U : Type) (h : U -> R) (w : U) (g : T -> U -> U).
 Hypothesis H1 : h w = r.
 Hypothesis H2 : forall x y, h (g x y) = f x (h y).
 Lemma foldr_fusion : h \o foldr g w = foldr f r.
-Proof. rewrite boolp.funeqE; elim => // a b /= ih; by rewrite H2 ih. Qed.
+Proof. by apply boolp.funext; elim => // a b /= ih; rewrite H2 ih. Qed.
 Lemma foldr_fusion_ext x : (h \o foldr g w) x = foldr f r x.
 Proof. by rewrite -foldr_fusion. Qed.
 End fusion_law.
@@ -85,7 +86,7 @@ End fold.
 
 Lemma foldl_revE (T R : Type) (f : R -> T -> R) (z : R) :
   foldl f z \o rev = foldr (fun x : T => f^~ x) z.
-Proof. by rewrite boolp.funeqE => s; rewrite -foldl_rev. Qed.
+Proof. by apply boolp.funext => s; rewrite -foldl_rev. Qed.
 
 Section curry.
 Variables A B C : Type.
@@ -98,7 +99,7 @@ Lemma curryE D a b (g : A * B -> C) (h : _ -> D) :
 Proof. by []. Qed.
 
 Lemma curryK : cancel (@curry A B C) uncurry.
-Proof. by move=> f; rewrite boolp.funeqE; case. Qed.
+Proof. by move=> f; apply boolp.funext => -[]. Qed.
 
 Lemma uncurryK f : cancel (@uncurry A B C) curry.
 Proof. by []. Qed.

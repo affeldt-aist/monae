@@ -3,17 +3,18 @@
 From mathcomp Require Import all_ssreflect.
 Require ProofIrrelevance FunctionalExtensionality.
 
-Definition funext := @FunctionalExtensionality.functional_extensionality.
-
 Definition proof_irr := @ProofIrrelevance.proof_irrelevance.
 
 Definition eq_rect_eq := @ProofIrrelevance.ProofIrrelevanceTheory.Eq_rect_eq.eq_rect_eq.
+
+Definition funext := @FunctionalExtensionality.functional_extensionality.
 
 Definition funext_dep := @FunctionalExtensionality.functional_extensionality_dep.
 
 (******************************************************************************)
 (*      Shared notations and easy definitions/lemmas of general interest      *)
 (*                                                                            *)
+(*           foldr1                                                           *)
 (*    curry/uncurry == currying for pairs                                     *)
 (*  curry3/uncurry3 == currying for triples                                   *)
 (*                                                                            *)
@@ -67,7 +68,7 @@ Variable (g : seq T -> R).
 Hypothesis H1 : g nil = r.
 Hypothesis H2 : forall h t, g (h :: t) = f h (g t).
 Lemma foldr_universal : g = foldr f r.
-Proof. apply funext; elim => // h t ih /=; by rewrite H2 ih. Qed.
+Proof. by apply funext; elim => // h t ih /=; rewrite H2 ih. Qed.
 Lemma foldr_universal_ext x : g x = foldr f r x.
 Proof. by rewrite -(foldr_universal). Qed.
 End universal.
@@ -77,7 +78,7 @@ Variables (U : Type) (h : U -> R) (w : U) (g : T -> U -> U).
 Hypothesis H1 : h w = r.
 Hypothesis H2 : forall x y, h (g x y) = f x (h y).
 Lemma foldr_fusion : h \o foldr g w = foldr f r.
-Proof. apply funext; elim => // a b /= ih; by rewrite H2 ih. Qed.
+Proof. by apply funext; elim => // a b /= ih; rewrite H2 ih. Qed.
 Lemma foldr_fusion_ext x : (h \o foldr g w) x = foldr f r x.
 Proof. by rewrite -foldr_fusion. Qed.
 End fusion_law.

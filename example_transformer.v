@@ -6,6 +6,10 @@ Require Import monad_transformer.
 
 (******************************************************************************)
 (*               Examples of programs using monad transformers                *)
+(*                                                                            *)
+(* reference:                                                                 *)
+(* - R. Affeldt, D. Nowak, Extending Equational Monadic Reasoning with Monad  *)
+(*   Transformers, https://arxiv.org/abs/2011.03463                           *)
 (******************************************************************************)
 
 Set Implicit Arguments.
@@ -14,11 +18,6 @@ Unset Printing Implicit Defensive.
 
 Local Open Scope monae_scope.
 
-(******************************************************************************)
-(* reference:                                                                 *)
-(* - R. Affeldt, D. Nowak, Extending Equational Monadic Reasoning with Monad  *)
-(* Transformers, https://arxiv.org/abs/2011.03463                             *)
-(******************************************************************************)
 Definition evalStateT (N : monad) (S : UU0) (M : stateRunMonad S N)
     {A : UU0} (m : M A) (s : S) : N A :=
   runStateT m s >>= fun x => Ret x.1.
