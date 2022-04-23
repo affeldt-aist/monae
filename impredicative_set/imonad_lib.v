@@ -590,7 +590,7 @@ Qed.
 Definition commute {M : monad} A B (m : M A) (n : M B) C (f : A -> B -> M C) : Prop :=
   m >>= (fun x => n >>= (fun y => f x y)) = n >>= (fun y => m >>= (fun x => f x y)) :> M _.
 
-Definition preserves {M : monad} A B (f : A -> M A) (g : A -> B) :=
+Definition preserves {M : monad} (A B : UU0) (f : A -> M A) (g : A -> B) :=
   forall x, (f x >>= fun y => Ret (y, g y)) = (f x >>= fun y => Ret (y, g x)).
 
 (*Local Notation "[ \o f , .. , g , h ]" := (f \o .. (g \o h) ..)

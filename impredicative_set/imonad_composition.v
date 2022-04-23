@@ -167,7 +167,8 @@ rewrite -(compA _ dorp).
 rewrite (compA (M # Join)) -functor_o.
 rewrite joinA.
 rewrite functor_o.
-rewrite -compA (compA (M # Join) dorp).
+rewrite -[LHS]compA.
+rewrite (compA (M # Join) dorp).
 rewrite -/JOIN.
 rewrite -Hdorp4.
 by rewrite [LHS]compA.

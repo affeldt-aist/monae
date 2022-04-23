@@ -139,9 +139,9 @@ Notation "F # g" := (@actm F _ _ g) : monae_scope.
 Notation "'fmap' f" := (_ # f) : mprog.
 
 Section functorid.
-Let id_actm (A B : UU0) (f : A -> B) : idfun A -> idfun B := f.
-Let id_id : FunctorLaws.id id_actm. Proof. by []. Qed.
-Let id_comp : FunctorLaws.comp id_actm. Proof. by []. Qed.
+Definition id_f (A B : UU0) (f : A -> B) : idfun A -> idfun B := f.
+Let id_id : FunctorLaws.id id_f. Proof. by []. Qed.
+Let id_comp : FunctorLaws.comp id_f. Proof. by []. Qed.
 HB.instance Definition _ := isFunctor.Build idfun id_id id_comp.
 End functorid.
 
@@ -282,14 +282,14 @@ Qed.*)
 Module JoinLaws.
 Section join_laws.
 Context {F : functor}.
-Variables (ret : FId ~> F) (join : [the functor of F \o F] ~> F).
+Variables (ret : FId ~> F) (join : F \o F ~~> F).
 
-Definition left_unit := forall A, join A \o ret (F A) = id :> (F A -> F A).
+Definition left_unit := forall A, @join A \o ret (F A) = id :> (F A -> F A).
 
-Definition right_unit := forall A, join A \o F # ret A = id :> (F A -> F A).
+Definition right_unit := forall A, @join A \o F # ret A = id :> (F A -> F A).
 
 Definition associativity :=
-  forall A, join A \o F # join A = join A \o join (F A) :> (F (F (F A)) -> F A).
+  forall A, @join A \o F # @join A = @join A \o @join (F A) :> (F (F (F A)) -> F A).
 
 End join_laws.
 End JoinLaws.
@@ -309,6 +309,8 @@ HB.mixin Record isMonad (F : UU0 -> UU0) of Functor F := {
 #[short(type=monad)]
 HB.structure Definition Monad := {F of isMonad F &}.
 
+Notation Ret := (@ret _ _).
+Notation Join := (@join _ _).
 Arguments bind {s A B} : simpl never.
 Notation "m >>= f" := (bind m f) : monae_scope.
 
@@ -319,9 +321,7 @@ Proof. by move=> f12; congr bind; apply boolp.funext. Qed.
 Module BindLaws.
 Section bindlaws.
 Variable F : functor.
-
 Variable b : forall (A B : UU0), F A -> (A -> F B) -> F B.
-
 Local Notation "m >>= f" := (b m f).
 
 Definition associative := forall A B C (m : F A) (f : A -> F B) (g : B -> F C),
@@ -356,6 +356,78 @@ Definition right_id (r : forall A, F A) (op : forall B, F B -> F B -> F B) :=
 End bindlaws.
 End BindLaws.
 
+Definition join_of_bind (F : functor)
+    (b : forall (A B : UU0), F A -> (A -> F B) -> F B) : F \o F ~~> F :=
+  fun A : UU0 => (b _ A)^~ id.
+
+Definition bind_of_join (F : functor) (j : F \o F ~~> F)
+    (A B : UU0) (m : F A) (f : A -> F B) : F B :=
+  j B ((F # f) m).
+
+Section from_join_laws_to_bind_laws.
+Variable (F : functor) (ret : FId ~> F) (join : [the functor of F \o F] ~> F).
+
+Hypothesis joinretM : JoinLaws.left_unit ret join.
+Hypothesis joinMret : JoinLaws.right_unit ret join.
+Hypothesis joinA : JoinLaws.associativity join.
+
+Lemma bindretf_derived : BindLaws.left_neutral (bind_of_join join) ret.
+Proof.
+move=> A B a f; rewrite /bind_of_join -(compE (@join _)) -(compE _ (@ret _)).
+by rewrite -compA (natural ret) compA joinretM compidf.
+Qed.
+
+Lemma bindmret_derived : BindLaws.right_neutral (bind_of_join join) ret.
+Proof. by move=> A m; rewrite /bind_of_join -(compE (@join _)) joinMret. Qed.
+
+Lemma bindA_derived : BindLaws.associative (bind_of_join join).
+Proof.
+move=> A B C m f g; rewrite /bind_of_join.
+rewrite [LHS](_ : _ = ((@join _ \o (F # g \o @join _) \o F # f) m)) //.
+rewrite (natural join) (compA (@join C)) -joinA -(compE (@join _)).
+transitivity ((@join _ \o F # (@join _ \o (F # g \o f))) m) => //.
+by rewrite -2!compA functor_o FCompE -[in LHS](@functor_o F).
+Qed.
+
+End from_join_laws_to_bind_laws.
+
+HB.factory Record Monad_of_ret_join (F : UU0 -> UU0) of isFunctor F := {
+  ret : FId ~> [the functor of F] ;
+  join : [the functor of F \o F] ~> [the functor of F] ;
+  joinretM : JoinLaws.left_unit ret join ;
+  joinMret : JoinLaws.right_unit ret join ;
+  joinA : JoinLaws.associativity join }.
+
+HB.builders Context M of Monad_of_ret_join M.
+
+Let F := [the functor of M].
+
+Let bind (A B : UU0) (m : F A) (f : A -> F B) : F B :=
+  bind_of_join join m f.
+
+Let bindE (A B : UU0) (f : A -> M B) (m : M A) :
+  bind m f = join B ((F # f) m).
+Proof. by []. Qed.
+
+Let fmapE (A B : UU0) (f : A -> B) (m : F A) :
+  ([the functor of F] # f) m = bind m (ret B \o f).
+Proof.
+rewrite /bind.
+rewrite /bind_of_join/=.
+rewrite -[RHS]compE.
+transitivity ((join B \o F # (ret B \o f)) m) => //.
+rewrite -natural.
+rewrite [in RHS]functor_o.
+rewrite compA.
+rewrite -natural.
+rewrite -compA.
+rewrite joinMret.
+by rewrite compfid.
+Qed.
+
+HB.instance Definition _ := isMonad.Build M fmapE bindE joinretM joinMret joinA.
+HB.end.
+
 HB.factory Record Monad_of_ret_bind (F : UU0 -> UU0) of isFunctor F := {
   ret : FId ~> [the functor of F] ;
   bind : forall (A B : UU0), F A -> (A -> F B) -> F B ;
@@ -364,10 +436,6 @@ HB.factory Record Monad_of_ret_bind (F : UU0 -> UU0) of isFunctor F := {
   bindretf : BindLaws.left_neutral bind ret ;
   bindmret : BindLaws.right_neutral bind ret ;
   bindA : BindLaws.associative bind }.
-
-Definition join_of_bind (F : functor)
-    (b : forall (A B : UU0), F A -> (A -> F B) -> F B) : F \o F ~~> F :=
-  fun A : UU0 => (b _ A)^~ id.
 
 HB.builders Context M of Monad_of_ret_bind M.
 
@@ -380,7 +448,7 @@ rewrite fmapE bindA; congr bind.
 by apply boolp.funext => ?; rewrite bindretf.
 Qed.
 
-Lemma naturality_join :
+Let naturality_join :
   naturality [the functor of F \o F] F (join_of_bind bind).
 Proof.
 move=> A B h; apply boolp.funext => mma /=.
@@ -391,67 +459,34 @@ Qed.
 HB.instance Definition _ :=
   isNatural.Build _ _ (join_of_bind bind) naturality_join.
 
-Definition join := [the [the functor of F \o F] ~> F of join_of_bind bind].
+Let bindE (A B : UU0) (f : A -> M B) (m : M A) :
+  bind m f = (join_of_bind bind) B ((F # f) m).
+Proof.
+by rewrite /join /= /join_of_bind /= bind_Map compidf.
+Qed.
 
-Lemma joinretM : JoinLaws.left_unit ret join.
+Let join := [the [the functor of F \o F] ~> F of join_of_bind bind].
+
+Let joinretM : JoinLaws.left_unit ret join.
 Proof.
 rewrite /join => A; apply boolp.funext => ma /=.
 by rewrite /join_of_bind /= bindretf.
 Qed.
 
-Lemma joinMret : JoinLaws.right_unit ret join.
+Let joinMret : JoinLaws.right_unit ret join.
 Proof.
 rewrite /join => A; apply boolp.funext => ma /=.
 by rewrite /join_of_bind bind_Map compidf bindmret.
 Qed.
 
-Lemma joinA : JoinLaws.associativity join.
+Let joinA : JoinLaws.associativity join.
 Proof.
 move=> A; apply boolp.funext => mmma.
 by rewrite /join /= /join_of_bind bind_Map compidf bindA.
 Qed.
 
-Lemma bindE (A B : UU0) (f : A -> M B) (m : M A) :
-  bind m f = join B ((F # f) m).
-Proof.
-by rewrite /join /= /join_of_bind /= bind_Map compidf.
-Qed.
-
 HB.instance Definition _ := isMonad.Build M fmapE bindE joinretM joinMret joinA.
 HB.end.
-
-Notation Ret := (@ret _ _).
-Notation Join := (@join _ _).
-
-Section from_join_laws_to_bind_laws.
-Variable (F : functor) (ret : FId ~> F) (join : [the functor of F \o F] ~> F).
-
-Hypothesis joinretM : JoinLaws.left_unit ret join.
-Hypothesis joinMret : JoinLaws.right_unit ret join.
-Hypothesis joinA : JoinLaws.associativity join.
-
-Definition bind_of_join (A B : UU0) (m : F A) (f : A -> F B) : F B :=
-  join B ((F # f) m).
-
-Lemma bindretf_derived : BindLaws.left_neutral bind_of_join ret.
-Proof.
-move=> A B a f; rewrite /bind_of_join -(compE (@join _)) -(compE _ (@ret _)).
-by rewrite -compA (natural ret) compA joinretM compidf.
-Qed.
-
-Lemma bindmret_derived : BindLaws.right_neutral bind_of_join ret.
-Proof. by move=> A m; rewrite /bind_of_join -(compE (@join _)) joinMret. Qed.
-
-Lemma bindA_derived : BindLaws.associative bind_of_join.
-Proof.
-move=> A B C m f g; rewrite /bind_of_join.
-rewrite [LHS](_ : _ = ((@join _ \o (F # g \o @join _) \o F # f) m)) //.
-rewrite (natural join) (compA (@join C)) -joinA -(compE (@join _)).
-transitivity ((@join _ \o F # (@join _ \o (F # g \o f))) m) => //.
-by rewrite -2!compA functor_o FCompE -[in LHS](@functor_o F).
-Qed.
-
-End from_join_laws_to_bind_laws.
 
 Section monad_lemmas.
 Variable M : monad.
