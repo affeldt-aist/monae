@@ -390,7 +390,7 @@ have @join : [the functor of (T \o S) \o (T \o S)] ~> [the functor of T \o S].
   apply HComp.
   exact: f.
 (*  exact: NId.*) admit.
-apply: (Monad.Pack (Monad.Class (isMonad.Axioms_ (CRet T S) join _ _ _ _ _ _))).
+apply: (Monad.Pack (Monad.Class (isMonad.Axioms_ (CRet T S) join _ _ _ _ _))).
 move=> A.
 rewrite /join.
 Abort.

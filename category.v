@@ -1225,25 +1225,12 @@ Qed.
 Let bind (A B : UU0) (m : acto A) (f : A -> acto B) : acto B :=
   @join _ ((@hierarchy.actm _ _ _ f) m).
 
-Lemma fmapE : forall (A B : UU0) (f : A -> B) (m : acto A),
-  ([the functor of acto] # f)%monae m = bind m (@ret _ \o f).
-Proof.
-move=> A B f m.
-rewrite /hierarchy.actm /=.
-rewrite /bind.
-rewrite -[in RHS]compE.
-rewrite functor_o.
-rewrite compA.
-rewrite joinMret.
-by rewrite compidf.
-Qed.
-
 Lemma bindE : forall (A B : UU0) (f : A -> acto B) (m : acto A),
   bind m f = @join _ (([the functor of acto] # f)%monae m).
 Proof. by []. Qed.
 
 HB.instance Definition mixin := @hierarchy.isMonad.Build acto ret join bind
-  fmapE bindE joinretM joinMret joinA.
+  bindE joinretM joinMret joinA.
 (*Definition m : hierarchy.Monad.type := hierarchy.Monad.Pack (hierarchy.Monad.Class mixin).*)
 End monad_of_category_monad.
 End Monad_of_category_monad.
