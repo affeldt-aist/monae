@@ -49,6 +49,7 @@ Require PropExtensionality.
 (* Module ModelReify       == reifyModel for StateMonad.acto (S * seq T)      *)
 (* Module ModelStateTraceReify == stateTraceReify monad for                   *)
 (*                                StateMonad.acto (S * seq T)                 *)
+(* Module ModelArray       == array monad                                     *)
 (* Module ModelMonadStateRun       == stateRunMonad for MS                    *)
 (* Module ModelMonadExceptStateRun == exceptStateRunMonad                     *)
 (*                                                                            *)
@@ -62,6 +63,35 @@ Unset Strict Implicit.
 Unset Printing Implicit Defensive.
 
 Local Open Scope monae_scope.
+
+(* TODO: move *)
+Section assoc.
+Variables (I : eqType) (S : UU0).
+Definition insert i s (a : I -> S) j := if i == j then s else a j.
+Lemma insert_insert i s' s a :
+  insert i s' (insert i s a) = insert i s' a.
+Proof.
+by apply funext => j; rewrite /insert; case: ifPn => // /negbTE ->.
+Qed.
+Lemma insert_same i a s : insert i s a i = s.
+Proof. by rewrite /insert eqxx. Qed.
+Lemma insert_same2 i a : insert i (a i) a = a.
+Proof.
+by apply funext => j; rewrite /insert; case: ifPn => // /eqP ->.
+Qed.
+Lemma insertC j i v u a : i != j ->
+  insert j v (insert i u a) = insert i u (insert j v a).
+Proof.
+move=> h; apply funext => k; rewrite /insert; case: ifPn => // /eqP <-{k}.
+by rewrite (negbTE h).
+Qed.
+Lemma insertC2 j i v a : insert j v (insert i v a) = insert i v (insert j v a).
+Proof.
+apply funext => k; rewrite /insert; case: ifPn => // /eqP <-{k}.
+by rewrite if_same.
+Qed.
+
+End assoc.
 
 Module IdentityMonad.
 Section identitymonad.
@@ -1135,6 +1165,52 @@ Proof. by []. Qed.
 HB.instance Definition _ := isMonadStateTraceReify.Build S T (StateMonad.acto (S * seq T)) reifystget reifystput reifystmark.
 End modelstatetracereify.
 End ModelStateTraceReify.
+
+Module ModelArray.
+Section modelarray.
+Variables (S : UU0) (I : eqType).
+Implicit Types (i j : I) (A : UU0).
+Definition M A := StateMonad.acto (I -> S) A.
+Definition aget i : M S := fun s => (s i, s).
+Definition aput i a : M unit := fun s => (tt, insert i a s).
+Let aputput i s s' : aput i s >> aput i s' = aput i s'.
+Proof.
+rewrite StateMonadE; apply funext => a/=.
+by rewrite /aput insert_insert.
+Qed.
+Let aputget i s A (k : S -> M A) : aput i s >> aget i >>= k = aput i s >> k s.
+Proof.
+rewrite StateMonadE; apply funext => a/=.
+by rewrite /aput insert_same.
+Qed.
+Let agetputskip i : aget i >>= aput i = skip.
+Proof.
+rewrite StateMonadE; apply funext => a/=.
+by rewrite /aput insert_same2.
+Qed.
+Let agetget i A (k : S -> S -> M A) :
+  aget i >>= (fun s => aget i >>= k s) = aget i >>= fun s => k s s.
+Proof. by []. Qed.
+Let agetC i j A (k : S -> S -> M A) :
+  aget i >>= (fun u => aget j >>= (fun v => k u v)) =
+  aget j >>= (fun v => aget i >>= (fun u => k u v)).
+Proof. by []. Qed.
+Let aputC i j u v : (i != j) \/ (u = v) ->
+  aput i u >> aput j v = aput j v >> aput i u.
+Proof.
+by move=> [ij|->{u}]; rewrite !StateMonadE /aput; apply/funext => a/=;
+  [rewrite insertC|rewrite insertC2].
+Qed.
+Let aputgetC i j u A (k : S -> M A) : i != j ->
+  aput i u >> aget j >>= k = aget j >>= (fun v => aput i u >> k v).
+Proof.
+move=> ij; rewrite /aput !StateMonadE; apply funext => a/=.
+by rewrite StateMonadE/= {1}/insert (negbTE ij).
+Qed.
+HB.instance Definition _ := isMonadArray.Build
+  S I M aputput aputget agetputskip agetget agetC aputC aputgetC.
+End modelarray.
+End ModelArray.
 
 (* TODO?
 (* result of a discussion with Maxime and Enrico on 2019-09-12 *)

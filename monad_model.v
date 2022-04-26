@@ -57,6 +57,8 @@ Require Import monad_transformer.
 (*                                   redefinition of monads state-fail-alt-   *)
 (*                                   nondet-failR0-preplusmonad-nondetstate   *)
 (*                                   for S -> {fset (A * S)}                  *)
+(* Module ModelArray       == array monad                                     *)
+(* ModelPlusArray          == plus array monad                                *)
 (* Module ModelMonadStateRun       == stateRunMonad for MS                    *)
 (* Module ModelMonadExceptStateRun == exceptStateRunMonad                     *)
 (*                                                                            *)
@@ -110,6 +112,35 @@ rewrite big_seq_cond; elim/big_rec: _ => [|i _ /andP[ri Pi] _ /fsetUP[|//]].
 by exists i; rewrite ?ri.
 Qed.
 End PR_to_fset.
+
+(* TODO: move *)
+Section assoc.
+Variables (I : eqType) (S : UU0).
+Definition insert i s (a : I -> S) j := if i == j then s else a j.
+Lemma insert_insert i s' s a :
+  insert i s' (insert i s a) = insert i s' a.
+Proof.
+by apply boolp.funext => j; rewrite /insert; case: ifPn => // /negbTE ->.
+Qed.
+Lemma insert_same i a s : insert i s a i = s.
+Proof. by rewrite /insert eqxx. Qed.
+Lemma insert_same2 i a : insert i (a i) a = a.
+Proof.
+by apply boolp.funext => j; rewrite /insert; case: ifPn => // /eqP ->.
+Qed.
+Lemma insertC j i v u a : i != j ->
+  insert j v (insert i u a) = insert i u (insert j v a).
+Proof.
+move=> h; apply boolp.funext => k; rewrite /insert; case: ifPn => // /eqP <-{k}.
+by rewrite (negbTE h).
+Qed.
+Lemma insertC2 j i v a : insert j v (insert i v a) = insert i v (insert j v a).
+Proof.
+apply boolp.funext => k; rewrite /insert; case: ifPn => // /eqP <-{k}.
+by rewrite if_same.
+Qed.
+
+End assoc.
 
 Module IdentityMonad.
 Section identitymonad.
@@ -997,10 +1028,10 @@ Proof. by move=> ?; exact: setUid. Qed.
 Let altC : forall A : UU0, commutative (@alt M A).
 Proof. by move=> ?; exact: setUC. Qed.
 HB.instance Definition _ := @isMonadAltCI.Build set altmm altC.
-(*Definition set := MonadAltCI.Pack (MonadAltCI.Class set_mixin).*)
 End set.
 
 End AltCI.
+HB.export AltCI.
 
 Module Nondet.
 
@@ -1018,8 +1049,8 @@ HB.instance Definition _ := isMonadNondet.Build ListMonad.acto altfailm altmfail
 End list.
 
 Section set.
-Let M : failMonad := [the failMonad of set].
-Let N : altMonad := [the altMonad of set].
+Local Notation M := [the failMonad of set].
+Local Notation N := [the altMonad of set].
 Let altfailm : @BindLaws.left_id _ (@fail M) (@alt N).
 Proof.
 move=> T m.
@@ -1034,6 +1065,25 @@ HB.instance Definition _ := isMonadNondet.Build set altfailm altmfail.
 End set.
 
 End Nondet.
+HB.export Nondet.
+
+Module PrePlus.
+
+Section failr0.
+Let M : failMonad := [the failMonad of set].
+Let bindmfail : BindLaws.right_zero (@bind [the monad of set]) (@fail _).
+Proof. by move=> T1 T2 A; rewrite /bind/= bigcup0. Qed.
+HB.instance Definition _ := isMonadFailR0.Build set bindmfail.
+End failr0.
+
+Section set.
+Let M : nondetMonad := [the nondetMonad of set].
+Let alt_bindDr : BindLaws.right_distributive (@bind [the monad of set]) (@alt [the altMonad of set]).
+Proof. by move=> T1 T2 A k1 k2; rewrite /bind/= bigcupU. Qed.
+HB.instance Definition _ := isMonadPrePlus.Build set alt_bindDr.
+End set.
+End PrePlus.
+HB.export PrePlus.
 
 Module ModelStateTrace.
 
@@ -1323,78 +1373,57 @@ rewrite compfid big_imfset /=; last first.
   by move=> [a0 s0] [a1 s1] /= _ _ /fset1_inj.
 rewrite /ret_component; apply/fsetP => /= -[a0 s0].
 apply/idP/idP => [|a0s0ms].
-  case/(@bigfcupP _ _ (m s)) => /= -[a1 s1].
-  by rewrite andbT => H1 /= /fset1P ->.
-apply/(@bigfcupP _ _ (m s)); exists (a0, s0) => //.
-  by rewrite andbT.
-by apply/fset1P.
+  by case/(@bigfcupP' _ _ (m s)) => /= -[a1 s1] H1 /fset1P ->.
+by apply/(@bigfcupP' _ _ (m s)); exists (a0, s0) => //; exact/fset1P.
 Qed.
 
-Lemma map_comp : FunctorLaws.comp map.
-move=> A B C g h.
-rewrite /map /bind; apply boolp.funext => m.
-apply boolp.funext => s /=.
-apply/fsetP => /= -[c0 s0].
-apply/idP/idP.
-  case/bigfcupP => /= x.
-  rewrite andbT => /imfsetP /= -[[a1 s1] H1] ->{x} /=.
+Let map_comp : FunctorLaws.comp map.
+Proof.
+move=> A B C g h; rewrite /map /bind; apply boolp.funext => m.
+apply boolp.funext => s /=; apply/fsetP => /= -[c0 s0]; apply/idP/idP.
+  case/bigfcupP' => /= x /imfsetP /= -[[a1 s1] H1] ->{x} /=.
   rewrite /ret_component => /fset1P [->{c0} ->{s0}].
-  apply/bigfcupP => /=.
-  eexists; last exact/fset1P.
-  rewrite andbT.
-  apply/imfsetP => /=.
-  exists ((h a1), s1); last by [].
-  apply/bigfcupP => /=.
-  eexists; last exact/fset1P.
-  rewrite andbT.
-  apply/imfsetP => //=.
-  eexists.
-  exact: H1.
-  by [].
-case/bigfcupP => /= x.
-rewrite andbT.
-case/imfsetP => /= -[b1 s1].
-move/bigfcupP => /= -[bs].
-rewrite andbT.
-move/imfsetP => /= [[a2 s2]] H2 ->{bs} /= /fset1P -[->{b1} ->{s1}] ->{x}.
-move/fset1P => [->{c0} ->{s0}].
-apply/bigfcupP => /=.
-eexists; last exact/fset1P.
-rewrite andbT.
+  apply/bigfcupP' => /=; eexists; last exact/fset1P.
+  apply/imfsetP => /=; exists (h a1, s1) => //; apply/bigfcupP' => /=; eexists; last exact/fset1P.
+  by apply/imfsetP => //=; eexists; first exact: H1.
+case/bigfcupP' => /= x /imfsetP[] /= -[b1 s1] /bigfcupP'/= [bs].
+move=> /imfsetP /= [[a2 s2]] H2 ->{bs} /= /fset1P -[->{b1} ->{s1}] ->{x}.
+move/fset1P => [->{c0} ->{s0}]; apply/bigfcupP' => /=; eexists; last exact/fset1P.
 by apply/imfsetP; exists (a2, s2).
 Qed.
 
 HB.instance Definition _ := isFunctor.Build acto map_id map_comp.
 
-Let M' := [the functor of M].
+Let F := [the functor of M].
 
-Let naturality_ret : naturality FId M' ret_component.
+Let naturality_ret : naturality FId F ret_component.
 Proof.
 move=> A B h; rewrite /ret_component boolp.funeqE => a; apply boolp.funext => s.
 by rewrite /actm /= /map /bind /= imfset_set1 /= big_seq_fset1.
 Qed.
 
-HB.instance Definition _ := isNatural.Build FId M' ret_component naturality_ret.
+HB.instance Definition _ := isNatural.Build FId F ret_component naturality_ret.
 
 Let ret := [the nattrans _ _ of ret_component].
 
-Let H0 : BindLaws.left_neutral bind ret.
+Let left_neutral : BindLaws.left_neutral bind ret.
 Proof.
 move=> A B /= m f; rewrite boolp.funeqE => s.
 by rewrite /bind /ret imfset_set1 /= big_seq_fset1.
 Qed.
-Let H1 : BindLaws.right_neutral bind ret.
+
+Let right_neutral : BindLaws.right_neutral bind ret.
 Proof.
 move=> A B /=; rewrite boolp.funeqE => s.
 apply/fsetP => /= x; apply/bigfcupP'; case: ifPn => xBs.
   set x' := (x : [choiceType of choice_of_Type A * choice_of_Type S]).
   exists [fset x']; last by rewrite inE.
-    apply/imfsetP; exists x' => //=.
-  by case: x'.
+  by apply/imfsetP; exists x' => //=; case: x'.
 case => /= SA /imfsetP[] /= sa saBs ->{SA} /fset1P => Hx.
-move: xBs; rewrite Hx; apply/negP; rewrite negbK; by case: sa saBs Hx.
+by move: xBs; rewrite Hx; apply/negP; rewrite negbK; case: sa saBs Hx.
 Qed.
-Let H2 : BindLaws.associative bind.
+
+Let associative : BindLaws.associative bind.
 Proof.
 move=> A B C /= m f g; rewrite boolp.funeqE => s.
 have @g' : choice_of_Type B -> choice_of_Type S ->
@@ -1410,12 +1439,15 @@ apply/fsetP => /= x; apply/bigfcupP'/bigfcupP'; case => /= CS  /imfsetP[/=].
   apply/bigfcupP' => /=; exists (f sa.1 sa.2) => //; apply/imfsetP => /=.
   by exists sa.
 Qed.
+
 Let fmapE (A B : UU0) (f : A -> B) (m : [the functor of acto] A) :
   ([the functor of acto] # f) m = bind m (@ret _ \o f).
 Proof. by []. Qed.
-HB.instance Definition _ :=
-  @Monad_of_ret_bind.Build acto ret bind fmapE H0 H1 H2.
-Lemma BindE (A B : Type) m (f : A -> [the monad of acto] B) :
+
+HB.instance Definition _ := @Monad_of_ret_bind.Build acto ret bind
+  fmapE left_neutral right_neutral associative.
+
+Lemma bindE (A B : Type) m (f : A -> [the monad of acto] B) :
   m >>= f = fun s =>
     \bigcup_(i <- (fun x : [choiceType of choice_of_Type A *
                                        choice_of_Type S] => f x.1 x.2)
@@ -1429,8 +1461,7 @@ set rhs := [fset _ _ | _ in _].
 rewrite (_ : lhs = rhs) //; apply/fsetP => x; rewrite {}/lhs {}/rhs.
 apply/idP/imfsetP => /=.
 - case/imfsetP => -[a1 a2] /=.
-  rewrite /actm /=.
-  rewrite /map /=.
+  rewrite /actm /= /map /=.
   case/bigfcupP' => /= b.
   case/imfsetP => -[b1 b2] /= Hb ->{b} /fset1P[-> -> ->{x a1 a2}].
   by exists (b1, b2).
@@ -1442,7 +1473,7 @@ apply/idP/imfsetP => /=.
     eexists.
       apply/imfsetP => /=.
       by exists (a1, s1).
-    apply/fset1P; reflexivity.
+    by apply/fset1P; reflexivity.
   + by [].
 Qed.
 
@@ -1450,14 +1481,14 @@ End monad.
 
 Section state.
 Variable S : Type.
-Let get : (acto S S) :=
+Let get : acto S S :=
   fun s => [fset (s : choice_of_Type S, s : choice_of_Type S)].
 Let put := (fun s => (fun _ => [fset (tt : choice_of_Type unit,
                                 s : choice_of_Type S)])) : S -> (acto S unit).
 Let putput : forall s s', put s >> put s' = put s'.
 Proof.
 move=> s s'; apply boolp.funext => s''.
-rewrite BindE; apply/fsetP => /= x; apply/bigfcupP'/fset1P.
+rewrite bindE; apply/fsetP => /= x; apply/bigfcupP'/fset1P.
 - by case => /= x0 /imfsetP[/= x1] /fset1P _ -> /fset1P.
 - move=> -> /=.
   exists [fset ((tt, s') : [choiceType of choice_of_Type unit *
@@ -1468,7 +1499,7 @@ Qed.
 Let putget : forall s, put s >> get = put s >> Ret s.
 Proof.
 move=> s; rewrite boolp.funeqE => s'.
-rewrite 2!BindE /=; apply/fsetP => /= x; apply/bigfcupP'/bigfcupP'.
+rewrite 2!bindE /=; apply/fsetP => /= x; apply/bigfcupP'/bigfcupP'.
 - case => /= x0 /imfsetP[/= x1] /fset1P -> -> /fset1P ->.
   exists [fset ((s, s) : [choiceType of choice_of_Type S *
                                    choice_of_Type S])]; last first.
@@ -1483,7 +1514,7 @@ Qed.
 Let getputskip : get >>= put = skip.
 Proof.
 rewrite boolp.funeqE => s.
-rewrite BindE /skip /= /Ret; apply/fsetP => /= x; apply/bigfcupP'/idP.
+rewrite bindE /skip /= /Ret; apply/fsetP => /= x; apply/bigfcupP'/idP.
 - case => /= x0 /imfsetP[/= x1] /fset1P -> -> /fset1P ->; exact/fset1P.
 - move/fset1P => ->.
   exists [fset ((tt, s) : [choiceType of choice_of_Type unit *
@@ -1492,12 +1523,12 @@ rewrite BindE /skip /= /Ret; apply/fsetP => /= x; apply/bigfcupP'/idP.
   by apply/imfsetP; exists (s, s) => //; rewrite inE.
 Qed.
 Let getget : forall (A : UU0) (k : S -> S -> _ A),
-    get >>= (fun s => get >>= k s) = get >>= fun s => k s s.
+  get >>= (fun s => get >>= k s) = get >>= fun s => k s s.
 Proof.
 move=> A k; rewrite boolp.funeqE => s.
-rewrite 2!BindE; apply/fsetP => x; apply/bigfcupP'/bigfcupP'.
+rewrite 2!bindE; apply/fsetP => x; apply/bigfcupP'/bigfcupP'.
 - case => /= x0 /imfsetP[/= x1] /fset1P -> ->.
-  rewrite BindE => /bigfcupP'[/= x2] /imfsetP[/= x3] /fset1P -> -> xkss.
+  rewrite bindE => /bigfcupP'[/= x2] /imfsetP[/= x3] /fset1P -> -> xkss.
   exists (k s s s) => //; apply/imfsetP; exists (s, s) => //; by rewrite inE.
 - case => /= x0 /imfsetP[/= x1] /fset1P -> -> /= xksss.
   have @k' : choice_of_Type S -> choice_of_Type S ->
@@ -1506,7 +1537,7 @@ rewrite 2!BindE; apply/fsetP => x; apply/bigfcupP'/bigfcupP'.
   exists (\bigcup_(i <- [fset k' (s, s).1 x2.1 x2.2 |
               x2 in [fset (((s, s).2, (s, s).2) : [choiceType of choice_of_Type S *
                                                                  choice_of_Type S])]]) i).
-    apply/imfsetP ; exists (s, s); by [rewrite inE | rewrite BindE].
+    apply/imfsetP ; exists (s, s); by [rewrite inE | rewrite bindE].
   apply/bigfcupP'; exists (k s s s) => //; apply/imfsetP; exists (s, s) => //=.
   exact/fset1P.
 Qed.
@@ -1521,8 +1552,8 @@ Variable S : choiceType.
 Let fail : forall A, acto S A := (fun (A : Type) (_ : S) => fset0).
 Let bindfailf : BindLaws.left_zero (@bind _ ) fail.
 Proof.
-move=> A B g; rewrite boolp.funeqE => s; apply/fsetP => x; rewrite inE BindE; apply/negbTE.
-apply/bigfcupP'; case => /= x0 /imfsetP[/= sa].
+move=> A B g; rewrite boolp.funeqE => s; apply/fsetP => x; rewrite inE bindE.
+apply/negbTE/bigfcupP'; case => /= x0 /imfsetP[/= sa].
 by rewrite (@in_fset0 [choiceType of choice_of_Type A * choice_of_Type S]).
 Qed.
 
@@ -1538,11 +1569,13 @@ Let altA : forall T : UU0, ssrfun.associative (@alt T).
 Proof. by move=> A a b c; rewrite boolp.funeqE => s; rewrite /alt fsetUA. Qed.
 Let alt_bindDl : BindLaws.left_distributive (@bind M) (@alt).
 Proof.
-move=> A B /= m1 m2 k; rewrite boolp.funeqE => s; rewrite !BindE /=.
+move=> A B /= m1 m2 k; rewrite boolp.funeqE => s; rewrite !bindE /=.
 apply/fsetP => /= bs; apply/bigfcupP'/fsetUP.
 - case => /= BS /imfsetP[/= sa] /fsetUP[sam1s ->{BS} Hbs|sam2s ->{BS} Hbs].
-  + left; apply/bigfcupP' => /=; exists (k sa.1 sa.2) => //; apply/imfsetP; by exists sa.
-  + right; apply/bigfcupP' => /=; exists (k sa.1 sa.2) => //; apply/imfsetP; by exists sa.
+  + left; apply/bigfcupP' => /=; exists (k sa.1 sa.2) => //.
+    by apply/imfsetP; exists sa.
+  + right; apply/bigfcupP' => /=; exists (k sa.1 sa.2) => //.
+    by apply/imfsetP; exists sa.
 - case => /bigfcupP'[/= BS /imfsetP[/= sa sams ->{BS} bsksa]].
   by exists (k sa.1 sa.2) => //; apply/imfsetP; exists sa => //; rewrite inE sams.
   by exists (k sa.1 sa.2) => //; apply/imfsetP; exists sa => //; rewrite inE sams orbT.
@@ -1564,23 +1597,23 @@ End nondet.
 
 Section failR0monad.
 Variable S : choiceType.
-Let yyy : BindLaws.right_zero (@bind [the monad of acto S]) (@fail _).
+Let bindmfail : BindLaws.right_zero (@bind [the monad of acto S]) (@fail _).
 Proof.
-move=> A B /= g; rewrite !BindE /=; rewrite boolp.funeqE => s; apply/fsetP => /= sa.
+move=> A B /= g; rewrite bindE /=; rewrite boolp.funeqE => s; apply/fsetP => /= sa.
 apply/idP/idP/bigfcupP'.
 case => /= SA /imfsetP[/= bs bsgs ->{SA}].
 by rewrite (@in_fset0 [choiceType of choice_of_Type A * choice_of_Type S]).
 Qed.
-HB.instance Definition _ := isMonadFailR0.Build (acto S) yyy.
+HB.instance Definition _ := isMonadFailR0.Build (acto S) bindmfail.
 End failR0monad.
 
 Section preplusmonad.
 
 Variable S : choiceType.
-Let yyy : BindLaws.right_distributive (@bind [the monad of acto S]) (@alt _).
+Let alt_bindDr : BindLaws.right_distributive (@bind [the monad of acto S]) (@alt _).
 Proof.
-move=> A B /= m k1 k2; rewrite boolp.funeqE => s; rewrite !BindE /=; apply/fsetP => /= bs.
-apply/bigfcupP'/idP.
+move=> A B /= m k1 k2; rewrite boolp.funeqE => s; rewrite !bindE /=.
+apply/fsetP => /= bs; apply/bigfcupP'/idP.
 - case => /= BS /imfsetP[/= sa sams ->{BS}] /fsetUP[bsk1|bsk2].
   + apply/fsetUP; left; apply/bigfcupP'; exists (k1 sa.1 sa.2) => //.
     apply/imfsetP; by exists sa.
@@ -1595,23 +1628,179 @@ apply/bigfcupP'/idP.
   by apply/fsetUP; right.
 Qed.
 
-HB.instance Definition _ := isMonadPrePlus.Build (acto S) yyy.
+HB.instance Definition _ := isMonadPrePlus.Build (acto S) alt_bindDr.
 
 End preplusmonad.
 
-Section nondetstate.
-
-Variable S : choiceType.
-
-(*Definition nondetstate : nondetStateMonad S :=
-  @MonadNondetState.Pack _ _
-    (@MonadNondetState.Class _ _ (MonadPrePlus.class (preplusbase S))
-      (MonadState.mixin (MonadState.class (_state S)))).*)
-(* HB.instance Definition _ := isMonadNondetState.Build (acto S).  *)
-
-End nondetstate.
-
 End ModelBacktrackableState.
+
+Module ModelArray.
+Section modelarray.
+Variables (S : UU0) (I : eqType).
+Implicit Types (i j : I) (A : UU0).
+Definition M A := StateMonad.acto (I -> S) A.
+Definition aget i : M S := fun s => (s i, s).
+Definition aput i a : M unit := fun s => (tt, insert i a s).
+Let aputput i s s' : aput i s >> aput i s' = aput i s'.
+Proof.
+rewrite StateMonadE; apply boolp.funext => a/=.
+by rewrite /aput insert_insert.
+Qed.
+Let aputget i s A (k : S -> M A) : aput i s >> aget i >>= k = aput i s >> k s.
+Proof.
+rewrite StateMonadE; apply boolp.funext => a/=.
+by rewrite /aput insert_same.
+Qed.
+Let agetputskip i : aget i >>= aput i = skip.
+Proof.
+rewrite StateMonadE; apply boolp.funext => a/=.
+by rewrite /aput insert_same2.
+Qed.
+Let agetget i A (k : S -> S -> M A) :
+  aget i >>= (fun s => aget i >>= k s) = aget i >>= fun s => k s s.
+Proof. by []. Qed.
+Let agetC i j A (k : S -> S -> M A) :
+  aget i >>= (fun u => aget j >>= (fun v => k u v)) =
+  aget j >>= (fun v => aget i >>= (fun u => k u v)).
+Proof. by []. Qed.
+Let aputC i j u v : (i != j) \/ (u = v) ->
+  aput i u >> aput j v = aput j v >> aput i u.
+Proof.
+by move=> [ij|->{u}]; rewrite !StateMonadE /aput; apply/boolp.funext => a/=;
+  [rewrite insertC|rewrite insertC2].
+Qed.
+Let aputgetC i j u A (k : S -> M A) : i != j ->
+  aput i u >> aget j >>= k = aget j >>= (fun v => aput i u >> k v).
+Proof.
+move=> ij; rewrite /aput !StateMonadE; apply boolp.funext => a/=.
+by rewrite StateMonadE/= {1}/insert (negbTE ij).
+Qed.
+HB.instance Definition _ := isMonadArray.Build
+  S I M aputput aputget agetputskip agetget agetC aputC aputgetC.
+End modelarray.
+End ModelArray.
+
+Module ModelPlusArray.
+Section modelplusarray.
+Local Open Scope classical_set_scope.
+Variable S : UU0.
+Let I := nat_eqType.
+Implicit Types i j : I.
+Let acto := fun (A : UU0) => (I -> S) -> set (A * (I -> S))%type.
+Local Notation M := acto.
+Let map (A B : UU0) (f : A -> B) (m : M A) : M B :=
+  fun (a : I -> S) => (fun x => (f x.1, x.2)) @` m a.
+Let map_id : FunctorLaws.id map.
+Proof.
+move=> X; rewrite /map /=; apply: boolp.funext => m/=.
+apply: boolp.funext => a/=; apply/seteqP; split => //.
+  by move=> [x a1]/= [[x' a2]]/= + <-.
+by move=> [x a1]/= maxa1; eexists; [exact:maxa1|].
+Qed.
+Let map_comp : FunctorLaws.comp map.
+Proof.
+move=> X Y Z g h; rewrite /map; apply: boolp.funext => m/=.
+apply: boolp.funext => a; apply/seteqP; split.
+  by move=> [z a1]/=[[x a2]] maxa2/= <-; exists (h x, a2) => //; exists (x, a2).
+by move=> [z a1]/= [[y a2]] [[x a3]]/= maxa3 [<- <-] [<- <-]; exists (x, a3).
+Qed.
+HB.instance Definition _ := isFunctor.Build M map_id map_comp.
+Let ret_component : FId ~~> M := fun A a => fun s => [set (a, s)].
+Let F := [the functor of M].
+Let naturality_ret : naturality FId F ret_component.
+Proof.
+move=> X Y h; rewrite /ret_component; apply boolp.funext => /= x.
+apply boolp.funext => a1/=; apply/seteqP; split.
+  by move=> [y a2]/= [[x' a3]]/= [<- <-] [<- <-].
+by move=> [y a2]/= [-> ->]/=; eexists; reflexivity.
+Qed.
+HB.instance Definition _ := isNatural.Build FId F ret_component naturality_ret.
+Let ret := [the _ ~> _ of ret_component].
+Let bind := fun A B (m : M A) (f : A -> M B) => fun s => m s >>= uncurry f.
+Let left_neutral : BindLaws.left_neutral bind ret.
+Proof.
+by move=> X Y x f; apply: boolp.funext => a1; rewrite /bind/= bindretf.
+Qed.
+Let right_neutral : BindLaws.right_neutral bind ret.
+Proof.
+move=> X/= m; rewrite /bind; apply: boolp.funext => a1.
+rewrite /ret_component /uncurry/=; apply/seteqP; split.
+  by move=> [x a2]/= [[x' a3]] ma1x'a3/= ->.
+by move=> [x a2] ma1xa2/=; eexists; [exact: ma1xa2|].
+Qed.
+Let associative : BindLaws.associative bind.
+Proof.
+move=> X Y Z /= m f g; rewrite /bind; apply: boolp.funext => a.
+by rewrite bindA; bind_ext => -[].
+Qed.
+Lemma fmapE (X Y : UU0) (f : X -> Y) (m : M X) :
+ ([the functor of M] # f) m = bind m (ret Y \o f).
+Proof.
+rewrite /bind; apply: boolp.funext => a1/=; apply/seteqP; split.
+  by move=> [y a2]/= [[x a3]] ma1xa3/= [<- <-]/=; eexists; [exact: ma1xa3|].
+move=> [y a2] [[x a3]] ma1xa3/= [-> ->]/=.
+by eexists; [exact: ma1xa3|].
+Qed.
+HB.instance Definition _ :=
+  @Monad_of_ret_bind.Build acto ret bind fmapE left_neutral right_neutral associative.
+Let bindE A B (m : M A) (f : A -> M B) : m >>= f = bind m f.
+Proof. by []. Qed.
+Let aget i : M S := fun s => Ret (ModelArray.aget i s).
+Let aput i a : M unit := fun s => Ret (ModelArray.aput i a s).
+Let aputput i s s' : aput i s >> aput i s' = aput i s'.
+Proof.
+apply boolp.funext => a/=; rewrite bindE /bind SetMonadE.
+by rewrite bigcup_set1/= /aput /ModelArray.aput insert_insert.
+Qed.
+Let aputget i s (A : UU0) (k : S -> M A) :
+  aput i s >> aget i >>= k = aput i s >> k s.
+Proof.
+apply boolp.funext => a/=; rewrite !bindE /bind SetMonadE.
+rewrite SetMonadE/= bigsetUA !bigcup_set1/= /aput /ModelArray.aput.
+by rewrite bindretf/= insert_same.
+Qed.
+Let agetputskip i : aget i >>= aput i = skip.
+Proof.
+apply boolp.funext => a/=.
+by rewrite bindE /bind SetMonadE bigcup_set1/= /aput /ModelArray.aput insert_same2.
+Qed.
+Let agetget i (A : UU0) (k : S -> S -> M A) :
+  aget i >>= (fun s => aget i >>= k s) = aget i >>= fun s => k s s.
+Proof.
+apply boolp.funext => a/=; rewrite !bindE /bind !SetMonadE/= bigcup_set1/=.
+by rewrite /aget /ModelArray.aget/= !bindE/= /bind/= !SetMonadE/= !bigcup_set1.
+Qed.
+Let agetC i j (A : UU0) (k : S -> S -> M A) :
+  aget i >>= (fun u => aget j >>= (fun v => k u v)) =
+  aget j >>= (fun v => aget i >>= (fun u => k u v)).
+Proof.
+apply boolp.funext => a/=.
+rewrite !bindE /bind/= !SetMonadE !bigcup_set1/= /aget /ModelArray.aget/=.
+by rewrite !bindE /bind/= !SetMonadE/= !bigcup_set1.
+Qed.
+Let aputC i j u v : (i != j) \/ (u = v) ->
+  aput i u >> aput j v = aput j v >> aput i u.
+Proof.
+move=> [ij|->{u}].
+  apply boolp.funext => a/=.
+  rewrite !bindE /bind/= !SetMonadE/= !bigcup_set1/=.
+  by rewrite /aput /ModelArray.aput/= insertC.
+apply boolp.funext => a/=.
+rewrite !bindE /bind/= !SetMonadE/= !bigcup_set1/=.
+by rewrite /aput /ModelArray.aput/= insertC2.
+Qed.
+Let aputgetC i j u (A : UU0) (k : S -> M A) : i != j ->
+  aput i u >> aget j >>= k = aget j >>= (fun v => aput i u >> k v).
+Proof.
+move=> ij.
+apply boolp.funext => a/=.
+rewrite !bindE /bind/= !SetMonadE !bigcup_set1/= /aput /ModelArray.aput/=.
+by rewrite bindE /bind/= SetMonadE bigcup_set1/= {1}/insert (negbTE ij).
+Qed.
+HB.instance Definition _ := isMonadArray.Build
+  S I M aputput aputget agetputskip agetget agetC aputC aputgetC.
+End modelplusarray.
+End ModelPlusArray.
 
 (* TODO?
 (* result of a discussion with Maxime and Enrico on 2019-09-12 *)
