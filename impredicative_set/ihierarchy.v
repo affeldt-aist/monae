@@ -323,7 +323,7 @@ Variable b : forall (A B : UU0), F A -> (A -> F B) -> F B.
 Local Notation "m >>= f" := (b m f).
 
 Definition associative := forall A B C (m : F A) (f : A -> F B) (g : B -> F C),
-  (m >>= f) >>= g = m >>= (fun x => (f x >>= g)).
+  (m >>= f) >>= g = m >>= (fun x => f x >>= g).
 
 Definition right_distributive (add : forall B, F B -> F B -> F B) :=
   forall A B (m : F A) (k1 k2 : A -> F B),
@@ -788,10 +788,10 @@ HB.structure Definition MonadFailR0 := {M of isMonadFailR0 M & }.
 
 HB.mixin Record isMonadPrePlus (M : UU0 -> UU0)
     of MonadNondet M & MonadFailR0 M :=
-  { alt_bindDr : BindLaws.right_distributive (@bind [the monad of M]) (@alt _) }.
+  { alt_bindDr : BindLaws.right_distributive (@bind [the monad of M]) alt }.
 
 #[short(type=prePlusMonad)]
-HB.structure Definition MonadPrePlus := {M of isMonadPrePlus M & }.
+HB.structure Definition MonadPrePlus := {M of MonadPrePlus M & }.
 
 #[short(type=plusMonad)]
 HB.structure Definition MonadPlus := {M of MonadCINondet M & MonadPrePlus M}.

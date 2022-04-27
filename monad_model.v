@@ -58,7 +58,7 @@ Require Import monad_transformer.
 (*                                   nondet-failR0-preplusmonad-nondetstate   *)
 (*                                   for S -> {fset (A * S)}                  *)
 (* Module ModelArray       == array monad                                     *)
-(* ModelPlusArray          == plus array monad                                *)
+(* Module ModelPlusArray   == plus array monad                                *)
 (* Module ModelMonadStateRun       == stateRunMonad for MS                    *)
 (* Module ModelMonadExceptStateRun == exceptStateRunMonad                     *)
 (*                                                                            *)
@@ -116,7 +116,7 @@ End PR_to_fset.
 (* TODO: move *)
 Section assoc.
 Variables (I : eqType) (S : UU0).
-Definition insert i s (a : I -> S) j := if i == j then s else a j.
+Definition insert i s (a : I -> S) := fun j => if i == j then s else a j.
 Lemma insert_insert i s' s a :
   insert i s' (insert i s a) = insert i s' a.
 Proof.
@@ -1639,8 +1639,8 @@ Section modelarray.
 Variables (S : UU0) (I : eqType).
 Implicit Types (i j : I) (A : UU0).
 Definition M A := StateMonad.acto (I -> S) A.
-Definition aget i : M S := fun s => (s i, s).
-Definition aput i a : M unit := fun s => (tt, insert i a s).
+Definition aget i : M S := fun a => (a i, a).
+Definition aput i s : M unit := fun a => (tt, insert i s a).
 Let aputput i s s' : aput i s >> aput i s' = aput i s'.
 Proof.
 rewrite StateMonadE; apply boolp.funext => a/=.
@@ -1745,8 +1745,8 @@ HB.instance Definition _ :=
   @Monad_of_ret_bind.Build acto ret bind fmapE left_neutral right_neutral associative.
 Let bindE A B (m : M A) (f : A -> M B) : m >>= f = bind m f.
 Proof. by []. Qed.
-Let aget i : M S := fun s => Ret (ModelArray.aget i s).
-Let aput i a : M unit := fun s => Ret (ModelArray.aput i a s).
+Definition aget i : M S := fun s => Ret (ModelArray.aget i s).
+Definition aput i a : M unit := fun s => Ret (ModelArray.aput i a s).
 Let aputput i s s' : aput i s >> aput i s' = aput i s'.
 Proof.
 apply boolp.funext => a/=; rewrite bindE /bind SetMonadE.

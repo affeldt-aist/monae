@@ -1171,8 +1171,8 @@ Section modelarray.
 Variables (S : UU0) (I : eqType).
 Implicit Types (i j : I) (A : UU0).
 Definition M A := StateMonad.acto (I -> S) A.
-Definition aget i : M S := fun s => (s i, s).
-Definition aput i a : M unit := fun s => (tt, insert i a s).
+Definition aget i : M S := fun a => (a i, a).
+Definition aput i a : M unit := fun s' => (tt, insert i a s').
 Let aputput i s s' : aput i s >> aput i s' = aput i s'.
 Proof.
 rewrite StateMonadE; apply funext => a/=.

@@ -334,7 +334,7 @@ Variable b : forall (A B : UU0), F A -> (A -> F B) -> F B.
 Local Notation "m >>= f" := (b m f).
 
 Definition associative := forall A B C (m : F A) (f : A -> F B) (g : B -> F C),
-  (m >>= f) >>= g = m >>= (fun x => (f x >>= g)).
+  (m >>= f) >>= g = m >>= (fun x => f x >>= g).
 
 Definition right_distributive (add : forall B, F B -> F B -> F B) :=
   forall A B (m : F A) (k1 k2 : A -> F B),
