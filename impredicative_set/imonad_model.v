@@ -105,7 +105,7 @@ Let right_neutral : BindLaws.right_neutral bind (NId FId).
 Proof. by []. Qed.
 Let associative : BindLaws.associative bind. Proof. by []. Qed.
 HB.instance Definition _ := @Monad_of_ret_bind.Build
-  idfun [the nattrans _ _ of NId FId] bind fmapE
+  idfun [the _ ~> _ of NId FId] bind fmapE
   left_neutral right_neutral associative.
 End identitymonad.
 End IdentityMonad.
@@ -566,7 +566,7 @@ Proof. by move=> A B h; apply funext => -[]. Qed.
 HB.instance Definition _ := isNatural.Build
   [the functor of Local.acto E \o M] [the functor of M] local naturality_local.
 Definition local_op : [the functor of Local.acto E].-operation [the monad of M] :=
-  [the nattrans _ _ of local].
+  [the _ ~> _ of local].
 (* NB: local is not algebraic *)
 Lemma algebraic_local : algebraicity local_op.
 Proof.

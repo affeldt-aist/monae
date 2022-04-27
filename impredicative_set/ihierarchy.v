@@ -791,7 +791,7 @@ HB.mixin Record isMonadPrePlus (M : UU0 -> UU0)
   { alt_bindDr : BindLaws.right_distributive (@bind [the monad of M]) alt }.
 
 #[short(type=prePlusMonad)]
-HB.structure Definition MonadPrePlus := {M of MonadPrePlus M & }.
+HB.structure Definition MonadPrePlus := {M of isMonadPrePlus M & }.
 
 #[short(type=plusMonad)]
 HB.structure Definition MonadPlus := {M of MonadCINondet M & MonadPrePlus M}.

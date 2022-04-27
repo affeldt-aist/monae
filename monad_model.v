@@ -154,7 +154,7 @@ Let right_neutral : BindLaws.right_neutral bind (NId FId).
 Proof. by []. Qed.
 Let associative : BindLaws.associative bind. Proof. by []. Qed.
 HB.instance Definition _ := @Monad_of_ret_bind.Build
-  idfun [the nattrans _ _ of NId FId] bind fmapE
+  idfun [the _ ~> _ of NId FId] bind fmapE
   left_neutral right_neutral associative.
 End identitymonad.
 End IdentityMonad.
@@ -663,7 +663,7 @@ Proof. by move=> A B h; apply boolp.funext => -[]. Qed.
 HB.instance Definition _ := isNatural.Build
   [the functor of Local.acto E \o M] [the functor of M] local naturality_local.
 Definition local_op : [the functor of Local.acto E].-operation [the monad of M] :=
-  [the nattrans _ _ of local].
+  [the _ ~> _ of local].
 (* NB: local is not algebraic *)
 Lemma algebraic_local : algebraicity local_op.
 Proof.
@@ -1404,7 +1404,7 @@ Qed.
 
 HB.instance Definition _ := isNatural.Build FId F ret_component naturality_ret.
 
-Let ret := [the nattrans _ _ of ret_component].
+Let ret := [the _ ~> _ of ret_component].
 
 Let left_neutral : BindLaws.left_neutral bind ret.
 Proof.
@@ -1638,7 +1638,8 @@ Module ModelArray.
 Section modelarray.
 Variables (S : UU0) (I : eqType).
 Implicit Types (i j : I) (A : UU0).
-Definition M A := StateMonad.acto (I -> S) A.
+Definition acto A := StateMonad.acto (I -> S) A.
+Local Notation M := acto.
 Definition aget i : M S := fun a => (a i, a).
 Definition aput i s : M unit := fun a => (tt, insert i s a).
 Let aputput i s s' : aput i s >> aput i s' = aput i s'.
@@ -1676,17 +1677,16 @@ move=> ij; rewrite /aput !StateMonadE; apply boolp.funext => a/=.
 by rewrite StateMonadE/= {1}/insert (negbTE ij).
 Qed.
 HB.instance Definition _ := isMonadArray.Build
-  S I M aputput aputget agetputskip agetget agetC aputC aputgetC.
+  S I acto aputput aputget agetputskip agetget agetC aputC aputgetC.
 End modelarray.
 End ModelArray.
 
 Module ModelPlusArray.
 Section modelplusarray.
 Local Open Scope classical_set_scope.
-Variable S : UU0.
-Let I := nat_eqType.
+Variable (S : UU0) (I : eqType).
 Implicit Types i j : I.
-Let acto := fun (A : UU0) => (I -> S) -> set (A * (I -> S))%type.
+Definition acto := fun (A : UU0) => (I -> S) -> set (A * (I -> S))%type.
 Local Notation M := acto.
 Let map (A B : UU0) (f : A -> B) (m : M A) : M B :=
   fun (a : I -> S) => (fun x => (f x.1, x.2)) @` m a.
@@ -1798,9 +1798,10 @@ rewrite !bindE /bind/= !SetMonadE !bigcup_set1/= /aput /ModelArray.aput/=.
 by rewrite bindE /bind/= SetMonadE bigcup_set1/= {1}/insert (negbTE ij).
 Qed.
 HB.instance Definition _ := isMonadArray.Build
-  S I M aputput aputget agetputskip agetget agetC aputC aputgetC.
+  S I acto aputput aputget agetputskip agetget agetC aputC aputgetC.
 End modelplusarray.
 End ModelPlusArray.
+HB.export ModelPlusArray.
 
 (* TODO?
 (* result of a discussion with Maxime and Enrico on 2019-09-12 *)
