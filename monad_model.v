@@ -164,9 +164,9 @@ Module ListMonad.
 Section listmonad.
 Definition acto := fun A : UU0 => seq A.
 Local Notation M := acto.
-Let map_id : @FunctorLaws.id seq (@map).
+Let map_id : @FunctorLaws.id M (@map).
 Proof. by move=> A; apply boolp.funext => x; rewrite map_id. Qed.
-Let map_comp : @FunctorLaws.comp seq (@map).
+Let map_comp : @FunctorLaws.comp M (@map).
 Proof. by move=> A B C g h; apply boolp.funext => x; rewrite map_comp. Qed.
 HB.instance Definition _ := isFunctor.Build M map_id map_comp.
 Let ret_component : FId ~~> M := fun (A : UU0) x => (@cons A) x [::].
@@ -873,7 +873,6 @@ HB.export ContOpsAcallcc.
 
 Section contops.
 Variable r : UU0.
-
 Local Notation M := (ContMonad.acto r).
 
 Definition abort : [the functor of ContOpsAbort.acto r \o M] ~~> M :=
@@ -896,13 +895,13 @@ Definition abort_aop : [the functor of ContOpsAbort.acto r].-aoperation [the mon
 (* alebgraic call/cc *)
 Definition acallcc : [the functor of ContOpsAcallcc.acto r \o M](*(f : (M A -> r) -> M A)*) ~~> M :=
   fun A f k => f (fun m => m k) k.
-Lemma naturality_acallcc :
+Let naturality_acallcc :
   naturality [the functor of ContOpsAcallcc.acto r \o M] [the functor of M] acallcc.
 Proof. by []. Qed.
 HB.instance Definition _ := isNatural.Build _ [the monad of M] acallcc naturality_acallcc.
 Definition acallcc_op : [the functor of ContOpsAcallcc.acto r].-operation [the monad of M] :=
   [the _ ~> _ of acallcc].
-Lemma algebraicity_callcc : algebraicity acallcc_op.
+Let algebraicity_callcc : algebraicity acallcc_op.
 Proof. by []. Qed.
 HB.instance Definition _ := isAOperation.Build
   [the functor of ContOpsAcallcc.acto r] [the monad of M]
@@ -915,18 +914,18 @@ End contops.
 Module Fail.
 
 Definition option_fail : forall A, option_monad A := fun A => @throw unit A tt.
-Local Lemma option_bindfailf : BindLaws.left_zero (@bind [the monad of option_monad]) option_fail.
+Let option_bindfailf : BindLaws.left_zero (@bind _) option_fail.
 Proof. by []. Qed.
 HB.instance Definition _ := @isMonadFail.Build option_monad
   option_fail option_bindfailf.
 
 Definition list_fail : forall A, ListMonad.acto A := fun A => @empty _ tt.
-Local Lemma list_bindfailf : BindLaws.left_zero (@bind [the monad of ListMonad.acto]) list_fail.
+Let list_bindfailf : BindLaws.left_zero (@bind _) list_fail.
 Proof. by []. Qed.
 HB.instance Definition _ := @isMonadFail.Build ListMonad.acto list_fail list_bindfailf.
 
 Definition set_fail : forall A, set A := @set0.
-Local Lemma set_bindfailf : BindLaws.left_zero (@bind [the monad of set]) set_fail.
+Let set_bindfailf : BindLaws.left_zero (@bind _) set_fail.
 Proof.
 move=> A B f /=; apply boolp.funext => b; rewrite boolp.propeqE.
 by split=> // -[a []].
@@ -985,8 +984,8 @@ Module Alt.
 Section list.
 Let M := ListMonad.acto.
 Definition list_alt : forall T, M T -> M T -> M T := fun A => curry (@append A).
-Let altA : forall T : UU0, ssrfun.associative (@list_alt T).
-Proof. by move=> T a b c; rewrite /list_alt /= /curry /= catA. Qed.
+Let altA (T : UU0) : ssrfun.associative (@list_alt T).
+Proof. by move=> a b c; rewrite /list_alt /= /curry /= catA. Qed.
 Let alt_bindDl : BindLaws.left_distributive (@bind [the monad of ListMonad.acto]) list_alt.
 Proof.
 move=> A B /= s1 s2 k.
@@ -997,7 +996,7 @@ HB.instance Definition _ := isMonadAlt.Build ListMonad.acto altA alt_bindDl.
 End list.
 
 (* NB: was at the top of the file *)
-Lemma setUDl : @BindLaws.left_distributive [the functor of set] (fun I A => @bigcup A I) (@setU).
+Lemma setUDl : @BindLaws.left_distributive _ (fun I A => @bigcup A I) (@setU).
 Proof.
 move=> A B /= p q r; apply boolp.funext => b; rewrite boolp.propeqE; split.
 move=> -[a [?|?] ?]; by [left; exists a | right; exists a].
@@ -1023,9 +1022,9 @@ Module AltCI.
 
 Section set.
 Let M := [the altMonad of set].
-Let altmm : forall A : UU0, idempotent (@alt M A).
+Let altmm (A : UU0) : idempotent (@alt M A).
 Proof. by move=> ?; exact: setUid. Qed.
-Let altC : forall A : UU0, commutative (@alt M A).
+Let altC (A : UU0) : commutative (@alt M A).
 Proof. by move=> ?; exact: setUC. Qed.
 HB.instance Definition _ := @isMonadAltCI.Build set altmm altC.
 End set.
@@ -1799,6 +1798,58 @@ by rewrite bindE /bind/= SetMonadE bigcup_set1/= {1}/insert (negbTE ij).
 Qed.
 HB.instance Definition _ := isMonadArray.Build
   S I acto aputput aputget agetputskip agetget agetC aputC aputgetC.
+Let bindfailf : BindLaws.left_zero bind (fun A _ => @set_fail _).
+Proof.
+by move=> A B/= g; apply boolp.funext => a/=; rewrite /bind bindfailf.
+Qed.
+HB.instance Definition _ := isMonadFail.Build acto bindfailf.
+Definition aalt := fun (T : UU0) (a b : M T) => fun x => a x [~] b x.
+Let altA (T : UU0) : ssrfun.associative (@aalt T).
+Proof. by move=> x y z; apply: boolp.funext => a; rewrite /aalt altA. Qed.
+Let alt_bindDl : BindLaws.left_distributive bind (@aalt).
+Proof.
+by move=> A B/= m1 m2 k; apply boolp.funext => a; rewrite /bind /aalt/= alt_bindDl.
+Qed.
+HB.instance Definition _ := isMonadAlt.Build M altA alt_bindDl.
+Let altfailm : @BindLaws.left_id _ (@fail [the failMonad of acto]) (@alt [the altMonad of acto]).
+Proof.
+move=> A m; apply boolp.funext => a/=; apply boolp.funext => -[x a1]/=.
+by rewrite /alt/= /aalt altfailm.
+Qed.
+Let altmfail : @BindLaws.right_id _ (@fail [the failMonad of acto]) (@alt [the altMonad of acto]).
+Proof.
+move=> A m; apply boolp.funext => a/=; apply boolp.funext => -[x a1]/=.
+by rewrite /alt/= /aalt altmfail.
+Qed.
+HB.instance Definition _ := isMonadNondet.Build M altfailm altmfail.
+Let altmm (A : UU0) : idempotent (@alt [the altMonad of M] A).
+Proof.
+move=> m; apply boolp.funext => a/=; apply boolp.funext => -[x a1]/=.
+by rewrite /alt/= /aalt altmm.
+Qed.
+Let altC (A : UU0) : commutative (@alt [the altMonad of M] A).
+Proof.
+move=> m1 m2; apply boolp.funext => a/=; apply boolp.funext => -[x a1]/=.
+by rewrite /alt/= /aalt altC.
+Qed.
+HB.instance Definition _ := @isMonadAltCI.Build M altmm altC.
+Let bindmfail : BindLaws.right_zero bind (@fail [the failMonad of M]).
+Proof.
+move=> A B /= m; apply boolp.funext => a; apply boolp.funext => -[x a1]/=.
+by rewrite /bind/= SetMonadE/= bigcup0// => -[].
+Qed.
+HB.instance Definition _ := isMonadFailR0.Build M bindmfail.
+Let alt_bindDr : BindLaws.right_distributive bind (@alt [the altMonad of M]).
+Proof.
+move=> T1 T2 /= A k1 k2; apply boolp.funext => a; apply boolp.funext => -[x a1].
+rewrite /bind/= !SetMonadE; apply/boolp.propext; split.
+  move=> -[[x1 a2] H1]/= H2.
+  by rewrite /alt/= /aalt -alt_bindDr SetMonadE; exists (x1, a2).
+move=> -[]; rewrite !SetMonadE => -[[x1 a2] H1] /= H2; exists (x1, a2) => //.
+by left.
+by right.
+Qed.
+HB.instance Definition _ := isMonadPrePlus.Build M alt_bindDr.
 End modelplusarray.
 End ModelPlusArray.
 HB.export ModelPlusArray.

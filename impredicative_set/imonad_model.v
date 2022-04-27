@@ -776,7 +776,6 @@ HB.export ContOpsAcallcc.
 
 Section contops.
 Variable r : UU0.
-
 Local Notation M := (ContMonad.acto r).
 
 Definition abort : [the functor of ContOpsAbort.acto r \o M] ~~> M :=
@@ -799,13 +798,13 @@ Definition abort_aop : [the functor of ContOpsAbort.acto r].-aoperation [the mon
 (* alebgraic call/cc *)
 Definition acallcc : [the functor of ContOpsAcallcc.acto r \o M](*(f : (M A -> r) -> M A)*) ~~> M :=
   fun A f k => f (fun m => m k) k.
-Lemma naturality_acallcc :
+Let naturality_acallcc :
   naturality [the functor of ContOpsAcallcc.acto r \o M] [the functor of M] acallcc.
 Proof. by []. Qed.
 HB.instance Definition _ := isNatural.Build _ [the monad of M] acallcc naturality_acallcc.
 Definition acallcc_op : [the functor of ContOpsAcallcc.acto r].-operation [the monad of M] :=
   [the _ ~> _ of acallcc].
-Lemma algebraicity_callcc : algebraicity acallcc_op.
+Let algebraicity_callcc : algebraicity acallcc_op.
 Proof. by []. Qed.
 HB.instance Definition _ := isAOperation.Build
   [the functor of ContOpsAcallcc.acto r] [the monad of M]
@@ -818,13 +817,13 @@ End contops.
 Module Fail.
 
 Definition option_fail : forall A, option_monad A := fun A => @throw unit A tt.
-Local Lemma option_bindfailf : BindLaws.left_zero (@bind [the monad of option_monad]) option_fail.
+Let option_bindfailf : BindLaws.left_zero (@bind _) option_fail.
 Proof. by []. Qed.
 HB.instance Definition _ := @isMonadFail.Build option_monad
   option_fail option_bindfailf.
 
 Definition list_fail : forall A, ListMonad.acto A := fun A => @empty _ tt.
-Local Lemma list_bindfailf : BindLaws.left_zero (@bind [the monad of ListMonad.acto]) list_fail.
+Let list_bindfailf : BindLaws.left_zero (@bind _) list_fail.
 Proof. by []. Qed.
 HB.instance Definition _ := @isMonadFail.Build ListMonad.acto list_fail list_bindfailf.
 
@@ -880,8 +879,8 @@ Module Alt.
 Section list.
 Let M := ListMonad.acto.
 Definition list_alt : forall T, M T -> M T -> M T := fun A => curry (@append A).
-Let altA : forall T : UU0, ssrfun.associative (@list_alt T).
-Proof. by move=> T a b c; rewrite /list_alt /= /curry /= catA. Qed.
+Let altA (T : UU0) : ssrfun.associative (@list_alt T).
+Proof. by move=> a b c; rewrite /list_alt /= /curry /= catA. Qed.
 Let alt_bindDl : BindLaws.left_distributive (@bind [the monad of ListMonad.acto]) list_alt.
 Proof.
 move=> A B /= s1 s2 k.
@@ -1170,9 +1169,10 @@ Module ModelArray.
 Section modelarray.
 Variables (S : UU0) (I : eqType).
 Implicit Types (i j : I) (A : UU0).
-Definition M A := StateMonad.acto (I -> S) A.
+Definition acto A := StateMonad.acto (I -> S) A.
+Local Notation M := acto.
 Definition aget i : M S := fun a => (a i, a).
-Definition aput i a : M unit := fun s' => (tt, insert i a s').
+Definition aput i s : M unit := fun a => (tt, insert i s a).
 Let aputput i s s' : aput i s >> aput i s' = aput i s'.
 Proof.
 rewrite StateMonadE; apply funext => a/=.
@@ -1208,7 +1208,7 @@ move=> ij; rewrite /aput !StateMonadE; apply funext => a/=.
 by rewrite StateMonadE/= {1}/insert (negbTE ij).
 Qed.
 HB.instance Definition _ := isMonadArray.Build
-  S I M aputput aputget agetputskip agetget agetC aputC aputgetC.
+  S I acto aputput aputget agetputskip agetget agetC aputC aputgetC.
 End modelarray.
 End ModelArray.
 

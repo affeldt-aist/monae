@@ -653,7 +653,7 @@ Notation "m >=> n" := (kleisli n m) : monae_scope.
 HB.mixin Record isMonadFail (M : UU0 -> UU0) of Monad M := {
   fail : forall A : UU0, M A;
     (* exceptions are left-zeros of sequential composition *)
-    bindfailf : BindLaws.left_zero (@bind [the monad of M]) fail
+  bindfailf : BindLaws.left_zero (@bind [the monad of M]) fail
     (* fail A >>= f = fail B *) }.
 
 #[short(type=failMonad)]
@@ -799,7 +799,7 @@ HB.structure Definition MonadFailR0 := {M of isMonadFailR0 M & }.
 
 HB.mixin Record isMonadPrePlus (M : UU0 -> UU0)
     of MonadNondet M & MonadFailR0 M :=
-  { alt_bindDr : BindLaws.right_distributive (@bind [the monad of M]) (@alt _) }.
+  { alt_bindDr : BindLaws.right_distributive (@bind [the monad of M]) alt }.
 
 #[short(type=prePlusMonad)]
 HB.structure Definition MonadPrePlus := {M of isMonadPrePlus M & }.
