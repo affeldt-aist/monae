@@ -88,7 +88,7 @@ have [n leMn] := ubnP (size s); elim: n => // n ih in s f leMn *.
 case: s leMn => [|h t]; first by move=> _; rewrite qperm_nil !bindretf.
 rewrite ltnS => tn.
 rewrite qperm_cons !bindA /= guard_and bindA (commute_plus_guard (all p t)).
-rewrite guard_splits splitsE fmapE 2!bindA commute_plus_guard.
+rewrite guard_splits splits_bseqE fmapE 2!bindA commute_plus_guard.
 bind_ext => -[a b]; rewrite 2!bindretf !bindA /=.
 rewrite (commute_plus_guard (all p b)).
 rewrite ih; last by rewrite (leq_trans _ tn) //= ltnS size_bseq.

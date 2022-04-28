@@ -4,6 +4,7 @@ From mathcomp Require Import all_ssreflect.
 Require Import imonae_lib.
 From HB Require Import structures.
 Require Import ihierarchy imonad_lib.
+From Equations Require Import Equations.
 
 (******************************************************************************)
 (*     Definitions and lemmas using failure and nondeterministic monads       *)
@@ -14,7 +15,6 @@ Require Import ihierarchy imonad_lib.
 (*                       generation stops,otherwise an element and a new seed *)
 (*                       of generated using f                                 *)
 (*              hyloM == [2, Sect. 5.1]                                       *)
-(*                                                                            *)
 (*    arbitrary def s == nondeterministic choice of an element in the list s, *)
 (*                       def if the list is empty                             *)
 (*             subs s == subsequence of a list                                *)
@@ -27,6 +27,8 @@ Require Import ihierarchy imonad_lib.
 (*                       [2, Sect. 3.2]                                       *)
 (*            uperm s == nondeterministically computes a permutation of s,    *)
 (*                       defined using unfoldM and select [2, Sect. 3.2]      *)
+(*           splits s == split a list nondeterministically                    *)
+(*                       type: seq A -> M (seq A * seq A) with M : plusMonad  *)
 (*         m1 `<=` m2 == m1 refines m2, i.e., every result of m1 is a         *)
 (*                       possible result of m2                                *)
 (*          f `<.=` g == refinement relation lifted to functions, i.e.,       *)
@@ -56,6 +58,10 @@ move=> hb; exists (take (index h b) b), (drop (index h b).+1 b).
 rewrite -cats1 -catA -{1}(cat_take_drop (index h b) b); congr (_ ++ _) => /=.
 by rewrite -{2}(nth_index h hb) -drop_nth // index_mem.
 Qed.
+
+Lemma bind_ext_guard {M : failMonad} (A : UU0) (b : bool) (m1 m2 : M A) :
+  (b -> m1 = m2) -> guard b >> m1 = guard b >> m2.
+Proof. by case: b => [->//|_]; rewrite guardF !bindfailf. Qed.
 
 Definition arb {M : altMonad} : M bool := Ret true [~] Ret false.
 
@@ -123,7 +129,7 @@ Lemma unfoldME y : unfoldM p f y =
   if p y then Ret [::]
   else f y >>= (fun xz => fmap (cons xz.1) (unfoldM p f xz.2)).
 Proof.
-rewrite /unfoldM Fix_eq; last first.
+rewrite /unfoldM Init.Wf.Fix_eq; last first.
   move => b g g' H; rewrite /unfoldM'; case: ifPn => // pb.
   bind_ext => -[a' b'] /=.
   destruct Bool.bool_dec => //; by rewrite H.
@@ -161,7 +167,7 @@ Lemma hyloME y : hyloM y = if p y then
                            else
                              f y >>= (fun xz => op xz.1 (hyloM xz.2)).
 Proof.
-rewrite /hyloM Fix_eq; last first.
+rewrite /hyloM Init.Wf.Fix_eq; last first.
   move => b g g' K; rewrite /hyloM'; case: ifPn => // pb.
   bind_ext => -[a' b'] /=.
   destruct Bool.bool_dec => //.
@@ -412,7 +418,7 @@ rewrite fcompE [in RHS]/=; case: ifPn => ph.
   rewrite [in LHS]insertE alt_fmapDr; congr (_ [~] _).
     by rewrite fmapE bindretf /= pa ph.
   rewrite !fmapE /= fcompE bind_fmap bindA.
-  under eq_bind do rewrite bindretf.
+  under [LHS]eq_bind do rewrite bindretf.
   by rewrite /= ph.
 - rewrite [in LHS]insertE alt_fmapDr.
   rewrite -[in X in _ [~] X = _]fmap_oE.
@@ -616,6 +622,16 @@ Definition uperm : seq A -> M (seq A) :=
 End uperm.
 Arguments uperm {A} {M}.
 
+Section splits.
+Context {M : altMonad} {A : UU0}.
+Implicit Types s : seq A.
+
+Fixpoint splits s : M (seq A * seq A)%type :=
+  if s isn't x :: xs then Ret ([::], [::]) else
+    splits xs >>= (fun yz => Ret (x :: yz.1, yz.2) [~] Ret (yz.1, x :: yz.2)).
+
+End splits.
+
 (* TODO: move this example *)
 Section fastproduct.
 
@@ -724,16 +740,17 @@ Qed.
 
 End shiftreset_examples.
 
-Lemma bind_ext_guard {M : failMonad} (A : UU0) (b : bool) (m1 m2 : M A) :
-  (b -> m1 = m2) ->  guard b >> m1 = guard b >> m2.
-Proof. by case: b => [->//|_]; rewrite guardF !bindfailf. Qed.
-
 Definition refin (M : altMonad) A (m1 m2 : M A) : Prop := m1 [~] m2 = m2.
 Notation "m1 `<=` m2" := (refin m1 m2).
 
 Lemma refin_bindr (M : altMonad) A B (m1 m2 : M A) (f : A -> M B) :
   (m1 `<=` m2) -> (m1 >>= f `<=` m2 >>= f).
 Proof. by move=> m12; rewrite /refin -alt_bindDl m12. Qed.
+
+Lemma refin_if (M : altMonad) A (m1 m2 m1' m2' : M A) (b : bool) :
+  (b -> m1 `<=` m1') -> (~~ b -> m2 `<=` m2') ->
+  (if b then m1 else m2) `<=` (if b then m1' else m2').
+Proof. by case: b => [+ _|_]; exact. Qed.
 
 Import Order.TTheory.
 Local Open Scope order_scope.
@@ -834,23 +851,3 @@ Lemma refin_ret_iperm (M : plusMonad) (A : UU0) (s : seq A) :
 Proof.
 by case: (@iperm_is_alt_ret M _ s) => m ->; rewrite /refin altA altmm.
 Qed.
-
-Section splits.
-Variable M : plusMonad.
-Variables (d : unit) (T : orderType d).
-
-Fixpoint splits {M : plusMonad} (A : UU0) (s : seq A) : M (seq A * seq A)%type :=
-  if s isn't x :: xs then Ret ([::], [::]) else
-    splits xs >>= (fun yz => Ret (x :: yz.1, yz.2) [~] Ret (yz.1, x :: yz.2)).
-
-Lemma leq_bseq_size (A : UU0) (xs : seq A) (b0 : (size xs).-bseq A) :
-  (size b0 <= (size xs).+1)%N.
-Proof. by rewrite (leq_trans (size_bseq b0)). Qed.
-
-Local Lemma splits_nat_nil : @splits M nat [::] = Ret ([::], [::]).
-Proof. by []. Abort.
-
-Local Lemma splits_nat_01 : @splits M _ [:: O; 1]%nat = Ret ([::], [::]).
-Proof. rewrite /= bindretf alt_bindDl !bindretf /=. Abort.
-
-End splits.

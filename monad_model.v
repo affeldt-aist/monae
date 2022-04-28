@@ -912,7 +912,7 @@ Definition callcc_aop : [the functor of ContOpsAcallcc.acto r].-aoperation [the 
 End contops.
 
 Module Fail.
-
+Section fail.
 Definition option_fail : forall A, option_monad A := fun A => @throw unit A tt.
 Let option_bindfailf : BindLaws.left_zero (@bind _) option_fail.
 Proof. by []. Qed.
@@ -931,7 +931,7 @@ move=> A B f /=; apply boolp.funext => b; rewrite boolp.propeqE.
 by split=> // -[a []].
 Qed.
 HB.instance Definition _ := isMonadFail.Build set set_bindfailf.
-
+End fail.
 End Fail.
 HB.export Fail.
 

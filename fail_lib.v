@@ -5,6 +5,7 @@ From mathcomp Require boolp.
 Require Import monae_lib.
 From HB Require Import structures.
 Require Import hierarchy monad_lib.
+From Equations Require Import Equations.
 
 (******************************************************************************)
 (*     Definitions and lemmas using failure and nondeterministic monads       *)
@@ -148,7 +149,7 @@ Lemma unfoldME y : unfoldM p f y =
   if p y then Ret [::]
   else f y >>= (fun xz => fmap (cons xz.1) (unfoldM p f xz.2)).
 Proof.
-rewrite /unfoldM Fix_eq; last first.
+rewrite /unfoldM Init.Wf.Fix_eq; last first.
   move => b g g' H; rewrite /unfoldM'; case: ifPn => // pb.
   bind_ext => -[a' b'] /=.
   destruct Bool.bool_dec => //; by rewrite H.
@@ -186,7 +187,7 @@ Lemma hyloME y : hyloM y = if p y then
                            else
                              f y >>= (fun xz => op xz.1 (hyloM xz.2)).
 Proof.
-rewrite /hyloM Fix_eq; last first.
+rewrite /hyloM Init.Wf.Fix_eq; last first.
   move => b g g' K; rewrite /hyloM'; case: ifPn => // pb.
   bind_ext => -[a' b'] /=.
   destruct Bool.bool_dec => //.
@@ -448,7 +449,7 @@ Local Open Scope mprog.
 Lemma insert_map (A B : UU0) (f : A -> B) (a : A) :
   insert (f a) \o map f = map f (o) insert a :> (_ -> M _).
 Proof.
-rewrite boolp.funeqE; elim => [|y xs IH].
+apply boolp.funext; elim => [|y xs IH].
   by rewrite fcompE insertE -(compE (fmap (map f))) (natural ret) compE insertE.
 apply/esym.
 rewrite fcompE insertE alt_fmapDr.
@@ -472,19 +473,19 @@ rewrite fcompE insertE alt_fmapDr.
 rewrite -(compE (fmap _)) (natural ret) FIdf [in X in X [~] _]/= (negbTE pa).
 case: ifPn => ph.
 - rewrite -fmap_oE (_ : filter p \o cons h = cons h \o filter p); last first.
-    rewrite boolp.funeqE => x /=; by rewrite ph.
+    by apply boolp.funext => x /=; rewrite ph.
   rewrite fmap_oE.
   move: (IH); rewrite fcompE => ->.
   by rewrite fmapE /= ph bindretf /= Mmm.
 - rewrite -fmap_oE (_ : filter p \o cons h = filter p); last first.
-    rewrite boolp.funeqE => x /=; by rewrite (negbTE ph).
-  move: (IH); rewrite fcompE => -> /=; by rewrite (negbTE ph) Mmm.
+    by apply boolp.funext => x /=; rewrite (negbTE ph).
+  by move: (IH); rewrite fcompE => -> /=; rewrite (negbTE ph) Mmm.
 Qed.
 
 Lemma filter_insertT a : p a ->
   filter p (o) insert a = insert a \o filter p :> (_ -> M _).
 Proof.
-move=> pa; rewrite boolp.funeqE; elim => [|h t IH].
+move=> pa; apply boolp.funext; elim => [|h t IH].
   by rewrite fcompE !insertE fmapE bindretf /= pa.
 rewrite fcompE [in RHS]/=; case: ifPn => ph.
 - rewrite [in RHS]insertE.
@@ -497,7 +498,7 @@ rewrite fcompE [in RHS]/=; case: ifPn => ph.
 - rewrite [in LHS]insertE alt_fmapDr.
   rewrite -[in X in _ [~] X = _]fmap_oE.
   rewrite (_ : (filter p \o cons h) = filter p); last first.
-    by rewrite boolp.funeqE => x /=; rewrite (negbTE ph).
+    by apply boolp.funext => x /=; rewrite (negbTE ph).
   move: (IH); rewrite fcompE => ->.
   rewrite fmapE bindretf /= pa (negbTE ph) [in RHS]insertE; case: (filter _ _) => [|h' t'].
     by rewrite insertE Mmm.
@@ -526,13 +527,13 @@ Qed.
 
 Lemma rev_insert : rev (o) insert a = insert a \o rev :> (_ -> M _).
 Proof.
-rewrite boolp.funeqE; elim => [|h t ih].
+apply boolp.funext; elim => [|h t ih].
   by rewrite fcompE insertE fmapE bindretf.
 rewrite fcompE insertE compE alt_fmapDr fmapE bindretf compE [in RHS]rev_cons.
 rewrite insert_rcons rev_cons -cats1 rev_cons -cats1 -catA; congr (_ [~] _).
 move: ih; rewrite fcompE [X in X -> _]/= => <-.
 rewrite -!fmap_oE. congr (fmap _ (insert a t)).
-by rewrite boolp.funeqE => s; rewrite /= -rev_cons.
+by apply boolp.funext => s; rewrite /= -rev_cons.
 Qed.
 
 End insert_altCIMonad.
@@ -615,7 +616,7 @@ Local Open Scope mprog.
 Lemma iperm_o_map (A B : UU0) (f : A -> B) :
   iperm \o map f = map f (o) iperm :> (_ -> M _).
 Proof.
-rewrite boolp.funeqE; elim => [/=|x xs IH].
+apply boolp.funext; elim => [/=|x xs IH].
   by rewrite fcompE [iperm _]/= -[in RHS]compE (natural ret).
 by rewrite fcompE [in iperm _]/= fmap_bind -insert_map -bind_fmap -fcompE -IH.
 Qed.
@@ -627,7 +628,7 @@ Variables (A : UU0) (p : pred A).
 (* netys2017 *)
 Lemma iperm_filter : iperm \o filter p = filter p (o) iperm :> (_ -> M _).
 Proof.
-rewrite boolp.funeqE; elim => [|h t /= IH].
+apply boolp.funext; elim => [|h t /= IH].
   by rewrite fcompE fmapE bindretf.
 case: ifPn => ph.
   rewrite [in LHS]/= IH [in LHS]fcomp_def compE [in LHS]bind_fmap.
@@ -826,7 +827,7 @@ Definition perms : seq A -> M (seq A) :=
 Lemma tpermsE s : (perms s = if s isn't h :: t then Ret [::] else
   do x <- tselect (h :: t); do y <- perms x.2; Ret (x.1 :: y))%Do.
 Proof.
-rewrite {1}/perms Fix_eq //; [by case: s|move=> s' f g H].
+rewrite {1}/perms Init.Wf.Fix_eq //; [by case: s|move=> s' f g H].
 by rewrite /perms'; destruct s' => //; bind_ext=> x; rewrite H.
 Qed.
 
@@ -899,7 +900,7 @@ Fixpoint splits_bseq s : M ((size s).-bseq A * (size s).-bseq A)%type :=
     Ret (widen_bseq (leqnSn _) ys, [bseq of x :: zs])).
 
 Local Open Scope mprog.
-Lemma splitsE s : splits s =
+Lemma splits_bseqE s : splits s =
   fmap (fun '(ys, zs) => (bseqval ys, bseqval zs)) (splits_bseq s) :> M _.
 Proof.
 elim: s => /= [|h t ih]; first by rewrite fmapE bindretf.
@@ -986,15 +987,13 @@ Local Close Scope mprog.
 
 End splits_prePlusMonad.
 
-From Equations Require Import Equations.
-
 Section qperm.
 Variables (M : altMonad) (A : UU0) (d : unit) (T : orderType d).
 
 Equations? qperm (s : seq A) : M (seq A) by wf (size s) lt :=
 | [::] => Ret [::]
-| x :: xs => 
-  splits_bseq xs >>= 
+| x :: xs =>
+  splits_bseq xs >>=
     (fun '(ys, zs) => liftM2 (fun a b => a ++ x :: b) (qperm ys : M (seq A)) (qperm zs)).
 Proof.
 apply /ltP.
@@ -1011,7 +1010,7 @@ Lemma qperm_cons x xs : qperm (x :: xs) =
   splits xs >>= (fun '(ys, zs) =>
     liftM2 (fun a b => a ++ x :: b) (qperm ys) (qperm zs)).
 Proof.
-rewrite qperm_equation_2 splitsE fmapE bindA; bind_ext => -[? ?].
+rewrite qperm_equation_2 splits_bseqE fmapE bindA; bind_ext => -[? ?].
 by rewrite bindretf.
 (* rewrite {1}/qperm {1}(Fix_eq _ _ _ qperm'_Fix) /=.
 rewrite splitsE /= fmapE bindA; bind_ext => -[? ?].
@@ -1022,7 +1021,7 @@ Definition qpermE := (qperm_nil, qperm_cons).
 
 End qperm.
 Arguments qperm {M} {A}.
- 
+
 Module qperm_function.
 Section qperm_function.
 Variables (M : plusMonad) (A : UU0) (d : unit) (T : orderType d).
@@ -1221,8 +1220,7 @@ rewrite (_ : callcc _ = Ret 100) ?bindretf //.
 transitivity (callcc (fun _ : nat -> M nat => Ret 100)); last by rewrite callcc1.
 transitivity (callcc (fun f : nat -> M nat => Ret 10 >>= (fun a => f 100))); first by rewrite callcc2.
 rewrite callcc3 //; congr callcc.
-rewrite boolp.funeqE => g.
-by rewrite bindretf.
+by apply boolp.funext => g; rewrite bindretf.
 Qed.
 
 End continuation_example.
@@ -1318,7 +1316,7 @@ Lemma nondetPlus_sub_qperm A (s : seq A) : nondetPlus_sub (qperm s : M _).
 Proof.
 have [n sn] := ubnP (size s); elim: n s => // n ih s in sn *.
 move: s => [|h t] in sn *; first by exists (ndRet [::]); rewrite qperm_nil.
-rewrite qperm_cons splitsE fmapE bindA.
+rewrite qperm_cons splits_bseqE fmapE bindA.
 have [syn syn_tsplits] := nondetPlus_sub_splits_bseq t.
 have nondetPlus_sub_liftM2_qperm : forall a b : (size t).-bseq A,
   nondetPlus_sub (liftM2 (fun x y => x ++ h :: y) (qperm a) (qperm b : M _)).
@@ -1386,10 +1384,10 @@ Section qperm_lemmas.
 Context {M : plusMonad} {A : eqType}.
 
 Lemma iperm_qperm : @iperm M A = @qperm M A.
-Proof. 
+Proof.
 rewrite boolp.funeqE => s.
 apply qperm_elim => [//|h t ihys ihzs].
-rewrite iperm_cons_splits splitsE fmapE bindA.
+rewrite iperm_cons_splits splits_bseqE fmapE bindA.
 bind_ext => -[a b]; rewrite bindretf.
 by rewrite (ihys (a, b) _ b) (ihzs (a, b) a).
 Qed.
@@ -1464,7 +1462,7 @@ Lemma lrefin_trans A B (b a c : A -> M B) : a `<.=` b -> b `<.=` c -> a `<.=` c.
 Proof. by move => ? ? ?; exact: refin_trans. Qed.
 
 Lemma lrefin_antisym A B (a b : A -> M B) : a `<.=` b -> b `<.=` a -> a = b.
-Proof. move => ? ?; rewrite boolp.funeqE => ?; exact: refin_antisym. Qed.
+Proof. move => ? ?; apply boolp.funext => ?; exact: refin_antisym. Qed.
 End lrefin_lemmas_altCIMonad.
 
 Lemma refin_bindl (M : prePlusMonad) A B (m : M A) (f g : A -> M B) :

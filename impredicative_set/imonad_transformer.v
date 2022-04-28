@@ -949,9 +949,9 @@ HB.structure Definition Functorial := {t of isFunctorial t}.
 Arguments hmap _ {M N} _.
 
 HB.mixin Record isFMT (t : monad -> monad) of MonadT t & Functorial t := {
-  fmt_ret : forall (M N : monad) (e : monadM M N),
+  fmt_ret : forall M N (e : monadM M N),
     MonadMLaws.ret (hmap [the functorial of t] e) ;
-  fmt_bind : forall (M N : monad) (e : monadM M N),
+  fmt_bind : forall M N (e : monadM M N),
     MonadMLaws.bind (hmap [the functorial of t] e) ;
   natural_hmap : forall (M N : monad) (n : M ~> N),
     hmap [the functorial of t] n \v Lift [the monadT of t] M =

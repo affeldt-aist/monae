@@ -940,7 +940,7 @@ End uniform_algebraic_lifting.
 
 HB.mixin Record isFunctorial (t : monad -> monad) := {
   hmap : forall (M N : monad), (M ~> N) -> (t M ~> t N) ;
-  functorial_id : forall (M : monad),
+  functorial_id : forall M : monad,
     hmap _ _ [the _ ~> _ of NId M] = [the _ ~> _ of NId (t M)] ;
   functorial_o : forall (M N P : monad) (t : M ~> N) (s : N ~> P),
     hmap _ _ (s \v t) = hmap _ _ s \v hmap _ _ t }.
@@ -950,9 +950,9 @@ HB.structure Definition Functorial := {t of isFunctorial t}.
 Arguments hmap _ {M N} _.
 
 HB.mixin Record isFMT (t : monad -> monad) of MonadT t & Functorial t := {
-  fmt_ret : forall (M N : monad) (e : monadM M N),
+  fmt_ret : forall M N (e : monadM M N),
     MonadMLaws.ret (hmap [the functorial of t] e) ;
-  fmt_bind : forall (M N : monad) (e : monadM M N),
+  fmt_bind : forall M N (e : monadM M N),
     MonadMLaws.bind (hmap [the functorial of t] e) ;
   natural_hmap : forall (M N : monad) (n : M ~> N),
     hmap [the functorial of t] n \v Lift [the monadT of t] M =
