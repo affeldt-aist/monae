@@ -35,7 +35,7 @@ license:
   file: LICENSE
 
 supported_coq_versions:
-  text: Coq 8.14
+  text: Coq 8.14 and 8.15
   opam: '{ (>= "8.14" & < "8.16~") | (= "dev") }'
 
 tested_coq_opam_versions:
