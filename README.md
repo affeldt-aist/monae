@@ -107,7 +107,7 @@ This library has been applied to other formalizations:
 - [monad_transformer.v](./monad_transformer.v): monad transformers
   + completed by `ifmt_lifting.v` and `iparametricty_codensity.v` in the directory `impredicative_set`
     * the directory `impredicative_set` contains a lighter version of Monae where monads live in `Set` and that compiles with `impredicative-set`
-- [monad_model.v](./monad_model.v): concrete models of monads (up to state and trace monads)
+- [monad_model.v](./monad_model.v): concrete models of monads
 - [proba_monad_model.v](./proba_monad_model.v): concrete model of the probability monad
 - [gcm_model.v](./gcm_model.v): model of the geometrically convex monad
 - [altprob_model.v](./altprob_model.v): model of a monad that mixes non-deterministic choice and probabilistic choice
