@@ -97,7 +97,7 @@ This library has been applied to other formalizations:
 - [monae_lib.v](./monae_lib.v): simple additions to base libraries
 - [hierarchy.v](./hierarchy.v): hierarchy of monadic effects
 - [monad_lib.v](./monad_lib.v): basic lemmas about monads
-- [category.v](./category.v): formalization of categories (generalization of ~hierarchy.v~)
+- [category.v](./category.v): formalization of categories (generalization of `hierarchy.v`)
 - [fail_lib.v](./fail_lib.v): lemmas about fail monad and related monads
 - [state_lib.v](./state_lib.v): lemmas about state-related monads
 - [array_lib.v](./array_lib.v): lemmas about the array monad
