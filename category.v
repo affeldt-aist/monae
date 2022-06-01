@@ -9,8 +9,8 @@ From HB Require Import structures.
 (*                  Formalization of basic category theory                    *)
 (*                                                                            *)
 (* This file provides definitions of category, functor, monad, as well as     *)
-(* basic theorems. It comes as a generalization of monad.v which is           *)
-(* specialized to the category of sets.                                       *)
+(* basic theorems. It comes as a generalization of the first part of          *)
+(* hierarchy.v which is specialized to the category of sets.                  *)
 (*                                                                            *)
 (*            category == type of categories, a category C is implemented     *)
 (*                        with a universe a la Tarski, there is a realizer    *)
@@ -20,7 +20,9 @@ From HB Require Import structures.
 (*          {hom A, B} == the hom-set of morphisms from A to B, where A and B *)
 (*                        are objects of a category C                         *)
 (*             [hom f] == morphism corresponding to the function f            *)
+(* Section Type_as_a_category == the first instance of a category: Type       *)
 (*       Type_category == the category corresponding to the Coq type Type     *)
+(*         FunctorLaws == module that defines the functor laws                *)
 (*                  \O == functor composition                                 *)
 (*             F ~~> G == forall a, {hom F a ,G a}, which corresponds to a    *)
 (*                        natural transformation when it satisfies the        *)
@@ -33,43 +35,19 @@ From HB Require Import structures.
 (*                  \v == vertical composition                                *)
 (*                  \h == horizontal composition, or Godement product         *)
 (*              F -| G == pair of adjoint functors (Module                    *)
-(*                        Module AdjointFunctors)                             *)
+(*                        Module AdjointFunctors); see also TriangularLaws.   *)
 (*      Module AdjComp == define a pair of adjoint functors by composition of *)
 (*                        two pairs of adjoint functors                       *)
-(* Module Monad_of_adjoint_functors == monad defined by                       *)
-(*                                     a pair of adjoint functors             *)
-(* Module Monad_of_category_monad == interface to monad.v                     *)
+(*  JoinLaws, BindLaws == modules that define the monad laws                  *)
+(*             isMonad == mixin that defines the monad interface              *)
+(*   Monad_of_ret_bind == factory, monad defined by ret and bind              *)
+(*   Monad_of_ret_join == factory, monad defined by ret and join              *)
+(* Monad_of_adjoint_functors == module that defines a monad by a pair of      *)
+(*                        adjoint functors                                    *)
+(* Monad_of_category_monad == module, interface to isMonad from hierarchy.v   *)
 (* Monad_of_category_monad.m == turns a monad over the Type category into     *)
-(*                        a monad in the sense of monad.v                     *)
+(*                        a monad in the sense of isMonad from hierarchy.v    *)
 (******************************************************************************)
-
-(* Contents:
-- Module Category.
-- Module Hom.
-- Section category_interface.
-- Section category_lemmas.
-- Section transport_lemmas.
-- Section Type_as_a_category.
-- Module FunctorLaws./Module Functor.
-- various sections about functors
-- Module Natural
-- Module NEq.
-- Section vertical_composition.
-- Section horizontal_composition.
-- Module TriangularLaws./Module AdjointFunctors.
-- Module AdjComp.
-- Module JoinLaws.
-- Module BindLaws.
-- Section monad_interface.
-- Module Monad_of_adjoint_functors.
-    monad defined by a pair of adjoint functors
-- Module Monad_of_ret_bind.
-    monad defined by ret and bind
-- Module Monad_of_ret_join.
-    monad defined by ret and join
-- Module Monad_of_category_monad.
-    interface to monad.v
-*)
 
 Reserved Notation "F ~~> G" (at level 51).
 
@@ -92,9 +70,6 @@ Proof. by []. Defined.
 #[global]
 Hint Resolve frefl_transparent : core.
 
-
-(** * Category *)
-
 (* Our categories are always concrete; morphisms are just functions. *)
 HB.mixin Record isCategory (obj : Type) := {
   el : obj -> Type ;
@@ -109,8 +84,6 @@ HB.structure Definition Category := {C of isCategory C}.
 Arguments idfun_inhom [C] : rename.
 Arguments funcomp_inhom [C a b c f g] : rename.
 
-
-(** * Hom *)
 
 HB.mixin Record isHom (C : category) (a b : C) (f : el a -> el b) := {
   isHom_inhom : inhom a b f
@@ -237,13 +210,10 @@ Lemma transport_homF (a a' b b' : C) (pa : a = a') (pb : b = b') (f : {hom a, b}
 Proof. apply hom_ext; by subst a' b'. Qed.
 End transport_lemmas.
 
-
-(** * The first instance: Type *)
-
 Section Type_as_a_category.
 (* TODO: consider using universe polymorphism *)
 Let UUx := Type.
-HB.instance Definition _ := 
+HB.instance Definition _ :=
   isCategory.Build UUx (fun x : Type => x)
     (fun _ _ _ => True) (fun=> I) (fun _ _ _ _ _ _ _ => I).
 Definition hom_Type (a b : [the category of UUx]) (f : a -> b) : {hom a, b} :=
@@ -251,9 +221,6 @@ Definition hom_Type (a b : [the category of UUx]) (f : a -> b) : {hom a, b} :=
 End Type_as_a_category.
 
 Notation CT := [the category of Type].
-
-
-(** * Functor *)
 
 Module FunctorLaws.
 Section def.
@@ -274,13 +241,13 @@ HB.structure Definition Functor C D := {F of isFunctor C D F}.
 Definition functor_phant (C D : category) (_ : phant (C -> D)) := Functor.type C D.
 Arguments actm [C D] F [a b] f: rename.
 Notation "F # f" := (actm F f) : category_scope.
-Notation "{ 'functor' fCD }" := (functor_phant (Phant fCD)) : category_scope.
+Notation "{ 'functor' fCD }" := (functor_phant (Phant fCD))
+  (format "{ 'functor'  fCD }") : category_scope.
 Definition FunctorPack (C D : category) (F : C -> D)
            (actm : forall a b, {hom a, b} -> {hom F a, F b})
            (fid : FunctorLaws.id actm) (fcomp : FunctorLaws.comp actm)
   : {functor C -> D} :=
   Functor.Pack (Functor.Class (isFunctor.Axioms_ _ _ _ fid fcomp)).
-
 
 Section functor_lemmas.
 Variables (C D : category) (F : {functor C -> D}).
@@ -353,10 +320,8 @@ Qed.
 
 HB.instance Definition _ :=
   isFunctor.Build C0 C2 (F \o G) functorcomposition_id functorcomposition_comp.
-Definition FComp : {functor C0 -> C2} := [the {functor _ -> _} of F \o G].
 End functorcomposition.
-Arguments FComp : simpl never.
-Notation "F \O G" := (FComp F G) : category_scope.
+Notation "F \O G" := ([the {functor _ -> _} of F \o G]) : category_scope.
 
 Section functorcomposition_lemmas.
 Lemma FCompE (C0 C1 C2 : category)
@@ -377,9 +342,6 @@ Lemma FCompA
   (F \O G) \O H = F \O (G \O H).
 Proof. apply: functor_ext=> *; by rewrite FCompE. Qed.
 End functorcomposition_lemmas.
-
-
-(** * Natural transformation *)
 
 Notation "F ~~> G" := (forall a, {hom F a ,G a}) : category_scope.
 Definition naturality (C D : category) (F G : {functor C -> D}) (f : F ~~> G) :=
@@ -573,7 +535,6 @@ by rewrite natural_head -functor_o.
 Qed.
 End hcomp_lemmas.
 
-
 (* adjoint functor *)
 (* We define adjointness F -| G in terms of its unit and counit. *)
 
@@ -732,7 +693,6 @@ End Exports.
 End AdjComp.
 Export AdjComp.Exports.
 
-(** * Monad laws *)
 Module JoinLaws.
 Section join_laws.
 Variables (C : category) (M : {functor C -> C}) .
@@ -825,7 +785,8 @@ HB.structure Definition Monad (C : category) := {M of isMonad C M}.
 
 HB.mixin Record isMonad (C : category) (M : C -> C) of @Functor C C M := {
   ret : FId ~> [the {functor C -> C} of M] ;
-  join : [the {functor C -> C} of M] \O [the {functor C -> C} of M] ~> [the {functor C -> C} of M] ;
+  join : [the {functor C -> C} of M] \O [the {functor C -> C} of M] ~>
+         [the {functor C -> C} of M] ;
   bind : forall (a b : C), {hom a, M b} -> {hom M a, M b} ;
   bindE : forall (a b : C) (f : {hom a, M b}) (m : el (M a)),
     bind a b f m = join b (([the {functor C -> C} of M] # f) m) ;
@@ -852,9 +813,6 @@ Lemma joinA_head a (c : C) (f : {hom c, M (M (M a))}) :
 Proof. by rewrite compA joinA. Qed.
 End monad_interface.
 
-
-(** Monad factories *)
-(* Monads defined by ret and join *)
 HB.factory Record Monad_of_ret_join (C : category) (M : C -> C)
            of @Functor C C M := {
   ret : FId ~> [the {functor C -> C} of M] ;
@@ -870,14 +828,14 @@ Let bindE (a b : C) (f : {hom a, M b}) (m : el (M a)) :
     bind f m = join b (([the {functor C -> C} of M] # f) m).
 Proof. by []. Qed.
 HB.instance Definition _ := isMonad.Build C M bindE joinretM joinMret joinA.
-HB.end. (* HB.end is the closing parenthesis corr. to HB.builders *)
+HB.end.
 
 (* Monads defined by ret and bind; M need not be a priori a functor *)
 HB.factory Record Monad_of_ret_bind (C : category) (acto : C -> C) := {
   ret' : forall a, {hom a, acto a} ;
   bind : forall (a b : C), {hom a, acto b} -> {hom acto a, acto b} ;
   bindretf : BindLaws.left_neutral bind ret' ;
-  bindmret : BindLaws.right_neutral bind ret' ; 
+  bindmret : BindLaws.right_neutral bind ret' ;
   bindA : BindLaws.associative bind ;
 }.
 HB.builders Context C M of Monad_of_ret_bind C M.
@@ -958,7 +916,6 @@ Qed.
 HB.instance Definition _ := isMonad.Build C F bindE joinretM joinMret joinA.
 HB.end.
 
-(* Monads defined by adjoint functors *)
 Module _Monad_of_adjoint_functors.
 Section def.
 Import comps_notation.
@@ -972,18 +929,16 @@ Definition join : M \O M ~~> M := fun a => G # (eps (F a)).
 Definition ret : FId ~~> M := fun a => eta a.
 Let triL := AdjointFunctors.triL A.
 Let triR := AdjointFunctors.triR A.
-Lemma join_natural : naturality (M \O M) M join.
+Lemma naturality_ret : naturality FId M ret.
+Proof. by move=> *; rewrite (natural eta). Qed.
+HB.instance Definition _ := isNatural.Build C C FId M ret naturality_ret.
+Lemma naturality_join : naturality (M \O M) M join.
 Proof.
 rewrite /join => a b h.
 rewrite /M !FCompE -2!(functor_o G); congr (G # _).
 by rewrite hom_ext /= (natural eps).
 Qed.
-Lemma ret_natural : naturality FId M ret.
-Proof. by move=> *; rewrite (natural eta). Qed.
-HB.instance Definition _ :=
-  isNatural.Build C C (M \O M) M join join_natural.
-HB.instance Definition _ :=
-  isNatural.Build C C FId M ret ret_natural.
+HB.instance Definition _ := isNatural.Build C C (M \O M) M join naturality_join.
 Let joinE : join = fun a => G # (@eps (F a)).
 Proof. by []. Qed.
 Let join_associativity' a : join a \o join (M a) = join a \o (M # join a).
@@ -1009,13 +964,14 @@ HB.instance Definition _ :=
                            [the M \O M ~> M of join]
     join_left_unit join_right_unit join_associativity.
 *)
-Let bind (a b : C) (f : {hom a, M b}) : {hom M a, M b} := [hom join _ \o (M # f)].
+Let bind (a b : C) (f : {hom a, M b}) : {hom M a, M b} :=
+  [hom join _ \o (M # f)].
 Let bindE (a b : C) (f : {hom a, M b}) (m : el (M a)) :
-    bind f m = join b (([the {functor C -> C} of M] # f) m).
+  bind f m = join b (([the {functor C -> C} of M] # f) m).
 Proof. by []. Qed.
 HB.instance Definition monad_of_adjoint_mixin :=
   isMonad.Build C M bindE join_left_unit join_right_unit join_associativity.
-(* TODO: eliminate Warning: non forgetrul inheritance detected *)
+(* TODO: eliminate Warning: non forgetful inheritance detected *)
 End def.
 Definition build (C D : category)
            (F : {functor C -> D}) (G : {functor D -> C}) (A : F -| G) :=
@@ -1037,86 +993,77 @@ Definition acto : Type -> Type := M.
 Definition actm (A B : Type) (h : A -> B) (x : acto A) : acto B :=
   (M # hom_Type h) x.
 
-Lemma fid A : actm id = id :> (acto A -> acto A).
+Lemma actm_id A : actm id = @id (acto A).
 Proof.
 rewrite /actm.
 have -> : hom_Type id = [hom idfun] by move=> ?; apply hom_ext.
 by rewrite category.functor_id.
 Qed.
 
-Lemma fcomp A B C (g : B -> C) (h : A -> B) :
-  actm (g \o h) = actm g \o actm h :> (acto A -> acto C).
+Lemma actm_comp A B C (g : B -> C) (h : A -> B) :
+  actm (g \o h) = actm g \o actm h.
 Proof.
 rewrite {1}/actm.
 have -> : hom_Type (g \o h) = [hom hom_Type g \o hom_Type h] by apply hom_ext.
 by rewrite category.functor_o.
 Qed.
 
-HB.instance Definition _ := hierarchy.isFunctor.Build acto fid fcomp.
+HB.instance Definition _ := hierarchy.isFunctor.Build acto actm_id actm_comp.
 
-Definition ret_ : forall A, idfun A -> acto A := fun A (x : A) => @category.ret _ M A x.
+Let F := [the functor of acto].
 
+Definition ret_ : forall A, hierarchy.FId A -> F A :=
+  fun A (a : A) => @category.ret _ M A a.
 (*Definition ret_ (A : Type) (x : A) : acto A := @Monad.Exports.Ret _ M A x.*)
 
-Definition join_ : forall A, [the functor of [the functor of acto] \o [the functor of acto]] A ->
-                        [the functor of acto] A :=
+Definition join_ : forall A, [the functor of F \o F] A -> F A :=
   fun A => @category.join _ M A.
-
 (*Definition join_ (A : Type) (x : acto (acto A)) := @Monad.Exports.Join _ M A x.*)
 
-Lemma ret_nat : hierarchy.naturality hierarchy.FId [the functor of acto] ret_.
+Lemma naturality_ret : hierarchy.naturality _ _ ret_.
 Proof. by move=> ? ? ?; rewrite (category.natural (@category.ret _ M)). Qed.
 
-HB.instance Definition _ := hierarchy.isNatural.Build _ [the functor of acto] ret_ ret_nat.
+HB.instance Definition _ := hierarchy.isNatural.Build _ _ ret_ naturality_ret.
 
-Definition ret : hierarchy.Nattrans.type hierarchy.FId [the functor of acto] :=
+Definition ret : hierarchy.Nattrans.type hierarchy.FId F :=
   [the nattrans _ _ of ret_].
 (*  hierarchy.Natural.Pack (hierarchy.Natural.Mixin ret_nat).*)
 
-Lemma join_nat : hierarchy.naturality
-  [the functor of [the functor of acto] \o [the functor of acto]]
-  [the functor of acto] join_.
+Lemma naturality_join : hierarchy.naturality [the functor of F \o F] F join_.
 Proof.
 move=> A B h; apply funext=> x; rewrite /ret /hierarchy.actm /= /actm.
 rewrite -[in LHS]compE (category.natural category.join).
 rewrite compE category.FCompE.
-suff -> : (M # (M # hom_Type h)) x =
-         (M # hom_Type ([the functor of acto] # h)%monae) x by [].
+suff -> : (M # (M # hom_Type h)) x = (M # hom_Type (F # h)%monae) x by [].
 congr ((M # _ ) _).
 exact/hom_ext/funext.
 Qed.
 
-HB.instance Definition _ := hierarchy.isNatural.Build
-  _ [the functor of acto]
-  join_ join_nat.
+HB.instance Definition _ := hierarchy.isNatural.Build _ _ join_ naturality_join.
+
 (*Definition join := hierarchy.Natural.Pack (hierarchy.Natural.Mixin join_nat).*)
 Definition join := [the nattrans _ _ of join_].
 
 Lemma joinretM : hierarchy.JoinLaws.left_unit ret join.
 Proof.
 move=> A; apply funext=> x.
-rewrite /join /ret.
-rewrite /=.
+rewrite /join /ret /=.
 rewrite /join_ /ret_ /=.
 by rewrite -[in LHS]compE category.joinretM.
 Qed.
 
-Lemma joinMret (A : Type) :
-  @join A \o ([the functor of acto] # (@ret _))%monae = id :> (acto A ->  acto A).
+Lemma joinMret (A : Type) : @join A \o (F # @ret _)%monae = id.
 Proof.
 apply funext=> x; rewrite /join /ret /= /hierarchy.actm /=.
 rewrite (_ : actm _ x = (M # category.ret _) x).
   rewrite /join_ /ret_ /=.
   by rewrite -[in LHS]compE category.joinMret.
-suff -> : @actm A (acto A) (category.ret A) x =
-         (M # category.ret _) x by [].
 rewrite /actm.
 suff -> : @hom_Type A (M A) (category.ret A) = category.ret _ by [].
 by apply hom_ext.
 Qed.
 
-Lemma joinA (A : Type) :
-  @join A \o (_ # (@join A))%monae = @join _ \o @join _.
+Lemma joinA (A : Type) : @join A \o (_ # @join A)%monae = @join _ \o @join _.
 Proof.
 apply funext=> x; rewrite /join /ret /=.
 rewrite /join_ /ret_ /=.
@@ -1128,15 +1075,8 @@ suff -> : @hom_Type (M (M A)) (M A) (category.join A) =
 by apply hom_ext.
 Qed.
 
-Let bind (A B : UU0) (m : acto A) (f : A -> acto B) : acto B :=
-  @join _ ((_ # f)%monae m).
-
-Lemma bindE : forall (A B : UU0) (f : A -> acto B) (m : acto A),
-  bind m f = @join _ (([the functor of acto] # f)%monae m).
-Proof. by []. Qed.
-
-HB.instance Definition _ := @hierarchy.isMonad.Build acto ret join bind
-  bindE joinretM joinMret joinA.
+HB.instance Definition _ := @hierarchy.Monad_of_ret_join.Build acto ret join
+  joinretM joinMret joinA.
 End def.
 End Monad_of_category_monad.
 HB.export Monad_of_category_monad.
