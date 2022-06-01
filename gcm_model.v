@@ -655,7 +655,7 @@ apply/necset_ext.
 rewrite /= /join_ /= /Monad_of_category_monad.join /= !HCompId !HIdComp eps1E.
 rewrite functor_o NEqE functor_id compfid.
 rewrite 2!VCompE_nat HCompId HIdComp.
-set E := epsC _; have->: E = (homid0 _) by apply/hom_ext; rewrite epsCE.
+set E := epsC _; have->: E = [hom idfun] by apply/hom_ext; rewrite epsCE.
 rewrite functor_id_hom.
 rewrite !functor_o functor_id !compfid.
 

@@ -7,21 +7,19 @@ From HB Require Import structures.
 (*                    Extra definitions in category theory                    *)
 (*                                                                            *)
 (* This file provides some constructions over categories.                     *)
+(* Module SliceCategory                                                       *)
+(* Module ProductCategory                                                     *)
+(*                                                                            *)
+(* TODO: bridge our definition to timany's abstract category:                 *)
+(* - define concretization (using yoneda embedding),                          *)
+(* - define opposite category (directly and by concretization),               *)
+(* - define presheaf category (directly?)                                     *)
 (******************************************************************************)
 
-(* Contents:
-- Module SliceCategory
-- Module ProductCategory
-*)
 
 Set Implicit Arguments.
 Unset Strict Implicit.
 Unset Printing Implicit Defensive.
-
-(* TODO: bridge our definition to timany's abstract category:
-   - define concretization (using yoneda embedding),
-   - define opposite category (directly and by concretization),
-   - define presheaf category (directly?) *)
 
 Local Open Scope category_scope.
 
@@ -72,12 +70,14 @@ Definition separated (X Y : obj) (f : ele X -> ele Y) : Prop :=
 
 Section sepfstsnd.
 Let _sepfst (X Y : obj) (f : ele X -> ele Y) : separated f -> el X.1 -> el Y.1.
+Proof.
 case=> H _ x.
 move/cid: (H x)=> [] y _.
 exact y.
 Defined.
 Definition sepfst := Eval hnf in _sepfst.
 Let _sepsnd (X Y : obj) (f : ele X -> ele Y) : separated f -> el X.2 -> el Y.2.
+Proof.
 case=> _ H x.
 move/cid: (H x)=> [] y _.
 exact y.
@@ -164,11 +164,13 @@ Section prodcat_homfstsnd.
 Variables A B : category.
 Section homfstsnd.
 Let _homfst (x y : A * B) (f : {hom x,y}) : {hom x.1, y.1}.
+Proof.
 case:f => f -[[]] /cid [] sf [] Hf _.
 exact: (HomPack _ _ _ Hf).
 Defined.
 Definition homfst := Eval hnf in _homfst.
 Let _homsnd (x y : A * B) (f : {hom x,y}) : {hom x.2, y.2}.
+Proof.
 case:f => f -[[]] /cid  [] sf [] _ Hg.
 exact: (HomPack _ _ _ Hg).
 Defined.
@@ -233,7 +235,7 @@ Variables A B : category.
 Variables a1 a2 : A.
 Variables b1 b2 : B.
 Variables (f : {hom a1, a2}) (g : {hom b1, b2}).
-Let C := [the category of (prod A B)].
+Let C := [the category of (A * B)%type].
 Definition pairhom' (ab : el a1 + el b1) : el a2 + el b2 :=
   match ab with
   | inl a => inl (f a)
@@ -308,17 +310,19 @@ End pairhomK.
 Module papply_left.
 Section def.
 Variables A B C : category.
-Variable F' : {functor [the category of (prod A B)] -> C}.
+Variable F' : {functor [the category of (A * B)%type] -> C}.
 Variable a : A.
 Definition F_obj : B -> C := fun b => F' (a, b).
 Definition F_mor (b1 b2 : B) (f : {hom b1, b2}) : {hom F_obj b1, F_obj b2} :=
   F' # pairhom [hom idfun] f.
 Let F_id_hom : FunctorLaws.id F_mor.
+Proof.
 move=> D; rewrite /F_mor; set h := pairhom _ _.
 rewrite (_ : h = [hom idfun]) ?functor_id_hom //.
 by apply/hom_ext => /=; rewrite boolp.funeqE; case.
 Qed.
 Let F_o_hom : FunctorLaws.comp F_mor.
+Proof.
 move=> b b0 b1 g h; rewrite /F_mor; set i := pairhom _ _.
 rewrite (_ : i = [hom (pairhom [hom idfun] g) \o
                       (pairhom [hom idfun] h)]) ?functor_o_hom //.
@@ -332,17 +336,19 @@ End papply_left.
 Module papply_right.
 Section def.
 Variables A B C : category.
-Variable F' : {functor [the category of (prod A B)] -> C}.
+Variable F' : {functor [the category of (A * B)%type] -> C}.
 Variable b : B.
 Definition F_obj : A -> C := fun a => F' (a, b).
 Definition F_mor (a1 a2 : A) (f : {hom a1, a2}) : {hom F_obj a1, F_obj a2} :=
   F' # pairhom f [hom idfun].
 Let F_id_hom : FunctorLaws.id F_mor.
+Proof.
 move=> D; rewrite /F_mor; set h := pairhom _ _.
 rewrite (_ : h = [hom idfun]) ?functor_id_hom //.
 by apply/hom_ext => /=; rewrite boolp.funeqE; case.
 Qed.
 Let F_o_hom : FunctorLaws.comp F_mor.
+Proof.
 move=> a a0 a1 g h; rewrite /F_mor; set i := pairhom _ _.
 rewrite (_ : i = [hom (pairhom g [hom idfun]) \o
                       (pairhom h [hom idfun])]) ?functor_o_hom //.
@@ -367,10 +373,12 @@ Definition acto (x : A) : B := pair (F1 x.1) (F2 x.2).
 Definition actm (x y : A) (f : {hom x,y}) : {hom acto x, acto y} :=
   pairhom (F1 # homfst f) (F2 # homsnd f).
 Let law_id : FunctorLaws.id actm.
+Proof.
 move=> a.
 by rewrite /actm homfst_idfun homsnd_idfun 2!functor_id_hom pairhom_idfun.
 Qed.
 Let law_o : FunctorLaws.comp actm.
+Proof.
 move=> [] a1 a2 [] b1 b2 [] c1 c2 g h.
 by rewrite /actm homfst_comp homsnd_comp 2!functor_o_hom pairhom_comp.
 Qed.
@@ -387,11 +395,13 @@ Definition acto : C -> D := papply_left.F F' (a, b).
 Definition actm (c1 c2 : C) (f : {hom c1, c2}) : {hom acto c1, acto c2} :=
   F' # pairhom [hom idfun] f.
 Let law_id : FunctorLaws.id actm.
+Proof.
 move=> c0; rewrite /actm; set h := pairhom _ _.
 rewrite (_ : h = [hom idfun]) ?functor_id_hom //.
 by apply/hom_ext => /=; rewrite boolp.funeqE; case.
 Qed.
 Let law_o : FunctorLaws.comp actm.
+Proof.
 move=> c c0 c1 g h; rewrite /actm; set i := pairhom _ _.
 rewrite (_ : i = [hom (pairhom [hom idfun] g) \o
                       (pairhom [hom idfun] h)]) ?functor_o_hom //.
@@ -463,10 +473,12 @@ Definition acto (x : A * (B * C)) : A * B * C :=  match x with (a,(b,c)) => ((a,
 Definition actm (x y : A * (B * C)) : {hom x,y} -> {hom acto x, acto y} :=
 match x with (xa,(xb,xc)) => match y with (ya,(yb,yc)) => fun f => pairhom (pairhom (homfst f) (homfst (homsnd f))) (homsnd (homsnd f)) end end.
 Let law_id : FunctorLaws.id actm.
+Proof.
 case=> a [] b c.
 by rewrite /actm 2!homsnd_idfun 2!homfst_idfun 2!pairhom_idfun.
 Qed.
 Let law_o : FunctorLaws.comp actm.
+Proof.
 case=> xa [] xb xc [] ya [] yb yc [] za [] zb zc g h.
 by rewrite /actm !homsnd_comp !homfst_comp !pairhom_comp.
 Qed.

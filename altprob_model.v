@@ -33,7 +33,7 @@ Local Open Scope latt_scope.
 Local Open Scope monae_scope.
 
 Definition alt A (x y : gcm A) : gcm A := x [+] y.
-Definition choice p A (x y : gcm A) : gcm A := x <| p |> y. (*NB: convex_scope *)
+Definition choice p A (x y : gcm A) : gcm A := x <| p |> y.
 
 Lemma altA A : ssrfun.associative (@alt A).
 Proof. by move=> x y z; rewrite /alt lubA. Qed.
@@ -103,7 +103,7 @@ by rewrite scsl_hom_is_lubmorph.
 Qed.
 End bindaltDl.
 
-HB.instance Definition P_delta_monadAltMixin :=
+HB.instance Definition _ :=
   @isMonadAlt.Build (Monad_of_category_monad.acto Mgcm) alt altA bindaltDl.
 
 Lemma altxx A : idempotent (@alt A).
@@ -111,8 +111,10 @@ Proof. by move=> x; rewrite /= /alt lubxx. Qed.
 Lemma altC A : commutative (@alt A).
 Proof. by move=> a b; rewrite /= /alt /= lubC. Qed.
 
-HB.instance Definition gcmACI :=
+HB.instance Definition _ :=
   @isMonadAltCI.Build (Monad_of_category_monad.acto Mgcm) altxx altC.
+
+Definition gcmACI := [the altCIMonad of gcm].
 
 Lemma choice0 A (x y : gcm A) : x <| 0%:pr |> y = y.
 Proof. by rewrite /choice conv0. Qed.
@@ -153,16 +155,12 @@ Local Notation U1 := forget_semiCompSemiLattConvType.
 Lemma affine_F1e0U1PD_conv T (u v : gcm (gcm T)) p :
   ((F1 # eps0 (U1 (P_delta_left T))) (u <|p|> v) =
    (F1 # eps0 (U1 (P_delta_left T))) u <|p|> (F1 # eps0 (U1 (P_delta_left T))) v)%category.
-Proof.
-by rewrite scsl_hom_is_affine.
-Qed.
+Proof. by rewrite scsl_hom_is_affine. Qed.
 
 Lemma affine_e1PD_conv T (x y : el (F1 (FId (U1 (P_delta_left T))))) p :
   (eps1 (P_delta_left T)) (x <|p|> y) =
   (eps1 (P_delta_left T)) x <|p|> (eps1 (P_delta_left T)) y.
-Proof.
-by rewrite scsl_hom_is_affine.
-Qed.
+Proof. by rewrite scsl_hom_is_affine. Qed.
 
 Local Notation F1o := necset_semiCompSemiLattConvType.
 Local Notation F0o := FSDist_convType.
@@ -178,7 +176,7 @@ by rewrite scsl_hom_is_affine.
 Qed.
 End bindchoiceDl.
 
-HB.instance Definition P_delta_monadProbMixin :=
+HB.instance Definition _ :=
   isMonadProb.Build (Monad_of_category_monad.acto Mgcm)
     choice0 choice1 choiceC choicemm choiceA bindchoiceDl.
 
@@ -186,8 +184,10 @@ Lemma choicealtDr A (p : prob) :
   right_distributive (fun x y : Mgcm A => x <| p |> y) (@alt A).
 Proof. by move=> x y z; rewrite /choice lubDr. Qed.
 
-HB.instance Definition gcmAP :=
+HB.instance Definition _ :=
   @isMonadAltProb.Build (Monad_of_category_monad.acto Mgcm) choicealtDr.
+
+Definition gcmAP := [the altProbMonad of gcm].
 
 End P_delta_altProbMonad.
 
