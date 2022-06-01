@@ -41,8 +41,8 @@ Proof. by move=> x y z; rewrite /alt lubA. Qed.
 Lemma image_FSDistfmap A B (x : gcm A) (k : choice_of_Type A -> gcm B) :
   FSDistfmap k @` x = (gcm # k) x.
 Proof.
-rewrite /hierarchy.actm /= /actm !FCompE /category.actm /=.
-by rewrite /free_semiCompSemiLattConvType_mor /=; unlock.
+rewrite /hierarchy.actm/= /actm 5!FCompE /category.actm/=.
+by rewrite /free_semiCompSemiLattConvType_mor/=; unlock.
 Qed.
 
 Section funalt_funchoice.
@@ -54,6 +54,7 @@ Local Notation FC := free_choiceType.
 Local Notation UC := forget_choiceType.
 Local Notation U0 := forget_convType.
 Local Notation U1 := forget_semiCompSemiLattConvType.
+
 Lemma FunaltDr (A B : Type) (x y : gcm A) (k : A -> gcm B) :
   (gcm # k) (x [+] y) = (gcm # k) x [+] (gcm # k) y.
 Proof.
@@ -81,13 +82,14 @@ Local Notation U1 := forget_semiCompSemiLattConvType.
 
 Lemma affine_F1e0U1PD_alt T (u v : gcm (gcm T)) :
   (F1 # eps0 (U1 (P_delta_left T)))%category (u [+] v) =
-  (F1 # eps0 (U1 (P_delta_left T)))%category u [+] (F1 # eps0 (U1 (P_delta_left T)))%category v.
-Proof. by rewrite scsl_hom_is_lubmorph. Qed.
+  (F1 # eps0 (U1 (P_delta_left T)))%category u [+]
+  (F1 # eps0 (U1 (P_delta_left T)))%category v.
+Proof. exact: scsl_hom_is_lubmorph. Qed.
 
 Lemma affine_e1PD_alt T (x y : el (F1 (FId (U1 (P_delta_left T))))) :
   (eps1 (P_delta_left T)) (x [+] y) =
   (eps1 (P_delta_left T)) x [+] (eps1 (P_delta_left T)) y.
-Proof. by rewrite scsl_hom_is_lubmorph. Qed.
+Proof. exact: scsl_hom_is_lubmorph. Qed.
 
 Local Notation F1o := necset_semiCompSemiLattConvType.
 Local Notation F0o := FSDist_convType.
@@ -138,7 +140,8 @@ case/boolP : (s == 0%:pr) => s0.
   rewrite p0 (eqP s0) 2!choice0 (_ : q = 0%:pr) ?choice0 //; apply/val_inj.
   move: H2; rewrite p0 onem0 mul1R (eqP s0) onem0 => /(congr1 onem).
   by rewrite onemK onem1.
-rewrite /choice convA (@r_of_pq_is_r _ _ r s) //; congr ((_ <| _ |> _) <| _ |> _).
+rewrite /choice convA (@r_of_pq_is_r _ _ r s) //.
+congr ((_ <| _ |> _) <| _ |> _).
 by apply/val_inj; rewrite /= s_of_pqE -H2 onemK.
 Qed.
 
@@ -154,13 +157,14 @@ Local Notation U1 := forget_semiCompSemiLattConvType.
 
 Lemma affine_F1e0U1PD_conv T (u v : gcm (gcm T)) p :
   ((F1 # eps0 (U1 (P_delta_left T))) (u <|p|> v) =
-   (F1 # eps0 (U1 (P_delta_left T))) u <|p|> (F1 # eps0 (U1 (P_delta_left T))) v)%category.
-Proof. by rewrite scsl_hom_is_affine. Qed.
+   (F1 # eps0 (U1 (P_delta_left T))) u <|p|>
+   (F1 # eps0 (U1 (P_delta_left T))) v)%category.
+Proof. exact: scsl_hom_is_affine. Qed.
 
 Lemma affine_e1PD_conv T (x y : el (F1 (FId (U1 (P_delta_left T))))) p :
   (eps1 (P_delta_left T)) (x <|p|> y) =
   (eps1 (P_delta_left T)) x <|p|> (eps1 (P_delta_left T)) y.
-Proof. by rewrite scsl_hom_is_affine. Qed.
+Proof. exact: scsl_hom_is_affine. Qed.
 
 Local Notation F1o := necset_semiCompSemiLattConvType.
 Local Notation F0o := FSDist_convType.
@@ -168,12 +172,14 @@ Local Notation FCo := choice_of_Type.
 Local Notation F1m := free_semiCompSemiLattConvType_mor.
 Local Notation F0m := free_convType_mor.
 
-Lemma bindchoiceDl p : BindLaws.left_distributive (@hierarchy.bind gcm) (@choice p).
+Lemma bindchoiceDl p :
+  BindLaws.left_distributive (@hierarchy.bind gcm) (@choice p).
 Proof.
 move=> A B x y k.
 rewrite hierarchy.bindE /= /join_ -category.bindE.
-by rewrite scsl_hom_is_affine.
+exact: scsl_hom_is_affine.
 Qed.
+
 End bindchoiceDl.
 
 HB.instance Definition _ :=
@@ -198,15 +204,17 @@ Local Open Scope proba_monad_scope.
    we can distinguish different probabilities. *)
 Example gcmAP_choice_nontrivial (p q : prob) :
   p <> q ->
-  hierarchy.Ret true <|p|> hierarchy.Ret false <>
-  hierarchy.Ret true <|q|> hierarchy.Ret false :> (Monad_of_category_monad.acto Mgcm) bool.
+  (* Ret = hierarchy.ret *)
+  Ret true <|p|> Ret false <>
+  Ret true <|q|> Ret false :> (Monad_of_category_monad.acto Mgcm) bool.
 Proof.
 apply contra_not.
 rewrite !gcm_retE /Choice /= /Conv /= => /(congr1 (@NECSet.car _)).
 rewrite !necset_convType.convE !conv_cset1 /=.
-move/(@classical_sets_ext.set1_inj _ (Conv _ _ _))/(congr1 (@FSDist.f _))/fsfunP/(_ true).
+move/(@set1_inj _ (Conv _ _ _))/(congr1 (@FSDist.f _))/fsfunP/(_ true).
 rewrite !ConvFSDist.dE !FSDist1.dE /=.
 rewrite !(@in_fset1 (choice_of_Type bool)) eqxx /= ifF; last exact/negbTE/eqP.
 by rewrite !mulR1 !mulR0 !addR0; exact: val_inj.
 Qed.
+
 End probabilisctic_choice_not_trivial.
