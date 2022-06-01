@@ -108,10 +108,11 @@ Definition HomPack (C : category) (a b : C) (f : el a -> el b)
   Hom.Pack (@Hom.Class C a b f (isHom.Axioms_ a b f Hf)).
 Arguments HomPack [C].
 
-Lemma hom_ext (C : category) (a b : C) (f g : {hom a, b}) : f = g <-> f = g :> (_ -> _).
+Lemma hom_ext (C : category) (a b : C) (f g : {hom a, b}) :
+  f = g <-> f = g :> (_ -> _).
 Proof.
 move: f g => [f [[Hf]]] [g [[Hg]]] /=; split => [[]//|fg /=].
-move: Hf Hg; rewrite fg=> Hf Hg.
+rewrite fg in Hf Hg *.
 by rewrite (boolp.Prop_irrelevance Hf Hg).
 Qed.
 
@@ -119,8 +120,7 @@ Section hom_interface.
 Variable C : category.
 Implicit Types a b c : C.
 
-HB.instance Definition _ c :=
-  isHom.Build _ _ _ (@idfun (el c)) (idfun_inhom c).
+HB.instance Definition _ c := isHom.Build _ _ _ (@idfun (el c)) (idfun_inhom c).
 
 HB.instance Definition _ (a b c : C) (f : {hom b, c}) (g : {hom a, b}):=
   isHom.Build _ _ _ (f \o g) (funcomp_inhom (isHom_inhom g) (isHom_inhom f)).
@@ -238,7 +238,7 @@ HB.mixin Record isFunctor (C D : category) (F : C -> D) := {
   functor_o_hom : FunctorLaws.comp actm }.
 HB.structure Definition Functor C D := {F of isFunctor C D F}.
 (*Notation functor := Functor.type.*)
-Definition functor_phant (C D : category) (_ : phant (C -> D)) := Functor.type C D.
+Definition functor_phant (C D : category) of phant (C -> D) := Functor.type C D.
 Arguments actm [C D] F [a b] f: rename.
 Notation "F # f" := (actm F f) : category_scope.
 Notation "{ 'functor' fCD }" := (functor_phant (Phant fCD))
@@ -386,7 +386,7 @@ Proof. by []. Qed.
 
 HB.instance Definition _ :=
   isNatural.Build C D F F unnattrans_id natural_id.
-Definition NId : F ~> F := NattransPack natural_id.
+Definition NId : F ~> F := [the nattrans _ _ of unnattrans_id].
 Lemma NIdE : NId  = (fun a => [hom idfun]) :> (_ ~~> _).
 Proof. by []. Qed.
 End id_natural_transformation.
@@ -463,7 +463,7 @@ rewrite [in RHS]FCompE -2!functor_o; congr (F' # _); apply hom_ext => /=.
 by rewrite (natural s).
 Qed.
 
-Definition HComp : (F' \O F) ~> (G' \O G) := NattransPack natural_hcomp.
+Definition HComp : F' \O F ~> G' \O G := NattransPack natural_hcomp.
 End horizontal_composition.
 Notation "f \h g" := (locked (HComp g f)).
 
@@ -862,7 +862,8 @@ HB.instance Definition _ := isFunctor.Build _ _ _ fmap_id fmap_o.
 Notation F := [the {functor _ -> _} of M].
 Let ret'_naturality : naturality FId F ret'.
 Proof. by move=> A B h; rewrite FIdf bindretf_fun. Qed.
-(*HB.instance Definition _ := isNatural.Build _ _ FId F _ ret'_naturality.*)
+HB.instance Definition _ := isNatural.Build _ _ FId F
+  (ret' : FId ~~> M)(*NB: fails without this type constraint*) ret'_naturality.
 Definition ret := NattransPack ret'_naturality.
 Let join' : F \O F ~~> F := fun _ => bind [hom idfun].
 Let fmap_bind a b c (f : {hom a,b}) m (g : {hom c,F a}) :
@@ -913,7 +914,9 @@ rewrite bind_fmap_fun/= bindA/=.
 congr (fun f => bind f mmma).
 by rewrite hom_ext.
 Qed.
+(* TODO: use Monad_of_ret_join.Build? *)
 HB.instance Definition _ := isMonad.Build C F bindE joinretM joinMret joinA.
+(* TODO: eliminate Warning: non forgetful inheritance detected *)
 HB.end.
 
 Module _Monad_of_adjoint_functors.
