@@ -130,6 +130,8 @@ Lemma free_choiceType_mor_id : FunctorLaws.id free_choiceType_mor.
 Proof. by move=> a; rewrite hom_ext. Qed.
 Lemma free_choiceType_mor_comp : FunctorLaws.comp free_choiceType_mor.
 Proof. by move=> a b c g h; rewrite hom_ext. Qed.
+(*HB.instance Definition _ := isFunctor.Build CT CC _
+  free_choiceType_mor_id free_choiceType_mor_comp.*)
 Definition free_choiceType : {functor CT -> CC} :=
   FunctorPack free_choiceType_mor_id free_choiceType_mor_comp.
 Lemma free_choiceType_mor_comp_fun (a b c : Type) (g : {hom b, c})
