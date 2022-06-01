@@ -36,7 +36,8 @@ From HB Require Import structures.
 (*                        Module AdjointFunctors)                             *)
 (*      Module AdjComp == define a pair of adjoint functors by composition of *)
 (*                        two pairs of adjoint functors                       *)
-(* Module MonadOfAdjoint == monad defined by adjointness                      *)
+(* Module Monad_of_adjoint_functors == monad defined by                       *)
+(*                                     a pair of adjoint functors             *)
 (* Module Monad_of_category_monad == interface to monad.v                     *)
 (* Monad_of_category_monad.m == turns a monad over the Type category into     *)
 (*                        a monad in the sense of monad.v                     *)
@@ -60,15 +61,17 @@ From HB Require Import structures.
 - Module JoinLaws.
 - Module BindLaws.
 - Section monad_interface.
-- Module MonadOfAdjoint.
-    monad defined by adjointness
-- Module Monad_of_bind_ret.
-    monad defined by bind and ret
+- Module Monad_of_adjoint_functors.
+    monad defined by a pair of adjoint functors
+- Module Monad_of_ret_bind.
+    monad defined by ret and bind
+- Module Monad_of_ret_join.
+    monad defined by ret and join
 - Module Monad_of_category_monad.
     interface to monad.v
 *)
 
-Reserved Notation "F ~~> G" (at level 51, only parsing).
+Reserved Notation "F ~~> G" (at level 51).
 
 Declare Scope category_scope.
 Delimit Scope category_scope with category.
@@ -80,6 +83,7 @@ Unset Strict Implicit.
 Unset Printing Implicit Defensive.
 
 (* opaque ssrfun.frefl blocks some proofs involving functor_ext *)
+#[global]
 Remove Hints frefl : core.
 
 Lemma frefl_transparent A B (f : A -> B) : f =1 f.
@@ -100,10 +104,10 @@ HB.mixin Record isCategory (obj : Type) := {
       inhom _ _ f -> inhom _ _ g -> inhom _ _ (g \o f)
 }.
 Arguments isCategory.phant_Build : clear implicits.
+#[short(type=category)]
 HB.structure Definition Category := {C of isCategory C}.
 Arguments idfun_inhom [C] : rename.
 Arguments funcomp_inhom [C a b c f g] : rename.
-Notation category := Category.type.
 
 
 (** * Hom *)
@@ -123,8 +127,8 @@ Notation "{ 'hom' C ; U , V }" := (@Hom.type C U V)
 (*(at level 0, format "{ 'hom'  C ;  U ,  V }", only parsing) : category_scope.*)
 Notation "[ 'hom' f ]" := [the {hom _ , _} of f]
   (at level 0, format "[ 'hom'  f ]") : category_scope.
-(* TODO: FIX: this [hom f] notation is not used for printing and
-   [the {hom ...} of f] is printed instead. Not the desired behaviour. *)
+(* TODO: FIX: At some places, this [hom f] notation is not used for printing and
+   [the {hom ...} of f] is undesirably printed instead. *)
 
 Definition HomPack (C : category) (a b : C) (f : el a -> el b)
            (Hf : inhom a b f) :=
@@ -138,32 +142,18 @@ move: Hf Hg; rewrite fg=> Hf Hg.
 by rewrite (boolp.Prop_irrelevance Hf Hg).
 Qed.
 
-Section category_interface.
+Section hom_interface.
 Variable C : category.
 Implicit Types a b c : C.
 
 HB.instance Definition _ c :=
   isHom.Build _ _ _ (@idfun (el c)) (idfun_inhom c).
-Definition homid0 c := [hom (@idfun (el c))].
-(*Canonical homid0 c := HomPack _ _ idfun (idfun_in_hom c).*)
 
 HB.instance Definition _ (a b c : C) (f : {hom b, c}) (g : {hom a, b}):=
   isHom.Build _ _ _ (f \o g) (funcomp_inhom (isHom_inhom g) (isHom_inhom f)).
-Definition homcomp0 (a b c : C) (f : {hom b, c}) (g : {hom a, b}) :=
-  [hom (f \o g)].
-(*Canonical homcomp0 (a b c : C) (f : {hom b, c}) (g : {hom a, b}) :=
-  HomPack _ _ (f \o g) (InHom_compfun f g).*)
+End hom_interface.
 
-(*
-Lemma homcomp0E (a b c : C) (g : {hom b, c}) (f : {hom a, b}) :
-  homcomp0 g f = [hom g \o f].
-Proof. by []. Qed.
-*)
-End category_interface.
-
-(* Experimental notation [\o f , .. , g , h]:
-   The purpose is to pretty print the sequence of hom compositions
-   that frequently appear in category theory textbooks. *)
+(* Notation [\o f , .. , g , h] for hom compositions. *)
 Module comps_notation.
 Notation "[ '\o' f , .. , g , h ]" := (f \o .. (g \o h) ..) (at level 0,
   format "[ '[' '\o'  f ,  '/' .. ,  '/' g ,  '/' h ']' ]") : category_scope.
@@ -229,7 +219,7 @@ Definition transport_hom (a a' b b' : C) (pa : a = a') (pb : b = b')
           (eq_rect a (fun x => {hom x, b}) f a' pa)
           b' pb.
 Definition hom_of_eq (a b : C) (p : a = b) : {hom a, b} :=
-  transport_codom p (homid0 a).
+  transport_codom p [hom idfun].
 (* (* this works too; not sure which is better *)
 Definition hom_of_eq (a b : C) (p : a = b) : {hom a, b} :=
   transport_codom p [hom idfun].
@@ -398,11 +388,11 @@ Arguments naturality [C D].
 HB.mixin Record isNatural
          (C D : category) (F G : {functor C -> D}) (f : F ~~> G) :=
   {natural : naturality F G f}.
+#[short(type=nattrans)]
 HB.structure Definition Nattrans
              (C D : category) (F G : {functor C -> D}) :=
   {f of isNatural C D F G f}.
 Arguments natural [C D F G] phi : rename.
-Notation nattrans := Nattrans.type.
 Notation "F ~> G" := (nattrans F G) : category_scope.
 Definition NattransPack (C D : category) (F G : {functor C -> D}) (f : F ~~> G)
            (Hf : naturality F G f) :=
@@ -428,14 +418,14 @@ Arguments natural_head [C D F G].
 
 Section id_natural_transformation.
 Variables (C D : category) (F : {functor C -> D}).
-Definition unnattrans_id := fun (a : C) => homid0 (F a).
+Definition unnattrans_id := fun (a : C) => [hom (@idfun (el (F a)))].
 Definition natural_id : naturality _ _ unnattrans_id.
 Proof. by []. Qed.
 
 HB.instance Definition _ :=
   isNatural.Build C D F F unnattrans_id natural_id.
 Definition NId : F ~> F := NattransPack natural_id.
-Lemma NIdE : NId  = (fun a => homid0 (F a)) :> (_ ~~> _).
+Lemma NIdE : NId  = (fun a => [hom idfun]) :> (_ ~~> _).
 Proof. by []. Qed.
 End id_natural_transformation.
 
@@ -447,7 +437,7 @@ Variable (Iobj : forall c, F c = G c).
 Local Notation tc := (transport_codom (Iobj _)).
 Local Notation td := (transport_dom (esym (Iobj _))).
 Variable (Imor : forall a b (f : {hom a, b}), tc (F # f) = td (G # f)).
-Definition f : F ~~> G := fun (c : C) => tc (homid0 (F c)).
+Definition f : F ~~> G := fun (c : C) => tc [hom idfun].
 Lemma natural : naturality F G f.
 Proof.
 move=> a b h.
@@ -463,7 +453,7 @@ Arguments n [C D] : simpl never.
 Notation NEq := n.
 Lemma NEqE C D F G Iobj Imor :
   @NEq C D F G Iobj Imor =
-  (fun a => transport_codom (Iobj _) (homid0 (F a))) :> (_ ~~> _).
+  (fun a => transport_codom (Iobj _) [hom idfun]) :> (_ ~~> _).
 Proof. by []. Qed.
 End Exports.
 End NEq.
@@ -635,9 +625,9 @@ Proof. exact: can_inj (@hom_isoK c d). Qed.
 Lemma hom_inv_inj (c : C) (d : D) : injective (@hom_inv c d).
 Proof. exact: can_inj (@hom_invK c d). Qed.
 
-Lemma eta_hom_iso (c : C) : eta A c = hom_iso (homid0 (F c)).
+Lemma eta_hom_iso (c : C) : eta A c = hom_iso [hom idfun].
 Proof. by apply hom_ext; rewrite /hom_iso /= functor_id. Qed.
-Lemma eps_hom_inv (d : D) : eps A d = hom_inv (homid0 (G d)).
+Lemma eps_hom_inv (d : D) : eps A d = hom_inv [hom idfun].
 Proof. by apply hom_ext; rewrite /hom_inv /= functor_id compfid. Qed.
 
 Lemma ext (B : F -| G) : eta A = eta B -> eps A = eps B -> A = B.
@@ -843,8 +833,9 @@ HB.mixin Record isMonad (C : category) (M : C -> C) of @Functor C C M := {
   joinMret : JoinLaws.right_unit ret join ;
   joinA : JoinLaws.associativity join
 }.
-HB.structure Definition Monad (C : category) := {M of isMonad C M &}.
-Notation monad := Monad.type.
+#[short(type=monad)]
+HB.structure Definition Monad (C : category) :=
+  {M of isMonad C M & isFunctor C C M}.
 Arguments bind {C M a b} : rename, simpl never.
 Notation "m >>= f" := (bind f m).
 
@@ -882,15 +873,14 @@ HB.instance Definition _ := isMonad.Build C M bindE joinretM joinMret joinA.
 HB.end. (* HB.end is the closing parenthesis corr. to HB.builders *)
 
 (* Monads defined by ret and bind; M need not be a priori a functor *)
-Module _Monad_of_ret_bind.
-Section def.
-Variables (C : category) (M : C -> C).
-Variables
-  (ret' : forall a, {hom a, M a})
-  (bind : forall (a b : C), {hom a, M b} -> {hom M a, M b})
-  (bindretf : BindLaws.left_neutral bind ret')
-  (bindmret : BindLaws.right_neutral bind ret')
-  (bindA : BindLaws.associative bind).
+HB.factory Record Monad_of_ret_bind (C : category) (acto : C -> C) := {
+  ret' : forall a, {hom a, acto a} ;
+  bind : forall (a b : C), {hom a, acto b} -> {hom acto a, acto b} ;
+  bindretf : BindLaws.left_neutral bind ret' ;
+  bindmret : BindLaws.right_neutral bind ret' ; 
+  bindA : BindLaws.associative bind ;
+}.
+HB.builders Context C M of Monad_of_ret_bind C M.
 Let fmap a b  (f : {hom a, b}) := bind [hom ret' b \o f].
 Let bindretf_fun : (forall (a b : C) (f : {hom a, M b}),
   bind f \o ret' a = f).
@@ -910,9 +900,11 @@ rewrite bindA/=.
 congr (fun f => bind f m); rewrite hom_ext/=.
 by rewrite -[in RHS]hom_compA bindretf_fun.
 Qed.
-Definition F := FunctorPack fmap_id fmap_o.
+HB.instance Definition _ := isFunctor.Build _ _ _ fmap_id fmap_o.
+Notation F := [the {functor _ -> _} of M].
 Let ret'_naturality : naturality FId F ret'.
 Proof. by move=> A B h; rewrite FIdf bindretf_fun. Qed.
+(*HB.instance Definition _ := isNatural.Build _ _ FId F _ ret'_naturality.*)
 Definition ret := NattransPack ret'_naturality.
 Let join' : F \O F ~~> F := fun _ => bind [hom idfun].
 Let fmap_bind a b c (f : {hom a,b}) m (g : {hom c,F a}) :
@@ -963,41 +955,8 @@ rewrite bind_fmap_fun/= bindA/=.
 congr (fun f => bind f mmma).
 by rewrite hom_ext.
 Qed.
-Definition build :=
-  Monad.Pack
-    (Monad.Class
-       (isMonad.Axioms_
-          (category_Functor__to__category_isFunctor F)
-          ret
-          join
-          bind
-          bindE
-          joinretM
-          joinMret
-          joinA)).
-End def.
-End _Monad_of_ret_bind.
-Notation Monad_of_ret_bind := _Monad_of_ret_bind.build.
-(* Trying to turn the above module into a factory, HB.end fails with
-Error: No builders to declare, did you forget HB.instance?
-
-HB.factory Record Monad_of_ret_bind (C : category) (acto : C -> C) := {
-  ret' : forall a, {hom a, acto a} ;
-  bind : forall (a b : C), {hom a, acto b} -> {hom acto a, acto b} ;
-  bindretf : BindLaws.left_neutral bind ret' ;
-  bindmret : BindLaws.right_neutral bind ret' ; 
-  bindA : BindLaws.associative bind ;
-}.
-HB.builders Context C acto of Monad_of_ret_bind C acto.
-Let F := @_Monad_of_ret_bind.F C acto ret' bind bindretf bindmret bindA.
-Let bindE := @_Monad_of_ret_bind.bindE C acto ret' bind bindretf bindmret bindA.
-Let joinretM := @_Monad_of_ret_bind.joinretM C acto ret' bind bindretf bindmret bindA.
-Let joinMret := @_Monad_of_ret_bind.joinMret C acto ret' bind bindretf bindmret bindA.
-Let joinA := @_Monad_of_ret_bind.joinA C acto ret' bind bindretf bindmret bindA.
 HB.instance Definition _ := isMonad.Build C F bindE joinretM joinMret joinA.
 HB.end.
-*)
-
 
 (* Monads defined by adjoint functors *)
 Module _Monad_of_adjoint_functors.
@@ -1054,24 +1013,19 @@ Let bind (a b : C) (f : {hom a, M b}) : {hom M a, M b} := [hom join _ \o (M # f)
 Let bindE (a b : C) (f : {hom a, M b}) (m : el (M a)) :
     bind f m = join b (([the {functor C -> C} of M] # f) m).
 Proof. by []. Qed.
-HB.instance Definition _ :=
+HB.instance Definition monad_of_adjoint_mixin :=
   isMonad.Build C M bindE join_left_unit join_right_unit join_associativity.
 (* TODO: eliminate Warning: non forgetrul inheritance detected *)
-Definition monad_of_adjoint_mixin :
-  isMonad.axioms_ C M
-                  (category_Functor__to__category_isFunctor M) :=
-  isMonad.Axioms_ (category_Functor__to__category_isFunctor M) _ _ _
-                  bindE join_left_unit join_right_unit join_associativity.
 End def.
 Definition build (C D : category)
            (F : {functor C -> D}) (G : {functor D -> C}) (A : F -| G) :=
   Monad.Pack (Monad.Class (monad_of_adjoint_mixin A)).
 End _Monad_of_adjoint_functors.
 Notation Monad_of_adjoint_functors := _Monad_of_adjoint_functors.build.
-(* TODO: Could this be an HB.factory? *)
-
+(* TODO: Can we turn this into a factory? *)
 
 (** Converter from category.monad to hierarchy.monad *)
+Notation monad := Monad.type.
 Require Import hierarchy.
 
 Module Monad_of_category_monad.
@@ -1162,7 +1116,7 @@ by apply hom_ext.
 Qed.
 
 Lemma joinA (A : Type) :
-  @join A \o @hierarchy.actm _ _ _ (@join A) = @join _ \o @join _.
+  @join A \o (_ # (@join A))%monae = @join _ \o @join _.
 Proof.
 apply funext=> x; rewrite /join /ret /=.
 rewrite /join_ /ret_ /=.
@@ -1175,15 +1129,15 @@ by apply hom_ext.
 Qed.
 
 Let bind (A B : UU0) (m : acto A) (f : A -> acto B) : acto B :=
-  @join _ ((@hierarchy.actm _ _ _ f) m).
+  @join _ ((_ # f)%monae m).
 
 Lemma bindE : forall (A B : UU0) (f : A -> acto B) (m : acto A),
   bind m f = @join _ (([the functor of acto] # f)%monae m).
 Proof. by []. Qed.
 
-HB.instance Definition mixin := @hierarchy.isMonad.Build acto ret join bind
+HB.instance Definition _ := @hierarchy.isMonad.Build acto ret join bind
   bindE joinretM joinMret joinA.
-(*Definition m : hierarchy.Monad.type := hierarchy.Monad.Pack (hierarchy.Monad.Class mixin).*)
 End def.
 End Monad_of_category_monad.
 HB.export Monad_of_category_monad.
+(* TODO: Can we turn this into a factory? *)
