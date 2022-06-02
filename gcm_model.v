@@ -679,7 +679,6 @@ rewrite 2!VCompE_nat HCompId HIdComp.
 set E := epsC _; have->: E = [hom idfun] by apply/hom_ext; rewrite epsCE.
 rewrite functor_id_hom.
 rewrite !functor_o functor_id !compfid.
-
 set F1J := F1 # _.
 have-> : F1J = @necset_join.F1join0 _ :> (_ -> _).
 - apply funext=> x; apply necset_ext=> /=.
