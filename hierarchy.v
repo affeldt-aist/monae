@@ -916,7 +916,7 @@ HB.structure Definition MonadFailR0State (S : UU0) :=
 
 #[short(type=nondetStateMonad)]
 HB.structure Definition MonadNondetState (S : UU0) :=
-  { M of isMonadPrePlus M & isMonadState S M }.
+  { M of MonadPrePlus M & isMonadState S M }.
 
 HB.mixin Record isMonadStateRun (S : UU0) (N : monad)
    (M : UU0 -> UU0) of MonadState S M := {

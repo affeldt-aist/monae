@@ -62,7 +62,7 @@ HB.instance Definition _ := isNatural.Build
   [the functor of (M \o N) \o (M \o N)] [the functor of M \o N] (@JOIN) JOIN_naturality.
 
 Definition JOIN' : [the functor of (M \o N) \o (M \o N)] ~> [the functor of M \o N] :=
-  [the nattrans _ _ of @JOIN].
+  [the _ ~> _ of @JOIN].
 
 Lemma JOIN_ret : JoinLaws.left_unit (CRet M N) (@JOIN').
 Proof.
@@ -135,7 +135,7 @@ HB.instance Definition _ := isNatural.Build
   [the functor of ((M \o N) \o (M \o N))] [the functor of (M \o N)] (@JOIN) join_naturality.
 
 Definition JOIN' : [the functor of (M \o N) \o (M \o N)] ~> [the functor of M \o N] :=
-  [the nattrans _ _ of (@JOIN)].
+  [the _ ~> _ of (@JOIN)].
 
 Lemma JOIN_ret : JoinLaws.left_unit (@CRet M N) (@JOIN').
 Proof.
@@ -280,7 +280,7 @@ HB.instance Definition _ := isNatural.Build
   [the functor of ((M \o N) \o (M \o N))] [the functor of (M \o N)] (@JOIN) JOIN_naturality.
 
 Definition JOIN' : [the functor of (M \o N) \o (M \o N)] ~> [the functor of M \o N] :=
-  [the nattrans _ _ of (@JOIN)].
+  [the _ ~> _ of (@JOIN)].
 
 Lemma JOIN_ret : JoinLaws.left_unit (@CRet M N) (@JOIN').
 Proof.
@@ -360,18 +360,18 @@ Section distributivelaw.
 Variables S T : monad.
 Record t := mk {
   f : [the functor of S \o T] ~> [the functor of T \o S] ;
-  unit1 : IV (f \v (@ret S \h [the nattrans _ _ of NId T])) =
-          VI ([the nattrans _ _ of NId T] \h @ret S) ;
-  unit2 : VI (f \v ([the nattrans _ _ of NId S] \h @ret T)) =
-          IV (@ret T \h [the nattrans _ _ of NId S]) ;
+  unit1 : IV (f \v (@ret S \h [the _ ~> _ of NId T])) =
+          VI ([the _ ~> _ of NId T] \h @ret S) ;
+  unit2 : VI (f \v ([the _ ~> _ of NId S] \h @ret T)) =
+          IV (@ret T \h [the _ ~> _ of NId S]) ;
   multiplication1 :
-    AV (f \v (@join S \h [the nattrans _ _ of NId T])) =
-    ([the nattrans _ _ of NId T] \h @join S) \v
-    VA ((f \h [the nattrans _ _ of NId S]) \v VA' ([the nattrans _ _ of NId S] \h f)) ;
+    AV (f \v (@join S \h [the _ ~> _ of NId T])) =
+    ([the _ ~> _ of NId T] \h @join S) \v
+    VA ((f \h [the _ ~> _ of NId S]) \v VA' ([the _ ~> _ of NId S] \h f)) ;
   multiplication2 :
-    AV' (f \v ([the nattrans _ _ of NId S] \h @join T)) =
-    (@join T \h [the nattrans _ _ of NId S]) \v
-    VA' (([the nattrans _ _ of NId T] \h f) \v VA (f \h [the nattrans _ _ of NId T]))
+    AV' (f \v ([the _ ~> _ of NId S] \h @join T)) =
+    (@join T \h [the _ ~> _ of NId S]) \v
+    VA' (([the _ ~> _ of NId T] \h f) \v VA (f \h [the _ ~> _ of NId T]))
 }.
 End distributivelaw.
 End DistributiveLaw.

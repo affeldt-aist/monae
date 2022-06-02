@@ -338,17 +338,13 @@ Definition naturality (C D : category) (F G : {functor C -> D}) (f : F ~~> G) :=
   forall a b (h : {hom a, b}), (G # h) \o (f a) = (f b) \o (F # h).
 Arguments naturality [C D].
 HB.mixin Record isNatural
-         (C D : category) (F G : {functor C -> D}) (f : F ~~> G) :=
-  {natural : naturality F G f}.
+    (C D : category) (F G : {functor C -> D}) (f : F ~~> G) :=
+  { natural : naturality F G f }.
 #[short(type=nattrans)]
-HB.structure Definition Nattrans
-             (C D : category) (F G : {functor C -> D}) :=
+HB.structure Definition _ (C D : category) (F G : {functor C -> D}) :=
   {f of isNatural C D F G f}.
 Arguments natural [C D F G] phi : rename.
 Notation "F ~> G" := (nattrans F G) : category_scope.
-Definition NattransPack (C D : category) (F G : {functor C -> D}) (f : F ~~> G)
-           (Hf : naturality F G f) :=
-  Nattrans.Pack (Nattrans.Class (@isNatural.Axioms_ C D F G f Hf)).
 
 Section natural_transformation_lemmas.
 Import comps_notation.
@@ -357,8 +353,7 @@ Lemma natural_head (phi : F ~> G) a b c (h : {hom a, b}) (f : {hom c, F a}) :
   [\o G # h, phi a, f] = [\o phi b, F # h, f].
 Proof. by rewrite -!hom_compA natural. Qed.
 
-Lemma nattrans_ext (f g : F ~> G) :
-  f = g <-> forall a, (f a = g a :> (_ -> _)).
+Lemma nattrans_ext (f g : F ~> G) : f = g <-> forall a, (f a = g a :> (_ -> _)).
 Proof.
 split=> [ -> // |]; move: f g => [f [[Hf]]] [g [[Hg]]] /= fg''.
 have fg' : forall a, f a = g a :> {hom _, _} by move=> a; rewrite hom_ext fg''.
@@ -374,9 +369,8 @@ Definition unnattrans_id := fun (a : C) => [hom (@idfun (el (F a)))].
 Definition natural_id : naturality _ _ unnattrans_id.
 Proof. by []. Qed.
 
-HB.instance Definition _ :=
-  isNatural.Build C D F F unnattrans_id natural_id.
-Definition NId : F ~> F := [the nattrans _ _ of unnattrans_id].
+HB.instance Definition _ := isNatural.Build C D F F unnattrans_id natural_id.
+Definition NId : F ~> F := [the _ ~> _ of unnattrans_id].
 Lemma NIdE : NId  = (fun a => [hom idfun]) :> (_ ~~> _).
 Proof. by []. Qed.
 End id_natural_transformation.
@@ -398,13 +392,14 @@ have /hom_ext -> : [hom (hom_of_eq (Iobj b) \o F # h)] = [hom tc (F # h)]
   by rewrite transport_codomF.
 by rewrite Imor transport_domF homfunK /= esymK.
 Qed.
-Definition n : F ~> G := NattransPack natural.
+
+HB.instance Definition _ := isNatural.Build C D F G f natural.
+Definition n : F ~> G := [the _ ~> _ of f].
 End def.
 Module Exports.
 Arguments n [C D] : simpl never.
 Notation NEq := n.
-Lemma NEqE C D F G Iobj Imor :
-  @NEq C D F G Iobj Imor =
+Lemma NEqE C D F G Iobj Imor : @NEq C D F G Iobj Imor =
   (fun a => transport_codom (Iobj _) [hom idfun]) :> (_ ~~> _).
 Proof. by []. Qed.
 End Exports.
@@ -418,10 +413,13 @@ Notation "[ 'NEq' F , G ]" :=
 Section vertical_composition.
 Variables (C D : category) (F G H : {functor C -> D}).
 Variables (g : G ~> H) (f : F ~> G).
-Definition ntcomp := fun a => [hom g a \o f a].
-Definition natural_vcomp : naturality _ _ ntcomp.
+Definition vcomp := fun a => [hom g a \o f a].
+Definition natural_vcomp : naturality _ _ vcomp.
 Proof. by move=> A B h; rewrite compA (natural g) -compA (natural f). Qed.
-Definition VComp : F ~> H := NattransPack natural_vcomp.
+
+HB.instance Definition _ := isNatural.Build C D F H
+  vcomp natural_vcomp.
+Definition VComp : F ~> H := [the F ~> H of vcomp].
 End vertical_composition.
 Notation "f \v g" := (VComp f g).
 
@@ -444,16 +442,20 @@ Section horizontal_composition.
 Variables (C D E : category) (F G : {functor C -> D}) (F' G' : {functor D -> E}).
 Variables (s : F ~> G) (t : F' ~> G').
 
-Lemma natural_hcomp :
-  naturality (F' \O F) (G' \O G) (fun c => [hom t (G c) \o F' # s c]).
+Definition hcomp : F' \O F ~~> G' \O G :=
+  fun (c : C) => [hom t (G c) \o F' # s c].
+Lemma natural_hcomp : naturality (F' \O F) (G' \O G) hcomp.
 Proof.
 move=> c0 c1 h.
 rewrite [in LHS]compA (natural t) -[in LHS]compA -[in RHS]compA; congr (_ \o _).
 rewrite [in RHS]FCompE -2!functor_o; congr (F' # _); apply hom_ext => /=.
-by rewrite (natural s).
+by rewrite natural.
 Qed.
 
-Definition HComp : F' \O F ~> G' \O G := NattransPack natural_hcomp.
+HB.instance Definition _ := isNatural.Build C E (F' \O F) (G' \O G)
+  hcomp natural_hcomp.
+
+Definition HComp : F' \O F ~> G' \O G := [the _ ~> _ of hcomp].
 End horizontal_composition.
 Notation "f \h g" := (locked (HComp g f)).
 
@@ -751,8 +753,6 @@ Lemma bind_left_neutral_hom_fun (r : forall A, {hom A, M A})
 Proof. by split; move=> H A B f; move: (H A B f); move/hom_ext. Qed.
 End bind_lemmas.
 
-
-(** * Monad *)
 (*
 The following definition of the structure fails with:
 Error: HB: coercion not to Sortclass or Funclass not supported yet.
@@ -903,7 +903,6 @@ rewrite bind_fmap_fun/= bindA/=.
 congr (fun f => bind f mmma).
 by rewrite hom_ext.
 Qed.
-(* TODO: use Monad_of_ret_join.Build? *)
 HB.instance Definition _ := isMonad.Build C F bindE joinretM joinMret joinA.
 (* TODO: eliminate Warning: non forgetful inheritance detected *)
 HB.end.
@@ -949,13 +948,10 @@ rewrite /= -functor_o -[in RHS]functor_id.
 congr (G # _).
 by rewrite hom_ext/= triL.
 Qed.
-(* TODO: the following use of factory fails. why?
-HB.instance Definition _ :=
-  @Monad_of_ret_join.Build C M
-                           [the FId ~> M of ret]
-                           [the M \O M ~> M of join]
-    join_left_unit join_right_unit join_associativity.
-*)
+(*HB.instance Definition _ :=
+  Monad_of_ret_join.Build C M
+    join_left_unit join_right_unit join_associativity.*)
+
 Let bind (a b : C) (f : {hom a, M b}) : {hom M a, M b} :=
   [hom join _ \o (M # f)].
 Let bindE (a b : C) (f : {hom a, M b}) (m : el (M a)) :
@@ -972,13 +968,12 @@ End _Monad_of_adjoint_functors.
 Notation Monad_of_adjoint_functors := _Monad_of_adjoint_functors.build.
 (* TODO: Can we turn this into a factory? *)
 
-(** Converter from category.monad to hierarchy.monad *)
-Notation monad := Monad.type.
+(* Converter from category.monad to hierarchy.monad *)
 Require Import hierarchy.
 
 Module Monad_of_category_monad.
 Section def.
-Variable M : category.monad CT.
+Variable M : category.Monad.Exports.monad CT.
 
 Definition acto : Type -> Type := M.
 
@@ -986,27 +981,20 @@ Definition actm (A B : Type) (h : A -> B) (x : acto A) : acto B :=
   (M # [the {hom A, B} of h]) x.
 
 Lemma actm_id A : actm id = @id (acto A).
-Proof.
-rewrite /actm.
-by rewrite category.functor_id.
-Qed.
+Proof. by rewrite /actm category.functor_id. Qed.
 
 Lemma actm_comp A B C (g : B -> C) (h : A -> B) :
   actm (g \o h) = actm g \o actm h.
-Proof.
-rewrite {1}/actm.
-by rewrite category.functor_o.
-Qed.
+Proof. by rewrite {1}/actm category.functor_o. Qed.
 
 HB.instance Definition _ := hierarchy.isFunctor.Build acto actm_id actm_comp.
 
 Let F := [the functor of acto].
 
-Lemma actmE (a b : CT) (h : {hom a, b}) :
-  (F # h)%monae = (M # h)%category.
+Lemma actmE (a b : CT) (h : {hom a, b}) : (F # h)%monae = (M # h)%category.
 Proof. by congr (category.actm M); apply hom_ext. Qed.
 
-Definition ret_ : forall A, hierarchy.FId A -> F A :=
+Definition ret_ : forall A, FId%monae A -> F A :=
   fun A (a : A) => @category.ret _ M A a.
 
 Definition join_ : forall A, [the functor of F \o F] A -> F A :=
@@ -1017,14 +1005,12 @@ Proof. by move=> ? ? ?; rewrite (category.natural (@category.ret _ M)). Qed.
 
 HB.instance Definition _ := hierarchy.isNatural.Build _ _ ret_ naturality_ret.
 
-Definition ret : hierarchy.Nattrans.type hierarchy.FId F :=
-  [the nattrans _ _ of ret_].
+Definition ret : (FId ~> F)%monae := [the nattrans _ _ of ret_].
 
 Lemma naturality_join : hierarchy.naturality [the functor of F \o F] F join_.
 Proof.
-move=> a b h.
-rewrite (_ : h = [the {hom a, b} of h]) // /join_ actmE.
-rewrite (category.natural category.join a).
+move=> a b h; rewrite (_ : h = [the {hom a, b} of h])//.
+rewrite /join_ actmE (category.natural category.join a).
 congr (_ \o _).
 by rewrite category.FCompE -2!actmE.
 Qed.
@@ -1033,28 +1019,20 @@ HB.instance Definition _ := hierarchy.isNatural.Build _ _ join_ naturality_join.
 
 Definition join := [the nattrans _ _ of join_].
 
-Lemma retE a : ret a = category.ret a.
-Proof. by []. Qed.
-Lemma joinE a : join a = category.join a.
-Proof. by []. Qed.
+Lemma retE a : ret a = category.ret a. Proof. by []. Qed.
+
+Lemma joinE a : join a = category.join a. Proof. by []. Qed.
 
 Lemma joinretM : hierarchy.JoinLaws.left_unit ret join.
 Proof.
-move=> a; apply funext=> x.
-by rewrite joinE retE (category.joinretM a).
+by move=> a; apply funext=> x; rewrite joinE retE (category.joinretM a).
 Qed.
 
 Lemma joinMret : hierarchy.JoinLaws.right_unit ret join.
-Proof.
-move=> a.
-by rewrite joinE retE actmE (@category.joinMret _ M).
-Qed.
+Proof. by move=> a; rewrite joinE retE actmE (@category.joinMret _ M). Qed.
 
 Lemma joinA : hierarchy.JoinLaws.associativity join.
-Proof.
-move=> a.
-by rewrite joinE actmE (category.joinA a).
-Qed.
+Proof. by move=> a; rewrite joinE actmE (category.joinA a). Qed.
 
 HB.instance Definition _ := @hierarchy.Monad_of_ret_join.Build acto ret join
   joinretM joinMret joinA.
