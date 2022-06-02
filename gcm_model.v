@@ -118,7 +118,7 @@ HB.instance Definition _ :=
     (fun _ _ _ => True) (fun=> I) (fun _ _ _ _ _ _ _ => I).
 Definition hom_choiceType
            (a b : [the category of choiceType]) (f : a -> b) : {hom a, b} :=
-  HomPack a b f I.
+  Hom.Pack (Hom.Class (isHom.Axioms_ a b f I)).
 End choiceType_as_a_category.
 Notation CC := [the category of choiceType].
 
@@ -133,7 +133,7 @@ Proof. by move=> a b c g h; rewrite hom_ext. Qed.
 (*HB.instance Definition _ := isFunctor.Build CT CC _
   free_choiceType_mor_id free_choiceType_mor_comp.*)
 Definition free_choiceType : {functor CT -> CC} :=
-  FunctorPack free_choiceType_mor_id free_choiceType_mor_comp.
+  Functor.Pack (Functor.Class (isFunctor.Axioms_ _ _ _ free_choiceType_mor_id free_choiceType_mor_comp)).
 Lemma free_choiceType_mor_comp_fun (a b c : Type) (g : {hom b, c})
       (h : {hom a, b}):
   free_choiceType_mor [hom g \o h] =
@@ -141,10 +141,11 @@ Lemma free_choiceType_mor_comp_fun (a b c : Type) (g : {hom b, c})
 Proof. by rewrite free_choiceType_mor_comp. Qed.
 
 Let h (a b : CC) (f : {hom a, b}) : {hom CT; a, b} :=
-  HomPack (a : CT) (b : _) (FId # f) I.
+  Hom.Pack (Hom.Class (isHom.Axioms_ (a : CT) (b : _) (FId # f) I)).
 Lemma h_id : FunctorLaws.id h. Proof. by move=> *; apply hom_ext. Qed.
 Lemma h_comp : FunctorLaws.comp h. Proof. by move=> *; apply hom_ext. Qed.
-Definition forget_choiceType : {functor CC -> CT} := FunctorPack h_id h_comp.
+Definition forget_choiceType : {functor CC -> CT} :=
+  Functor.Pack (Functor.Class (isFunctor.Axioms_ _ _ _ h_id h_comp)).
 Lemma forget_choiceTypeE :
   (forall a : CC, forget_choiceType a = a)
   /\ (forall (a b : CC) (f : {hom CC; a , b}), forget_choiceType # f = f :> (a -> b)).
@@ -156,17 +157,20 @@ Local Notation FC := free_choiceType.
 Local Notation UC := forget_choiceType.
 
 Let epsC' : FC \O UC ~~> FId :=
-      fun A : CC => HomPack ((FC \O UC) A) (FId A) idfun I.
+      fun A : CC => Hom.Pack (Hom.Class (isHom.Axioms_ ((FC \O UC) A) (FId A) idfun I)).
 Lemma epsC'_natural : naturality _ _ epsC'.
 Proof. by []. Qed.
-Definition epsC : FC \O UC ~> FId := locked (NattransPack epsC'_natural).
+
+HB.instance Definition _ := isNatural.Build _ _ _ _ _ epsC'_natural.
+Definition epsC := locked [the _ ~> _ of epsC'].
 Lemma epsCE (T : choiceType) : epsC T = idfun :> (_ -> _).
 Proof. by rewrite /epsC; unlock. Qed.
 Let etaC' : FId ~~> UC \O FC :=
-      fun (_ : CT) => HomPack (FId _) ((UC \O FC) _) idfun I.
+      fun (_ : CT) => Hom.Pack (Hom.Class (isHom.Axioms_ (FId _) ((UC \O FC) _) idfun I)).
 Lemma etaC'_natural : naturality _ _ etaC'.
 Proof. by []. Qed.
-Definition etaC : FId ~> UC \O FC := locked (NattransPack etaC'_natural).
+HB.instance Definition _ := isNatural.Build _ _ _ _ _ etaC'_natural.
+Definition etaC := locked [the _ ~> _ of etaC'].
 Lemma etaCE (T : Type) : etaC T = idfun :> (_ -> _).
 Proof. by rewrite /etaC; unlock. Qed.
 
@@ -198,7 +202,7 @@ End conv_hom_is_affine.
 
 Section free_convType_functor.
 Definition free_convType_mor (A B : CC) (f : {hom A, B}) : {hom {dist A}, {dist B}} :=
-  HomPack {dist A} {dist B} (FSDistfmap f) (FSDistfmap_affine f).
+  Hom.Pack (Hom.Class (isHom.Axioms_ {dist A} {dist B} (FSDistfmap f) (FSDistfmap_affine f))).
 
 Lemma mem_finsupp_free_convType_mor (A B : CC) (f : A -> B)
     (d : {dist A}) (x : finsupp d) :
@@ -228,7 +232,7 @@ Lemma free_convType_mor_comp : FunctorLaws.comp free_convType_mor.
 Proof. by move=> a b c g h; rewrite hom_ext /= FSDistfmap_comp. Qed.
 
 Definition free_convType : {functor CC -> CV} :=
-  FunctorPack free_convType_mor_id free_convType_mor_comp.
+  Functor.Pack (Functor.Class (isFunctor.Axioms_ _ _ _ free_convType_mor_id free_convType_mor_comp)).
 
 Lemma free_convType_mor_comp_fun (A B C : CC) (g : {hom B, C}) (h : {hom A, B}) :
   free_convType_mor [hom g \o h] =
@@ -236,11 +240,11 @@ Lemma free_convType_mor_comp_fun (A B C : CC) (g : {hom B, C}) (h : {hom A, B}) 
 Proof. by rewrite free_convType_mor_comp. Qed.
 
 Let m1 : CV -> CC := idfun.
-Let h1 := fun (a b : CV) (f : {hom CV; a, b}) => HomPack (m1 a) (m1 b) f I.
+Let h1 := fun (a b : CV) (f : {hom CV; a, b}) => Hom.Pack (Hom.Class (isHom.Axioms_ (m1 a) (m1 b) f I)).
 Lemma h1_id : FunctorLaws.id h1. Proof. by move=> *; apply hom_ext. Qed.
 Lemma h1_comp : FunctorLaws.comp h1. Proof. by move=> *; apply hom_ext. Qed.
 Definition forget_convType : {functor CV -> CC} :=
-  FunctorPack h1_id h1_comp.
+  Functor.Pack (Functor.Class (isFunctor.Axioms_ _ _ _ h1_id h1_comp)).
 Lemma forget_convTypeE :
   (forall a : CV, forget_convType a = a)
   /\ (forall (a b : CV) (f : {hom CV; a , b}), forget_convType # f = f :> (a -> b)).
@@ -260,7 +264,7 @@ Local Notation F0 := free_convType.
 Local Notation U0 := forget_convType.
 
 Let eps0' : F0 \O U0 ~~> FId :=
-  fun a => HomPack ((F0 \O U0) a) (FId a) (@Convn_of_FSDist a) (@Convn_of_FSDist_affine (FId a)).
+  fun a => Hom.Pack (Hom.Class (isHom.Axioms_ ((F0 \O U0) a) (FId a) (@Convn_of_FSDist a) (@Convn_of_FSDist_affine (FId a)))).
 
 Let eps0'_natural : naturality _ _ eps0'.
 Proof.
@@ -268,20 +272,22 @@ move=> C D f; rewrite FCompE /= /id_f; apply funext => d /=.
 by rewrite Convn_of_FSDist_FSDistfmap.
 Qed.
 
-Definition eps0 : F0 \O U0 ~> FId := locked (NattransPack eps0'_natural).
+HB.instance Definition _ := isNatural.Build _ _ _ _ _ eps0'_natural.
+Definition eps0 := locked [the _ ~> _ of eps0'].
 
 Lemma eps0E (C : convType) : eps0 C = @Convn_of_FSDist C :> (_ -> _).
 Proof. by rewrite /eps0; unlock. Qed.
 
 Let eta0' : FId ~~> U0 \O F0 :=
-  fun T => HomPack (FId T) ((U0 \O F0) T) (fun x => FSDist1.d x) I.
+  fun T => Hom.Pack (Hom.Class (isHom.Axioms_ (FId T) ((U0 \O F0) T) (fun x => FSDist1.d x) I)).
 
 Lemma eta0'_natural : naturality _ _ eta0'.
 Proof.
 by move=> a b h; rewrite funeqE=> x; rewrite FIdf /eta0' /= FSDistfmap1.
 Qed.
 
-Definition eta0 : FId ~> U0 \O F0 := locked (NattransPack eta0'_natural).
+HB.instance Definition _ := isNatural.Build _ _ _ _ _ eta0'_natural.
+Definition eta0 := locked [the _ ~> _ of eta0'].
 
 Lemma eta0E (T : choiceType) : eta0 T = @FSDist1.d _ :> (_ -> _).
 Proof. by rewrite /eta0; unlock. Qed.
@@ -373,7 +379,7 @@ Variables (A B : convType) (f : {hom A , B}).
 
 Definition free_semiCompSemiLattConvType_mor' (X : {necset A}) : {necset B} :=
   NECSet.Pack (NECSet.Class
-    (CSet.Mixin (is_convex_set_image [affine of f] X))
+    (CSet.Mixin (is_convex_set_image (Conv_hom_affine f) X))
     (NESet.Mixin (neset_image_neq0 _ _))).
 
 (* the results of free_semiCompSemiLattConvType_mor are
@@ -398,7 +404,7 @@ Proof.
 rewrite funeqE => b; rewrite propeqE; split.
 - case => a [x Xx xa] <-{b}.
   exists (NECSet.Pack (NECSet.Class
-      (CSet.Mixin (is_convex_set_image [affine of f] x))
+      (CSet.Mixin (is_convex_set_image (Conv_hom_affine f) x))
       (NESet.Mixin (neset_image_neq0 f x)))) => /=; last by exists a.
   by exists x => //=; exact/necset_ext.
 - by case => b0 [a0 Xa0 <-{b0}] [a a0a <-{b}]; exists a => //; exists a0.
@@ -412,11 +418,11 @@ by rewrite image_preserves_convex_hull bigsetU_affine.
 Qed.
 
 Definition free_semiCompSemiLattConvType_mor : {hom {necset A}, {necset B}} :=
-  locked (HomPack
+  locked (Hom.Pack (Hom.Class (isHom.Axioms_
     {necset A} {necset B}
     free_semiCompSemiLattConvType_mor'
     (BiglubAffine.Class free_semiCompSemiLattConvType_mor'_affine
-                       free_semiCompSemiLattConvType_mor'_biglub_morph)).
+                       free_semiCompSemiLattConvType_mor'_biglub_morph)))).
 
 Lemma free_semiCompSemiLattConvType_morE (X : necset A) :
   NECSet.mixinType (free_semiCompSemiLattConvType_mor X) = image_neset f X.
@@ -447,19 +453,22 @@ by rewrite free_semiCompSemiLattConvType_morE'.
 Qed.
 
 Definition free_semiCompSemiLattConvType : {functor CV -> CS} :=
-  FunctorPack free_semiCompSemiLattConvType_mor_id
-              free_semiCompSemiLattConvType_mor_comp.
+  Functor.Pack
+    (Functor.Class
+       (isFunctor.Axioms_ _ _ _
+                          free_semiCompSemiLattConvType_mor_id
+                          free_semiCompSemiLattConvType_mor_comp)).
 
 Local Notation F1 := free_semiCompSemiLattConvType.
 
 Let m2 : CS -> CV := id.
 Let h2 :=
   fun (a b : CS) (f : {hom CS; a, b}) =>
-    HomPack (m2 a) (m2 b) f (BiglubAffine.base (isHom_inhom f)).
+    Hom.Pack (Hom.Class (isHom.Axioms_ (m2 a) (m2 b) f (BiglubAffine.base (isHom_inhom f)))).
 Lemma h2_id : FunctorLaws.id h2. Proof. by move=> *; apply hom_ext. Qed.
 Lemma h2_comp : FunctorLaws.comp h2. Proof. by move=> *; apply hom_ext. Qed.
 Definition forget_semiCompSemiLattConvType : {functor CS -> CV} :=
-  FunctorPack h2_id h2_comp.
+  Functor.Pack (Functor.Class (isFunctor.Axioms_ _ _ _ h2_id h2_comp)).
 
 Local Notation U1 := forget_semiCompSemiLattConvType.
 
@@ -499,8 +508,8 @@ by rewrite necset_convType.convE.
 Qed.
 
 Let eps1' : F1 \O U1 ~~> FId :=
-  fun L => HomPack ((F1 \O U1) L) (FId L) (@eps1'' L)
-    (BiglubAffine.Class (@eps1''_affine L) (@eps1''_biglubmorph L)).
+  fun L => Hom.Pack (Hom.Class (isHom.Axioms_ ((F1 \O U1) L) (FId L) (@eps1'' L)
+    (BiglubAffine.Class (@eps1''_affine L) (@eps1''_biglubmorph L)))).
 
 Lemma eps1'_natural : naturality _ _ eps1'.
 Proof.
@@ -509,7 +518,8 @@ rewrite biglub_morph; congr (|_| _).
 by rewrite free_semiCompSemiLattConvType_morE.
 Qed.
 
-Definition eps1 : F1 \O U1 ~> FId := locked (NattransPack eps1'_natural).
+HB.instance Definition _ := isNatural.Build _ _ _ _ _ eps1'_natural.
+Definition eps1 := locked [the _ ~> _ of eps1'].
 
 Lemma eps1E (L : semiCompSemiLattConvType) :
   eps1 L = (fun X => |_| X) :> (_ -> _).
@@ -525,7 +535,7 @@ move=> p a b /=; apply/necset_ext; rewrite eqEsubset; split=> x /=.
 Qed.
 
 Let eta1' : FId ~~> U1 \O F1 :=
-  fun C => HomPack (FId C) ((U1 \O F1) C) (@necset1 C) (@necset1_affine C).
+  fun C => Hom.Pack (Hom.Class (isHom.Axioms_ (FId C) ((U1 \O F1) C) (@necset1 C) (@necset1_affine C))).
 
 Lemma eta1'_natural : naturality _ _ eta1'.
 Proof.
@@ -533,7 +543,8 @@ move=> a b h; rewrite funeqE => x; apply necset_ext => /=.
 by rewrite free_semiCompSemiLattConvType_morE' /= image_set1.
 Qed.
 
-Definition eta1 : FId ~> U1 \O F1 := locked (NattransPack eta1'_natural).
+HB.instance Definition _ := isNatural.Build _ _ _ _ _ eta1'_natural.
+Definition eta1 := locked [the _ ~> _ of eta1'].
 
 Lemma eta1E (C : convType) : eta1 C = @necset1 _ :> (_ -> _).
 Proof. by rewrite /eta1; unlock. Qed.

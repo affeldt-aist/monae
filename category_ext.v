@@ -154,10 +154,18 @@ Section prodcat_homfstsnd.
 Variables A B : category.
 Section homfstsnd.
 Let _homfst (x y : A * B) (f : {hom x,y}) : {hom x.1, y.1}.
-Proof. by move: f => [f [[/cid[sf [+ _]]]]]; exact: HomPack. Defined.
+Proof.
+move: f => [f [[/cid[sf [+ _]]]]].
+move/isHom.Axioms_/Hom.Class.
+exact: Hom.Pack.
+Defined.
 Definition homfst := Eval hnf in _homfst.
 Let _homsnd (x y : A * B) (f : {hom x,y}) : {hom x.2, y.2}.
-Proof. by move: f => [f [[/cid[sf [_]]]]]; exact: HomPack. Defined.
+Proof.
+move: f => [f [[/cid[sf [_]]]]].
+move/isHom.Axioms_/Hom.Class.
+exact: Hom.Pack.
+Defined.
 Definition homsnd := Eval hnf in _homsnd.
 End homfstsnd.
 Lemma homfst_idfun x : homfst (x:=x) [hom idfun] = [hom idfun].
@@ -244,7 +252,7 @@ exists (conj s1 s2); split.
   rewrite (_ : h = g); first exact: isHom_inhom.
   by rewrite boolp.funeqE => ?; rewrite /h /=; case: cid => ? [].
 Qed.
-Definition pairhom : {hom (a1, b1), (a2, b2)} := HomPack _ _ _ pairhom'_in_hom.
+Definition pairhom : {hom (a1, b1), (a2, b2)} := Hom.Pack (Hom.Class (isHom.Axioms_ _ _ _ pairhom'_in_hom)).
 End prodCat_pairhom.
 
 Section pairhom_idfun.
@@ -316,7 +324,6 @@ rewrite (_ : i = [hom (pairhom [hom idfun] g) \o
 by apply/hom_ext => /=; rewrite boolp.funeqE; case.
 Qed.
 HB.instance Definition _ := isFunctor.Build _ _ _ actm_id actm_comp.
-(*Definition F := FunctorPack F_id_hom F_o_hom.*)
 End def.
 End papply_left.
 
@@ -340,7 +347,6 @@ rewrite (_ : i = [hom (pairhom g [hom idfun]) \o
 by apply/hom_ext => /=; rewrite boolp.funeqE; case.
 Qed.
 HB.instance Definition _ := isFunctor.Build _ _ _ actm_id actm_comp.
-(*Definition F := FunctorPack F_id_hom F_o_hom.*)
 End def.
 End papply_right.
 
@@ -369,7 +375,6 @@ move=> [] a1 a2 [] b1 b2 [] c1 c2 g h.
 by rewrite /actm homfst_comp homsnd_comp 2!functor_o_hom pairhom_comp.
 Qed.
 HB.instance Definition _ := isFunctor.Build _ _ _ actm_id actm_comp.
-(*Definition F := FunctorPack law_id law_o.*)
 End def.
 End ProductFunctor.
 
@@ -395,7 +400,6 @@ rewrite (_ : i = [hom (pairhom [hom idfun] g) \o
 by apply/hom_ext => /=; rewrite boolp.funeqE; case.
 Qed.
 HB.instance Definition _ := isFunctor.Build _ _ _ actm_id actm_comp.
-(*Definition F : {functor C -> D} := FunctorPack actm_id actm_comp.*)
 End alpha_left.
 End alpha_left.
 
@@ -475,6 +479,5 @@ move=> [xa [xb xc]] [ya [yb yc]] [za [zb zc]] g h.
 by rewrite /actm !homsnd_comp !homfst_comp !pairhom_comp.
 Qed.
 HB.instance Definition _ := isFunctor.Build _ _ _ actm_id actm_comp.
-(*Definition F := FunctorPack actm_id actm_comp.*)
 End def.
 End ProductCategoryAssoc.

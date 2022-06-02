@@ -103,11 +103,6 @@ Notation "[ 'hom' f ]" := [the {hom _ , _} of f]
 (* TODO: FIX: At some places, this [hom f] notation is not used for printing and
    [the {hom ...} of f] is undesirably printed instead. *)
 
-Definition HomPack (C : category) (a b : C) (f : el a -> el b)
-           (Hf : inhom a b f) :=
-  Hom.Pack (@Hom.Class C a b f (isHom.Axioms_ a b f Hf)).
-Arguments HomPack [C].
-
 Lemma hom_ext (C : category) (a b : C) (f g : {hom a, b}) :
   f = g <-> f = g :> (_ -> _).
 Proof.
@@ -216,9 +211,10 @@ Let UUx := Type.
 HB.instance Definition _ :=
   isCategory.Build UUx (fun x : Type => x)
     (fun _ _ _ => True) (fun=> I) (fun _ _ _ _ _ _ _ => I).
-Definition hom_Type (a b : [the category of UUx]) (f : a -> b) : {hom a, b} :=
-  HomPack a b f I.
+HB.instance Definition _ (a b : [the category of UUx]) (f : a -> b)
+  := isHom.Build [the category of UUx] a b (f : el a -> el b) I.
 End Type_as_a_category.
+
 
 Notation CT := [the category of Type].
 
@@ -243,11 +239,6 @@ Arguments actm [C D] F [a b] f: rename.
 Notation "F # f" := (actm F f) : category_scope.
 Notation "{ 'functor' fCD }" := (functor_phant (Phant fCD))
   (format "{ 'functor'  fCD }") : category_scope.
-Definition FunctorPack (C D : category) (F : C -> D)
-           (actm : forall a b, {hom a, b} -> {hom F a, F b})
-           (fid : FunctorLaws.id actm) (fcomp : FunctorLaws.comp actm)
-  : {functor C -> D} :=
-  Functor.Pack (Functor.Class (isFunctor.Axioms_ _ _ _ fid fcomp)).
 
 Section functor_lemmas.
 Variables (C D : category) (F : {functor C -> D}).
@@ -839,7 +830,7 @@ HB.factory Record Monad_of_ret_bind (C : category) (acto : C -> C) := {
   bindA : BindLaws.associative bind ;
 }.
 HB.builders Context C M of Monad_of_ret_bind C M.
-Let fmap a b  (f : {hom a, b}) := bind [hom ret' b \o f].
+Let fmap a b (f : {hom a, b}) := bind [hom ret' b \o f].
 Let bindretf_fun : (forall (a b : C) (f : {hom a, M b}),
   bind f \o ret' a = f).
 Proof. by apply/bind_left_neutral_hom_fun/bindretf. Qed.
@@ -864,7 +855,7 @@ Let ret'_naturality : naturality FId F ret'.
 Proof. by move=> A B h; rewrite FIdf bindretf_fun. Qed.
 HB.instance Definition _ := isNatural.Build _ _ FId F
   (ret' : FId ~~> M)(*NB: fails without this type constraint*) ret'_naturality.
-Definition ret := NattransPack ret'_naturality.
+Definition ret := [the FId ~> F of ret'].
 Let join' : F \O F ~~> F := fun _ => bind [hom idfun].
 Let fmap_bind a b c (f : {hom a,b}) m (g : {hom c,F a}) :
   (fmap f) (bind g m) = bind [hom fmap f \o g] m.
@@ -879,7 +870,9 @@ rewrite hom_ext/=.
 rewrite -[in RHS]hom_compA.
 by rewrite bindretf_fun.
 Qed.
-Definition join := NattransPack join'_naturality.
+HB.instance Definition _ := isNatural.Build _ _ _ _ _ join'_naturality.
+Definition join := [the F \O F ~> F of join'].
+
 Let bind_fmap a b c (f : {hom a, b}) (m : el (F a)) (g : {hom b, F c}) :
   bind g (fmap f m) = bind [hom g \o f] m .
 Proof.
@@ -994,12 +987,11 @@ Variable M : category.monad CT.
 Definition acto : Type -> Type := M.
 
 Definition actm (A B : Type) (h : A -> B) (x : acto A) : acto B :=
-  (M # hom_Type h) x.
+  (M # [the {hom A, B} of h]) x.
 
 Lemma actm_id A : actm id = @id (acto A).
 Proof.
 rewrite /actm.
-have -> : hom_Type id = [hom idfun] by move=> ?; apply hom_ext.
 by rewrite category.functor_id.
 Qed.
 
@@ -1007,7 +999,6 @@ Lemma actm_comp A B C (g : B -> C) (h : A -> B) :
   actm (g \o h) = actm g \o actm h.
 Proof.
 rewrite {1}/actm.
-have -> : hom_Type (g \o h) = [hom hom_Type g \o hom_Type h] by apply hom_ext.
 by rewrite category.functor_o.
 Qed.
 
@@ -1037,7 +1028,7 @@ Proof.
 move=> A B h; apply funext=> x; rewrite /ret /hierarchy.actm /= /actm.
 rewrite -[in LHS]compE (category.natural category.join).
 rewrite compE category.FCompE.
-suff -> : (M # (M # hom_Type h)) x = (M # hom_Type (F # h)%monae) x by [].
+suff -> : (M # (M # [the {hom A, B} of h])) x = (M # [the {hom F A, F B} of (F # h)]%monae) x by [].
 congr ((M # _ ) _).
 exact/hom_ext/funext.
 Qed.
@@ -1062,7 +1053,8 @@ rewrite (_ : actm _ x = (M # category.ret _) x).
   rewrite /join_ /ret_ /=.
   by rewrite -[in LHS]compE category.joinMret.
 rewrite /actm.
-suff -> : @hom_Type A (M A) (category.ret A) = category.ret _ by [].
+set X := (X in M # X).
+suff -> : X = category.ret _ by [].
 by apply hom_ext.
 Qed.
 
@@ -1073,8 +1065,8 @@ rewrite /join_ /ret_ /=.
 rewrite -[in RHS]compE -category.joinA compE.
 congr (_ _).
 rewrite /hierarchy.actm [in LHS]/= /actm.
-suff -> : @hom_Type (M (M A)) (M A) (category.join A) =
-         category.join _ by [].
+set X := (X in M # X).
+suff -> : X = category.join _ by [].
 by apply hom_ext.
 Qed.
 
