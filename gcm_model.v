@@ -130,27 +130,29 @@ Lemma free_choiceType_mor_id : FunctorLaws.id free_choiceType_mor.
 Proof. by move=> a; rewrite hom_ext. Qed.
 Lemma free_choiceType_mor_comp : FunctorLaws.comp free_choiceType_mor.
 Proof. by move=> a b c g h; rewrite hom_ext. Qed.
-(*HB.instance Definition _ := isFunctor.Build CT CC _
-  free_choiceType_mor_id free_choiceType_mor_comp.*)
-Definition free_choiceType : {functor CT -> CC} :=
-  Functor.Pack (Functor.Class (isFunctor.Axioms_ _ _ _ free_choiceType_mor_id free_choiceType_mor_comp)).
+HB.instance Definition _ := isFunctor.Build CT CC _
+  free_choiceType_mor_id free_choiceType_mor_comp.
+Definition free_choiceType := [the {functor CT -> CC} of m].
 Lemma free_choiceType_mor_comp_fun (a b c : Type) (g : {hom b, c})
       (h : {hom a, b}):
   free_choiceType_mor [hom g \o h] =
   (free_choiceType_mor g) \o (free_choiceType_mor h) :> (_ -> _).
 Proof. by rewrite free_choiceType_mor_comp. Qed.
+End free_choiceType_functor.
 
-Let h (a b : CC) (f : {hom a, b}) : {hom CT; a, b} :=
+Section forget_choiceType_functor.
+Let m : CC -> CT := idfun.
+Let h (a b : CC) (f : {hom a, b}) : {hom CT; m a, m b} :=
   Hom.Pack (Hom.Class (isHom.Axioms_ (a : CT) (b : _) (FId # f) I)).
 Lemma h_id : FunctorLaws.id h. Proof. by move=> *; apply hom_ext. Qed.
 Lemma h_comp : FunctorLaws.comp h. Proof. by move=> *; apply hom_ext. Qed.
-Definition forget_choiceType : {functor CC -> CT} :=
-  Functor.Pack (Functor.Class (isFunctor.Axioms_ _ _ _ h_id h_comp)).
+HB.instance Definition _ := isFunctor.Build _ _ _ h_id h_comp.
+Definition forget_choiceType := [the {functor CC -> CT} of m].
 Lemma forget_choiceTypeE :
   (forall a : CC, forget_choiceType a = a)
   /\ (forall (a b : CC) (f : {hom CC; a , b}), forget_choiceType # f = f :> (a -> b)).
 Proof. by []. Qed.
-End free_choiceType_functor.
+End forget_choiceType_functor.
 
 Section epsC_etaC.
 Local Notation FC := free_choiceType.
@@ -231,25 +233,28 @@ Qed.
 Lemma free_convType_mor_comp : FunctorLaws.comp free_convType_mor.
 Proof. by move=> a b c g h; rewrite hom_ext /= FSDistfmap_comp. Qed.
 
-Definition free_convType : {functor CC -> CV} :=
-  Functor.Pack (Functor.Class (isFunctor.Axioms_ _ _ _ free_convType_mor_id free_convType_mor_comp)).
+HB.instance Definition _ :=
+  isFunctor.Build CC CV FSDist_convType free_convType_mor_id free_convType_mor_comp.
+Definition free_convType := [the {functor CC -> CV} of FSDist_convType].
 
 Lemma free_convType_mor_comp_fun (A B C : CC) (g : {hom B, C}) (h : {hom A, B}) :
   free_convType_mor [hom g \o h] =
   (free_convType_mor g) \o (free_convType_mor h) :> (_ -> _).
 Proof. by rewrite free_convType_mor_comp. Qed.
+End free_convType_functor.
 
+Section forget_convType_functor.
 Let m1 : CV -> CC := idfun.
 Let h1 := fun (a b : CV) (f : {hom CV; a, b}) => Hom.Pack (Hom.Class (isHom.Axioms_ (m1 a) (m1 b) f I)).
 Lemma h1_id : FunctorLaws.id h1. Proof. by move=> *; apply hom_ext. Qed.
 Lemma h1_comp : FunctorLaws.comp h1. Proof. by move=> *; apply hom_ext. Qed.
-Definition forget_convType : {functor CV -> CC} :=
-  Functor.Pack (Functor.Class (isFunctor.Axioms_ _ _ _ h1_id h1_comp)).
+HB.instance Definition _ := isFunctor.Build _ _ _ h1_id h1_comp.
+Definition forget_convType := [the {functor CV -> CC} of m1].
 Lemma forget_convTypeE :
   (forall a : CV, forget_convType a = a)
   /\ (forall (a b : CV) (f : {hom CV; a , b}), forget_convType # f = f :> (a -> b)).
 Proof. by []. Qed.
-End free_convType_functor.
+End forget_convType_functor.
 
 (*
   eps0 is the counit of the adjunction (free_convType -| forget_convType), and
@@ -452,30 +457,33 @@ rewrite 2!free_semiCompSemiLattConvType_morE' /= -image_comp.
 by rewrite free_semiCompSemiLattConvType_morE'.
 Qed.
 
-Definition free_semiCompSemiLattConvType : {functor CV -> CS} :=
-  Functor.Pack
-    (Functor.Class
-       (isFunctor.Axioms_ _ _ _
-                          free_semiCompSemiLattConvType_mor_id
-                          free_semiCompSemiLattConvType_mor_comp)).
+HB.instance Definition _ :=
+  isFunctor.Build _ _ necset_semiCompSemiLattConvType
+                  free_semiCompSemiLattConvType_mor_id
+                  free_semiCompSemiLattConvType_mor_comp.
+Definition free_semiCompSemiLattConvType :=
+  [the {functor CV -> CS} of necset_semiCompSemiLattConvType].
 
 Local Notation F1 := free_semiCompSemiLattConvType.
+End free_semiCompSemiLattConvType_functor.
 
+Section forget_semiCompSemiLattConvType_functor.
 Let m2 : CS -> CV := id.
 Let h2 :=
   fun (a b : CS) (f : {hom CS; a, b}) =>
     Hom.Pack (Hom.Class (isHom.Axioms_ (m2 a) (m2 b) f (BiglubAffine.base (isHom_inhom f)))).
 Lemma h2_id : FunctorLaws.id h2. Proof. by move=> *; apply hom_ext. Qed.
 Lemma h2_comp : FunctorLaws.comp h2. Proof. by move=> *; apply hom_ext. Qed.
-Definition forget_semiCompSemiLattConvType : {functor CS -> CV} :=
-  Functor.Pack (Functor.Class (isFunctor.Axioms_ _ _ _ h2_id h2_comp)).
+HB.instance Definition _ := isFunctor.Build _ _ m2 h2_id h2_comp.
+Definition forget_semiCompSemiLattConvType :=
+  [the {functor CS -> CV} of m2].
 
 Local Notation U1 := forget_semiCompSemiLattConvType.
 
 Lemma forget_semiCompSemiLattConvTypeE : (forall a : CS, forget_convType a = a)
   /\ (forall (a b : CS) (f : {hom CS; a , b}), U1 # f = f :> (a -> b)).
 Proof. by []. Qed.
-End free_semiCompSemiLattConvType_functor.
+End forget_semiCompSemiLattConvType_functor.
 
 Section eps1_eta1.
 Import category.
