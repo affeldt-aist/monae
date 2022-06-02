@@ -803,7 +803,7 @@ End monad_interface.
 HB.factory Record Monad_of_ret_join (C : category) (M : C -> C)
            of @Functor C C M := {
   ret : FId ~> [the {functor C -> C} of M] ;
-  join : [the {functor C -> C} of M] \O [the {functor C -> C} of M] ~> [the {functor C -> C} of M] ;
+  join : M \O M ~> [the {functor C -> C} of M] ;
   joinretM : JoinLaws.left_unit ret join ;
   joinMret : JoinLaws.right_unit ret join ;
   joinA : JoinLaws.associativity join
@@ -948,10 +948,9 @@ rewrite /= -functor_o -[in RHS]functor_id.
 congr (G # _).
 by rewrite hom_ext/= triL.
 Qed.
-(*HB.instance Definition _ :=
-  Monad_of_ret_join.Build C M
-    join_left_unit join_right_unit join_associativity.*)
-
+(*TODO: make this go through
+HB.instance Definition _ :=
+ Monad_of_ret_join.Build _ _ join_left_unit join_right_unit join_associativity.*)
 Let bind (a b : C) (f : {hom a, M b}) : {hom M a, M b} :=
   [hom join _ \o (M # f)].
 Let bindE (a b : C) (f : {hom a, M b}) (m : el (M a)) :
