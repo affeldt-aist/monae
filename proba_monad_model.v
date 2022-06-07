@@ -62,7 +62,7 @@ Lemma fmapE (A B : UU0) (f : A -> B) (m : acto A) :
   ([the functor of acto] # f) m = bind _ _ m (@ret _ \o f).
 Proof. by []. Qed.
 
-HB.instance Definition _ := @Monad_of_ret_bind.Build
+HB.instance Definition _ := @isMonad_ret_bind.Build
   acto [the _ ~> _ of ret] bind fmapE left_neutral right_neutral associative.
 
 Lemma BindE (A B : choiceType) m (f : A -> [the monad of acto] B) :

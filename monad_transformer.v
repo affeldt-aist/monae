@@ -64,11 +64,11 @@ HB.mixin Record isMonadM (M N : monad) (e : M ~~> N) := {
 HB.structure Definition MonadM (M N : monad) :=
   {e of isMonadM M N e & isNatural M N e}.
 
-HB.factory Record isMonadM_of_ret_bind (M N : monad) (e : M ~~> N) := {
+HB.factory Record isMonadM_ret_bind (M N : monad) (e : M ~~> N) := {
   monadMret : MonadMLaws.ret e ;
   monadMbind : MonadMLaws.bind e }.
 
-HB.builders Context (M N : monad) (e : M ~~> N) of isMonadM_of_ret_bind M N e.
+HB.builders Context (M N : monad) (e : M ~~> N) of isMonadM_ret_bind M N e.
 
 Lemma naturality_monadM : naturality M N e.
 Proof.
@@ -149,7 +149,7 @@ rewrite (_ : _ # f = MS_map f) // /MS_map [LHS]/= fmapE; congr bind.
 by apply boolp.funext => -[].
 Qed.
 
-HB.instance Definition _ := Monad_of_ret_bind.Build
+HB.instance Definition _ := isMonad_ret_bind.Build
   MS MS_mapE bindSretf bindSmret bindSA.
 
 Definition liftS (A : UU0) (m : M A) : MS A :=
@@ -171,7 +171,7 @@ bind_ext => a.
 by rewrite [in RHS]bindretf.
 Qed.
 
-HB.instance Definition _ := isMonadM_of_ret_bind.Build
+HB.instance Definition _ := isMonadM_ret_bind.Build
   M [the monad of MS] liftS retliftS bindliftS.
 
 End state_monad_transformer.
@@ -288,7 +288,7 @@ rewrite /bindX (_ : _ # f = MX_map f) // /MX_map fmapE; congr bind => /=.
 by apply boolp.funext => -[|].
 Qed.
 
-HB.instance Definition _ := Monad_of_ret_bind.Build
+HB.instance Definition _ := isMonad_ret_bind.Build
   MX MX_mapE bindXretf bindXmret bindXA.
 
 Definition liftX X (m : M X) : MX X := m >>= (@ret [the monad of MX] _).
@@ -311,7 +311,7 @@ bind_ext => b.
 by rewrite bindretf.
 Qed.
 
-HB.instance Definition _ := isMonadM_of_ret_bind.Build
+HB.instance Definition _ := isMonadM_ret_bind.Build
   M [the monad of MX] liftX retliftX bindliftX.
 
 End exception_monad_transformer.
@@ -435,7 +435,7 @@ rewrite /bindEnv; apply boolp.funext => s.
 by rewrite (_ : _ # f = MEnv_map f) // /MEnv_map [LHS]/= fmapE.
 Qed.
 
-HB.instance Definition _ := Monad_of_ret_bind.Build
+HB.instance Definition _ := isMonad_ret_bind.Build
   MEnv MEnv_mapE bindEnvretf bindEnvmret bindEnvA.
 
 Definition liftEnv A (m : M A) : MEnv A := fun r => m.
@@ -444,7 +444,7 @@ Let retliftEnv : MonadMLaws.ret liftEnv. Proof. by []. Qed.
 
 Let bindliftEnv : MonadMLaws.bind liftEnv. Proof. by []. Qed.
 
-HB.instance Definition envTmonadM := isMonadM_of_ret_bind.Build
+HB.instance Definition envTmonadM := isMonadM_ret_bind.Build
   M [the monad of MEnv] liftEnv retliftEnv bindliftEnv.
 
 End environment_monad_transformer.
@@ -524,7 +524,7 @@ apply boolp.funext => -[] /= h t.
 by rewrite bindretf /= cats0.
 Qed.
 
-HB.instance Definition _ := Monad_of_ret_bind.Build
+HB.instance Definition _ := isMonad_ret_bind.Build
   MO MO_mapE bindOretf bindOmret bindOA.
 
 Definition liftO A (m : M A) : MO A := m >>= (fun x => Ret (x, [::])).
@@ -545,7 +545,7 @@ bind_ext => b.
 by rewrite bindretf /= bindretf.
 Qed.
 
-HB.instance Definition outputTmonadM := isMonadM_of_ret_bind.Build
+HB.instance Definition outputTmonadM := isMonadM_ret_bind.Build
   M [the monad of MO] liftO retliftO bindliftO.
 
 End output_monad_transformer.
@@ -593,7 +593,7 @@ Let MC_mapE (A B : UU0) (f : A -> B) (m : MC A) :
   ([the functor of MC] # f) m = bindC m (@retC _ \o f).
 Proof. by []. Qed.
 
-HB.instance Definition _ := Monad_of_ret_bind.Build
+HB.instance Definition _ := isMonad_ret_bind.Build
   MC MC_mapE bindCretf bindCmret bindCA.
 
 Definition liftC A (x : M A) : MC A := fun k => x >>= k.
@@ -610,7 +610,7 @@ move => A B m f; rewrite /liftC; apply boolp.funext => cont.
 by rewrite 3!bindA.
 Qed.
 
-HB.instance Definition contTmonadM := isMonadM_of_ret_bind.Build
+HB.instance Definition contTmonadM := isMonadM_ret_bind.Build
   M [the monad of MC] liftC retliftC bindliftC.
 
 End continuation_monad_tranformer.
@@ -939,11 +939,11 @@ Qed.
 End uniform_algebraic_lifting.
 
 HB.mixin Record isFunctorial (t : monad -> monad) := {
-  hmap : forall (M N : monad), (M ~> N) -> (t M ~> t N) ;
+  hmap : forall {M N : monad}, (M ~> N) -> t M ~> t N ;
   functorial_id : forall M : monad,
-    hmap _ _ [the _ ~> _ of NId M] = [the _ ~> _ of NId (t M)] ;
+    hmap [the _ ~> _ of NId M] = [the _ ~> _ of NId (t M)] ;
   functorial_o : forall (M N P : monad) (t : M ~> N) (s : N ~> P),
-    hmap _ _ (s \v t) = hmap _ _ s \v hmap _ _ t }.
+    hmap (s \v t) = hmap s \v hmap t }.
 
 #[short(type=functorial)]
 HB.structure Definition Functorial := {t of isFunctorial t}.
@@ -959,7 +959,7 @@ HB.mixin Record isFMT (t : monad -> monad) of MonadT t & Functorial t := {
     Lift [the monadT of t] N \v n }.
 
 #[short(type=fmt)]
-HB.structure Definition FMT := {t of isFMT t & isFunctorial t & isMonadT t}.
+HB.structure Definition FMT := {t of isFMT t & }.
 
 Section fmt_lemmas.
 

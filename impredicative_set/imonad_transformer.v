@@ -148,7 +148,7 @@ rewrite (_ : _ # f = MS_map f) // /MS_map [LHS]/= fmapE; congr bind.
 by apply funext => -[].
 Qed.
 
-HB.instance Definition _ := Monad_of_ret_bind.Build
+HB.instance Definition _ := isMonad_ret_bind.Build
   MS MS_mapE bindSretf bindSmret bindSA.
 
 Definition liftS (A : UU0) (m : M A) : MS A :=
@@ -287,7 +287,7 @@ rewrite /bindX (_ : _ # f = MX_map f) // /MX_map fmapE; congr bind => /=.
 by apply funext => -[|].
 Qed.
 
-HB.instance Definition _ := Monad_of_ret_bind.Build
+HB.instance Definition _ := isMonad_ret_bind.Build
   MX MX_mapE bindXretf bindXmret bindXA.
 
 Definition liftX X (m : M X) : MX X := m >>= (@ret [the monad of MX] _).
@@ -434,7 +434,7 @@ rewrite /bindEnv; apply funext => s.
 by rewrite (_ : _ # f = MEnv_map f) // /MEnv_map [LHS]/= fmapE.
 Qed.
 
-HB.instance Definition _ := Monad_of_ret_bind.Build
+HB.instance Definition _ := isMonad_ret_bind.Build
   MEnv MEnv_mapE bindEnvretf bindEnvmret bindEnvA.
 
 Definition liftEnv A (m : M A) : MEnv A := fun r => m.
@@ -523,7 +523,7 @@ apply funext => -[] /= h t.
 by rewrite bindretf /= cats0.
 Qed.
 
-HB.instance Definition _ := Monad_of_ret_bind.Build
+HB.instance Definition _ := isMonad_ret_bind.Build
   MO MO_mapE bindOretf bindOmret bindOA.
 
 Definition liftO A (m : M A) : MO A := m >>= (fun x => Ret (x, [::])).
@@ -592,7 +592,7 @@ Let MC_mapE (A B : UU0) (f : A -> B) (m : MC A) :
   ([the functor of MC] # f) m = bindC m (@retC _ \o f).
 Proof. by []. Qed.
 
-HB.instance Definition _ := Monad_of_ret_bind.Build
+HB.instance Definition _ := isMonad_ret_bind.Build
   MC MC_mapE bindCretf bindCmret bindCA.
 
 Definition liftC A (x : M A) : MC A := fun k => x >>= k.

@@ -389,14 +389,14 @@ Qed.
 
 End from_join_laws_to_bind_laws.
 
-HB.factory Record Monad_of_ret_join (F : UU0 -> UU0) of isFunctor F := {
+HB.factory Record isMonad_ret_join (F : UU0 -> UU0) of isFunctor F := {
   ret : FId ~> [the functor of F] ;
   join : [the functor of F \o F] ~> [the functor of F] ;
   joinretM : JoinLaws.left_unit ret join ;
   joinMret : JoinLaws.right_unit ret join ;
   joinA : JoinLaws.associativity join }.
 
-HB.builders Context M of Monad_of_ret_join M.
+HB.builders Context M of isMonad_ret_join M.
 
 Let F := [the functor of M].
 
@@ -410,7 +410,7 @@ Proof. by []. Qed.
 HB.instance Definition _ := isMonad.Build M bindE joinretM joinMret joinA.
 HB.end.
 
-HB.factory Record Monad_of_ret_bind (F : UU0 -> UU0) of isFunctor F := {
+HB.factory Record isMonad_ret_bind (F : UU0 -> UU0) of isFunctor F := {
   ret : FId ~> [the functor of F] ;
   bind : forall (A B : UU0), F A -> (A -> F B) -> F B ;
   fmapE : forall (A B : UU0) (f : A -> B) (m : F A),
@@ -419,7 +419,7 @@ HB.factory Record Monad_of_ret_bind (F : UU0 -> UU0) of isFunctor F := {
   bindmret : BindLaws.right_neutral bind ret ;
   bindA : BindLaws.associative bind }.
 
-HB.builders Context M of Monad_of_ret_bind M.
+HB.builders Context M of isMonad_ret_bind M.
 
 Let F := [the functor of M].
 
@@ -445,7 +445,7 @@ Let bindE (A B : UU0) (f : A -> M B) (m : M A) :
   bind m f = (join_of_bind bind) B ((F # f) m).
 Proof. by rewrite /join /= /join_of_bind /= bind_map compidf. Qed.
 
-Let join := [the [the functor of F \o F] ~> F of join_of_bind bind].
+Let join := join_of_bind bind.
 
 Let joinretM : JoinLaws.left_unit ret join.
 Proof.

@@ -104,7 +104,7 @@ Proof. by []. Qed.
 Let right_neutral : BindLaws.right_neutral bind (NId FId).
 Proof. by []. Qed.
 Let associative : BindLaws.associative bind. Proof. by []. Qed.
-HB.instance Definition _ := @Monad_of_ret_bind.Build
+HB.instance Definition _ := @isMonad_ret_bind.Build
   idfun [the _ ~> _ of NId FId] bind fmapE
   left_neutral right_neutral associative.
 End identitymonad.
@@ -115,9 +115,9 @@ Module ListMonad.
 Section listmonad.
 Definition acto := fun A : UU0 => seq A.
 Local Notation M := acto.
-Let map_id : @FunctorLaws.id seq (@map).
+Let map_id : @FunctorLaws.id M (@map).
 Proof. by move=> A; apply funext => x; rewrite map_id. Qed.
-Let map_comp : @FunctorLaws.comp seq (@map).
+Let map_comp : @FunctorLaws.comp M (@map).
 Proof. by move=> A B C g h; apply funext => x; rewrite map_comp. Qed.
 HB.instance Definition _ := isFunctor.Build M map_id map_comp.
 Let ret_component : FId ~~> M := fun (A : UU0) x => (@cons A) x [::].
@@ -141,7 +141,7 @@ Proof.
 rewrite /= /actm /= /bind /ret_component /=.
 by rewrite map_comp /= flatten_seq1.
 Qed.
-HB.instance Definition _ := @Monad_of_ret_bind.Build M ret bind
+HB.instance Definition _ := @isMonad_ret_bind.Build M ret bind
   fmapE left_neutral right_neutral associative.
 End listmonad.
 End ListMonad.
@@ -180,7 +180,7 @@ Proof. by move=> ? ? ? []. Qed.
 Let fmapE (A B : UU0) (f : A -> B) (m : acto A) :
   (F # f) m = bind m (@ret _ \o f).
 Proof. by rewrite /= /actm /= /ret_component /bind; case: m. Qed.
-HB.instance Definition _ := @Monad_of_ret_bind.Build M ret bind fmapE
+HB.instance Definition _ := @isMonad_ret_bind.Build M ret bind fmapE
   left_neutral right_neutral associative.
 End exceptmonad.
 End ExceptMonad.
@@ -225,7 +225,7 @@ Qed.
 Let fmapE (A B : UU0) (f : A -> B) (m : M A) :
   (F # f) m = bind m (@ret _ \o f).
 Proof. by rewrite /actm /= /bind /=; case: m => h t; rewrite cats0. Qed.
-HB.instance Definition _ := @Monad_of_ret_bind.Build M ret bind fmapE
+HB.instance Definition _ := @isMonad_ret_bind.Build M ret bind fmapE
   left_neutral right_neutral associative.
 End output.
 End OutputMonad.
@@ -265,7 +265,7 @@ Let fmapE (A B : UU0) (f : A -> B) (m : M A) : (F # f) m = bind m (@ret _ \o f).
 Proof.
 by rewrite /actm /= /bind /ret_component; apply funext => e.
 Qed.
-HB.instance Definition _ := @Monad_of_ret_bind.Build M ret bind fmapE
+HB.instance Definition _ := @isMonad_ret_bind.Build M ret bind fmapE
   left_neutral right_neutral associative.
 End environment.
 End EnvironmentMonad.
@@ -316,7 +316,7 @@ Let fmapE (A B : UU0) (f : A -> B) (m : M A) : (F # f) m = bind m (@ret _ \o f).
 Proof.
 by rewrite /actm /= /bind /ret_component /=; apply funext.
 Qed.
-HB.instance Definition _ := @Monad_of_ret_bind.Build
+HB.instance Definition _ := @isMonad_ret_bind.Build
   M ret bind fmapE left_neutral right_neutral associative.
 End state.
 End StateMonad.
@@ -357,7 +357,7 @@ Let fmapE (A B : UU0) (f : A -> B) (m : M A) : (F # f) m = bind m (@ret _ \o f).
 Proof.
 by rewrite /actm /= /bind /ret_component /=; apply funext.
 Qed.
-HB.instance Definition _ := @Monad_of_ret_bind.Build
+HB.instance Definition _ := @isMonad_ret_bind.Build
   M ret bind fmapE left_neutral right_neutral associative.
 End cont.
 End ContMonad.
@@ -1488,7 +1488,8 @@ Let RunStateTcatch (A : UU0) (s : S) (m1 m2 : _ A) :
   runStateT (Catch m1 m2) s = catch (runStateT m1 s) (runStateT m2 s).
 Proof. by []. Qed.
 
-HB.instance Definition _ := @isMonadExceptStateRun.Build S N (MS S N) RunStateTfail RunStateTcatch.
+HB.instance Definition _ := @isMonadExceptStateRun.Build S N (MS S N)
+  RunStateTfail RunStateTcatch.
 
 End modelmonadexceptstaterun.
 End ModelMonadExceptStateRun.

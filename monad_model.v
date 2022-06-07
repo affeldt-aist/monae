@@ -116,7 +116,7 @@ End PR_to_fset.
 (* TODO: move *)
 Section assoc.
 Variables (I : eqType) (S : UU0).
-Definition insert i s (a : I -> S) := fun j => if i == j then s else a j.
+Definition insert i s (a : I -> S) j := if i == j then s else a j.
 Lemma insert_insert i s' s a :
   insert i s' (insert i s a) = insert i s' a.
 Proof.
@@ -153,7 +153,7 @@ Proof. by []. Qed.
 Let right_neutral : BindLaws.right_neutral bind (NId FId).
 Proof. by []. Qed.
 Let associative : BindLaws.associative bind. Proof. by []. Qed.
-HB.instance Definition _ := @Monad_of_ret_bind.Build
+HB.instance Definition _ := @isMonad_ret_bind.Build
   idfun [the _ ~> _ of NId FId] bind fmapE
   left_neutral right_neutral associative.
 End identitymonad.
@@ -190,7 +190,7 @@ Proof.
 rewrite /= /actm /= /bind /ret_component /=.
 by rewrite map_comp /= flatten_seq1.
 Qed.
-HB.instance Definition _ := @Monad_of_ret_bind.Build M ret bind
+HB.instance Definition _ := @isMonad_ret_bind.Build M ret bind
   fmapE left_neutral right_neutral associative.
 End listmonad.
 End ListMonad.
@@ -238,7 +238,7 @@ Proof.
 rewrite /= /actm /bind /= -bigcup_image.
 by rewrite bigcup_imset1 image_comp.
 Qed.
-HB.instance Definition _ := @Monad_of_ret_bind.Build set ret bind fmapE
+HB.instance Definition _ := @isMonad_ret_bind.Build set ret bind fmapE
   left_neutral right_neutral associative.
 End setmonad.
 End SetMonad.
@@ -277,7 +277,7 @@ Proof. by move=> ? ? ? []. Qed.
 Let fmapE (A B : UU0) (f : A -> B) (m : acto A) :
   (F # f) m = bind m (@ret _ \o f).
 Proof. by rewrite /= /actm /= /ret_component /bind; case: m. Qed.
-HB.instance Definition _ := @Monad_of_ret_bind.Build M ret bind fmapE
+HB.instance Definition _ := @isMonad_ret_bind.Build M ret bind fmapE
   left_neutral right_neutral associative.
 End exceptmonad.
 End ExceptMonad.
@@ -322,7 +322,7 @@ Qed.
 Let fmapE (A B : UU0) (f : A -> B) (m : M A) :
   (F # f) m = bind m (@ret _ \o f).
 Proof. by rewrite /actm /= /bind /=; case: m => h t; rewrite cats0. Qed.
-HB.instance Definition _ := @Monad_of_ret_bind.Build M ret bind fmapE
+HB.instance Definition _ := @isMonad_ret_bind.Build M ret bind fmapE
   left_neutral right_neutral associative.
 End output.
 End OutputMonad.
@@ -362,7 +362,7 @@ Let fmapE (A B : UU0) (f : A -> B) (m : M A) : (F # f) m = bind m (@ret _ \o f).
 Proof.
 by rewrite /actm /= /bind /ret_component; apply boolp.funext => e /=.
 Qed.
-HB.instance Definition _ := @Monad_of_ret_bind.Build M ret bind fmapE
+HB.instance Definition _ := @isMonad_ret_bind.Build M ret bind fmapE
   left_neutral right_neutral associative.
 End environment.
 End EnvironmentMonad.
@@ -413,7 +413,7 @@ Let fmapE (A B : UU0) (f : A -> B) (m : M A) : (F # f) m = bind m (@ret _ \o f).
 Proof.
 by rewrite /actm /= /bind /ret_component /=; apply boolp.funext.
 Qed.
-HB.instance Definition _ := @Monad_of_ret_bind.Build
+HB.instance Definition _ := @isMonad_ret_bind.Build
   M ret bind fmapE left_neutral right_neutral associative.
 End state.
 End StateMonad.
@@ -454,7 +454,7 @@ Let fmapE (A B : UU0) (f : A -> B) (m : M A) : (F # f) m = bind m (@ret _ \o f).
 Proof.
 by rewrite /actm /= /bind /ret_component /=; apply boolp.funext.
 Qed.
-HB.instance Definition _ := @Monad_of_ret_bind.Build
+HB.instance Definition _ := @isMonad_ret_bind.Build
   M ret bind fmapE left_neutral right_neutral associative.
 End cont.
 End ContMonad.
@@ -1443,7 +1443,7 @@ Let fmapE (A B : UU0) (f : A -> B) (m : [the functor of acto] A) :
   ([the functor of acto] # f) m = bind m (@ret _ \o f).
 Proof. by []. Qed.
 
-HB.instance Definition _ := @Monad_of_ret_bind.Build acto ret bind
+HB.instance Definition _ := @isMonad_ret_bind.Build acto ret bind
   fmapE left_neutral right_neutral associative.
 
 Lemma bindE (A B : Type) m (f : A -> [the monad of acto] B) :
@@ -1740,8 +1740,8 @@ rewrite /bind; apply: boolp.funext => a1/=; apply/seteqP; split.
 move=> [y a2] [[x a3]] ma1xa3/= [-> ->]/=.
 by eexists; [exact: ma1xa3|].
 Qed.
-HB.instance Definition _ :=
-  @Monad_of_ret_bind.Build acto ret bind fmapE left_neutral right_neutral associative.
+HB.instance Definition _ := @isMonad_ret_bind.Build
+  acto ret bind fmapE left_neutral right_neutral associative.
 Let bindE A B (m : M A) (f : A -> M B) : m >>= f = bind m f.
 Proof. by []. Qed.
 Definition aget i : M S := fun s => Ret (ModelArray.aget i s).
@@ -1760,8 +1760,8 @@ by rewrite bindretf/= insert_same.
 Qed.
 Let agetputskip i : aget i >>= aput i = skip.
 Proof.
-apply boolp.funext => a/=.
-by rewrite bindE /bind SetMonadE bigcup_set1/= /aput /ModelArray.aput insert_same2.
+apply boolp.funext => a/=; rewrite bindE /bind SetMonadE bigcup_set1/=.
+by rewrite /aput /ModelArray.aput insert_same2.
 Qed.
 Let agetget i (A : UU0) (k : S -> S -> M A) :
   aget i >>= (fun s => aget i >>= k s) = aget i >>= fun s => k s s.
@@ -1808,15 +1808,18 @@ Let altA (T : UU0) : ssrfun.associative (@aalt T).
 Proof. by move=> x y z; apply: boolp.funext => a; rewrite /aalt altA. Qed.
 Let alt_bindDl : BindLaws.left_distributive bind (@aalt).
 Proof.
-by move=> A B/= m1 m2 k; apply boolp.funext => a; rewrite /bind /aalt/= alt_bindDl.
+move=> A B/= m1 m2 k; apply boolp.funext => a; rewrite /bind /aalt/=.
+by rewrite alt_bindDl.
 Qed.
 HB.instance Definition _ := isMonadAlt.Build M altA alt_bindDl.
-Let altfailm : @BindLaws.left_id _ (@fail [the failMonad of acto]) (@alt [the altMonad of acto]).
+Let altfailm : @BindLaws.left_id _ (@fail [the failMonad of acto])
+                                   (@alt [the altMonad of acto]).
 Proof.
 move=> A m; apply boolp.funext => a/=; apply boolp.funext => -[x a1]/=.
 by rewrite /alt/= /aalt altfailm.
 Qed.
-Let altmfail : @BindLaws.right_id _ (@fail [the failMonad of acto]) (@alt [the altMonad of acto]).
+Let altmfail : @BindLaws.right_id _ (@fail [the failMonad of acto])
+                                    (@alt [the altMonad of acto]).
 Proof.
 move=> A m; apply boolp.funext => a/=; apply boolp.funext => -[x a1]/=.
 by rewrite /alt/= /aalt altmfail.
@@ -2103,11 +2106,13 @@ Let Catch (A : UU0) := mapStateT2 (@catch N (A * S)%type).
 
 Let Catchmfail : forall A, right_id (liftS (@fail N A)) (@Catch A).
 Proof.
-by move=> A x; rewrite /Catch /mapStateT2; apply boolp.funext => s; rewrite catchmfail.
+move=> A x; rewrite /Catch /mapStateT2; apply boolp.funext => s.
+by rewrite catchmfail.
 Qed.
 Let Catchfailm : forall A, left_id (liftS (@fail N A)) (@Catch A).
 Proof.
-by move=> A x; rewrite /Catch /mapStateT2; apply boolp.funext => s; rewrite catchfailm.
+move=> A x; rewrite /Catch /mapStateT2; apply boolp.funext => s.
+by rewrite catchfailm.
 Qed.
 Let CatchA : forall A, ssrfun.associative (@Catch A).
 Proof.
@@ -2116,7 +2121,8 @@ by rewrite catchA.
 Qed.
 Let Catchret : forall A x, @left_zero (M A) (M A) (Ret x) (@Catch A).
 Proof.
-by move=> A x y; rewrite /Catch /mapStateT2; apply boolp.funext => s; rewrite catchret.
+move=> A x y; rewrite /Catch /mapStateT2; apply boolp.funext => s.
+by rewrite catchret.
 Qed.
 
 HB.instance Definition _ :=
@@ -2129,7 +2135,8 @@ Let RunStateTcatch (A : UU0) (s : S) (m1 m2 : _ A) :
   runStateT (Catch m1 m2) s = catch (runStateT m1 s) (runStateT m2 s).
 Proof. by []. Qed.
 
-HB.instance Definition _ := @isMonadExceptStateRun.Build S N (MS S N) RunStateTfail RunStateTcatch.
+HB.instance Definition _ := @isMonadExceptStateRun.Build S N (MS S N)
+  RunStateTfail RunStateTcatch.
 
 End modelmonadexceptstaterun.
 End ModelMonadExceptStateRun.

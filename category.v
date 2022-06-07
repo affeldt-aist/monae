@@ -1033,7 +1033,7 @@ Proof. by move=> a; rewrite joinE retE actmE (@category.joinMret _ M). Qed.
 Lemma joinA : hierarchy.JoinLaws.associativity join.
 Proof. by move=> a; rewrite joinE actmE (category.joinA a). Qed.
 
-HB.instance Definition _ := @hierarchy.Monad_of_ret_join.Build acto ret join
+HB.instance Definition _ := @hierarchy.isMonad_ret_join.Build acto ret join
   joinretM joinMret joinA.
 End def.
 End Monad_of_category_monad.

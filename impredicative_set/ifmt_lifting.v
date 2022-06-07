@@ -83,7 +83,7 @@ Lemma fmapE (A B : UU0) (f : A -> B) (m : MK M A) :
   ([the functor of MK M] # f) m = bindK m (@retK _ \o f).
 Proof. by []. Qed.
 
-HB.instance Definition _ := @Monad_of_ret_bind.Build
+HB.instance Definition _ := @isMonad_ret_bind.Build
   (MK M) [the _ ~> _ of retK] bindK fmapE left_neutral right_neutral associative.
 
 Definition liftK : M ~~> MK M :=
