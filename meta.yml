@@ -41,11 +41,7 @@ supported_coq_versions:
 tested_coq_opam_versions:
 - version: '1.13.0-coq-8.15'
   repo: 'mathcomp/mathcomp'
-- version: '1.13.0-coq-8.16'
-  repo: 'mathcomp/mathcomp'
 - version: '1.14.0-coq-8.15'
-  repo: 'mathcomp/mathcomp'
-- version: '1.14.0-coq-8.16'
   repo: 'mathcomp/mathcomp'
 
 dependencies:
