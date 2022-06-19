@@ -454,7 +454,7 @@ apply boolp.funext; elim => [|y xs IH].
 apply/esym.
 rewrite fcompE insertE alt_fmapDr.
 (* first branch *)
-rewrite -(compE (fmap (map f))) (natural ret) FIdf [ in X in X [~] _ ]/=.
+rewrite -(compE (fmap (map f))) (natural ret) FIdE [in X in X [~] _ ]/=.
 (* second branch *)
 rewrite -fmap_oE (_ : map f \o cons y = cons (f y) \o map f) //.
 by rewrite fmap_oE -(fcompE (map f)) -IH [RHS]/= insertE.
@@ -468,9 +468,9 @@ Lemma filter_insertN a : ~~ p a ->
   forall s, (filter p (o) insert a) s = Ret (filter p s) :> M _.
 Proof.
 move=> pa; elim => [|h t IH].
-  by rewrite fcompE insertE -(compE (fmap _)) (natural ret) FIdf /= (negbTE pa).
+  by rewrite fcompE insertE -(compE (fmap _)) (natural ret) FIdE /= (negbTE pa).
 rewrite fcompE insertE alt_fmapDr.
-rewrite -(compE (fmap _)) (natural ret) FIdf [in X in X [~] _]/= (negbTE pa).
+rewrite -(compE (fmap _)) (natural ret) FIdE [in X in X [~] _]/= (negbTE pa).
 case: ifPn => ph.
 - rewrite -fmap_oE (_ : filter p \o cons h = cons h \o filter p); last first.
     by apply boolp.funext => x /=; rewrite ph.

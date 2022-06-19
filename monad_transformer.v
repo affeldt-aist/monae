@@ -405,7 +405,7 @@ Let naturality_retEnv : naturality FId [the functor of MEnv] retEnv.
 Proof.
 move=> A B h; rewrite /actm /=; apply boolp.funext => a /=.
 rewrite /MEnv_map /retEnv; apply boolp.funext => r /=.
-by rewrite -[LHS](compE _ Ret) natural FIdf.
+by rewrite -[LHS](compE _ Ret) natural FIdE.
 Qed.
 
 HB.instance Definition _ := isNatural.Build
@@ -488,7 +488,7 @@ HB.instance Definition MO_functor := isFunctor.Build MO MO_map_i MO_map_o.
 Let naturality_retO : naturality FId [the functor of MO] retO.
 Proof.
 move=> A B h; rewrite /actm /=; apply boolp.funext => a /=.
-by rewrite /MO_map /retO -[LHS](compE _ Ret) natural FIdf.
+by rewrite /MO_map /retO -[LHS](compE _ Ret) natural FIdE.
 Qed.
 
 HB.instance Definition _ := isNatural.Build
@@ -854,8 +854,7 @@ rewrite -[in RHS]compA.
 congr (_ \o _).
 rewrite /=.
 rewrite -2!(@functor_o E).
-rewrite (natural ret).
-by rewrite FIdf.
+by rewrite (natural ret) FIdE.
 Qed.
 
 HB.instance Definition _ (op : E.-operation M) := isNatural.Build
@@ -922,8 +921,7 @@ rewrite (_ : (E # Ret) ((E # e X) Y) =
              (E # (M # e X)) ((E # Ret) Y)); last first.
   rewrite -[in LHS]compE -functor_o.
   rewrite -[in RHS]compE -functor_o.
-  rewrite (natural ret).
-  by rewrite FIdf.
+  by rewrite (natural ret) FIdE.
 set x := (Z in Join (e (N X) Z)).
 rewrite (_ : x =
              (M # e X) (op (M X) ((E # Ret) Y))); last first.

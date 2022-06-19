@@ -101,7 +101,7 @@ move=> A B m f; rewrite /liftK; apply funext_dep => C /=.
 by apply funext => g; rewrite bindA.
 Qed.
 
-HB.instance Definition _ := isMonadM_of_ret_bind.Build
+HB.instance Definition _ := isMonadM_ret_bind.Build
   M [the monad of MK M] liftK retliftK bindliftK.
 
 End codensity.

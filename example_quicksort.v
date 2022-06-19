@@ -291,7 +291,7 @@ Variables (M : plusMonad).
 Variables (d : unit) (T : orderType d).
 
 (* let *)
-Equations? qsort (s : seq T) : (seq T) by wf (size s) lt :=
+Equations? qsort (s : seq T) : seq T by wf (size s) lt :=
 | [::] => [::]
 | h :: t => qsort (partition h t).1 ++ h :: qsort (partition h t).2.
 (* let: (ys, zs) := partition h t in

@@ -63,11 +63,11 @@ HB.mixin Record isMonadM (M N : monad) (e : M ~~> N) := {
 HB.structure Definition MonadM (M N : monad) :=
   {e of isMonadM M N e & isNatural M N e}.
 
-HB.factory Record isMonadM_of_ret_bind (M N : monad) (e : M ~~> N) := {
+HB.factory Record isMonadM_ret_bind (M N : monad) (e : M ~~> N) := {
   monadMret : MonadMLaws.ret e ;
   monadMbind : MonadMLaws.bind e }.
 
-HB.builders Context (M N : monad) (e : M ~~> N) of isMonadM_of_ret_bind M N e.
+HB.builders Context (M N : monad) (e : M ~~> N) of isMonadM_ret_bind M N e.
 
 Lemma naturality_monadM : naturality M N e.
 Proof.
@@ -170,7 +170,7 @@ bind_ext => a.
 by rewrite [in RHS]bindretf.
 Qed.
 
-HB.instance Definition _ := isMonadM_of_ret_bind.Build
+HB.instance Definition _ := isMonadM_ret_bind.Build
   M [the monad of MS] liftS retliftS bindliftS.
 
 End state_monad_transformer.
@@ -310,7 +310,7 @@ bind_ext => b.
 by rewrite bindretf.
 Qed.
 
-HB.instance Definition _ := isMonadM_of_ret_bind.Build
+HB.instance Definition _ := isMonadM_ret_bind.Build
   M [the monad of MX] liftX retliftX bindliftX.
 
 End exception_monad_transformer.
@@ -404,7 +404,7 @@ Let naturality_retEnv : naturality FId [the functor of MEnv] retEnv.
 Proof.
 move=> A B h; rewrite /actm /=; apply funext => a /=.
 rewrite /MEnv_map /retEnv; apply funext => r /=.
-by rewrite -[LHS](compE _ Ret) natural FIdf.
+by rewrite -[LHS](compE _ Ret) natural FIdE.
 Qed.
 
 HB.instance Definition _ := isNatural.Build
@@ -443,7 +443,7 @@ Let retliftEnv : MonadMLaws.ret liftEnv. Proof. by []. Qed.
 
 Let bindliftEnv : MonadMLaws.bind liftEnv. Proof. by []. Qed.
 
-HB.instance Definition envTmonadM := isMonadM_of_ret_bind.Build
+HB.instance Definition envTmonadM := isMonadM_ret_bind.Build
   M [the monad of MEnv] liftEnv retliftEnv bindliftEnv.
 
 End environment_monad_transformer.
@@ -487,7 +487,7 @@ HB.instance Definition MO_functor := isFunctor.Build MO MO_map_i MO_map_o.
 Let naturality_retO : naturality FId [the functor of MO] retO.
 Proof.
 move=> A B h; rewrite /actm /=; apply funext => a /=.
-by rewrite /MO_map /retO -[LHS](compE _ Ret) natural FIdf.
+by rewrite /MO_map /retO -[LHS](compE _ Ret) natural FIdE.
 Qed.
 
 HB.instance Definition _ := isNatural.Build
@@ -544,7 +544,7 @@ bind_ext => b.
 by rewrite bindretf /= bindretf.
 Qed.
 
-HB.instance Definition outputTmonadM := isMonadM_of_ret_bind.Build
+HB.instance Definition outputTmonadM := isMonadM_ret_bind.Build
   M [the monad of MO] liftO retliftO bindliftO.
 
 End output_monad_transformer.
@@ -609,7 +609,7 @@ move => A B m f; rewrite /liftC; apply funext => cont.
 by rewrite 3!bindA.
 Qed.
 
-HB.instance Definition contTmonadM := isMonadM_of_ret_bind.Build
+HB.instance Definition contTmonadM := isMonadM_ret_bind.Build
   M [the monad of MC] liftC retliftC bindliftC.
 
 End continuation_monad_tranformer.
@@ -853,8 +853,7 @@ rewrite -[in RHS]compA.
 congr (_ \o _).
 rewrite /=.
 rewrite -2!(@functor_o E).
-rewrite (natural ret).
-by rewrite FIdf.
+by rewrite (natural ret) FIdE.
 Qed.
 
 HB.instance Definition _ (op : E.-operation M) := isNatural.Build
@@ -921,8 +920,7 @@ rewrite (_ : (E # Ret) ((E # e X) Y) =
              (E # (M # e X)) ((E # Ret) Y)); last first.
   rewrite -[in LHS]compE -functor_o.
   rewrite -[in RHS]compE -functor_o.
-  rewrite (natural ret).
-  by rewrite FIdf.
+  by rewrite (natural ret) FIdE.
 set x := (Z in Join (e (N X) Z)).
 rewrite (_ : x =
              (M # e X) (op (M X) ((E # Ret) Y))); last first.
@@ -938,11 +936,11 @@ Qed.
 End uniform_algebraic_lifting.
 
 HB.mixin Record isFunctorial (t : monad -> monad) := {
-  hmap : forall (M N : monad), (M ~> N) -> (t M ~> t N) ;
-  functorial_id : forall (M : monad),
-    hmap _ _ [the _ ~> _ of NId M] = [the _ ~> _ of NId (t M)] ;
+  hmap : forall {M N : monad}, (M ~> N) -> t M ~> t N ;
+  functorial_id : forall M : monad,
+    hmap [the _ ~> _ of NId M] = [the _ ~> _ of NId (t M)] ;
   functorial_o : forall (M N P : monad) (t : M ~> N) (s : N ~> P),
-    hmap _ _ (s \v t) = hmap _ _ s \v hmap _ _ t }.
+    hmap (s \v t) = hmap s \v hmap t }.
 
 #[short(type=functorial)]
 HB.structure Definition Functorial := {t of isFunctorial t}.

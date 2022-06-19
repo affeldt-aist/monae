@@ -128,40 +128,39 @@ Notation "F # g" := (@actm F _ _ g) : monae_scope.
 Notation "'fmap' f" := (_ # f) : mprog.
 
 Section functorid.
-Let id_f (A B : UU0) (f : A -> B) : idfun A -> idfun B := f.
-Let id_id : FunctorLaws.id id_f. Proof. by []. Qed.
-Let id_comp : FunctorLaws.comp id_f. Proof. by []. Qed.
+Let id_actm (A B : UU0) (f : A -> B) : idfun A -> idfun B := f.
+Let id_id : FunctorLaws.id id_actm. Proof. by []. Qed.
+Let id_comp : FunctorLaws.comp id_actm. Proof. by []. Qed.
 HB.instance Definition _ := isFunctor.Build idfun id_id id_comp.
 End functorid.
 
 (* NB: consider eliminating? *)
 Notation FId := [the functor of idfun].
 
-Section functorcomposition.
+Lemma FIdE (A B : UU0) (f : A -> B) : FId # f = f. Proof. by []. Qed.
+
+Section functor_composition.
 Variables f g : functor.
-Definition functorcomposition (A B : UU0) := fun h : A -> B => f # (g # h).
-Let functorcomposition_id : FunctorLaws.id functorcomposition.
+
+Let comp_actm (A B : UU0) (h : A -> B) : (f \o g) A -> (f \o g) B :=
+  f # (g # h).
+
+Let comp_id : FunctorLaws.id comp_actm.
+Proof. by rewrite /FunctorLaws.id => A; rewrite /comp_actm 2!functor_id. Qed.
+
+Let comp_comp : FunctorLaws.comp comp_actm.
 Proof.
-by rewrite /FunctorLaws.id => A; rewrite /functorcomposition 2!functor_id.
-Qed.
-Let functorcomposition_comp : FunctorLaws.comp functorcomposition.
-Proof.
-rewrite /FunctorLaws.comp => A B C g' h; rewrite /functorcomposition.
+rewrite /FunctorLaws.comp => A B C g' h; rewrite /comp_actm.
 by apply funext => m; rewrite [in RHS]compE 2!functor_o.
 Qed.
-HB.instance Definition _ :=
-  isFunctor.Build (f \o g) functorcomposition_id functorcomposition_comp.
 
-End functorcomposition.
+HB.instance Definition _ := isFunctor.Build (f \o g) comp_id comp_comp.
 
-Section functorcomposition_lemmas.
-Lemma FIdf (A B : UU0) (f : A -> B) : FId # f = f. Proof. by []. Qed.
-Lemma FCompA (f g h : functor) : (f \o g) \o h = f \o (g \o h).
-Proof. by []. Qed.
+End functor_composition.
+
 Lemma FCompE (f g : functor) (A B : UU0) (k : A -> B) :
   [the functor of f \o g] # k = f # (g # k).
 Proof. by []. Qed.
-End functorcomposition_lemmas.
 
 (* monadic counterpart of function composition:
    composes a pure function after a monadic function *)
@@ -613,7 +612,7 @@ Lemma bind_kleisli A B C m (f : A -> M B) (g : B -> M C) :
 Proof. by rewrite bindA; bind_ext => a; rewrite /kleisli !compE join_fmap. Qed.
 
 Lemma ret_kleisli A B (k : A -> M B) : Ret >=> k = k.
-Proof. by rewrite /kleisli -compA (natural ret) FIdf compA joinretM. Qed.
+Proof. by rewrite /kleisli -compA (natural ret) FIdE compA joinretM. Qed.
 
 Local Open Scope mprog.
 Lemma fcomp_kleisli A B C D (f : A -> B) (g : C -> M A) (h : D -> M C) :
