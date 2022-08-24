@@ -147,7 +147,7 @@ End listmonad.
 End ListMonad.
 HB.export ListMonad.
 
-Lemma ListMonadE (A B : UU0) (M := ListMonad.acto) (m : M A) (f : A -> M B) :
+Lemma list_bindE (A B : UU0) (M := ListMonad.acto) (m : M A) (f : A -> M B) :
   m >>= f = flatten (map f m).
 Proof. by []. Qed.
 
@@ -186,7 +186,7 @@ End exceptmonad.
 End ExceptMonad.
 HB.export ExceptMonad.
 
-Lemma ExceptMonadE (E A B : UU0) (M := ExceptMonad.acto E)
+Lemma except_bindE (E A B : UU0) (M := ExceptMonad.acto E)
     (m : M A) (f : A -> M B) :
   m >>= f = match m with inl z => inl z | inr b => f b end.
 Proof. by []. Qed.
@@ -231,7 +231,7 @@ End output.
 End OutputMonad.
 HB.export OutputMonad.
 
-Lemma OutputMonadE (L A B : UU0) (M := OutputMonad.acto L)
+Lemma output_bindE (L A B : UU0) (M := OutputMonad.acto L)
    (m : M A) (f : A -> M B) :
   m >>= f = let: (x, w) := m in let: (x', w') := f x in (x', w ++ w').
 Proof. by []. Qed.
@@ -271,7 +271,7 @@ End environment.
 End EnvironmentMonad.
 HB.export EnvironmentMonad.
 
-Lemma EnvironmentMonadE (E A B : UU0) (M := EnvironmentMonad.acto E)
+Lemma environment_bindE (E A B : UU0) (M := EnvironmentMonad.acto E)
     (m : M A) (f : A -> M B) :
   m >>= f = fun e => f (m e) e.
 Proof. by []. Qed.
@@ -322,7 +322,7 @@ End state.
 End StateMonad.
 HB.export StateMonad.
 
-Lemma StateMonadE (S A B : UU0) (M := StateMonad.acto S)
+Lemma state_bindE (S A B : UU0) (M := StateMonad.acto S)
   (m : M A) (f : A -> M B) : m >>= f = uncurry f \o m.
 Proof. by []. Qed.
 
@@ -363,7 +363,7 @@ End cont.
 End ContMonad.
 HB.export ContMonad.
 
-Lemma ContMonadE (r A B : UU0) (M := ContMonad.acto r) (m : M A) (f : A -> M B) :
+Lemma cont_bindE (r A B : UU0) (M := ContMonad.acto r) (m : M A) (f : A -> M B) :
   m >>= f = fun k => m (fun a => f a k).
 Proof. by []. Qed.
 
@@ -394,6 +394,7 @@ End append.
 End Append.
 HB.export Append.
 
+(* TODO: rename *)
 Section tmp.
 Local Notation M := [the monad of ListMonad.acto].
 
@@ -422,7 +423,7 @@ Definition append_op : [the functor of Append.acto].-operation M :=
 Lemma algebraic_append : algebraicity append_op.
 Proof.
 move=> A B f [t1 t2] /=.
-by rewrite 3!ListMonadE -flatten_cat -map_cat.
+by rewrite 3!list_bindE -flatten_cat -map_cat.
 Qed.
 End tmp.
 
@@ -468,9 +469,9 @@ Definition output_op : [the functor of Output.acto L].-operation [the monad of M
 Lemma algebraic_output : algebraicity output_op.
 Proof.
 move=> A B f [w [x w']].
-rewrite OutputMonadE /=.
+rewrite output_bindE/=.
 rewrite /output /=.
-rewrite OutputMonadE.
+rewrite output_bindE.
 by case: f => x' w''; rewrite catA.
 Qed.
 
@@ -488,11 +489,11 @@ Definition flush_op : [the functor of Flush.acto].-operation [the monad of M] :=
 Lemma algebraic_flush : algebraicity flush_op.
 Proof.
 move=> A B f [x w].
-rewrite OutputMonadE.
+rewrite output_bindE.
 rewrite /flush_op /=.
 rewrite /flush /=.
 rewrite /actm /=.
-rewrite OutputMonadE.
+rewrite output_bindE.
 case: f => x' w'.
 Abort.
 
@@ -571,12 +572,12 @@ Definition local_op : [the functor of Local.acto E].-operation [the monad of M] 
 Lemma algebraic_local : algebraicity local_op.
 Proof.
 move=> A B f t.
-rewrite EnvironmentMonadE.
+rewrite environment_bindE.
 rewrite /local_op /=.
 rewrite /local /=.
 rewrite /actm /=.
 case: t => /= ee m.
-rewrite EnvironmentMonadE.
+rewrite environment_bindE.
 apply funext=> x /=.
 Abort.
 
@@ -655,15 +656,15 @@ Definition handle_op : [the functor of Handle.acto Z].-operation [the monad of M
 Lemma algebraic_handle : algebraicity handle_op.
 Proof.
 move=> A B f t.
-rewrite ExceptMonadE.
+rewrite except_bindE.
 rewrite /handle_op /=.
 rewrite /handle /=.
 rewrite /uncurry /=.
 case: t => -[z//|a] g /=.
-rewrite ExceptMonadE.
+rewrite except_bindE.
 case: (f a) => // z.
 rewrite /handle'.
-rewrite ExceptMonadE.
+rewrite except_bindE.
 case: (g z) => [z0|a0].
 Abort.
 
@@ -885,8 +886,7 @@ Proof. by move=> a b c; rewrite /list_alt /= /curry /= catA. Qed.
 Let alt_bindDl : BindLaws.left_distributive (@bind [the monad of ListMonad.acto]) list_alt.
 Proof.
 move=> A B /= s1 s2 k.
-rewrite ListMonadE.
-by rewrite map_cat flatten_cat.
+by rewrite list_bindE map_cat flatten_cat.
 Qed.
 HB.instance Definition _ := isMonadAlt.Build ListMonad.acto altA alt_bindDl.
 End list.
@@ -1141,7 +1141,7 @@ Let reifybind : forall (A B : UU0) (m : M A) (f : A -> M B) s,
       @reify _ (m >>= f) s = match @reify _ m s with | Some a's' => @reify _ (f a's'.1) a's'.2 | None => None end.
 Proof.
 move=> A B m0 f s.
-rewrite StateMonadE.
+rewrite state_bindE.
 rewrite /uncurry /=.
 rewrite /comp /= /reify /=.
 by case (m0 s).
@@ -1170,23 +1170,23 @@ Module ModelArray.
 Section modelarray.
 Variables (S : UU0) (I : eqType).
 Implicit Types (i j : I) (A : UU0).
-Definition acto A := StateMonad.acto (I -> S) A.
+Definition acto := StateMonad.acto (I -> S).
 Local Notation M := acto.
 Definition aget i : M S := fun a => (a i, a).
 Definition aput i s : M unit := fun a => (tt, insert i s a).
 Let aputput i s s' : aput i s >> aput i s' = aput i s'.
 Proof.
-rewrite StateMonadE; apply funext => a/=.
+rewrite state_bindE; apply funext => a/=.
 by rewrite /aput insert_insert.
 Qed.
 Let aputget i s A (k : S -> M A) : aput i s >> aget i >>= k = aput i s >> k s.
 Proof.
-rewrite StateMonadE; apply funext => a/=.
+rewrite state_bindE; apply funext => a/=.
 by rewrite /aput insert_same.
 Qed.
 Let agetputskip i : aget i >>= aput i = skip.
 Proof.
-rewrite StateMonadE; apply funext => a/=.
+rewrite state_bindE; apply funext => a/=.
 by rewrite /aput insert_same2.
 Qed.
 Let agetget i A (k : S -> S -> M A) :
@@ -1199,14 +1199,14 @@ Proof. by []. Qed.
 Let aputC i j u v : (i != j) \/ (u = v) ->
   aput i u >> aput j v = aput j v >> aput i u.
 Proof.
-by move=> [ij|->{u}]; rewrite !StateMonadE /aput; apply/funext => a/=;
+by move=> [ij|->{u}]; rewrite !state_bindE /aput; apply/funext => a/=;
   [rewrite insertC|rewrite insertC2].
 Qed.
 Let aputgetC i j u A (k : S -> M A) : i != j ->
   aput i u >> aget j >>= k = aget j >>= (fun v => aput i u >> k v).
 Proof.
-move=> ij; rewrite /aput !StateMonadE; apply funext => a/=.
-by rewrite StateMonadE/= {1}/insert (negbTE ij).
+move=> ij; rewrite /aput !state_bindE; apply funext => a/=.
+by rewrite state_bindE/= {1}/insert (negbTE ij).
 Qed.
 HB.instance Definition _ := isMonadArray.Build
   S I acto aputput aputget agetputskip agetget agetC aputC aputgetC.
@@ -1462,11 +1462,13 @@ Let Catch (A : UU0) := mapStateT2 (@catch N (A * S)%type).
 
 Let Catchmfail : forall A, right_id (liftS (@fail N A)) (@Catch A).
 Proof.
-by move=> A x; rewrite /Catch /mapStateT2; apply funext => s; rewrite catchmfail.
+move=> A x; rewrite /Catch /mapStateT2; apply funext => s.
+by rewrite catchmfail.
 Qed.
 Let Catchfailm : forall A, left_id (liftS (@fail N A)) (@Catch A).
 Proof.
-by move=> A x; rewrite /Catch /mapStateT2; apply funext => s; rewrite catchfailm.
+move=> A x; rewrite /Catch /mapStateT2; apply funext => s.
+by rewrite catchfailm.
 Qed.
 Let CatchA : forall A, ssrfun.associative (@Catch A).
 Proof.
@@ -1475,7 +1477,8 @@ by rewrite catchA.
 Qed.
 Let Catchret : forall A x, @left_zero (M A) (M A) (Ret x) (@Catch A).
 Proof.
-by move=> A x y; rewrite /Catch /mapStateT2; apply funext => s; rewrite catchret.
+move=> A x y; rewrite /Catch /mapStateT2; apply funext => s.
+by rewrite catchret.
 Qed.
 
 HB.instance Definition _ :=
