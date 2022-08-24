@@ -120,8 +120,8 @@ rewrite /MS_map /=; apply funext => s /=.
 by rewrite /retS [in LHS]curryE (natural ret).
 Qed.
 
-HB.instance Definition _ :=
-  isNatural.Build FId [the functor of MS] retS naturality_retS.
+HB.instance Definition _ := isNatural.Build
+  FId [the functor of MS] retS naturality_retS.
 
 Let bindSretf : BindLaws.left_neutral bindS retS.
 Proof.
@@ -723,10 +723,7 @@ Section sum.
 Variables M : stateMonad nat.
 
 Let sum n : M unit := for_loop n O
-  (fun i : nat => liftC (get >>= (fun z => put (z + i)) ) ).
-(*
-Let sum n : stateMonad_of_stateT nat(*TODO: <- was inserted explicitly before*) M unit := for_loop n O
-  (fun i : nat => liftC (get >>= (fun z => put (z + i)) ) ).*)
+  (fun i : nat => liftC (get >>= (fun z => put (z + i)))).
 
 Lemma sum_test n :
   sum n = get >>= (fun m => put (m + sumn (iota 0 n))).
@@ -764,15 +761,21 @@ End continuation_monad_transformer_examples.
 (* TODO: lift laws *)
 (*******************)
 
-Lemma bindLfailf (M : failMonad) S T U (m : stateT S M U) :
-  Lift [the monadT of stateT S] M T fail >> m =
-  Lift [the monadT of stateT S] M U fail.
+Lemma bindLfailf (M : failMonad) S :
+  BindLaws.left_zero (@bind (stateT S M)) (Lift _ _ ^~ fail).
 Proof.
-rewrite /= /liftS; apply funext => s.
-rewrite bindfailf.
-set x := (X in bind X _ = _).
-rewrite (_ : x = fail); last by rewrite /x bindfailf.
-by rewrite bindfailf.
+move=> A B g /=; rewrite /liftS; apply funext => s; rewrite bindfailf.
+set x := (X in X >>= _ = _).
+by rewrite (_ : x = fail) ?bindfailf// /x bindfailf.
+Qed.
+
+Lemma bindmLfail (M : failR0Monad) S :
+  BindLaws.right_zero (@bind (stateT S M)) (Lift _ _ ^~ fail).
+Proof.
+move=> A B m /=; rewrite /liftS/=; apply/funext => s; rewrite bindfailf.
+set x := (X in _ >>= X = _).
+rewrite (_ : x = fun=> fail) ?bindmfail//.
+by apply/funext=> -[b s']; rewrite /x/= bindfailf.
 Qed.
 
 Section lifting.

@@ -188,7 +188,7 @@ Lemma bindLmfail (M := [the monad of option_monad]) S T U (m : stateT S M U)
   Lift [the monadT of stateT S] M T FAIL.
 Proof.
 rewrite /= /liftS boolp.funeqE => s.
-rewrite ExceptMonadE.
+rewrite except_bindE.
 rewrite {1}bindE /= {1}/join_of_bind /= {1}/bindS /=.
 rewrite {1}bindE /= {1}/join_of_bind /=.
 rewrite /actm /= /MS_map /= /actm /=.
