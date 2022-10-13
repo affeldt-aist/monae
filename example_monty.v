@@ -409,7 +409,7 @@ under eq_bind do rewrite bindretf.
 rewrite /pick /monty.pick.
 transitivity ((Ret A <| (/ 3)%:pr |> (Ret B <| (/ 2)%:pr |> Ret C)) >>= (fun p => Ret (d == p)) : M _).
   congr bind; by rewrite /doors Set3.enumE 2!uniform_cons.
-rewrite 2!prob_bindDl 3!bindretf.
+rewrite 2!choice_bindDl 3!bindretf.
 rewrite /uFFT 2!uniform_cons.
 rewrite uniform_singl // [head _ _]/=.
 have : d \in doors by rewrite mem_enum.
@@ -540,7 +540,7 @@ transitivity (uniform def [:: h; d] >>= (fun t => if t == h then fail else Ret t
   by rewrite uniform2.
 rewrite uniform_cons (_ : _%:pr = (/ 2)%:pr)%R; last first.
   by apply val_inj => /=; lra.
-rewrite uniform_singl // [head _ _]/= prob_bindDl 2!bindretf eqxx ifF //.
+rewrite uniform_singl // [head _ _]/= choice_bindDl 2!bindretf eqxx ifF //.
 by apply/negbTE/(Set3.head_filter card_door); rewrite inE eqxx.
 Qed.
 
@@ -557,10 +557,10 @@ Open (X in _ >>= X).
     case: ifPn => [/eqP <-|hp]; first by rewrite eqxx.
     by rewrite eq_sym (negbTE hp).
   reflexivity.
-under eq_bind do rewrite prob_bindDl bindfailf bindretf.
+under eq_bind do rewrite choice_bindDl bindfailf bindretf.
 rewrite (Set3.bcoin13E_pair _ def (fun b => if b then Ret true else fail <| (/ 2)%:pr |> Ret false : M _)) //.
 rewrite /bcoin.
-by rewrite prob_bindDl 2!bindretf.
+by rewrite choice_bindDl 2!bindretf.
 (* TODO: flattening choices *)
 Qed.
 
@@ -591,7 +591,7 @@ transitivity (uniform (def, def) (cp doors doors) >>= (fun x =>
    Ret (head def (doors \\ [:: x.2; head def (doors \\ [:: x.1; x.2])]) == x.1)) : M _).
   bind_ext => -[h p]; rewrite [_.1]/= [_.2]/=.
   case: ifPn => [?| hp]; first by rewrite uniform_inde.
-  by rewrite prob_bindDl (@bindfailf M) bindretf.
+  by rewrite choice_bindDl (@bindfailf M) bindretf.
 transitivity (
   uniform (def, def) (cp doors doors) >>= (fun x =>
   if x.1 == x.2
@@ -604,7 +604,7 @@ transitivity (
   rewrite Set3.filter_another; last by rewrite eq_sym Set3.head_filter // !inE eqxx orbT.
   by rewrite Set3.filter_another //= Set3.another_another.
 rewrite (Set3.bcoin13E_pair _ def (fun b => if b then Ret false else fail <| (/ 2)%:pr |> Ret true)) //.
-by rewrite prob_bindDl 2!bindretf.
+by rewrite choice_bindDl 2!bindretf.
 (* TODO: flattening choices *)
 Qed.
 

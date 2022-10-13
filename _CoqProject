@@ -30,4 +30,5 @@ smallstep.v
 example_transformer.v
 category_ext.v
 
+-R ../infotheo infotheo
 -R . monae
