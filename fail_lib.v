@@ -5,6 +5,7 @@ From mathcomp Require boolp.
 Require Import monae_lib.
 From HB Require Import structures.
 Require Import hierarchy monad_lib.
+From infotheo Require necset.
 From Equations Require Import Equations.
 
 (******************************************************************************)
@@ -78,6 +79,21 @@ move=> hb; exists (take (index h b) b), (drop (index h b).+1 b).
 rewrite -cats1 -catA -{1}(cat_take_drop (index h b) b); congr (_ ++ _) => /=.
 by rewrite -{2}(nth_index h hb) -drop_nth // index_mem.
 Qed.
+
+Section altci_semilatttype.
+Import convex necset SemiLattice.
+Variable M : altCIMonad.
+Variable T : Type.
+
+HB.instance Definition _ := @isSemiLattice.Build (M T) (Choice.class (choice_of_Type (M T))) (fun x y => x [~] y)
+  (@altC M T) (@altA M T) (@altmm M T).
+
+Local Open Scope latt_scope.
+
+Lemma alt_lub (x y : M T) : x [~] y = x [+] y.
+Proof. reflexivity. Qed.
+
+End altci_semilatttype.
 
 Lemma bind_ext_guard {M : failMonad} (A : UU0) (b : bool) (m1 m2 : M A) :
   (b -> m1 = m2) -> guard b >> m1 = guard b >> m2.

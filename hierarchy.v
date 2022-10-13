@@ -1090,7 +1090,7 @@ HB.mixin Record isMonadProb (M : UU0 -> UU0) of Monad M := {
     let ab := choice r _ a b in
     choice p _ a bc = choice s _ ab c;
   (* composition distributes leftwards over [probabilistic] choice *)
-  prob_bindDl :
+  choice_bindDl :
     forall p, BindLaws.left_distributive (@bind [the monad of M]) (choice p) }.
 
 #[short(type=probMonad)]

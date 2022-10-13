@@ -203,8 +203,9 @@ End conv_hom_is_affine.
 
 
 Section free_convType_functor.
+xxx
 Definition free_convType_mor (A B : CC) (f : {hom A, B}) : {hom {dist A}, {dist B}} :=
-  Hom.Pack (Hom.Class (isHom.Axioms_ {dist A} {dist B} (FSDistfmap f) (FSDistfmap_affine f))).
+  Hom.Pack (Hom.Class (isHom.Axioms_ {dist A} {dist B} (FSDi\stfmap f) (FSDistfmap_affine f))).
 
 Lemma mem_finsupp_free_convType_mor (A B : CC) (f : A -> B)
     (d : {dist A}) (x : finsupp d) :
