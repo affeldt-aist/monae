@@ -380,13 +380,13 @@ Section free_semiCompSemiLattConvType_functor.
 Import category.
 Local Open Scope convex_scope.
 
-Let acto (a : CV) : CS := [the semiCompSemiLattConvType of {necset a}].
+Let acto (a : CV) : CS := {necset a}.
 
 (* the morphism part of necset *)
 Section free_semiCompSemiLattConvType_mor.
 Variables (A B : convType) (f : {hom A , B}).
 
-Definition free_semiCompSemiLattConvType_mor' (X : {necset A}) : {necset B} :=
+Definition free_semiCompSemiLattConvType_mor' (X : acto A) : acto B :=
   NECSet.Pack (NECSet.Class
     (CSet.Mixin (is_convex_set_image (Conv_hom_affine f) X))
     (NESet.Mixin (neset_image_neq0 _ _))).
@@ -401,7 +401,8 @@ move=> p a0 a1; apply necset_ext => /=; rewrite predeqE => b0; split.
 - rewrite !necset_convType.convE.
   case=> a [] a0' a0a0'; rewrite conv_pt_setE=> -[] a1' a1a1' <- <- /=.
   rewrite affine_conv /=; apply: conv_in_conv_set => //.
-- rewrite !necset_convType.convE => /conv_in_conv_set' [] x [] y [] [] a0' a0a0' <- [] [] a1' a1a1' <- ->.
+- rewrite !necset_convType.convE.
+  move=> /conv_in_conv_set' [] x [] y [] [] a0' a0a0' <- [] [] a1' a1a1' <- ->.
   rewrite affine_image_conv_set /=.
   by apply conv_in_conv_set; apply imageP.
 Qed.
@@ -433,22 +434,22 @@ Definition free_semiCompSemiLattConvType_mor : {hom acto A, acto B} :=
     (BiglubAffine.Class free_semiCompSemiLattConvType_mor'_affine
                        free_semiCompSemiLattConvType_mor'_biglub_morph)))).
 
-Lemma free_semiCompSemiLattConvType_morE (X : necset A) :
+Lemma free_semiCompSemiLattConvType_morE (X : acto A) :
   NECSet.mixinType (free_semiCompSemiLattConvType_mor X) = image_neset f X.
 Proof.
 by rewrite /free_semiCompSemiLattConvType_mor; unlock; apply neset_ext.
 Qed.
 
-Lemma free_semiCompSemiLattConvType_morE' (X : necset A) :
-  NESet.car (NECSet.mixinType (free_semiCompSemiLattConvType_mor X)) = image_neset f X.
+Lemma free_semiCompSemiLattConvType_morE' (X : acto A) :
+  NESet.car (NECSet.mixinType (free_semiCompSemiLattConvType_mor X)) =
+  image_neset f X.
 Proof. by rewrite /free_semiCompSemiLattConvType_mor; unlock. Qed.
 End free_semiCompSemiLattConvType_mor.
 
 Lemma free_semiCompSemiLattConvType_mor_id :
   FunctorLaws.id free_semiCompSemiLattConvType_mor.
 Proof.
-move=> a; rewrite hom_ext funeqE=> /= x /=.
-apply necset_ext => /=.
+move=> a; rewrite hom_ext funeqE=> /= x /=; apply necset_ext => /=.
 by rewrite free_semiCompSemiLattConvType_morE' /= image_id.
 Qed.
 
@@ -590,11 +591,11 @@ Local Open Scope convex_scope.
 Local Open Scope classical_set_scope.
 Variable C : convType.
 
-Definition join1' (s : necset [the convType of {necset C}]) : {convex_set C} :=
+Definition join1' (s : necset {necset C}) : {convex_set C} :=
   CSet.Pack (CSet.Mixin
     (hull_is_convex (\bigcup_(x in s) if x \in s then (x : set _) else cset0 _))).
 
-Lemma join1'_neq0 (s : necset [the convType of {necset C}]) :
+Lemma join1'_neq0 (s : necset {necset C}) :
   join1' s != set0 :> set _.
 Proof.
 rewrite hull_eq0 set0P.
@@ -603,11 +604,11 @@ case/set0P: (neset_neq0 y) => x yx sy.
 by exists x; exists y => //; move: sy; rewrite -in_setE => ->.
 Qed.
 
-Definition join1 (s : necset [the convType of {necset C}]) : necset C :=
+Definition join1 (s : necset {necset C}) : necset C :=
   NECSet.Pack (NECSet.Class (CSet.Mixin (hull_is_convex _))
                             (NESet.Mixin (join1'_neq0 s))).
 
-Lemma eps1_correct (s : necset [the convType of {necset C}]) : @eps1 _ s = join1 s.
+Lemma eps1_correct (s : necset {necset C}) : @eps1 _ s = join1 s.
 Proof.
 rewrite eps1E; apply/necset_ext => /=; congr (hull _).
 rewrite /bigcup; rewrite funeqE => c; rewrite propeqE; split.

@@ -94,7 +94,7 @@ Proof. exact: scsl_hom_is_lubmorph. Qed.
 (*
 Local Notation F1o := necset_semiCompSemiLattConvType.
 *)
-Local Notation F0o := FSDist_t__canonical__isConvexSpace__ConvexSpace.
+Local Notation F0o := FSDist_t__canonical__isConvexSpace__ConvexSpace. (* FIXME *)
 Local Notation FCo := choice_of_Type.
 Local Notation F1m := free_semiCompSemiLattConvType_mor.
 Local Notation F0m := free_convType_mor.
@@ -169,7 +169,7 @@ Lemma affine_e1PD_conv T (x y : el (F1 (FId (U1 (P_delta_left T))))) p :
 Proof. exact: scsl_hom_is_affine. Qed.
 
 (*Local Notation F1o := necset_semiCompSemiLattConvType.*)
-Local Notation F0o := FSDist_t__canonical__isConvexSpace__ConvexSpace.
+Local Notation F0o := FSDist_t__canonical__isConvexSpace__ConvexSpace. (* FIXME *)
 Local Notation FCo := choice_of_Type.
 Local Notation F1m := free_semiCompSemiLattConvType_mor.
 Local Notation F0m := free_convType_mor.
