@@ -40,7 +40,7 @@ Section convex.
 Variable M : probMonad.
 Variable A : Type.
 Local Open Scope proba_scope.
-Let choiceA : forall (p q : prob) (a b c : M A),
+Definition mychoiceA : forall (p q : prob) (a b c : M A),
   let conv := (fun p (a b : choice_of_Type (M A)) => choice p A a b) in
    conv p a (conv q b c) = conv [s_of p, q] (conv [r_of p, q] a b) c.
 Proof.
@@ -48,21 +48,23 @@ move=> p q a b c; apply: (choiceA p q).
 by rewrite -fdist.p_is_rs fdist.s_of_pqE onemK.
 Qed.
 
-HB.instance Definition _ := @isConvexSpace.Build (M A)
+Definition prob_convType := M A.
+
+HB.instance Definition _ := @isConvexSpace.Build prob_convType
   (Choice.class (choice_of_Type (M A)))
-(fun p  => choice p A)
+(fun p => choice p A)
 (choice1 _)
 choicemm
 choiceC
-choiceA.
+mychoiceA.
 
-Lemma choice_conv p (x y : M A) : choice p A x y = conv p x y.
+Lemma choice_conv p (x y : prob_convType) : choice p A x y = conv p x y.
 Proof. reflexivity. Qed.
 
 End convex.
 
 Lemma choiceACA {M : probMonad} T q p :
-  @interchange (M T) (fun a b => a <|p|> b) (fun a b => a <|q|> b).
+  @interchange (prob_convType M T) (fun a b => a <|p|> b) (fun a b => a <|q|> b).
 Proof. by move=> *; exact: convACA. Qed.
 
 (* NB: the parameter def is because Coq functions are total *)
@@ -222,24 +224,33 @@ rewrite [in RHS](_ : Prob.mk _ = probinvn m) //.
 by apply val_inj; rewrite /= /divRnnm div1R.
 Qed.
 
-(* FIXME
 Section altprob_semilattconvtype.
 Variable M : altProbMonad.
 Variable T : Type.
+Import convex necset SemiLattice.
 
-HB.instance Definition _ := isSemiLattConv.Build
+Definition altProb_semiLattConvType := M T.
 
-Definition altProb_semiLattConvMixin : @mixin_of (altCI_semiLattType M T)
-  (fun p (x y : choice_of_Type (M T)) => x <| p |> y).
-Proof. by refine (Mixin _); exact: choiceDr. Defined.
+Let axiom (p : prob) (x y z : altProb_semiLattConvType) :
+  x <| p |> (y [~] z) = (x <| p |> y) [~] (x <| p |> z).
+Proof. by rewrite choiceDr. Qed.
 
-Definition altProb_semiLattConvClass := @Class (M T)
-  (altCI_semiLattClass M T) (prob_convMixin M T) altProb_semiLattConvMixin.
+HB.instance Definition _ := @isSemiLattice.Build altProb_semiLattConvType
+  (Choice.class (choice_of_Type (M T)))
+  (fun x y => x [~] y)
+  (@altC M T) (@altA M T) (@altmm M T).
 
-Canonical altProb_semiLattConvType := Pack altProb_semiLattConvClass.
+HB.instance Definition _ := @isConvexSpace.Build altProb_semiLattConvType
+  (Choice.class (choice_of_Type (M T)))
+(fun p => choice p T)
+(choice1 _)
+choicemm
+choiceC
+(@mychoiceA M T).
+
+HB.instance Definition _ := @isSemiLattConv.Build altProb_semiLattConvType axiom.
 
 End altprob_semilattconvtype.
-*)
 
 (* TODO(rei): incipit of section 5 of gibbonsUTP2012 on the model of MonadAltProb *)
 

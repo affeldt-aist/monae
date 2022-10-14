@@ -85,12 +85,16 @@ Import convex necset SemiLattice.
 Variable M : altCIMonad.
 Variable T : Type.
 
-HB.instance Definition _ := @isSemiLattice.Build (M T) (Choice.class (choice_of_Type (M T))) (fun x y => x [~] y)
+Definition altCI_semiLattType := M T.
+
+HB.instance Definition _ := @isSemiLattice.Build altCI_semiLattType
+  (Choice.class (choice_of_Type (M T)))
+  (fun x y => x [~] y)
   (@altC M T) (@altA M T) (@altmm M T).
 
 Local Open Scope latt_scope.
 
-Lemma alt_lub (x y : M T) : x [~] y = x [+] y.
+Lemma alt_lub (x y : altCI_semiLattType) : x [~] y = x [+] y.
 Proof. reflexivity. Qed.
 
 End altci_semilatttype.
