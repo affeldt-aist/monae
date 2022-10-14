@@ -187,18 +187,18 @@ Section convType_as_a_category.
 Local Obligation Tactic := idtac.
 Let comp_is_affine' (a b c : convType) (f : a -> b) (g : b -> c) :
   affine f -> affine g -> affine (g \o f).
-Proof. move=> *; exact: (comp_is_affine (Affine _) (Affine _)). Qed.
+Proof. by move=> hf hg ? ? ? /=; rewrite hf hg. Qed.
 HB.instance Definition _ :=
   isCategory.Build convType (fun A : convType => A)
-    Affine.axiom idfun_is_affine comp_is_affine'.
+    affine idfun_is_affine comp_is_affine'.
 End convType_as_a_category.
 Notation CV := [the category of convType].
 
 Section conv_hom_is_affine.
 Fact conv_hom_is_affine (a b : CV) (f : {hom a, b}) : affine f.
 Proof. by case: f=> ? [] []. Qed.
-Canonical Conv_hom_affine (A B : convType) (f : {hom A, B}) :=
-  Affine (conv_hom_is_affine f).
+HB.instance Definition _ (*Conv_hom_affine*) (A B : convType) (f : {hom A, B})  :=
+  isAffine.Build _ _ _ (conv_hom_is_affine f).
 End conv_hom_is_affine.
 
 Section free_convType_functor.
@@ -318,12 +318,13 @@ Section eps0_correct.
 Import category.
 Import ScaledConvex.
 Local Open Scope R_scope.
+Local Open Scope convex_scope.
 Variables (A : choiceType) (D : {dist {dist A}}).
 
 Lemma eps0_correct : eps0 _ D = FSDistjoin D.
 Proof.
 rewrite /eps0; unlock=> /=; apply FSDist_ext => a; rewrite -[LHS]Scaled1RK.
-rewrite (S1_proj_Convn_finType (Affine (FSDist_eval_affine a))) big_scaleR.
+rewrite (S1_proj_Convn_finType [the {affine _ -> _} of (FSDist_eval a)]) big_scaleR.
 rewrite FSDistjoinE big_seq_fsetE; apply eq_bigr => -[d dD] _.
 by rewrite (scaleR_scalept _ (FDist.ge0 _ _)) fdist_of_FSDistE Scaled1RK.
 Qed.
@@ -333,16 +334,30 @@ End eps0_correct.
 Section semiCompSemiLattConvType_as_a_category.
 Import category.
 Local Obligation Tactic := idtac.
-Lemma comp_is_biglub_affine'
+Definition biglub_affine (a b : semiCompSemiLattConvType) (f : a -> b) :=
+      biglubmorph f /\ affine f.
+Let comp_is_biglub_affine
       (a b c : semiCompSemiLattConvType) (f : a -> b) (g : b -> c) :
   biglub_affine f -> biglub_affine g -> biglub_affine (g \o f).
 Proof.
-move=> bf bg.
-exact: (comp_is_biglub_affine (BiglubAffine bg) (BiglubAffine bf)).
+move=> [bf af] [bg ag]; split => x/=.
+ rewrite bf bg/=.
+ congr (biglub _).
+ apply/neset_ext => /=.
+ by rewrite image_comp.
+by move=> ? ? /=; rewrite af ag.
 Qed.
+Let idfun_is_biglub_affine (a : semiCompSemiLattConvType) :
+  biglub_affine (@idfun a).
+Proof.
+split.
+exact: idfun_is_biglub_affine.
+apply: idfun_is_affine.
+Qed.
+
 HB.instance Definition _ :=
   isCategory.Build semiCompSemiLattConvType (fun U : semiCompSemiLattConvType => U)
-  BiglubAffine.class_of idfun_is_biglub_affine comp_is_biglub_affine'.
+ biglub_affine idfun_is_biglub_affine comp_is_biglub_affine.
 End semiCompSemiLattConvType_as_a_category.
 
 
@@ -357,23 +372,35 @@ Local Open Scope convex_scope.
 Fact scsl_hom_is_biglub_affine (K L : CS) (f : {hom K , L}) :
   biglub_affine f.
 Proof. by split; move=> ?; case: f=> ? [] [] []. Qed.
+(* TODO: The following three lemmas should be inferred from the above one. *)
+(* NB: HB.instance? *)
+
+(*
 Canonical SCSL_hom_biglub_affine (A B : CS)
   (f : {hom A, B}) := BiglubAffine (scsl_hom_is_biglub_affine f).
-(* TODO: The following three lemmas should be inferred from the above one. *)
+*)
 Fact scsl_hom_is_affine  (K L : CS) (f : {hom K , L}) :
   affine f.
 Proof. by case: (scsl_hom_is_biglub_affine f). Qed.
+HB.instance Definition SCSL_hom_affine (K L : CS) (f : {hom K , L}) :=
+  isAffine.Build _ _ _ (scsl_hom_is_affine f).
+(*
 Canonical SCSL_hom_affine (K L : CS) (f : {hom K , L}) :=
   Affine (scsl_hom_is_affine f).
+*)
+
 Fact scsl_hom_is_biglubmorph (K L : CS) (f : {hom K , L}) :
   biglubmorph f.
 Proof. by case: (scsl_hom_is_biglub_affine f). Qed.
+HB.instance Definition SCSL_hom_biglubmorph (K L : CS) (f : {hom K , L}) :=
+  isBiglubMorph.Build _ _ _ (scsl_hom_is_biglubmorph f).
+(*
 Canonical SCSL_hom_biglubmorph (K L : CS)
   (f : {hom K, L}) := BiglubMorph (scsl_hom_is_biglubmorph f).
-
+*)
 Fact scsl_hom_is_lubmorph (K L : CS) (f : {hom K, L}) :
   lub_morph f.
-Proof. exact: biglub_lub_morph. Qed.
+Proof. apply: biglub_lub_morph. Qed.
 End scsl_hom_is_biglub_affine.
 
 Section free_semiCompSemiLattConvType_functor.
@@ -388,7 +415,8 @@ Variables (A B : convType) (f : {hom A , B}).
 
 Definition free_semiCompSemiLattConvType_mor' (X : acto A) : acto B :=
   NECSet.Pack (NECSet.Class
-    (CSet.Mixin (is_convex_set_image (Conv_hom_affine f) X))
+    (CSet.Mixin (is_convex_set_image
+      (Affine.Pack (Affine.Class (isAffine.Axioms_ _ _ (conv_hom_is_affine f)))) X))
     (NESet.Mixin (neset_image_neq0 _ _))).
 
 (* the results of free_semiCompSemiLattConvType_mor are
@@ -414,7 +442,9 @@ Proof.
 rewrite funeqE => b; rewrite propeqE; split.
 - case => a [x Xx xa] <-{b}.
   exists (NECSet.Pack (NECSet.Class
-      (CSet.Mixin (is_convex_set_image (Conv_hom_affine f) x))
+      (CSet.Mixin (is_convex_set_image
+       (Affine.Pack (Affine.Class (isAffine.Axioms_ _ _ (conv_hom_is_affine f))))
+       x))
       (NESet.Mixin (neset_image_neq0 f x)))) => /=; last by exists a.
   by exists x => //=; exact/necset_ext.
 - by case => b0 [a0 Xa0 <-{b0}] [a a0a <-{b}]; exists a => //; exists a0.
@@ -431,8 +461,8 @@ Definition free_semiCompSemiLattConvType_mor : {hom acto A, acto B} :=
   locked (Hom.Pack (Hom.Class (isHom.Axioms_
     (acto A) (acto B)
     free_semiCompSemiLattConvType_mor'
-    (BiglubAffine.Class free_semiCompSemiLattConvType_mor'_affine
-                       free_semiCompSemiLattConvType_mor'_biglub_morph)))).
+    (conj free_semiCompSemiLattConvType_mor'_biglub_morph
+          free_semiCompSemiLattConvType_mor'_affine)))).
 
 Lemma free_semiCompSemiLattConvType_morE (X : acto A) :
   NECSet.mixinType (free_semiCompSemiLattConvType_mor X) = image_neset f X.
@@ -476,7 +506,7 @@ Section forget_semiCompSemiLattConvType_functor.
 Let m2 : CS -> CV := id.
 Let h2 :=
   fun (a b : CS) (f : {hom CS; a, b}) =>
-    Hom.Pack (Hom.Class (isHom.Axioms_ (m2 a) (m2 b) f (BiglubAffine.base (isHom_inhom f)))).
+    Hom.Pack (Hom.Class (isHom.Axioms_ (m2 a) (m2 b) f (scsl_hom_is_affine f))).
 Lemma h2_id : FunctorLaws.id h2. Proof. by move=> *; apply hom_ext. Qed.
 Lemma h2_comp : FunctorLaws.comp h2. Proof. by move=> *; apply hom_ext. Qed.
 HB.instance Definition _ := isFunctor.Build _ _ m2 h2_id h2_comp.
@@ -525,7 +555,7 @@ Qed.
 
 Let eps1' : F1 \O U1 ~~> FId :=
   fun L => Hom.Pack (Hom.Class (isHom.Axioms_ ((F1 \O U1) L) (FId L) (@eps1'' L)
-    (BiglubAffine.Class (@eps1''_affine L) (@eps1''_biglubmorph L)))).
+    (conj (@eps1''_biglubmorph L) (@eps1''_affine L)))).
 
 Lemma eps1'_natural : naturality _ _ eps1'.
 Proof.

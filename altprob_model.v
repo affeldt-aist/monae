@@ -131,21 +131,7 @@ Proof. by move=> m; rewrite /choice convmm. Qed.
 Lemma choiceA A (p q r s : prob) (x y z : gcm A) :
   p = (r * s) :> R /\ s.~ = (p.~ * q.~)%R ->
   x <| p |> (y <| q |> z) = (x <| r |> y) <| s |> z.
-Proof.
-case=> H1 H2.
-case/boolP : (r == 0%:pr) => r0.
-  have p0 : p = 0%:pr by apply/val_inj; rewrite /= H1 (eqP r0) mul0R.
-  rewrite p0 choice0 (eqP r0) choice0 (_ : q = s) //; apply/val_inj => /=.
-  by move: H2; rewrite p0 onem0 mul1R => /(congr1 onem); rewrite !onemK.
-case/boolP : (s == 0%:pr) => s0.
-  have p0 : p = 0%:pr by apply/val_inj; rewrite /= H1 (eqP s0) mulR0.
-  rewrite p0 (eqP s0) 2!choice0 (_ : q = 0%:pr) ?choice0 //; apply/val_inj.
-  move: H2; rewrite p0 onem0 mul1R (eqP s0) onem0 => /(congr1 onem).
-  by rewrite onemK onem1.
-rewrite convA (@r_of_pq_is_r _ _ r s) //.
-congr ((x <| r |> y) <| _ |> z).
-by apply/val_inj; rewrite /= s_of_pqE -H2 onemK.
-Qed.
+Proof. by case => *; apply: convA0. Qed.
 
 Section bindchoiceDl.
 Import category.
