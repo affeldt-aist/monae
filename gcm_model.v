@@ -201,7 +201,6 @@ Canonical Conv_hom_affine (A B : convType) (f : {hom A, B}) :=
   Affine (conv_hom_is_affine f).
 End conv_hom_is_affine.
 
-
 Section free_convType_functor.
 Let acto (a : CC) : CV := [the convType of {dist a}].
 
