@@ -34,32 +34,31 @@ Local Open Scope monae_scope.
 Local Open Scope reals_ext_scope.
 Local Open Scope proba_monad_scope.
 
-Require Import fdist.
+From infotheo Require Import fdist.
 
 Section convex.
 Variable M : probMonad.
 Variable A : Type.
 Local Open Scope proba_scope.
-Definition mychoiceA : forall (p q : prob) (a b c : M A),
+
+Definition choiceA_alternative (p q : prob) (a b c : M A) :
   let conv := (fun p (a b : choice_of_Type (M A)) => choice p A a b) in
-   conv p a (conv q b c) = conv [s_of p, q] (conv [r_of p, q] a b) c.
+  conv p a (conv q b c) = conv [s_of p, q] (conv [r_of p, q] a b) c.
 Proof.
-move=> p q a b c; apply: (choiceA p q).
-by rewrite -fdist.p_is_rs fdist.s_of_pqE onemK.
+by apply: (choiceA p q); rewrite -fdist.p_is_rs fdist.s_of_pqE onemK.
 Qed.
 
 Definition prob_convType := M A.
 
 HB.instance Definition _ := @isConvexSpace.Build prob_convType
-  (Choice.class (choice_of_Type (M A)))
-(fun p => choice p A)
-(choice1 _)
-choicemm
-choiceC
-mychoiceA.
+  (Choice.class (choice_of_Type (M A))) (fun p => choice p A)
+  (choice1 _)
+  choicemm
+  choiceC
+  choiceA_alternative.
 
-Lemma choice_conv p (x y : prob_convType) : choice p A x y = conv p x y.
-Proof. reflexivity. Qed.
+Lemma choice_conv p (x y : prob_convType) : x <|p|> y = conv p x y.
+Proof. by []. Qed.
 
 End convex.
 
@@ -241,12 +240,8 @@ HB.instance Definition _ := @isSemiLattice.Build altProb_semiLattConvType
   (@altC M T) (@altA M T) (@altmm M T).
 
 HB.instance Definition _ := @isConvexSpace.Build altProb_semiLattConvType
-  (Choice.class (choice_of_Type (M T)))
-(fun p => choice p T)
-(choice1 _)
-choicemm
-choiceC
-(@mychoiceA M T).
+  (Choice.class (choice_of_Type (M T))) (fun p => choice p T)
+  (choice1 _) choicemm choiceC (@choiceA_alternative M T).
 
 HB.instance Definition _ := @isSemiLattConv.Build altProb_semiLattConvType axiom.
 
@@ -358,8 +353,10 @@ Lemma arbcoin_spec_convexity (p q : prob) :
 Proof.
 move=> H.
 rewrite arbcoin_spec !alt_lub.
-(*by rewrite {1}(lub_absorbs_conv _ _ (magnified_weight H)) magnify_conv. FIXME
-Qed.*) Abort.
+rewrite {1}(@lub_absorbs_conv [the semiLattConvType of altProb_semiLattConvType M bool](*NB: FIXME*)
+  _ _ (magnified_weight H)).
+by rewrite magnify_conv.
+Qed.
 End arbcoin_spec_convexity.
 
 Lemma coinarb_spec p : coinarb p = arb.
@@ -501,10 +498,14 @@ rewrite choiceC (_ : (_.~)%:pr = (/ 2)%:pr) //.
 by apply val_inj; rewrite /= /onem; lra.
 Qed.
 
-(*Lemma choice_halfACA A (M : probMonad) (a b c d : M A) :
+Lemma choice_halfACA A (M : probMonad) (a b c d : M A) :
   (a <| (/ 2)%:pr |> b) <| (/ 2)%:pr |> (c <| (/ 2)%:pr |> d) =
   (a <| (/ 2)%:pr |> c) <| (/ 2)%:pr |> (b <| (/ 2)%:pr |> d).
-Proof. exact: (@convex.convACA probConvex). Qed.*)
+Proof.
+rewrite choice_conv.
+rewrite -convex.convACA.
+by rewrite -choice_conv.
+Qed.
 
 Section keimel_plotkin_instance.
 Variables (M : altProbMonad) (A : Type).

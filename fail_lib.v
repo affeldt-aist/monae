@@ -5,7 +5,7 @@ From mathcomp Require boolp.
 Require Import monae_lib.
 From HB Require Import structures.
 Require Import hierarchy monad_lib.
-From infotheo Require necset.
+From infotheo Require convex necset.
 From Equations Require Import Equations.
 
 (******************************************************************************)
@@ -81,21 +81,21 @@ by rewrite -{2}(nth_index h hb) -drop_nth // index_mem.
 Qed.
 
 Section altci_semilatttype.
-Import convex necset SemiLattice.
+Import necset SemiLattice.
 Variable M : altCIMonad.
 Variable T : Type.
 
 Definition altCI_semiLattType := M T.
 
 HB.instance Definition _ := @isSemiLattice.Build altCI_semiLattType
-  (Choice.class (choice_of_Type (M T)))
+  (Choice.class (convex.choice_of_Type (M T)))
   (fun x y => x [~] y)
   (@altC M T) (@altA M T) (@altmm M T).
 
 Local Open Scope latt_scope.
 
-Lemma alt_lub (x y : altCI_semiLattType) : x [~] y = x [+] y.
-Proof. reflexivity. Qed.
+Definition alt_lub (x y : altCI_semiLattType) : x [~] y = x [+] y.
+Proof. by []. Qed.
 
 End altci_semilatttype.
 
