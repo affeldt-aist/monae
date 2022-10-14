@@ -91,8 +91,10 @@ Lemma affine_e1PD_alt T (x y : el (F1 (FId (U1 (P_delta_left T))))) :
   (eps1 (P_delta_left T)) x [+] (eps1 (P_delta_left T)) y.
 Proof. exact: scsl_hom_is_lubmorph. Qed.
 
+(*
 Local Notation F1o := necset_semiCompSemiLattConvType.
-Local Notation F0o := FSDist_convType.
+*)
+Local Notation F0o := FSDist_t__canonical__isConvexSpace__ConvexSpace.
 Local Notation FCo := choice_of_Type.
 Local Notation F1m := free_semiCompSemiLattConvType_mor.
 Local Notation F0m := free_convType_mor.
@@ -119,11 +121,11 @@ HB.instance Definition _ :=
 Definition gcmACI := [the altCIMonad of gcm].
 
 Lemma choice0 A (x y : gcm A) : x <| 0%:pr |> y = y.
-Proof. by rewrite /choice conv0. Qed.
+Proof. by rewrite conv0. Qed.
 Lemma choice1 A (x y : gcm A) : x <| 1%:pr |> y = x.
-Proof. by rewrite /choice conv1. Qed.
+Proof. by rewrite conv1. Qed.
 Lemma choiceC A p (x y : gcm A) : x <|p|> y = y <|p.~%:pr|> x.
-Proof. by rewrite /choice convC. Qed.
+Proof. by rewrite convC. Qed.
 Lemma choicemm A p : idempotent (@choice p A).
 Proof. by move=> m; rewrite /choice convmm. Qed.
 Lemma choiceA A (p q r s : prob) (x y z : gcm A) :
@@ -140,8 +142,8 @@ case/boolP : (s == 0%:pr) => s0.
   rewrite p0 (eqP s0) 2!choice0 (_ : q = 0%:pr) ?choice0 //; apply/val_inj.
   move: H2; rewrite p0 onem0 mul1R (eqP s0) onem0 => /(congr1 onem).
   by rewrite onemK onem1.
-rewrite /choice convA (@r_of_pq_is_r _ _ r s) //.
-congr ((_ <| _ |> _) <| _ |> _).
+rewrite convA (@r_of_pq_is_r _ _ r s) //.
+congr ((x <| r |> y) <| _ |> z).
 by apply/val_inj; rewrite /= s_of_pqE -H2 onemK.
 Qed.
 
@@ -166,8 +168,8 @@ Lemma affine_e1PD_conv T (x y : el (F1 (FId (U1 (P_delta_left T))))) p :
   (eps1 (P_delta_left T)) x <|p|> (eps1 (P_delta_left T)) y.
 Proof. exact: scsl_hom_is_affine. Qed.
 
-Local Notation F1o := necset_semiCompSemiLattConvType.
-Local Notation F0o := FSDist_convType.
+(*Local Notation F1o := necset_semiCompSemiLattConvType.*)
+Local Notation F0o := FSDist_t__canonical__isConvexSpace__ConvexSpace.
 Local Notation FCo := choice_of_Type.
 Local Notation F1m := free_semiCompSemiLattConvType_mor.
 Local Notation F0m := free_convType_mor.
@@ -209,9 +211,9 @@ Example gcmAP_choice_nontrivial (p q : prob) :
   Ret true <|q|> Ret false :> (Monad_of_category_monad.acto Mgcm) bool.
 Proof.
 apply contra_not.
-rewrite !gcm_retE /Choice /= /Conv /= => /(congr1 (@NECSet.car _)).
+rewrite !gcm_retE /Choice /= => /(congr1 (@NECSet.car _)).
 rewrite !necset_convType.convE !conv_cset1 /=.
-move/(@set1_inj _ (Conv _ _ _))/(congr1 (@FSDist.f _))/fsfunP/(_ true).
+move/(@set1_inj _ (conv _ _ _))/(congr1 (@FSDist.f _))/fsfunP/(_ true).
 rewrite !ConvFSDist.dE !FSDist1.dE /=.
 rewrite !(@in_fset1 (choice_of_Type bool)) eqxx /= ifF; last exact/negbTE/eqP.
 by rewrite !mulR1 !mulR0 !addR0; exact: val_inj.
