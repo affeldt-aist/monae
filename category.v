@@ -20,8 +20,7 @@ From HB Require Import structures.
 (*          {hom A, B} == the hom-set of morphisms from A to B, where A and B *)
 (*                        are objects of a category C                         *)
 (*             [hom f] == morphism corresponding to the function f            *)
-(* Section Type_as_a_category == the first instance of a category: Type       *)
-(*       Type_category == the category corresponding to the Coq type Type     *)
+(*                  CT := [the category of Type]                              *)
 (*         FunctorLaws == module that defines the functor laws                *)
 (*                  \O == functor composition                                 *)
 (*             F ~~> G == forall a, {hom F a ,G a}, which corresponds to a    *)
@@ -207,13 +206,15 @@ End transport_lemmas.
 Section Type_as_a_category.
 (* TODO: consider using universe polymorphism *)
 Let UUx := Type.
+
 HB.instance Definition _ :=
   isCategory.Build UUx (fun x : Type => x)
     (fun _ _ _ => True) (fun=> I) (fun _ _ _ _ _ _ _ => I).
+
 HB.instance Definition _ (a b : [the category of UUx]) (f : a -> b)
   := isHom.Build [the category of UUx] a b (f : el a -> el b) I.
-End Type_as_a_category.
 
+End Type_as_a_category.
 
 Notation CT := [the category of Type].
 
