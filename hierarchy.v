@@ -328,7 +328,7 @@ End monad_lemmas.
 
 Module BindLaws.
 Section bindlaws.
-Variable F : functor.
+Variable F : UU0 -> UU0.
 Variable b : forall (A B : UU0), F A -> (A -> F B) -> F B.
 Local Notation "m >>= f" := (b m f).
 
