@@ -429,20 +429,22 @@ HB.factory Record isMonad_ret_bind (F : UU0 -> UU0) := {
 
 HB.builders Context M of isMonad_ret_bind M.
 
-Let actm a b (f : a -> b) m := bind m (@ret' _ \o f).
+Let actm (a b : UU0) (f : a -> b) m := bind m (@ret' _ \o f).
+
 Let actm_id : FunctorLaws.id actm.
 Proof.
 move=> a.
-rewrite /actm boolp.funeqE=> m /=.
+rewrite /actm; apply: boolp.funext=> m /=.
 by rewrite bindmret.
 Qed.
+
 Let actm_comp : FunctorLaws.comp actm.
 Proof.
 move=> a b c g h.
-rewrite /actm boolp.funeqE => m /=.
+rewrite /actm; apply: boolp.funext => m /=.
 rewrite bindA.
 congr bind.
-rewrite boolp.funeqE => u /=.
+apply: boolp.funext => u /=.
 by rewrite bindretf.
 Qed.
 
@@ -453,7 +455,7 @@ Local Notation FF := [the functor of F \o F].
 Let ret'_naturality : naturality FId F ret'.
 Proof.
 move=> a b h.
-rewrite FIdE /hierarchy.actm /= /actm boolp.funeqE => m /=.
+rewrite FIdE /hierarchy.actm /= /actm; apply: boolp.funext => m /=.
 by rewrite bindretf.
 Qed.
 
@@ -462,17 +464,19 @@ HB.instance Definition _ :=
 Let ret := [the FId ~> F of ret'].
 
 Let join' : FF ~~> F := fun _ m => bind m idfun.
-Let actm_bind a b c (f : a -> b) m (g : c -> F a) :
+
+Let actm_bind (a b c : UU0) (f : a -> b) m (g : c -> F a) :
   (actm f) (bind m g) = bind m (actm f \o g).
 Proof. by rewrite /actm bindA. Qed.
+
 Let join'_naturality : naturality FF F join'.
 Proof.
 move=> a b h.
-rewrite /join' /= boolp.funeqE => mm /=.
+rewrite /join' /=; apply: boolp.funext => mm /=.
 rewrite /hierarchy.actm /= /isFunctor.actm /=.
 rewrite actm_bind bindA /=.
 congr bind.
-rewrite boolp.funeqE => m /=.
+apply: boolp.funext => m /=.
 by rewrite bindretf /=.
 Qed.
 
@@ -483,40 +487,40 @@ Let bind_map (A B C : UU0) (f : A -> B) (m : M A) (g : B -> M C) :
   bind ((F # f) m) g = bind m (g \o f).
 Proof.
 rewrite bindA; congr bind.
-by rewrite boolp.funeqE => ?; rewrite bindretf.
+by apply: boolp.funext => ?; rewrite bindretf.
 Qed.
 
-Lemma bindE a b (f : a -> M b) (m : M a) :
+Let bindE (a b : UU0) (f : a -> M b) (m : M a) :
   bind m f = join b ((F # f) m).
 Proof.
 rewrite /join /= /hierarchy.actm /= /join' /=.
 by rewrite bind_map.
 Qed.
 
-Lemma joinretM : JoinLaws.left_unit ret join.
+Let joinretM : JoinLaws.left_unit ret join.
 Proof.
-move=> a; rewrite boolp.funeqE => m.
+move=> a; apply: boolp.funext => m.
 by rewrite /join /= /join' /= bindretf.
 Qed.
 
-Lemma joinMret : JoinLaws.right_unit ret join.
+Let joinMret : JoinLaws.right_unit ret join.
 Proof.
-move=> a; rewrite boolp.funeqE => m.
+move=> a; apply: boolp.funext => m.
 rewrite /join /= /join'.
 rewrite /hierarchy.actm /= /actm /=.
 rewrite bindA /=.
-rewrite [X in bind m X](_ : _ = fun x => ret' x) ?bindmret //= boolp.funeqE => ?.
+rewrite [X in bind m X](_ : _ = fun x => ret' x) ?bindmret //=; apply: boolp.funext => ?.
 by rewrite bindretf.
 Qed.
 
-Lemma joinA : JoinLaws.associativity join.
+Let joinA : JoinLaws.associativity join.
 Proof.
-move => a; rewrite boolp.funeqE => m.
+move => a; apply: boolp.funext => m.
 rewrite /join /= /join'.
 rewrite /hierarchy.actm /= /actm.
 rewrite !bindA.
 congr bind.
-rewrite boolp.funeqE => u /=.
+apply: boolp.funext => u /=.
 by rewrite bindretf.
 Qed.
 
