@@ -436,7 +436,7 @@ Definition output : [the functor of Output.acto L \o M] ~~> M :=
   fun A m => let: (x, w') := m.2 in (x, m.1 ++ w'). (*NB: w'++m.1 in the esop paper*)
 Let naturality_output :
   naturality [the functor of Output.acto L \o M] [the functor of M] output.
-Proof. 
+Proof.
  move=> A B h.
  apply boolp.funext => -[w [x w']].
  by rewrite /output /= catA.

@@ -162,9 +162,8 @@ Definition mapStateT2 (A S : UU0) (N1 N2 N3 : monad)
 Section stateMonad_of_stateT.
 Variables (S : UU0) (M : monad).
 
-Local Notation M' := (MS S M).
-Let Put : S -> M' unit := fun s _ => Ret (tt, s).
-Let Get : M' S := fun s => Ret (s, s).
+Let Put : S -> MS S M unit := fun s _ => Ret (tt, s).
+Let Get : MS S M S := fun s => Ret (s, s).
 
 Let bindputput (s s' : S) : Put s >> Put s' = Put s'.
 Proof.
