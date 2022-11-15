@@ -145,17 +145,14 @@ End assoc.
 Module IdentityMonad.
 Section identitymonad.
 Let bind := fun A B (a : FId A) (f : A -> FId B) => f a.
-Let fmapE (A B : UU0) (f : A -> B) (m : FId A) :
-  (FId # f) m = bind m (@NId FId _ \o f).
-Proof. by []. Qed.
 Let left_neutral : BindLaws.left_neutral bind (NId FId).
 Proof. by []. Qed.
 Let right_neutral : BindLaws.right_neutral bind (NId FId).
 Proof. by []. Qed.
 Let associative : BindLaws.associative bind. Proof. by []. Qed.
-HB.instance Definition _ := @isMonad_ret_bind.Build
-  idfun [the _ ~> _ of NId FId] bind fmapE
-  left_neutral right_neutral associative.
+Let acto := (@idfun UU0).
+HB.instance Definition _ := isMonad_ret_bind.Build
+  acto left_neutral right_neutral associative.
 End identitymonad.
 End IdentityMonad.
 HB.export IdentityMonad.
@@ -164,17 +161,7 @@ Module ListMonad.
 Section listmonad.
 Definition acto := fun A : UU0 => seq A.
 Local Notation M := acto.
-Let map_id : @FunctorLaws.id M (@map).
-Proof. by move=> A; apply boolp.funext => x; rewrite map_id. Qed.
-Let map_comp : @FunctorLaws.comp M (@map).
-Proof. by move=> A B C g h; apply boolp.funext => x; rewrite map_comp. Qed.
-HB.instance Definition _ := isFunctor.Build M map_id map_comp.
-Let ret_component : FId ~~> M := fun (A : UU0) x => (@cons A) x [::].
-Let F := [the functor of M].
-Let naturality_ret : naturality FId F ret_component.
-Proof. by move=> A B h; apply boolp.funext. Qed.
-HB.instance Definition _ := isNatural.Build FId F ret_component naturality_ret.
-Let ret := [the _ ~> _ of ret_component].
+Let ret : FId ~~> M := fun (A : UU0) x => (@cons A) x [::].
 Let bind := fun A B (m : M A) (f : A -> M B) => flatten (map f m).
 Let left_neutral : BindLaws.left_neutral bind ret.
 Proof. by move=> A B m f; rewrite /bind /ret /= cats0. Qed.
@@ -185,13 +172,8 @@ Proof.
 move=> A B C; elim => // h t; rewrite /bind => ih f g.
 by rewrite /= map_cat flatten_cat /= ih.
 Qed.
-Let fmapE (A B : UU0) (f : A -> B) (m : M A) : (F # f) m = bind m (ret _ \o f).
-Proof.
-rewrite /= /actm /= /bind /ret_component /=.
-by rewrite map_comp /= flatten_seq1.
-Qed.
-HB.instance Definition _ := @isMonad_ret_bind.Build M ret bind
-  fmapE left_neutral right_neutral associative.
+HB.instance Definition _ :=
+  isMonad_ret_bind.Build M left_neutral right_neutral associative.
 End listmonad.
 End ListMonad.
 HB.export ListMonad.
@@ -205,24 +187,7 @@ Section setmonad.
 Local Open Scope classical_set_scope.
 Definition acto := set.
 Local Notation M := acto.
-Let map_id : FunctorLaws.id (fun T1 T2 f A => f @` A).
-Proof. by move=> x; apply boolp.funext => y; rewrite image_id. Qed.
-Let map_comp : FunctorLaws.comp (fun T1 T2 f A => f @` A).
-Proof.
-by move=> A B C g h; apply boolp.funext => x /=; rewrite image_comp.
-Qed.
-HB.instance Definition _ := isFunctor.Build set map_id map_comp.
-Let ret_component : idfun ~~> M := @set1.
-Let F := [the functor of M].
-Let naturality_ret : naturality FId F ret_component.
-Proof.
-move=> A B h; apply boolp.funext => a /=; apply boolp.funext => b /=.
-rewrite boolp.propeqE; split.
-  by case => a0; rewrite /set1 => ->{a0} <-{b}.
-by rewrite /set1 => ->{b} /=; exists a.
-Qed.
-HB.instance Definition _ := isNatural.Build FId F ret_component naturality_ret.
-Let ret := [the _ ~> _ of ret_component].
+Let ret : idfun ~~> M := @set1.
 Let bind := fun A B => @bigcup B A.
 Let left_neutral : BindLaws.left_neutral bind ret.
 Proof. move=> ? ? ? ?; exact: bigcup_set1. Qed.
@@ -232,14 +197,8 @@ by move=> ? ?; rewrite /bind bigcup_imset1 image_id.
 Qed.
 Let associative : BindLaws.associative bind.
 Proof. move=> ? ? ? ? ? ?; exact: bigsetUA. Qed.
-Let fmapE (A B : UU0) (f : A -> B) (m : set A) :
-  (F # f) m = bind m (@ret _ \o f).
-Proof.
-rewrite /= /actm /bind /= -bigcup_image.
-by rewrite bigcup_imset1 image_comp.
-Qed.
-HB.instance Definition _ := @isMonad_ret_bind.Build set ret bind fmapE
-  left_neutral right_neutral associative.
+HB.instance Definition _ :=
+  isMonad_ret_bind.Build set left_neutral right_neutral associative.
 End setmonad.
 End SetMonad.
 HB.export SetMonad.
@@ -253,19 +212,7 @@ Section exceptmonad.
 Variable E : UU0.
 Definition acto := fun A : UU0 => (E + A)%type.
 Local Notation M := acto.
-Let map := fun (A B : UU0) (f : A -> B) (a : M A) =>
-  match a with inl z => inl z | inr b => inr (f b) end.
-Let map_id : FunctorLaws.id map.
-Proof. by move=> *; apply boolp.funext => -[]. Qed.
-Let map_comp : FunctorLaws.comp map.
-Proof. by move=> *; apply boolp.funext => -[]. Qed.
-HB.instance Definition _ := isFunctor.Build M map_id map_comp.
-Let ret_component : FId ~~> M := @inr E.
-Let F := [the functor of M].
-Let naturality_ret : naturality FId F ret_component.
-Proof. by move=> A B h; apply boolp.funext. Qed.
-HB.instance Definition _ := isNatural.Build FId F ret_component naturality_ret.
-Let ret := [the _ ~> _ of ret_component].
+Let ret : FId ~~> M := @inr E.
 Let bind := fun A B (m : M A) (f : A -> M B) =>
   match m with inl z => inl z | inr b => f b end.
 Let left_neutral : BindLaws.left_neutral bind ret.
@@ -274,11 +221,8 @@ Let right_neutral : BindLaws.right_neutral bind ret.
 Proof. by move=> ? []. Qed.
 Let associative : BindLaws.associative bind.
 Proof. by move=> ? ? ? []. Qed.
-Let fmapE (A B : UU0) (f : A -> B) (m : acto A) :
-  (F # f) m = bind m (@ret _ \o f).
-Proof. by rewrite /= /actm /= /ret_component /bind; case: m. Qed.
-HB.instance Definition _ := @isMonad_ret_bind.Build M ret bind fmapE
-  left_neutral right_neutral associative.
+HB.instance Definition _ :=
+  isMonad_ret_bind.Build M left_neutral right_neutral associative.
 End exceptmonad.
 End ExceptMonad.
 HB.export ExceptMonad.
@@ -295,19 +239,7 @@ Section output.
 Variable L : UU0.
 Definition acto := fun X : UU0 => (X * seq L)%type.
 Local Notation M := acto.
-Let map (A B : UU0) (f : A -> B) (m : M A) : M B :=
-  let: (a, s) := m in (f a, s).
-Let map_id : FunctorLaws.id map.
-Proof. by move=> A; apply boolp.funext => -[]. Qed.
-Let map_comp : FunctorLaws.comp map.
-Proof. by move=> A B C g h; apply boolp.funext => -[]. Qed.
-HB.instance Definition _ := isFunctor.Build M map_id map_comp.
-Let ret_component : FId ~~> M := fun A a => (a, [::]).
-Let F := [the functor of M].
-Let naturality_ret : naturality FId F ret_component.
-Proof. by move=> A B h; apply boolp.funext. Qed.
-HB.instance Definition _ := isNatural.Build FId F ret_component naturality_ret.
-Let ret := [the _ ~> _ of ret_component].
+Let ret : FId ~~> M := fun A a => (a, [::]).
 Let bind := fun (A B : UU0) (m : M A) (f : A -> M B) =>
   let: (x, w) := m in let: (x', w') := f x in (x', w ++ w').
 Let left_neutral : BindLaws.left_neutral bind ret.
@@ -319,11 +251,8 @@ Proof.
 move=> A B C m f g; rewrite /bind; case: m => x w; case: f => x' w'.
 by case: g => x'' w''; rewrite catA.
 Qed.
-Let fmapE (A B : UU0) (f : A -> B) (m : M A) :
-  (F # f) m = bind m (@ret _ \o f).
-Proof. by rewrite /actm /= /bind /=; case: m => h t; rewrite cats0. Qed.
-HB.instance Definition _ := @isMonad_ret_bind.Build M ret bind fmapE
-  left_neutral right_neutral associative.
+HB.instance Definition _ :=
+  isMonad_ret_bind.Build M left_neutral right_neutral associative.
 End output.
 End OutputMonad.
 HB.export OutputMonad.
@@ -338,18 +267,8 @@ Section environment.
 Variable E : UU0.
 Definition acto := fun A : UU0 => E -> A.
 Local Notation M := acto.
-Let map (A B : UU0) (f : A -> B) (m : M A) : M B := fun e => f (m e).
-Let map_id : FunctorLaws.id map. Proof. by []. Qed.
-Let map_comp : FunctorLaws.comp map.
-Proof. by move=> A B C g h; apply boolp.funext. Qed.
-HB.instance Definition _ := isFunctor.Build M map_id map_comp.
-Definition ret_component : FId ~~> M := fun A x => fun e => x.
+Definition ret : FId ~~> M := fun A x => fun e => x.
 (* computation that ignores the environment *)
-Let F := [the functor of M].
-Let naturality_ret : naturality FId F ret_component.
-Proof. by move=> A B h; apply boolp.funext. Qed.
-HB.instance Definition _ := isNatural.Build FId F ret_component naturality_ret.
-Let ret := [the _ ~> _ of ret_component].
 Let bind := fun (A B : UU0) (m : M A) (f : A -> M B) => fun e => f (m e) e.
 (* binds m f applied the same environment to m and to the result of f *)
 Let left_neutral : BindLaws.left_neutral bind ret.
@@ -358,12 +277,8 @@ Let right_neutral : BindLaws.right_neutral bind ret.
 Proof. by []. Qed.
 Let associative : BindLaws.associative bind.
 Proof. by []. Qed.
-Let fmapE (A B : UU0) (f : A -> B) (m : M A) : (F # f) m = bind m (@ret _ \o f).
-Proof.
-by rewrite /actm /= /bind /ret_component; apply boolp.funext => e.
-Qed.
-HB.instance Definition _ := @isMonad_ret_bind.Build M ret bind fmapE
-  left_neutral right_neutral associative.
+HB.instance Definition _ :=
+  isMonad_ret_bind.Build M left_neutral right_neutral associative.
 End environment.
 End EnvironmentMonad.
 HB.export EnvironmentMonad.
@@ -378,25 +293,7 @@ Section state.
 Variable S : UU0. (* type of states *)
 Definition acto := fun A : UU0 => S -> A * S.
 Local Notation M := acto.
-Let map (A B : UU0) (f : A -> B) (m : M A) : M B :=
-  fun (s : S) => let (x1, x2) := m s in (f x1, x2).
-Let map_id : FunctorLaws.id map.
-Proof.
-move=> x; apply boolp.funext => y; apply boolp.funext => z /=.
-by  rewrite /map; case: y.
-Qed.
-Let map_comp : FunctorLaws.comp map.
-Proof.
-move=> A B C g h; apply boolp.funext => m; apply boolp.funext => s.
-by rewrite /map /=; case: m.
-Qed.
-HB.instance Definition _ := isFunctor.Build M map_id map_comp.
-Let ret_component : FId ~~> M := fun A a => fun s => (a, s).
-Let F := [the functor of M].
-Let naturality_ret : naturality FId F ret_component.
-Proof. by move=> A B h; apply boolp.funext => a /=; apply boolp.funext. Qed.
-HB.instance Definition _ := isNatural.Build FId F ret_component naturality_ret.
-Let ret := [the _ ~> _ of ret_component].
+Let ret : FId ~~> M := fun A a => fun s => (a, s).
 Let bind := fun (A B : UU0) (m : M A) (f : A -> M B) => uncurry f \o m.
 Let left_neutral : BindLaws.left_neutral bind ret.
 Proof. by move=> A B a f; apply boolp.funext. Qed.
@@ -409,12 +306,8 @@ Proof.
 move=> A B C a b c; rewrite /bind compA; congr (_ \o _).
 by apply boolp.funext => -[].
 Qed.
-Let fmapE (A B : UU0) (f : A -> B) (m : M A) : (F # f) m = bind m (@ret _ \o f).
-Proof.
-by rewrite /actm /= /bind /ret_component /=; apply boolp.funext.
-Qed.
-HB.instance Definition _ := @isMonad_ret_bind.Build
-  M ret bind fmapE left_neutral right_neutral associative.
+HB.instance Definition _ :=
+  isMonad_ret_bind.Build M left_neutral right_neutral associative.
 End state.
 End StateMonad.
 HB.export StateMonad.
@@ -430,19 +323,7 @@ Section cont.
 Variable r : UU0. (* the type of answers *)
 Definition acto := fun A : UU0 => (A -> r) -> r.
 Local Notation M := acto.
-Let actm (A B : UU0) (f : A -> B) (m : M A) : M B :=
-  fun Br : B -> r => m (fun a : A => Br (f a)).
-Let map_id : FunctorLaws.id actm.
-Proof. by move=> A; apply boolp.funext => m; apply boolp.funext. Qed.
-Let map_comp : FunctorLaws.comp actm.
-Proof. by move=> *; apply boolp.funext => m; apply boolp.funext. Qed.
-HB.instance Definition _ := isFunctor.Build M map_id map_comp.
-Let ret_component : FId ~~> M := fun A a => fun k => k a.
-Let F := [the functor of M].
-Let naturality_ret : naturality FId F ret_component.
-Proof. by move=> A B f; apply boolp.funext => a /=; apply boolp.funext. Qed.
-HB.instance Definition _ := isNatural.Build FId F ret_component naturality_ret.
-Let ret := [the _ ~> _ of ret_component].
+Let ret : FId ~~> M := fun A a => fun k => k a.
 Let bind := fun (A B : UU0) (m : M A) (f : A -> M B) => fun k => m (fun a => f a k).
 Let left_neutral : BindLaws.left_neutral bind ret.
 Proof. by move=> A B a f; apply boolp.funext => Br. Qed.
@@ -450,12 +331,8 @@ Let right_neutral : BindLaws.right_neutral bind ret.
 Proof. by []. Qed.
 Let associative : BindLaws.associative bind.
 Proof. by []. Qed.
-Let fmapE (A B : UU0) (f : A -> B) (m : M A) : (F # f) m = bind m (@ret _ \o f).
-Proof.
-by rewrite /actm /= /bind /ret_component /=; apply boolp.funext.
-Qed.
-HB.instance Definition _ := @isMonad_ret_bind.Build
-  M ret bind fmapE left_neutral right_neutral associative.
+HB.instance Definition _ :=
+  isMonad_ret_bind.Build M left_neutral right_neutral associative.
 End cont.
 End ContMonad.
 HB.export ContMonad.
@@ -511,7 +388,8 @@ Definition append : [the functor of Append.acto \o M] ~~> M :=
 Let naturality_append : naturality [the functor of Append.acto \o M] M append.
 Proof.
 move=> A B h; apply boolp.funext => -[s1 s2] /=.
-by rewrite /actm /= map_cat.
+rewrite /actm /=.
+by rewrite map_cat flatten_cat.
 Qed.
 HB.instance Definition _ :=
   isNatural.Build [the functor of Append.acto \o M] M append naturality_append.
@@ -558,7 +436,11 @@ Definition output : [the functor of Output.acto L \o M] ~~> M :=
   fun A m => let: (x, w') := m.2 in (x, m.1 ++ w'). (*NB: w'++m.1 in the esop paper*)
 Let naturality_output :
   naturality [the functor of Output.acto L \o M] [the functor of M] output.
-Proof.  by move=> A B h; apply boolp.funext => -[w [x w']]. Qed.
+Proof. 
+ move=> A B h.
+ apply boolp.funext => -[w [x w']].
+ by rewrite /output /= catA.
+Qed.
 HB.instance Definition _ := isNatural.Build
   [the functor of Output.acto L \o M] [the monad of M] output naturality_output.
 Definition output_op : [the functor of Output.acto L].-operation [the monad of M] :=
@@ -1262,7 +1144,8 @@ Proof. by rewrite /addM bindretf; apply boolp.funext. Abort.
 Let N : shiftresetMonad (seq nat) := [the shiftresetMonad (seq nat) of ContMonad.acto (seq nat)].
 Fixpoint perverse (l : seq nat) : N (seq nat) :=
   if l is h :: t then
-    shift (fun f : _ -> N _ => Ret h >>= (fun x => perverse t >>= f >>= (fun y => ret _ (x :: y))))
+    shift (fun f : _ -> N _ => Ret h >>=
+      (fun x => perverse t >>= f >>= (fun y => Ret (x :: y))))
   else Ret [::].
 Goal reset (perverse [:: 1; 2; 3]) = Ret [:: 3; 2; 1].
 by [].
@@ -1352,7 +1235,7 @@ Definition acto : Type -> Type :=
   fun A => S -> {fset (choice_of_Type A * choice_of_Type S)}.
 Local Notation M := acto.
 
-Let ret_component : idfun ~~> M := fun A (a : A) s =>
+Let ret : idfun ~~> M := fun A (a : A) s =>
   [fset (a : choice_of_Type A, s : choice_of_Type S)].
 
 Let bind := fun A B (m : acto A)
@@ -1360,51 +1243,6 @@ Let bind := fun A B (m : acto A)
   fun s => \bigcup_(i <- (fun x : [choiceType of choice_of_Type A *
                                            choice_of_Type S] => f x.1 x.2) @` (m s))
                  i.
-
-Definition map A B (f : A -> B) (m : acto A) : acto B :=
-  bind m (@ret_component _ \o f).
-
-Let map_id : FunctorLaws.id map.
-Proof.
-move=> A; rewrite /map; apply boolp.funext => m.
-rewrite /bind; apply boolp.funext => s.
-rewrite compfid big_imfset /=; last first.
-  by move=> [a0 s0] [a1 s1] /= _ _ /fset1_inj.
-rewrite /ret_component; apply/fsetP => /= -[a0 s0].
-apply/idP/idP => [|a0s0ms].
-  by case/(@bigfcupP' _ _ (m s)) => /= -[a1 s1] H1 /fset1P ->.
-by apply/(@bigfcupP' _ _ (m s)); exists (a0, s0) => //; exact/fset1P.
-Qed.
-
-Let map_comp : FunctorLaws.comp map.
-Proof.
-move=> A B C g h; rewrite /map /bind; apply boolp.funext => m.
-apply boolp.funext => s /=; apply/fsetP => /= -[c0 s0]; apply/idP/idP.
-  case/bigfcupP' => /= x /imfsetP /= -[[a1 s1] H1] ->{x} /=.
-  rewrite /ret_component => /fset1P [->{c0} ->{s0}].
-  apply/bigfcupP' => /=; eexists; last exact/fset1P.
-  apply/imfsetP => /=; exists (h a1, s1) => //; apply/bigfcupP' => /=; eexists; last exact/fset1P.
-  by apply/imfsetP => //=; eexists; first exact: H1.
-case/bigfcupP' => /= x /imfsetP[] /= -[b1 s1] /bigfcupP'/= [bs].
-move=> /imfsetP /= [[a2 s2]] H2 ->{bs} /= /fset1P -[->{b1} ->{s1}] ->{x}.
-move/fset1P => [->{c0} ->{s0}]; apply/bigfcupP' => /=; eexists; last exact/fset1P.
-by apply/imfsetP; exists (a2, s2).
-Qed.
-
-HB.instance Definition _ := isFunctor.Build acto map_id map_comp.
-
-Let F := [the functor of M].
-
-Let naturality_ret : naturality FId F ret_component.
-Proof.
-move=> A B h; rewrite /ret_component boolp.funeqE => a; apply boolp.funext => s.
-by rewrite /actm /= /map /bind /= imfset_set1 /= big_seq_fset1.
-Qed.
-
-HB.instance Definition _ := isNatural.Build FId F ret_component naturality_ret.
-
-Let ret := [the _ ~> _ of ret_component].
-
 Let left_neutral : BindLaws.left_neutral bind ret.
 Proof.
 move=> A B /= m f; rewrite boolp.funeqE => s.
@@ -1439,12 +1277,8 @@ apply/fsetP => /= x; apply/bigfcupP'/bigfcupP'; case => /= CS  /imfsetP[/=].
   by exists sa.
 Qed.
 
-Let fmapE (A B : UU0) (f : A -> B) (m : [the functor of acto] A) :
-  ([the functor of acto] # f) m = bind m (@ret _ \o f).
-Proof. by []. Qed.
-
-HB.instance Definition _ := @isMonad_ret_bind.Build acto ret bind
-  fmapE left_neutral right_neutral associative.
+HB.instance Definition _ :=
+  isMonad_ret_bind.Build acto left_neutral right_neutral associative.
 
 Lemma bindE (A B : Type) m (f : A -> [the monad of acto] B) :
   m >>= f = fun s =>
@@ -1687,34 +1521,7 @@ Variable (S : UU0) (I : eqType).
 Implicit Types i j : I.
 Definition acto (A : UU0) := (I -> S) -> SetMonad.acto (A * (I -> S))%type.
 Local Notation M := acto.
-Let map (A B : UU0) (f : A -> B) (m : M A) : M B :=
-  fun (a : I -> S) => (fun x => (f x.1, x.2)) @` m a.
-Let map_id : FunctorLaws.id map.
-Proof.
-move=> X; rewrite /map /=; apply: boolp.funext => m/=.
-apply: boolp.funext => a/=; apply/seteqP; split => //.
-  by move=> [x a1]/= [[x' a2]]/= + <-.
-by move=> [x a1]/= maxa1; eexists; [exact:maxa1|].
-Qed.
-Let map_comp : FunctorLaws.comp map.
-Proof.
-move=> X Y Z g h; rewrite /map; apply: boolp.funext => m/=.
-apply: boolp.funext => a; apply/seteqP; split.
-  by move=> [z a1]/=[[x a2]] maxa2/= <-; exists (h x, a2) => //; exists (x, a2).
-by move=> [z a1]/= [[y a2]] [[x a3]]/= maxa3 [<- <-] [<- <-]; exists (x, a3).
-Qed.
-HB.instance Definition _ := isFunctor.Build M map_id map_comp.
-Let ret_component : FId ~~> M := fun A a => fun s => [set (a, s)].
-Let F := [the functor of M].
-Let naturality_ret : naturality FId F ret_component.
-Proof.
-move=> X Y h; rewrite /ret_component; apply boolp.funext => /= x.
-apply boolp.funext => a1/=; apply/seteqP; split.
-  by move=> [y a2]/= [[x' a3]]/= [<- <-] [<- <-].
-by move=> [y a2]/= [-> ->]/=; eexists; reflexivity.
-Qed.
-HB.instance Definition _ := isNatural.Build FId F ret_component naturality_ret.
-Let ret := [the _ ~> _ of ret_component].
+Let ret : FId ~~> M := fun A a => fun s => [set (a, s)].
 Let bind := fun A B (m : M A) (f : A -> M B) => fun s => m s >>= uncurry f.
 Let left_neutral : BindLaws.left_neutral bind ret.
 Proof.
@@ -1723,7 +1530,7 @@ Qed.
 Let right_neutral : BindLaws.right_neutral bind ret.
 Proof.
 move=> X/= m; rewrite /bind; apply: boolp.funext => a1.
-rewrite /ret_component /uncurry/=; apply/seteqP; split.
+rewrite /ret /uncurry/=; apply/seteqP; split.
   by move=> [x a2]/= [[x' a3]] ma1x'a3/= ->.
 by move=> [x a2] ma1xa2/=; eexists; [exact: ma1xa2|].
 Qed.
@@ -1732,16 +1539,8 @@ Proof.
 move=> X Y Z /= m f g; rewrite /bind; apply: boolp.funext => a.
 by rewrite bindA; bind_ext => -[].
 Qed.
-Lemma fmapE (X Y : UU0) (f : X -> Y) (m : M X) :
- ([the functor of M] # f) m = bind m (ret Y \o f).
-Proof.
-rewrite /bind; apply: boolp.funext => a1/=; apply/seteqP; split.
-  by move=> [y a2]/= [[x a3]] ma1xa3/= [<- <-]/=; eexists; [exact: ma1xa3|].
-move=> [y a2] [[x a3]] ma1xa3/= [-> ->]/=.
-by eexists; [exact: ma1xa3|].
-Qed.
-HB.instance Definition _ := @isMonad_ret_bind.Build
-  acto ret bind fmapE left_neutral right_neutral associative.
+HB.instance Definition _ :=
+  isMonad_ret_bind.Build acto left_neutral right_neutral associative.
 Let bindE A B (m : M A) (f : A -> M B) : m >>= f = bind m f.
 Proof. by []. Qed.
 Definition aget i : M S := fun s => Ret (ModelArray.aget i s).
@@ -2070,7 +1869,7 @@ Let runStateTbind : forall (A B : UU0) (m : M A) (f : A -> M B) (s : S),
 Proof.
 move=> A M m f s /=.
 rewrite /= /runStateT bindE /= /join_of_bind /bindS /=.
-rewrite /actm /= /MS_map /actm /=.
+rewrite MS_mapE /actm /=.
 by case: (m s).
 Qed.
 Let runStateTget : forall s : S, runStateT get s = Ret (s, s) :> N _.

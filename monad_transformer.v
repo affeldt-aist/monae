@@ -96,34 +96,6 @@ Definition retS : FId ~~> MS := fun (A : UU0) => curry Ret.
 
 Definition bindS (A B : UU0) (m : MS A) f : MS B := fun s => m s >>= uncurry f.
 
-Definition MS_map (A B : UU0) (f : A -> B) (m : MS A) : MS B :=
-  (M # (fun x => (f x.1, x.2))) \o m.
-
-Let MS_map_i : FunctorLaws.id MS_map.
-Proof.
-move=> A; apply boolp.funext => m; apply boolp.funext => s.
-rewrite /MS_map (_ : (fun x : A * S => _) = id) ?functor_id //.
-by apply boolp.funext => -[].
-Qed.
-
-Let MS_map_o : FunctorLaws.comp MS_map.
-Proof.
-move=> A B C g h; apply boolp.funext => m; apply boolp.funext => s /=.
-by rewrite /MS_map /= -[RHS]compE -functor_o.
-Qed.
-
-HB.instance Definition _ := isFunctor.Build MS MS_map_i MS_map_o.
-
-Let naturality_retS : naturality FId [the functor of MS] retS.
-Proof.
-move=> A B h; rewrite /actm /=; apply boolp.funext => a /=.
-rewrite /MS_map /=; apply boolp.funext => s /=.
-by rewrite /retS [in LHS]curryE (natural ret).
-Qed.
-
-HB.instance Definition _ := isNatural.Build
-  FId [the functor of MS] retS naturality_retS.
-
 Let bindSretf : BindLaws.left_neutral bindS retS.
 Proof.
 by move=> A B a f; rewrite /bindS; apply boolp.funext => s; rewrite bindretf.
@@ -141,16 +113,17 @@ move=> A B C m f g; rewrite /bindS; apply boolp.funext => s.
 by rewrite bindA; bind_ext; case.
 Qed.
 
-Let MS_mapE (A B : UU0) (f : A -> B) (m : MS A) :
-  ([the functor of MS] # f) m = bindS m (@retS _ \o f).
-Proof.
-rewrite /bindS; apply boolp.funext => s.
-rewrite (_ : _ # f = MS_map f) // /MS_map [LHS]/= fmapE; congr bind.
-by apply boolp.funext => -[].
-Qed.
+HB.instance Definition _ :=
+  isMonad_ret_bind.Build MS bindSretf bindSmret bindSA.
 
-HB.instance Definition _ := isMonad_ret_bind.Build
-  MS MS_mapE bindSretf bindSmret bindSA.
+Lemma MS_mapE (A B : UU0) (f : A -> B) (m : MS A) :
+  (MS # f) m = (M # (fun x => (f x.1, x.2))) \o m.
+Proof.
+apply boolp.funext=> s.
+rewrite {1}/actm /= /bindS /= fmapE.
+congr bind.
+by apply: boolp.funext; case.
+Qed.
 
 Definition liftS (A : UU0) (m : M A) : MS A :=
   fun s => m >>= (fun x => Ret (x, s)).
@@ -189,25 +162,28 @@ Definition mapStateT2 (A S : UU0) (N1 N2 N3 : monad)
 Section stateMonad_of_stateT.
 Variables (S : UU0) (M : monad).
 
-Let Put : S -> MS S M unit := fun s _ => Ret (tt, s).
-Let Get : MS S M S := fun s => Ret (s, s).
+Local Notation M' := (MS S M).
+Let Put : S -> M' unit := fun s _ => Ret (tt, s).
+Let Get : M' S := fun s => Ret (s, s).
 
 Let bindputput (s s' : S) : Put s >> Put s' = Put s'.
 Proof.
-rewrite bindE /= /join_of_bind /= /bindS /=; apply boolp.funext => s0 /=.
-by rewrite bind_fmap {1}/Put bindretf.
+rewrite bindE /= /bindS.
+apply boolp.funext => s0.
+by rewrite MS_mapE bind_fmap bindretf.
 Qed.
 
 Let bindputget (s : S) : Put s >> Get = Put s >> Ret s.
 Proof.
-apply boolp.funext => s0.
-by rewrite !bindE /= /join_of_bind /= /bindS /= !bind_fmap /= 2!bindretf.
+rewrite !bindE !MS_mapE /= /bindS.
+apply boolp.funext => s'.
+by rewrite !bind_fmap !bindretf.
 Qed.
 
 Let bindgetput : Get >>= Put = skip.
 Proof.
-apply boolp.funext => s; rewrite !bindE /= /join_of_bind /= /bindS /=.
-by rewrite bind_fmap bindretf.
+rewrite bindE MS_mapE /= /bindS.
+by apply boolp.funext => s; rewrite bind_fmap bindretf.
 Qed.
 
 Let bindgetget (A : UU0) (k : S -> S -> stateT S M A) :
@@ -215,9 +191,9 @@ Let bindgetget (A : UU0) (k : S -> S -> stateT S M A) :
 Proof.
 apply boolp.funext => s.
 rewrite /Get/=.
-rewrite !bindE/= /join_of_bind/= /bindS/= /retS/=.
+rewrite !bindE !MS_mapE /= /bindS /= /retS/=.
 rewrite !bind_fmap !bindretf/=.
-rewrite !bindE/= /join_of_bind/= /bindS/= /retS/=.
+rewrite !bindE !MS_mapE /= /bindS /= /retS/=.
 by rewrite bind_fmap bindretf.
 Qed.
 
@@ -239,34 +215,6 @@ Definition retX : FId ~~> MX := fun X x => Ret (inr x).
 Definition bindX X Y (t : MX X) (f : X -> MX Y) : MX Y :=
   t >>= fun c => match c with inl z => Ret (inl z) | inr x => f x end.
 
-Definition MX_map (A B : UU0) (f : A -> B) : MX A -> MX B :=
-  M # (fun x => match x with inl y => inl y | inr y => inr (f y) end).
-
-Let MX_map_i : FunctorLaws.id MX_map.
-Proof.
-move=> A; apply boolp.funext => x; rewrite /MX in x *.
-rewrite /MX_map (_ : (fun _ => _) = id) ?functor_id //.
-by apply boolp.funext => -[].
-Qed.
-
-Let MX_map_o : FunctorLaws.comp MX_map.
-Proof.
-rewrite /MX_map => A B C g h /=; apply boolp.funext => x /=.
-rewrite -[RHS]compE -functor_o /=; congr (_ # _).
-by apply boolp.funext => -[].
-Qed.
-
-HB.instance Definition _ := isFunctor.Build MX MX_map_i MX_map_o.
-
-Let naturality_retX : naturality FId [the functor of MX] retX.
-Proof.
-move=> A B h; rewrite /retX; apply boolp.funext => /= a.
-by rewrite /actm /= /MX_map -[LHS]compE (natural ret).
-Qed.
-
-HB.instance Definition _ := isNatural.Build
-  FId [the functor of MX] retX naturality_retX.
-
 Let bindXretf : BindLaws.left_neutral bindX retX.
 Proof. by move=> A B a f; rewrite /bindX bindretf. Qed.
 
@@ -281,15 +229,17 @@ move=> A B C m f g; rewrite /bindX bindA; bind_ext; case => //.
 by move=> z; rewrite bindretf.
 Qed.
 
-Let MX_mapE (A B : UU0) (f : A -> B) (m : MX A) :
-  ([the functor of MX] # f) m = bindX m (@retX _ \o f).
-Proof.
-rewrite /bindX (_ : _ # f = MX_map f) // /MX_map fmapE; congr bind => /=.
-by apply boolp.funext => -[|].
-Qed.
+HB.instance Definition _ :=
+ isMonad_ret_bind.Build MX bindXretf bindXmret bindXA.
 
-HB.instance Definition _ := isMonad_ret_bind.Build
-  MX MX_mapE bindXretf bindXmret bindXA.
+Lemma MX_mapE (A B : UU0) (f : A -> B) :
+  MX # f = M # (fun x => match x with inl y => inl y | inr y => inr (f y) end).
+Proof.
+apply boolp.funext => m.
+rewrite {1}/actm /= /bindX /= [in RHS]fmapE.
+congr (_ _).
+by apply: boolp.funext; case.
+Qed.
 
 Definition liftX X (m : M X) : MX X := m >>= (@ret [the monad of MX] _).
 
@@ -385,32 +335,6 @@ Definition retEnv : FId ~~> MEnv := fun (A : UU0) a r => Ret a.
 Definition bindEnv A B (m : MEnv A) f : MEnv B :=
   fun r => m r >>= (fun a => f a r).
 
-Definition MEnv_map (A B : UU0) (f : A -> B) (m : MEnv A) : MEnv B :=
-  (M # f) \o m.
-
-Let MEnv_map_i : FunctorLaws.id MEnv_map.
-Proof.
-by move=> A; apply boolp.funext => m; rewrite /MEnv_map functor_id compidf.
-Qed.
-
-Let MEnv_map_o : FunctorLaws.comp MEnv_map.
-Proof.
-move=> A B C g h; rewrite /MEnv_map; apply boolp.funext => m /=.
-by rewrite [in RHS]compA -functor_o.
-Qed.
-
-HB.instance Definition MEnv_functor := isFunctor.Build MEnv MEnv_map_i MEnv_map_o.
-
-Let naturality_retEnv : naturality FId [the functor of MEnv] retEnv.
-Proof.
-move=> A B h; rewrite /actm /=; apply boolp.funext => a /=.
-rewrite /MEnv_map /retEnv; apply boolp.funext => r /=.
-by rewrite -[LHS](compE _ Ret) natural FIdE.
-Qed.
-
-HB.instance Definition _ := isNatural.Build
-  FId [the functor of MEnv] retEnv naturality_retEnv.
-
 Let bindEnvretf : BindLaws.left_neutral bindEnv retEnv.
 Proof.
 by move=> A B a f; rewrite /bindEnv; apply boolp.funext => r; rewrite bindretf.
@@ -428,15 +352,12 @@ move=> A B C m f g; rewrite /bindEnv; apply boolp.funext => r.
 by rewrite bindA; bind_ext; case.
 Qed.
 
-Let MEnv_mapE (A B : UU0) (f : A -> B) (m : MEnv A) :
-  ([the functor of MEnv] # f) m = bindEnv m (@retEnv _ \o f).
-Proof.
-rewrite /bindEnv; apply boolp.funext => s.
-by rewrite (_ : _ # f = MEnv_map f) // /MEnv_map [LHS]/= fmapE.
-Qed.
+HB.instance Definition _ :=
+ isMonad_ret_bind.Build MEnv bindEnvretf bindEnvmret bindEnvA.
 
-HB.instance Definition _ := isMonad_ret_bind.Build
-  MEnv MEnv_mapE bindEnvretf bindEnvmret bindEnvA.
+Lemma MEnv_mapE (A B : UU0) (f : A -> B) (m : MEnv A) :
+  (MEnv # f) m = (M # f) \o m.
+Proof. by apply boolp.funext=> r; rewrite /= fmapE. Qed.
 
 Definition liftEnv A (m : M A) : MEnv A := fun r => m.
 
@@ -467,33 +388,6 @@ Definition bindO A B (m : MO A) (f : A -> MO B) : MO B :=
   m >>= (fun o => let: (x, w) := o in f x >>=
   (fun o' => let (x', w') := o' in Ret (x', w ++ w'))).
 
-Definition MO_map (A B : UU0) (f : A -> B) (m : MO A) : MO B :=
-  (M # (fun x => (f x.1, x.2))) m.
-
-Let MO_map_i : FunctorLaws.id MO_map.
-Proof.
-move=> A; apply boolp.funext => m.
-rewrite /MO_map (_ : (fun _ => _) = id) ?functor_id//.
-by apply boolp.funext => -[].
-Qed.
-
-Let MO_map_o : FunctorLaws.comp MO_map.
-Proof.
-move=> A B C g h; rewrite /MO_map; apply boolp.funext => m /=.
-by rewrite -[in RHS](compE _ (M # _)) -functor_o.
-Qed.
-
-HB.instance Definition MO_functor := isFunctor.Build MO MO_map_i MO_map_o.
-
-Let naturality_retO : naturality FId [the functor of MO] retO.
-Proof.
-move=> A B h; rewrite /actm /=; apply boolp.funext => a /=.
-by rewrite /MO_map /retO -[LHS](compE _ Ret) natural FIdE.
-Qed.
-
-HB.instance Definition _ := isNatural.Build
-  FId [the functor of MO] retO naturality_retO.
-
 Let bindOretf : BindLaws.left_neutral bindO retO.
 Proof.
 move=> A B a f; rewrite /bindO /= bindretf /=.
@@ -516,16 +410,17 @@ rewrite !bindA bindretf; bind_ext; case=> x'' w''.
 by rewrite bindretf catA.
 Qed.
 
-Let MO_mapE (A B : UU0) (f : A -> B) (m : MO A) :
-  ([the functor of MO] # f) m = bindO m (@retO _ \o f).
-Proof.
-rewrite (_ : _ # f = MO_map f) // /MO_map [LHS]/= fmapE /=; congr bind.
-apply boolp.funext => -[] /= h t.
-by rewrite bindretf /= cats0.
-Qed.
+HB.instance Definition _ :=
+ isMonad_ret_bind.Build MO bindOretf bindOmret bindOA.
 
-HB.instance Definition _ := isMonad_ret_bind.Build
-  MO MO_mapE bindOretf bindOmret bindOA.
+Lemma MO_mapE (A B : UU0) (f : A -> B) (m : MO A) :
+  (MO # f) m = (M # (fun x => (f x.1, x.2))) m.
+Proof.
+rewrite [in LHS]/actm /= /bindO /= [in RHS]fmapE.
+congr (_ _).
+apply boolp.funext => -[] ? ?.
+by  rewrite bindretf cats0.
+Qed.
 
 Definition liftO A (m : M A) : MO A := m >>= (fun x => Ret (x, [::])).
 
@@ -565,21 +460,6 @@ Definition retC : FId ~~> MC := fun (A : UU0) (a : A) k => k a.
 
 Definition bindC A B (m : MC A) f : MC B := fun k => m (f^~ k).
 
-Definition MC_map (A B : UU0) (f : A -> B) (m : MC A) : MC B :=
-  fun k : B -> M r => m (k \o f).
-
-Let MC_map_i : FunctorLaws.id MC_map. Proof. by []. Qed.
-
-Let MC_map_o : FunctorLaws.comp MC_map. Proof. by []. Qed.
-
-HB.instance Definition _ := isFunctor.Build MC MC_map_i MC_map_o.
-
-Let naturality_retC : naturality FId [the functor of MC] retC.
-Proof. by []. Qed.
-
-HB.instance Definition _ := isNatural.Build
-  FId [the functor of MC] retC naturality_retC.
-
 Let bindCretf : BindLaws.left_neutral bindC retC.
 Proof. by []. Qed.
 
@@ -589,12 +469,12 @@ Proof. by []. Qed.
 Let bindCA : BindLaws.associative bindC.
 Proof. by []. Qed.
 
-Let MC_mapE (A B : UU0) (f : A -> B) (m : MC A) :
-  ([the functor of MC] # f) m = bindC m (@retC _ \o f).
-Proof. by []. Qed.
+HB.instance Definition _ :=
+  isMonad_ret_bind.Build MC bindCretf bindCmret bindCA.
 
-HB.instance Definition _ := isMonad_ret_bind.Build
-  MC MC_mapE bindCretf bindCmret bindCA.
+Lemma MC_mapE (A B : UU0) (f : A -> B) (m : MC A) :
+  (MC # f) m = fun k : B -> M r => m (k \o f).
+Proof. by []. Qed.
 
 Definition liftC A (x : M A) : MC A := fun k => x >>= k.
 
@@ -981,9 +861,7 @@ Let naturality_hmapX' (F G : monad) (tau : F ~> G) :
   naturality (T F) (T G) (hmapX' tau).
 Proof.
 move=> A B h.
-rewrite /hmapX'.
-have eXh : forall G, exceptT X G # h = MX_map h by [].
-by rewrite 2!eXh /MX_map /= (natural tau).
+by rewrite /hmapX' 2!MX_mapE (natural tau).
 Qed.
 
 HB.instance Definition hmapX (F G : monad) (tau : F ~> G) :=
@@ -1013,7 +891,7 @@ Let monadMbind_hmapX (F G : monad) (e : monadM F G) :
   MonadMLaws.bind (hmapX' e).
 Proof.
 move=> A B m f; rewrite /hmapX' /=.
-rewrite !bindE /= /join_of_bind /bindX /= !bind_fmap.
+rewrite !bindE /= !MX_mapE /bindX /= !bind_fmap.
 rewrite !monadMbind /=.
 congr (bind (e (X + A)%type m) _).
 apply boolp.funext => -[x/=|//].
@@ -1058,8 +936,10 @@ move=> A B h.
 rewrite /hmapS /=.
 have H : forall G, [the monad of stateT S G] # h = [the functor of MS S G] # h by [].
 rewrite !H {H}.
-rewrite /= {1}/actm /=.
-rewrite /MS_map; apply boolp.funext => m; apply boolp.funext => s /=.
+
+apply boolp.funext => m /=.
+rewrite !MS_mapE.
+apply boolp.funext => s /=.
 rewrite -(compE  _ (tau (A * S)%type)).
 by rewrite natural.
 Qed.
@@ -1093,7 +973,7 @@ Let monadMbind_hmapS (F G : monad) (e : monadM F G) :
 Proof.
 move=> A B m f.
 rewrite /hmapS /=; apply boolp.funext => s.
-rewrite /= 2!bindE /= /join_of_bind /bindS /= 2!bind_fmap.
+rewrite /= 2!bindE /= !MS_mapE /bindS /= 2!bind_fmap.
 by rewrite monadMbind.
 Qed.
 
@@ -1154,8 +1034,9 @@ rewrite /hmapEnv.
 rewrite /=.
 have H : forall G, [the monad of envT E G] # h = [the functor of MEnv E G] # h by [].
 rewrite !H {H}.
-rewrite {1}/actm /=.
-rewrite /MEnv_map; apply boolp.funext => m; apply boolp.funext => s /=.
+apply boolp.funext => m /=.
+rewrite !MEnv_mapE.
+apply boolp.funext => s /=.
 rewrite -(compE  _ (tau A)).
 by rewrite natural.
 Qed.
@@ -1187,7 +1068,7 @@ Let monadMbind_hmapEnv (F G : monad) (e : monadM F G) :
 Proof.
 move=> A B m f.
 rewrite /hmapEnv /=; apply boolp.funext => s.
-rewrite /= 2!bindE /= /join_of_bind /bindEnv /= 2!bind_fmap.
+rewrite /= 2!bindE /= !MEnv_mapE /bindEnv /= 2!bind_fmap.
 by rewrite monadMbind.
 Qed.
 
@@ -1219,8 +1100,7 @@ rewrite /hmapO.
 rewrite /=.
 have H : forall G, [the monad of outputT R G] # h = [the functor of MO R G] # h by [].
 rewrite !H {H}.
-rewrite {1}/actm /=.
-rewrite /MO_map; apply boolp.funext => m /=.
+apply boolp.funext => m /=; rewrite !MO_mapE.
 rewrite -[in LHS](compE  _ (tau _)).
 by rewrite natural.
 Qed.
@@ -1251,7 +1131,7 @@ Let monadMbind_hmapO (F G : monad) (e : monadM F G) :
 Proof.
 move=> A B m f.
 rewrite /hmapO /=.
-rewrite 2!bindE /= /join_of_bind /bindO /= 2!bind_fmap.
+rewrite 2!bindE /= !MO_mapE /bindO /= 2!bind_fmap.
 rewrite !monadMbind.
 bind_ext => -[x w].
 rewrite /retO /=.
