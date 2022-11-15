@@ -459,7 +459,7 @@ Qed.
 
 HB.instance Definition _ :=
   isNatural.Build FId F (ret' : FId ~~> F) ret'_naturality.
-Definition ret := [the FId ~> F of ret'].
+Let ret := [the FId ~> F of ret'].
 
 Let join' : FF ~~> F := fun _ m => bind m idfun.
 Let actm_bind a b c (f : a -> b) m (g : c -> F a) :
@@ -477,7 +477,7 @@ by rewrite bindretf /=.
 Qed.
 
 HB.instance Definition _ := isNatural.Build _ _ _ join'_naturality.
-Definition join := [the FF ~> F of join'].
+Let join := [the FF ~> F of join'].
 
 Let bind_map (A B C : UU0) (f : A -> B) (m : M A) (g : B -> M C) :
   bind ((F # f) m) g = bind m (g \o f).
@@ -492,11 +492,13 @@ Proof.
 rewrite /join /= /hierarchy.actm /= /join' /=.
 by rewrite bind_map.
 Qed.
+
 Lemma joinretM : JoinLaws.left_unit ret join.
 Proof.
 move=> a; rewrite boolp.funeqE => m.
 by rewrite /join /= /join' /= bindretf.
 Qed.
+
 Lemma joinMret : JoinLaws.right_unit ret join.
 Proof.
 move=> a; rewrite boolp.funeqE => m.
@@ -506,6 +508,7 @@ rewrite bindA /=.
 rewrite [X in bind m X](_ : _ = fun x => ret' x) ?bindmret //= boolp.funeqE => ?.
 by rewrite bindretf.
 Qed.
+
 Lemma joinA : JoinLaws.associativity join.
 Proof.
 move => a; rewrite boolp.funeqE => m.
@@ -516,6 +519,7 @@ congr bind.
 rewrite boolp.funeqE => u /=.
 by rewrite bindretf.
 Qed.
+
 HB.instance Definition _ := isMonad.Build M bindE joinretM joinMret joinA.
 HB.end.
 
