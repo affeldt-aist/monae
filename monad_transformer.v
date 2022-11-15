@@ -117,7 +117,7 @@ HB.instance Definition _ :=
   isMonad_ret_bind.Build MS bindSretf bindSmret bindSA.
 
 Lemma MS_mapE (A B : UU0) (f : A -> B) (m : MS A) :
-  (MS # f) m = (M # (fun x => (f x.1, x.2))) \o m.
+  ([the functor of MS] # f) m = (M # (fun x => (f x.1, x.2))) \o m.
 Proof.
 apply boolp.funext=> s.
 rewrite {1}/actm /= /bindS /= fmapE.
@@ -233,7 +233,7 @@ HB.instance Definition _ :=
  isMonad_ret_bind.Build MX bindXretf bindXmret bindXA.
 
 Lemma MX_mapE (A B : UU0) (f : A -> B) :
-  MX # f = M # (fun x => match x with inl y => inl y | inr y => inr (f y) end).
+  [the functor of MX] # f = M # (fun x => match x with inl y => inl y | inr y => inr (f y) end).
 Proof.
 apply boolp.funext => m.
 rewrite {1}/actm /= /bindX /= [in RHS]fmapE.
@@ -356,7 +356,7 @@ HB.instance Definition _ :=
  isMonad_ret_bind.Build MEnv bindEnvretf bindEnvmret bindEnvA.
 
 Lemma MEnv_mapE (A B : UU0) (f : A -> B) (m : MEnv A) :
-  (MEnv # f) m = (M # f) \o m.
+  ([the functor of MEnv] # f) m = (M # f) \o m.
 Proof. by apply boolp.funext=> r; rewrite /= fmapE. Qed.
 
 Definition liftEnv A (m : M A) : MEnv A := fun r => m.
@@ -414,7 +414,7 @@ HB.instance Definition _ :=
  isMonad_ret_bind.Build MO bindOretf bindOmret bindOA.
 
 Lemma MO_mapE (A B : UU0) (f : A -> B) (m : MO A) :
-  (MO # f) m = (M # (fun x => (f x.1, x.2))) m.
+  ([the functor of MO] # f) m = (M # (fun x => (f x.1, x.2))) m.
 Proof.
 rewrite [in LHS]/actm /= /bindO /= [in RHS]fmapE.
 congr (_ _).
@@ -473,7 +473,7 @@ HB.instance Definition _ :=
   isMonad_ret_bind.Build MC bindCretf bindCmret bindCA.
 
 Lemma MC_mapE (A B : UU0) (f : A -> B) (m : MC A) :
-  (MC # f) m = fun k : B -> M r => m (k \o f).
+  ([the functor of MC] # f) m = fun k : B -> M r => m (k \o f).
 Proof. by []. Qed.
 
 Definition liftC A (x : M A) : MC A := fun k => x >>= k.
