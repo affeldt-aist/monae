@@ -328,7 +328,7 @@ End monad_lemmas.
 
 Module BindLaws.
 Section bindlaws.
-Variable F : functor.
+Variable F : UU0 -> UU0.
 Variable b : forall (A B : UU0), F A -> (A -> F B) -> F B.
 Local Notation "m >>= f" := (b m f).
 
@@ -420,59 +420,108 @@ Proof. by []. Qed.
 HB.instance Definition _ := isMonad.Build M bindE joinretM joinMret joinA.
 HB.end.
 
-HB.factory Record isMonad_ret_bind (F : UU0 -> UU0) of isFunctor F := {
-  ret : FId ~> [the functor of F] ;
+HB.factory Record isMonad_ret_bind (F : UU0 -> UU0) := {
+  ret' : forall (A : UU0), A -> F A ;
   bind : forall (A B : UU0), F A -> (A -> F B) -> F B ;
-  fmapE : forall (A B : UU0) (f : A -> B) (m : F A),
-    ([the functor of F] # f) m = bind A B m (ret B \o f) ;
-  bindretf : BindLaws.left_neutral bind ret ;
-  bindmret : BindLaws.right_neutral bind ret ;
+  bindretf : BindLaws.left_neutral bind ret' ;
+  bindmret : BindLaws.right_neutral bind ret' ;
   bindA : BindLaws.associative bind }.
 
 HB.builders Context M of isMonad_ret_bind M.
 
+Let actm (a b : UU0) (f : a -> b) m := bind m (@ret' _ \o f).
+
+Let actm_id : FunctorLaws.id actm.
+Proof.
+move=> a.
+rewrite /actm; apply: boolp.funext=> m /=.
+by rewrite bindmret.
+Qed.
+
+Let actm_comp : FunctorLaws.comp actm.
+Proof.
+move=> a b c g h.
+rewrite /actm; apply: boolp.funext => m /=.
+rewrite bindA.
+congr bind.
+apply: boolp.funext => u /=.
+by rewrite bindretf.
+Qed.
+
+HB.instance Definition _ := isFunctor.Build M actm_id actm_comp.
 Let F := [the functor of M].
+Local Notation FF := [the functor of F \o F].
+
+Let ret'_naturality : naturality FId F ret'.
+Proof.
+move=> a b h.
+rewrite FIdE /hierarchy.actm /= /actm; apply: boolp.funext => m /=.
+by rewrite bindretf.
+Qed.
+
+HB.instance Definition _ :=
+  isNatural.Build FId F (ret' : FId ~~> F) ret'_naturality.
+Let ret := [the FId ~> F of ret'].
+
+Let join' : FF ~~> F := fun _ m => bind m idfun.
+
+Let actm_bind (a b c : UU0) (f : a -> b) m (g : c -> F a) :
+  (actm f) (bind m g) = bind m (actm f \o g).
+Proof. by rewrite /actm bindA. Qed.
+
+Let join'_naturality : naturality FF F join'.
+Proof.
+move=> a b h.
+rewrite /join' /=; apply: boolp.funext => mm /=.
+rewrite /hierarchy.actm /= /isFunctor.actm /=.
+rewrite actm_bind bindA /=.
+congr bind.
+apply: boolp.funext => m /=.
+by rewrite bindretf /=.
+Qed.
+
+HB.instance Definition _ := isNatural.Build _ _ _ join'_naturality.
+Let join := [the FF ~> F of join'].
 
 Let bind_map (A B C : UU0) (f : A -> B) (m : M A) (g : B -> M C) :
   bind ((F # f) m) g = bind m (g \o f).
 Proof.
-rewrite fmapE bindA; congr bind.
-by apply boolp.funext => ?; rewrite bindretf.
+rewrite bindA; congr bind.
+by apply: boolp.funext => ?; rewrite bindretf.
 Qed.
 
-Let naturality_join :
-  naturality [the functor of F \o F] F (join_of_bind bind).
+Let bindE (a b : UU0) (f : a -> M b) (m : M a) :
+  bind m f = join b ((F # f) m).
 Proof.
-move=> A B h; apply boolp.funext => mma /=.
-rewrite fmapE /join_of_bind bindA bind_map; congr bind.
-by apply boolp.funext => ma; rewrite compidf fmapE.
+rewrite /join /= /hierarchy.actm /= /join' /=.
+by rewrite bind_map.
 Qed.
-
-HB.instance Definition _ :=
-  isNatural.Build _ _ (join_of_bind bind) naturality_join.
-
-Let bindE (A B : UU0) (f : A -> M B) (m : M A) :
-  bind m f = (join_of_bind bind) B ((F # f) m).
-Proof. by rewrite /join /= /join_of_bind /= bind_map compidf. Qed.
-
-Let join := join_of_bind bind.
 
 Let joinretM : JoinLaws.left_unit ret join.
 Proof.
-rewrite /join => A; apply boolp.funext => ma /=.
-by rewrite /join_of_bind /= bindretf.
+move=> a; apply: boolp.funext => m.
+by rewrite /join /= /join' /= bindretf.
 Qed.
 
 Let joinMret : JoinLaws.right_unit ret join.
 Proof.
-rewrite /join => A; apply boolp.funext => ma /=.
-by rewrite /join_of_bind bind_map compidf bindmret.
+move=> a; apply: boolp.funext => m.
+rewrite /join /= /join'.
+rewrite /hierarchy.actm /= /actm /=.
+rewrite bindA /=.
+rewrite [X in bind m X](_ : _ = fun x => ret' x) ?bindmret //=; apply: boolp.funext => ?.
+by rewrite bindretf.
 Qed.
 
 Let joinA : JoinLaws.associativity join.
 Proof.
-move=> A; apply boolp.funext => mmma.
-by rewrite /join /= /join_of_bind bind_map compidf bindA.
+move => a; apply: boolp.funext => m.
+rewrite /join /= /join'.
+rewrite /hierarchy.actm /= /actm.
+rewrite !bindA.
+congr bind.
+apply: boolp.funext => u /=.
+by rewrite bindretf.
 Qed.
 
 HB.instance Definition _ := isMonad.Build M bindE joinretM joinMret joinA.

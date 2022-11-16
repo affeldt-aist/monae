@@ -22,6 +22,7 @@ Section monadprobmodel.
 
 Definition acto : UU0 -> UU0 := fun A => {dist (choice_of_Type A)}.
 
+(*
 Let map_id : @FunctorLaws.id (FSDist.t \o choice_of_Type)
   (fun A B => @FSDistfmap (choice_of_Type A) (choice_of_Type B)).
 Proof. by move=> A; exact: (FSDistfmap_id _). Qed.
@@ -33,10 +34,10 @@ Proof. by move=> A B C g h; exact: FSDistfmap_comp. Qed.
 HB.instance Definition _ := isFunctor.Build acto map_id map_comp.
 
 Local Notation M' := [the functor of acto].
-
-Definition ret : FId ~~> M' :=
+*)
+Definition ret : FId ~~> acto :=
   fun A a => FSDist1.d (a : choice_of_Type A).
-
+(*
 Let naturality_ret : naturality FId M' ret.
 Proof.
 move=> A B h.
@@ -45,7 +46,7 @@ Qed.
 
 HB.instance Definition _ := isNatural.Build
   _ M' ret naturality_ret.
-
+*)
 Definition bind : forall A B, acto A -> (A -> acto B) -> acto B :=
   fun A B m f => FSDistBind.d m f.
 
@@ -57,13 +58,13 @@ Proof. by move=> ? ?; exact: FSDistBindp1. Qed.
 
 Lemma associative : BindLaws.associative bind.
 Proof. by move=> A B C m f g; exact: FSDistBindA. Qed.
-
+(*
 Lemma fmapE (A B : UU0) (f : A -> B) (m : acto A) :
   ([the functor of acto] # f) m = bind _ _ m (@ret _ \o f).
 Proof. by []. Qed.
-
-HB.instance Definition _ := @isMonad_ret_bind.Build
-  acto [the _ ~> _ of ret] bind fmapE left_neutral right_neutral associative.
+*)
+HB.instance Definition _ := isMonad_ret_bind.Build
+  acto left_neutral right_neutral associative.
 
 Lemma BindE (A B : choiceType) m (f : A -> [the monad of acto] B) :
   (m >>= f) = FSDistBind.d m f.
