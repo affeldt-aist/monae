@@ -19,6 +19,7 @@ Require Import monae_lib hierarchy monad_lib fail_lib state_lib.
 Local Open Scope monae_scope.
 
 Section nqueens_gibbons2011icfp.
+Local Notation "A `2" := (Squaring A) (at level 2).
 
 Definition place n {B} (rs : seq B) := zip (map Z_of_nat (iota 0 n)) rs.
 

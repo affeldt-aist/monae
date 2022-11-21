@@ -45,7 +45,7 @@ Definition choiceA_alternative (p q : prob) (a b c : M A) :
   let conv := (fun p (a b : choice_of_Type (M A)) => choice p A a b) in
   conv p a (conv q b c) = conv [s_of p, q] (conv [r_of p, q] a b) c.
 Proof.
-by apply: (choiceA p q); rewrite -fdist.p_is_rs fdist.s_of_pqE onemK.
+by apply: (choiceA p q); rewrite -p_is_rs s_of_pqE onemK.
 Qed.
 
 Definition prob_convType := M A.
@@ -305,7 +305,7 @@ by rewrite /bcoin choiceC choice_bindDl 2!bindretf eqxx.
 Qed.
 
 Section arbcoin_spec_convexity.
-Import Rstruct convex necset ScaledConvex.
+Import Rstruct convex necset.
 Local Open Scope latt_scope.
 Local Open Scope convex_scope.
 Local Open Scope R_scope.
@@ -331,17 +331,17 @@ Local Notation "x +' y" := (addpt x y) (at level 50).
 Local Notation "a *' x" := (scalept a x) (at level 40).
 
 Lemma magnify_conv (T : convType) (p q r : prob) (x y : T) (H : p < q < r) :
-  (x <|p|> y) <|magnified_weight H|> (x <|r|> y) = x <|q|> y.
+  (x <|p|> y) <| magnified_weight H |> (x <|r|> y) = x <|q|> y.
 Proof.
 case: (H) => pq qr.
 have rp : 0 < r - p by rewrite subR_gt0; apply (ltR_trans pq).
 have rp' : r - p != 0 by apply/gtR_eqF.
-apply: S1_inj; rewrite ![in LHS]S1_conv !convptE.
-rewrite !scalept_addpt !scalept_comp //.
-rewrite [in X in X +' (_ +' _)]addptC addptA addptC !addptA -scalept_addR //.
-rewrite -!addptA -scalept_addR //.
-have-> : (m H).~ * r.~ + m H * p.~ = (m H * p + (m H).~ * r).~ by rewrite /onem; ring.
-suff-> : m H * p + (m H).~ * r = q by rewrite S1_conv convptE addptC.
+apply: S1_inj; rewrite ![in LHS]affine_conv/= !convptE.
+rewrite !scaleptDr !scaleptA // (addptC ((m (conj pq qr) * p) *' S1 x)) addptA.
+rewrite addptC !addptA -scaleptDl// -!addptA -scaleptDl//.
+have -> : (m H).~ * r.~ + m H * p.~ = (m H * p + (m H).~ * r).~.
+  by rewrite /onem; ring.
+suff -> : m H * p + (m H).~ * r = q by rewrite affine_conv convptE addptC.
 rewrite /m /= /onem.
 rewrite mulRDl mul1R addRCA -Rmult_opp_opp -mulRDr (addRC (- p)) addR_opp.
 by rewrite mulNR mulRAC -mulRA mulRV // mulR1; ring.
@@ -353,8 +353,9 @@ Lemma arbcoin_spec_convexity (p q : prob) :
 Proof.
 move=> H.
 rewrite arbcoin_spec !alt_lub.
-rewrite {1}(@lub_absorbs_conv [the semiLattConvType of altProb_semiLattConvType M bool](*NB: FIXME*)
-  _ _ (magnified_weight H)).
+rewrite {1}(@lub_absorbs_conv
+  [the semiLattConvType of altProb_semiLattConvType M bool](*NB: FIXME*) _ _
+  (magnified_weight H)).
 by rewrite magnify_conv.
 Qed.
 End arbcoin_spec_convexity.
@@ -370,14 +371,15 @@ Qed.
 
 Lemma alt_absorbs_choice T (x y : M T) p : x [~] y = x [~] y [~] x <|p|> y.
 Proof.
-have H: x [~] y = (x [~] y [~] x <|p|> y) [~] y <|p|> x by
-      rewrite -[in LHS](choicemm p (x [~] y)) choiceDl 2!choiceDr 2!choicemm altCA altC (altAC x).
+have H : x [~] y = (x [~] y [~] x <|p|> y) [~] y <|p|> x.
+  rewrite -[in LHS](choicemm p (x [~] y)) choiceDl 2!choiceDr 2!choicemm altCA.
+  by rewrite altC (altAC x).
 rewrite {1}H.
-have {2}<-: x [~] y [~] (x [~] y [~] x <|p|> y) = x [~] y [~] x <|p|> y
-    by rewrite altA altmm.
+have {2}<- : x [~] y [~] (x [~] y [~] x <|p|> y) = x [~] y [~] x <|p|> y
+  by rewrite altA altmm.
 rewrite [in RHS]altC.
-have <-: x [~] y [~] x <|p|> y [~] (x [~] y [~] x <|p|> y [~] y <|p|> x) =
-         (x [~] y [~] x <|p|> y [~] y <|p|> x)
+have <- : x [~] y [~] x <|p|> y [~] (x [~] y [~] x <|p|> y [~] y <|p|> x) =
+          (x [~] y [~] x <|p|> y [~] y <|p|> x)
   by rewrite altA altmm.
 by rewrite -H.
 Qed.
@@ -516,12 +518,10 @@ Lemma keimel_plotkin_instance :
   p <| (/ 2)%:pr |> q = (p <| (/ 2)%:pr |> q) <| (/ 2)%:pr |> (p [~] q).
 Proof.
 move=> altDr.
-have altDl : forall T p, left_distributive (fun a b : M T => a [~] b) (fun a b => a <| p |> b).
-  by move=> T r a b c; rewrite altC altDr (altC a) (altC b).
+have altDl T r : left_distributive (fun a b : M T => a [~] b) (fun a b => a <| r |> b).
+  by move=> a b c; rewrite altC altDr (altC a) (altC b).
 rewrite -[LHS](altmm (p <| (/ 2)%:pr |> q)).
-transitivity (
-  ((p [~] p) <| (/ 2)%:pr|> (q [~] p)) <| (/ 2)%:pr |> ((p [~] q) <| (/ 2)%:pr |> (q [~] q))
-).
+transitivity (((p [~] p) <| (/ 2)%:pr|> (q [~] p)) <| (/ 2)%:pr |> ((p [~] q) <| (/ 2)%:pr |> (q [~] q))).
   by rewrite altDr altDl altDl.
 rewrite 2!altmm (altC q).
 rewrite (choice_halfC (p [~] q)).

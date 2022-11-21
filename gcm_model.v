@@ -76,48 +76,6 @@ Unset Strict Implicit.
 Unset Printing Implicit Defensive.
 
 Local Open Scope proba_scope.
-
-Section TODO_move_to_other_file.
-Section misc_convex.
-Local Open Scope convex_scope.
-Variables (A : convType).
-
-Lemma eq_dep_convn n (g : 'I_n -> A) (d : {fdist 'I_n})
-      n0 (g0 : 'I_n0 -> A) (d0 : {fdist 'I_n0}) (Hn : n = n0)
-      (Hg : eq_rect n (fun m => 'I_m -> A) g n0 Hn = g0)
-      (Hd : eq_rect n (fun m => {fdist 'I_m}) d n0 Hn = d0) :
-  <|>_d g = <|>_d0 g0.
-Proof.
-refine (match Hd with erefl => _ end).
-refine (match Hg with erefl => _ end).
-refine (match Hn with erefl => _ end).
-reflexivity.
-Qed.
-
-Lemma convn1Eq' n (g : 'I_n -> A) (d : {fdist 'I_n}) (Hn1 : n = 1) :
-  <|>_d g = eq_rect n (fun n => 'I_n -> A) g 1 Hn1 ord0.
-Proof.
-set d' := eq_rect n (fun n0 => {fdist 'I_n0}) d 1 Hn1.
-set g' := eq_rect n (fun n0 => 'I_n0 -> A) g 1 Hn1.
-suff -> : <|>_d g = <|>_d' g' by rewrite convn1E.
-by eapply eq_dep_convn.
-Qed.
-
-Lemma convn1Eq n (g : 'I_n -> A) (d : {fdist 'I_n})
-      (n1 : n = 1) (i : 'I_n) : <|>_d g = g i.
-Proof.
-rewrite convn1Eq'.
-have -> /= : eq_rect n (fun n0 : nat => 'I_n0 -> A) g 1 n1 =
-    g \o eq_rect 1 (fun n0 => 'I_1 -> 'I_n0) idfun n (esym n1)
-  by subst n.
-have /(_ i) I_n_contr : forall a b : 'I_n, a = b
-    by rewrite n1 => a b; rewrite (ord1 a) (ord1 b).
-by rewrite -(I_n_contr (eq_rect 1 (fun n => 'I_1 -> 'I_n) idfun n (esym n1) ord0)).
-Qed.
-Global Arguments convn1Eq [n g d n1].
-End misc_convex.
-End TODO_move_to_other_file.
-
 Local Open Scope category_scope.
 
 Section choiceType_as_a_category.
@@ -249,16 +207,13 @@ Let acto (a : CC) : CV := [the convType of {dist a}].
 Definition free_convType_mor (A B : CC) (f : {hom A, B})
     : {hom acto A, acto B} :=
   Hom.Pack (Hom.Class (isHom.Axioms_ (acto A) (acto B)
-                                     (FSDistfmap f) (FSDistfmap_affine f))).
+                                     (fsdistmap f) (fsdistmap_affine f))).
 
 Lemma mem_finsupp_free_convType_mor (A B : CC) (f : A -> B)
     (d : {dist A}) (x : finsupp d) :
   f (fsval x) \in finsupp (free_convType_mor (hom_choiceType f) d).
 Proof.
-rewrite /= FSDistBind.supp imfset_id.
-apply/bigfcupP; exists (FSDist1.d (f (fsval x))).
-- by rewrite andbT; exact/in_imfset/fsvalP.
-- by rewrite mem_finsupp FSDist1.dE inE eqxx; exact/eqP/R1_neq_R0.
+by rewrite /= supp_fsdistmap; apply/imfsetP => /=; exists (fsval x).
 Qed.
 
 (* free_convType_mor induces maps between supports *)
@@ -274,11 +229,11 @@ Proof. by case: i. Qed.
 
 Let free_convType_mor_id : FunctorLaws.id free_convType_mor.
 Proof.
-by move=> a; rewrite hom_ext funeqE=> x /=; rewrite/idfun FSDistfmap_id.
+by move=> a; rewrite hom_ext funeqE=> x /=; rewrite fsdistmap_id.
 Qed.
 
 Let free_convType_mor_comp : FunctorLaws.comp free_convType_mor.
-Proof. by move=> a b c g h; rewrite hom_ext /= FSDistfmap_comp. Qed.
+Proof. by move=> a b c g h; apply/hom_ext; exact: fsdistmap_comp. Qed.
 
 HB.instance Definition _ :=
   isFunctor.Build CC CV acto free_convType_mor_id free_convType_mor_comp.
@@ -318,7 +273,6 @@ End forget_convType_functor.
   it is essentially Convn (p.164).
 *)
 Section eps0_eta0.
-Import ScaledConvex.
 Local Open Scope fset_scope.
 Local Open Scope R_scope.
 Local Open Scope convex_scope.
@@ -327,36 +281,35 @@ Local Notation U0 := forget_convType.
 
 Let eps0' : F0 \O U0 ~~> FId := fun a =>
   Hom.Pack (Hom.Class (isHom.Axioms_ ((F0 \O U0) a) (FId a)
-    (@Convn_of_FSDist a) (@Convn_of_FSDist_affine (FId a)))).
+    (@Convn_of_fsdist a) (@Convn_of_fsdist_affine (FId a)))).
 
 Let eps0'_natural : naturality _ _ eps0'.
 Proof.
 move=> C D f; rewrite FCompE /= /id_f; apply funext => d /=.
-by rewrite Convn_of_FSDist_FSDistfmap.
+by rewrite Convn_of_fsdistmap.
 Qed.
 
 HB.instance Definition _ := isNatural.Build _ _ _ _ _ eps0'_natural.
 Definition eps0 := locked [the _ ~> _ of eps0'].
 
-Lemma eps0E (C : convType) : eps0 C = @Convn_of_FSDist C :> (_ -> _).
+Lemma eps0E (C : convType) : eps0 C = @Convn_of_fsdist C :> (_ -> _).
 Proof. by rewrite /eps0; unlock. Qed.
 
 Let eta0' : FId ~~> U0 \O F0 := fun T =>
-  Hom.Pack (Hom.Class (isHom.Axioms_ (FId T) ((U0 \O F0) T) (@FSDist1.d _) I)).
+  Hom.Pack (Hom.Class (isHom.Axioms_ (FId T) ((U0 \O F0) T) (@fsdist1 _) I)).
 
 Lemma eta0'_natural : naturality _ _ eta0'.
 Proof.
-by move=> a b h; rewrite funeqE=> x; rewrite FIdf /eta0' /= FSDistfmap1.
+by move=> a b h; rewrite funeqE=> x; rewrite FIdf /eta0' /= fsdistmap1.
 Qed.
 
 HB.instance Definition _ := isNatural.Build _ _ _ _ _ eta0'_natural.
 Definition eta0 := locked [the _ ~> _ of eta0'].
 
-Lemma eta0E (T : choiceType) : eta0 T = @FSDist1.d _ :> (_ -> _).
+Lemma eta0E (T : choiceType) : eta0 T = @fsdist1 _ :> (_ -> _).
 Proof. by rewrite /eta0; unlock. Qed.
 
 Import comps_notation.
-Import ScaledConvex.
 Local Open Scope fset_scope.
 Local Open Scope R_scope.
 
@@ -367,7 +320,7 @@ Qed.
 
 Lemma triR0 : TriangularLaws.right eta0 eps0.
 Proof.
-by move=> c; rewrite eps0E eta0E funeqE => a /=; rewrite Convn_of_FSDist_FSDist1.
+by move=> c; rewrite eps0E eta0E funeqE => a /=; rewrite Convn_of_fsdist1.
 Qed.
 
 End eps0_eta0.
@@ -375,18 +328,12 @@ End eps0_eta0.
 (* the join operator for Dist is ((coercion) \o eps0) *)
 Section eps0_correct.
 Import category.
-Import ScaledConvex.
 Local Open Scope R_scope.
 Local Open Scope convex_scope.
 Variables (A : choiceType) (D : {dist {dist A}}).
 
-Lemma eps0_correct : eps0 _ D = FSDistjoin D.
-Proof.
-rewrite /eps0; unlock=> /=; apply FSDist_ext => a; rewrite -[LHS]Scaled1RK.
-rewrite (S1_proj_Convn_finType [the {affine _ -> _} of (FSDist_eval a)]) big_scaleR.
-rewrite FSDistjoinE big_seq_fsetE; apply eq_bigr => -[d dD] _.
-by rewrite (scaleR_scalept _ (FDist.ge0 _ _)) fdist_of_FSDistE Scaled1RK.
-Qed.
+Lemma eps0_correct : eps0 _ D = fsdistjoin D.
+Proof. by rewrite eps0E Convn_of_fsdistjoin. Qed.
 
 End eps0_correct.
 
@@ -721,8 +668,8 @@ Lemma P_deltaE (A B : Type) (f : {hom A, B}) :
   P_delta # f = P_delta_left # f :> (_ -> _).
 Proof. exact: funext. Qed.
 
-Lemma eps0_Dist1 (A : Type) (d : P_delta_acto A) : eps0 _ (FSDist1.d d) = d.
-Proof. by rewrite eps0E Convn_of_FSDist_FSDist1. Qed.
+Lemma eps0_Dist1 (A : Type) (d : P_delta_acto A) : eps0 _ (fsdist1 d) = d.
+Proof. by rewrite eps0E Convn_of_fsdist1. Qed.
 
 End P_delta_functor.
 
@@ -745,7 +692,7 @@ Section gcm_opsE.
 Import hierarchy.
 
 Lemma gcm_retE (T : Type) (x : choice_of_Type T) :
-  Ret x = necset1 (FSDist1.d x) :> gcm T.
+  Ret x = necset1 (fsdist1 x) :> gcm T.
 Proof.
 rewrite /= /ret_ /Monad_of_category_monad.ret /=.
 rewrite !HCompId !HIdComp /=.
@@ -811,11 +758,10 @@ rewrite /join_.
 rewrite [in LHS]/= HCompId HIdComp [X in _ (X t)]/=.
 rewrite /actm [in LHS]/=.
 rewrite epsCE.
-(* TODO: rewrite with FSDistfmap_id *)
 rewrite eps0_correct.
-rewrite /FSDistjoin /FSDistfmap /= FSDistBindA /=.
-congr FSDistBind.d.
-by apply funext => x; rewrite FSDistBind1f.
+rewrite /fsdistjoin /fsdistmap /= fsdistbindA /=.
+congr fsdistbind.
+by apply funext => x; rewrite fsdist1bind.
 Qed.
 
 Lemma RetE T : (Ret : FId T -> N T) = (Ret : FId T -> M T).

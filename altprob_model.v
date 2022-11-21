@@ -38,8 +38,8 @@ Definition choice p A (x y : gcm A) : gcm A := x <| p |> y.
 Lemma altA A : ssrfun.associative (@alt A).
 Proof. by move=> x y z; rewrite /alt lubA. Qed.
 
-Lemma image_FSDistfmap A B (x : gcm A) (k : choice_of_Type A -> gcm B) :
-  FSDistfmap k @` x = (gcm # k) x.
+Lemma image_fsdistmap A B (x : gcm A) (k : choice_of_Type A -> gcm B) :
+  fsdistmap k @` x = (gcm # k) x.
 Proof.
 rewrite /hierarchy.actm/= /actm 5!FCompE /category.actm/=.
 by rewrite /free_semiCompSemiLattConvType_mor/=; unlock.
@@ -200,9 +200,8 @@ apply contra_not.
 rewrite !gcm_retE /Choice /= => /(congr1 (@NECSet.car _)).
 rewrite !necset_convType.convE !conv_cset1 /=.
 move/(@set1_inj _ (conv _ _ _))/(congr1 (@FSDist.f _))/fsfunP/(_ true).
-rewrite !ConvFSDist.dE !FSDist1.dE /=.
-rewrite !(@in_fset1 (choice_of_Type bool)) eqxx /= ifF; last exact/negbTE/eqP.
-by rewrite !mulR1 !mulR0 !addR0; exact: val_inj.
+by rewrite !fsdist_convE !fsdist1xx !mulR1 fsdist10 ?mulR0 ?addR0//;
+  [exact: val_inj|exact/eqP].
 Qed.
 
 End probabilisctic_choice_not_trivial.

@@ -37,7 +37,6 @@ Require Import ihierarchy.
 (*                                                                            *)
 (******************************************************************************)
 
-Reserved Notation "A `2" (format "A `2", at level 3).
 Reserved Notation "f ^`2" (format "f ^`2", at level 3).
 Reserved Notation "F ## g" (at level 11).
 Reserved Notation "E .-operation M" (at level 2, format "E  .-operation  M").
@@ -101,8 +100,8 @@ End liftM2_lemmas.
 Arguments bind_liftM2_size {M A B C} {f} m1 m2 n.
 
 Definition Squaring (A : UU0) := (A * A)%type.
-Notation "A `2" := (Squaring A).
-Definition squaring_f (A B : UU0) (f : A -> B) : A`2 -> B`2 := fun x => (f x.1, f x.2).
+Definition squaring_f (A B : UU0) (f : A -> B) : Squaring A -> Squaring B :=
+  fun x => (f x.1, f x.2).
 Lemma squaring_f_id : FunctorLaws.id squaring_f.
 Proof. by move=> A /=; apply funext => -[x1 x2]. Qed.
 Lemma squaring_f_comp : FunctorLaws.comp squaring_f.
