@@ -78,11 +78,12 @@ HB.mixin Record isCategory (obj : Type) := {
       inhom _ _ f -> inhom _ _ g -> inhom _ _ (g \o f)
 }.
 Arguments isCategory.phant_Build : clear implicits.
+
 #[short(type=category)]
 HB.structure Definition Category := {C of isCategory C}.
+
 Arguments idfun_inhom [C] : rename.
 Arguments funcomp_inhom [C a b c f g] : rename.
-
 
 HB.mixin Record isHom (C : category) (a b : C) (f : el a -> el b) := {
   isHom_inhom : inhom a b f
@@ -232,8 +233,10 @@ HB.mixin Record isFunctor (C D : category) (F : C -> D) := {
   actm : forall a b, {hom a, b} -> {hom F a, F b} ;
   functor_id_hom : FunctorLaws.id actm ;
   functor_o_hom : FunctorLaws.comp actm }.
+
 HB.structure Definition Functor C D := {F of isFunctor C D F}.
 (*Notation functor := Functor.type.*)
+
 Definition functor_phant (C D : category) of phant (C -> D) := Functor.type C D.
 Arguments actm [C D] F [a b] f: rename.
 Notation "F # f" := (actm F f) : category_scope.
@@ -242,8 +245,10 @@ Notation "{ 'functor' fCD }" := (functor_phant (Phant fCD))
 
 Section functor_lemmas.
 Variables (C D : category) (F : {functor C -> D}).
+
 Lemma functor_id a : F # [hom idfun] = idfun :> (el (F a) -> el (F a)).
 Proof. by rewrite functor_id_hom. Qed.
+
 Lemma functor_o a b c (g : {hom b, c}) (h : {hom a, b}) :
   F # [hom g \o h] = F # g \o F # h :> (el (F a) -> el (F c)).
 Proof. by rewrite functor_o_hom. Qed.
