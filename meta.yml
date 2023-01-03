@@ -36,10 +36,12 @@ license:
 
 supported_coq_versions:
   text: Coq 8.15
-  opam: '{ (>= "8.15" & < "8.16~") | (= "dev") }'
+  opam: '{ (>= "8.15" & < "8.18~") | (= "dev") }'
 
 tested_coq_opam_versions:
 - version: '1.15.0-coq-8.15'
+  repo: 'mathcomp/mathcomp'
+- version: '1.16.0-coq-8.16'
   repo: 'mathcomp/mathcomp'
 
 dependencies:
