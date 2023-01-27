@@ -1663,11 +1663,11 @@ Import MTypedStore.
 
 #[bypass_check(positivity)]
 Inductive acto : UU0 -> UU0 :=
-  mkActo : forall T : UU0, MS (seq (binding acto)) option_monad T -> acto T.
+  mkActo : forall T : UU0, MS (seq (binding acto)) [the monad of option_monad] T -> acto T.
 Local Notation M := acto.
 Local Notation coq_type := (coq_type M).
 
-Definition ofActo T (m : M T) : MS (seq (binding M)) option_monad T :=
+Definition ofActo T (m : M T) : MS (seq (binding M)) [the monad of option_monad] T :=
   let: mkActo _ m' := m in m'.
 
 Definition cnew T (v : coq_type T) : M (loc T) :=
