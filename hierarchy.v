@@ -1123,7 +1123,15 @@ HB.mixin Record isMonadTypedStore (M : UU0 -> UU0)
            (A : UU0) (k : coq_type M T2 -> M A),
       loc_id r1 != loc_id r2 ->
     cput r1 s1 >> cget r2 >>= k =
-    cget r2 >>= (fun v => cput r1 s1 >> k v) }.
+    cget r2 >>= (fun v => cput r1 s1 >> k v) ;
+  cnewget : forall T (s : coq_type M T) A (k : coq_type M T -> M A),
+    cnew s >>= (fun r => cget r >>= k) = cnew s >> k s ;
+  cnewgetC :
+    forall T T' (r : loc T) (s : coq_type M T') A
+           (k : loc T' -> coq_type M T -> M A),
+      cnew s >>= (fun r' => cget r >>= k r') =
+      cget r >>= (fun u => cnew s >>= (fun r' => k r' u)) ;
+ }.
 
 #[short(type=typedStoreMonad)]
 HB.structure Definition MonadTypedStore :=
