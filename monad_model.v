@@ -1656,6 +1656,147 @@ End modelplusarray.
 End ModelPlusArray.
 HB.export ModelPlusArray.
 
+Module ModelTypedStore (MLtypes : MLTY).
+Module MTypedStore := MonadTypedStore (MLtypes).
+Import MLtypes.
+Import MTypedStore.
+
+#[bypass_check(positivity)]
+Inductive acto : UU0 -> UU0 :=
+  mkActo : forall T : UU0, MS (seq (binding acto)) option_monad T -> acto T.
+Local Notation M := acto.
+Local Notation coq_type := (coq_type M).
+
+Definition ofActo T (m : M T) : MS (seq (binding M)) option_monad T :=
+  let: mkActo _ m' := m in m'.
+
+Definition cnew T (v : coq_type T) : M (loc T) :=
+  mkActo (fun st => let n := size st in Ret (mkloc T n, rcons st (mkbind T v))).
+
+Definition coerce (T1 T2 : ml_type) (v : coq_type T1) : option (coq_type T2) :=
+  match ml_type_eq_dec T1 T2 with
+  | left H => Some (eq_rect _ _ v _ H)
+  | right _ => None
+  end.
+
+Definition cget T (r : loc T) : M (coq_type T) :=
+  mkActo (fun st =>
+            if List.nth_error st (loc_id r) is Some (mkbind T' v) then
+              if coerce T v is Some u then Ret (u, st) else fail
+            else fail).
+
+Definition cput T (r : loc T) (v : coq_type T) : M unit :=
+  mkActo (fun st =>
+            let n := loc_id r in
+            if List.nth_error st n is Some (mkbind T' _) then
+              if coerce T' v is Some u then
+                let b := mkbind T' u in
+                Ret (tt, set_nth b st n b)
+              else fail
+            else fail).
+
+Definition cchk T (r : loc T) : M unit :=
+  mkActo (fun st =>
+            if List.nth_error st (loc_id r) is Some (mkbind T' u) then
+              if coerce T u is Some _ then Ret (tt, st) else fail
+            else fail).
+
+Let ret : forall A, idfun A -> M A := fun A a => mkActo (Ret a).
+Let bind A B (m : M A) (f : A -> M B) : M B :=
+      mkActo (ofActo m >>= (fun a => ofActo (f a))).
+Let left_neutral : BindLaws.left_neutral bind ret.
+Proof. by move=> A B a f; rewrite /bind /ret bindretf; case: (f a). Qed.
+Let right_neutral : BindLaws.right_neutral bind ret.
+Proof. by move=> A a; rewrite /bind /ret  bindmret; case: a. Qed.
+Let associative : BindLaws.associative bind.
+Proof. by move=> A B C m f g; rewrite /bind /= bindA. Qed.
+
+(*
+HB.instance Definition xyz :=
+  isMonad_ret_bind.Build M left_neutral right_neutral associative.
+*)
+
+Lemma nth_error_set_nth T (x : T) st n :
+  List.nth_error (set_nth x st n x) n = Some x.
+Proof.
+elim: n st => [|z IH] [] //.
+clear IH.
+elim: z.+1 => [|n <-] //=.
+by rewrite set_nth_nil.
+Qed.
+
+Definition ml_type_eqb T1 T2 : bool := ml_type_eq_dec T1 T2.
+Lemma ml_type_eqP : Equality.axiom ml_type_eqb.
+Proof.
+rewrite /ml_type_eqb => T1 T2.
+by case: ml_type_eq_dec; constructor.
+Qed.
+Definition ml_type_eq_mixin := EqMixin ml_type_eqP.
+Canonical ml_type_eqType := Eval hnf in EqType _ ml_type_eq_mixin.
+
+Let cputput T (r : loc T) (s s' : coq_type T) :
+    bind (cput r s) (fun _ => cput r s') = cput r s'.
+Proof.
+congr mkActo.
+apply/boolp.funext => st.
+case: r s s' => {}T n s s' /=.
+rewrite bindE /= /bindS MS_mapE /= fmapE /= bindA /=.
+case Hst : (List.nth_error st n) => [[T' v]|] /=; last by rewrite bindfailf.
+rewrite {1 3}/coerce.
+case: ml_type_eq_dec => H /=; last by rewrite bindfailf.
+subst T'.
+rewrite !bindretf /= nth_error_set_nth /coerce.
+case: ml_type_eq_dec => // H.
+rewrite -eq_rect_eq.
+set b := mkbind _ _.
+set b' := mkbind _ _.
+admit.
+Admitted.
+
+Let cputget T (r : loc T) (s : coq_type T) (A : UU0) (k : coq_type T -> M A) :
+  bind (cput r s) (fun=> bind (cget r) k) = bind (cput r s) (fun=> k s).
+Proof.
+congr mkActo.
+apply/boolp.funext => st /=.
+case: r s k => {}T n s k /=.
+rewrite bindE /= /bindS MS_mapE /= fmapE /= bindA /=.
+rewrite [in RHS]bindE /= /bindS MS_mapE /= fmapE /= bindA /=.
+case Hst : (List.nth_error st n) => [[T' v]|] /=; last by rewrite bindfailf.
+rewrite {1 3}/coerce.
+case: ml_type_eq_dec => H /=; last by rewrite bindfailf.
+subst T'.
+rewrite !bindretf /=.
+rewrite bindE /= /bindS MS_mapE /= fmapE /= bindA /=.
+rewrite nth_error_set_nth.
+rewrite /coerce.
+case: ml_type_eq_dec => H /=; last by rewrite bindfailf.
+by rewrite -eq_rect_eq !bindretf.
+Qed.
+
+(*
+  cgetputchk : forall T (r : loc T), cget r >>= cput r = cchk r ;
+  cgetget :
+    forall T (r : loc T) (A : UU0) (k : coq_type M T -> coq_type M T -> M A),
+    cget r >>= (fun s => cget r >>= k s) = cget r >>= fun s => k s s ;
+  cgetC :
+    forall T1 T2 (r1 : loc T1) (r2 : loc T2) (A : UU0)
+           (k : coq_type M T1 -> coq_type M T2 -> M A),
+    cget r1 >>= (fun u => cget r2 >>= (fun v => k u v)) =
+    cget r2 >>= (fun v => cget r1 >>= (fun u => k u v)) ;
+  cputC :
+    forall T1 T2 (r1 : loc T1) (r2 : loc T2) (s1 : coq_type M T1)
+           (s2 : coq_type M T2) (A : UU0),
+      loc_id r1 != loc_id r2 \/ mkbind T1 s1 = mkbind T2 s2 ->
+      cput r1 s1 >> cput r2 s2 = cput r2 s2 >> cput r1 s1 ;
+  cputgetC :
+    forall T1 T2 (r1 : loc T1) (r2 : loc T2) (s1 : coq_type M T1)
+           (A : UU0) (k : coq_type M T2 -> M A),
+      loc_id r1 != loc_id r2 ->
+    cput r1 s1 >> cget r2 >>= k =
+    cget r2 >>= (fun v => cput r1 s1 >> k v) }.
+*)
+End ModelTypedStore.
+
 (* TODO?
 (* result of a discussion with Maxime and Enrico on 2019-09-12 *)
 (* Equality between monads from the hierarchy and their counterparts built    *)
