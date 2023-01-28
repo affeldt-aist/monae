@@ -2,7 +2,7 @@
 (* Copyright (C) 2020 monae authors, license: LGPL-2.1-or-later               *)
 Ltac typeof X := type of X.
 
-Require Import ssrmatching Reals.
+Require Import ssrmatching Reals JMeq.
 From mathcomp Require Import all_ssreflect.
 From mathcomp Require boolp.
 From infotheo Require Import Reals_ext.
@@ -1099,6 +1099,15 @@ HB.mixin Record isMonadTypedStore (M : UU0 -> UU0)
   cget : forall {T}, loc T -> M (coq_type M T) ;
   cput : forall {T}, loc T -> coq_type M T -> M unit ;
   cchk : forall {T}, loc T -> M unit ;
+  cnewget : forall T (s : coq_type M T) A (k : coq_type M T -> M A),
+    cnew s >>= (fun r => cget r >>= k) = cnew s >> k s ;
+  cnewgetC :
+    forall T T' (r : loc T) (s : coq_type M T') A
+           (k : loc T' -> coq_type M T -> M A),
+      cchk r >> (cnew s >>= (fun r' => cget r >>= k r')) =
+      cget r >>= (fun u => cnew s >>= (fun r' => k r' u)) ;
+  cnewput : forall T (s t : coq_type M T) A (k : loc T -> coq_type M T -> M A),
+      cnew s >>= (fun r => cput r t >> k r t) = cnew t >>= (fun r => k r t) ;
   cputput : forall T (r : loc T) (s s' : coq_type M T),
     cput r s >> cput r s' = cput r s' ;
   cputget :
@@ -1116,7 +1125,7 @@ HB.mixin Record isMonadTypedStore (M : UU0 -> UU0)
   cputC :
     forall T1 T2 (r1 : loc T1) (r2 : loc T2) (s1 : coq_type M T1)
            (s2 : coq_type M T2) (A : UU0),
-      loc_id r1 != loc_id r2 \/ mkbind T1 s1 = mkbind T2 s2 ->
+      loc_id r1 != loc_id r2 \/ JMeq s1 s2 ->
       cput r1 s1 >> cput r2 s2 = cput r2 s2 >> cput r1 s1 ;
   cputgetC :
     forall T1 T2 (r1 : loc T1) (r2 : loc T2) (s1 : coq_type M T1)
@@ -1124,13 +1133,27 @@ HB.mixin Record isMonadTypedStore (M : UU0 -> UU0)
       loc_id r1 != loc_id r2 ->
     cput r1 s1 >> cget r2 >>= k =
     cget r2 >>= (fun v => cput r1 s1 >> k v) ;
-  cnewget : forall T (s : coq_type M T) A (k : coq_type M T -> M A),
-    cnew s >>= (fun r => cget r >>= k) = cnew s >> k s ;
-  cnewgetC :
-    forall T T' (r : loc T) (s : coq_type M T') A
-           (k : loc T' -> coq_type M T -> M A),
-      cnew s >>= (fun r' => cget r >>= k r') =
-      cget r >>= (fun u => cnew s >>= (fun r' => k r' u)) ;
+  cnewchk :
+    forall T (s : coq_type M T) (A : UU0) (k : coq_type M T -> loc T -> M A),
+      cnew s >>= (fun r => cchk r >> k s r) = cnew s >>= k s ;
+  cchknewC :
+    forall T1 T2 (r : loc T1) (s : coq_type M T2) (A : UU0)
+           (k : coq_type M T2 -> loc T2 -> M A),
+      cchk r >> (cnew s >>= fun r' => cchk r >> k s r') =
+      cchk r >> (cnew s >>= k s) ;
+  cchkgetC :
+    forall T1 T2 (r1: loc T1) (r2: loc T2) (A: UU0) (k: coq_type M T2 -> M A),
+      cchk r1 >> (cget r2 >>= k) = cget r2 >>= (fun s => cchk r1 >> k s) ;
+  cchkget : forall T (r : loc T) (A: UU0) (k : coq_type M T -> M A),
+      cchk r >> (cget r >>= k) = cget r >>= k ;
+  cgetchk : forall T (r : loc T) (A: UU0) (k : coq_type M T -> M A),
+      cget r >>= (fun s => cchk r >> k s) = cget r >>= k ;
+  cchkputC : forall T1 T2 (r1 : loc T1) (r2 : loc T2) (s : coq_type M T2),
+      cchk r1 >> cput r2 s = cput r2 s >> cchk r1 ;
+  cchkput : forall T (r : loc T) (s : coq_type M T),
+      cchk r >> cput r s = cput r s ;
+  cputchk : forall T (r : loc T) (s : coq_type M T),
+      cput r s >> cchk r = cput r s ;
  }.
 
 #[short(type=typedStoreMonad)]
