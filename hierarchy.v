@@ -1154,6 +1154,10 @@ HB.mixin Record isMonadTypedStore (M : UU0 -> UU0)
       cchk r >> cput r s = cput r s ;
   cputchk : forall T (r : loc T) (s : coq_type M T),
       cput r s >> cchk r = cput r s ;
+  cchkC : forall T1 T2 (r1: loc T1) (r2: loc T2),
+      cchk r1 >> cchk r2 = cchk r2 >> cchk r1 ;
+  cchkdup : forall T (r : loc T),
+      cchk r >> cchk r = cchk r ;
  }.
 
 #[short(type=typedStoreMonad)]
