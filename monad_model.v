@@ -1861,6 +1861,43 @@ do! rewrite bindE /=.
 by rewrite /bindS /= MS_mapE /= fmapE bindA.
 Qed.
 
+Let cchkC T1 T2 (r1: loc T1) (r2: loc T2) :
+  cchk r1 >> cchk r2 = cchk r2 >> cchk r1.
+Proof.
+congr mkActo.
+apply/boolp.funext => st /=.
+rewrite bindE /= /bindS MS_mapE /= fmapE /= bindA /=.
+rewrite [in RHS]bindE /= /bindS MS_mapE /= fmapE /= bindA /=.
+case Hr1 : (nth_error st (loc_id r1)) => [[T1' v1]|] /=; last first.
+  rewrite bindfailf.
+  case Hr2 : (nth_error st (loc_id r2)) => [[T2' v2]|] /=;
+    last by rewrite bindfailf.
+  case Hc: (coerce T2 v2) => [u|]; last by rewrite bindfailf.
+  by rewrite bindE/= bindE/= Hr1.
+case Hr2 : (nth_error st (loc_id r2)) => [[T2' v2]|] /=; last first.
+  rewrite bindfailf.
+  case Hc: (coerce T1 v1) => [u|]; last by rewrite bindfailf.
+  by rewrite bindE/= bindE/= Hr2.
+case Hc: (coerce T1 v1) => [u1|]; last first.
+  rewrite bindfailf.
+  case Hc2: (coerce T2 v2) => [u|]; last by rewrite bindfailf.
+  by rewrite bindE/= bindE/= Hr1 Hc.
+rewrite bindE /= bindE /= Hr2.
+case Hc2: (coerce T2 v2) => [u2|]; last by rewrite !bindfailf.
+do! rewrite bindE /=.
+by rewrite Hr1 Hc.
+Qed.
+
+Let cchkdup T (r : loc T) : cchk r >> cchk r = cchk r.
+Proof.
+congr mkActo.
+apply/boolp.funext => st /=.
+rewrite bindE /= /bindS MS_mapE /= fmapE /= bindA /=.
+case Hr1 : (nth_error st (loc_id r)) => [[T1' v1]|] //=.
+case Hc: (coerce T v1) => [u1|] //.
+by rewrite bindE /= bindE /= Hr1 Hc.
+Qed.
+
 Let cchkgetC T1 T2 (r1: loc T1) (r2: loc T2) (A: UU0) (k: coq_type T2 -> M A) :
   cchk r1 >> (cget r2 >>= k) = cget r2 >>= (fun s => cchk r1 >> k s).
 Proof.
