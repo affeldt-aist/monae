@@ -1729,20 +1729,134 @@ Proof. by move=> A a; rewrite /bind /ret  bindmret; case: a. Qed.
 Let associative : BindLaws.associative bind.
 Proof. by move=> A B C m f g; rewrite /bind /= bindA. Qed.
 
+Search "isMonad" "Store".
+Print MonadTypedStore.MonadTypedStore_isMonadTypedStore_mixin.
+Print MonadTypedStore.axioms_.
+Print isMonadTypedStore.axioms_.
+Print isFunctor.axioms_.
+Print isMonad.axioms_.
+
+Let actm (A B : UU0) (f : A -> B) (m : M A) : M B :=
+  mkActo (actm _ _ f (ofActo m)).
+
+Definition isFunctorTS : isFunctor.axioms_ M.
+exists actm.
+- move=> A. apply boolp.funext => -[] {A} A m.
+  by rewrite /actm functor_id.
+- move=> A B C g h. apply boolp.funext => m.
+  case: m h => {A} A m h /=.
+  by rewrite /actm /= functor_o.
+Defined.
+
+Search "Functor".
+Canonical isFunctorTS.
+
+About Functor.
+Print Functor.axioms_.
+
+Unset Universe Checking.
+Canonical Structure FunctorTS : Functor M := Functor.Class isFunctorTS.
+Canonical Structure functorTS : functor := Functor.Pack isFunctorTS.
+Set Universe Checking.
+
+Let ret_naturality : naturality [the functor of idfun] M ret.
+Proof. by []. Qed.
+
+Canonical Structure naturalityTSret := isNatural.Build _ _ _ ret_naturality.
+
+Let ret' : [the functor of idfun] ~> [the functor of M] :=
+   @Nattrans.Pack _ _ ret (Nattrans.Class naturalityTSret).
+
+Unset Universe Checking.
+Let join' : [the functor of M \o M] ~~> [the functor of M] :=
+      fun _ m => bind m idfun.
+Set Universe Checking.
+
+Let actm_bind (a b c : UU0) (f : a -> b) m (g : c -> M a) :
+  (actm f) (bind m g) = bind m (actm f \o g).
+Proof.
+congr mkActo.
+case: m g => {}c m g /=.
+rewrite bindE fmapE 2!bindA /=.
+congr (_ >>= _).
+Qed.
+
+Lemma mkActoK A (m : MS _ _ A) : ofActo (mkActo m) = m.
+Proof. done. Qed.
+
+Unset Universe Checking.
+Let join'_naturality : naturality _ _ join'.
+Proof.
+move=> a b h.
+unfold join'.
+rewrite /=. apply: boolp.funext => mm /=.
+unfold hierarchy.actm, isFunctor.actm.
+rewrite /= (actm_bind h mm idfun) /= /bind bindA.
+apply f_equal.
+apply f_equal.
+apply boolp.funext => x /=.
+rewrite /retS /= fmapE.
+case: x h mm => {}a x h mm.
+rewrite mkActoK /hierarchy.actm /= /actm /= fmapE !bindretf mkActoK.
+reflexivity.
+Qed.
+
+Canonical Structure naturalityTS := isNatural.Build _ _ _ join'_naturality.
+
+Let join : [the functor of M \o M] ~> [the functor of M] :=
+   @Nattrans.Pack _ _ join' (Nattrans.Class naturalityTS).
+
+
+Canonical Structure isMonadTS : isMonad.axioms_ M isFunctorTS.
+exists ret' join bind.
+- move=> A B f m.
+  rewrite /join /= /join' /bind.
+  apply f_equal.
+  rewrite bindA.
+  reflexivity.
+- move=> A.
+  apply boolp.funext => x /=.
+  case: x => {}A m.
+  reflexivity.
+- move=> A.  
+  apply boolp.funext => x /=.
+  case: x => {}A m.
+  rewrite /join' /bind /=.
+  apply f_equal.
+  rewrite fmapE /ret.
+  rewrite bindA /=.
+  under [fun _ => _]boolp.funext do rewrite bindretf mkActoK.
+  rewrite bindmret.
+  reflexivity.
+- move=> A /=.
+  rewrite /join' /bind.
+  apply boolp.funext => x /=.
+  apply f_equal.
+  rewrite fmapE.
+  rewrite !bindA.
+  apply f_equal.
+  apply boolp.funext => y /=.
+  rewrite bindretf mkActoK.
+  reflexivity.
+Defined.
+
+Canonical Structure MonadTS : Monad M := Monad.Class isMonadTS.
+Canonical Structure monadTS : monad := Monad.Pack isMonadTS.
+Set Universe Checking.
+
 (* Doesn't work
 HB.instance Definition xyz :=
   isMonad_ret_bind.Build M left_neutral right_neutral associative.
 *)
 (* Since we couldn't build the instance, redefine notations *)
-Local Notation "m >>= f" := (bind m f).
-Local Notation "m >> f" := (bind m (fun=> f)).
+(*Local Notation "m >>= f" := (bind m f).
+Local Notation "m >> f" := (bind m (fun=> f)).*)
 
 (* Basic lemmas for standard library's nth_error *)
 Lemma nth_error_set_nth T (def x : T) st n :
   nth_error (set_nth def st n x) n = Some x.
 Proof.
-elim: n st => [|z IH] [] //.
-clear IH.
+elim: n st => [|z IH] [] // {IH}.
 elim: z.+1 => [|n <-] //=.
 by rewrite set_nth_nil.
 Qed.
@@ -1796,9 +1910,10 @@ Definition ml_type_eq_mixin := EqMixin ml_type_eqP.
 Canonical ml_type_eqType := Eval hnf in EqType _ ml_type_eq_mixin.
 
 (* Prove the laws *)
-Let cnewget : cnewget_def cnew cget bind.
+Let cnewget T (s : coq_type T) A (k : loc T -> coq_type T -> M A) :
+  cnew s >>= (fun r => cget r >>= k r) = cnew s >>= (fun r => k r s).
 Proof.
-move=> T s A k; congr mkActo.
+congr mkActo.
 apply/boolp.funext => st /=.
 rewrite bindE /= /bindS MS_mapE /= fmapE /= bindA /=.
 rewrite [in RHS]bindE /= /bindS MS_mapE /= fmapE /= bindA /=.
@@ -2301,8 +2416,48 @@ rewrite /crun /= bindE /= /bindS MS_mapE /= fmapE /= bindA /=.
 by case Hm: (m [::]).
 Qed.
 
-Let crunnew T (s : coq_type T) : crun (cnew s).
+Let crunskip : crun skip = Some tt.
 Proof. by []. Qed.
+
+Let crunnew (A : UU0) T (m : M A) (s : coq_type T) :
+  crun m -> crun (m >> cnew s).
+Proof.
+case: m => U /= m.
+rewrite /crun /= bindE /= /bindS MS_mapE /= fmapE /= bindA /=.
+by case Hm: (m [::]).
+Qed.
+
+Unset Universe Checking.
+Definition isMonadTypedStoreModel :
+  isMonadTypedStore.axioms_ M isFunctorTS isMonadTS.
+Proof.
+exists cnew cget cput cchk crun.
+- exact cnewget.
+- exact cnewgetC.
+- exact cnewput.
+- exact cnewputC.
+- exact cputput.
+- exact cputget.
+- exact cgetputchk.
+- exact cgetget.
+- exact cgetC.
+- exact cputC.
+- exact cputgetC.
+- exact cnewchk.
+- exact cchknewC.
+- exact cchkgetC.
+- exact cchkget.
+- exact cgetchk.
+- exact cchkputC.
+- exact cchkput.
+- exact cputchk.
+- exact cchkC.
+- exact cchkdup.
+- exact crunret.
+- exact crunskip.
+- exact crunnew.
+Defined.
+Set Universe Checking.
 End ModelTypedStore.
 
 (* TODO?
