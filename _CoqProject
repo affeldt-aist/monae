@@ -26,6 +26,7 @@ example_relabeling.v
 example_quicksort.v
 example_iquicksort.v
 example_monty.v
+example_typed_store.v
 smallstep.v
 example_transformer.v
 category_ext.v
