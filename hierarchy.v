@@ -1093,6 +1093,13 @@ Arguments mkbind {M}.
 
 Definition loc_id {T} (r : loc T) : nat := let: mkloc _ n := r in n.
 
+Definition cnewget_def (M : UU0 -> UU0)
+  (cnew : forall {T}, coq_type M T -> M (loc T))
+  (cget : forall {T}, loc T -> M (coq_type M T))
+  (bind : forall {A B}, M A -> (A -> M B) -> M B)
+  := forall T (s : coq_type M T) A (k : loc T -> coq_type M T -> M A),
+    bind (cnew s) (fun r => bind (cget r) (k r)) = bind (cnew s) (fun r => k r s).
+
 HB.mixin Record isMonadTypedStore (M : UU0 -> UU0)
     of Monad M := {
   cnew : forall {T}, coq_type M T -> M (loc T) ;
@@ -1100,8 +1107,7 @@ HB.mixin Record isMonadTypedStore (M : UU0 -> UU0)
   cput : forall {T}, loc T -> coq_type M T -> M unit ;
   cchk : forall {T}, loc T -> M unit ;
   crun : forall {A : UU0}, M A -> option A ; (* execute in empty store *)
-  cnewget : forall T (s : coq_type M T) A (k : loc T -> coq_type M T -> M A),
-    cnew s >>= (fun r => cget r >>= k r) = cnew s >>= (fun r => k r s) ;
+  cnewget : @cnewget_def M (@cnew) (@cget) (@bind [the monad of M]) ;
   cnewgetC :
     forall T T' (r : loc T) (s : coq_type M T') A
            (k : loc T' -> coq_type M T -> M A),

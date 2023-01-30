@@ -1796,10 +1796,9 @@ Definition ml_type_eq_mixin := EqMixin ml_type_eqP.
 Canonical ml_type_eqType := Eval hnf in EqType _ ml_type_eq_mixin.
 
 (* Prove the laws *)
-Let cnewget T (s : coq_type T) A (k : loc T -> coq_type T -> M A) :
-  cnew s >>= (fun r => cget r >>= k r) = cnew s >>= (fun r => k r s).
+Let cnewget : cnewget_def cnew cget bind.
 Proof.
-congr mkActo.
+move=> T s A k; congr mkActo.
 apply/boolp.funext => st /=.
 rewrite bindE /= /bindS MS_mapE /= fmapE /= bindA /=.
 rewrite [in RHS]bindE /= /bindS MS_mapE /= fmapE /= bindA /=.
