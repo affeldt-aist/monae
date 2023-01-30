@@ -94,8 +94,7 @@ elim: m s smn => [|m IH] s /= smn.
 under [fun r => _]boolp.funext do rewrite bindA.
 rewrite cnewget.
 under [fun r => _]boolp.funext do rewrite bindA.
-rewrite (cnewput ml_int s _ _ (fun r s => fact_ref r m >> cget r)).
-by rewrite IH // (mulnC m.+1) -mulnA.
+by rewrite cnewput IH // (mulnC m.+1) -mulnA.
 Qed.
 End factorial.
 
@@ -133,11 +132,9 @@ elim: i x y => [|i IH] x y Hi.
   under [fun a => _]boolp.funext do
   under [fun b => _]boolp.funext do rewrite [fibo_ref _ _ _]/= bindskipf.
   under [fun a => _]boolp.funext do rewrite cgetret.
-  set f := fun a => _.
-  rewrite -(cnewchk ml_int (fibo_rec n) _ (fun => f)) {}/f.
+  rewrite -cnewchk.
   under [fun b => _]boolp.funext do rewrite cnewgetC.
-  rewrite cnewget.
-  by rewrite -bindA crunret // crunnew // crunnew0.
+  by rewrite cnewget -bindA crunret // crunnew // crunnew0.
 rewrite subSS => -[] Hx Hy.
 rewrite -(IH y (x + y) (ltnW Hi)); last first.
   subst x y.
@@ -157,15 +154,9 @@ under [fun a => _]boolp.funext do rewrite !bindA.
 under [fun a => _]boolp.funext do rewrite cnewget.
 under [fun a => _]boolp.funext do
 under [fun a => _]boolp.funext do rewrite !bindA.
-set f := fun a => _.
-rewrite -(cnewchk ml_int _ _ (fun => f)) {}/f.
+rewrite -cnewchk.
 under [fun a => _]boolp.funext do rewrite cnewputC.
-set f := fun r (_ : nat) =>
-           (cnew ml_int y >>=
-                 (fun r' : loc ml_int =>
-                    cput r' (x + y) >> (fibo_ref i r r' >> cget r))).
-rewrite (cnewput _ _ _ _ f) {}/f.
-set f := fun r r' (_ : nat) => fibo_ref i r r' >> cget r.
-by under [fun a => _]boolp.funext do rewrite (cnewput _ _ _ _ (f _)) {}/f.
+rewrite cnewput.
+by under [fun a => _]boolp.funext do rewrite cnewput.
 Qed.
 End fibonacci.
