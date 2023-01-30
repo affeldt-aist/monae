@@ -60,21 +60,28 @@ Module IMonadTS := MonadTypedStore (MLtypes).
 Import MLtypes.
 Import IMonadTS.
 
+Arguments cget {s} [T].
+Arguments cput {s} [T].
+Arguments cchk {s} [T].
+Arguments crun {s} [A].
+
 Lemma cgetret (M : typedStoreMonad) T :
-  cget T = fun r => (cget _ r : M _) >>= Ret.
+  @cget _ T = fun r => (cget r : M _) >>= Ret.
 Proof. by apply boolp.funext => r; rewrite bindmret. Qed.
+
+Lemma crunnew0 (M : typedStoreMonad) T s : crun (cnew T s : M _).
+Proof. by rewrite -[cnew _ _]bindskipf crunnew // crunskip. Qed.
 
 Section factorial.
 Variable M : typedStoreMonad.
-Local Definition coq_type := @MLtypes.coq_type M.
+Notation coq_type := (@MLtypes.coq_type M).
 
 Fixpoint fact_ref (r : loc ml_int) (n : nat) : M unit :=
-  if n is m.+1 then cget _ r >>= fun p => cput _ r (n * p) >> fact_ref r m
+  if n is m.+1 then cget r >>= fun p => cput r (n * p) >> fact_ref r m
   else Ret tt.
 
 Theorem fact_ref_ok n :
-  crun _ (cnew ml_int 1 >>= fun r => fact_ref r n >> cget _ r) =
-    Some (fact_rec n).
+  crun (cnew ml_int 1 >>= fun r => fact_ref r n >> cget r) = Some (fact_rec n).
 Proof.
 set fn := fact_rec n.
 set m := n.
@@ -83,11 +90,82 @@ have smn : s * fact_rec m = fn by rewrite mul1n.
 elim: m s smn => [|m IH] s /= smn.
   rewrite /fact_ref -smn muln1.
   under [fun r => _]boolp.funext do rewrite bindretf.
-  by rewrite cgetret cnewget crunret // crunnew.
+  by rewrite cgetret cnewget crunret // crunnew0.
 under [fun r => _]boolp.funext do rewrite bindA.
 rewrite cnewget.
 under [fun r => _]boolp.funext do rewrite bindA.
-rewrite (cnewput ml_int s _ _ (fun r s => fact_ref r m >> cget ml_int r)).
+rewrite (cnewput ml_int s _ _ (fun r s => fact_ref r m >> cget r)).
 by rewrite IH // (mulnC m.+1) -mulnA.
 Qed.
 End factorial.
+
+Section fibonacci.
+Variable M : typedStoreMonad.
+Notation coq_type := (@MLtypes.coq_type M).
+
+Fixpoint fibo_rec n :=
+  if n is m.+1 then
+    if m is k.+1 then fibo_rec k + fibo_rec m else 1
+  else 1.
+
+Fixpoint fibo_ref n (a b : loc ml_int) : M unit :=
+  if n is n.+1 then
+    cget a >>= (fun x => cget b >>= fun y => cput a y >> cput b (x + y))
+           >> fibo_ref n a b
+  else skip.
+
+Theorem fibo_ref_ok n :
+  crun (cnew ml_int 1 >>=
+             (fun a => cnew ml_int 1 >>= fun b => fibo_ref n a b >> cget a))
+  = Some (fibo_rec n).
+Proof.
+set x := 1.
+pose y := x.
+rewrite -{2}/y.
+pose i := n.
+rewrite -{1}/i.
+have : (x, y) = (fibo_rec (n-i), fibo_rec (n.+1-i)).
+  by rewrite subnn -addn1 addKn.
+have : i <= n by [].
+elim: i x y => [|i IH] x y Hi.
+  rewrite !subn0 => -[] -> ->.
+  rewrite -/(fibo_rec n.+1).
+  under [fun a => _]boolp.funext do
+  under [fun b => _]boolp.funext do rewrite [fibo_ref _ _ _]/= bindskipf.
+  under [fun a => _]boolp.funext do rewrite cgetret.
+  set f := fun a => _.
+  rewrite -(cnewchk ml_int (fibo_rec n) _ (fun => f)) {}/f.
+  under [fun b => _]boolp.funext do rewrite cnewgetC.
+  rewrite cnewget.
+  by rewrite -bindA crunret // crunnew // crunnew0.
+rewrite subSS => -[] Hx Hy.
+rewrite -(IH y (x + y) (ltnW Hi)); last first.
+  subst x y.
+  congr pair.
+  case: n Hi {IH} => // n.
+  rewrite ltnS => Hi.
+  rewrite subSS.
+  by rewrite -addn2 -addn1 -addnBAC // -addnBAC // addn2 addn1.
+rewrite /=.
+under [fun a => _]boolp.funext do
+under [fun a => _]boolp.funext do rewrite !bindA.
+rewrite -cnewchk.
+under [fun b => _]boolp.funext do rewrite cnewgetC.
+rewrite cnewget.
+under [fun a => _]boolp.funext do
+under [fun a => _]boolp.funext do rewrite !bindA.
+under [fun a => _]boolp.funext do rewrite cnewget.
+under [fun a => _]boolp.funext do
+under [fun a => _]boolp.funext do rewrite !bindA.
+set f := fun a => _.
+rewrite -(cnewchk ml_int _ _ (fun => f)) {}/f.
+under [fun a => _]boolp.funext do rewrite cnewputC.
+set f := fun r (_ : nat) =>
+           (cnew ml_int y >>=
+                 (fun r' : loc ml_int =>
+                    cput r' (x + y) >> (fibo_ref i r r' >> cget r))).
+rewrite (cnewput _ _ _ _ f) {}/f.
+set f := fun r r' (_ : nat) => fibo_ref i r r' >> cget r.
+by under [fun a => _]boolp.funext do rewrite (cnewput _ _ _ _ (f _)) {}/f.
+Qed.
+End fibonacci.
