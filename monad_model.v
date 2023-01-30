@@ -1713,6 +1713,12 @@ Definition cchk T (r : loc T) : M unit :=
               if coerce T u is Some _ then Ret (tt, st) else fail
             else fail).
 
+Definition crun (A : UU0) (m : M A) : option A :=
+  match ofActo m nil with
+  | inl _ => None
+  | inr (a, _) => Some a
+  end.
+
 Let ret : forall A, idfun A -> M A := fun A a => mkActo (Ret a).
 Let bind A B (m : M A) (f : A -> M B) : M B :=
       mkActo (ofActo m >>= (fun a => ofActo (f a))).
@@ -2253,6 +2259,17 @@ rewrite /bindS /= MS_mapE /= fmapE Hr1.
 case: ml_type_eq_dec => // HT1.
 by rewrite -eq_rect_eq bindE.
 Qed.
+
+Let crunret (A B : UU0) (m : M A) (s : B) :
+  crun m -> crun (m >> ret s) = Some s.
+Proof.
+case: m => T /= m.
+rewrite /crun /= bindE /= /bindS MS_mapE /= fmapE /= bindA /=.
+by case Hm: (m [::]).
+Qed.
+
+Let crunnew T (s : coq_type T) : crun (cnew s).
+Proof. by []. Qed.
 End ModelTypedStore.
 
 (* TODO?

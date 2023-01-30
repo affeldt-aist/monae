@@ -1099,8 +1099,9 @@ HB.mixin Record isMonadTypedStore (M : UU0 -> UU0)
   cget : forall {T}, loc T -> M (coq_type M T) ;
   cput : forall {T}, loc T -> coq_type M T -> M unit ;
   cchk : forall {T}, loc T -> M unit ;
-  cnewget : forall T (s : coq_type M T) A (k : coq_type M T -> M A),
-    cnew s >>= (fun r => cget r >>= k) = cnew s >> k s ;
+  crun : forall {A : UU0}, M A -> option A ; (* execute in empty store *)
+  cnewget : forall T (s : coq_type M T) A (k : loc T -> coq_type M T -> M A),
+    cnew s >>= (fun r => cget r >>= k r) = cnew s >>= (fun r => k r s) ;
   cnewgetC :
     forall T T' (r : loc T) (s : coq_type M T') A
            (k : loc T' -> coq_type M T -> M A),
@@ -1158,6 +1159,10 @@ HB.mixin Record isMonadTypedStore (M : UU0 -> UU0)
       cchk r1 >> cchk r2 = cchk r2 >> cchk r1 ;
   cchkdup : forall T (r : loc T),
       cchk r >> cchk r = cchk r ;
+  crunret : forall (A B : UU0) (m : M A) (s : B),
+      crun m -> crun (m >> Ret s) = Some s ;
+  crunnew : forall T (s : coq_type M T),
+      crun (cnew s) ;
  }.
 
 #[short(type=typedStoreMonad)]
