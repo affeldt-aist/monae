@@ -1837,6 +1837,12 @@ case: ml_type_eq_dec => // H.
 by rewrite -eq_rect_eq bindE /= bindE /= set_nth_rcons.
 Qed.
 
+Let cnewputC T T' (r : loc T) (s : coq_type T) (s' : coq_type T') A
+    (k : loc T' -> M A) :
+  cchk r >> (cnew s' >>= fun r' => cput r s >> k r') =
+  cput r s >> (cnew s' >>= k).
+Admitted.
+
 Let cnewchk T (s : coq_type T) (A : UU0) (k : coq_type T -> loc T -> M A) :
   cnew s >>= (fun r => cchk r >> k s r) = cnew s >>= k s.
 Proof.

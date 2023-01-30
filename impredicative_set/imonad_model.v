@@ -1173,8 +1173,10 @@ Proof. by move=> A a; rewrite /bind /ret  bindmret; case: a. Qed.
 Let associative : BindLaws.associative bind.
 Proof. by move=> A B C m f g; rewrite /bind /= bindA. Qed.
 
+(*
 HB.instance Definition xyz :=
   isMonad_ret_bind.Build M left_neutral right_neutral associative.
+*)
 
 Lemma nth_error_set_nth T (x : T) st n :
   List.nth_error (set_nth x st n x) n = Some x.
