@@ -1107,8 +1107,8 @@ HB.mixin Record isMonadTypedStore (M : UU0 -> UU0)
            (k : loc T' -> coq_type M T -> M A),
       cchk r >> (cnew s >>= (fun r' => cget r >>= k r')) =
       cget r >>= (fun u => cnew s >>= (fun r' => k r' u)) ;
-  cnewput : forall T (s t : coq_type M T) A (k : loc T -> coq_type M T -> M A),
-      cnew s >>= (fun r => cput r t >> k r t) = cnew t >>= (fun r => k r t) ;
+  cnewput : forall T (s t : coq_type M T) A (k : loc T -> M A),
+      cnew s >>= (fun r => cput r t >> k r) = cnew t >>= k ;
   cnewputC :
     forall T T' (r : loc T) (s : coq_type M T) (s' : coq_type M T') A
            (k : loc T' -> M A),
@@ -1140,13 +1140,12 @@ HB.mixin Record isMonadTypedStore (M : UU0 -> UU0)
     cput r1 s1 >> cget r2 >>= k =
     cget r2 >>= (fun v => cput r1 s1 >> k v) ;
   cnewchk :
-    forall T (s : coq_type M T) (A : UU0) (k : coq_type M T -> loc T -> M A),
-      cnew s >>= (fun r => cchk r >> k s r) = cnew s >>= k s ;
+    forall T (s : coq_type M T) (A : UU0) (k : loc T -> M A),
+      cnew s >>= (fun r => cchk r >> k r) = cnew s >>= k ;
   cchknewC :
-    forall T1 T2 (r : loc T1) (s : coq_type M T2) (A : UU0)
-           (k : coq_type M T2 -> loc T2 -> M A),
-      cchk r >> (cnew s >>= fun r' => cchk r >> k s r') =
-      cchk r >> (cnew s >>= k s) ;
+    forall T1 T2 (r : loc T1) (s : coq_type M T2) (A : UU0) (k : loc T2 -> M A),
+      cchk r >> (cnew s >>= fun r' => cchk r >> k r') =
+      cchk r >> (cnew s >>= k) ;
   cchkgetC :
     forall T1 T2 (r1: loc T1) (r2: loc T2) (A: UU0) (k: coq_type M T2 -> M A),
       cchk r1 >> (cget r2 >>= k) = cget r2 >>= (fun s => cchk r1 >> k s) ;

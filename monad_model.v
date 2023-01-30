@@ -1772,9 +1772,18 @@ Lemma nth_error_set_nth_none A (def : A) st m n a b :
   nth_error (set_nth def st n b) m = None.
 Proof. by elim: m st n => [|m IH] [|c st] [|n] //=; apply IH. Qed.
 
+Lemma nth_error_size_set_nth T def (st : seq T) n a b :
+  nth_error st n = Some a -> size (set_nth def st n b) = size st.
+Proof. by elim: n st => [|n IH] [|c st] //= /IH ->. Qed.
+
 Lemma set_nth_rcons A (def : A) st a b :
   set_nth def (rcons st a) (size st) b = rcons st b.
 Proof. by elim: st => //= c st ->. Qed.
+
+Lemma nth_error_set_nth_rcons T def (st : seq T) n a b c :
+  nth_error st n = Some a ->
+  set_nth def (rcons st c) n b = rcons (set_nth def st n b) c.
+Proof. by elim: n st => [|n IH] [|d st] //= /IH ->. Qed.
 
 (* Make ml_type an eqType *)
 Definition ml_type_eqb T1 T2 : bool := ml_type_eq_dec T1 T2.
@@ -1822,8 +1831,8 @@ case: ml_type_eq_dec => // H.
 by rewrite -eq_rect_eq.
 Qed.
 
-Let cnewput T (s t : coq_type T) A (k : loc T -> coq_type T -> M A) :
-  cnew s >>= (fun r => cput r t >> k r t) = cnew t >>= (fun r => k r t).
+Let cnewput T (s t : coq_type T) A (k : loc T -> M A) :
+  cnew s >>= (fun r => cput r t >> k r) = cnew t >>= k.
 Proof.
 congr mkActo.
 apply/boolp.funext => st /=.
@@ -1841,10 +1850,29 @@ Let cnewputC T T' (r : loc T) (s : coq_type T) (s' : coq_type T') A
     (k : loc T' -> M A) :
   cchk r >> (cnew s' >>= fun r' => cput r s >> k r') =
   cput r s >> (cnew s' >>= k).
-Admitted.
+Proof.
+congr mkActo.
+apply/boolp.funext => st /=.
+rewrite bindE /= /bindS MS_mapE /= fmapE /= bindA /=.
+rewrite [in RHS]bindE /= /bindS MS_mapE /= fmapE /= bindA /=.
+case Hr: (nth_error _ _) => [[T1 u]|]; last by rewrite bindfailf.
+rewrite {1 3}/coerce.
+case: ml_type_eq_dec => H /=; last by case ml_type_eq_dec => H' //; elim H.
+subst T1.
+rewrite bindE /= /bindS /= bindE /= bindE /= /bindS /= MS_mapE /= fmapE /=.
+rewrite bindE /= /bindS /= bindE /= bindE /= /bindS /= MS_mapE /= fmapE /=.
+rewrite (nth_error_rcons_some _ Hr).
+rewrite /coerce.
+case: ml_type_eq_dec => // H.
+rewrite -eq_rect_eq.
+rewrite bindE /= /bindS /= bindE /= bindE /= /bindS /= MS_mapE /= fmapE /=.
+rewrite bindE /= /bindS /=.
+rewrite (nth_error_size_set_nth _ _ Hr).
+by rewrite (nth_error_set_nth_rcons _ _ _ Hr).
+Qed.
 
-Let cnewchk T (s : coq_type T) (A : UU0) (k : coq_type T -> loc T -> M A) :
-  cnew s >>= (fun r => cchk r >> k s r) = cnew s >>= k s.
+Let cnewchk T (s : coq_type T) (A : UU0) (k : loc T -> M A) :
+  cnew s >>= (fun r => cchk r >> k r) = cnew s >>= k.
 Proof.
 congr mkActo.
 apply/boolp.funext => st /=.
@@ -1857,8 +1885,8 @@ by case: ml_type_eq_dec.
 Qed.
 
 Let cchknewC T1 T2 (r : loc T1) (s : coq_type T2) (A : UU0)
-    (k : coq_type T2 -> loc T2 -> M A) :
- cchk r >> (cnew s >>= fun r' => cchk r >> k s r') = cchk r >> (cnew s >>= k s).
+    (k : loc T2 -> M A) :
+ cchk r >> (cnew s >>= fun r' => cchk r >> k r') = cchk r >> (cnew s >>= k).
 Proof.
 congr mkActo.
 apply/boolp.funext => st /=.
