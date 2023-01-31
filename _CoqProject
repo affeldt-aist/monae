@@ -20,6 +20,7 @@ category.v
 gcm_model.v
 altprob_model.v
 monad_transformer.v
+typed_store_model.v
 example_spark.v
 example_nqueens.v
 example_relabeling.v
