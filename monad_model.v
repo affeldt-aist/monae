@@ -2278,37 +2278,13 @@ rewrite /crun /= bindE /= /bindS MS_mapE /= fmapE /= bindA /=.
 by case Hm: (m [::]).
 Qed.
 
-Definition isMonadTypedStoreModel :
-  isMonadTypedStore.axioms_ M (HB_unnamed_mixin_21 _ _) (HB_unnamed_mixin_22 _ _).
-Proof.
-exists cnew cget cput cchk crun.
-- exact cnewget.
-- exact cnewgetC.
-- exact cnewput.
-- exact cnewputC.
-- exact cputput.
-- exact cputget.
-- exact cgetputchk.
-- exact cgetget.
-- exact cgetC.
-- exact cputC.
-- exact cputgetC.
-- exact cnewchk.
-- exact cchknewC.
-- exact cchkgetC.
-- exact cchkget.
-- exact cgetchk.
-- exact cchkputC.
-- exact cchkput.
-- exact cputchk.
-- exact cchkC.
-- exact cchkdup.
-- exact crunret.
-- exact crunskip.
-- exact crunnew.
-Defined.
+Canonical Structure isMonadTypedStoreModel :=
+  isMonadTypedStore.Build M cnewget cnewgetC cnewput cnewputC cputput
+    cputget cgetputchk cgetget cgetC cputC cputgetC cnewchk cchknewC
+    cchkgetC cchkget cgetchk cchkputC cchkput cputchk cchkC cchkdup
+    crunret crunskip crunnew.
 
-(*
+(* Fails
 HB.instance Definition _ :=
   isMonadTypedStore.Build M cnewget cnewgetC cnewput cnewputC cputput
     cputget cgetputchk cgetget cgetC cputC cputgetC cnewchk cchknewC
