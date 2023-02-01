@@ -132,7 +132,7 @@ have : i <= n by [].
 elim: i x y => [|i IH] x y Hi.
   rewrite !subn0 => -[] -> ->.
   rewrite -/(fibo_rec n.+1).
-  under funext do under funext do rewrite [fibo_ref  _ _ _]/= bindskipf.
+  under funext do under funext do rewrite /= bindskipf.
   under funext do rewrite cgetret.
   rewrite -cnewchk.
   under funext do rewrite cnewgetC.
@@ -142,8 +142,7 @@ rewrite -(IH y (x + y) (ltnW Hi)); last first.
   subst x y.
   congr pair.
   case: n Hi {IH} => // n.
-  rewrite ltnS => Hi.
-  rewrite subSS.
+  rewrite subSS ltnS => Hi.
   by rewrite -addn2 -addn1 -addnBAC // -addnBAC // addn2 addn1.
 rewrite /=.
 under funext do under funext do rewrite !bindA.
