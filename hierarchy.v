@@ -1149,6 +1149,10 @@ HB.mixin Record isMonadTypedStore (M : UU0 -> UU0)
   cchkgetC :
     forall T1 T2 (r1: loc T1) (r2: loc T2) (A: UU0) (k: coq_type M T2 -> M A),
       cchk r1 >> (cget r2 >>= k) = cget r2 >>= (fun s => cchk r1 >> k s) ;
+  cchknew : forall T1 T2 (r1 : loc T1) (s : coq_type M T2) (A : UU0)
+                   (k1 k2 : loc T2 -> M A),
+      (forall r2 : loc T2, loc_id r1 != loc_id r2 -> k1 r2 = k2 r2) ->
+      cchk r1 >> (cnew s >>= k1) = cchk r1 >> (cnew s >>= k2) ;
   cchkget : forall T (r : loc T) (A: UU0) (k : coq_type M T -> M A),
       cchk r >> (cget r >>= k) = cget r >>= k ;
   cgetchk : forall T (r : loc T) (A: UU0) (k : coq_type M T -> M A),

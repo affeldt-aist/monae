@@ -1695,9 +1695,13 @@ Lemma nth_error_set_nth_none m n a b :
   nth_error (set_nth def st n b) m = None.
 Proof. by elim: m st n => [|m IH] [|c st'] [|n] //=; apply IH. Qed.
 
+Lemma nth_error_size n a :
+  nth_error st n = Some a -> n < size st.
+Proof. by elim: n st => [|n IH] [|c st'] //= /IH. Qed.
+
 Lemma nth_error_size_set_nth n a b :
   nth_error st n = Some a -> size (set_nth def st n b) = size st.
-Proof. by elim: n st => [|n IH] [|c st'] //= /IH ->. Qed.
+Proof. by rewrite size_set_nth => /nth_error_size /maxn_idPr. Qed.
 
 Lemma set_nth_rcons a b :
   set_nth def (rcons st a) (size st) b = rcons st b.
@@ -1729,6 +1733,7 @@ Module MTypedStore := MonadTypedStore (MLtypes').
 Import MLtypes'.
 Import MTypedStore.
 
+Section typed_store.
 Definition acto (T : UU0) : UU0 :=
   MS (seq (binding idfun)) [the monad of option_monad] T.
 Local Notation M := acto.
@@ -1918,7 +1923,24 @@ case Hc: (coerce T v1) => [u1|] //.
 by rewrite bindE /= bindE /= Hr1 Hc.
 Qed.
 
-Let cchkgetC T1 T2 (r1: loc T1) (r2: loc T2) (A: UU0) (k: coq_type M T2 -> M A) :
+Let cchknew T1 T2 (r1 : loc T1) (s : coq_type M T2) (A : UU0)
+    (k1 k2 : loc T2 -> M A) :
+  (forall r2 : loc T2, loc_id r1 != loc_id r2 -> k1 r2 = k2 r2) ->
+  cchk r1 >> (cnew s >>= k1) = cchk r1 >> (cnew s >>= k2).
+Proof.
+move=> Hk.
+apply/boolp.funext => st /=.
+rewrite bindE /= /bindS MS_mapE /= fmapE /= bindA /=.
+rewrite [in RHS]bindE /= /bindS MS_mapE /= fmapE /= bindA /= /cchk /cget.
+case Hr1 : (nth_error st (loc_id r1)) => [[T1' v1]|] //=.
+case Hc: (coerce T1 v1) => [u1|] //.
+rewrite bindE /= bindE /= bindE /= /bindS MS_mapE /= fmapE /= bindA /=.
+rewrite [in RHS]bindE /= [in RHS]bindE /= [in RHS]bindE /= /bindS MS_mapE /=.
+rewrite fmapE /= bindA /= 2!bindE /=.
+by rewrite Hk // neq_ltn /= (nth_error_size Hr1).
+Qed.
+
+Let cchkgetC T1 T2 (r1: loc T1) (r2: loc T2) (A: UU0) (k: coq_type M T2 -> M A):
   cchk r1 >> (cget r2 >>= k) = cget r2 >>= (fun s => cchk r1 >> k s).
 Proof.
 apply/boolp.funext => st /=.
@@ -2281,16 +2303,17 @@ Qed.
 Canonical Structure isMonadTypedStoreModel :=
   isMonadTypedStore.Build M cnewget cnewgetC cnewput cnewputC cputput
     cputget cgetputchk cgetget cgetC cputC cputgetC cnewchk cchknewC
-    cchkgetC cchkget cgetchk cchkputC cchkput cputchk cchkC cchkdup
+    cchkgetC cchknew cchkget cgetchk cchkputC cchkput cputchk cchkC cchkdup
     crunret crunskip crunnew.
 
-(* Fails
+(* Fails or diverges ?
 HB.instance Definition _ :=
   isMonadTypedStore.Build M cnewget cnewgetC cnewput cnewputC cputput
     cputget cgetputchk cgetget cgetC cputC cputgetC cnewchk cchknewC
     cchkgetC cchkget cgetchk cchkputC cchkput cputchk cchkC cchkdup
     crunret crunskip crunnew.
 *)
+End typed_store.
 End ModelTypedStore.
 
 (* TODO?
