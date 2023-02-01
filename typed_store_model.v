@@ -80,17 +80,17 @@ Definition crun (A : UU0) (m : M A) : option A :=
   | inr (a, _) => Some a
   end.
 
-Let ret : forall A, idfun A -> M A := fun A a => mkActo (Ret a).
-Let bind A B (m : M A) (f : A -> M B) : M B :=
+Definition ret : forall A, idfun A -> M A := fun A a => mkActo (Ret a).
+Definition bind A B (m : M A) (f : A -> M B) : M B :=
       mkActo (ofActo m >>= (fun a => ofActo (f a))).
-Let left_neutral : BindLaws.left_neutral bind ret.
+Definition left_neutral : BindLaws.left_neutral bind ret.
 Proof. by move=> A B a f; rewrite /bind /ret bindretf; case: (f a). Qed.
-Let right_neutral : BindLaws.right_neutral bind ret.
+Definition right_neutral : BindLaws.right_neutral bind ret.
 Proof. by move=> A a; rewrite /bind /ret  bindmret; case: a. Qed.
-Let associative : BindLaws.associative bind.
+Definition associative : BindLaws.associative bind.
 Proof. by move=> A B C m f g; rewrite /bind /= bindA. Qed.
 
-Let actm (A B : UU0) (f : A -> B) (m : M A) : M B :=
+Definition actm (A B : UU0) (f : A -> B) (m : M A) : M B :=
   mkActo (actm _ _ f (ofActo m)).
 
 Definition isFunctorTS : isFunctor.axioms_ M.
@@ -107,20 +107,20 @@ Canonical Structure FunctorTS : Functor M := Functor.Class isFunctorTS.
 Canonical Structure functorTS : functor := Functor.Pack isFunctorTS.
 Set Universe Checking.
 
-Let ret_naturality : naturality [the functor of idfun] M ret.
+Definition ret_naturality : naturality [the functor of idfun] M ret.
 Proof. by []. Qed.
 
 Canonical Structure naturalityTSret := isNatural.Build _ _ _ ret_naturality.
 
-Let ret' : [the functor of idfun] ~> [the functor of M] :=
+Definition ret' : [the functor of idfun] ~> [the functor of M] :=
    @Nattrans.Pack _ _ ret (Nattrans.Class naturalityTSret).
 
 Unset Universe Checking.
-Let join' : [the functor of M \o M] ~~> [the functor of M] :=
+Definition join' : [the functor of M \o M] ~~> [the functor of M] :=
       fun _ m => bind m idfun.
 Set Universe Checking.
 
-Let actm_bind (a b c : UU0) (f : a -> b) m (g : c -> M a) :
+Definition actm_bind (a b c : UU0) (f : a -> b) m (g : c -> M a) :
   (actm f) (bind m g) = bind m (actm f \o g).
 Proof.
 congr mkActo.
@@ -133,7 +133,7 @@ Lemma mkActoK A (m : MS _ _ A) : ofActo (mkActo m) = m.
 Proof. done. Qed.
 
 Unset Universe Checking.
-Let join'_naturality : naturality _ _ join'.
+Definition join'_naturality : naturality _ _ join'.
 Proof.
 move=> a b h.
 unfold join'.
@@ -151,7 +151,7 @@ Qed.
 
 Canonical Structure naturalityTS := isNatural.Build _ _ _ join'_naturality.
 
-Let join : [the functor of M \o M] ~> [the functor of M] :=
+Definition join : [the functor of M \o M] ~> [the functor of M] :=
    @Nattrans.Pack _ _ join' (Nattrans.Class naturalityTS).
 
 Canonical Structure isMonadTS : isMonad.axioms_ M isFunctorTS.
@@ -210,7 +210,7 @@ Definition ml_type_eq_mixin := EqMixin ml_type_eqP.
 Canonical ml_type_eqType := Eval hnf in EqType _ ml_type_eq_mixin.
 
 (* Prove the laws *)
-Let cnewget T (s : coq_type T) A (k : loc T -> coq_type T -> M A) :
+Definition cnewget T (s : coq_type T) A (k : loc T -> coq_type T -> M A) :
   cnew s >>= (fun r => cget r >>= k r) = cnew s >>= (fun r => k r s).
 Proof.
 congr mkActo.
@@ -224,7 +224,7 @@ case: ml_type_eq_dec => // H.
 by rewrite -eq_rect_eq.
 Qed.
 
-Let cnewgetC T T' (r : loc T) (s : coq_type T') A
+Definition cnewgetC T T' (r : loc T) (s : coq_type T') A
            (k : loc T' -> coq_type T -> M A) :
   cchk r >> (cnew s >>= (fun r' => cget r >>= k r')) =
   cget r >>= (fun u => cnew s >>= fun r' => k r' u).
@@ -245,7 +245,7 @@ case: ml_type_eq_dec => // H.
 by rewrite -eq_rect_eq.
 Qed.
 
-Let cnewput T (s t : coq_type T) A (k : loc T -> M A) :
+Definition cnewput T (s t : coq_type T) A (k : loc T -> M A) :
   cnew s >>= (fun r => cput r t >> k r) = cnew t >>= k.
 Proof.
 congr mkActo.
@@ -260,7 +260,7 @@ case: ml_type_eq_dec => // H.
 by rewrite -eq_rect_eq bindE /= bindE /= set_nth_rcons.
 Qed.
 
-Let cnewputC T T' (r : loc T) (s : coq_type T) (s' : coq_type T') A
+Definition cnewputC T T' (r : loc T) (s : coq_type T) (s' : coq_type T') A
     (k : loc T' -> M A) :
   cchk r >> (cnew s' >>= fun r' => cput r s >> k r') =
   cput r s >> (cnew s' >>= k).
@@ -285,7 +285,7 @@ rewrite (nth_error_size_set_nth _ _ Hr).
 by rewrite (nth_error_set_nth_rcons _ _ _ Hr).
 Qed.
 
-Let cnewchk T (s : coq_type T) (A : UU0) (k : loc T -> M A) :
+Definition cnewchk T (s : coq_type T) (A : UU0) (k : loc T -> M A) :
   cnew s >>= (fun r => cchk r >> k r) = cnew s >>= k.
 Proof.
 congr mkActo.
@@ -298,7 +298,7 @@ rewrite /coerce.
 by case: ml_type_eq_dec.
 Qed.
 
-Let cchknewC T1 T2 (r : loc T1) (s : coq_type T2) (A : UU0)
+Definition cchknewC T1 T2 (r : loc T1) (s : coq_type T2) (A : UU0)
     (k : loc T2 -> M A) :
  cchk r >> (cnew s >>= fun r' => cchk r >> k r') = cchk r >> (cnew s >>= k).
 Proof.
@@ -315,7 +315,7 @@ do! rewrite bindE /=.
 by rewrite /bindS /= MS_mapE /= fmapE bindA.
 Qed.
 
-Let cchkC T1 T2 (r1: loc T1) (r2: loc T2) :
+Definition cchkC T1 T2 (r1: loc T1) (r2: loc T2) :
   cchk r1 >> cchk r2 = cchk r2 >> cchk r1.
 Proof.
 congr mkActo.
@@ -342,7 +342,7 @@ do! rewrite bindE /=.
 by rewrite Hr1 Hc.
 Qed.
 
-Let cchkdup T (r : loc T) : cchk r >> cchk r = cchk r.
+Definition cchkdup T (r : loc T) : cchk r >> cchk r = cchk r.
 Proof.
 congr mkActo.
 apply/boolp.funext => st /=.
@@ -352,7 +352,7 @@ case Hc: (coerce T v1) => [u1|] //.
 by rewrite bindE /= bindE /= Hr1 Hc.
 Qed.
 
-Let cchkgetC T1 T2 (r1: loc T1) (r2: loc T2) (A: UU0) (k: coq_type T2 -> M A) :
+Definition cchkgetC T1 T2 (r1: loc T1) (r2: loc T2) (A: UU0) (k: coq_type T2 -> M A) :
   cchk r1 >> (cget r2 >>= k) = cget r2 >>= (fun s => cchk r1 >> k s).
 Proof.
 congr mkActo.
@@ -381,7 +381,25 @@ do! rewrite bindE /=.
 by rewrite /bindS /= MS_mapE /= fmapE Hr1 Hc.
 Qed.
 
-Let cchkget T (r : loc T) (A: UU0) (k : coq_type T -> M A) :
+Definition cchknew T1 T2 (r1 : loc T1) (s : coq_type T2) (A : UU0)
+    (k1 k2 : loc T2 -> M A) :
+  (forall r2 : loc T2, loc_id r1 != loc_id r2 -> k1 r2 = k2 r2) ->
+  cchk r1 >> (cnew s >>= k1) = cchk r1 >> (cnew s >>= k2).
+Proof.
+move=> Hk.
+congr mkActo.
+apply/boolp.funext => st /=.
+rewrite bindE /= /bindS MS_mapE /= fmapE /= bindA /=.
+rewrite [in RHS]bindE /= /bindS MS_mapE /= fmapE /= bindA /= /cchk /cget.
+case Hr1 : (nth_error st (loc_id r1)) => [[T1' v1]|] //=.
+case Hc: (coerce T1 v1) => [u1|] //.
+rewrite bindE /= bindE /= bindE /= /bindS MS_mapE /= fmapE /= bindA /=.
+rewrite [in RHS]bindE /= [in RHS]bindE /= [in RHS]bindE /= /bindS MS_mapE /=.
+rewrite fmapE /= bindA /= 2!bindE /=.
+by rewrite Hk // neq_ltn /= (nth_error_size Hr1).
+Qed.
+
+Definition cchkget T (r : loc T) (A: UU0) (k : coq_type T -> M A) :
   cchk r >> (cget r >>= k) = cget r >>= k.
 Proof.
 congr mkActo.
@@ -394,7 +412,7 @@ do! rewrite bindE /=.
 by rewrite /bindS /= MS_mapE /= fmapE Hr Hc.
 Qed.
 
-Let cgetchk T (r : loc T) (A: UU0) (k : coq_type T -> M A) :
+Definition cgetchk T (r : loc T) (A: UU0) (k : coq_type T -> M A) :
   cget r >>= (fun s => cchk r >> k s) = cget r >>= k.
 Proof.
 congr mkActo.
@@ -407,7 +425,7 @@ do! rewrite bindE /=.
 by rewrite /bindS /= MS_mapE /= fmapE Hr Hc.
 Qed.
 
-Let cchkputC T1 T2 (r1 : loc T1) (r2 : loc T2) (s : coq_type T2) :
+Definition cchkputC T1 T2 (r1 : loc T1) (r2 : loc T2) (s : coq_type T2) :
   cchk r1 >> cput r2 s = cput r2 s >> cchk r1.
 Proof.
 congr mkActo.
@@ -453,7 +471,7 @@ rewrite (nth_error_set_nth_other _ _ Hr Hr1) /coerce.
 by case: ml_type_eq_dec.
 Qed.
 
-Let cchkput T (r : loc T) (s : coq_type T) :
+Definition cchkput T (r : loc T) (s : coq_type T) :
   cchk r >> cput r s = cput r s.
 Proof.
 congr mkActo.
@@ -471,7 +489,7 @@ case: ml_type_eq_dec => // HT.
 by rewrite -eq_rect_eq.
 Qed.
 
-Let cputchk T (r : loc T) (s : coq_type T) :
+Definition cputchk T (r : loc T) (s : coq_type T) :
   cput r s >> cchk r = cput r s.
 Proof.
 congr mkActo.
@@ -487,7 +505,7 @@ rewrite nth_error_set_nth.
 by case: ml_type_eq_dec.
 Qed.
 
-Let cputput T (r : loc T) (s s' : coq_type T) :
+Definition cputput T (r : loc T) (s s' : coq_type T) :
     cput r s >> cput r s' = cput r s'.
 Proof.
 congr mkActo.
@@ -504,7 +522,7 @@ rewrite -eq_rect_eq.
 by rewrite set_set_nth eqxx.
 Qed.
 
-Let cputget T (r : loc T) (s : coq_type T) (A : UU0) (k : coq_type T -> M A) :
+Definition cputget T (r : loc T) (s : coq_type T) (A : UU0) (k : coq_type T -> M A) :
   cput r s >> (cget r >>= k) = cput r s >> k s.
 Proof.
 congr mkActo.
@@ -524,7 +542,7 @@ case: ml_type_eq_dec => H /=; last by rewrite bindfailf.
 by rewrite -eq_rect_eq !bindretf.
 Qed.
 
-Let cgetputchk T (r : loc T) : cget r >>= cput r = cchk r.
+Definition cgetputchk T (r : loc T) : cget r >>= cput r = cchk r.
 Proof.
 congr mkActo.
 apply/boolp.funext => st /=.
@@ -538,7 +556,7 @@ case: (ml_type_eq_dec T T) => H //.
 by rewrite -eq_rect_eq nth_error_set_nth_id.
 Qed.
 
-Let cgetget T (r : loc T) (A : UU0) (k : coq_type T -> coq_type T -> M A) :
+Definition cgetget T (r : loc T) (A : UU0) (k : coq_type T -> coq_type T -> M A) :
   cget r >>= (fun s => cget r >>= k s) = cget r >>= fun s => k s s.
 Proof.
 congr mkActo.
@@ -556,7 +574,7 @@ case: (ml_type_eq_dec T T) => H //.
 by rewrite -eq_rect_eq.
 Qed.
 
-Let cgetC T1 T2 (r1 : loc T1) (r2 : loc T2) (A : UU0)
+Definition cgetC T1 T2 (r1 : loc T1) (r2 : loc T2) (A : UU0)
            (k : coq_type T1 -> coq_type T2 -> M A) :
   cget r1 >>= (fun u => cget r2 >>= (fun v => k u v)) =
   cget r2 >>= (fun v => cget r1 >>= (fun u => k u v)).
@@ -599,7 +617,7 @@ case: (ml_type_eq_dec T1 T1) => // H.
 by rewrite -eq_rect_eq.
 Qed.
 
-Let cputC T1 T2 (r1 : loc T1) (r2 : loc T2) (s1 : coq_type T1)
+Definition cputC T1 T2 (r1 : loc T1) (r2 : loc T2) (s1 : coq_type T1)
     (s2 : coq_type T2) (A : UU0) :
   loc_id r1 != loc_id r2 \/ JMeq s1 s2 ->
   cput r1 s1 >> cput r2 s2 = cput r2 s2 >> cput r1 s1.
@@ -667,7 +685,7 @@ case: ml_type_eq_dec => // HT1.
 by rewrite -eq_rect_eq set_set_nth (negbTE Hr).
 Qed.
 
-Let cputgetC T1 T2 (r1 : loc T1) (r2 : loc T2) (s1 : coq_type T1)
+Definition cputgetC T1 T2 (r1 : loc T1) (r2 : loc T2) (s1 : coq_type T1)
     (A : UU0) (k : coq_type T2 -> M A) :
   loc_id r1 != loc_id r2 ->
   cput r1 s1 >> cget r2 >>= k = cget r2 >>= (fun v => cput r1 s1 >> k v).
@@ -708,7 +726,7 @@ case: ml_type_eq_dec => // HT1.
 by rewrite -eq_rect_eq bindE.
 Qed.
 
-Let crunret (A B : UU0) (m : M A) (s : B) :
+Definition crunret (A B : UU0) (m : M A) (s : B) :
   crun m -> crun (m >> ret s) = Some s.
 Proof.
 case: m => T /= m.
@@ -716,10 +734,10 @@ rewrite /crun /= bindE /= /bindS MS_mapE /= fmapE /= bindA /=.
 by case Hm: (m [::]).
 Qed.
 
-Let crunskip : crun skip = Some tt.
+Definition crunskip : crun skip = Some tt.
 Proof. by []. Qed.
 
-Let crunnew (A : UU0) T (m : M A) (s : coq_type T) :
+Definition crunnew (A : UU0) T (m : M A) (s : coq_type T) :
   crun m -> crun (m >> cnew s).
 Proof.
 case: m => U /= m.
@@ -746,6 +764,7 @@ exists cnew cget cput cchk crun.
 - exact cnewchk.
 - exact cchknewC.
 - exact cchkgetC.
+- exact cchknew.
 - exact cchkget.
 - exact cgetchk.
 - exact cchkputC.
