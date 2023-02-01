@@ -1,8 +1,7 @@
 From mathcomp Require Import all_ssreflect.
 From mathcomp Require Import finmap.
 From mathcomp Require boolp.
-From mathcomp Require Import classical_sets.
-From infotheo Require convex classical_sets_ext.
+#[local] Remove Hints boolp.Prop_irrelevance : core.
 Require Import monae_lib.
 From HB Require Import structures.
 Require Import hierarchy monad_lib fail_lib state_lib trace_lib.
