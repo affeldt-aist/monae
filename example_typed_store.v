@@ -72,6 +72,9 @@ Proof. by apply boolp.funext => r; rewrite bindmret. Qed.
 Lemma crunnew0 (M : typedStoreMonad) T s : crun (cnew T s : M _).
 Proof. by rewrite -[cnew _ _]bindskipf crunnew // crunskip. Qed.
 
+Lemma funext {T U : UU0} [f g : T -> U] : f =1 g -> (fun x => f x) = g.
+Proof. exact: boolp.funext. Qed.
+
 Section factorial.
 Variable M : typedStoreMonad.
 Notation coq_type := (@MLtypes.coq_type M).
@@ -89,11 +92,11 @@ set s := 1.
 have smn : s * fact_rec m = fn by rewrite mul1n.
 elim: m s smn => [|m IH] s /= smn.
   rewrite /fact_ref -smn muln1.
-  under [fun r => _]boolp.funext do rewrite bindretf.
+  under funext do rewrite bindretf.
   by rewrite cgetret cnewget crunret // crunnew0.
-under [fun r => _]boolp.funext do rewrite bindA.
+under funext do rewrite bindA.
 rewrite cnewget.
-under [fun r => _]boolp.funext do rewrite bindA.
+under funext do rewrite bindA.
 by rewrite cnewput IH // (mulnC m.+1) -mulnA.
 Qed.
 End factorial.
@@ -122,18 +125,17 @@ set x := 1.
 pose y := x.
 rewrite -{2}/y.
 pose i := n.
-rewrite -{1}/i.
+rewrite -[in LHS]/i.
 have : (x, y) = (fibo_rec (n-i), fibo_rec (n.+1-i)).
   by rewrite subnn -addn1 addKn.
 have : i <= n by [].
 elim: i x y => [|i IH] x y Hi.
   rewrite !subn0 => -[] -> ->.
   rewrite -/(fibo_rec n.+1).
-  under [fun a => _]boolp.funext do
-  under [fun b => _]boolp.funext do rewrite [fibo_ref _ _ _]/= bindskipf.
-  under [fun a => _]boolp.funext do rewrite cgetret.
+  under funext do under funext do rewrite [fibo_ref  _ _ _]/= bindskipf.
+  under funext do rewrite cgetret.
   rewrite -cnewchk.
-  under [fun b => _]boolp.funext do rewrite cnewgetC.
+  under funext do rewrite cnewgetC.
   by rewrite cnewget -bindA crunret // crunnew // crunnew0.
 rewrite subSS => -[] Hx Hy.
 rewrite -(IH y (x + y) (ltnW Hi)); last first.
@@ -144,19 +146,16 @@ rewrite -(IH y (x + y) (ltnW Hi)); last first.
   rewrite subSS.
   by rewrite -addn2 -addn1 -addnBAC // -addnBAC // addn2 addn1.
 rewrite /=.
-under [fun a => _]boolp.funext do
-under [fun a => _]boolp.funext do rewrite !bindA.
+under funext do under funext do rewrite !bindA.
 rewrite -cnewchk.
-under [fun b => _]boolp.funext do rewrite cnewgetC.
+under funext do rewrite cnewgetC.
 rewrite cnewget.
-under [fun a => _]boolp.funext do
-under [fun a => _]boolp.funext do rewrite !bindA.
-under [fun a => _]boolp.funext do rewrite cnewget.
-under [fun a => _]boolp.funext do
-under [fun a => _]boolp.funext do rewrite !bindA.
+under funext do under funext do rewrite !bindA.
+under funext do rewrite cnewget.
+under funext do under funext do rewrite !bindA.
 rewrite -cnewchk.
-under [fun a => _]boolp.funext do rewrite cnewputC.
+under funext do rewrite cnewputC.
 rewrite cnewput.
-by under [fun a => _]boolp.funext do rewrite cnewput.
+by under funext do rewrite cnewput.
 Qed.
 End fibonacci.
