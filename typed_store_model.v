@@ -90,6 +90,14 @@ Proof. by move=> A a; rewrite /bind /ret  bindmret; case: a. Qed.
 Definition associative : BindLaws.associative bind.
 Proof. by move=> A B C m f g; rewrite /bind /= bindA. Qed.
 
+(* Doesn't work
+HB.instance Definition xyz :=
+  isMonad_ret_bind.Build M left_neutral right_neutral associative.
+*)
+(* Since we couldn't build the instance, redefine notations *)
+(*Local Notation "m >>= f" := (bind m f).
+Local Notation "m >> f" := (bind m (fun=> f)).*)
+
 Definition actm (A B : UU0) (f : A -> B) (m : M A) : M B :=
   mkActo (actm _ _ f (ofActo m)).
 
@@ -190,14 +198,6 @@ Defined.
 Canonical Structure MonadTS : Monad M := Monad.Class isMonadTS.
 Canonical Structure monadTS : monad := Monad.Pack isMonadTS.
 Set Universe Checking.
-
-(* Doesn't work
-HB.instance Definition xyz :=
-  isMonad_ret_bind.Build M left_neutral right_neutral associative.
-*)
-(* Since we couldn't build the instance, redefine notations *)
-(*Local Notation "m >>= f" := (bind m f).
-Local Notation "m >> f" := (bind m (fun=> f)).*)
 
 (* Make ml_type an eqType *)
 Definition ml_type_eqb T1 T2 : bool := ml_type_eq_dec T1 T2.
