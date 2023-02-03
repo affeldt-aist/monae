@@ -1680,7 +1680,7 @@ Proof. by elim: n st => [|n IH] []. Qed.
 
 Lemma nth_error_set_nth_id n a :
   nth_error st n = Some a -> set_nth def st n a = st.
-Proof. elim: n st =>[|n IH] [] //= b st'; by [case=> -> | move/IH ->]. Qed.
+Proof. by elim: n st => [|n IH] [] //= b st'; [case=> -> | move/IH ->]. Qed.
 
 Lemma nth_error_set_nth_other m n a b :
   m != n ->

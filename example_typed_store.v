@@ -81,7 +81,7 @@ Notation coq_type := (@MLtypes.coq_type M).
 
 Fixpoint fact_ref (r : loc ml_int) (n : nat) : M unit :=
   if n is m.+1 then cget r >>= fun p => cput r (n * p) >> fact_ref r m
-  else Ret tt.
+  else skip.
 
 Theorem fact_ref_ok n :
   crun (cnew ml_int 1 >>= fun r => fact_ref r n >> cget r) = Some (fact_rec n).
@@ -92,7 +92,7 @@ set s := 1.
 have smn : s * fact_rec m = fn by rewrite mul1n.
 elim: m s smn => [|m IH] s /= smn.
   rewrite /fact_ref -smn muln1.
-  under funext do rewrite bindretf.
+  under funext do rewrite bindskipf.
   by rewrite cgetret cnewget crunret // crunnew0.
 under funext do rewrite bindA.
 rewrite cnewget.
