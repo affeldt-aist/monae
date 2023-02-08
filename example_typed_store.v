@@ -65,15 +65,19 @@ Arguments cput {s} [T].
 Arguments cchk {s} [T].
 Arguments crun {s} [A].
 
-Lemma cgetret (M : typedStoreMonad) T :
+Section lemmas.
+Variable M : typedStoreMonad.
+
+Lemma cgetret T :
   @cget _ T = fun r => (cget r : M _) >>= Ret.
 Proof. by apply boolp.funext => r; rewrite bindmret. Qed.
 
-Lemma crunnew0 (M : typedStoreMonad) T s : crun (cnew T s : M _).
+Lemma crunnew0 T s : crun (cnew T s : M _).
 Proof. by rewrite -[cnew _ _]bindskipf crunnew // crunskip. Qed.
 
-Lemma funext {T U : UU0} [f g : T -> U] : f =1 g -> (fun x => f x) = g.
-Proof. exact: boolp.funext. Qed.
+Lemma cnewgetret T s : cnew T s >>= @cget _ T = cnew T s >> Ret s :> M _.
+Proof. by rewrite cgetret cnewget. Qed.
+End lemmas.
 
 Section factorial.
 Variable M : typedStoreMonad.
@@ -92,11 +96,11 @@ set s := 1.
 have smn : s * fact_rec m = fn by rewrite mul1n.
 elim: m s smn => [|m IH] s /= smn.
   rewrite /fact_ref -smn muln1.
-  under funext do rewrite bindskipf.
-  by rewrite cgetret cnewget crunret // crunnew0.
-under funext do rewrite bindA.
+  under eq_bind do rewrite bindskipf.
+  by rewrite cnewgetret crunret // crunnew0.
+under eq_bind do rewrite bindA.
 rewrite cnewget.
-under funext do rewrite bindA.
+under eq_bind do rewrite bindA.
 by rewrite cnewput IH // (mulnC m.+1) -mulnA.
 Qed.
 End factorial.
@@ -132,10 +136,9 @@ have : i <= n by [].
 elim: i x y => [|i IH] x y Hi.
   rewrite !subn0 => -[] -> ->.
   rewrite -/(fibo_rec n.+1).
-  under funext do under funext do rewrite /= bindskipf.
-  under funext do rewrite cgetret.
+  under eq_bind do under eq_bind do rewrite /= bindskipf.
   rewrite -cnewchk.
-  under funext do rewrite cnewgetC.
+  under eq_bind do rewrite cgetret cnewgetC.
   by rewrite cnewget -bindA crunret // crunnew // crunnew0.
 rewrite subSS => -[] Hx Hy.
 rewrite -(IH y (x + y) (ltnW Hi)); last first.
@@ -145,16 +148,16 @@ rewrite -(IH y (x + y) (ltnW Hi)); last first.
   rewrite subSS ltnS => Hi.
   by rewrite -addn2 -addn1 -addnBAC // -addnBAC // addn2 addn1.
 rewrite /=.
-under funext do under funext do rewrite !bindA.
+under eq_bind do under eq_bind do rewrite !bindA.
 rewrite -cnewchk.
-under funext do rewrite cnewgetC.
+under eq_bind do rewrite cnewgetC.
 rewrite cnewget.
-under funext do under funext do rewrite !bindA.
-under funext do rewrite cnewget.
-under funext do under funext do rewrite !bindA.
+under eq_bind do under eq_bind do rewrite !bindA.
+under eq_bind do rewrite cnewget.
+under eq_bind do under eq_bind do rewrite !bindA.
 rewrite -cnewchk.
-under funext do rewrite cnewputC.
+under eq_bind do rewrite cnewputC.
 rewrite cnewput.
-by under funext do rewrite cnewput.
+by under eq_bind do rewrite cnewput.
 Qed.
 End fibonacci.
