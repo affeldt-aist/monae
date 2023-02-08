@@ -1080,18 +1080,14 @@ HB.structure Definition MonadPlusArray (S : UU0) (I : eqType) :=
 Module Type MLTY.
 Parameter ml_type : Set.
 Parameter ml_type_eq_dec : forall x y : ml_type, {x=y}+{x<>y}.
-Variant loc : ml_type -> Type := mkloc T : nat -> loc T.
+Parameter loc : ml_type -> Type.
+Parameter locT : eqType.
+Parameter loc_id : forall T, loc T -> locT.
 Parameter coq_type : forall M : Type -> Type, ml_type -> Type.
 End MLTY.
 
 Module MonadTypedStore (MLtypes : MLTY).
 Import MLtypes.
-
-Record binding (M : Type -> Type) :=
-  mkbind { bind_type : ml_type; bind_val : coq_type M bind_type }.
-Arguments mkbind {M}.
-
-Definition loc_id {T} (r : loc T) : nat := let: mkloc _ n := r in n.
 
 HB.mixin Record isMonadTypedStore (M : UU0 -> UU0)
     of Monad M := {

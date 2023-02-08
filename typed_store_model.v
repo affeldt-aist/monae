@@ -20,15 +20,32 @@ Unset Printing Implicit Defensive.
 Local Open Scope monae_scope.
 
 Module Type MLTYdef.
-Include MLTY.
+Parameter ml_type : Set.
+Parameter ml_type_eq_dec : forall x y : ml_type, {x=y}+{x<>y}.
+Variant loc : ml_type -> Type := mkloc T : nat -> loc T.
+Parameter coq_type : forall M : Type -> Type, ml_type -> Type.
 Parameter ml_undef : ml_type.
 Parameter undef : forall M, coq_type M ml_undef.
 End MLTYdef.
 
 Module ModelTypedStore (MLtypes : MLTYdef).
-Module MTypedStore := MonadTypedStore (MLtypes).
+Import MLtypes.
+Module MLtypes'.
+Definition ml_type := ml_type.
+Definition ml_type_eq_dec := ml_type_eq_dec.
+Definition coq_type := coq_type.
+Definition loc := loc.
+Definition locT := [eqType of nat].
+Definition loc_id {T} (l : loc T) := let: mkloc _ n := l in n.
+End MLtypes'.
+Module MTypedStore := MonadTypedStore (MLtypes').
+Import MLtypes'.
 Import MLtypes.
 Import MTypedStore.
+
+Record binding (M : Type -> Type) :=
+  mkbind { bind_type : ml_type; bind_val : coq_type M bind_type }.
+Arguments mkbind {M}.
 
 #[bypass_check(positivity)]
 Inductive acto : UU0 -> UU0 :=

@@ -1718,20 +1718,30 @@ Require Import JMeq.
 Module Type MLTYweak.
 Parameter ml_type : Set.
 Parameter ml_type_eq_dec : forall x y : ml_type, {x=y}+{x<>y}.
-Variant loc : ml_type -> Type := mkloc T : nat -> loc T.
+Variant loc : ml_type -> Set := mkloc T : nat -> loc T.
 Parameter coq_type0 : ml_type -> Type.
 Parameter ml_undef : ml_type.
 Parameter undef : coq_type0 ml_undef.
 End MLTYweak.
 
 Module ModelTypedStore (MLtypes : MLTYweak).
+Import MLtypes.
 Module MLtypes'.
-Include MLtypes.
+Definition ml_type := ml_type.
+Definition ml_type_eq_dec := ml_type_eq_dec.
 Definition coq_type (M : UU0 -> UU0) := coq_type0.
+Definition loc := loc.
+Definition locT := [eqType of nat].
+Definition loc_id {T} (l : loc T) := let: mkloc _ n := l in n.
 End MLtypes'.
 Module MTypedStore := MonadTypedStore (MLtypes').
 Import MLtypes'.
+Import MLtypes.
 Import MTypedStore.
+
+Record binding (M : Type -> Type) :=
+  mkbind { bind_type : ml_type; bind_val : coq_type M bind_type }.
+Arguments mkbind {M}.
 
 Section typed_store.
 Definition acto (T : UU0) : UU0 :=
