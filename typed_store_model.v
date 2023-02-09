@@ -235,21 +235,167 @@ apply/boolp.funext => st /=.
 rewrite bindE /= /bindS MS_mapE /= fmapE /= bindA /=.
 rewrite [in RHS]bindE /= /bindS MS_mapE /= fmapE /= bindA /=.
 rewrite bindE /= /bindS /= bindE /= bindE /= /bindS /= MS_mapE /= fmapE.
-rewrite nth_error_rcons_size.
-rewrite /coerce.
+rewrite nth_error_rcons_size /coerce.
 case: ml_type_eq_dec => // H.
 by rewrite -eq_rect_eq.
 Qed.
 
-Definition cnewgetC T T' (r : loc T) (s : coq_type T') A
-           (k : loc T' -> coq_type T -> M A) :
-  cchk r >> (cnew s >>= (fun r' => cget r >>= k r')) =
-  cget r >>= (fun u => cnew s >>= fun r' => k r' u).
+Let cnewput T (s t : coq_type T) A (k : loc T -> M A) :
+  cnew s >>= (fun r => cput r t >> k r) = cnew t >>= k.
 Proof.
 congr mkActo.
 apply/boolp.funext => st /=.
 rewrite bindE /= /bindS MS_mapE /= fmapE /= bindA /=.
+rewrite bindE /= bindE /= bindE /= /bindS /= MS_mapE /= fmapE bindA.
 rewrite [in RHS]bindE /= /bindS MS_mapE /= fmapE /= bindA /=.
+rewrite [in RHS]bindE /= [in RHS]bindE /= /cput.
+rewrite nth_error_rcons_size.
+rewrite /coerce.
+case: ml_type_eq_dec => // H.
+by rewrite -eq_rect_eq bindE /= bindE /= set_nth_rcons.
+Qed.
+
+Let cgetput T (r : loc T) (s : coq_type T) :
+  cget r >> cput r s = cput r s.
+Proof.
+congr mkActo.
+apply/boolp.funext => st /=.
+rewrite bindE /= /bindS MS_mapE /= fmapE /= bindA /= /cget /cput.
+case Hr: (nth_error st (loc_id r)) => [[T' u]|] //.
+rewrite /coerce.
+case: ml_type_eq_dec => HT; last by case: ml_type_eq_dec => // /esym //.
+subst T'.
+rewrite -eq_rect_eq.
+case: ml_type_eq_dec => // HT.
+rewrite -eq_rect_eq {HT}.
+do! rewrite bindE /=.
+rewrite Hr.
+case: ml_type_eq_dec => // HT.
+by rewrite -eq_rect_eq.
+Qed.
+
+Let cgetputskip T (r : loc T) : cget r >>= cput r = cget r >> skip.
+Proof.
+congr mkActo.
+apply/boolp.funext => st /=.
+rewrite bindE /= /bindS MS_mapE /= fmapE /= bindA /= /cget /cput.
+rewrite [in RHS]bindE /= /bindS MS_mapE /= fmapE bindA /=.
+case Hr: (nth_error _ _) => [[T1 u]|]; last by rewrite bindfailf.
+rewrite /coerce.
+case: (ml_type_eq_dec T1 T) => H //.
+subst T1.
+rewrite bindE /= bindE /= Hr.
+case: (ml_type_eq_dec T T) => H //.
+by rewrite -eq_rect_eq nth_error_set_nth_id.
+Qed.
+
+Let cgetget T (r : loc T) (A : UU0) (k : coq_type T -> coq_type T -> M A) :
+  cget r >>= (fun s => cget r >>= k s) = cget r >>= fun s => k s s.
+Proof.
+congr mkActo.
+apply/boolp.funext => st /=.
+rewrite bindE /= /bindS MS_mapE /= fmapE /= bindA /=.
+rewrite [in RHS]bindE /= /bindS MS_mapE /= fmapE /= bindA /= /cget.
+case Hr: (nth_error _ _) => [[T1 u]|]; last by rewrite bindfailf.
+rewrite /coerce.
+case: (ml_type_eq_dec T1 T) => H //.
+subst T1.
+rewrite bindE /= bindE /=.
+rewrite bindE /= /bindS MS_mapE /= fmapE /= bindA /=.
+rewrite Hr.
+case: (ml_type_eq_dec T T) => H //.
+by rewrite -eq_rect_eq.
+Qed.
+
+Let cputget T (r: loc T) (s: coq_type T) (A: UU0) (k: coq_type T -> M A) :
+  cput r s >> (cget r >>= k) = cput r s >> k s.
+Proof.
+congr mkActo.
+apply/boolp.funext => st /=.
+case: r s k => {}T n s k /=.
+rewrite bindE /= /bindS MS_mapE /= fmapE /= bindA /=.
+rewrite [in RHS]bindE /= /bindS MS_mapE /= fmapE /= bindA /= /cput /cget.
+case Hst : (nth_error st n) => [[T' v]|] /=; last by rewrite bindfailf.
+rewrite {1 3}/coerce.
+case: ml_type_eq_dec => H /=; last by rewrite bindfailf.
+subst T'.
+rewrite !bindretf /=.
+rewrite bindE /= /bindS MS_mapE /= fmapE /= bindA /=.
+rewrite nth_error_set_nth.
+rewrite /coerce.
+case: ml_type_eq_dec => H /=; last by rewrite bindfailf.
+by rewrite -eq_rect_eq !bindretf.
+Qed.
+
+Let cputput T (r : loc T) (s s' : coq_type T) :
+    cput r s >> cput r s' = cput r s'.
+Proof.
+congr mkActo.
+apply/boolp.funext => st.
+case: r s s' => {}T n s s' /=.
+rewrite bindE /= /bindS MS_mapE /= fmapE /= bindA /= /cput.
+case Hst : (nth_error st n) => [[T' v]|] /=; last by rewrite bindfailf.
+rewrite {1 3}/coerce.
+case: ml_type_eq_dec => H /=; last by rewrite bindfailf.
+subst T'.
+rewrite !bindretf /= nth_error_set_nth /coerce.
+case: ml_type_eq_dec => // H.
+rewrite -eq_rect_eq.
+by rewrite set_set_nth eqxx.
+Qed.
+
+Let cgetC T1 T2 (r1 : loc T1) (r2 : loc T2) (A : UU0)
+           (k : coq_type T1 -> coq_type T2 -> M A) :
+  cget r1 >>= (fun u => cget r2 >>= (fun v => k u v)) =
+  cget r2 >>= (fun v => cget r1 >>= (fun u => k u v)).
+Proof.
+congr mkActo.
+apply/boolp.funext => st /=.
+rewrite bindE /= /bindS MS_mapE /= fmapE /= bindA /=.
+rewrite [in RHS]bindE /= /bindS MS_mapE /= fmapE /= bindA /= /cget.
+case Hr1: (nth_error _ _) => [[T1' u]|]; last first.
+  rewrite bindfailf.
+  case Hr2: (nth_error _ _) => [[T2' v]|]; last by rewrite bindfailf.
+  case Hc: (coerce T2 v) => [u|]; last by rewrite bindfailf.
+  rewrite !bindE /=.
+  by rewrite !bindE /= /bindS MS_mapE /= fmapE Hr1 bindfailf.
+case Hr2: (nth_error _ _) => [[T2' v]|]; last first.
+  rewrite bindfailf.
+  case Hc: (coerce T1 u) => [v|]; last by rewrite bindfailf.
+  rewrite !bindE /=.
+  by rewrite !bindE /= /bindS MS_mapE /= fmapE Hr2 bindfailf.
+rewrite {1 3}/coerce.
+case: (ml_type_eq_dec _ _) => HT1; last first.
+  rewrite bindfailf.
+  case: (ml_type_eq_dec _ _) => HT2; last by rewrite bindfailf.
+  subst T2'.
+  rewrite -eq_rect_eq.
+  rewrite bindE /=.
+  rewrite 2!bindE /= /bindS MS_mapE /= fmapE /= bindA /= Hr1 {1}/coerce.
+  case: (ml_type_eq_dec _ _) => //; by rewrite bindfailf.
+subst T1'.
+rewrite -eq_rect_eq.
+rewrite bindE /=.
+rewrite 2!bindE /= /bindS MS_mapE /= fmapE /= bindA /= Hr2 {1}/coerce.
+case: (ml_type_eq_dec T2' T2) => HT2; last by rewrite !bindfailf.
+subst T2'.
+rewrite -eq_rect_eq.
+rewrite !bindE /=.
+rewrite !bindE /=.
+rewrite /bindS MS_mapE /= fmapE /= bindA /= Hr1 /coerce.
+case: (ml_type_eq_dec T1 T1) => // H.
+by rewrite -eq_rect_eq.
+Qed.
+
+Let cgetnewD T T' (r : loc T) (s : coq_type T') A
+           (k : loc T' -> coq_type T -> coq_type T -> M A) :
+  cget r >>= (fun u => cnew s >>= fun r' => cget r >>= k r' u) =
+  cget r >>= (fun u => cnew s >>= fun r' => k r' u u).
+Proof.
+congr mkActo.
+apply/boolp.funext => st /=.
+rewrite bindE /= /bindS MS_mapE /= fmapE /= bindA /=.
+rewrite [in RHS]bindE /= /bindS MS_mapE /= fmapE /= bindA /= /cchk /cget.
 case Hr: (nth_error _ _) => [[T1 u]|]; last by rewrite bindfailf.
 rewrite {1 3}/coerce.
 case: ml_type_eq_dec => H /=; last by rewrite bindfailf.
@@ -262,152 +408,16 @@ case: ml_type_eq_dec => // H.
 by rewrite -eq_rect_eq.
 Qed.
 
-Definition cnewput T (s t : coq_type T) A (k : loc T -> M A) :
-  cnew s >>= (fun r => cput r t >> k r) = cnew t >>= k.
-Proof.
-congr mkActo.
-apply/boolp.funext => st /=.
-rewrite bindE /= /bindS MS_mapE /= fmapE /= bindA /=.
-rewrite bindE /= bindE /= bindE /= /bindS /= MS_mapE /= fmapE bindA.
-rewrite [in RHS]bindE /= /bindS MS_mapE /= fmapE /= bindA /=.
-rewrite [in RHS]bindE /= [in RHS]bindE /=.
-rewrite nth_error_rcons_size.
-rewrite /coerce.
-case: ml_type_eq_dec => // H.
-by rewrite -eq_rect_eq bindE /= bindE /= set_nth_rcons.
-Qed.
-
-Definition cnewputC T T' (r : loc T) (s : coq_type T) (s' : coq_type T') A
-    (k : loc T' -> M A) :
-  cchk r >> (cnew s' >>= fun r' => cput r s >> k r') =
-  cput r s >> (cnew s' >>= k).
-Proof.
-congr mkActo.
-apply/boolp.funext => st /=.
-rewrite bindE /= /bindS MS_mapE /= fmapE /= bindA /=.
-rewrite [in RHS]bindE /= /bindS MS_mapE /= fmapE /= bindA /=.
-case Hr: (nth_error _ _) => [[T1 u]|]; last by rewrite bindfailf.
-rewrite {1 3}/coerce.
-case: ml_type_eq_dec => H /=; last by case ml_type_eq_dec => H' //; elim H.
-subst T1.
-rewrite bindE /= /bindS /= bindE /= bindE /= /bindS /= MS_mapE /= fmapE /=.
-rewrite bindE /= /bindS /= bindE /= bindE /= /bindS /= MS_mapE /= fmapE /=.
-rewrite (nth_error_rcons_some _ Hr).
-rewrite /coerce.
-case: ml_type_eq_dec => // H.
-rewrite -eq_rect_eq.
-rewrite bindE /= /bindS /= bindE /= bindE /= /bindS /= MS_mapE /= fmapE /=.
-rewrite bindE /= /bindS /=.
-rewrite (nth_error_size_set_nth _ _ Hr).
-by rewrite (nth_error_set_nth_rcons _ _ _ Hr).
-Qed.
-
-Definition cnewchk T (s : coq_type T) (A : UU0) (k : loc T -> M A) :
-  cnew s >>= (fun r => cchk r >> k r) = cnew s >>= k.
-Proof.
-congr mkActo.
-apply/boolp.funext => st /=.
-rewrite bindE /= /bindS MS_mapE /= fmapE /= bindA /=.
-rewrite [in RHS]bindE /= /bindS MS_mapE /= fmapE /= bindA /=.
-rewrite bindE /= /bindS /= bindE /= bindE /= /bindS /= MS_mapE /= fmapE.
-rewrite nth_error_rcons_size.
-rewrite /coerce.
-by case: ml_type_eq_dec.
-Qed.
-
-Definition cchknewC T1 T2 (r : loc T1) (s : coq_type T2) (A : UU0)
-    (k : loc T2 -> M A) :
- cchk r >> (cnew s >>= fun r' => cchk r >> k r') = cchk r >> (cnew s >>= k).
-Proof.
-congr mkActo.
-apply/boolp.funext => st /=.
-rewrite bindE /= /bindS MS_mapE /= fmapE /= bindA /=.
-rewrite [in RHS]bindE /= /bindS MS_mapE /= fmapE /= bindA /=.
-case Hr: (nth_error st (loc_id r)) => [[T' u]|] //.
-case Hc: (coerce T1 u) => [u'|] //.
-rewrite bindE /= bindE /= bindE /= /bindS /= MS_mapE /= fmapE /= bindA.
-rewrite bindE /= bindE /= bindE /= /bindS /= MS_mapE /= fmapE /= bindA.
-rewrite (nth_error_rcons_some _ Hr) Hc.
-do! rewrite bindE /=.
-by rewrite /bindS /= MS_mapE /= fmapE bindA.
-Qed.
-
-Definition cchkC T1 T2 (r1: loc T1) (r2: loc T2) :
-  cchk r1 >> cchk r2 = cchk r2 >> cchk r1.
-Proof.
-congr mkActo.
-apply/boolp.funext => st /=.
-rewrite bindE /= /bindS MS_mapE /= fmapE /= bindA /=.
-rewrite [in RHS]bindE /= /bindS MS_mapE /= fmapE /= bindA /=.
-case Hr1 : (nth_error st (loc_id r1)) => [[T1' v1]|] /=; last first.
-  rewrite bindfailf.
-  case Hr2 : (nth_error st (loc_id r2)) => [[T2' v2]|] /=;
-    last by rewrite bindfailf.
-  case Hc: (coerce T2 v2) => [u|]; last by rewrite bindfailf.
-  by rewrite bindE/= bindE/= Hr1.
-case Hr2 : (nth_error st (loc_id r2)) => [[T2' v2]|] /=; last first.
-  rewrite bindfailf.
-  case Hc: (coerce T1 v1) => [u|]; last by rewrite bindfailf.
-  by rewrite bindE/= bindE/= Hr2.
-case Hc: (coerce T1 v1) => [u1|]; last first.
-  rewrite bindfailf.
-  case Hc2: (coerce T2 v2) => [u|]; last by rewrite bindfailf.
-  by rewrite bindE/= bindE/= Hr1 Hc.
-rewrite bindE /= bindE /= Hr2.
-case Hc2: (coerce T2 v2) => [u2|]; last by rewrite !bindfailf.
-do! rewrite bindE /=.
-by rewrite Hr1 Hc.
-Qed.
-
-Definition cchkdup T (r : loc T) : cchk r >> cchk r = cchk r.
-Proof.
-congr mkActo.
-apply/boolp.funext => st /=.
-rewrite bindE /= /bindS MS_mapE /= fmapE /= bindA /=.
-case Hr1 : (nth_error st (loc_id r)) => [[T1' v1]|] //=.
-case Hc: (coerce T v1) => [u1|] //.
-by rewrite bindE /= bindE /= Hr1 Hc.
-Qed.
-
-Definition cchkgetC T1 T2 (r1: loc T1) (r2: loc T2) (A: UU0) (k: coq_type T2 -> M A) :
-  cchk r1 >> (cget r2 >>= k) = cget r2 >>= (fun s => cchk r1 >> k s).
-Proof.
-congr mkActo.
-apply/boolp.funext => st /=.
-rewrite bindE /= /bindS MS_mapE /= fmapE /= bindA /=.
-rewrite [in RHS]bindE /= /bindS MS_mapE /= fmapE /= bindA /=.
-case Hr1 : (nth_error st (loc_id r1)) => [[T1' v1]|] /=; last first.
-  rewrite bindfailf.
-  case Hr2 : (nth_error st (loc_id r2)) => [[T2' v2]|] /=;
-    last by rewrite bindfailf.
-  case Hc: (coerce T2 v2) => [u|]; last by rewrite bindfailf.
-  by rewrite bindE/= bindE/= bindE/= /bindS /= MS_mapE /= fmapE Hr1 bindfailf.
-case Hr2 : (nth_error st (loc_id r2)) => [[T2' v2]|] /=; last first.
-  rewrite bindfailf.
-  case Hc: (coerce T1 v1) => [u|]; last by rewrite bindfailf.
-  by rewrite bindE/= bindE/= bindE/= /bindS /= MS_mapE /= fmapE Hr2 bindfailf.
-case Hc: (coerce T1 v1) => [u1|]; last first.
-  rewrite bindfailf.
-  case Hc2: (coerce T2 v2) => [u|]; last by rewrite bindfailf.
-  rewrite bindE/= bindE/= bindE/= /bindS /= MS_mapE /= fmapE Hr1 Hc.
-  by rewrite bindfailf.
-rewrite bindE /= /bindS /= bindE /= bindE /= /bindS /= MS_mapE /= fmapE.
-rewrite Hr2.
-case Hc2: (coerce T2 v2) => [u2|]; last by rewrite !bindfailf.
-do! rewrite bindE /=.
-by rewrite /bindS /= MS_mapE /= fmapE Hr1 Hc.
-Qed.
-
-Definition cchknew T1 T2 (r1 : loc T1) (s : coq_type T2) (A : UU0)
+Let cgetnewE T1 T2 (r1 : loc T1) (s : coq_type T2) (A : UU0)
     (k1 k2 : loc T2 -> M A) :
   (forall r2 : loc T2, loc_id r1 != loc_id r2 -> k1 r2 = k2 r2) ->
-  cchk r1 >> (cnew s >>= k1) = cchk r1 >> (cnew s >>= k2).
+  cget r1 >> (cnew s >>= k1) = cget r1 >> (cnew s >>= k2).
 Proof.
 move=> Hk.
 congr mkActo.
 apply/boolp.funext => st /=.
 rewrite bindE /= /bindS MS_mapE /= fmapE /= bindA /=.
-rewrite [in RHS]bindE /= /bindS MS_mapE /= fmapE /= bindA /= /cchk /cget.
+rewrite [in RHS]bindE /= /bindS MS_mapE /= fmapE /= bindA /= /cget.
 case Hr1 : (nth_error st (loc_id r1)) => [[T1' v1]|] //=.
 case Hc: (coerce T1 v1) => [u1|] //.
 rewrite bindE /= bindE /= bindE /= /bindS MS_mapE /= fmapE /= bindA /=.
@@ -416,39 +426,13 @@ rewrite fmapE /= bindA /= 2!bindE /=.
 by rewrite Hk // neq_ltn /= (nth_error_size Hr1).
 Qed.
 
-Definition cchkget T (r : loc T) (A: UU0) (k : coq_type T -> M A) :
-  cchk r >> (cget r >>= k) = cget r >>= k.
+Let cgetputC T1 T2 (r1 : loc T1) (r2 : loc T2) (s : coq_type T2) :
+  cget r1 >> cput r2 s = cput r2 s >> cget r1 >> skip.
 Proof.
 congr mkActo.
 apply/boolp.funext => st /=.
 rewrite bindE /= /bindS MS_mapE /= fmapE /= bindA /=.
-rewrite [in RHS]bindE /= /bindS MS_mapE /= fmapE /= bindA /=.
-case Hr: (nth_error st (loc_id r)) => [[T' u]|] //.
-case Hc: (coerce T u) => [u'|] //.
-do! rewrite bindE /=.
-by rewrite /bindS /= MS_mapE /= fmapE Hr Hc.
-Qed.
-
-Definition cgetchk T (r : loc T) (A: UU0) (k : coq_type T -> M A) :
-  cget r >>= (fun s => cchk r >> k s) = cget r >>= k.
-Proof.
-congr mkActo.
-apply/boolp.funext => st /=.
-rewrite bindE /= /bindS MS_mapE /= fmapE /= bindA /=.
-rewrite [in RHS]bindE /= /bindS MS_mapE /= fmapE /= bindA /=.
-case Hr: (nth_error st (loc_id r)) => [[T' u]|] //.
-case Hc: (coerce T u) => [u'|] //.
-do! rewrite bindE /=.
-by rewrite /bindS /= MS_mapE /= fmapE Hr Hc.
-Qed.
-
-Definition cchkputC T1 T2 (r1 : loc T1) (r2 : loc T2) (s : coq_type T2) :
-  cchk r1 >> cput r2 s = cput r2 s >> cchk r1.
-Proof.
-congr mkActo.
-apply/boolp.funext => st /=.
-rewrite bindE /= /bindS MS_mapE /= fmapE /= bindA /=.
-rewrite [in RHS]bindE /= /bindS MS_mapE /= fmapE /= bindA /=.
+rewrite [in RHS]bindE /= /bindS MS_mapE /= fmapE /= 2!bindA /= /cget /cput.
 case Hr1 : (nth_error st (loc_id r1)) => [[T1' v1]|] /=; last first.
   rewrite bindfailf.
   case Hr2 : (nth_error st (loc_id r2)) => [[T2' v2]|] /=;
@@ -488,153 +472,7 @@ rewrite (nth_error_set_nth_other _ _ Hr Hr1) /coerce.
 by case: ml_type_eq_dec.
 Qed.
 
-Definition cchkput T (r : loc T) (s : coq_type T) :
-  cchk r >> cput r s = cput r s.
-Proof.
-congr mkActo.
-apply/boolp.funext => st /=.
-rewrite bindE /= /bindS MS_mapE /= fmapE /= bindA /=.
-case Hr: (nth_error st (loc_id r)) => [[T' u]|] //.
-rewrite /coerce.
-case: ml_type_eq_dec => HT; last by case: ml_type_eq_dec => // /esym //.
-subst T'.
-case: ml_type_eq_dec => // HT.
-rewrite -eq_rect_eq {HT}.
-do! rewrite bindE /=.
-rewrite Hr.
-case: ml_type_eq_dec => // HT.
-by rewrite -eq_rect_eq.
-Qed.
-
-Definition cputchk T (r : loc T) (s : coq_type T) :
-  cput r s >> cchk r = cput r s.
-Proof.
-congr mkActo.
-apply/boolp.funext => st /=.
-rewrite bindE /= /bindS MS_mapE /= fmapE /= bindA /=.
-case Hr: (nth_error st (loc_id r)) => [[T' u]|] //.
-rewrite /coerce.
-case: ml_type_eq_dec => HT //.
-subst T'.
-rewrite -!eq_rect_eq.
-do! rewrite bindE /=.
-rewrite nth_error_set_nth.
-by case: ml_type_eq_dec.
-Qed.
-
-Definition cputput T (r : loc T) (s s' : coq_type T) :
-    cput r s >> cput r s' = cput r s'.
-Proof.
-congr mkActo.
-apply/boolp.funext => st.
-case: r s s' => {}T n s s' /=.
-rewrite bindE /= /bindS MS_mapE /= fmapE /= bindA /=.
-case Hst : (nth_error st n) => [[T' v]|] /=; last by rewrite bindfailf.
-rewrite {1 3}/coerce.
-case: ml_type_eq_dec => H /=; last by rewrite bindfailf.
-subst T'.
-rewrite !bindretf /= nth_error_set_nth /coerce.
-case: ml_type_eq_dec => // H.
-rewrite -eq_rect_eq.
-by rewrite set_set_nth eqxx.
-Qed.
-
-Definition cputget T (r : loc T) (s : coq_type T) (A : UU0) (k : coq_type T -> M A) :
-  cput r s >> (cget r >>= k) = cput r s >> k s.
-Proof.
-congr mkActo.
-apply/boolp.funext => st /=.
-case: r s k => {}T n s k /=.
-rewrite bindE /= /bindS MS_mapE /= fmapE /= bindA /=.
-rewrite [in RHS]bindE /= /bindS MS_mapE /= fmapE /= bindA /=.
-case Hst : (nth_error st n) => [[T' v]|] /=; last by rewrite bindfailf.
-rewrite {1 3}/coerce.
-case: ml_type_eq_dec => H /=; last by rewrite bindfailf.
-subst T'.
-rewrite !bindretf /=.
-rewrite bindE /= /bindS MS_mapE /= fmapE /= bindA /=.
-rewrite nth_error_set_nth.
-rewrite /coerce.
-case: ml_type_eq_dec => H /=; last by rewrite bindfailf.
-by rewrite -eq_rect_eq !bindretf.
-Qed.
-
-Definition cgetputchk T (r : loc T) : cget r >>= cput r = cchk r.
-Proof.
-congr mkActo.
-apply/boolp.funext => st /=.
-rewrite bindE /= /bindS MS_mapE /= fmapE /= bindA /=.
-case Hr: (nth_error _ _) => [[T1 u]|]; last by rewrite bindfailf.
-rewrite /coerce.
-case: (ml_type_eq_dec T1 T) => H //.
-subst T1.
-rewrite bindE /= bindE /= Hr.
-case: (ml_type_eq_dec T T) => H //.
-by rewrite -eq_rect_eq nth_error_set_nth_id.
-Qed.
-
-Definition cgetget T (r : loc T) (A : UU0) (k : coq_type T -> coq_type T -> M A) :
-  cget r >>= (fun s => cget r >>= k s) = cget r >>= fun s => k s s.
-Proof.
-congr mkActo.
-apply/boolp.funext => st /=.
-rewrite bindE /= /bindS MS_mapE /= fmapE /= bindA /=.
-rewrite [in RHS]bindE /= /bindS MS_mapE /= fmapE /= bindA /=.
-case Hr: (nth_error _ _) => [[T1 u]|]; last by rewrite bindfailf.
-rewrite /coerce.
-case: (ml_type_eq_dec T1 T) => H //.
-subst T1.
-rewrite bindE /= bindE /=.
-rewrite bindE /= /bindS MS_mapE /= fmapE /= bindA /=.
-rewrite Hr.
-case: (ml_type_eq_dec T T) => H //.
-by rewrite -eq_rect_eq.
-Qed.
-
-Definition cgetC T1 T2 (r1 : loc T1) (r2 : loc T2) (A : UU0)
-           (k : coq_type T1 -> coq_type T2 -> M A) :
-  cget r1 >>= (fun u => cget r2 >>= (fun v => k u v)) =
-  cget r2 >>= (fun v => cget r1 >>= (fun u => k u v)).
-Proof.
-congr mkActo.
-apply/boolp.funext => st /=.
-rewrite bindE /= /bindS MS_mapE /= fmapE /= bindA /=.
-rewrite [in RHS]bindE /= /bindS MS_mapE /= fmapE /= bindA /=.
-case Hr1: (nth_error _ _) => [[T1' u]|]; last first.
-  rewrite bindfailf.
-  case Hr2: (nth_error _ _) => [[T2' v]|]; last by rewrite bindfailf.
-  case Hc: (coerce T2 v) => [u|]; last by rewrite bindfailf.
-  rewrite !bindE /=.
-  by rewrite !bindE /= /bindS MS_mapE /= fmapE Hr1 bindfailf.
-case Hr2: (nth_error _ _) => [[T2' v]|]; last first.
-  rewrite bindfailf.
-  case Hc: (coerce T1 u) => [v|]; last by rewrite bindfailf.
-  rewrite !bindE /=.
-  by rewrite !bindE /= /bindS MS_mapE /= fmapE Hr2 bindfailf.
-rewrite {1 3}/coerce.
-case: (ml_type_eq_dec _ _) => HT1; last first.
-  rewrite bindfailf.
-  case: (ml_type_eq_dec _ _) => HT2; last by rewrite bindfailf.
-  subst T2'.
-  rewrite -eq_rect_eq.
-  rewrite bindE /=.
-  rewrite 2!bindE /= /bindS MS_mapE /= fmapE /= bindA /= Hr1 {1}/coerce.
-  case: (ml_type_eq_dec _ _) => //; by rewrite bindfailf.
-subst T1'.
-rewrite -eq_rect_eq.
-rewrite bindE /=.
-rewrite 2!bindE /= /bindS MS_mapE /= fmapE /= bindA /= Hr2 {1}/coerce.
-case: (ml_type_eq_dec T2' T2) => HT2; last by rewrite !bindfailf.
-subst T2'.
-rewrite -eq_rect_eq.
-rewrite !bindE /=.
-rewrite !bindE /=.
-rewrite /bindS MS_mapE /= fmapE /= bindA /= Hr1 /coerce.
-case: (ml_type_eq_dec T1 T1) => // H.
-by rewrite -eq_rect_eq.
-Qed.
-
-Definition cputC T1 T2 (r1 : loc T1) (r2 : loc T2) (s1 : coq_type T1)
+Let cputC T1 T2 (r1 : loc T1) (r2 : loc T2) (s1 : coq_type T1)
     (s2 : coq_type T2) (A : UU0) :
   loc_id r1 != loc_id r2 \/ JMeq s1 s2 ->
   cput r1 s1 >> cput r2 s2 = cput r2 s2 >> cput r1 s1.
@@ -643,7 +481,7 @@ move=> H.
 congr mkActo.
 apply/boolp.funext => st /=.
 rewrite bindE /= /bindS MS_mapE /= fmapE /= bindA /=.
-rewrite [in RHS]bindE /= /bindS MS_mapE /= fmapE /= bindA /=.
+rewrite [in RHS]bindE /= /bindS MS_mapE /= fmapE /= bindA /= /cput.
 case Hr1: (nth_error _ _) => [[T1' u]|]; last first.
   rewrite bindfailf.
   case Hr2: (nth_error _ _) => [[T2' v]|]; last by rewrite bindfailf.
@@ -702,7 +540,7 @@ case: ml_type_eq_dec => // HT1.
 by rewrite -eq_rect_eq set_set_nth (negbTE Hr).
 Qed.
 
-Definition cputgetC T1 T2 (r1 : loc T1) (r2 : loc T2) (s1 : coq_type T1)
+Let cputgetC T1 T2 (r1 : loc T1) (r2 : loc T2) (s1 : coq_type T1)
     (A : UU0) (k : coq_type T2 -> M A) :
   loc_id r1 != loc_id r2 ->
   cput r1 s1 >> cget r2 >>= k = cget r2 >>= (fun v => cput r1 s1 >> k v).
@@ -712,7 +550,7 @@ congr mkActo.
 apply/boolp.funext => st /=.
 rewrite !bindA.
 rewrite bindE /= /bindS MS_mapE /= fmapE /= bindA /=.
-rewrite [in RHS]bindE /= /bindS MS_mapE /= fmapE /= bindA /=.
+rewrite [in RHS]bindE /= /bindS MS_mapE /= fmapE /= bindA /= /cput /cget.
 case Hr1: (nth_error _ _) => [[T1' u]|]; last first.
   rewrite bindfailf.
   case Hr2: (nth_error _ _) => [[T2' v]|]; last by rewrite bindfailf.
@@ -743,55 +581,52 @@ case: ml_type_eq_dec => // HT1.
 by rewrite -eq_rect_eq bindE.
 Qed.
 
-Definition crunret (A B : UU0) (m : M A) (s : B) :
-  crun m -> crun (m >> ret s) = Some s.
+Let cputnewC T T' (r : loc T) (s : coq_type T) (s' : coq_type T') A
+    (k : loc T' -> M A) :
+  cget r >> (cnew s' >>= fun r' => cput r s >> k r') =
+  cput r s >> (cnew s' >>= k).
 Proof.
-case: m => T /= m.
-rewrite /crun /= bindE /= /bindS MS_mapE /= fmapE /= bindA /=.
-by case Hm: (m [::]).
+congr mkActo.
+apply/boolp.funext => st /=.
+rewrite bindE /= /bindS MS_mapE /= fmapE /= bindA /=.
+rewrite [in RHS]bindE /= /bindS MS_mapE /= fmapE /= bindA /= /cget /cput.
+case Hr: (nth_error _ _) => [[T1 u]|]; last by rewrite bindfailf.
+rewrite {1 3}/coerce.
+case: ml_type_eq_dec => H /=; last by case ml_type_eq_dec => H' //; elim H.
+subst T1.
+rewrite bindE /= /bindS /= bindE /= bindE /= /bindS /= MS_mapE /= fmapE /=.
+rewrite bindE /= /bindS /= bindE /= bindE /= /bindS /= MS_mapE /= fmapE /=.
+rewrite (nth_error_rcons_some _ Hr).
+rewrite /coerce.
+case: ml_type_eq_dec => // H.
+rewrite -eq_rect_eq.
+rewrite bindE /= /bindS /= bindE /= bindE /= /bindS /= MS_mapE /= fmapE /=.
+rewrite bindE /= /bindS /=.
+rewrite (nth_error_size_set_nth _ _ Hr).
+by rewrite (nth_error_set_nth_rcons _ _ _ Hr).
 Qed.
 
-Definition crunskip : crun skip = Some tt.
+Let crunret (A B : UU0) (m : M A) (s : B) :
+  crun m -> crun (m >> Ret s) = Some s.
+Proof.
+rewrite /crun /= bindE /= /bindS MS_mapE /= fmapE /= bindA /=.
+by case Hm: (ofActo m [::]).
+Qed.
+
+Let crunskip : crun skip = Some tt.
 Proof. by []. Qed.
 
-Definition crunnew (A : UU0) T (m : M A) (s : coq_type T) :
+Let crunnew (A : UU0) T (m : M A) (s : coq_type T) :
   crun m -> crun (m >> cnew s).
 Proof.
-case: m => U /= m.
 rewrite /crun /= bindE /= /bindS MS_mapE /= fmapE /= bindA /=.
-by case Hm: (m [::]).
+by case Hm: (ofActo m [::]).
 Qed.
 
 Unset Universe Checking.
-Definition isMonadTypedStoreModel :
-  isMonadTypedStore.axioms_ M isFunctorTS isMonadTS.
-Proof.
-exists cnew cget cput cchk crun.
-- exact cnewget.
-- exact cnewgetC.
-- exact cnewput.
-- exact cnewputC.
-- exact cputput.
-- exact cputget.
-- exact cgetputchk.
-- exact cgetget.
-- exact cgetC.
-- exact cputC.
-- exact cputgetC.
-- exact cnewchk.
-- exact cchknewC.
-- exact cchkgetC.
-- exact cchknew.
-- exact cchkget.
-- exact cgetchk.
-- exact cchkputC.
-- exact cchkput.
-- exact cputchk.
-- exact cchkC.
-- exact cchkdup.
-- exact crunret.
-- exact crunskip.
-- exact crunnew.
-Defined.
+Canonical Structure isMonadTypedStoreModel :=
+  isMonadTypedStore.Build M cnewget cnewput cgetput cgetputskip
+    cgetget cputget cputput cgetC cgetnewD cgetnewE cgetputC cputC
+    cputgetC cputnewC crunret crunskip crunnew.
 Set Universe Checking.
 End ModelTypedStore.
