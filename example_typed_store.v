@@ -46,7 +46,7 @@ Definition loc_id {T} (l : loc T) := let: mkloc _ n := l in n.
 Section with_monad.
 Context [M : Type -> Type].
 
-Local (* Generated type translation function *)
+(* Generated type translation function *)
 Fixpoint coq_type (T : ml_type) : Type :=
   match T with
   | ml_int => nat
@@ -63,25 +63,6 @@ End MLtypes.
 Module IMonadTS := MonadTypedStore (MLtypes).
 Import MLtypes.
 Import IMonadTS.
-
-Arguments cget {s} [T].
-Arguments cput {s} [T].
-Arguments cchk {s} [T].
-Arguments crun {s} [A].
-
-Section lemmas.
-Variable M : typedStoreMonad.
-
-Lemma cgetret T :
-  @cget _ T = fun r => (cget r : M _) >>= Ret.
-Proof. by apply boolp.funext => r; rewrite bindmret. Qed.
-
-Lemma crunnew0 T s : crun (cnew T s : M _).
-Proof. by rewrite -[cnew _ _]bindskipf crunnew // crunskip. Qed.
-
-Lemma cnewgetret T s : cnew T s >>= @cget _ T = cnew T s >> Ret s :> M _.
-Proof. by rewrite cgetret cnewget. Qed.
-End lemmas.
 
 Section factorial.
 Variable M : typedStoreMonad.
@@ -142,7 +123,7 @@ elim: i x y => [|i IH] x y Hi.
   rewrite -/(fibo_rec n.+1).
   under eq_bind do under eq_bind do rewrite /= bindskipf.
   rewrite -cnewchk.
-  under eq_bind do rewrite cgetret cnewgetC.
+  under eq_bind do rewrite -cgetret cchknewget.
   by rewrite cnewget -bindA crunret // crunnew // crunnew0.
 rewrite subSS => -[] Hx Hy.
 rewrite -(IH y (x + y) (ltnW Hi)); last first.
@@ -154,13 +135,13 @@ rewrite -(IH y (x + y) (ltnW Hi)); last first.
 rewrite /=.
 under eq_bind do under eq_bind do rewrite !bindA.
 rewrite -cnewchk.
-under eq_bind do rewrite cnewgetC.
+under eq_bind do rewrite cchknewget.
 rewrite cnewget.
 under eq_bind do under eq_bind do rewrite !bindA.
 under eq_bind do rewrite cnewget.
 under eq_bind do under eq_bind do rewrite !bindA.
-rewrite -cnewchk.
-under eq_bind do rewrite cnewputC.
+rewrite -[in LHS]cnewchk.
+under eq_bind do rewrite cchknewput.
 rewrite cnewput.
 by under eq_bind do rewrite cnewput.
 Qed.
