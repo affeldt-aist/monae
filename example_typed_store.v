@@ -158,7 +158,6 @@ rewrite -{1}/(fact_rec 0).
 pose m := n.
 have -> : 0 = n - m by rewrite subnn.
 have : m <= n by [].
-clearbody m.
 elim: m => [|m IH] mn.
   rewrite subn0.
   under eq_bind do rewrite forloop0 ?leqnn // bindretf -cgetret.
@@ -168,10 +167,8 @@ under eq_bind do (rewrite forloopS; last by apply leq_subr).
 under eq_bind do rewrite !bindA.
 rewrite cnewget.
 under eq_bind do rewrite bindretf.
-rewrite cnewput.
-rewrite subnS (_ : fact_rec _ * _ = fact_rec (n - m)).
-  by rewrite IH // ltnW.
-by rewrite mulnC -(@prednK (n-m)) // lt0n subn_eq0 -ltnNge.
+rewrite cnewput -IH; last by apply ltnW.
+by rewrite subnS mulnC -(@prednK (n-m)) // lt0n subn_eq0 -ltnNge.
 Qed.
 End fact_for.
 
