@@ -90,6 +90,40 @@ by rewrite cnewput IH // (mulnC m.+1) -mulnA.
 Qed.
 End factorial.
 
+Section fact_for.
+Variable M : typedStoreMonad.
+Notation coq_type := (@MLtypes.coq_type M).
+
+Definition forloop (n_1 n_2 : nat) (b : nat -> M unit) : M unit :=
+  if n_2 < n_1 then Ret tt else
+  iteri (n_2.+1 - n_1)
+       (fun i (m : M unit) => m >> b (n_1 + i))
+       skip.
+
+Notation "'do' x <- m ; e" := (m >>= (fun x => e))
+  (at level 60, x name, m at level 200, e at level 60).
+
+Definition fact_for (n : coq_type ml_int) : M (coq_type ml_int) :=
+  do v <- cnew ml_int 1;
+  do _ <-
+  (do u <- Ret 1;
+   do v_1 <- Ret n;
+   forloop u v_1
+     (fun i =>
+        do v_1 <- (do v_1 <- cget v; Ret (v_1 * i));
+        cput v v_1));
+  cget v.
+
+Theorem fact_for_ok n : crun (fact_for n) = Some (fact_rec n).
+Proof.
+rewrite /fact_for /forloop.
+under eq_bind do rewrite !bindA !bindretf.
+elim: n => [|n IH] /=.
+  under eq_bind do rewrite bindretf -cgetret.
+  by rewrite cnewget crunret // crunnew0.
+Abort.
+End fact_for.
+
 Section fibonacci.
 Variable M : typedStoreMonad.
 Notation coq_type := (@MLtypes.coq_type M).
@@ -146,3 +180,21 @@ rewrite cnewput.
 by under eq_bind do rewrite cnewput.
 Qed.
 End fibonacci.
+
+(*
+Require Import PrimInt63.
+Require Sint63.
+
+Section fact_for.
+Variable M : typedStoreMonad.
+Notation coq_type := (@MLtypes.coq_type M).
+
+Definition nat_of_uint (n : int) : nat :=
+  if Uint63.to_Z n is Zpos pos then Pos.to_nat pos else 0.
+
+Definition forloop (n_1 n_2 : int) (b : int -> M unit) : M unit :=
+  if Sint63.ltb n_2 n_1 then Ret tt else
+  iteri (nat_of_uint (sub n_2 n_1))
+       (fun i (m : M unit) => m >> b (add n_1 (Uint63.of_Z (Z.of_nat i))))
+       (Ret tt).
+*)
