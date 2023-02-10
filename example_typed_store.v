@@ -114,14 +114,48 @@ Definition fact_for (n : coq_type ml_int) : M (coq_type ml_int) :=
         cput v v_1));
   cget v.
 
+Lemma iteriSr T n (f : nat -> T -> T) x :
+  iteri n.+1 f x = iteri n (f \o succn) (f 0 x).
+Proof. by elim: n x => // n IH x /=; rewrite -IH. Qed.
+
+Lemma iteri_bind (S : monad) n (f : nat -> S unit) (m1 m2 : S unit) :
+  iteri n (fun i (m : S unit) => m >> f i) (m1 >> m2) =
+  m1 >> iteri n (fun i (m : S unit) => m >> f i) m2.
+Proof. by elim: n m2 => // n IH m2; rewrite iteriS IH !bindA. Qed.
+
 Theorem fact_for_ok n : crun (fact_for n) = Some (fact_rec n).
 Proof.
 rewrite /fact_for /forloop.
 under eq_bind do rewrite !bindA !bindretf.
-elim: n => [|n IH] /=.
+transitivity (crun (cnew ml_int (fact_rec n) >> Ret (fact_rec n) : M _));
+  last by rewrite crunret // crunnew0.
+congr crun.
+rewrite subn1 succnK.
+pose i := 0.
+rewrite -{1}/(fact_rec 0) -{1 3}/i.
+set m := n - i.
+have {1 2}-> : n = m by rewrite /m subn0.
+have -> : n = m + i by rewrite /m subn0 addn0.
+clearbody m.
+elim: m i {n} => [|m IH] i.
   under eq_bind do rewrite bindretf -cgetret.
-  by rewrite cnewget crunret // crunnew0.
-Abort.
+  by rewrite cnewget.
+under eq_bind do
+  rewrite iteriSr bindskipf -[X in iteri _ _ X]bindmskip iteri_bind.
+rewrite /=.
+case Hm: (m < 1) IH => IH.
+  case: m Hm {IH} => //= _.
+  under eq_bind do rewrite !bindA bindretf -cgetret !bindA.
+  rewrite cnewget.
+  under eq_bind do rewrite !bindretf.
+  by rewrite cnewput cnewget addn0 (mulnC i.+1).
+under eq_bind do rewrite !bindA.
+rewrite cnewget.
+under eq_bind do rewrite bindretf.
+rewrite cnewput addn0.
+under eq_bind do under [fun i : nat => _]boolp.funext do rewrite -addSnnS.
+by rewrite mulnC -/(fact_rec i.+1) IH addnS.
+Qed.
 End fact_for.
 
 Section fibonacci.
@@ -181,20 +215,19 @@ by under eq_bind do rewrite cnewput.
 Qed.
 End fibonacci.
 
-(*
 Require Import PrimInt63.
 Require Sint63.
 
-Section fact_for.
+Section fact_for_int63.
 Variable M : typedStoreMonad.
 Notation coq_type := (@MLtypes.coq_type M).
 
 Definition nat_of_uint (n : int) : nat :=
   if Uint63.to_Z n is Zpos pos then Pos.to_nat pos else 0.
 
-Definition forloop (n_1 n_2 : int) (b : int -> M unit) : M unit :=
+Definition forloop63 (n_1 n_2 : int) (b : int -> M unit) : M unit :=
   if Sint63.ltb n_2 n_1 then Ret tt else
   iteri (nat_of_uint (sub n_2 n_1))
        (fun i (m : M unit) => m >> b (add n_1 (Uint63.of_Z (Z.of_nat i))))
        (Ret tt).
-*)
+End fact_for_int63.
