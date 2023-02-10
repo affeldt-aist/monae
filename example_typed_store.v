@@ -90,15 +90,48 @@ by rewrite cnewput IH // (mulnC m.+1) -mulnA.
 Qed.
 End factorial.
 
-Section fact_for.
-Variable M : typedStoreMonad.
-Notation coq_type := (@MLtypes.coq_type M).
+Section forloop.
+Variable M : monad.
 
 Definition forloop (n_1 n_2 : nat) (b : nat -> M unit) : M unit :=
   if n_2 < n_1 then Ret tt else
   iteri (n_2.+1 - n_1)
        (fun i (m : M unit) => m >> b (n_1 + i))
        skip.
+
+Lemma iteriSr T n (f : nat -> T -> T) x :
+  iteri n.+1 f x = iteri n (f \o succn) (f 0 x).
+Proof. by elim: n x => // n IH x /=; rewrite -IH. Qed.
+
+Lemma iteriD T n m (f : nat -> T -> T) x :
+  iteri (n + m) f x = iteri m (f \o addn n) (iteri n f x).
+Proof. by elim: n x f => // n IH x f; rewrite addSn iteriSr IH iteriSr. Qed.
+
+Lemma iteri_bind n (f : nat -> M unit) (m1 m2 : M unit) :
+  iteri n (fun i (m : M unit) => m >> f i) (m1 >> m2) =
+  m1 >> iteri n (fun i (m : M unit) => m >> f i) m2.
+Proof. by elim: n m2 => // n IH m2; rewrite iteriS IH !bindA. Qed.
+
+Lemma forloopS m n (f : nat -> M unit) :
+  m <= n -> forloop m n f = f m >> forloop m.+1 n f.
+Proof.
+rewrite /forloop => mn.
+rewrite ltnNge mn /= subSS subSn // iteriSr bindskipf.
+rewrite -[f _]bindmskip iteri_bind addn0 ltnS -subn_eq0.
+case: (n-m) => //= k.
+rewrite addSnnS; apply eq_bind => _; congr bind.
+apply eq_iteri => i x; by rewrite addSnnS.
+Qed.
+
+Lemma forloop0 m n (f : nat -> M unit) :
+  m > n -> forloop m n f = skip.
+Proof. by rewrite /forloop => ->. Qed.
+End forloop.
+Arguments forloop {M}.
+
+Section fact_for.
+Variable M : typedStoreMonad.
+Notation coq_type := (@MLtypes.coq_type M).
 
 Notation "'do' x <- m ; e" := (m >>= (fun x => e))
   (at level 60, x name, m at level 200, e at level 60).
@@ -114,47 +147,31 @@ Definition fact_for (n : coq_type ml_int) : M (coq_type ml_int) :=
         cput v v_1));
   cget v.
 
-Lemma iteriSr T n (f : nat -> T -> T) x :
-  iteri n.+1 f x = iteri n (f \o succn) (f 0 x).
-Proof. by elim: n x => // n IH x /=; rewrite -IH. Qed.
-
-Lemma iteri_bind (S : monad) n (f : nat -> S unit) (m1 m2 : S unit) :
-  iteri n (fun i (m : S unit) => m >> f i) (m1 >> m2) =
-  m1 >> iteri n (fun i (m : S unit) => m >> f i) m2.
-Proof. by elim: n m2 => // n IH m2; rewrite iteriS IH !bindA. Qed.
-
 Theorem fact_for_ok n : crun (fact_for n) = Some (fact_rec n).
 Proof.
-rewrite /fact_for /forloop.
+rewrite /fact_for.
 under eq_bind do rewrite !bindA !bindretf.
 transitivity (crun (cnew ml_int (fact_rec n) >> Ret (fact_rec n) : M _));
   last by rewrite crunret // crunnew0.
 congr crun.
-rewrite subn1 succnK.
-pose i := 0.
-rewrite -{1}/(fact_rec 0) -{1 3}/i.
-set m := n - i.
-have {1 2}-> : n = m by rewrite /m subn0.
-have -> : n = m + i by rewrite /m subn0 addn0.
+rewrite -{1}/(fact_rec 0).
+pose m := n.
+have -> : 0 = n - m by rewrite subnn.
+have : m <= n by [].
 clearbody m.
-elim: m i {n} => [|m IH] i.
-  under eq_bind do rewrite bindretf -cgetret.
+elim: m => [|m IH] mn.
+  rewrite subn0.
+  under eq_bind do rewrite forloop0 ?leqnn // bindretf -cgetret.
   by rewrite cnewget.
-under eq_bind do
-  rewrite iteriSr bindskipf -[X in iteri _ _ X]bindmskip iteri_bind.
-rewrite /=.
-case Hm: (m < 1) IH => IH.
-  case: m Hm {IH} => //= _.
-  under eq_bind do rewrite !bindA bindretf -cgetret !bindA.
-  rewrite cnewget.
-  under eq_bind do rewrite !bindretf.
-  by rewrite cnewput cnewget addn0 (mulnC i.+1).
+rewrite subnSK //.
+under eq_bind do (rewrite forloopS; last by apply leq_subr).
 under eq_bind do rewrite !bindA.
 rewrite cnewget.
 under eq_bind do rewrite bindretf.
-rewrite cnewput addn0.
-under eq_bind do under [fun i : nat => _]boolp.funext do rewrite -addSnnS.
-by rewrite mulnC -/(fact_rec i.+1) IH addnS.
+rewrite cnewput.
+rewrite subnS (_ : fact_rec _ * _ = fact_rec (n - m)).
+  by rewrite IH // ltnW.
+by rewrite mulnC -(@prednK (n-m)) // lt0n subn_eq0 -ltnNge.
 Qed.
 End fact_for.
 
