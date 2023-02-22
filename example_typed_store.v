@@ -239,9 +239,30 @@ Notation coq_type := (@MLtypes.coq_type M).
 Definition nat_of_uint (n : int) : nat :=
   if Uint63.to_Z n is Zpos pos then Pos.to_nat pos else 0.
 
+Notation "'do' x <- m ; e" := (m >>= (fun x => e))
+  (at level 60, x name, m at level 200, e at level 60).
+
 Definition forloop63 (n_1 n_2 : int) (b : int -> M unit) : M unit :=
   if Sint63.ltb n_2 n_1 then Ret tt else
-  iteri (nat_of_uint (sub n_2 n_1))
-       (fun i (m : M unit) => m >> b (add n_1 (Uint63.of_Z (Z.of_nat i))))
-       (Ret tt).
+  iter (nat_of_uint (sub n_2 n_1))
+       (fun (m : M int) => do i <- m; do _ <- b i; Ret (Uint63.succ i))
+       (Ret n_1) >> Ret tt.
+
+Lemma ltsbNlesb m n : ltsb m n = ~~ lesb n m.
+Proof.
+case/boolP: (lesb n m) => /Sint63.lebP nm; apply/Sint63.ltbP => /=;
+  by [apply Z.le_ngt | apply Z.nle_gt].
+Qed.
+
+Lemma forloop63S m n (f : int -> M unit) :
+  lesb m n -> forloop63 m n f = f m >> forloop63 (add m 1) n f.
+Proof.
+rewrite /forloop63 => mn.
+rewrite ltsbNlesb mn /=.
+Abort.
+
+Lemma forloop630 m n (f : nat -> M unit) :
+  m > n -> forloop m n f = skip.
+Proof. by rewrite /forloop => ->. Qed.
+
 End fact_for_int63.
