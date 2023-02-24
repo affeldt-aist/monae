@@ -357,8 +357,8 @@ pose m := n.
 have -> : 0 = n - m by rewrite subnn.
 have : m <= n by [].
 elim: m => [|m IH] mn.
-  rewrite subn0 /forloop63 ltsb_succ.
-  under eq_bind do rewrite bindretf -cgetret.
+  rewrite subn0.
+  under eq_bind do rewrite forloop630 (ltsb_succ,bindretf) // -cgetret.
   by rewrite cnewget.
 rewrite -int_of_nat_succ subnSK //.
 under eq_bind do rewrite forloop63S !(lesb_subr,bindA) //.
