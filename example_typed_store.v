@@ -232,9 +232,38 @@ End fibonacci.
 Require Import PrimInt63.
 Require Sint63.
 
+Module MLtypes63.
+Local Definition ml_type_eq_dec := ml_type_eq_dec.
+Local Definition ml_type := ml_type.
+Local Definition undef := Undef.
+Local Definition loc := loc.
+Local Definition locT := [eqType of nat].
+Local Definition loc_id := @loc_id.
+
+Section with_monad.
+Context [M : Type -> Type].
+
+(* Generated type translation function *)
+Fixpoint coq_type (T : ml_type) : Type :=
+  match T with
+  | ml_int => int
+  | ml_bool => bool
+  | ml_unit => unit
+  | ml_arrow T1 T2 => coq_type T1 -> M (coq_type T2)
+  | ml_ref T1 => loc T1
+  | ml_undef => undef_t
+  end.
+End with_monad.
+Local Definition ml_undef := ml_undef.
+End MLtypes63.
+
+Module IMonadTS63 := hierarchy.MonadTypedStore (MLtypes63).
+Import MLtypes63.
+Import IMonadTS63.
+
 Section fact_for_int63.
 Variable M : typedStoreMonad.
-Notation coq_type := (@MLtypes.coq_type M).
+Notation coq_type := (@MLtypes63.coq_type M).
 
 Definition nat_of_uint (n : int) : nat :=
   if Uint63.to_Z n is Zpos pos then Pos.to_nat pos else 0.
@@ -244,7 +273,7 @@ Notation "'do' x <- m ; e" := (m >>= (fun x => e))
 
 Definition forloop63 (n_1 n_2 : int) (b : int -> M unit) : M unit :=
   if Sint63.ltb n_2 n_1 then Ret tt else
-  iter (nat_of_uint (sub n_2 n_1))
+  iter (nat_of_uint (sub n_2 n_1)).+1
        (fun (m : M int) => do i <- m; do _ <- b i; Ret (Uint63.succ i))
        (Ret n_1) >> Ret tt.
 
@@ -254,15 +283,89 @@ case/boolP: (lesb n m) => /Sint63.lebP nm; apply/Sint63.ltbP => /=;
   by [apply Z.le_ngt | apply Z.nle_gt].
 Qed.
 
+Lemma iter_bind T n (f : T -> M T) (m1 : M unit) m2 :
+  iter n (fun (m : M T) => m >>= f) (m1 >> m2) =
+  m1 >> iter n (fun (m : M T) => m >>= f) m2.
+Proof. by elim: n m2 => // n IH m2; rewrite iterS IH !bindA. Qed.
+
+Lemma lesb_ltsb_eq m n : lesb m n -> ltsb n (Uint63.succ m) -> m = n.
+Admitted.
+
+Lemma nat_of_uint_sub_succ m n : lesb m n -> lesb (Uint63.succ m) n ->
+  nat_of_uint (sub n m) = (nat_of_uint (sub n (Uint63.succ m))).+1.
+Admitted.
+
 Lemma forloop63S m n (f : int -> M unit) :
-  lesb m n -> forloop63 m n f = f m >> forloop63 (add m 1) n f.
+  lesb m n -> forloop63 m n f = f m >> forloop63 (Uint63.succ m) n f.
 Proof.
 rewrite /forloop63 => mn.
 rewrite ltsbNlesb mn /=.
-Abort.
+case: ifPn => m1n.
+  rewrite (lesb_ltsb_eq _ _ mn m1n).
+  by rewrite Sint63.sub_of_Z Z.sub_diag /= !(bindA,bindretf).
+rewrite ltsbNlesb negbK in m1n.
+rewrite nat_of_uint_sub_succ //.
+by rewrite iterSr bindretf !bindA iter_bind !bindA.
+Qed.
 
-Lemma forloop630 m n (f : nat -> M unit) :
-  m > n -> forloop m n f = skip.
-Proof. by rewrite /forloop => ->. Qed.
+Lemma forloop630 m n (f : int -> M unit) :
+  ltsb n m -> forloop63 m n f = skip.
+Proof. by rewrite /forloop63 => ->. Qed.
 
+Definition fact_for63 (n : coq_type ml_int) : M (coq_type ml_int) :=
+  do v <- cnew ml_int 1%int63;
+  do _ <-
+  (do u <- Ret 1%int63;
+   do v_1 <- Ret n;
+   forloop63 u v_1
+     (fun i =>
+        do v_1 <- (do v_1 <- cget v; Ret (mul v_1 i));
+        cput v v_1));
+  cget v.
+
+Definition int_of_nat n := Uint63.of_Z (Z.of_nat n).
+
+Lemma int_of_nat_succ : {morph int_of_nat : x / x.+1 >-> Uint63.succ x}.
+Admitted.
+
+Lemma int_of_nat_mul : {morph int_of_nat : x y / x * y >-> mul x y}.
+Admitted.
+
+Section fact_for63_ok.
+Variable n : nat.
+Hypothesis Hn : n < nat_of_uint Sint63.max_int.
+
+Let ltsb_succ : ltsb (int_of_nat n) (Uint63.succ (int_of_nat n)).
+Admitted.
+
+Lemma lesb_subr m : m < n -> lesb (int_of_nat (n - m)) (int_of_nat n).
+Admitted.
+
+Theorem fact_for63_ok :
+  crun (fact_for63 (int_of_nat n)) = Some (int_of_nat (fact_rec n)).
+Proof.
+rewrite /fact_for63.
+under eq_bind do rewrite !bindA !bindretf.
+set fn := int_of_nat (fact_rec n).
+transitivity (crun (cnew ml_int fn >> Ret fn : M _));
+  last by rewrite crunret // crunnew0.
+congr crun.
+have {1}-> : (1 = int_of_nat 1)%int63 by [].
+have -> : (1 = Uint63.succ (int_of_nat 0))%int63 by [].
+rewrite -/(fact_rec 0).
+pose m := n.
+have -> : 0 = n - m by rewrite subnn.
+have : m <= n by [].
+elim: m => [|m IH] mn.
+  rewrite subn0 /forloop63 ltsb_succ.
+  under eq_bind do rewrite bindretf -cgetret.
+  by rewrite cnewget.
+rewrite -int_of_nat_succ subnSK //.
+under eq_bind do rewrite forloop63S !(lesb_subr,bindA) //.
+rewrite cnewget.
+under eq_bind do rewrite bindretf.
+rewrite cnewput -IH (ltnW,subnS) // -int_of_nat_mul mulnC -(@prednK (n-m)) //.
+by rewrite lt0n subn_eq0 -ltnNge.
+Qed.
+End fact_for63_ok.
 End fact_for_int63.
