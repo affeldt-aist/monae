@@ -265,7 +265,7 @@ Section fact_for_int63.
 Variable M : typedStoreMonad.
 Notation coq_type := (@MLtypes63.coq_type M).
 
-Definition nat_of_uint (n : int) : nat :=
+Definition uint2N (n : int) : nat :=
   if Uint63.to_Z n is Zpos pos then Pos.to_nat pos else 0.
 
 Notation "'do' x <- m ; e" := (m >>= (fun x => e))
@@ -273,7 +273,7 @@ Notation "'do' x <- m ; e" := (m >>= (fun x => e))
 
 Definition forloop63 (n_1 n_2 : int) (b : int -> M unit) : M unit :=
   if Sint63.ltb n_2 n_1 then Ret tt else
-  iter (nat_of_uint (sub n_2 n_1)).+1
+  iter (uint2N (sub n_2 n_1)).+1
        (fun (m : M int) => do i <- m; do _ <- b i; Ret (Uint63.succ i))
        (Ret n_1) >> Ret tt.
 
@@ -291,8 +291,8 @@ Proof. by elim: n m2 => // n IH m2; rewrite iterS IH !bindA. Qed.
 Lemma lesb_ltsb_eq m n : lesb m n -> ltsb n (Uint63.succ m) -> m = n.
 Admitted.
 
-Lemma nat_of_uint_sub_succ m n : lesb m n -> lesb (Uint63.succ m) n ->
-  nat_of_uint (sub n m) = (nat_of_uint (sub n (Uint63.succ m))).+1.
+Lemma uint2N_sub_succ m n : lesb m n -> lesb (Uint63.succ m) n ->
+  uint2N (sub n m) = (uint2N (sub n (Uint63.succ m))).+1.
 Admitted.
 
 Lemma forloop63S m n (f : int -> M unit) :
@@ -304,7 +304,7 @@ case: ifPn => m1n.
   rewrite (lesb_ltsb_eq _ _ mn m1n).
   by rewrite Sint63.sub_of_Z Z.sub_diag /= !(bindA,bindretf).
 rewrite ltsbNlesb negbK in m1n.
-rewrite nat_of_uint_sub_succ //.
+rewrite uint2N_sub_succ //.
 by rewrite iterSr bindretf !bindA iter_bind !bindA.
 Qed.
 
@@ -323,35 +323,35 @@ Definition fact_for63 (n : coq_type ml_int) : M (coq_type ml_int) :=
         cput v v_1));
   cget v.
 
-Definition int_of_nat n := Uint63.of_Z (Z.of_nat n).
+Definition N2int n := Uint63.of_Z (Z.of_nat n).
 
-Lemma int_of_nat_succ : {morph int_of_nat : x / x.+1 >-> Uint63.succ x}.
+Lemma N2int_succ : {morph N2int : x / x.+1 >-> Uint63.succ x}.
 Admitted.
 
-Lemma int_of_nat_mul : {morph int_of_nat : x y / x * y >-> mul x y}.
+Lemma N2int_mul : {morph N2int : x y / x * y >-> mul x y}.
 Admitted.
 
 Section fact_for63_ok.
 Variable n : nat.
-Hypothesis Hn : n < nat_of_uint Sint63.max_int.
+Hypothesis Hn : n < uint2N Sint63.max_int.
 
-Let ltsb_succ : ltsb (int_of_nat n) (Uint63.succ (int_of_nat n)).
+Lemma ltsb_succ : ltsb (N2int n) (Uint63.succ (N2int n)).
 Admitted.
 
-Lemma lesb_subr m : m < n -> lesb (int_of_nat (n - m)) (int_of_nat n).
+Lemma lesb_subr m : m < n -> lesb (N2int (n - m)) (N2int n).
 Admitted.
 
 Theorem fact_for63_ok :
-  crun (fact_for63 (int_of_nat n)) = Some (int_of_nat (fact_rec n)).
+  crun (fact_for63 (N2int n)) = Some (N2int (fact_rec n)).
 Proof.
 rewrite /fact_for63.
 under eq_bind do rewrite !bindA !bindretf.
-set fn := int_of_nat (fact_rec n).
+set fn := N2int (fact_rec n).
 transitivity (crun (cnew ml_int fn >> Ret fn : M _));
   last by rewrite crunret // crunnew0.
 congr crun.
-have {1}-> : (1 = int_of_nat 1)%int63 by [].
-have -> : (1 = Uint63.succ (int_of_nat 0))%int63 by [].
+have {1}-> : (1 = N2int 1)%int63 by [].
+have -> : (1 = Uint63.succ (N2int 0))%int63 by [].
 rewrite -/(fact_rec 0).
 pose m := n.
 have -> : 0 = n - m by rewrite subnn.
@@ -360,11 +360,11 @@ elim: m => [|m IH] mn.
   rewrite subn0.
   under eq_bind do rewrite forloop630 (ltsb_succ,bindretf) // -cgetret.
   by rewrite cnewget.
-rewrite -int_of_nat_succ subnSK //.
+rewrite -N2int_succ subnSK //.
 under eq_bind do rewrite forloop63S !(lesb_subr,bindA) //.
 rewrite cnewget.
 under eq_bind do rewrite bindretf.
-rewrite cnewput -IH (ltnW,subnS) // -int_of_nat_mul mulnC -(@prednK (n-m)) //.
+rewrite cnewput -IH (ltnW,subnS) // -N2int_mul mulnC -(@prednK (n-m)) //.
 by rewrite lt0n subn_eq0 -ltnNge.
 Qed.
 End fact_for63_ok.
