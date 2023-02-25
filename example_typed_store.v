@@ -351,8 +351,8 @@ transitivity (crun (cnew ml_int fn >> Ret fn : M _));
   last by rewrite crunret // crunnew0.
 congr crun.
 have {1}-> : (1 = N2int 1)%int63 by [].
-have -> : (1 = Uint63.succ (N2int 0))%int63 by [].
 rewrite -/(fact_rec 0).
+have -> : (1 = Uint63.succ (N2int 0))%int63 by [].
 pose m := n.
 have -> : 0 = n - m by rewrite subnn.
 have : m <= n by [].
