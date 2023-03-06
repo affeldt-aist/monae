@@ -283,29 +283,72 @@ case/boolP: (lesb n m) => /Sint63.lebP nm; apply/Sint63.ltbP => /=;
   by [apply Z.le_ngt | apply Z.nle_gt].
 Qed.
 
+Lemma ltsbNltsbS m n : ltsb m n -> ~ ltsb n (Uint63.succ m).
+Proof.
+move/Sint63.ltbP => mn.
+move/Sint63.ltbP/Zlt_not_le; elim.
+rewrite Sint63.succ_spec Sint63.cmod_small.
+  by apply/Zlt_le_succ.
+split.
+  apply (Z.le_trans _ (Sint63.to_Z m)). by case: (Sint63.to_Z_bounded m).
+  by apply Z.le_succ_diag_r.
+apply (Z.le_lt_trans _ (Sint63.to_Z n)).
+  by apply/Zlt_le_succ.
+apply (Z.le_lt_trans _ (Sint63.to_Z Sint63.max_int)).
+  by case: (Sint63.to_Z_bounded n).
+rewrite Sint63.to_Z_max. by apply Z.lt_sub_pos.
+Qed.
+
+Lemma ltsbW m n : ltsb m n -> lesb m n.
+Proof. move/Sint63.ltbP/Z.lt_le_incl => mn; by apply/Sint63.lebP. Qed.
+
 Lemma iter_bind T n (f : T -> M T) (m1 : M unit) m2 :
   iter n (fun (m : M T) => m >>= f) (m1 >> m2) =
   m1 >> iter n (fun (m : M T) => m >>= f) m2.
 Proof. by elim: n m2 => // n IH m2; rewrite iterS IH !bindA. Qed.
 
 Lemma lesb_ltsb_eq m n : lesb m n -> ltsb n (Uint63.succ m) -> m = n.
-Admitted.
+Proof.
+move/Sint63.lebP => mn /Sint63.ltbP nSm.
+move: (nSm).
+rewrite Sint63.succ_of_Z -Sint63.is_int; last first.
+  split.
+    apply Z.le_le_succ_r.
+    by case: (Sint63.to_Z_bounded m).
+  apply Zlt_le_succ, (Z.le_lt_trans _ _ _ mn), (Z.lt_le_trans _ _ _ nSm).
+  by case: (Sint63.to_Z_bounded (Uint63.succ m)).
+move/Zlt_le_succ/Zsucc_le_reg => nm.
+by apply Sint63.to_Z_inj, Zle_antisym.
+Qed.
 
-Lemma uint2N_sub_succ m n : lesb m n -> lesb (Uint63.succ m) n ->
+Lemma uint2N_sub_succ m n : ltsb m n ->
   uint2N (sub n m) = (uint2N (sub n (Uint63.succ m))).+1.
+Proof.
+rewrite /uint2N !Uint63.sub_spec Uint63.succ_spec.
+rewrite [in RHS]Zminus_mod Zmod_mod -Zminus_mod.
+rewrite Z.sub_add_distr.
+move/Sint63.ltbP => mn.
 Admitted.
 
 Lemma forloop63S m n (f : int -> M unit) :
-  lesb m n -> forloop63 m n f = f m >> forloop63 (Uint63.succ m) n f.
+  ltsb m n -> forloop63 m n f = f m >> forloop63 (Uint63.succ m) n f.
 Proof.
 rewrite /forloop63 => mn.
-rewrite ltsbNlesb mn /=.
-case: ifPn => m1n.
-  rewrite (lesb_ltsb_eq _ _ mn m1n).
-  by rewrite Sint63.sub_of_Z Z.sub_diag /= !(bindA,bindretf).
-rewrite ltsbNlesb negbK in m1n.
+rewrite ltsbNlesb (ltsbW _ _ mn) /=.
+case: ifPn => nSm.
+  by elim (ltsbNltsbS _ _ mn).
+rewrite ltsbNlesb negbK in nSm.
 rewrite uint2N_sub_succ //.
 by rewrite iterSr bindretf !bindA iter_bind !bindA.
+Qed.
+
+Lemma forloop631 m (f : int -> M unit) :
+  forloop63 m m f = f m.
+Proof. rewrite /forloop63.
+case: (Sint63.ltbP m m) => [/Z.lt_irrefl // | _].
+rewrite /= bindA.
+rewrite /uint2N Uint63.sub_spec Z.sub_diag Zmod_0_l /=.
+by rewrite !(bindretf,bindA) bindmskip.
 Qed.
 
 Lemma forloop630 m n (f : int -> M unit) :
@@ -338,7 +381,7 @@ Hypothesis Hn : n < uint2N Sint63.max_int.
 Lemma ltsb_succ : ltsb (N2int n) (Uint63.succ (N2int n)).
 Admitted.
 
-Lemma lesb_subr m : m < n -> lesb (N2int (n - m)) (N2int n).
+Lemma ltsb_subr m : m.+1 < n -> ltsb (N2int (n - m.+1)) (N2int n).
 Admitted.
 
 Theorem fact_for63_ok :
@@ -361,10 +404,16 @@ elim: m => [|m IH] mn.
   under eq_bind do rewrite forloop630 (ltsb_succ,bindretf) // -cgetret.
   by rewrite cnewget.
 rewrite -N2int_succ subnSK //.
-under eq_bind do rewrite forloop63S !(lesb_subr,bindA) //.
+case: m IH mn => [|m] IH mn.
+  under eq_bind do rewrite subn0 forloop631 !(ltsb_subr,bindA) //.
+  rewrite cnewget.
+  under eq_bind do rewrite bindretf -cgetret.
+  rewrite cnewput -N2int_mul mulnC -{1}(@prednK n) // cnewget subn1.
+  by rewrite -/(fact_rec n.-1.+1) prednK.
+under eq_bind do rewrite forloop63S !(ltsb_subr,bindA) //.
 rewrite cnewget.
 under eq_bind do rewrite bindretf.
-rewrite cnewput -IH (ltnW,subnS) // -N2int_mul mulnC -(@prednK (n-m)) //.
+rewrite cnewput -IH (ltnW,subnS) // -N2int_mul mulnC -(@prednK (n-m.+1)) //.
 by rewrite lt0n subn_eq0 -ltnNge.
 Qed.
 End fact_for63_ok.
