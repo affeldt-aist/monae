@@ -327,33 +327,60 @@ Proof. by case: (Uint63.to_Z_bounded n). Qed.
 Lemma uint63_max n : (Uint63.to_Z n < Uint63.wB)%Z.
 Proof. by case: (Uint63.to_Z_bounded n). Qed.
 
+Lemma succ_pred m n : sub n (Uint63.succ m) = Uint63.pred (sub n m).
+Proof.
+apply Uint63.to_Z_inj.
+rewrite Uint63.sub_spec Uint63.succ_spec Uint63.pred_spec Uint63.sub_spec.
+rewrite Zminus_mod Zmod_mod -Zminus_mod Z.sub_add_distr.
+apply/esym.
+by rewrite Zminus_mod Zmod_mod -Zminus_mod.
+Qed.
+
+Lemma uint2N_pred n : n <> 0%int63 -> uint2N n = (uint2N (Uint63.pred n)).+1.
+Proof.
+move=> Hn.
+rewrite /uint2N Uint63.pred_spec.
+case HnZ: (Uint63.to_Z n) => [|m|m].
+- rewrite (_ : 0 = Uint63.to_Z 0)%Z // in HnZ.
+  move/Uint63.to_Z_inj in HnZ.
+  by elim Hn.
+- have Hm1 : (0 <= Z.pos m - 1 < Uint63.wB)%Z.
+    split. by apply leZsub1, Pos2Z.is_pos.
+    apply (Z.lt_trans _ (Z.pos m)).
+      by apply leZsub1, Z.le_refl.
+    rewrite -HnZ; by apply uint63_max.
+  rewrite Zmod_small //.
+  case HmZ: (Z.pos m - 1)%Z => [|p|p].
+  + by move/Z.sub_move_r: HmZ => /= [] ->.
+  + apply Nat2Z.inj => /=.
+    rewrite positive_nat_Z Pos2SuccNat.id_succ Pos2Z.inj_succ -HmZ.
+    by rewrite (Z.succ_pred (Z.pos m)).
+  + by destruct m.
+- move: (uint63_min n).
+  rewrite HnZ => /Zle_not_lt; elim.
+  by apply Zlt_neg_0.
+Qed.      
+
 Lemma uint2N_sub_succ m n : ltsb m n ->
   uint2N (sub n m) = (uint2N (sub n (Uint63.succ m))).+1.
 Proof.
-rewrite /uint2N !Uint63.sub_spec Uint63.succ_spec.
-rewrite [in RHS]Zminus_mod Zmod_mod -Zminus_mod Z.sub_add_distr.
-move/Sint63.ltbP.
-rewrite /Sint63.to_Z.
-case: ifP => /Uint63.ltbP Hm; case: ifP => /Uint63.ltbP Hn.
-- move=> mn.
-  rewrite !Zmod_small; first last.
-  + split. by apply Zle_minus_le_0, Z.lt_le_incl.
-    rewrite -(subZ0 Uint63.wB).
-    by apply /Z.sub_lt_le_mono /uint63_min /uint63_max.
-  + split. by apply/leZsub1/Z.lt_0_sub.
-    rewrite -Z.sub_add_distr -(subZ0 Uint63.wB).
-    apply Z.sub_lt_le_mono. by apply uint63_max.
-    apply Z.add_nonneg_nonneg => //. by apply uint63_min.
-  case Hnm1: (Uint63.to_Z n - Uint63.to_Z m - 1)%Z.
-  + by move/Zminus_eq: Hnm1 => ->.
-  + move/Z.sub_move_r: Hnm1 => -> /=.
-    by rewrite -Pos2Nat.inj_succ Pplus_one_succ_r.
-  + move/Z.lt_0_sub: mn.
-    move/Z.sub_move_r: Hnm1 => -> /ltZadd1 /Zle_not_lt; elim.
-    by apply Pos2Z.neg_is_neg.
-- move/Zlt_not_le; elim.
-  by apply /(Z.le_trans _ 0) /uint63_min /Z.opp_nonpos_nonneg /uint63_min.
-Admitted.
+move=> mn.
+rewrite succ_pred uint2N_pred //.
+rewrite Sint63.sub_of_Z => /(f_equal Uint63.to_Z).
+rewrite Uint63.of_Z_spec.
+move/Sint63.ltbP in mn.
+rewrite Zmod_small.
+  rewrite Z.sub_move_r /= => nm.
+  rewrite nm in mn.
+  by move/Z.lt_irrefl in mn.
+split. by apply Zle_minus_le_0, Z.lt_le_incl.
+apply
+ (Z.le_lt_trans _ (Sint63.to_Z Sint63.max_int - Sint63.to_Z Sint63.min_int))%Z.
+  apply leZ_sub.
+    by case: (Sint63.to_Z_bounded n).
+  by case: (Sint63.to_Z_bounded m).
+done.
+Qed.
 
 Lemma forloop63S m n (f : int -> M unit) :
   ltsb m n -> forloop63 m n f = f m >> forloop63 (Uint63.succ m) n f.
@@ -472,7 +499,7 @@ case: m IH mn => [|m] IH mn.
   under eq_bind do rewrite subn0 forloop631 !(ltsb_subr,bindA) //.
   rewrite cnewget.
   under eq_bind do rewrite bindretf -cgetret.
-  rewrite cnewput -N2int_mul mulnC -{1}(@prednK n) // cnewget subn1.
+  rewrite cnewput -N2int_mul mulnC -{1}(prednK mn) cnewget subn1.
   by rewrite -/(fact_rec n.-1.+1) prednK.
 under eq_bind do rewrite forloop63S !(ltsb_subr,bindA) //.
 rewrite cnewget.
