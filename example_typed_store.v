@@ -232,50 +232,10 @@ End fibonacci.
 Require Import PrimInt63.
 Require Sint63.
 
-Module MLtypes63.
-Local Definition ml_type_eq_dec := ml_type_eq_dec.
-Local Definition ml_type := ml_type.
-Local Definition undef := Undef.
-Local Definition loc := loc.
-Local Definition locT := [eqType of nat].
-Local Definition loc_id := @loc_id.
-
-Section with_monad.
-Context [M : Type -> Type].
-
-(* Generated type translation function *)
-Fixpoint coq_type (T : ml_type) : Type :=
-  match T with
-  | ml_int => int
-  | ml_bool => bool
-  | ml_unit => unit
-  | ml_arrow T1 T2 => coq_type T1 -> M (coq_type T2)
-  | ml_ref T1 => loc T1
-  | ml_undef => undef_t
-  end.
-End with_monad.
-Local Definition ml_undef := ml_undef.
-End MLtypes63.
-
-Module IMonadTS63 := hierarchy.MonadTypedStore (MLtypes63).
-Import MLtypes63.
-Import IMonadTS63.
-
-Section fact_for_int63.
-Variable M : typedStoreMonad.
-Notation coq_type := (@MLtypes63.coq_type M).
-
+Section Int63.
 Definition uint2N (n : int) : nat :=
   if Uint63.to_Z n is Zpos pos then Pos.to_nat pos else 0.
-
-Notation "'do' x <- m ; e" := (m >>= (fun x => e))
-  (at level 60, x name, m at level 200, e at level 60).
-
-Definition forloop63 (n_1 n_2 : int) (b : int -> M unit) : M unit :=
-  if Sint63.ltb n_2 n_1 then Ret tt else
-  iter (uint2N (sub n_2 n_1)).+1
-       (fun (m : M int) => do i <- m; do _ <- b i; Ret (Uint63.succ i))
-       (Ret n_1) >> Ret tt.
+Definition N2int n := Uint63.of_Z (Z.of_nat n).
 
 Lemma ltsbNlesb m n : ltsb m n = ~~ lesb n m.
 Proof.
@@ -302,11 +262,6 @@ Qed.
 Lemma ltsbW m n : ltsb m n -> lesb m n.
 Proof. move/Sint63.ltbP/Z.lt_le_incl => mn; by apply/Sint63.lebP. Qed.
 
-Lemma iter_bind T n (f : T -> M T) (m1 : M unit) m2 :
-  iter n (fun (m : M T) => m >>= f) (m1 >> m2) =
-  m1 >> iter n (fun (m : M T) => m >>= f) m2.
-Proof. by elim: n m2 => // n IH m2; rewrite iterS IH !bindA. Qed.
-
 Lemma lesb_ltsb_eq m n : lesb m n -> ltsb n (Uint63.succ m) -> m = n.
 Proof.
 move/Sint63.lebP => mn /Sint63.ltbP nSm.
@@ -326,15 +281,6 @@ Proof. by case: (Uint63.to_Z_bounded n). Qed.
 
 Lemma uint63_max n : (Uint63.to_Z n < Uint63.wB)%Z.
 Proof. by case: (Uint63.to_Z_bounded n). Qed.
-
-Lemma succ_pred m n : sub n (Uint63.succ m) = Uint63.pred (sub n m).
-Proof.
-apply Uint63.to_Z_inj.
-rewrite Uint63.sub_spec Uint63.succ_spec Uint63.pred_spec Uint63.sub_spec.
-rewrite Zminus_mod Zmod_mod -Zminus_mod Z.sub_add_distr.
-apply/esym.
-by rewrite Zminus_mod Zmod_mod -Zminus_mod.
-Qed.
 
 Lemma uint2N_pred n : n <> 0%int63 -> uint2N n = (uint2N (Uint63.pred n)).+1.
 Proof.
@@ -387,9 +333,90 @@ rewrite Zmod_small.
 by apply /lesb_sub_bounded /Sint63.lebP /Z.lt_le_incl.
 Qed.
 
+Lemma sub_succ_pred m n : sub n (Uint63.succ m) = Uint63.pred (sub n m).
+Proof.
+apply Uint63.to_Z_inj.
+rewrite Uint63.sub_spec Uint63.succ_spec Uint63.pred_spec Uint63.sub_spec.
+rewrite Zminus_mod Zmod_mod -Zminus_mod Z.sub_add_distr.
+apply/esym.
+by rewrite Zminus_mod Zmod_mod -Zminus_mod.
+Qed.
+
 Lemma uint2N_sub_succ m n : ltsb m n ->
   uint2N (sub n m) = (uint2N (sub n (Uint63.succ m))).+1.
-Proof. move/ltsb_sub_neq0 => mn. by rewrite succ_pred uint2N_pred. Qed.
+Proof. move/ltsb_sub_neq0 => mn. by rewrite sub_succ_pred uint2N_pred. Qed.
+
+Lemma N2int_succ : {morph N2int : x / x.+1 >-> Uint63.succ x}.
+Proof.
+move=> x; apply Uint63.to_Z_inj; rewrite Uint63.succ_spec !Uint63.of_Z_spec.
+by rewrite Zplus_mod /= Zpos_P_of_succ_nat /Z.succ Zplus_mod Zmod_mod.
+Qed.
+
+Lemma N2int_mul : {morph N2int : x y / x * y >-> mul x y}.
+Proof.
+move=> x y; apply Uint63.to_Z_inj.
+by rewrite Uint63.mul_spec !Uint63.of_Z_spec Nat2Z.inj_mul Zmult_mod.
+Qed.
+
+Lemma N2int_bounded n :
+  (Z.of_nat n <= Sint63.to_Z Sint63.max_int)%Z ->
+  (Sint63.to_Z Sint63.min_int <= Z.of_nat n <= Sint63.to_Z Sint63.max_int)%Z.
+Proof.
+split => //.
+apply (Z.le_trans _ 0).
+  rewrite -[0%Z]/(Sint63.to_Z 0).
+  by case: (Sint63.to_Z_bounded 0).
+by apply Zle_0_nat.
+Qed.
+End Int63.
+
+Module MLtypes63.
+Local Definition ml_type_eq_dec := ml_type_eq_dec.
+Local Definition ml_type := ml_type.
+Local Definition undef := Undef.
+Local Definition loc := loc.
+Local Definition locT := [eqType of nat].
+Local Definition loc_id := @loc_id.
+
+Section with_monad.
+Context [M : Type -> Type].
+
+(* Generated type translation function *)
+Fixpoint coq_type (T : ml_type) : Type :=
+  match T with
+  | ml_int => int
+  | ml_bool => bool
+  | ml_unit => unit
+  | ml_arrow T1 T2 => coq_type T1 -> M (coq_type T2)
+  | ml_ref T1 => loc T1
+  | ml_undef => undef_t
+  end.
+End with_monad.
+Local Definition ml_undef := ml_undef.
+End MLtypes63.
+
+Module IMonadTS63 := hierarchy.MonadTypedStore (MLtypes63).
+Import MLtypes63.
+Import IMonadTS63.
+
+Section fact_for_int63.
+Variable M : typedStoreMonad.
+Notation coq_type := (@MLtypes63.coq_type M).
+
+Notation "'do' x <- m ; e" := (m >>= (fun x => e))
+  (at level 60, x name, m at level 200, e at level 60).
+
+Section forloop63.
+Definition forloop63 (n_1 n_2 : int) (b : int -> M unit) : M unit :=
+  if Sint63.ltb n_2 n_1 then Ret tt else
+  iter (uint2N (sub n_2 n_1)).+1
+       (fun (m : M int) => do i <- m; do _ <- b i; Ret (Uint63.succ i))
+       (Ret n_1) >> Ret tt.
+
+Lemma iter_bind T n (f : T -> M T) (m1 : M unit) m2 :
+  iter n (fun (m : M T) => m >>= f) (m1 >> m2) =
+  m1 >> iter n (fun (m : M T) => m >>= f) m2.
+Proof. by elim: n m2 => // n IH m2; rewrite iterS IH !bindA. Qed.
 
 Lemma forloop63S m n (f : int -> M unit) :
   ltsb m n -> forloop63 m n f = f m >> forloop63 (Uint63.succ m) n f.
@@ -415,6 +442,7 @@ Qed.
 Lemma forloop630 m n (f : int -> M unit) :
   ltsb n m -> forloop63 m n f = skip.
 Proof. by rewrite /forloop63 => ->. Qed.
+End forloop63.
 
 Definition fact_for63 (n : coq_type ml_int) : M (coq_type ml_int) :=
   do v <- cnew ml_int 1%int63;
@@ -426,31 +454,6 @@ Definition fact_for63 (n : coq_type ml_int) : M (coq_type ml_int) :=
         do v_1 <- (do v_1 <- cget v; Ret (mul v_1 i));
         cput v v_1));
   cget v.
-
-Definition N2int n := Uint63.of_Z (Z.of_nat n).
-
-Lemma N2int_succ : {morph N2int : x / x.+1 >-> Uint63.succ x}.
-Proof.
-move=> x; apply Uint63.to_Z_inj; rewrite Uint63.succ_spec !Uint63.of_Z_spec.
-by rewrite Zplus_mod /= Zpos_P_of_succ_nat /Z.succ Zplus_mod Zmod_mod.
-Qed.
-
-Lemma N2int_mul : {morph N2int : x y / x * y >-> mul x y}.
-Proof.
-move=> x y; apply Uint63.to_Z_inj.
-by rewrite Uint63.mul_spec !Uint63.of_Z_spec Nat2Z.inj_mul Zmult_mod.
-Qed.
-
-Lemma N2int_bounded n :
-  (Z.of_nat n <= Sint63.to_Z Sint63.max_int)%Z ->
-  (Sint63.to_Z Sint63.min_int <= Z.of_nat n <= Sint63.to_Z Sint63.max_int)%Z.
-Proof.
-split => //.
-apply (Z.le_trans _ 0).
-  rewrite -[0%Z]/(Sint63.to_Z 0).
-  by case: (Sint63.to_Z_bounded 0).
-by apply Zle_0_nat.
-Qed.
 
 Section fact_for63_ok.
 Variable n : nat.
