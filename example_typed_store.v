@@ -243,26 +243,10 @@ case/boolP: (lesb n m) => /Sint63.lebP nm; apply/Sint63.ltbP => /=;
   by [apply Z.le_ngt | apply Z.nle_gt].
 Qed.
 
-Lemma ltsbNltsbS m n : ltsb m n -> ~ ltsb n (Uint63.succ m).
-Proof.
-move/Sint63.ltbP => mn.
-move/Sint63.ltbP/Zlt_not_le; elim.
-rewrite Sint63.succ_spec Sint63.cmod_small.
-  by apply/Zlt_le_succ.
-split.
-  apply (Z.le_trans _ (Sint63.to_Z m)). by case: (Sint63.to_Z_bounded m).
-  by apply Z.le_succ_diag_r.
-apply (Z.le_lt_trans _ (Sint63.to_Z n)).
-  by apply/Zlt_le_succ.
-apply (Z.le_lt_trans _ (Sint63.to_Z Sint63.max_int)).
-  by case: (Sint63.to_Z_bounded n).
-rewrite Sint63.to_Z_max. by apply Z.lt_sub_pos.
-Qed.
-
 Lemma ltsbW m n : ltsb m n -> lesb m n.
 Proof. move/Sint63.ltbP/Z.lt_le_incl => mn; by apply/Sint63.lebP. Qed.
 
-Lemma lesb_ltsb_eq m n : lesb m n -> ltsb n (Uint63.succ m) -> m = n.
+Lemma lesb_ltsbS_eq m n : lesb m n -> ltsb n (Uint63.succ m) -> m = n.
 Proof.
 move/Sint63.lebP => mn /Sint63.ltbP nSm.
 move: (nSm).
@@ -274,6 +258,13 @@ rewrite Sint63.succ_of_Z -Sint63.is_int; last first.
   by case: (Sint63.to_Z_bounded (Uint63.succ m)).
 move/Zlt_le_succ/Zsucc_le_reg => nm.
 by apply Sint63.to_Z_inj, Zle_antisym.
+Qed.
+
+(* The opposite is not true ! (n = max_int) *)
+Lemma ltsbS_lesb m n : ltsb m (Uint63.succ n) -> lesb m n.
+Proof.
+rewrite -[lesb _ _]negbK -ltsbNlesb => nSm; apply/negP => /[dup] /ltsbW nm.
+by rewrite (lesb_ltsbS_eq n m) // => /Sint63.ltbP /Z.lt_irrefl.
 Qed.
 
 Lemma uint63_min n : (0 <= Uint63.to_Z n)%Z.
@@ -424,7 +415,7 @@ Proof.
 rewrite /forloop63 => mn.
 rewrite ltsbNlesb (ltsbW _ _ mn) /=.
 case: ifPn => nSm.
-  by elim (ltsbNltsbS _ _ mn).
+  by move: mn; rewrite ltsbNlesb => /negP; elim; apply ltsbS_lesb.
 rewrite ltsbNlesb negbK in nSm.
 rewrite uint2N_sub_succ //.
 by rewrite iterSr bindretf !bindA iter_bind !bindA.
