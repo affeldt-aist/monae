@@ -97,7 +97,7 @@ HB.mixin Record isConcreteCategory (obj : ihierarchy.UU1) of @Category obj := {
 }.
 Arguments isConcreteCategory.phant_Build : clear implicits.
 #[short(type=concrete_category)]
-HB.structure Definition ConcreteCategory := {C of isConcreteCategory C}.
+HB.structure Definition ConcreteCategory := {C of isConcreteCategory C &}.
 Arguments id_is_idfun [C] : rename.
 Arguments comp_is_funcomp [C] : rename.
 
