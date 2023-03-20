@@ -18,5 +18,6 @@ imonad_transformer.v
 ifmt_lifting.v
 iparametricity_codensity.v
 iexample_transformer.v
+icategory.v
 
 -R . monaeImpredicativeSet
