@@ -151,6 +151,7 @@ Canonical Structure naturalityTSret := isNatural.Build _ _ _ ret_naturality.
 Definition ret' : [the functor of idfun] ~> [the functor of M] :=
    @Nattrans.Pack _ _ ret (Nattrans.Class naturalityTSret).
 
+Unset Universe Checking.
 Definition join' : [the functor of M \o M] ~~> [the functor of M] :=
       fun _ m => bind m idfun.
 Set Universe Checking.
