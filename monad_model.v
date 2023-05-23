@@ -1722,6 +1722,7 @@ Variant loc : ml_type -> Set := mkloc T : nat -> loc T.
 Parameter coq_type0 : ml_type -> Type.
 Parameter ml_undef : ml_type.
 Parameter undef : coq_type0 ml_undef.
+(*Parameter ml_exn : ml_type.*)
 End MLTYweak.
 
 Module ModelTypedStore (MLtypes : MLTYweak).
@@ -1744,8 +1745,9 @@ Record binding (M : Type -> Type) :=
 Arguments mkbind {M}.
 
 Section typed_store.
-Definition acto (T : UU0) : UU0 :=
-  MS (seq (binding idfun)) [the monad of option_monad] T.
+Definition acto : UU0 -> UU0 :=
+  (*MX (coq_type0 ml_exn)*)
+  (MS (seq (binding idfun)) [the monad of option_monad]).
 Local Notation M := acto.
 (*Local Notation coq_type := (coq_type M).*)
 Local Notation coq_type' := (coq_type idfun).
@@ -1800,8 +1802,7 @@ Let cnewget T (s : coq_type M T) A (k : loc T -> coq_type M T -> M A) :
 Proof.
 apply/boolp.funext => st /=.
 rewrite bindE /= /bindS MS_mapE /= fmapE /= bindA /=.
-rewrite [in RHS]bindE /= /bindS MS_mapE /= fmapE /= bindA /=.
-rewrite bindE /= /bindS /= bindE /= bindE /= /bindS /= MS_mapE /= fmapE.
+rewrite bindE /= bindE /= bindE /= MS_mapE /= /bindS /= fmapE /=.
 rewrite /cget nth_error_rcons_size /coerce.
 case: ml_type_eq_dec => // H.
 by rewrite -eq_rect_eq.
