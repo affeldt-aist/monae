@@ -118,18 +118,29 @@ Local Notation "m >> f" := (bind m (fun=> f)).*)
 Definition actm (A B : UU0) (f : A -> B) (m : M A) : M B :=
   mkActo (actm _ _ f (ofActo m)).
 
-Definition isFunctorTS : isFunctor.axioms_ M.
-exists actm.
-- move=> A. apply boolp.funext => -[] {A} A m.
-  by rewrite /actm functor_id.
-- move=> A B C g h. apply boolp.funext => m.
-  case: m h => {A} A m h /=.
-  by rewrite /actm /= functor_o.
+Let actm_id : FunctorLaws.id actm.
+Proof.
+move=> A. apply boolp.funext => -[] {A} A m.
+by rewrite /actm functor_id.
+Qed.
+
+Let actm_comp : FunctorLaws.comp actm.
+Proof.
+move=> A B C g h. apply boolp.funext => m.
+case: m h => {A} A m h /=.
+by rewrite /actm /= functor_o.
 Defined.
 
+Lemma isFunctorTS : isFunctor.axioms_ M.
+Proof. by exists actm; [exact: actm_id|exact: actm_comp]. Qed. (* NB: not Qed, o.w. ret_naturality fails *)
+
 Unset Universe Checking.
-Canonical Structure FunctorTS : Functor M := Functor.Class isFunctorTS.
-Canonical Structure functorTS : functor := Functor.Pack isFunctorTS.
+(*HB.instance Definition _ := isFunctor.Build acto actm_id actm_comp. fails*)
+Definition tmp := isFunctor.Build acto actm_id actm_comp.
+Definition functorTS : functor := HB.pack acto tmp.
+Canonical Structure functorTS.
+(*Canonical Structure FunctorTS : Functor M := Functor.Class isFunctorTS.
+Canonical Structure functorTS : functor := Functor.Pack isFunctorTS.*)
 Set Universe Checking.
 
 Definition ret_naturality : naturality [the functor of idfun] M ret.
@@ -140,7 +151,6 @@ Canonical Structure naturalityTSret := isNatural.Build _ _ _ ret_naturality.
 Definition ret' : [the functor of idfun] ~> [the functor of M] :=
    @Nattrans.Pack _ _ ret (Nattrans.Class naturalityTSret).
 
-Unset Universe Checking.
 Definition join' : [the functor of M \o M] ~~> [the functor of M] :=
       fun _ m => bind m idfun.
 Set Universe Checking.
