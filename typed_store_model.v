@@ -26,6 +26,7 @@ Variant loc : ml_type -> Type := mkloc T : nat -> loc T.
 Parameter coq_type : forall M : Type -> Type, ml_type -> Type.
 Parameter ml_undef : ml_type.
 Parameter undef : forall M, coq_type M ml_undef.
+Parameter ml_exn : ml_type.
 End MLTYdef.
 
 Module ModelTypedStore (MLtypes : MLTYdef).
@@ -47,12 +48,17 @@ Record binding (M : Type -> Type) :=
   mkbind { bind_type : ml_type; bind_val : coq_type M bind_type }.
 Arguments mkbind {M}.
 
-Definition M0 Env (T : UU0) := MS Env option_monad T.
+Definition M0 Env Exn (T : UU0) :=
+  MX Exn (MS Env option_monad) T.
 
 #[bypass_check(positivity)]
-Inductive Env := mkEnv : seq (binding (M0 Env)) -> Env.
+Inductive Env := mkEnv : seq (binding (M0 Env Exn)) -> Env
+with Exn :=
+  | GasExhausted
+  | BoundedNat
+  | Catchable of coq_type (M0 Env Exn) ml_exn.
 
-Definition acto : UU0 -> UU0 := M0 Env.
+Definition acto : UU0 -> UU0 := M0 Env Exn.
 Local Notation M := acto.
 Local Notation coq_type := (coq_type M).
 
@@ -63,7 +69,7 @@ Definition cnew T (v : coq_type T) : M (loc T) :=
   fun st =>
     let: mkEnv st := st in
     let n := size st in
-    inr (mkloc T n, mkEnv (rcons st (mkbind T (v : coq_type T)))).
+    inr (inr (mkloc T n), mkEnv (rcons st (mkbind T (v : coq_type T)))).
 
 Definition coerce T1 T2 (v : coq_type T1) : option (coq_type T2) :=
   match ml_type_eq_dec T1 T2 with
@@ -75,7 +81,7 @@ Definition cget T (r : loc T) : M (coq_type T) :=
   fun st =>
     let: mkEnv bs := st in
     if nth_error bs (loc_id r) is Some (mkbind T' v) then
-      if coerce T v is Some u then inr (u, st) else inl tt
+      if coerce T v is Some u then inr (inr u, st) else inl tt
     else inl tt.
 
 Definition cput T (r : loc T) (v : coq_type T) : M unit :=
@@ -85,11 +91,11 @@ Definition cput T (r : loc T) (v : coq_type T) : M unit :=
     if nth_error st n is Some (mkbind T' _) then
       if coerce T' v is Some u then
         let b := mkbind T' (u : coq_type _) in
-        inr (tt, mkEnv (set_nth def st n b))
+        inr (inr tt, mkEnv (set_nth def st n b))
       else inl tt
     else inl tt.
 
-Definition crun (A : UU0) (m : M A) : option A :=
+Definition crun (A : UU0) (m : M A) : option (Exn + A) :=
   match m (mkEnv nil) with
   | inl _ => None
   | inr (a, _) => Some a
@@ -110,8 +116,10 @@ Definition cnewget T (s : coq_type T) A (k : loc T -> coq_type T -> M A) :
   cnew s >>= (fun r => cget r >>= k r) = cnew s >>= (fun r => k r s).
 Proof.
 apply/boolp.funext => -[] st /=.
+rewrite bindE /= /bindS bindE /= /bindX MX_mapE MS_mapE /= fmapE /= bindA /=.
+rewrite bindE /= /bindS MS_mapE bindE /=.
+rewrite bindE /= MX_mapE MS_mapE /= /bindX.
 rewrite bindE /= /bindS MS_mapE /= fmapE /= bindA /=.
-rewrite bindE /= bindE /= bindE /= MS_mapE /= /bindS /= fmapE /=.
 rewrite /cget nth_error_rcons_size /coerce.
 case: ml_type_eq_dec => // H.
 by rewrite -eq_rect_eq.
