@@ -145,14 +145,14 @@ by rewrite [in RHS]bindretf.
 Qed.
 
 HB.instance Definition _ := isMonadM_ret_bind.Build
-  M [the monad of MS] liftS retliftS bindliftS.
+  M MS liftS retliftS bindliftS.
 
 End state_monad_transformer.
 
 Definition stateT (S : UU0) := fun M => [the monad of MS S M].
 
 HB.instance Definition _ (S : UU0) := isMonadT.Build
-  (stateT S) (fun M => [the monadM _ _ of @liftS S M]).
+  (stateT S) (@liftS S).
 
 Definition mapStateT2 (A S : UU0) (N1 N2 N3 : monad)
     (f : N1 (A * S)%type -> N2 (A * S)%type -> N3 (A * S)%type)

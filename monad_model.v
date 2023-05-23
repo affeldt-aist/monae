@@ -20,7 +20,7 @@ Require Import monad_transformer.
 (* ListMonad          == list monad seq                                       *)
 (* SetMonad           == set monads using classical_sets                      *)
 (* ExceptMonad        == exception monad E + A                                *)
-(* option_monad       == notation for ExceptMonad.acto unit                   *)
+(* option_monad       == alias for ExceptMonad.acto unit                      *)
 (* OutputMonad        == output monad X * seq L                               *)
 (* EnvironmentMonad   == environment monad E -> A                             *)
 (* StateMonad         == state monad S -> A * S                               *)
@@ -232,7 +232,8 @@ Lemma except_bindE (E A B : UU0) (M := ExceptMonad.acto E)
   m >>= f = match m with inl z => inl z | inr b => f b end.
 Proof. by []. Qed.
 
-Notation option_monad := (ExceptMonad.acto unit).
+Definition option_monad := ExceptMonad.acto unit.
+HB.instance Definition _ := Monad.on option_monad.
 
 Module OutputMonad.
 Section output.
@@ -799,6 +800,7 @@ Section fail.
 Definition option_fail : forall A, option_monad A := fun A => @throw unit A tt.
 Let option_bindfailf : BindLaws.left_zero (@bind _) option_fail.
 Proof. by []. Qed.
+HB.instance Definition _ := Monad.on option_monad.
 HB.instance Definition _ := @isMonadFail.Build option_monad
   option_fail option_bindfailf.
 
@@ -820,7 +822,7 @@ HB.export Fail.
 
 Module Except.
 Section except.
-Let M : failMonad := [the failMonad of ExceptMonad.acto unit].
+Let M : failMonad := option_monad.
 Definition handle : forall A, M A -> M A -> M A :=
   fun A m1 m2 => @handle_op unit _ (m1, (fun _ => m2)).
 Lemma handleE : handle = (fun A m m' => if m is inr x then m else m').
@@ -833,7 +835,7 @@ Let catchA : forall A, ssrfun.associative (@handle A).
 Proof. by move=> A; case. Qed.
 Let catchret : forall A x, @left_zero (M A) (M A) (Ret x) (@handle A).
 Proof. by move=> A x; case. Qed.
-HB.instance Definition _ := isMonadExcept.Build (ExceptMonad.acto unit)
+HB.instance Definition _ := isMonadExcept.Build option_monad
   catchmfail catchfailm catchA catchret.
 End except.
 End Except.
@@ -1800,7 +1802,14 @@ Canonical ml_type_eqType := Eval hnf in EqType _ ml_type_eq_mixin.
 Let cnewget T (s : coq_type M T) A (k : loc T -> coq_type M T -> M A) :
   cnew s >>= (fun r => cget r >>= k r) = cnew s >>= (fun r => k r s).
 Proof.
-apply/boolp.funext => st /=.
+(*apply/boolp.funext => st/=.
+rewrite bindE.
+transitivity (
+  Join
+    ((stateT (seq (binding idfun)) option_monad # (fun r : loc T => cget r >>= k r))
+       (cnew s)) st
+) => //.*)
+apply/boolp.funext => st/=.
 rewrite bindE /= /bindS MS_mapE /= fmapE /= bindA /=.
 rewrite bindE /= bindE /= bindE /= MS_mapE /= /bindS /= fmapE /=.
 rewrite /cget nth_error_rcons_size /coerce.
@@ -2395,7 +2404,7 @@ End examples_of_algebraic_lifting.
 Module ModelMonadStateRun.
 Section modelmonadstaterun.
 Variable S : UU0.
-Let N : monad := [the monad of ExceptMonad.acto unit].
+Let N : monad := option_monad.
 Definition M : stateMonad S := [the stateMonad S of stateT S N].
 
 Let runStateT : forall A : UU0, M A -> S -> N (A * S)%type := fun A : UU0 => id.
@@ -2428,7 +2437,7 @@ HB.export ModelMonadStateRun.
 Module ModelMonadExceptStateRun.
 Section modelmonadexceptstaterun.
 Variable S : UU0.
-Let N : exceptMonad := [the exceptMonad of ExceptMonad.acto unit].
+Let N : exceptMonad := option_monad.
 Definition M : stateRunMonad S N := [the stateRunMonad S N of MS S N].
 
 Definition failure : forall A, MS S N A := fun A => liftS (@fail N A).

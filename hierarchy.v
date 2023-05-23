@@ -294,11 +294,11 @@ End join_laws.
 End JoinLaws.
 
 HB.mixin Record isMonad (F : UU0 -> UU0) of Functor F := {
-  ret : FId ~> [the functor of F] ;
-  join : [the functor of F \o F] ~> [the functor of F] ;
+  ret : FId ~> F ;
+  join : F \o F ~> F ;
   bind : forall (A B : UU0), F A -> (A -> F B) -> F B ;
-  bindE : forall (A B : UU0) (f : A -> F B) (m : F A),
-    bind A B m f = join B (([the functor of F] # f) m) ;
+  __bindE : forall (A B : UU0) (f : A -> F B) (m : F A),
+    bind A B m f = join B ((F # f) m) ;
   joinretM : JoinLaws.left_unit ret join ;
   joinMret : JoinLaws.right_unit ret join ;
   joinA : JoinLaws.associativity join }.
@@ -310,6 +310,10 @@ Notation Ret := (@ret _ _).
 Notation Join := (@join _ _).
 Arguments bind {s A B} : simpl never.
 Notation "m >>= f" := (bind m f) : monae_scope.
+
+Lemma bindE (F : monad) (A B : UU0) (f : A -> F B) (m : F A) :
+  m >>= f = join B ((F # f) m).
+Proof. by rewrite __bindE. Qed.
 
 Lemma eq_bind (M : monad) (A B : UU0) (m : M A) (f1 f2 : A -> M B) :
   f1 =1 f2 -> m >>= f1 = m >>= f2.
