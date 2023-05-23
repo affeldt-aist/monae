@@ -156,7 +156,7 @@ Definition join' : [the functor of M \o M] ~~> [the functor of M] :=
       fun _ m => bind m idfun.
 Set Universe Checking.
 
-Definition actm_bind (a b c : UU0) (f : a -> b) m (g : c -> M a) :
+Lemma actm_bind (a b c : UU0) (f : a -> b) m (g : c -> M a) :
   (actm f) (bind m g) = bind m (actm f \o g).
 Proof.
 rewrite /actm fmapE bindA.
@@ -167,20 +167,12 @@ Lemma mkActoK A (m : MS _ _ A) : ofActo (mkActo m) = m.
 Proof. done. Qed.
 
 Unset Universe Checking.
-Definition join'_naturality : naturality _ _ join'.
+Lemma join'_naturality : naturality _ _ join'.
 Proof.
-move=> a b h.
-unfold join'.
-rewrite /=. apply: boolp.funext => mm /=.
-unfold hierarchy.actm, isFunctor.actm.
-rewrite /= (actm_bind h mm idfun) /= /bind bindA.
-apply f_equal.
-apply f_equal.
-apply boolp.funext => x /=.
-rewrite /retS /= fmapE.
-case: x h mm => {}a x h mm.
-rewrite mkActoK /hierarchy.actm /= /actm /= fmapE !bindretf mkActoK.
-reflexivity.
+move=> a b h; apply: boolp.funext=> mm.
+rewrite /hierarchy.actm /= actm_bind compfid.
+rewrite  /join' [in RHS]/bind bindA.
+by congr bind.
 Qed.
 
 Canonical Structure naturalityTS := isNatural.Build _ _ _ join'_naturality.
