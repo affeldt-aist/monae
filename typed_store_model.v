@@ -159,10 +159,8 @@ Set Universe Checking.
 Definition actm_bind (a b c : UU0) (f : a -> b) m (g : c -> M a) :
   (actm f) (bind m g) = bind m (actm f \o g).
 Proof.
-congr mkActo.
-case: m g => {}c m g /=.
-rewrite bindE fmapE 2!bindA /=.
-reflexivity.
+rewrite /actm fmapE bindA.
+by cbv.
 Qed.
 
 Lemma mkActoK A (m : MS _ _ A) : ofActo (mkActo m) = m.
