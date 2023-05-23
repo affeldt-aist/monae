@@ -47,175 +47,53 @@ Record binding (M : Type -> Type) :=
   mkbind { bind_type : ml_type; bind_val : coq_type M bind_type }.
 Arguments mkbind {M}.
 
+Definition M0 Env (T : UU0) := MS Env option_monad T.
+
 #[bypass_check(positivity)]
-Inductive acto : UU0 -> UU0 :=
-  mkActo : forall T : UU0,
-      MS (seq (binding acto)) [the monad of option_monad] T -> acto T.
+Inductive Env := mkEnv : seq (binding (M0 Env)) -> Env.
+
+Definition acto : UU0 -> UU0 := M0 Env.
 Local Notation M := acto.
 Local Notation coq_type := (coq_type M).
-
-Definition ofActo T (m : M T)
-  : MS (seq (binding M)) [the monad of option_monad] T :=
-  let: mkActo _ m' := m in m'.
 
 Definition def := mkbind ml_undef (undef M).
 Local Notation nth_error := List.nth_error.
 
 Definition cnew T (v : coq_type T) : M (loc T) :=
-  mkActo (fun st => let n := size st in Ret (mkloc T n, rcons st (mkbind T v))).
+  fun st =>
+    let: mkEnv st := st in
+    let n := size st in
+    inr (mkloc T n, mkEnv (rcons st (mkbind T (v : coq_type T)))).
 
-Definition coerce (T1 T2 : ml_type) (v : coq_type T1) : option (coq_type T2) :=
+Definition coerce T1 T2 (v : coq_type T1) : option (coq_type T2) :=
   match ml_type_eq_dec T1 T2 with
   | left H => Some (eq_rect _ _ v _ H)
   | right _ => None
   end.
 
 Definition cget T (r : loc T) : M (coq_type T) :=
-  mkActo (fun st =>
-            if nth_error st (loc_id r) is Some (mkbind T' v) then
-              if coerce T v is Some u then Ret (u, st) else fail
-            else fail).
+  fun st =>
+    let: mkEnv bs := st in
+    if nth_error bs (loc_id r) is Some (mkbind T' v) then
+      if coerce T v is Some u then inr (u, st) else inl tt
+    else inl tt.
 
 Definition cput T (r : loc T) (v : coq_type T) : M unit :=
-  mkActo (fun st =>
-            let n := loc_id r in
-            if nth_error st n is Some (mkbind T' _) then
-              if coerce T' v is Some u then
-                Ret (tt, set_nth def st n (mkbind T' u))
-              else fail
-            else fail).
-
-Definition cchk T (r : loc T) : M unit :=
-  mkActo (fun st =>
-            if nth_error st (loc_id r) is Some (mkbind T' u) then
-              if coerce T u is Some _ then Ret (tt, st) else fail
-            else fail).
+  fun st =>
+    let: mkEnv st := st in
+    let n := loc_id r in
+    if nth_error st n is Some (mkbind T' _) then
+      if coerce T' v is Some u then
+        let b := mkbind T' (u : coq_type _) in
+        inr (tt, mkEnv (set_nth def st n b))
+      else inl tt
+    else inl tt.
 
 Definition crun (A : UU0) (m : M A) : option A :=
-  match ofActo m nil with
+  match m (mkEnv nil) with
   | inl _ => None
   | inr (a, _) => Some a
   end.
-
-Definition ret : forall A, idfun A -> M A := fun A a => mkActo (Ret a).
-Definition bind A B (m : M A) (f : A -> M B) : M B :=
-      mkActo (ofActo m >>= (fun a => ofActo (f a))).
-Definition left_neutral : BindLaws.left_neutral bind ret.
-Proof. by move=> A B a f; rewrite /bind /ret bindretf; case: (f a). Qed.
-Definition right_neutral : BindLaws.right_neutral bind ret.
-Proof. by move=> A a; rewrite /bind /ret  bindmret; case: a. Qed.
-Definition associative : BindLaws.associative bind.
-Proof. by move=> A B C m f g; rewrite /bind /= bindA. Qed.
-
-(* Doesn't work
-HB.instance Definition xyz :=
-  isMonad_ret_bind.Build M left_neutral right_neutral associative.
-*)
-(* Since we couldn't build the instance, redefine notations *)
-(*Local Notation "m >>= f" := (bind m f).
-Local Notation "m >> f" := (bind m (fun=> f)).*)
-
-Definition actm (A B : UU0) (f : A -> B) (m : M A) : M B :=
-  mkActo (actm _ _ f (ofActo m)).
-
-Let actm_id : FunctorLaws.id actm.
-Proof.
-move=> A. apply boolp.funext => -[] {A} A m.
-by rewrite /actm functor_id.
-Qed.
-
-Let actm_comp : FunctorLaws.comp actm.
-Proof.
-move=> A B C g h. apply boolp.funext => m.
-case: m h => {A} A m h /=.
-by rewrite /actm /= functor_o.
-Defined.
-
-Lemma isFunctorTS : isFunctor.axioms_ M.
-Proof. by exists actm; [exact: actm_id|exact: actm_comp]. Qed. (* NB: not Qed, o.w. ret_naturality fails *)
-
-Unset Universe Checking.
-(*HB.instance Definition _ := isFunctor.Build acto actm_id actm_comp. fails*)
-Definition tmp := isFunctor.Build acto actm_id actm_comp.
-Definition functorTS : functor := HB.pack acto tmp.
-Canonical Structure functorTS.
-(*Canonical Structure FunctorTS : Functor M := Functor.Class isFunctorTS.
-Canonical Structure functorTS : functor := Functor.Pack isFunctorTS.*)
-Set Universe Checking.
-
-Definition ret_naturality : naturality [the functor of idfun] M ret.
-Proof. by []. Qed.
-
-Canonical Structure naturalityTSret := isNatural.Build _ _ _ ret_naturality.
-
-Definition ret' : [the functor of idfun] ~> [the functor of M] :=
-   @Nattrans.Pack _ _ ret (Nattrans.Class naturalityTSret).
-
-Unset Universe Checking.
-Definition join' : [the functor of M \o M] ~~> [the functor of M] :=
-      fun _ m => bind m idfun.
-Set Universe Checking.
-
-Lemma actm_bind (a b c : UU0) (f : a -> b) m (g : c -> M a) :
-  (actm f) (bind m g) = bind m (actm f \o g).
-Proof.
-rewrite /actm fmapE bindA.
-by cbv.
-Qed.
-
-Lemma mkActoK A (m : MS _ _ A) : ofActo (mkActo m) = m.
-Proof. done. Qed.
-
-Unset Universe Checking.
-Lemma join'_naturality : naturality _ _ join'.
-Proof.
-move=> a b h; apply: boolp.funext=> mm.
-rewrite /hierarchy.actm /= actm_bind compfid.
-rewrite  /join' [in RHS]/bind bindA.
-by congr bind.
-Qed.
-
-Canonical Structure naturalityTS := isNatural.Build _ _ _ join'_naturality.
-
-Definition join : [the functor of M \o M] ~> [the functor of M] :=
-   @Nattrans.Pack _ _ join' (Nattrans.Class naturalityTS).
-
-Canonical Structure isMonadTS : isMonad.axioms_ M isFunctorTS.
-exists ret' join bind.
-- move=> A B f m.
-  rewrite /join /= /join' /bind.
-  apply f_equal.
-  rewrite bindA.
-  reflexivity.
-- move=> A.
-  apply boolp.funext => x /=.
-  case: x => {}A m.
-  reflexivity.
-- move=> A.  
-  apply boolp.funext => x /=.
-  case: x => {}A m.
-  rewrite /join' /bind /=.
-  apply f_equal.
-  rewrite fmapE /ret.
-  rewrite bindA /=.
-  under [fun _ => _]boolp.funext do rewrite bindretf mkActoK.
-  rewrite bindmret.
-  reflexivity.
-- move=> A /=.
-  rewrite /join' /bind.
-  apply boolp.funext => x /=.
-  apply f_equal.
-  rewrite fmapE.
-  rewrite !bindA.
-  apply f_equal.
-  apply boolp.funext => y /=.
-  rewrite bindretf mkActoK.
-  reflexivity.
-Defined.
-
-Canonical Structure MonadTS : Monad M := Monad.Class isMonadTS.
-Canonical Structure monadTS : monad := Monad.Pack isMonadTS.
-Set Universe Checking.
 
 (* Make ml_type an eqType *)
 Definition ml_type_eqb T1 T2 : bool := ml_type_eq_dec T1 T2.
@@ -231,12 +109,10 @@ Canonical ml_type_eqType := Eval hnf in EqType _ ml_type_eq_mixin.
 Definition cnewget T (s : coq_type T) A (k : loc T -> coq_type T -> M A) :
   cnew s >>= (fun r => cget r >>= k r) = cnew s >>= (fun r => k r s).
 Proof.
-congr mkActo.
-apply/boolp.funext => st /=.
+apply/boolp.funext => -[] st /=.
 rewrite bindE /= /bindS MS_mapE /= fmapE /= bindA /=.
-rewrite [in RHS]bindE /= /bindS MS_mapE /= fmapE /= bindA /=.
-rewrite bindE /= /bindS /= bindE /= bindE /= /bindS /= MS_mapE /= fmapE.
-rewrite nth_error_rcons_size /coerce.
+rewrite bindE /= bindE /= bindE /= MS_mapE /= /bindS /= fmapE /=.
+rewrite /cget nth_error_rcons_size /coerce.
 case: ml_type_eq_dec => // H.
 by rewrite -eq_rect_eq.
 Qed.
@@ -244,8 +120,7 @@ Qed.
 Let cnewput T (s t : coq_type T) A (k : loc T -> M A) :
   cnew s >>= (fun r => cput r t >> k r) = cnew t >>= k.
 Proof.
-congr mkActo.
-apply/boolp.funext => st /=.
+apply/boolp.funext => -[st] /=.
 rewrite bindE /= /bindS MS_mapE /= fmapE /= bindA /=.
 rewrite bindE /= bindE /= bindE /= /bindS /= MS_mapE /= fmapE bindA.
 rewrite [in RHS]bindE /= /bindS MS_mapE /= fmapE /= bindA /=.
@@ -259,8 +134,7 @@ Qed.
 Let cgetput T (r : loc T) (s : coq_type T) :
   cget r >> cput r s = cput r s.
 Proof.
-congr mkActo.
-apply/boolp.funext => st /=.
+apply/boolp.funext => -[st] /=.
 rewrite bindE /= /bindS MS_mapE /= fmapE /= bindA /= /cget /cput.
 case Hr: (nth_error st (loc_id r)) => [[T' u]|] //.
 rewrite /coerce.
@@ -277,8 +151,7 @@ Qed.
 
 Let cgetputskip T (r : loc T) : cget r >>= cput r = cget r >> skip.
 Proof.
-congr mkActo.
-apply/boolp.funext => st /=.
+apply/boolp.funext => -[st] /=.
 rewrite bindE /= /bindS MS_mapE /= fmapE /= bindA /= /cget /cput.
 rewrite [in RHS]bindE /= /bindS MS_mapE /= fmapE bindA /=.
 case Hr: (nth_error _ _) => [[T1 u]|]; last by rewrite bindfailf.
@@ -293,8 +166,7 @@ Qed.
 Let cgetget T (r : loc T) (A : UU0) (k : coq_type T -> coq_type T -> M A) :
   cget r >>= (fun s => cget r >>= k s) = cget r >>= fun s => k s s.
 Proof.
-congr mkActo.
-apply/boolp.funext => st /=.
+apply/boolp.funext => -[st] /=.
 rewrite bindE /= /bindS MS_mapE /= fmapE /= bindA /=.
 rewrite [in RHS]bindE /= /bindS MS_mapE /= fmapE /= bindA /= /cget.
 case Hr: (nth_error _ _) => [[T1 u]|]; last by rewrite bindfailf.
@@ -311,8 +183,7 @@ Qed.
 Let cputget T (r: loc T) (s: coq_type T) (A: UU0) (k: coq_type T -> M A) :
   cput r s >> (cget r >>= k) = cput r s >> k s.
 Proof.
-congr mkActo.
-apply/boolp.funext => st /=.
+apply/boolp.funext => -[st] /=.
 case: r s k => {}T n s k /=.
 rewrite bindE /= /bindS MS_mapE /= fmapE /= bindA /=.
 rewrite [in RHS]bindE /= /bindS MS_mapE /= fmapE /= bindA /= /cput /cget.
@@ -331,8 +202,7 @@ Qed.
 Let cputput T (r : loc T) (s s' : coq_type T) :
     cput r s >> cput r s' = cput r s'.
 Proof.
-congr mkActo.
-apply/boolp.funext => st.
+apply/boolp.funext => -[st].
 case: r s s' => {}T n s s' /=.
 rewrite bindE /= /bindS MS_mapE /= fmapE /= bindA /= /cput.
 case Hst : (nth_error st n) => [[T' v]|] /=; last by rewrite bindfailf.
@@ -350,8 +220,7 @@ Let cgetC T1 T2 (r1 : loc T1) (r2 : loc T2) (A : UU0)
   cget r1 >>= (fun u => cget r2 >>= (fun v => k u v)) =
   cget r2 >>= (fun v => cget r1 >>= (fun u => k u v)).
 Proof.
-congr mkActo.
-apply/boolp.funext => st /=.
+apply/boolp.funext => -[st] /=.
 rewrite bindE /= /bindS MS_mapE /= fmapE /= bindA /=.
 rewrite [in RHS]bindE /= /bindS MS_mapE /= fmapE /= bindA /= /cget.
 case Hr1: (nth_error _ _) => [[T1' u]|]; last first.
@@ -393,10 +262,9 @@ Let cgetnewD T T' (r : loc T) (s : coq_type T') A
   cget r >>= (fun u => cnew s >>= fun r' => cget r >>= k r' u) =
   cget r >>= (fun u => cnew s >>= fun r' => k r' u u).
 Proof.
-congr mkActo.
-apply/boolp.funext => st /=.
+apply/boolp.funext => -[st] /=.
 rewrite bindE /= /bindS MS_mapE /= fmapE /= bindA /=.
-rewrite [in RHS]bindE /= /bindS MS_mapE /= fmapE /= bindA /= /cchk /cget.
+rewrite [in RHS]bindE /= /bindS MS_mapE /= fmapE /= bindA /= /cget.
 case Hr: (nth_error _ _) => [[T1 u]|]; last by rewrite bindfailf.
 rewrite {1 3}/coerce.
 case: ml_type_eq_dec => H /=; last by rewrite bindfailf.
@@ -415,8 +283,7 @@ Let cgetnewE T1 T2 (r1 : loc T1) (s : coq_type T2) (A : UU0)
   cget r1 >> (cnew s >>= k1) = cget r1 >> (cnew s >>= k2).
 Proof.
 move=> Hk.
-congr mkActo.
-apply/boolp.funext => st /=.
+apply/boolp.funext => -[st] /=.
 rewrite bindE /= /bindS MS_mapE /= fmapE /= bindA /=.
 rewrite [in RHS]bindE /= /bindS MS_mapE /= fmapE /= bindA /= /cget.
 case Hr1 : (nth_error st (loc_id r1)) => [[T1' v1]|] //=.
@@ -430,8 +297,7 @@ Qed.
 Let cgetputC T1 T2 (r1 : loc T1) (r2 : loc T2) (s : coq_type T2) :
   cget r1 >> cput r2 s = cput r2 s >> cget r1 >> skip.
 Proof.
-congr mkActo.
-apply/boolp.funext => st /=.
+apply/boolp.funext => -[st] /=.
 rewrite bindE /= /bindS MS_mapE /= fmapE /= bindA /=.
 rewrite [in RHS]bindE /= /bindS MS_mapE /= fmapE /= 2!bindA /= /cget /cput.
 case Hr1 : (nth_error st (loc_id r1)) => [[T1' v1]|] /=; last first.
@@ -479,8 +345,7 @@ Let cputC T1 T2 (r1 : loc T1) (r2 : loc T2) (s1 : coq_type T1)
   cput r1 s1 >> cput r2 s2 = cput r2 s2 >> cput r1 s1.
 Proof.
 move=> H.
-congr mkActo.
-apply/boolp.funext => st /=.
+apply/boolp.funext => -[st] /=.
 rewrite bindE /= /bindS MS_mapE /= fmapE /= bindA /=.
 rewrite [in RHS]bindE /= /bindS MS_mapE /= fmapE /= bindA /= /cput.
 case Hr1: (nth_error _ _) => [[T1' u]|]; last first.
@@ -547,8 +412,7 @@ Let cputgetC T1 T2 (r1 : loc T1) (r2 : loc T2) (s1 : coq_type T1)
   cput r1 s1 >> cget r2 >>= k = cget r2 >>= (fun v => cput r1 s1 >> k v).
 Proof.
 move=> Hr.
-congr mkActo.
-apply/boolp.funext => st /=.
+apply/boolp.funext => -[st] /=.
 rewrite !bindA.
 rewrite bindE /= /bindS MS_mapE /= fmapE /= bindA /=.
 rewrite [in RHS]bindE /= /bindS MS_mapE /= fmapE /= bindA /= /cput /cget.
@@ -587,8 +451,7 @@ Let cputnewC T T' (r : loc T) (s : coq_type T) (s' : coq_type T') A
   cget r >> (cnew s' >>= fun r' => cput r s >> k r') =
   cput r s >> (cnew s' >>= k).
 Proof.
-congr mkActo.
-apply/boolp.funext => st /=.
+apply/boolp.funext => -[st] /=.
 rewrite bindE /= /bindS MS_mapE /= fmapE /= bindA /=.
 rewrite [in RHS]bindE /= /bindS MS_mapE /= fmapE /= bindA /= /cget /cput.
 case Hr: (nth_error _ _) => [[T1 u]|]; last by rewrite bindfailf.
@@ -611,7 +474,7 @@ Let crunret (A B : UU0) (m : M A) (s : B) :
   crun m -> crun (m >> Ret s) = Some s.
 Proof.
 rewrite /crun /= bindE /= /bindS MS_mapE /= fmapE /= bindA /=.
-by case Hm: (ofActo m [::]).
+by case Hm: (m (mkEnv [::])).
 Qed.
 
 Let crunskip : crun skip = Some tt.
@@ -621,13 +484,11 @@ Let crunnew (A : UU0) T (m : M A) (s : coq_type T) :
   crun m -> crun (m >> cnew s).
 Proof.
 rewrite /crun /= bindE /= /bindS MS_mapE /= fmapE /= bindA /=.
-by case Hm: (ofActo m [::]).
+by case Hm: (m (mkEnv [::])) => [|[a [b]]].
 Qed.
 
-Unset Universe Checking.
 Canonical Structure isMonadTypedStoreModel :=
   isMonadTypedStore.Build M cnewget cnewput cgetput cgetputskip
     cgetget cputget cputput cgetC cgetnewD cgetnewE cgetputC cputC
     cputgetC cputnewC crunret crunskip crunnew.
-Set Universe Checking.
 End ModelTypedStore.
