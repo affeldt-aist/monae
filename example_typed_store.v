@@ -311,6 +311,23 @@ apply
 done.
 Qed.
 
+Lemma ltsb_neq m n : ltsb m n -> m <> n.
+Proof. by move/Sint63.ltbP/[swap]/(f_equal Sint63.to_Z)-> =>/Z.lt_irrefl. Qed.
+
+(*
+Lemma sub0_eq m n : sub m n = 0%int63 -> m = n.
+Proof.
+rewrite Sint63.sub_of_Z => /(f_equal Uint63.to_Z).
+rewrite Uint63.of_Z_spec.
+move/Sint63.ltbP in mn.
+rewrite Zmod_small.
+  rewrite Z.sub_move_r /= => nm.
+  rewrite nm in mn.
+  by move/Z.lt_irrefl in mn.
+by apply /lesb_sub_bounded /Sint63.lebP /Z.lt_le_incl.
+Qed.
+*)
+
 Lemma ltsb_sub_neq0 m n : ltsb m n -> sub n m <> 0%int63.
 Proof.
 move=> mn.
