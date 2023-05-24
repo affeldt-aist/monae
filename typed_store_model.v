@@ -74,6 +74,14 @@ Definition coerce T1 T2 (v : coq_type T1) : option (coq_type T2) :=
   | right _ => None
   end.
 
+Lemma coerce_sym (T T' : ml_type) (s : coq_type T) (s' : coq_type T') :
+  coerce T' s -> coerce T s'.
+Proof.
+rewrite /coerce.
+case: ml_type_eq_dec => [h|h]; last by case: ml_type_eq_dec.
+by case: ml_type_eq_dec => [//|g]; subst T'.
+Qed.
+
 Definition cget T (r : loc T) : M (coq_type T) :=
   fun st =>
     if nth_error (ofEnv st) (loc_id r) is Some (mkbind T' v) then
@@ -148,22 +156,50 @@ case: ml_type_eq_dec => // H.
 by rewrite -eq_rect_eq bindE /= bindE /= set_nth_rcons.
 Qed.
 
-Let cgetput T (r : loc T) (s : coq_type T) :
-  cget r >> cput r s = cput r s.
+Let cget_Some T (r : loc T) (s : coq_type T) T' s' e A (f : _ -> _ -> M A) :
+  nth_error (ofEnv e) (loc_id r) = Some (mkbind T' s') ->
+  coerce T s' ->
+  (cget r >> f r s) e = f r s e.
 Proof.
-apply/boolp.funext => -[st] /=.
-rewrite bindE /= /bindS MS_mapE /= fmapE /= bindA /= /cget /cput.
-case Hr: (nth_error st (loc_id r)) => [[T' u]|] //.
-rewrite /coerce.
-case: ml_type_eq_dec => HT; last by case: ml_type_eq_dec => // /esym //.
-subst T'.
-rewrite -eq_rect_eq.
-case: ml_type_eq_dec => // HT.
-rewrite -eq_rect_eq {HT}.
-do! rewrite bindE /=.
-rewrite Hr.
-case: ml_type_eq_dec => // HT.
-by rewrite -eq_rect_eq.
+move=> H Ts'.
+rewrite MS_bindE /cget H.
+by case: coerce Ts'.
+Qed.
+
+Let cget_Some' T (r : loc T) (s : coq_type T) T' s' e :
+  nth_error (ofEnv e) (loc_id r) = Some (mkbind T' s') ->
+  ~ coerce T s' ->
+  cget r e = fail.
+Proof. by move=> H Ts'; rewrite /cget H; case: coerce Ts'. Qed.
+
+Let cget_None T (r : loc T) (s : coq_type T) e :
+  nth_error (ofEnv e) (loc_id r) = None ->
+  cget r e = fail.
+Proof. by move=> H; rewrite /cget H. Qed.
+
+Let cput_Some' T (r : loc T) (s : coq_type T) T' s' e :
+  nth_error (ofEnv e) (loc_id r) = Some (mkbind T' s') ->
+  ~ coerce T s' ->
+  cput r s e = fail.
+Proof.
+move=> H Ts'; move: e H => [e] H; rewrite /cput H.
+have {}Ts' : ~ coerce T' s by apply: contra_not Ts'; apply: coerce_sym.
+by case: coerce Ts'.
+Qed.
+
+Let cput_None T (r : loc T) (s : coq_type T) e :
+  nth_error (ofEnv e) (loc_id r) = None ->
+  cput r s e = fail.
+Proof. by move=> H; move: e H => [e] H; rewrite /cput H. Qed.
+
+Let cgetput T (r : loc T) (s : coq_type T) : cget r >> cput r s = cput r s.
+Proof.
+apply/boolp.funext => e.
+move H : (nth_error (ofEnv e) (loc_id r)) => h; move: h H => [[T' s']|] H.
+  have [Ts'|Ts'] := boolp.pselect (coerce T s').
+    by rewrite (cget_Some _ _ H).
+  by rewrite MS_bindE (cget_Some' _ H)// bindfailf (cput_Some' _ H).
+by rewrite MS_bindE cget_None// bindfailf cput_None.
 Qed.
 
 Let cgetputskip T (r : loc T) : cget r >>= cput r = cget r >> skip.
