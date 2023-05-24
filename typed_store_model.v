@@ -76,8 +76,7 @@ Definition coerce T1 T2 (v : coq_type T1) : option (coq_type T2) :=
 
 Definition cget T (r : loc T) : M (coq_type T) :=
   fun st =>
-    let: mkEnv bs := st in
-    if nth_error bs (loc_id r) is Some (mkbind T' v) then
+    if nth_error (ofEnv st) (loc_id r) is Some (mkbind T' v) then
       if coerce T v is Some u then inr (u, st) else inl tt
     else inl tt.
 
@@ -484,6 +483,7 @@ case: ml_type_eq_dec => // H.
 rewrite -eq_rect_eq.
 rewrite bindE /= /bindS /= bindE /= bindE /= /bindS /= MS_mapE /= fmapE /=.
 rewrite bindE /= /bindS /=.
+rewrite /fresh_loc/=.
 rewrite (nth_error_size_set_nth _ _ Hr).
 by rewrite (nth_error_set_nth_rcons _ _ _ Hr).
 Qed.
