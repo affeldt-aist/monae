@@ -51,6 +51,8 @@ Definition M0 Env (T : UU0) := MS Env option_monad T.
 
 #[bypass_check(positivity)]
 Inductive Env := mkEnv : seq (binding (M0 Env)) -> Env.
+Definition ofEnv '(mkEnv e) := e.
+Definition sizeEnv '(mkEnv e) := size e.
 
 Definition acto : UU0 -> UU0 := M0 Env.
 Local Notation M := acto.
@@ -59,11 +61,12 @@ Local Notation coq_type := (coq_type M).
 Definition def := mkbind ml_undef (undef M).
 Local Notation nth_error := List.nth_error.
 
+Definition extend_env T (v : coq_type T) (e : Env) :=
+  mkEnv (rcons (ofEnv e) (mkbind T v)).
+Definition fresh_loc (T : ml_type) (e : Env) := mkloc T (sizeEnv e).
+
 Definition cnew T (v : coq_type T) : M (loc T) :=
-  fun st =>
-    let: mkEnv st := st in
-    let n := size st in
-    inr (mkloc T n, mkEnv (rcons st (mkbind T (v : coq_type T)))).
+  fun e => inr (fresh_loc T e, extend_env v e).
 
 Definition coerce T1 T2 (v : coq_type T1) : option (coq_type T2) :=
   match ml_type_eq_dec T1 T2 with
@@ -105,16 +108,31 @@ Qed.
 Definition ml_type_eq_mixin := EqMixin ml_type_eqP.
 Canonical ml_type_eqType := Eval hnf in EqType _ ml_type_eq_mixin.
 
+(* WIP *)
+Lemma MS_bindE [S : UU0] [M : monad] [A B : UU0] (m : MS S M A) (f : A -> MS S M B) s :
+  (m >>= f) s = m s >>= uncurry f.
+Proof. by []. Qed.
+
+Lemma cnewget0 T (s : coq_type T) A (k : loc T -> coq_type T -> M A) e :
+  let l := fresh_loc T e in
+  (cnew s >>= (fun r => cget r >>= k r)) e = (cget l >>= k l) (extend_env s e).
+Proof. by case: e. Qed.
+
 (* Prove the laws *)
 Definition cnewget T (s : coq_type T) A (k : loc T -> coq_type T -> M A) :
   cnew s >>= (fun r => cget r >>= k r) = cnew s >>= (fun r => k r s).
 Proof.
-apply/boolp.funext => -[] st /=.
+apply/boolp.funext => -[st]/=.
+rewrite cnewget0 !MS_bindE /=.
+rewrite /cget nth_error_rcons_size /coerce.
+case: ml_type_eq_dec => // H.
+by rewrite -eq_rect_eq.
+(*apply/boolp.funext => -[] st /=.
 rewrite bindE /= /bindS MS_mapE /= fmapE /= bindA /=.
 rewrite bindE /= bindE /= bindE /= MS_mapE /= /bindS /= fmapE /=.
 rewrite /cget nth_error_rcons_size /coerce.
 case: ml_type_eq_dec => // H.
-by rewrite -eq_rect_eq.
+by rewrite -eq_rect_eq.*)
 Qed.
 
 Let cnewput T (s t : coq_type T) A (k : loc T -> M A) :
