@@ -259,27 +259,30 @@ move H : (nth_error (ofEnv e) (loc_id r)) => h; move: h H => [[T' s']|] H.
 by rewrite 2!MS_bindE None_cput.
 Qed.
 
+Lemma Some_cputput (T : ml_type) (r : loc T) (s s' : coq_type T)
+  (e : Env) (s'' : coq_type T) :
+  nth_error (ofEnv e) (loc_id r) = Some (mkbind T s'') ->
+  (cput r s >> cput r s') e = cput r s' e.
+Proof.
+move=> H.
+destruct e as [e].
+rewrite MS_bindE/=.
+rewrite H !coerce_Some.
+rewrite bindE/=.
+rewrite nth_error_set_nth coerce_Some/=.
+by rewrite set_set_nth eqxx.
+Qed.
+
 Let cputput T (r : loc T) (s s' : coq_type T) :
   cput r s >> cput r s' = cput r s'.
 Proof.
-(*apply/boolp.funext => e.
+apply/boolp.funext => e.
 move H : (nth_error (ofEnv e) (loc_id r)) => h; move: h H => [[T'' s'']|] H.
   have [Ts''|Ts''] := boolp.pselect (coerce T s'').
     have ? := coerce_eq Ts''; subst T''.
-    admit.
+    by rewrite (Some_cputput _ _ H).
   by rewrite !MS_bindE (nocoerce_cput _ H)// (nocoerce_cput _ H).
-by rewrite MS_bindE !None_cput.*)
-apply/boolp.funext => -[st].
-case: r s s' => {}T n s s' /=.
-rewrite bindE /= /bindS MS_mapE /= fmapE /= bindA /= /cput.
-case Hst : (nth_error st n) => [[T' v]|] /=; last by rewrite bindfailf.
-rewrite {1 3}/coerce.
-case: ml_type_eq_dec => H /=; last by rewrite bindfailf.
-subst T'.
-rewrite !bindretf /= nth_error_set_nth /coerce.
-case: ml_type_eq_dec => // H.
-rewrite -eq_rect_eq.
-by rewrite set_set_nth eqxx.
+by rewrite MS_bindE !None_cput.
 Qed.
 
 Let cgetC T1 T2 (r1 : loc T1) (r2 : loc T2) (A : UU0)
