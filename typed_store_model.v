@@ -260,8 +260,15 @@ by rewrite 2!MS_bindE None_cput.
 Qed.
 
 Let cputput T (r : loc T) (s s' : coq_type T) :
-    cput r s >> cput r s' = cput r s'.
+  cput r s >> cput r s' = cput r s'.
 Proof.
+(*apply/boolp.funext => e.
+move H : (nth_error (ofEnv e) (loc_id r)) => h; move: h H => [[T'' s'']|] H.
+  have [Ts''|Ts''] := boolp.pselect (coerce T s'').
+    have ? := coerce_eq Ts''; subst T''.
+    admit.
+  by rewrite !MS_bindE (nocoerce_cput _ H)// (nocoerce_cput _ H).
+by rewrite MS_bindE !None_cput.*)
 apply/boolp.funext => -[st].
 case: r s s' => {}T n s s' /=.
 rewrite bindE /= /bindS MS_mapE /= fmapE /= bindA /= /cput.
