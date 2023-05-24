@@ -157,20 +157,6 @@ rewrite bind_cnew (Some_cget s)//.
 by destruct e as [e]; rewrite nth_error_rcons_size.
 Qed.
 
-Let cnewput T (s t : coq_type T) A (k : loc T -> M A) :
-  cnew s >>= (fun r => cput r t >> k r) = cnew t >>= k.
-Proof.
-apply/boolp.funext => -[st] /=.
-rewrite bindE /= /bindS MS_mapE /= fmapE /= bindA /=.
-rewrite bindE /= bindE /= bindE /= /bindS /= MS_mapE /= fmapE bindA.
-rewrite [in RHS]bindE /= /bindS MS_mapE /= fmapE /= bindA /=.
-rewrite [in RHS]bindE /= [in RHS]bindE /= /cput.
-rewrite nth_error_rcons_size.
-rewrite /coerce.
-case: ml_type_eq_dec => // H.
-by rewrite -eq_rect_eq bindE /= bindE /= set_nth_rcons.
-Qed.
-
 Let nocoerce_cput T (r : loc T) (s : coq_type T) T' s' e :
   nth_error (ofEnv e) (loc_id r) = Some (mkbind T' s') ->
   ~ coerce T s' ->
@@ -185,6 +171,20 @@ Let None_cput T (r : loc T) (s : coq_type T) e :
   nth_error (ofEnv e) (loc_id r) = None ->
   cput r s e = fail.
 Proof. by move=> H; move: e H => [e] H; rewrite /cput H. Qed.
+
+Lemma bind_cnew' T (s : coq_type T) A B (k : loc T -> M A) e f :
+  let l := fresh_loc T e in
+  (cnew s >>= (fun r => bind (f r) (fun (_ : B) => k r))) e =
+    (f l >> k l) (extend_env s e).
+Proof. by case: e. Qed.
+
+Let cnewput T (s t : coq_type T) A (k : loc T -> M A) :
+  cnew s >>= (fun r => cput r t >> k r) = cnew t >>= k.
+Proof.
+apply/boolp.funext => -[st].
+rewrite bind_cnew' 2!MS_bindE /= nth_error_rcons_size coerce_Some.
+by rewrite /extend_env set_nth_rcons.
+Qed.
 
 Let cgetput T (r : loc T) (s : coq_type T) : cget r >> cput r s = cput r s.
 Proof.
