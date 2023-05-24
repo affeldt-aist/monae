@@ -126,9 +126,15 @@ Lemma MS_bindE [S : UU0] [M : monad] [A B : UU0] (m : MS S M A) (f : A -> MS S M
   (m >>= f) s = m s >>= uncurry f.
 Proof. by []. Qed.
 
-Lemma bind_cnew T (s : coq_type T) A (k : loc T -> coq_type T -> M A) e f :
+Lemma bind_cnew T (s : coq_type T) A (k : loc T -> coq_type T -> M A) e (f : loc T -> M (coq_type T)):
   let l := fresh_loc T e in
   (cnew s >>= (fun r => f r >>= k r)) e = (f l >>= k l) (extend_env s e).
+Proof. by case: e. Qed.
+
+Lemma bind_cnew' T (s : coq_type T) A B (k : loc T -> M A) e f :
+  let l := fresh_loc T e in
+  (cnew s >>= (fun r => f r >>= (fun (_ : B) => k r))) e =
+    (f l >> k l) (extend_env s e).
 Proof. by case: e. Qed.
 
 Let Some_cget T (r : loc T) s e A (f : _ -> M A) :
@@ -172,18 +178,12 @@ Let None_cput T (r : loc T) (s : coq_type T) e :
   cput r s e = fail.
 Proof. by move=> H; move: e H => [e] H; rewrite /cput H. Qed.
 
-Lemma bind_cnew' T (s : coq_type T) A B (k : loc T -> M A) e f :
-  let l := fresh_loc T e in
-  (cnew s >>= (fun r => bind (f r) (fun (_ : B) => k r))) e =
-    (f l >> k l) (extend_env s e).
-Proof. by case: e. Qed.
-
 Let cnewput T (s t : coq_type T) A (k : loc T -> M A) :
   cnew s >>= (fun r => cput r t >> k r) = cnew t >>= k.
 Proof.
 apply/boolp.funext => -[st].
 rewrite bind_cnew' 2!MS_bindE /= nth_error_rcons_size coerce_Some.
-by rewrite /extend_env set_nth_rcons.
+by rewrite set_nth_rcons.
 Qed.
 
 Let cgetput T (r : loc T) (s : coq_type T) : cget r >> cput r s = cput r s.
