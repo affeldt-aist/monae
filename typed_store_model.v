@@ -45,7 +45,7 @@ Import MTypedStore.
 
 Record binding (M : Type -> Type) :=
   mkbind { bind_type : ml_type; bind_val : coq_type M bind_type }.
-Arguments mkbind {M}.
+Arguments mkbind {M bind_type}.
 
 Definition M0 Env (T : UU0) := MS Env option_monad T.
 
@@ -58,11 +58,11 @@ Definition acto : UU0 -> UU0 := M0 Env.
 Local Notation M := acto.
 Local Notation coq_type := (coq_type M).
 
-Definition def := mkbind ml_undef (undef M).
+Definition def := mkbind (undef M).
 Local Notation nth_error := List.nth_error.
 
 Definition extend_env T (v : coq_type T) (e : Env) :=
-  mkEnv (rcons (ofEnv e) (mkbind T v)).
+  mkEnv (rcons (ofEnv e) (mkbind v)).
 Definition fresh_loc (T : ml_type) (e : Env) := mkloc T (sizeEnv e).
 
 Definition cnew T (v : coq_type T) : M (loc T) :=
@@ -100,7 +100,7 @@ Definition cput T (r : loc T) (v : coq_type T) : M unit :=
     let n := loc_id r in
     if nth_error st n is Some (mkbind T' _) then
       if coerce T' v is Some u then
-        let b := mkbind T' (u : coq_type _) in
+        let b := mkbind (u : coq_type T') in
         inr (tt, mkEnv (set_nth def st n b))
       else inl tt
     else inl tt.
@@ -128,17 +128,17 @@ Proof. by []. Qed.
 
 Lemma bind_cnew T (s : coq_type T) A B (k : loc T -> B -> M A) e (f : loc T -> M B) :
   let l := fresh_loc T e in
-  (cnew s >>= (fun r => f r >>= (fun b => k r b))) e = (f l >>= k l) (extend_env s e).
+  (cnew s >>= (fun r => f r >>= k r)) e = (f l >>= k l) (extend_env s e).
 Proof. by case: e. Qed.
 
-Let Some_cget T (r : loc T) s e A (f : _ -> M A) :
-  nth_error (ofEnv e) (loc_id r) = Some (mkbind T s) ->
+Let Some_cget T (r : loc T) (s : coq_type T) e (A : UU0) (f : coq_type T -> M A) :
+  nth_error (ofEnv e) (loc_id r) = Some (mkbind s) ->
   (cget r >>= f) e = f s e.
 Proof. by move=> H; rewrite MS_bindE /cget H coerce_Some. Qed.
 Arguments Some_cget {T r} s.
 
-Let nocoerce_cget T (r : loc T) T' s' e :
-  nth_error (ofEnv e) (loc_id r) = Some (mkbind T' s') ->
+Let nocoerce_cget T (r : loc T) T' (s' : coq_type T') e :
+  nth_error (ofEnv e) (loc_id r) = Some (mkbind s') ->
   ~ coerce T s' ->
   cget r e = fail.
 Proof. by move=> H Ts'; rewrite /cget H; case: coerce Ts'. Qed.
@@ -157,8 +157,8 @@ rewrite bind_cnew (Some_cget s)//.
 by destruct e as [e]; rewrite nth_error_rcons_size.
 Qed.
 
-Let nocoerce_cput T (r : loc T) (s : coq_type T) T' s' e :
-  nth_error (ofEnv e) (loc_id r) = Some (mkbind T' s') ->
+Let nocoerce_cput T (r : loc T) (s : coq_type T) T' (s' : coq_type T') e :
+  nth_error (ofEnv e) (loc_id r) = Some (mkbind s') ->
   ~ coerce T s' ->
   cput r s e = fail.
 Proof.
@@ -181,10 +181,10 @@ by rewrite set_nth_rcons.
 Qed.
 
 Variant nth_error_spec (T : ml_type) (e : Env) (r : loc T) : Type :=
-  | NthError : forall s',
-    nth_error (ofEnv e) (loc_id r) = Some (mkbind T s') -> nth_error_spec e r
-  | NthError_nocoerce : forall T' s',
-    nth_error (ofEnv e) (loc_id r) = Some (mkbind T' s') -> ~ coerce T s' ->
+  | NthError : forall s : coq_type T,
+    nth_error (ofEnv e) (loc_id r) = Some (mkbind s) -> nth_error_spec e r
+  | NthError_nocoerce : forall T' (s' : coq_type T'),
+    nth_error (ofEnv e) (loc_id r) = Some (mkbind s') -> ~ coerce T s' ->
     nth_error_spec e r
   | NthError_None : nth_error (ofEnv e) (loc_id r) = None -> nth_error_spec e r.
 
@@ -207,8 +207,8 @@ have [s' H|T' s' H Ts'|H] := ntherrorP e r.
 - by rewrite MS_bindE None_cget// None_cput.
 Qed.
 
-Let Some_cput T (r : loc T) s e :
-  nth_error (ofEnv e) (loc_id r) = Some (mkbind T s) ->
+Let Some_cput T (r : loc T) (s : coq_type T) e :
+  nth_error (ofEnv e) (loc_id r) = Some (mkbind s) ->
   cput r s e = (@skip M) e.
 Proof.
 move=> H.
@@ -219,7 +219,7 @@ Qed.
 
 Let Some_cputget T (r : loc T) (s : coq_type T) A (k : coq_type T -> M A)
   (e : Env) (s' : coq_type T) :
-  nth_error (ofEnv e) (loc_id r) = Some (mkbind T s') ->
+  nth_error (ofEnv e) (loc_id r) = Some (mkbind s') ->
   (cput r s >> (cget r >>= k)) e = (cput r s >> k s) e.
 Proof.
 move=> H.
@@ -263,7 +263,7 @@ Qed.
 
 Lemma Some_cputput (T : ml_type) (r : loc T) (s s' : coq_type T)
   (e : Env) (s'' : coq_type T) :
-  nth_error (ofEnv e) (loc_id r) = Some (mkbind T s'') ->
+  nth_error (ofEnv e) (loc_id r) = Some (mkbind s'') ->
   (cput r s >> cput r s') e = cput r s' e.
 Proof.
 move=> H.
@@ -311,7 +311,7 @@ Qed.
 
 (* NB: this is similar to the cnewget law *)
 Let cnewgetD_helper e T T' r v (s : coq_type T') A (k : loc T' -> coq_type T -> M A) :
-  nth_error (ofEnv e) (loc_id r) = Some (mkbind T v) ->
+  nth_error (ofEnv e) (loc_id r) = Some (mkbind v) ->
   (cnew s >>= (fun r' => cget r >>= k r')) e = (cnew s >>= (fun r => k r v)) e.
 Proof.
 move=> H.
