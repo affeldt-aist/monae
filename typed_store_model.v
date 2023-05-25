@@ -126,9 +126,8 @@ Lemma MS_bindE [S : UU0] [M : monad] [A B : UU0] (m : MS S M A) (f : A -> MS S M
   (m >>= f) s = m s >>= uncurry f.
 Proof. by []. Qed.
 
-Lemma bind_cnew T (s : coq_type T) A B (k : loc T -> B -> M A) e (f : loc T -> M B) :
-  let l := fresh_loc T e in
-  (cnew s >>= (fun r => f r >>= k r)) e = (f l >>= k l) (extend_env s e).
+Lemma bind_cnew T (s : coq_type T) A (k : loc T -> M A) e :
+  (cnew s >>= k) e = k (fresh_loc T e) (extend_env s e).
 Proof. by case: e. Qed.
 
 Let Some_cget T (r : loc T) (s : coq_type T) e (A : UU0) (f : coq_type T -> M A) :
