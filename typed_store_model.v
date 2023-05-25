@@ -131,10 +131,10 @@ Lemma bind_cnew T (s : coq_type T) A (k : loc T -> coq_type T -> M A) e (f : loc
   (cnew s >>= (fun r => f r >>= k r)) e = (f l >>= k l) (extend_env s e).
 Proof. by case: e. Qed.
 
-Lemma bind_cnew' T (s : coq_type T) A B (k : loc T -> M A) e f :
+Lemma bind_cnew' T (s : coq_type T) A B (k : loc T -> B -> M A) e f :
   let l := fresh_loc T e in
-  (cnew s >>= (fun r => f r >>= (fun (_ : B) => k r))) e =
-    (f l >> k l) (extend_env s e).
+  (cnew s >>= (fun r => f r >>= (fun b => k r b))) e =
+    (f l >>= k l) (extend_env s e).
 Proof. by case: e. Qed.
 
 Let Some_cget T (r : loc T) s e A (f : _ -> M A) :
@@ -315,24 +315,25 @@ have [u Hr1|u T1' Hr1 T1u|Hr1] := ntherrorP e r1.
   + by rewrite MS_bindE !None_cget.
 Qed.
 
+Let cnewgetD_helper e T T' r v (s : coq_type T') A (k : loc T' -> coq_type T -> M A) :
+  nth_error (ofEnv e) (loc_id r) = Some (mkbind T v) ->
+  (cnew s >>= (fun r' => cget r >>= k r')) e = (cnew s >>= (fun r => k r v)) e.
+Proof.
+move=> H.
+rewrite (@bind_cnew' _ s _ _ (fun l => k l) e (fun _ => cget r))//.
+by rewrite (Some_cget v) // (nth_error_rcons_some _ H).
+Qed.
+
 Let cgetnewD T T' (r : loc T) (s : coq_type T') A
            (k : loc T' -> coq_type T -> coq_type T -> M A) :
   cget r >>= (fun u => cnew s >>= fun r' => cget r >>= k r' u) =
   cget r >>= (fun u => cnew s >>= fun r' => k r' u u).
 Proof.
-apply/boolp.funext => -[st] /=.
-rewrite bindE /= /bindS MS_mapE /= fmapE /= bindA /=.
-rewrite [in RHS]bindE /= /bindS MS_mapE /= fmapE /= bindA /= /cget.
-case Hr: (nth_error _ _) => [[T1 u]|]; last by rewrite bindfailf.
-rewrite {1 3}/coerce.
-case: ml_type_eq_dec => H /=; last by rewrite bindfailf.
-subst T1.
-rewrite bindE /= /bindS /= bindE /= bindE /= /bindS /= MS_mapE /= fmapE /=.
-rewrite bindE /= /bindS /= bindE /= bindE /= /bindS /= MS_mapE /= fmapE /=.
-rewrite (nth_error_rcons_some _ Hr).
-rewrite /coerce.
-case: ml_type_eq_dec => // H.
-by rewrite -eq_rect_eq.
+apply/boolp.funext => e.
+have [u Hr|u T1 Hr T1u|Hr] := ntherrorP e r.
+- by rewrite (Some_cget u)// (Some_cget u)// (cnewgetD_helper _ _ Hr)//.
+- by rewrite !MS_bindE (nocoerce_cget Hr).
+- by rewrite !MS_bindE None_cget.
 Qed.
 
 Let cgetnewE T1 T2 (r1 : loc T1) (s : coq_type T2) (A : UU0)
