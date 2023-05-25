@@ -217,8 +217,8 @@ rewrite /cput/= H coerce_Some/=.
 by rewrite nth_error_set_nth_id.
 Qed.
 
-Let Some_cputget T (r : loc T) (s : coq_type T) A (k : coq_type T -> M A)
-  (e : Env) (s' : coq_type T) :
+Let Some_cputget T (s' s : coq_type T) (r : loc T) A (k : coq_type T -> M A)
+  (e : Env) :
   nth_error (ofEnv e) (loc_id r) = Some (mkbind s') ->
   (cput r s >> (cget r >>= k)) e = (cput r s >> k s) e.
 Proof.
@@ -231,6 +231,7 @@ rewrite (Some_cget s); last first.
   by rewrite /= nth_error_set_nth.
 by rewrite H coerce_Some.
 Qed.
+Arguments Some_cputget {T} s'.
 
 Let cgetputskip T (r : loc T) : cget r >>= cput r = cget r >> skip.
 Proof.
@@ -256,7 +257,7 @@ Let cputget T (r: loc T) (s: coq_type T) (A: UU0) (k: coq_type T -> M A) :
 Proof.
 apply/boolp.funext => e /=.
 have [s' H|T' s' H Ts'|H] := ntherrorP e r.
-- by rewrite (Some_cputget _ _ H).
+- by rewrite (Some_cputget s').
 - by rewrite !MS_bindE (nocoerce_cput _ H).
 - by rewrite 2!MS_bindE None_cput.
 Qed.
