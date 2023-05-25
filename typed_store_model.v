@@ -126,15 +126,9 @@ Lemma MS_bindE [S : UU0] [M : monad] [A B : UU0] (m : MS S M A) (f : A -> MS S M
   (m >>= f) s = m s >>= uncurry f.
 Proof. by []. Qed.
 
-Lemma bind_cnew T (s : coq_type T) A (k : loc T -> coq_type T -> M A) e (f : loc T -> M (coq_type T)):
+Lemma bind_cnew T (s : coq_type T) A B (k : loc T -> B -> M A) e (f : loc T -> M B) :
   let l := fresh_loc T e in
-  (cnew s >>= (fun r => f r >>= k r)) e = (f l >>= k l) (extend_env s e).
-Proof. by case: e. Qed.
-
-Lemma bind_cnew' T (s : coq_type T) A B (k : loc T -> B -> M A) e f :
-  let l := fresh_loc T e in
-  (cnew s >>= (fun r => f r >>= (fun b => k r b))) e =
-    (f l >>= k l) (extend_env s e).
+  (cnew s >>= (fun r => f r >>= (fun b => k r b))) e = (f l >>= k l) (extend_env s e).
 Proof. by case: e. Qed.
 
 Let Some_cget T (r : loc T) s e A (f : _ -> M A) :
@@ -182,7 +176,7 @@ Let cnewput T (s t : coq_type T) A (k : loc T -> M A) :
   cnew s >>= (fun r => cput r t >> k r) = cnew t >>= k.
 Proof.
 apply/boolp.funext => -[st].
-rewrite bind_cnew' 2!MS_bindE /= nth_error_rcons_size coerce_Some.
+rewrite bind_cnew 2!MS_bindE /= nth_error_rcons_size coerce_Some.
 by rewrite set_nth_rcons.
 Qed.
 
@@ -315,12 +309,13 @@ have [u Hr1|u T1' Hr1 T1u|Hr1] := ntherrorP e r1.
   + by rewrite MS_bindE !None_cget.
 Qed.
 
+(* NB: this is similar to the cnewget law *)
 Let cnewgetD_helper e T T' r v (s : coq_type T') A (k : loc T' -> coq_type T -> M A) :
   nth_error (ofEnv e) (loc_id r) = Some (mkbind T v) ->
   (cnew s >>= (fun r' => cget r >>= k r')) e = (cnew s >>= (fun r => k r v)) e.
 Proof.
 move=> H.
-rewrite (@bind_cnew' _ s _ _ (fun l => k l) e (fun _ => cget r))//.
+rewrite bind_cnew//.
 by rewrite (Some_cget v) // (nth_error_rcons_some _ H).
 Qed.
 
