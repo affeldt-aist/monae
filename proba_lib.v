@@ -208,9 +208,7 @@ pose m := size xxs.
 have lmn : (l = m * n)%nat by rewrite /l /m /n size_allpairs.
 rewrite (_ : probdivRnnm _ _ = @Prob.mk (/ (1 + m)%:R) (prob_invn _))%R; last first.
   apply val_inj => /=.
-  rewrite lmn /divRnnm -mulSn mult_INR {1}/Rdiv Rinv_mult_distr; last 2 first.
-    by rewrite INR_eq0.
-    by rewrite INR_eq0; apply/eqP; rewrite -lt0n.
+  rewrite lmn /divRnnm -mulSn mult_INR {1}/Rdiv Rinv_mult.
   rewrite mulRC -mulRA mulVR; last by rewrite INR_eq0' -lt0n.
   by rewrite mulR1 -addn1 addnC.
 rewrite -IH //.
