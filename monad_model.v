@@ -1767,6 +1767,14 @@ Definition coerce T1 T2 (v : coq_type M T1) : option (coq_type M T2) :=
   | right _ => None
   end.
 
+Lemma coerce_sym (T T' : ml_type) (s : coq_type M T) (s' : coq_type M T') :
+  coerce T' s -> coerce T s'.
+Proof.
+rewrite /coerce.
+case: ml_type_eq_dec => [h|h]; last by case: ml_type_eq_dec.
+by case: ml_type_eq_dec => [//|g]; subst T'.
+Qed.
+
 Definition cget T (r : loc T) : M (coq_type M T) :=
   fun st =>
     if nth_error st (loc_id r) is Some (mkbind T' v) then
@@ -2180,17 +2188,54 @@ Qed.
 Let crunskip : crun skip = Some tt.
 Proof. by []. Qed.
 
-Let crunnew (A : UU0) T (m : M A) (s : coq_type M T) :
-  crun m -> crun (m >> cnew s).
+Let crunnew (A : UU0) T (m : M A) (s : A -> coq_type M T) :
+  crun m -> crun (m >>= fun x => cnew (s x)).
 Proof.
 rewrite /crun /= bindE /= /bindS MS_mapE /= fmapE /= bindA /=.
 by case Hm: (m [::]).
 Qed.
 
+Let crunnewget (A : UU0) T (m : M A) (s : A -> coq_type M T) :
+  crun m -> crun (m >>= fun x => cnew (s x) >>= @cget T).
+Proof.
+rewrite /crun /= bindE /= /bindS MS_mapE /= fmapE /= bindA /=.
+case Hm: (m [::]) => [|[a b]] // _.
+by rewrite bindE /= bindE /= -(bindmret (_ >>= _)) bindA cnewget bindE.
+Qed.
+
+Let crungetnew (A : UU0) T1 T2 (m : M A) (r : A -> loc T1)
+  (s : A -> coq_type M T2) :
+  crun (m >>= fun x => cget (r x)) ->
+  crun (m >>= fun x => cnew (s x) >> cget (r x)).
+Proof.
+rewrite /crun /= !bindE /= /bindS !MS_mapE /= !fmapE /= !bindA /=.
+case Hm: (m [::]) => [|[a b]] //.
+rewrite !bindE /= !bindE /= /bindS MS_mapE /= fmapE /= bindA.
+rewrite !bindE /= !bindE /= /cget.
+case Hnth: nth_error => [[]|] //.
+rewrite (nth_error_rcons_some _ Hnth).
+by case Hcoe: coerce.
+Qed.
+
+Let crungetput (A : UU0) T (m : M A) (r : A -> loc T) (s : A -> coq_type M T) :
+  crun (m >>= fun x => cget (r x)) ->
+  crun (m >>= fun x => cput (r x) (s x)).
+Proof.
+rewrite /crun /= !bindE /= /bindS !MS_mapE /= !fmapE /= !bindA /=.
+case Hm: (m [::]) => [|[a b]] //.
+rewrite !bindE /= !bindE /= /cget /cput.
+case Hnth: nth_error => [[T' v]|] //.
+case Hcoe: coerce => // _.
+have /coerce_sym : is_true (coerce T v) by rewrite Hcoe.
+move/(_ (s a)).
+by case: coerce.
+Qed.
+
 Canonical Structure isMonadTypedStoreModel :=
   isMonadTypedStore.Build M cnewget cnewput cgetput cgetputskip
     cgetget cputget cputput cgetC cgetnewD cgetnewE cgetputC cputC
-    cputgetC cputnewC crunret crunskip crunnew.
+    cputgetC cputnewC
+    crunret crunskip crunnew crunnewget crungetnew crungetput.
 
 (* The elpi tactic/command HB.instance failed without giving a specific
    error message. 

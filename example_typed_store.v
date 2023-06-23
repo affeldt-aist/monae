@@ -19,6 +19,7 @@ Inductive ml_type : Set :=
   | ml_unit
   | ml_ref (_ : ml_type)
   | ml_arrow (_ : ml_type) (_ : ml_type)
+  | ml_rlist (_ : ml_type)
   | ml_undef.
 
 Inductive undef_t : Set := Undef.
@@ -43,6 +44,10 @@ Local Definition loc := loc.
 Local Definition locT := [eqType of nat].
 Definition loc_id {T} (l : loc T) := let: mkloc _ n := l in n.
 
+Inductive rlist (a : Type) (a_1 : ml_type) :=
+  | Nil
+  | Cons (_ : a) (_ : loc (ml_rlist a_1)).
+
 Section with_monad.
 Context [M : Type -> Type].
 
@@ -54,6 +59,7 @@ Fixpoint coq_type (T : ml_type) : Type :=
   | ml_unit => unit
   | ml_arrow T1 T2 => coq_type T1 -> M (coq_type T2)
   | ml_ref T1 => loc T1
+  | ml_rlist T1 => rlist (coq_type T1) T1
   | ml_undef => undef_t
   end.
 End with_monad.
@@ -63,6 +69,42 @@ End MLtypes.
 Module IMonadTS := MonadTypedStore (MLtypes).
 Import MLtypes.
 Import IMonadTS.
+
+Section cyclic.
+Variable M : typedStoreMonad.
+Notation coq_type := (@MLtypes.coq_type M).
+Notation "'do' x <- m ; e" := (m >>= (fun x => e))
+  (at level 60, x name, m at level 200, e at level 60).
+
+Definition cycle (T : ml_type) (a b : coq_type T)
+  : M (coq_type (ml_rlist T)) :=
+  do r <- cnew (ml_rlist T) (Nil (coq_type T) T);
+  do l <-
+  (do v <- cnew (ml_rlist T) (Cons (coq_type T) T b r);
+   Ret (Cons (coq_type T) T a v));
+  do _ <- cput r l; Ret l.
+
+Definition hd (T : ml_type) (def : coq_type T)
+  (param : coq_type (ml_rlist T)) : coq_type T :=
+  match param with | Nil => def | Cons a _ => a end.
+
+Lemma hd_is_true :
+  crun (do l <- cycle ml_bool true false; Ret (hd ml_bool false l)) = Some true.
+Proof.
+rewrite bindA.
+under eq_bind => tl.
+  rewrite !bindA.
+  under eq_bind do rewrite !bindA bindretf !bindA bindretf /=.
+  rewrite -bindA.
+  over.
+rewrite -bindA crunret // -dbindA /= crungetput // bindA.
+under eq_bind => tl.
+  rewrite !bindA.
+  under eq_bind do rewrite bindretf /=.
+  over.
+by rewrite crungetnew // -(bindskipf (_ >>= _)) crunnewget // crunskip.
+Qed.
+End cyclic.
 
 Section factorial.
 Variable M : typedStoreMonad.
@@ -397,6 +439,7 @@ Fixpoint coq_type (T : ml_type) : Type :=
   | ml_unit => unit
   | ml_arrow T1 T2 => coq_type T1 -> M (coq_type T2)
   | ml_ref T1 => loc T1
+  | ml_rlist T1 => rlist (coq_type T1) T1
   | ml_undef => undef_t
   end.
 End with_monad.
@@ -465,6 +508,8 @@ Definition fact_for63 (n : coq_type ml_int) : M (coq_type ml_int) :=
 
 Section fact_for63_ok.
 Variable n : nat.
+(* Note: assuming n < max_int rather than n <= max_int is not strictly
+   needed, but it simplifies reasoning about loops in concrete code *)
 Hypothesis Hn : (Z.of_nat n < Sint63.to_Z Sint63.max_int)%Z.
 
 Let n_bounded :

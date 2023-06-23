@@ -179,6 +179,26 @@ rewrite bind_cnew 2!MS_bindE /= nth_error_rcons_size coerce_Some.
 by rewrite set_nth_rcons.
 Qed.
 
+(*
+Definition permutable T1 T2 (A : UU0) (k : loc T1 -> loc T2 -> M A) :=
+  forall (n1 n2 : nat) (b1 b2 : binding M) (st : seq (binding M)),
+    k (mkloc T1 n1) (mkloc T2 n2)
+      (mkEnv (set_nth def (set_nth def st n1 b1) n2 b2)) =
+    k (mkloc T1 n2) (mkloc T2 n1)
+      (mkEnv (set_nth def (set_nth def st n2 b1) n1 b2)).
+
+Let cnewC T1 T2 (s : coq_type T1) (t : coq_type T2)
+          A (k : loc T1 -> loc T2 -> M A) :
+  permutable k ->
+  cnew s >>= (fun r => cnew t >>= k r) =
+  cnew t >>= (fun r => cnew s >>= k^~ r).
+Proof.
+move=> pmk.
+apply/boolp.funext => -[st].
+rewrite !bind_cnew /fresh_loc /extend_env /= size_rcons.
+Abort.
+*)
+
 Variant nth_error_spec (T : ml_type) (e : Env) (r : loc T) : Type :=
   | NthError : forall s : coq_type T,
     nth_error (ofEnv e) (loc_id r) = Some (mkbind s) -> nth_error_spec e r
@@ -535,15 +555,52 @@ Qed.
 Let crunskip : crun skip = Some tt.
 Proof. by []. Qed.
 
-Let crunnew (A : UU0) T (m : M A) (s : coq_type T) :
-  crun m -> crun (m >> cnew s).
+Let crunnew (A : UU0) T (m : M A) (s : A -> coq_type T) :
+  crun m -> crun (m >>= fun x => cnew (s x)).
 Proof.
 rewrite /crun /= bindE /= /bindS MS_mapE /= fmapE /= bindA /=.
-by case Hm: (m (mkEnv [::])) => [|[a [b]]].
+by case Hm: (m _).
+Qed.
+
+Let crunnewget (A : UU0) T (m : M A) (s : A -> coq_type T) :
+  crun m -> crun (m >>= fun x => cnew (s x) >>= @cget T).
+Proof.
+rewrite /crun /= bindE /= /bindS MS_mapE /= fmapE /= bindA /=.
+case Hm: (m _) => [|[a b]] // _.
+by rewrite bindE /= bindE /= -(bindmret (_ >>= _)) bindA cnewget bindE.
+Qed.
+
+Let crungetnew (A : UU0) T1 T2 (m : M A) (r : A -> loc T1)
+  (s : A -> coq_type T2) :
+  crun (m >>= fun x => cget (r x)) ->
+  crun (m >>= fun x => cnew (s x) >> cget (r x)).
+Proof.
+rewrite /crun /= !bindE /= /bindS !MS_mapE /= !fmapE /= !bindA /=.
+case Hm: (m _) => [|[a b]] //.
+rewrite !bindE /= !bindE /= /bindS MS_mapE /= fmapE /= bindA.
+rewrite !bindE /= !bindE /= /cget.
+case Hnth: nth_error => [[]|] //.
+rewrite (nth_error_rcons_some _ Hnth).
+by case Hcoe: coerce.
+Qed.
+
+Let crungetput (A : UU0) T (m : M A) (r : A -> loc T) (s : A -> coq_type T) :
+  crun (m >>= fun x => cget (r x)) ->
+  crun (m >>= fun x => cput (r x) (s x)).
+Proof.
+rewrite /crun /= !bindE /= /bindS !MS_mapE /= !fmapE /= !bindA /=.
+case Hm: (m _) => [|[a [b]]] //=.
+rewrite !bindE /= !bindE /= /cget /cput /=.
+case Hnth: nth_error => [[T' v]|] //.
+case Hcoe: coerce => // _.
+have /coerce_sym : is_true (coerce T v) by rewrite Hcoe.
+move/(_ (s a)).
+by case: coerce.
 Qed.
 
 Canonical Structure isMonadTypedStoreModel :=
   isMonadTypedStore.Build M cnewget cnewput cgetput cgetputskip
     cgetget cputget cputput cgetC cgetnewD cgetnewE cgetputC cputC
-    cputgetC cputnewC crunret crunskip crunnew.
+    cputgetC cputnewC
+    crunret crunskip crunnew crunnewget crungetnew crungetput.
 End ModelTypedStore.

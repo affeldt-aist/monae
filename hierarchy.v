@@ -561,6 +561,17 @@ apply funext_dep => m; apply funext_dep => f.
 by rewrite bindE.
 Qed.
 
+Lemma dbindA  A B C (m : M A) (f : A -> M B) (g : A -> B -> M C) :
+    (m >>= fun x => f x >>= fun y => Ret (x,y)) >>= (fun xy => g xy.1 xy.2)
+    = (m >>= fun x => f x >>= g x).
+Proof.
+rewrite bindA.
+apply eq_bind => x.
+rewrite bindA.
+apply eq_bind => y.
+by rewrite bindretf.
+Qed.
+
 End monad_lemmas.
 
 Notation "'do' x <- m ; e" := (bind m (fun x => e)) (only parsing) : do_notation.
@@ -1150,8 +1161,18 @@ HB.mixin Record isMonadTypedStore (M : UU0 -> UU0)
       crun m -> crun (m >> Ret s) = Some s ;
   crunskip :
       crun skip = Some tt ;
-  crunnew : forall (A : UU0) T (m : M A) (s : coq_type M T),
-      crun m -> crun (m >> cnew s) ;
+  crunnew : forall (A : UU0) T (m : M A) (s : A -> coq_type M T),
+      crun m -> crun (m >>= fun x => cnew (s x)) ;
+  crunnewget : forall (A : UU0) T (m : M A) (s : A -> coq_type M T),
+      crun m -> crun (m >>= fun x => cnew (s x) >>= cget) ;
+  crungetnew : forall (A : UU0) T1 T2 (m : M A) (r : A -> loc T1)
+                      (s : A -> coq_type M T2),
+      crun (m >>= fun x => cget (r x)) ->
+      crun (m >>= fun x => cnew (s x) >> cget (r x)) ;
+  crungetput : forall (A : UU0) T (m : M A) (r : A -> loc T)
+                      (s : A -> coq_type M T),
+      crun (m >>= fun x => cget (r x)) ->
+      crun (m >>= fun x => cput (r x) (s x)) ;
  }.
 
 #[short(type=typedStoreMonad)]
