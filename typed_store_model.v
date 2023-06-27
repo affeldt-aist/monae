@@ -20,8 +20,7 @@ Unset Printing Implicit Defensive.
 Local Open Scope monae_scope.
 
 Module Type MLTYdef.
-Parameter ml_type : Set.
-Parameter ml_type_eq_dec : forall x y : ml_type, {x=y}+{x<>y}.
+Parameter ml_type : eqType.
 Variant loc : ml_type -> Type := mkloc T : nat -> loc T.
 Parameter coq_type : forall M : Type -> Type, ml_type -> Type.
 Parameter ml_undef : ml_type.
@@ -66,24 +65,21 @@ Definition cnew T (v : coq_type T) : M (loc T) :=
   fun e => inr (fresh_loc T e, extend_env v e).
 
 Definition coerce T1 T2 (v : coq_type T1) : option (coq_type T2) :=
-  match ml_type_eq_dec T1 T2 with
-  | left H => Some (eq_rect _ _ v _ H)
-  | right _ => None
-  end.
+  if eqVneq T1 T2 is EqNotNeq H then Some (eq_rect _ _ v _ H) else None.
 
 Lemma coerce_sym (T T' : ml_type) (s : coq_type T) (s' : coq_type T') :
   coerce T' s -> coerce T s'.
 Proof.
-rewrite /coerce.
-case: ml_type_eq_dec => [h|h]; last by case: ml_type_eq_dec.
-by case: ml_type_eq_dec => [//|g]; subst T'.
+by rewrite /coerce; case: eqVneq => //= h; case: eqVneq => //; rewrite h eqxx.
 Qed.
 
 Lemma coerce_eq (T T' : ml_type) (s : coq_type T) : coerce T' s -> T = T'.
-Proof. by rewrite /coerce; case: ml_type_eq_dec. Qed.
+Proof. by rewrite /coerce; case: eqVneq. Qed.
 
 Lemma coerce_Some (T : ml_type) (s : coq_type T) : coerce T s = Some s.
-Proof. by rewrite /coerce; case: ml_type_eq_dec => // ?; rewrite -eq_rect_eq. Qed.
+Proof.
+by rewrite /coerce; case: eqVneq => /= [?|]; [rewrite -eq_rect_eq|rewrite eqxx].
+Qed.
 
 Definition cget T (r : loc T) : M (coq_type T) :=
   fun st =>
@@ -107,16 +103,6 @@ Definition crun (A : UU0) (m : M A) : option A :=
   | inl _ => None
   | inr (a, _) => Some a
   end.
-
-(* Make ml_type an eqType *)
-Definition ml_type_eqb T1 T2 : bool := ml_type_eq_dec T1 T2.
-Lemma ml_type_eqP : Equality.axiom ml_type_eqb.
-Proof.
-rewrite /ml_type_eqb => T1 T2.
-by case: ml_type_eq_dec; constructor.
-Qed.
-Definition ml_type_eq_mixin := EqMixin ml_type_eqP.
-Canonical ml_type_eqType := Eval hnf in EqType _ ml_type_eq_mixin.
 
 (* WIP *)
 Lemma MS_bindE [S : UU0] [M : monad] [A B : UU0] (m : MS S M A) (f : A -> MS S M B) s :
@@ -362,9 +348,31 @@ have [u r1u|T' s' Hr1 T1s'|Hr] := ntherrorP e r1.
 - by rewrite !MS_bindE None_cget.
 Qed.
 
+Lemma Some_cputget' (T T' : ml_type) (r : loc T) (r' : loc T') (s s' : coq_type T)
+  (e : Env) (s'' : coq_type T) :
+  nth_error (ofEnv e) (loc_id r) = Some (mkbind s'') ->
+  (cput r s >> cget r') e = cget r' (mkEnv (set_nth def (ofEnv e) (loc_id r) (mkbind s))).
+Proof.
+move=> ers''.
+destruct e as [e].
+rewrite MS_bindE/=.
+by rewrite ers'' !coerce_Some//=.
+Qed.
+
 Lemma cgetputC T1 T2 (r1 : loc T1) (r2 : loc T2) (s : coq_type T2) :
   cget r1 >> cput r2 s = cput r2 s >> cget r1 >> skip.
 Proof.
+(*apply/boolp.funext => e.
+have [u r1u|T' u r1u T1u|Hr1] := ntherrorP e r1.
+- rewrite (Some_cget u)//.
+  have [v r2v|T' v r2v T2v|r2v] := ntherrorP e r2.
+  + rewrite bindA !MS_bindE.
+    admit.
+  + admit.
+  + by rewrite !MS_bindE !None_cput.
+- rewrite MS_bindE (nocoerce_cget r1u)// bindfailf.
+  admit.
+- rewrite MS_bindE None_cget// bindfailf.*)
 apply/boolp.funext => -[st] /=.
 rewrite bindE /= /bindS MS_mapE /= fmapE /= bindA /=.
 rewrite [in RHS]bindE /= /bindS MS_mapE /= fmapE /= 2!bindA /= /cget /cput.
@@ -380,9 +388,9 @@ case Hr2 : (nth_error st (loc_id r2)) => [[T2' v2]|] /=; last first.
   case Hc: (coerce T1 v1) => [u|]; last by rewrite bindfailf.
   by rewrite bindE/= bindE/= Hr2.
 rewrite {1 3}/coerce.
-case: (ml_type_eq_dec T1' T1) => HT1; last first.
+case: eqVneq => [HT1|]; last first.
   rewrite bindfailf.
-  case: (ml_type_eq_dec T2 T2') => HT2; last by rewrite bindfailf.
+  case: eqVneq => [HT2|]; last by rewrite bindfailf.
   subst T2'.
   rewrite -eq_rect_eq.
   rewrite bindE/= bindE/=.
@@ -390,11 +398,11 @@ case: (ml_type_eq_dec T1' T1) => HT1; last first.
     rewrite -Hr nth_error_set_nth /coerce.
     move: Hr2; rewrite -Hr Hr1 => -[] HT2.
     subst T1'.
-    by case: ml_type_eq_dec.
+    by case: eqVneq.
   rewrite (nth_error_set_nth_other _ _ Hr Hr1) /coerce.
-  by case: ml_type_eq_dec.
+  by case: eqVneq.
 rewrite bindE /= bindE /= Hr2 {1}/coerce.
-case: ml_type_eq_dec => HT2 //.
+case: eqVneq => HT2 //.
 subst T1' T2'.
 rewrite -!eq_rect_eq.
 rewrite bindE /= bindE /=.
@@ -402,9 +410,8 @@ case/boolP: (loc_id r1 == loc_id r2) => [/eqP|] Hr.
   rewrite -Hr nth_error_set_nth /coerce.
   move: Hr2; rewrite -Hr Hr1 => -[] HT2.
   subst T2.
-  by case: ml_type_eq_dec.
-rewrite (nth_error_set_nth_other _ _ Hr Hr1) /coerce.
-by case: ml_type_eq_dec.
+  by case: eqVneq => //; rewrite eqxx.
+by rewrite(nth_error_set_nth_other _ _ Hr Hr1) coerce_Some.
 Qed.
 
 Lemma cputC T1 T2 (r1 : loc T1) (r2 : loc T2) (s1 : coq_type T1)
@@ -429,21 +436,21 @@ case/boolP: (loc_id r1 == loc_id r2) H => [/eqP|] Hr /= H.
   rewrite -Hr Hr1.
   case/boolP: (T1 == T2) => /eqP HT; last first.
     rewrite /coerce.
-    case: (ml_type_eq_dec T1 T1') => HT1; last first.
+    case: eqVneq => [HT1|]; last first.
       rewrite bindfailf.
-      case: (ml_type_eq_dec T2 T1') => HT2; last by rewrite bindfailf.
+      case: eqVneq => HT2; last by rewrite bindfailf.
       subst T1'.
       rewrite -eq_rect_eq bindE /= bindE /= nth_error_set_nth.
-      by case: ml_type_eq_dec.
+      by case: eqVneq.
     subst T1'.
     rewrite -eq_rect_eq bindE /= bindE /= nth_error_set_nth.
-    by case: ml_type_eq_dec => [/esym|] //.
+    by case: eqVneq => [/esym|] //.
   subst T2.
   rewrite /coerce.
-  case: ml_type_eq_dec => HT1 //.
+  case: eqVneq => [HT1|] //.
   subst T1'.
   rewrite -eq_rect_eq bindE /= bindE /= bindE /= bindE /= !nth_error_set_nth.
-  case: ml_type_eq_dec => HT1 //.
+  case: eqVneq => HT1 //.
   rewrite -!eq_rect_eq.
   case: H => // H.
   by move: (JMeq_eq H) => <-.
@@ -454,23 +461,23 @@ case Hr2: (nth_error _ _) => [[T2' v]|]; last first.
   rewrite !bindE /=.
   by rewrite (nth_error_set_nth_none _ _ Hr2 Hr1).
 rewrite {1 3}/coerce.
-case: (ml_type_eq_dec _ _) => HT1; last first.
+case: eqVneq => [HT1|]; last first.
   rewrite bindfailf.
-  case: (ml_type_eq_dec _ _) => HT2; last by rewrite bindfailf.
+  case: eqVneq => [HT2|]; last by rewrite bindfailf.
   subst T2'.
   rewrite -eq_rect_eq.
   rewrite bindE /=.
   rewrite !bindE /=.
   rewrite (nth_error_set_nth_other _ _ Hr Hr1) /coerce.
-  by case: ml_type_eq_dec.
+  by case: eqVneq.
 subst T1'.
 rewrite -eq_rect_eq /coerce.
 rewrite bindE /= bindE /= (nth_error_set_nth_other _ _ _ Hr2);
   last by rewrite eq_sym.
-case: ml_type_eq_dec => HT2' //.
+case: eqVneq => HT2' //.
 subst T2'.
 rewrite -eq_rect_eq bindE /= bindE /= (nth_error_set_nth_other _ _ Hr Hr1).
-case: ml_type_eq_dec => // HT1.
+case: eqVneq => [HT1|]; last by rewrite eqxx.
 by rewrite -eq_rect_eq set_set_nth (negbTE Hr).
 Qed.
 
@@ -495,22 +502,22 @@ case Hr2: (nth_error _ _) => [[T2' v]|]; last first.
   rewrite !bindE /= !bindE /= /bindS MS_mapE /= fmapE.
   by rewrite (nth_error_set_nth_none _ _ Hr2 Hr1) bindfailf.
 rewrite {1 3}/coerce.
-case: (ml_type_eq_dec _ _) => HT1; last first.
+case: eqVneq => [HT1|]; last first.
   rewrite bindfailf.
-  case: (ml_type_eq_dec _ _) => HT2; last by rewrite bindfailf.
+  case: eqVneq => [HT2|]; last by rewrite bindfailf.
   subst T2'.
   rewrite -eq_rect_eq.
   rewrite bindE /= bindE /= bindE /= /bindS /= MS_mapE /= fmapE Hr1 /coerce.
-  by case: ml_type_eq_dec.
+  by case: eqVneq.
 subst T1'.
 rewrite -eq_rect_eq /coerce.
 rewrite bindE /= bindE /= bindE /= /bindS /= MS_mapE /= fmapE.
 rewrite (nth_error_set_nth_other _ _ _ Hr2); last by rewrite eq_sym.
-case: ml_type_eq_dec => HT2' //.
+case: eqVneq => HT2' //.
 subst T2'.
 rewrite -eq_rect_eq bindE /= bindE /= bindE /= bindE /=.
 rewrite /bindS /= MS_mapE /= fmapE Hr1.
-case: ml_type_eq_dec => // HT1.
+case: eqVneq => [HT1|]; last by rewrite eqxx.
 by rewrite -eq_rect_eq bindE.
 Qed.
 
@@ -524,13 +531,13 @@ rewrite bindE /= /bindS MS_mapE /= fmapE /= bindA /=.
 rewrite [in RHS]bindE /= /bindS MS_mapE /= fmapE /= bindA /= /cget /cput.
 case Hr: (nth_error _ _) => [[T1 u]|]; last by rewrite bindfailf.
 rewrite {1 3}/coerce.
-case: ml_type_eq_dec => H /=; last by case ml_type_eq_dec => H' //; elim H.
+case: eqVneq => [H|] /=; last by case: eqVneq => H' //; elim H.
 subst T1.
 rewrite bindE /= /bindS /= bindE /= bindE /= /bindS /= MS_mapE /= fmapE /=.
 rewrite bindE /= /bindS /= bindE /= bindE /= /bindS /= MS_mapE /= fmapE /=.
 rewrite (nth_error_rcons_some _ Hr).
 rewrite /coerce.
-case: ml_type_eq_dec => // H.
+case: eqVneq => // H.
 rewrite -eq_rect_eq.
 rewrite bindE /= /bindS /= bindE /= bindE /= /bindS /= MS_mapE /= fmapE /=.
 rewrite bindE /= /bindS /=.

@@ -1082,8 +1082,7 @@ HB.structure Definition MonadPlusArray (S : UU0) (I : eqType) :=
 
 (* A monad for OCaml computations *)
 Module Type MLTY.
-Parameter ml_type : Set.
-Parameter ml_type_eq_dec : forall x y : ml_type, {x=y}+{x<>y}.
+Parameter ml_type : eqType.
 Variant loc : ml_type -> Type := mkloc T : nat -> loc T.
 Parameter locT : eqType.
 Parameter loc_id : forall T, loc T -> locT.

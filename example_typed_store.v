@@ -22,21 +22,12 @@ Inductive ml_type : Set :=
   | ml_rlist (_ : ml_type)
   | ml_undef.
 
+Canonical Structure ml_type_eqType := EqType ml_type boolp.gen_eqMixin.
+
 Inductive undef_t : Set := Undef.
 
 Module MLtypes.
-Definition ml_type_eq_dec (T1 T2 : ml_type) : {T1=T2}+{T1<>T2}.
-revert T2; induction T1; destruct T2;
-  try (right; intro; discriminate); try (now left);
-  try (case (IHT1_5 T2_5); [|right; injection; intros; contradiction]);
-  try (case (IHT1_4 T2_4); [|right; injection; intros; contradiction]);
-  try (case (IHT1_3 T2_3); [|right; injection; intros; contradiction]);
-  try (case (IHT1_2 T2_2); [|right; injection; intros; contradiction]);
-  (case (IHT1 T2) || case (IHT1_1 T2_1)); try (left; now subst);
-    right; injection; intros; contradiction.
-Defined.
-
-Local Definition ml_type := ml_type.
+Local Definition ml_type := [eqType of ml_type].
 Local Definition undef (M : UU0 -> UU0) := Undef.
 Variant loc : ml_type -> Type := mkloc T : nat -> loc T.
 Local Definition locT := [eqType of nat].
@@ -439,10 +430,9 @@ Qed.
 End Int63.
 
 Module MLtypes63.
-Local Definition ml_type_eq_dec := ml_type_eq_dec.
-Local Definition ml_type := ml_type.
+Local Definition ml_type := [eqType of ml_type].
 Local Definition undef (M : UU0 -> UU0) := Undef.
-Variant loc : ml_type -> Set := mkloc T : nat -> loc T.
+Variant loc : ml_type -> Type := mkloc T : nat -> loc T.
 Local Definition locT := [eqType of nat].
 Local Definition loc_id {T} (l : loc T) := let: mkloc _ n := l in n.
 
