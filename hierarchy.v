@@ -561,12 +561,10 @@ apply funext_dep => m; apply funext_dep => f.
 by rewrite bindE.
 Qed.
 
-Lemma dbindA  A B C (m : M A) (f : A -> M B) (g : A -> B -> M C) :
-    (m >>= fun x => f x >>= fun y => Ret (x,y)) >>= (fun xy => g xy.1 xy.2)
-    = (m >>= fun x => f x >>= g x).
+Lemma ret_uncurry A B C (f : A -> M B) (g : A -> B -> M C) x :
+    (f x >>= fun y => Ret (x,y)) >>= (fun xy => g xy.1 xy.2)
+    = (f x >>= g x).
 Proof.
-rewrite bindA.
-apply eq_bind => x.
 rewrite bindA.
 apply eq_bind => y.
 by rewrite bindretf.

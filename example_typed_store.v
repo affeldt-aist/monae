@@ -97,7 +97,11 @@ under eq_bind => tl.
   under eq_bind do rewrite !bindA bindretf !bindA bindretf /=.
   rewrite -bindA.
   over.
-rewrite -bindA crunret // -dbindA /= crungetput // bindA.
+rewrite -bindA crunret //.
+under eq_bind do
+  rewrite -(ret_uncurry (fun x => cnew (ml_rlist ml_bool) (Cons (MLtypes.coq_type ml_bool) ml_bool false x))
+    (fun x x0 => cput x (Cons bool ml_bool true x0))).
+rewrite -bindA /= crungetput // bindA.
 under eq_bind => tl.
   rewrite !bindA.
   under eq_bind do rewrite bindretf /=.
