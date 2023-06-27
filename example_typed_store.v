@@ -68,8 +68,24 @@ Module IMonadTS := MonadTypedStore (MLtypes).
 Import MLtypes.
 Import IMonadTS.
 
+Module Model.
 Require Import typed_store_model.
 Module ModelTS := ModelTypedStore (MLtypes).
+
+Require Import fail_lib state_lib trace_lib.
+Require Import monad_transformer monad_model typed_store_model.
+From HB Require Import structures.
+Import ModelTS.
+Check [the monad of MS Env option_monad].
+(* Fails
+Check [the monad of acto].
+Definition D :=
+  isMonadTypedStore.Build _ cnewget cnewput cgetput cgetputskip
+    cgetget cputget cputput cgetC cgetnewD cgetnewE cgetputC cputC
+    cputgetC cputnewC
+    crunret crunskip crunnew crunnewget crungetnew crungetput.
+ *)
+End Model.
 
 Section cyclic.
 Variable M : typedStoreMonad.
