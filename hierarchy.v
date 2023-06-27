@@ -561,15 +561,6 @@ apply funext_dep => m; apply funext_dep => f.
 by rewrite bindE.
 Qed.
 
-Lemma ret_uncurry A B C (f : A -> M B) (g : A -> B -> M C) x :
-    (f x >>= fun y => Ret (x,y)) >>= (fun xy => g xy.1 xy.2)
-    = (f x >>= g x).
-Proof.
-rewrite bindA.
-apply eq_bind => y.
-by rewrite bindretf.
-Qed.
-
 End monad_lemmas.
 
 Notation "'do' x <- m ; e" := (bind m (fun x => e)) (only parsing) : do_notation.

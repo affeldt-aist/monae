@@ -4,7 +4,7 @@ Require Import ZArith.
 From mathcomp Require Import all_ssreflect.
 From mathcomp Require boolp.
 From infotheo Require Import ssrZ.
-Require Import monae_lib hierarchy. (*monad_lib fail_lib state_lib.*)
+Require Import monae_lib hierarchy monad_lib. (*fail_lib state_lib.*)
 
 (******************************************************************************)
 (*                         Type store examples                                *)
@@ -98,11 +98,7 @@ under eq_bind => tl.
   under eq_bind do rewrite !bindA bindretf !bindA bindretf /=.
   rewrite -bindA.
   over.
-rewrite -bindA crunret //.
-under eq_bind do
-  rewrite -(ret_uncurry (fun x => cnew (ml_rlist ml_bool) (Cons (MLtypes.coq_type _ ml_bool) ml_bool false x))
-    (fun x x0 => cput x (Cons bool ml_bool true x0))).
-rewrite -bindA /= crungetput // bindA.
+rewrite -bindA crunret // -bindA_uncurry /= crungetput // bindA.
 under eq_bind => tl.
   rewrite !bindA.
   under eq_bind do rewrite bindretf /=.
