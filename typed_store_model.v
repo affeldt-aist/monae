@@ -354,15 +354,12 @@ Lemma cgetnewE T1 T2 (r1 : loc T1) (s : coq_type T2) (A : UU0)
   cget r1 >> (cnew s >>= k1) = cget r1 >> (cnew s >>= k2).
 Proof.
 move=> Hk.
-apply/boolp.funext => -[st] /=.
-rewrite bindE /= /bindS MS_mapE /= fmapE /= bindA /=.
-rewrite [in RHS]bindE /= /bindS MS_mapE /= fmapE /= bindA /= /cget.
-case Hr1 : (nth_error st (loc_id r1)) => [[T1' v1]|] //=.
-case Hc: (coerce T1 v1) => [u1|] //.
-rewrite bindE /= bindE /= bindE /= /bindS MS_mapE /= fmapE /= bindA /=.
-rewrite [in RHS]bindE /= [in RHS]bindE /= [in RHS]bindE /= /bindS MS_mapE /=.
-rewrite fmapE /= bindA /= 2!bindE /=.
-by rewrite Hk // neq_ltn /= (nth_error_size Hr1).
+apply/boolp.funext => e.
+have [u r1u|T' s' Hr1 T1s'|Hr] := ntherrorP e r1.
+- rewrite (Some_cget u)// (Some_cget u)// !bind_cnew Hk// neq_ltn.
+  by case: e r1u => /= e /nth_error_size ->.
+- by rewrite !MS_bindE (nocoerce_cget Hr1).
+- by rewrite !MS_bindE None_cget.
 Qed.
 
 Lemma cgetputC T1 T2 (r1 : loc T1) (r2 : loc T2) (s : coq_type T2) :
