@@ -153,6 +153,16 @@ HB.instance Definition _ X :=
 Definition uncurry_F X : functor := [the functor of @uncurry_M X].
 End uncurry_functor.
 
+Lemma bind_uncurry (M : monad) A B C (f : A -> M B) (g : A -> B -> M C) x :
+  (f x >>= fun y => Ret (x,y)) >>= (fun xy => g xy.1 xy.2)(*uncurry g*) =
+  (f x >>= g x).
+Proof. by rewrite bindA; under eq_bind do rewrite bindretf. Qed.
+
+Lemma bindA_uncurry (M : monad) A B C (m : M A) (f : A -> M B) (g : A -> B -> M C) :
+  (m >>= fun x => f x >>= fun y => Ret (x,y)) >>= (fun xy => g xy.1 xy.2) =
+  (m >>= fun x => f x >>= g x).
+Proof. by rewrite bindA; by under eq_bind do rewrite bind_uncurry. Qed.
+
 Section exponential_functor.
 Variable A : UU0.
 Definition exponential_M (X : UU0) := A -> X.
