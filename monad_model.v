@@ -1720,7 +1720,6 @@ Require Import JMeq.
 Module Type MLTYweak.
 Parameter ml_type : Set.
 Parameter ml_type_eq_dec : forall x y : ml_type, {x=y}+{x<>y}.
-Variant loc : ml_type -> Set := mkloc T : nat -> loc T.
 Parameter coq_type0 : ml_type -> Type.
 Parameter ml_undef : ml_type.
 Parameter undef : coq_type0 ml_undef.
@@ -1733,7 +1732,7 @@ Module MLtypes'.
 Definition ml_type := ml_type.
 Definition ml_type_eq_dec := ml_type_eq_dec.
 Definition coq_type (M : UU0 -> UU0) := coq_type0.
-Definition loc := loc.
+Variant loc : ml_type -> Type := mkloc T : nat -> loc T.
 Definition locT := [eqType of nat].
 Definition loc_id {T} (l : loc T) := let: mkloc _ n := l in n.
 End MLtypes'.

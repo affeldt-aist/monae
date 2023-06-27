@@ -31,10 +31,7 @@ End MLTYdef.
 Module ModelTypedStore (MLtypes : MLTYdef).
 Import MLtypes.
 Module MLtypes'.
-Definition ml_type := ml_type.
-Definition ml_type_eq_dec := ml_type_eq_dec.
-Definition coq_type := coq_type.
-Definition loc := loc.
+Include MLtypes.
 Definition locT := [eqType of nat].
 Definition loc_id {T} (l : loc T) := let: mkloc _ n := l in n.
 End MLtypes'.

@@ -24,8 +24,6 @@ Inductive ml_type : Set :=
 
 Inductive undef_t : Set := Undef.
 
-Variant loc : ml_type -> Type := mkloc T : nat -> loc T.
-
 Module MLtypes.
 Definition ml_type_eq_dec (T1 T2 : ml_type) : {T1=T2}+{T1<>T2}.
 revert T2; induction T1; destruct T2;
@@ -39,8 +37,8 @@ revert T2; induction T1; destruct T2;
 Defined.
 
 Local Definition ml_type := ml_type.
-Local Definition undef := Undef.
-Local Definition loc := loc.
+Local Definition undef (M : UU0 -> UU0) := Undef.
+Variant loc : ml_type -> Type := mkloc T : nat -> loc T.
 Local Definition locT := [eqType of nat].
 Definition loc_id {T} (l : loc T) := let: mkloc _ n := l in n.
 
@@ -69,6 +67,9 @@ End MLtypes.
 Module IMonadTS := MonadTypedStore (MLtypes).
 Import MLtypes.
 Import IMonadTS.
+
+Require Import typed_store_model.
+Module ModelTS := ModelTypedStore (MLtypes).
 
 Section cyclic.
 Variable M : typedStoreMonad.
@@ -427,10 +428,10 @@ End Int63.
 Module MLtypes63.
 Local Definition ml_type_eq_dec := ml_type_eq_dec.
 Local Definition ml_type := ml_type.
-Local Definition undef := Undef.
-Local Definition loc := loc.
+Local Definition undef (M : UU0 -> UU0) := Undef.
+Variant loc : ml_type -> Set := mkloc T : nat -> loc T.
 Local Definition locT := [eqType of nat].
-Local Definition loc_id := @loc_id.
+Local Definition loc_id {T} (l : loc T) := let: mkloc _ n := l in n.
 
 Section with_monad.
 Context [M : Type -> Type].
