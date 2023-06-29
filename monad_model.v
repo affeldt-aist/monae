@@ -150,9 +150,29 @@ Proof. by []. Qed.
 Let right_neutral : BindLaws.right_neutral bind (NId FId).
 Proof. by []. Qed.
 Let associative : BindLaws.associative bind. Proof. by []. Qed.
-Let acto := (@idfun UU0).
+
+(** SMC notes **)
+(* When expressing like this, it generates a specialized version of @idfun*)
+(* The original signature of @idfun is:
+
+    forall T : UU0, T -> T
+  
+  But (@idfun UU0), namely `acto`, becomes:
+
+    UU0 -> UU0
+
+  So (@idfun UU0) is a specialized version.
+  And then we can use it with any UU0 input.
+
+*)
+Let acto := (@idfun UU0).  
+Check left_neutral.
+
+(* `isMonad_ret_bind.Build` receives `acto` and other functions, then instance the monad *)
+
 HB.instance Definition _ := isMonad_ret_bind.Build
   acto left_neutral right_neutral associative.
+
 End identitymonad.
 End IdentityMonad.
 HB.export IdentityMonad.
@@ -160,6 +180,9 @@ HB.export IdentityMonad.
 Module ListMonad.
 Section listmonad.
 Definition acto := fun A : UU0 => seq A.
+
+Check acto.
+
 Local Notation M := acto.
 Let ret : FId ~~> M := fun (A : UU0) x => (@cons A) x [::].
 Let bind := fun A B (m : M A) (f : A -> M B) => flatten (map f m).
@@ -186,6 +209,9 @@ Module SetMonad.
 Section setmonad.
 Local Open Scope classical_set_scope.
 Definition acto := set.
+
+Check set.
+Check @bigcup.
 Local Notation M := acto.
 Let ret : idfun ~~> M := @set1.
 Let bind := fun A B => @bigcup B A.
@@ -211,10 +237,24 @@ Module ExceptMonad.
 Section exceptmonad.
 Variable E : UU0.
 Definition acto := fun A : UU0 => (E + A)%type.
+Check fun A : UU0 => (E + A)%type.
+
+(** SMC note
+
+Different `acto` has the same type signature,
+but their implementation receives different types in different monads.
+
+**)
+
 Local Notation M := acto.
 Let ret : FId ~~> M := @inr E.
+
+Check @inr.
+
 Let bind := fun A B (m : M A) (f : A -> M B) =>
   match m with inl z => inl z | inr b => f b end.
+
+Check inl.
 Let left_neutral : BindLaws.left_neutral bind ret.
 Proof. by []. Qed.
 Let right_neutral : BindLaws.right_neutral bind ret.
@@ -1939,3 +1979,110 @@ HB.instance Definition _ := @isMonadExceptStateRun.Build S N (MS S N)
 
 End modelmonadexceptstaterun.
 End ModelMonadExceptStateRun.
+
+(* Models of SMC monads *)
+
+(* SMC Local Monad: 
+   Basically a MonadArray but every element is a `(F * P)` instead of a single `S`. *)
+
+Module ModelSMCLocal.
+Section modelsmc_local.
+
+Variables (F P : UU0) (VarName : eqType).
+Local Notation SMCLocalVars := (VarName -> SMCLocal F P).
+Implicit Types (v : VarName) (l : SMCLocal F P) (e : SMCLocal F P -> SMCLocal F P) (A : UU0).
+
+Definition acto := StateMonad.acto SMCLocalVars.
+Local Notation M := acto.
+
+(* From the registry of all variables on one local machine, `get` and lift one var to the local monad. *)
+Definition get v : M (SMCLocal F P) := fun vars => (vars v, vars).
+
+(* NOTE: how `vars v` indexes the values is unknown here, but this still can be defined. *)
+(* Because it will be defined when init the "state" monad with an init state, which must provide
+   how to get the var from `vars v`. *)
+Definition expr e v : M (SMCLocal F P) := fun vars => (e (vars v), vars).
+
+(* Update the content registered to the var name: `var = (full, pair)` *)
+Definition assign v l : M unit := fun vars => (tt, insert v l vars).
+
+HB.about isMonadSMCLocal.
+
+(* Memo: this line must be in order *)
+HB.instance Definition _ := isMonadSMCLocal.Build
+  F P VarName acto get expr assign.
+
+End modelsmc_local.
+End ModelSMCLocal.
+
+(* ---- ---- *)
+
+(* SMC Global: a monad composes of two local monads *)
+
+Module ModelSMCGlobal.
+Section modelsmc_global.
+
+Variables (F P : UU0) (VarName : eqType).
+Local Notation SMCGlobalVars :=  (VarName -> MonadSMCLocals F P VarName).
+Implicit Types (v : VarName) (g : MonadSMCLocals F P VarName) (e : MonadSMCLocals F P VarName -> MonadSMCLocals F P VarName) (A : UU0).
+
+Check SMCGlobalVars.
+Check MonadSMCLocals F P VarName.
+Check StateMonad.acto (VarName -> MonadSMCLocals F P VarName).
+
+
+(*
+Memo: acto application must be UU0 -> UU0.
+
+StateMonad.acto
+	 : UU0 -> UU0 -> UU0
+StateMonad.acto (VarName -> SMCLocal F P)
+	 : UU0 -> UU0
+
+
+In array monad:
+
+  Variables (S : UU0) (I : eqType).
+  Implicit Types (i j : I) (A : UU0).
+  Definition acto := StateMonad.acto (I -> S).
+*)
+
+Definition acto := StateMonad.acto SMCGlobalVars.
+Local Notation M := acto.
+
+Definition get 
+
+End modelsmc_global.
+End ModelSMCGlobal.
+
+
+(* Memo:
+
+What does "universe inconsistency" means:
+
+https://stackoverflow.com/questions/32153710/what-does-error-universe-inconsistency-mean-in-coq
+
+(constrains like: Type_i, Type_j, and i < j -- cannot be solved internally in Coq.)
+
+*)
+
+(* Memo:
+
+1. `Int` means an interface for `()` (???), so that the caller can use Int's operations over `()`.
+2. `Array Int` means an interface for Int, so that the caller can use Array's operations over Int.
+3. `M (Array Int)` means an interface for Array Int, so that the caller can use M's operations over `Array Int`
+    --> And how to define all operations of `M` by the underlying `Array` operations is what monad transformer does.
+
+*)
+
+(*
+Require Import PrimInt63.
+Require Sint63.
+Section Int63.
+
+Inductive smcty : Set :=
+  | Int
+  | Float
+  | Array of nat & smcty.
+
+*)

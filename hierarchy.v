@@ -3,6 +3,7 @@
 Ltac typeof X := type of X.
 
 Require Import ssrmatching Reals.
+Require Import Floats ssreflect.
 From mathcomp Require Import all_ssreflect.
 From mathcomp Require boolp.
 From infotheo Require Import Reals_ext.
@@ -1217,3 +1218,231 @@ HB.mixin Record isMonadFailFresh (S : eqType) (M : UU0 -> UU0)
 HB.structure Definition MonadFailFresh (S : eqType) :=
   { M of isMonadFailFresh S M & isFunctor M & isMonad M & isMonadFresh S M &
          isMonadFail M }.
+
+
+(*
+
+For example, if we have a monadic SMC code:
+
+    compare x
+
+Then:
+
+1. `x` must exist at both locals
+    (like, index in array monad could be out of range -- but using default value instead).
+2. `x` must be SMC-type.
+3. Both locals must commit some state changes to execute the `compare` (a model thing?)
+
+What is a "local" and how to have it when defining the interface?
+Like in the isMonadArray interface: there is no "array" can be seen.
+
+  aget : I -> M S ;
+  aput : I -> S -> M unit ;
+
+(Where is the "array"? It becomes a model thing so hidden at the interface level)
+
+----
+
+About laws:
+
+Some interface methods are extended from basic operations.
+And they are laws. Like `aputput` is a law to require two put operations to store
+values at the same index, it equals to only storing the later one's result.
+
+(Ref: https://prg.is.titech.ac.jp/wp-content/uploads/2022/04/ppl2022_v2.pdf)
+
+This "law" of `aputput` is defined in `hierachy.v`:
+
+  aputput : forall i s s', aput i s >> aput i s' = aput i s' ;
+
+With a proof  in the `monad_model.v`:
+
+  Let aputput i s s' : aput i s >> aput i s' = aput i s'.
+  Proof.
+  rewrite state_bindE; apply boolp.funext => a/=.
+  by rewrite /aput insert_insert.
+  Qed.
+
+Therefore, if we define basic SMC operations at the interface,
+we can also define necessary laws the same interface,
+then prove them in the model file.
+
+And of course, these operations and laws,
+must represent SMC style on the SMC computation structure.
+
+So if SMC computation structure is about two locals,
+the laws must describe these two locals explicitly,
+and thus the two locals must be in type signatures of those interface methods.
+
+One critical thing is to keep the monad useful for the operations.
+Since now two locals are in the type signatures,
+if the operation itself can done the all things without what inside the monad,
+then having a monad becomes useless (although, at least, monad allows us to 
+have sequence of execution; but it is a pure monad, no SMC features inside.)
+
+** What is SMC feature for a monad **
+
+There could be some extra steps before or after the operation itself,
+and two locals may have or have no information exchange.
+
+*)
+
+Inductive smcty : Set :=
+(*  | Int    --cannot define Int because Uint63 defined a conflicting `_>>_`  notation *)
+  | Float
+  | Array of nat & smcty.
+
+(* cannot have pair because 
+Syntax error: [pattern level 200] expected after '(' (in [pattern]).
+  | Pair of smcty & smcty.
+*)
+
+Fixpoint smc2ty (ty : smcty) : Type :=
+  match ty with
+(*  | Int => int  *)
+  | Float => float
+  | Array n ty => n.-tuple (smc2ty ty)
+(*
+  | Pair ty1 ty2 => smc2ty ty1 * smc2ty ty2
+*)
+  end.
+Inductive loc : smcty -> smcty -> Type :=
+  | Here ty : loc ty ty
+(*
+  | Left ty1 ty2 : loc (Pair ty1 ty2) ty1
+  | Right ty1 ty2 : loc (Pair ty1 ty2) ty2
+*)
+  | Nth n ty (i : 'I_n) : loc (Array n ty) ty.
+
+Definition smcget (ty ty' : smcty) (l : loc ty ty') :=
+  match l in loc ty ty' return smc2ty ty -> smc2ty ty' with
+  | Here ty => fun v => v
+(* cannot have pair because 
+Syntax error: [pattern level 200] expected after '(' (in [pattern]).
+  | Left ty1 ty2 => fun '(v1, v2) => v1
+  | Right ty1 ty2 => fun '(v1, v2) => v2
+*)
+  | Nth n ty i => fun v => tnth v i
+  end.
+Check smcget.
+Definition SMC (shared : smcty) (res : Type) :=
+  smc2ty shared -> res * smc2ty shared.
+
+  (*
+Notation SMCLocal := [tuple smcty; smcty].
+
+Notation SMCStates := [tuple SMCLocal; SMCLocal].
+
+Check eqType.
+Locate eqType.
+*)
+
+(* the same issue as GADT: since `compare in Monad` needs a generic `a`, not restricted type *)
+(*
+Inductive smcstates : Set :=
+| States : [tuple SMCLocal; SMCLocal]. 
+
+
+
+Notation "'SMCState'" := ((S * S * S * S) % type) (at level 99).
+Notation "'SMCExpr'" := (S -> (S * S * S * S) % type) (at level 99).
+
+Notation  (*Memo: an "abbreviation"; doesn't need `level`*)
+*)
+
+Section smc_monad_local.
+
+Variables F P : UU0.
+Variable VarName : eqType.
+
+Definition SMCLocal : UU0 := F * P.
+Definition SMCStates : UU0 := SMCLocal * SMCLocal.
+
+
+End smc_monad_local.
+(* Note: do mixin outside a section*)
+(* When shortening def by Definition, providing arguments like `SMCStates F P`, not just `SMCStates`*)
+
+(* Each local: doing local computation faithfully; no swap or other global ops*)
+HB.mixin Record isMonadSMCLocal (F P : UU0) (VarName : eqType) (M : UU0 -> UU0) of Monad M := {
+
+  (* The "internal" interface for the Global to call, so the Global can get the local values
+     when it needs to do magic SMC things for locals. Locals don't need to know how to make
+     such protocol operations happen.
+  *)
+  get : VarName -> M (SMCLocal F P);
+
+  (* You give me a VarName I give you a value (assume only valid VarName will be passed),
+     Then you need to judge how to execute the op to complete the computation,
+     And how to return a new temporary (not committed yet; new results only) SMCLocals.
+
+        equal to: `expr var`
+
+     This `expr` can only handles the pure local expression.
+     Because there is no global monad passed here.
+     The direction is unidirectional `Global -> Local`, not bidirectional `Global <-> Local`
+  *)
+  expr : (SMCLocal F P -> SMCLocal F P) -> VarName -> M (SMCLocal F P);
+
+  (* assign the expression result to var *)
+  assign : VarName -> SMCLocal F P -> M unit;
+}.
+
+#[short(type=smcLocalMonad)]
+HB.structure Definition MonadSMCLocal (F P : UU0) (VarName : eqType) :=
+  {M of isMonadSMCLocal F P VarName M & isMonad M & isFunctor M }.
+  
+Section smc_monad.
+
+Variables F P : UU0.
+Variable VarName : eqType.
+Definition MonadSMCLocals : UU0 := (smcLocalMonad F P VarName * smcLocalMonad F P VarName).
+
+End smc_monad.
+
+HB.mixin Record isMonadSMCGlobal (MonadSMCLocals : UU0 -> UU0 -> eqType -> UU0) (F P : UU0) (VarName : eqType) (M : UU0 -> UU0) of Monad M := {
+
+  (* For monadic program after the compilation.
+     One `get` in global means two local `get` steps on local machines.
+  *)
+  get : VarName -> M (MonadSMCLocals F P VarName)
+
+  (* expr related to Global = SMC protocols
+    
+    Whenever there is an computation over a Partial value bound to one VarName,
+     the expression needs to call the built-in SMC protocol functions to complete the computation,
+     and what those protocol functions do are simplified here as:
+
+     1. Get both locals' target Partial values by local `get`.
+     2. Generate new partial values from those partial values.
+     3. Put the generated SMC values back to locals by local `assign`.
+  *)
+  expr : (MonadSMCLocals F P VarName -> MonadSMCLocals F P VarName) -> VarName -> M (MonadSMCLocals F P VarName);
+
+  (* A simplified "SMC protocol" for two-party communications.
+
+     It exchange the "partial" var in two locals with the same VarName.
+     So the two parties must prepare the exchanging target first,
+     and then this method call will do the "communication".
+  *)
+  exchange : MonadSMCLocals F P VarName -> VarName -> M unit;
+
+  (*TODO: getResult? From this global SMC *)
+  (*TODO: Partial and Full data flow view: all Fulls eventually become Partials;
+    and "Global" is actually a Partial data handler *)
+}.
+
+#[short(type=smcMonadGlobal)]
+HB.structure Definition MonadSMCGlobal (MonadSMCLocals : UU0 -> UU0 -> eqType -> UU0) (F P : UU0) (V : eqType) :=
+  {M of isMonadSMCGlobal MonadSMCLocals F P V M & isMonad M & isFunctor M }.
+
+(* Use smcMonad and smcMonadLocal, to represent the language smcSL*)
+HB.mixin Record isMonadSMCLang (F P : UU0) (VarName : eqType) (M : UU0 -> UU0) of Monad M := {
+
+    (* The `compare` built-in function at the language lavel*)
+    compare : VarName -> M (bool * smcty) %type;
+}.
+
+#[short(type=smcMonadLang)]
+HB.structure Definition MonadSMCLang (F P : UU0) (V : eqType) :=
+  {M of isMonadSMCLang F P V M & isMonad M & isFunctor M }.
