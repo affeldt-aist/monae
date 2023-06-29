@@ -2006,30 +2006,35 @@ Definition expr e v : M (SMCLocal F P) := fun vars => (e (vars v), vars).
 (* Update the content registered to the var name: `var = (full, pair)` *)
 Definition assign v l : M unit := fun vars => (tt, insert v l vars).
 
-HB.about isMonadSMCLocal.
+Definition extract mvars : SMCLocal F P := fun vars => 
 
 (* Memo: this line must be in order *)
 HB.instance Definition _ := isMonadSMCLocal.Build
-  F P VarName acto get expr assign.
+  F P VarName acto get expr assign extract.
 
 End modelsmc_local.
 End ModelSMCLocal.
 
 (* ---- ---- *)
 
-(* SMC Global: a monad composes of two local monads *)
+(* SMC Global: a monad composes of two instances of local data,
+   and use the local monad inteface to manipuate them
+*)
 
+
+(*
 Module ModelSMCGlobal.
 Section modelsmc_global.
 
 Variables (F P : UU0) (VarName : eqType).
-Local Notation SMCGlobalVars :=  (VarName -> MonadSMCLocals F P VarName).
+Local Notation SMCGlobalVars :=  (VarName -> SMCGlobal F P).
 Implicit Types (v : VarName) (g : MonadSMCLocals F P VarName) (e : MonadSMCLocals F P VarName -> MonadSMCLocals F P VarName) (A : UU0).
 
 Check SMCGlobalVars.
 Check MonadSMCLocals F P VarName.
 Check StateMonad.acto (VarName -> MonadSMCLocals F P VarName).
 
+*)
 
 (*
 Memo: acto application must be UU0 -> UU0.
@@ -2047,6 +2052,8 @@ In array monad:
   Definition acto := StateMonad.acto (I -> S).
 *)
 
+
+(*
 Definition acto := StateMonad.acto SMCGlobalVars.
 Local Notation M := acto.
 
@@ -2054,6 +2061,8 @@ Definition get
 
 End modelsmc_global.
 End ModelSMCGlobal.
+
+*)
 
 
 (* Memo:

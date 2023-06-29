@@ -1366,10 +1366,7 @@ End smc_monad_local.
 (* Each local: doing local computation faithfully; no swap or other global ops*)
 HB.mixin Record isMonadSMCLocal (F P : UU0) (VarName : eqType) (M : UU0 -> UU0) of Monad M := {
 
-  (* The "internal" interface for the Global to call, so the Global can get the local values
-     when it needs to do magic SMC things for locals. Locals don't need to know how to make
-     such protocol operations happen.
-  *)
+  (* To start a local monad computation chain. *)
   get : VarName -> M (SMCLocal F P);
 
   (* You give me a VarName I give you a value (assume only valid VarName will be passed),
@@ -1384,8 +1381,35 @@ HB.mixin Record isMonadSMCLocal (F P : UU0) (VarName : eqType) (M : UU0 -> UU0) 
   *)
   expr : (SMCLocal F P -> SMCLocal F P) -> VarName -> M (SMCLocal F P);
 
-  (* assign the expression result to var *)
+  (* Assign the expression result to var *)
   assign : VarName -> SMCLocal F P -> M unit;
+
+  (* Actually a comonad method: this is necessary when the global holds two instances of actual local data,
+     not two monads:
+
+         SMCLocal : (F * P)
+         SMCGlobal : (F * P * F * P)
+
+         smcGlobalMonad : Monad (F P VarName)
+
+     So if the global monad needs to change its pair of SMCLocal data,
+     it "install" the monad interface to the SMCLocal data it owns:
+
+         (smcLocalMonad F P VarName * smcLocalMonad F P VarName)
+
+     And delegate operations to the locals like:
+
+     Then delegate the operations to each local by a global monad method `local`:
+
+         local >>=
+            fun (ma, mb) => (ma >>= fun a => a + 1 >>= extract, mb >>= fun b => b - 1 >>= extract)
+     
+     Without this `extract` method, the value cannot go back
+     to the SMCGlobal: (F * P * F * P) but monadic values `(smcLocalMonad F P VarName * smcLocalMonad F P VarName)`,
+     which doesn't match the expected data type owned by the `smcGlobalMonad`.
+  *)
+  extract : M (SMCLocal F P) -> SMCLocal F P;
+
 }.
 
 #[short(type=smcLocalMonad)]
@@ -1396,16 +1420,32 @@ Section smc_monad.
 
 Variables F P : UU0.
 Variable VarName : eqType.
+Definition SMCGlobal : UU0 := SMCLocal F P * SMCLocal F P.
 Definition MonadSMCLocals : UU0 := (smcLocalMonad F P VarName * smcLocalMonad F P VarName).
 
 End smc_monad.
 
-HB.mixin Record isMonadSMCGlobal (MonadSMCLocals : UU0 -> UU0 -> eqType -> UU0) (F P : UU0) (VarName : eqType) (M : UU0 -> UU0) of Monad M := {
+HB.mixin Record isMonadSMCGlobal (F P : UU0) (VarName : eqType) (M : UU0 -> UU0) of Monad M := {
+
+  (* From one pair of both locals' variables,
+     install two local monad interfaces to them,
+     and thus allow the following operations be expressed in local monad operations.
+
+     After the moadic program at the local leve, this method calls local monad's `extract` method,
+     to put their computation results back to the global.
+
+     For example:
+
+     local >>=
+         fun (a , b ) => (ma >>= fun a => a + 1, mb >>= fun b => b - 1) >>=
+         fun (a', b') => globalFunc a' b'
+  *)
+  local : (SMCGlobal F P -> (MonadSMCLocals F P VarName)) -> M (SMCGlobal F P);
 
   (* For monadic program after the compilation.
      One `get` in global means two local `get` steps on local machines.
   *)
-  get : VarName -> M (MonadSMCLocals F P VarName)
+  get : VarName -> M (SMCGlobal F P);
 
   (* expr related to Global = SMC protocols
     
@@ -1417,7 +1457,7 @@ HB.mixin Record isMonadSMCGlobal (MonadSMCLocals : UU0 -> UU0 -> eqType -> UU0) 
      2. Generate new partial values from those partial values.
      3. Put the generated SMC values back to locals by local `assign`.
   *)
-  expr : (MonadSMCLocals F P VarName -> MonadSMCLocals F P VarName) -> VarName -> M (MonadSMCLocals F P VarName);
+  expr : (SMCGlobal F P -> SMCGlobal F P) -> VarName -> M (SMCGlobal F P);
 
   (* A simplified "SMC protocol" for two-party communications.
 
@@ -1425,7 +1465,7 @@ HB.mixin Record isMonadSMCGlobal (MonadSMCLocals : UU0 -> UU0 -> eqType -> UU0) 
      So the two parties must prepare the exchanging target first,
      and then this method call will do the "communication".
   *)
-  exchange : MonadSMCLocals F P VarName -> VarName -> M unit;
+  exchange : SMCGlobal F P -> VarName -> M unit;
 
   (*TODO: getResult? From this global SMC *)
   (*TODO: Partial and Full data flow view: all Fulls eventually become Partials;
@@ -1433,8 +1473,8 @@ HB.mixin Record isMonadSMCGlobal (MonadSMCLocals : UU0 -> UU0 -> eqType -> UU0) 
 }.
 
 #[short(type=smcMonadGlobal)]
-HB.structure Definition MonadSMCGlobal (MonadSMCLocals : UU0 -> UU0 -> eqType -> UU0) (F P : UU0) (V : eqType) :=
-  {M of isMonadSMCGlobal MonadSMCLocals F P V M & isMonad M & isFunctor M }.
+HB.structure Definition MonadSMCGlobal (F P : UU0) (V : eqType) :=
+  {M of isMonadSMCGlobal F P V M & isMonad M & isFunctor M }.
 
 (* Use smcMonad and smcMonadLocal, to represent the language smcSL*)
 HB.mixin Record isMonadSMCLang (F P : UU0) (VarName : eqType) (M : UU0 -> UU0) of Monad M := {
