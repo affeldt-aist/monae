@@ -1719,18 +1719,17 @@ Module Type MLTYweak.
 Parameter ml_type : Set.
 Parameter ml_type_eq_dec : forall x y : ml_type, {x=y}+{x<>y}.
 Parameter coq_type0 : ml_type -> Type.
+Variant loc : ml_type -> Type := mkloc T : nat -> loc T.
 Parameter ml_undef : ml_type.
-Parameter undef : coq_type0 ml_undef.
+Parameter undef : (UU0 -> UU0) -> coq_type0 ml_undef.
 (*Parameter ml_exn : ml_type.*)
 End MLTYweak.
 
 Module ModelTypedStore (MLtypes : MLTYweak).
 Import MLtypes.
 Module MLtypes'.
-Definition ml_type := ml_type.
-Definition ml_type_eq_dec := ml_type_eq_dec.
+Include MLtypes.
 Definition coq_type (M : UU0 -> UU0) := coq_type0.
-Variant loc : ml_type -> Type := mkloc T : nat -> loc T.
 Definition locT := [eqType of nat].
 Definition loc_id {T} (l : loc T) := let: mkloc _ n := l in n.
 End MLtypes'.
@@ -1751,7 +1750,7 @@ Local Notation M := acto.
 (*Local Notation coq_type := (coq_type M).*)
 Local Notation coq_type' := (coq_type idfun).
 
-Definition def : binding idfun := mkbind ml_undef undef.
+Definition def : binding idfun := mkbind ml_undef (undef idfun).
 Local Notation nth_error := List.nth_error.
 
 Definition cnew T (v : coq_type M T) : M (loc T) :=
@@ -1804,7 +1803,7 @@ Definition ml_type_eq_mixin := EqMixin ml_type_eqP.
 Canonical ml_type_eqType := Eval hnf in EqType _ ml_type_eq_mixin.
 
 (* Prove the laws *)
-Let cnewget T (s : coq_type M T) A (k : loc T -> coq_type M T -> M A) :
+Definition cnewget T (s : coq_type M T) A (k : loc T -> coq_type M T -> M A) :
   cnew s >>= (fun r => cget r >>= k r) = cnew s >>= (fun r => k r s).
 Proof.
 (*apply/boolp.funext => st/=.
@@ -1822,7 +1821,7 @@ case: ml_type_eq_dec => // H.
 by rewrite -eq_rect_eq.
 Qed.
 
-Let cnewput T (s t : coq_type M T) A (k : loc T -> M A) :
+Definition cnewput T (s t : coq_type M T) A (k : loc T -> M A) :
   cnew s >>= (fun r => cput r t >> k r) = cnew t >>= k.
 Proof.
 apply/boolp.funext => st /=.
@@ -1836,7 +1835,7 @@ case: ml_type_eq_dec => // H.
 by rewrite -eq_rect_eq bindE /= bindE /= set_nth_rcons.
 Qed.
 
-Let cgetput T (r : loc T) (s : coq_type M T) :
+Definition cgetput T (r : loc T) (s : coq_type M T) :
   cget r >> cput r s = cput r s.
 Proof.
 apply/boolp.funext => st /=.
@@ -1854,7 +1853,7 @@ case: ml_type_eq_dec => // HT.
 by rewrite -eq_rect_eq.
 Qed.
 
-Let cgetputskip T (r : loc T) : cget r >>= cput r = cget r >> skip.
+Definition cgetputskip T (r : loc T) : cget r >>= cput r = cget r >> skip.
 Proof.
 apply/boolp.funext => st /=.
 rewrite bindE /= /bindS MS_mapE /= fmapE /= bindA /= /cget /cput.
@@ -1868,7 +1867,8 @@ case: (ml_type_eq_dec T T) => H //.
 by rewrite -eq_rect_eq nth_error_set_nth_id.
 Qed.
 
-Let cgetget T (r : loc T) (A : UU0) (k : coq_type M T -> coq_type M T -> M A) :
+Definition cgetget T (r : loc T) (A : UU0)
+  (k : coq_type M T -> coq_type M T -> M A) :
   cget r >>= (fun s => cget r >>= k s) = cget r >>= fun s => k s s.
 Proof.
 apply/boolp.funext => st /=.
@@ -1885,7 +1885,8 @@ case: (ml_type_eq_dec T T) => H //.
 by rewrite -eq_rect_eq.
 Qed.
 
-Let cputget T (r: loc T) (s: coq_type M T) (A: UU0) (k: coq_type M T -> M A) :
+Definition cputget T (r: loc T) (s: coq_type M T) (A: UU0)
+  (k: coq_type M T -> M A) :
   cput r s >> (cget r >>= k) = cput r s >> k s.
 Proof.
 apply/boolp.funext => st /=.
@@ -1904,7 +1905,7 @@ case: ml_type_eq_dec => H /=; last by rewrite bindfailf.
 by rewrite -eq_rect_eq !bindretf.
 Qed.
 
-Let cputput T (r : loc T) (s s' : coq_type M T) :
+Definition cputput T (r : loc T) (s s' : coq_type M T) :
     cput r s >> cput r s' = cput r s'.
 Proof.
 apply/boolp.funext => st.
@@ -1920,7 +1921,7 @@ rewrite -eq_rect_eq.
 by rewrite set_set_nth eqxx.
 Qed.
 
-Let cgetC T1 T2 (r1 : loc T1) (r2 : loc T2) (A : UU0)
+Definition cgetC T1 T2 (r1 : loc T1) (r2 : loc T2) (A : UU0)
            (k : coq_type M T1 -> coq_type M T2 -> M A) :
   cget r1 >>= (fun u => cget r2 >>= (fun v => k u v)) =
   cget r2 >>= (fun v => cget r1 >>= (fun u => k u v)).
@@ -1962,7 +1963,7 @@ case: (ml_type_eq_dec T1 T1) => // H.
 by rewrite -eq_rect_eq.
 Qed.
 
-Let cgetnewD T T' (r : loc T) (s : coq_type M T') A
+Definition cgetnewD T T' (r : loc T) (s : coq_type M T') A
            (k : loc T' -> coq_type M T -> coq_type M T -> M A) :
   cget r >>= (fun u => cnew s >>= fun r' => cget r >>= k r' u) =
   cget r >>= (fun u => cnew s >>= fun r' => k r' u u).
@@ -1982,7 +1983,7 @@ case: ml_type_eq_dec => // H.
 by rewrite -eq_rect_eq.
 Qed.
 
-Let cgetnewE T1 T2 (r1 : loc T1) (s : coq_type M T2) (A : UU0)
+Definition cgetnewE T1 T2 (r1 : loc T1) (s : coq_type M T2) (A : UU0)
     (k1 k2 : loc T2 -> M A) :
   (forall r2 : loc T2, loc_id r1 != loc_id r2 -> k1 r2 = k2 r2) ->
   cget r1 >> (cnew s >>= k1) = cget r1 >> (cnew s >>= k2).
@@ -1999,7 +2000,7 @@ rewrite fmapE /= bindA /= 2!bindE /=.
 by rewrite Hk // neq_ltn /= (nth_error_size Hr1).
 Qed.
 
-Let cgetputC T1 T2 (r1 : loc T1) (r2 : loc T2) (s : coq_type M T2) :
+Definition cgetputC T1 T2 (r1 : loc T1) (r2 : loc T2) (s : coq_type M T2) :
   cget r1 >> cput r2 s = cput r2 s >> cget r1 >> skip.
 Proof.
 apply/boolp.funext => st /=.
@@ -2044,7 +2045,7 @@ rewrite (nth_error_set_nth_other _ _ Hr Hr1) /coerce.
 by case: ml_type_eq_dec.
 Qed.
 
-Let cputC T1 T2 (r1 : loc T1) (r2 : loc T2) (s1 : coq_type M T1)
+Definition cputC T1 T2 (r1 : loc T1) (r2 : loc T2) (s1 : coq_type M T1)
     (s2 : coq_type M T2) (A : UU0) :
   loc_id r1 != loc_id r2 \/ JMeq s1 s2 ->
   cput r1 s1 >> cput r2 s2 = cput r2 s2 >> cput r1 s1.
@@ -2111,7 +2112,7 @@ case: ml_type_eq_dec => // HT1.
 by rewrite -eq_rect_eq set_set_nth (negbTE Hr).
 Qed.
 
-Let cputgetC T1 T2 (r1 : loc T1) (r2 : loc T2) (s1 : coq_type M T1)
+Definition cputgetC T1 T2 (r1 : loc T1) (r2 : loc T2) (s1 : coq_type M T1)
     (A : UU0) (k : coq_type M T2 -> M A) :
   loc_id r1 != loc_id r2 ->
   cput r1 s1 >> cget r2 >>= k = cget r2 >>= (fun v => cput r1 s1 >> k v).
@@ -2151,7 +2152,7 @@ case: ml_type_eq_dec => // HT1.
 by rewrite -eq_rect_eq bindE.
 Qed.
 
-Let cputnewC T T' (r : loc T) (s : coq_type M T) (s' : coq_type M T') A
+Definition cputnewC T T' (r : loc T) (s : coq_type M T) (s' : coq_type M T') A
     (k : loc T' -> M A) :
   cget r >> (cnew s' >>= fun r' => cput r s >> k r') =
   cput r s >> (cnew s' >>= k).
@@ -2175,24 +2176,24 @@ rewrite (nth_error_size_set_nth _ _ Hr).
 by rewrite (nth_error_set_nth_rcons _ _ _ Hr).
 Qed.
 
-Let crunret (A B : UU0) (m : M A) (s : B) :
+Definition crunret (A B : UU0) (m : M A) (s : B) :
   crun m -> crun (m >> Ret s) = Some s.
 Proof.
 rewrite /crun /= bindE /= /bindS MS_mapE /= fmapE /= bindA /=.
 by case Hm: (m [::]).
 Qed.
 
-Let crunskip : crun skip = Some tt.
+Definition crunskip : crun skip = Some tt.
 Proof. by []. Qed.
 
-Let crunnew (A : UU0) T (m : M A) (s : A -> coq_type M T) :
+Definition crunnew (A : UU0) T (m : M A) (s : A -> coq_type M T) :
   crun m -> crun (m >>= fun x => cnew (s x)).
 Proof.
 rewrite /crun /= bindE /= /bindS MS_mapE /= fmapE /= bindA /=.
 by case Hm: (m [::]).
 Qed.
 
-Let crunnewget (A : UU0) T (m : M A) (s : A -> coq_type M T) :
+Definition crunnewget (A : UU0) T (m : M A) (s : A -> coq_type M T) :
   crun m -> crun (m >>= fun x => cnew (s x) >>= @cget T).
 Proof.
 rewrite /crun /= bindE /= /bindS MS_mapE /= fmapE /= bindA /=.
@@ -2200,7 +2201,7 @@ case Hm: (m [::]) => [|[a b]] // _.
 by rewrite bindE /= bindE /= -(bindmret (_ >>= _)) bindA cnewget bindE.
 Qed.
 
-Let crungetnew (A : UU0) T1 T2 (m : M A) (r : A -> loc T1)
+Definition crungetnew (A : UU0) T1 T2 (m : M A) (r : A -> loc T1)
   (s : A -> coq_type M T2) :
   crun (m >>= fun x => cget (r x)) ->
   crun (m >>= fun x => cnew (s x) >> cget (r x)).
@@ -2214,7 +2215,8 @@ rewrite (nth_error_rcons_some _ Hnth).
 by case Hcoe: coerce.
 Qed.
 
-Let crungetput (A : UU0) T (m : M A) (r : A -> loc T) (s : A -> coq_type M T) :
+Definition crungetput (A : UU0) T (m : M A) (r : A -> loc T)
+  (s : A -> coq_type M T) :
   crun (m >>= fun x => cget (r x)) ->
   crun (m >>= fun x => cput (r x) (s x)).
 Proof.

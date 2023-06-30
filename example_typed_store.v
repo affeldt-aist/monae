@@ -61,42 +61,61 @@ Fixpoint coq_type (T : ml_type) : Type :=
   | ml_undef => undef_t
   end.
 End with_monad.
+Local Definition coq_type0 := @coq_type idfun.
 Local Definition ml_undef := ml_undef.
 End MLtypes.
 
-Module Model.
-Require Import typed_store_model.
-Module ModelTS := ModelTypedStore (MLtypes).
+(* Check that the models can indeed be instanciated, for soundness *)
+Module Model0.
+Require monad_model.
+(* This model does not allow functions in the store, but can be defined
+   without endangering soundness. *)
+Module ModelTS := monad_model.ModelTypedStore (MLtypes).
 
+(* Attempt to build an instance with HB *)
 Require Import fail_lib state_lib trace_lib.
-Require Import monad_transformer monad_model typed_store_model.
-From HB Require Import structures.
+Require Import monad_transformer monad_model.
 Import ModelTS.
-Definition D :=
-  MTypedStore.isMonadTypedStore.Build _ cnewget cnewput cgetput cgetputskip
-    cgetget cputget cputput cgetC cgetnewD cgetnewE cgetputC cputC
-    cputgetC cputnewC
-    crunret crunskip crunnew crunnewget crungetnew crungetput.
+From HB Require Import structures.
+(* This fails *)
 Fail HB.instance Definition _ :=
   MTypedStore.isMonadTypedStore.Build _ cnewget cnewput cgetput cgetputskip
     cgetget cputget cputput cgetC cgetnewD cgetnewE cgetputC cputC
     cputgetC cputnewC
     crunret crunskip crunnew crunnewget crungetnew crungetput.
+(* But we can still check that the definition is correct (again) *)
+Definition isMonadTypedStoreModel :=
+  MTypedStore.isMonadTypedStore.Build _ cnewget cnewput cgetput cgetputskip
+    cgetget cputget cputput cgetC cgetnewD cgetnewE cgetputC cputC
+    cputgetC cputnewC
+    crunret crunskip crunnew crunnewget crungetnew crungetput.
+End Model0.
+
+Module Model.
+Require typed_store_model.
+(* This is the full model for Coqgen, including functions in the store *)
+Module ModelTS := typed_store_model.ModelTypedStore (MLtypes).
+(* Trying to build an instance with HB fails here too *)
 End Model.
 
-Module IMonadTS := MonadTypedStore (MLtypes).
-Import MLtypes.
-Import IMonadTS.
+(* Our proofs just use the interface *)
+(* One can use either the "safe" interface based on Model0 *)
+Module MLtypes' := Model0.ModelTS.MLtypes'.
+(* or the standard one, allowing functions in the store *)
+(* Module MLtypes' := Model.ModelTS.MLtypes'. *)
+
+Module IMonadTS := MonadTypedStore (MLtypes').
+Import MLtypes MLtypes' IMonadTS.
 
 Section cyclic.
 Variable M : typedStoreMonad.
-Notation coq_type := (@MLtypes.coq_type M).
+Notation coq_type := (@MLtypes'.coq_type M).
 Notation "'do' x <- m ; e" := (m >>= (fun x => e))
   (at level 60, x name, m at level 200, e at level 60).
 
 Definition cycle (T : ml_type) (a b : coq_type T)
   : M (coq_type (ml_rlist T)) :=
-  do r <- cnew (ml_rlist T) (Nil (coq_type T) T);
+  do r <- @cnew M (ml_rlist T) (Nil (coq_type T) T);
   do l <-
   (do v <- cnew (ml_rlist T) (Cons (coq_type T) T b r);
    Ret (Cons (coq_type T) T a v));
