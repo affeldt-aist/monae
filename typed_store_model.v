@@ -408,64 +408,78 @@ have [u r1u|T1' v1 Hr1 T1v1|Hr1] := ntherrorP e r1.
   + by rewrite None_cput.
 Qed.
 
+Lemma cput_then_fail T1 T2 T1' e (s1' : coq_type T1')
+    (r2 : loc T2) (s2 : coq_type T2)
+    (r1 : loc T1) (s1 : coq_type T1) :
+  nth_error (ofEnv e) (loc_id r1) = Some (mkbind s1') ->
+  ~ coerce T1 s1' ->
+  (cput r2 s2 >> cput r1 s1) e = fail.
+Proof.
+move=> Hr1 T1s'.
+have [v Hr2|T2' v Hr2 T2v|Hr2] := ntherrorP e r2; last first.
+- by rewrite MS_bindE None_cput.
+- by rewrite MS_bindE (nocoerce_cput _ _ T2v).
+- rewrite MS_bindE (Some_cputE _ Hr2).
+  rewrite bindE/=.
+  have [Hr|Hr] := eqVneq (loc_id r1) (loc_id r2).
+  + rewrite {1}/cput -Hr /= nth_error_set_nth.
+    have [HT|/eqP HT] := eqVneq T1 T2; last first.
+      by rewrite coerce_None.
+    subst T2.
+    rewrite coerce_Some//=.
+    move: Hr1; rewrite Hr Hr2 => -[?]; subst T1' => _.
+    by rewrite coerce_Some // in T1s'.
+  + rewrite (nocoerce_cput _ _ T1s')//=.
+    by rewrite (@nth_error_set_nth_other _ _ _ _ _ (mkbind s1')).
+Qed.
+
 Lemma cputC T1 T2 (r1 : loc T1) (r2 : loc T2) (s1 : coq_type T1)
     (s2 : coq_type T2) (A : UU0) :
   loc_id r1 != loc_id r2 \/ JMeq s1 s2 ->
   cput r1 s1 >> cput r2 s2 = cput r2 s2 >> cput r1 s1.
 Proof.
-move=> H.
-apply/boolp.funext => e /=.
-rewrite bindE /= /bindS MS_mapE /= fmapE /= bindA /=.
-rewrite [in RHS]bindE /= /bindS MS_mapE /= fmapE /= bindA /= /cput.
-case Hr1: (nth_error _ _) => [[T1' u]|]; last first.
-  rewrite bindfailf.
-  case Hr2: (nth_error _ _) => [[T2' v]|]; last by rewrite bindfailf.
-  case Hc: (coerce T2' s2) => [u|]; last by rewrite bindfailf.
-  rewrite bindE /= bindE/=.
-  case/boolP: (loc_id r1 == loc_id r2) => Hr.
-    by rewrite -(eqP Hr) Hr1 in Hr2.
-  by rewrite (nth_error_set_nth_none _ _ Hr1 Hr2).
-case/boolP: (loc_id r1 == loc_id r2) H => [/eqP|] Hr /= H.
-  rewrite -Hr Hr1.
-  case/boolP: (T1 == T2) => /eqP HT; last first.
-    case: (ml_type_eq_dec T1 T1') => HT1; last first.
-      rewrite coerce_None// bindfailf.
-      case: (ml_type_eq_dec T2 T1') => ?; last by rewrite coerce_None.
-      subst T1'.
+move=> H; apply/boolp.funext => e /=.
+have [u Hr1|T1' s'd Hr1 T1s'|Hr1] := ntherrorP e r1; last first.
+  rewrite MS_bindE None_cput// bindfailf.
+  have [v Hr2|T2' s' Hr2 T2s'|Hr2] := ntherrorP e r2; last first.
+    by rewrite MS_bindE None_cput.
+  + by rewrite MS_bindE (nocoerce_cput _ _ T2s').
+  + rewrite MS_bindE (Some_cputE _ Hr2).
+    rewrite bindE/=.
+    by rewrite None_cput// (nth_error_set_nth_none _ _ Hr1 Hr2).
+- rewrite MS_bindE (nocoerce_cput _ _ T1s')// bindfailf.
+  by rewrite (cput_then_fail _ _ _ Hr1).
+- rewrite MS_bindE (Some_cputE _ Hr1)/=.
+  rewrite bindE/=.
+  case/boolP: (loc_id r1 == loc_id r2) H => [/eqP|] Hr /=.
+  + case => // H.
+    rewrite MS_bindE.
+    rewrite {2}/cput -Hr Hr1.
+    case/boolP: (T1 == T2) => /eqP HT; last first.
+      rewrite coerce_None//; last by auto.
+      by rewrite /cput/= Hr nth_error_set_nth// coerce_None//; auto.
+    subst T2.
+    rewrite coerce_Some bindE/=.
+    have ? := JMeq_eq H; subst s2.
+    by rewrite /cput -Hr.
+  + move=> _.
+    have [v r2v|T2' s Hr2 T2s|Hr2] := ntherrorP e r2; last first.
+    * rewrite MS_bindE None_cput/=; last first.
+        by rewrite (nth_error_set_nth_none _ _ Hr2 Hr1).
+      by rewrite None_cput.
+    * rewrite MS_bindE.
+      rewrite [in RHS](nocoerce_cput _ _ T2s)// bindfailf.
+      rewrite (nocoerce_cput _ _ T2s)//=.
+      by rewrite (nth_error_set_nth_other _ _ _ Hr2) 1?eq_sym.
+    * rewrite MS_bindE.
+      rewrite [in RHS](Some_cputE _ r2v).
+      rewrite {1}/cput/=.
+      rewrite (nth_error_set_nth_other _ _ _ r2v) 1?eq_sym//.
       rewrite coerce_Some.
-      rewrite bindE/= bindE/=.
-      by rewrite nth_error_set_nth// coerce_None.
-    subst T1'.
-    rewrite coerce_Some bindE/= bindE/= nth_error_set_nth.
-    by rewrite coerce_None; auto.
-  subst T2.
-  case: (ml_type_eq_dec T1 T1') => HT1 //; last first.
-    by rewrite coerce_None// bindE/= coerce_None.
-  subst T1'.
-  rewrite coerce_Some bindE/= bindE/= bindE/= nth_error_set_nth.
-  rewrite coerce_Some/= bindE/= nth_error_set_nth coerce_Some.
-  by case: H => // H; rewrite -(JMeq_eq H).
-case Hr2: (nth_error _ _) => [[T2' v]|]; last first.
-  rewrite bindfailf.
-  case Hc: (coerce T1' s1) => [v|]; last by rewrite bindfailf.
-  rewrite bindE/= bindE/=.
-  by rewrite (nth_error_set_nth_none _ _ Hr2 Hr1).
-case: (ml_type_eq_dec T1 T1') => HT1; last first.
-  rewrite coerce_None// bindfailf.
-  case: (ml_type_eq_dec T2 T2') => HT2; last by rewrite coerce_None// bindfailf.
-  subst T2'.
-  rewrite coerce_Some /=.
-  rewrite bindE/= bindE/=.
-  by rewrite (nth_error_set_nth_other _ _ Hr Hr1) coerce_None.
-subst T1'.
-rewrite coerce_Some.
-rewrite bindE/= bindE/= (nth_error_set_nth_other _ _ _ Hr2) 1?eq_sym//.
-case: (ml_type_eq_dec T2 T2') => HT2'; last by rewrite coerce_None.
-subst T2'.
-rewrite coerce_Some.
-rewrite bindE/= bindE/= (nth_error_set_nth_other _ _ Hr Hr1).
-rewrite coerce_Some.
-by rewrite set_set_nth (negbTE Hr).
+      rewrite bindE/=.
+      rewrite /cput (nth_error_set_nth_other _ _ Hr Hr1).
+      rewrite coerce_Some.
+      by rewrite set_set_nth (negbTE Hr).
 Qed.
 
 Lemma cputgetC T1 T2 (r1 : loc T1) (r2 : loc T2) (s1 : coq_type T1)
