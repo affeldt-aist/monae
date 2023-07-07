@@ -1219,6 +1219,106 @@ HB.structure Definition MonadFailFresh (S : eqType) :=
   { M of isMonadFailFresh S M & isFunctor M & isMonad M & isMonadFresh S M &
          isMonadFail M }.
 
+(* ---- SMC Monads ---- *)
+(* These interfaces represent the single-assignment form computations
+   over Full or Partial values on local machines.
+
+   For Full values, they belong to and exist only on one party.
+   Computations over Full values means private computations that the countpart neither knows nor involves.
+   These computation results will be assigned back to local environment.
+
+   For Partial values, they are split and shared among parties.
+   Computations over Partial values means parties execute SMC protocols collaborately to get a Partial result,
+   and this result will be split and shared among parties as a result variable.
+*)
+(*
+   About variable types:
+
+   We start with a "dynamic typing" approach at the beginning.
+   Variables in each monadic operation's type signature are with their
+   names only. The actual dispatching and checking will be proceeded
+   in the monad_model.v.
+
+   If in the future we decide to extend this interface file with exposing
+   more details here, we may then have static types at interface level.
+*)
+
+Section smc_monad_local.
+Variable VarName : eqType.
+
+End smc_monad_local.
+(* Note: do mixin outside a section*)
+
+(* SMC local monad: computes over Full variables only. *)
+HB.mixin Record isMonadSMCLocal (VarName : eqType) (M : UU0 -> UU0) of Monad M := {
+  
+  (* Pure local addition for two Full variables. *)
+  add : VarName -> VarName -> VarName -> M unit;
+}.
+
+#[short(type=smcLocalMonad)]
+HB.structure Definition MonadSMCLocal (VarName : eqType) :=
+  {M of isMonadSMCLocal VarName M & isMonad M & isFunctor M }.
+  
+Section smc_monad.
+
+Variable VarName : eqType.
+
+End smc_monad.
+
+
+
+(* SMC global monad: computes over Partial values only. *)
+HB.mixin Record isMonadSMCGlobal (VarName : eqType) (M : UU0 -> UU0) of Monad M := {
+
+  (* SMC global represent the whole SMC program,
+     so there are some local-only computations for Full variables.
+     
+     These local-only computations happen in the local monad.
+     And it will directly assign related variables to the local env.
+  *)
+  
+  (* At interface level define a type in a record. *)
+  (* Got all deps in a record. *)
+  localM : smcLocalMonad VarName;
+  local : localM unit -> M unit;
+
+  (* Note: smcLocalMonad is a record -- the type of computation in the monad *)
+  (*local :  smcLocalMonad VarName -> M unit;*)
+
+  (* Exchange two partial variables with the same name at the both locals. *)
+  exchange : VarName -> M unit;
+
+  (* Split a Full variable to Partial SMC variable by SMC protocols. *)
+  (* Example: at Alice side, `split wealth result` equal to:
+
+       tmp = smc_zntoz2 wealth_alice
+       result_alice = smc_zntoz2
+  *)
+  split : VarName -> VarName -> M unit;
+
+  (* Execute SMC compare both local's one Partial variable, then store the result as a new Partial. *)
+  (* Example: at Alice side, `compare wealth result` equal to:
+  
+      tmp = smc_compare wealth_alice  // wealth_alice: converted from Full to Partial already.
+      bar_alice = tmp
+  
+  *)
+  compare : VarName -> VarName -> M unit;
+
+  (* Execute SMC add on two Partial variables, then store the result as a new Partial. *)
+  (* Example: at Alice side, `add foo bar result`  equal to:
+  
+      tmp = smc_add foo_alice bar_alice
+      result_alice = tmp
+  
+  *)
+  add : VarName -> VarName -> VarName -> M unit;
+}.
+
+#[short(type=smcMonadGlobal)]
+HB.structure Definition MonadSMCGlobal (V : eqType) :=
+  {M of isMonadSMCGlobal V M & isMonad M & isFunctor M }.
 
 (*
 
@@ -1286,203 +1386,3 @@ There could be some extra steps before or after the operation itself,
 and two locals may have or have no information exchange.
 
 *)
-
-Inductive smcty : Set :=
-(*  | Int    --cannot define Int because Uint63 defined a conflicting `_>>_`  notation *)
-  | Float
-  | Array of nat & smcty.
-
-(* cannot have pair because 
-Syntax error: [pattern level 200] expected after '(' (in [pattern]).
-  | Pair of smcty & smcty.
-*)
-
-Fixpoint smc2ty (ty : smcty) : Type :=
-  match ty with
-(*  | Int => int  *)
-  | Float => float
-  | Array n ty => n.-tuple (smc2ty ty)
-(*
-  | Pair ty1 ty2 => smc2ty ty1 * smc2ty ty2
-*)
-  end.
-Inductive loc : smcty -> smcty -> Type :=
-  | Here ty : loc ty ty
-(*
-  | Left ty1 ty2 : loc (Pair ty1 ty2) ty1
-  | Right ty1 ty2 : loc (Pair ty1 ty2) ty2
-*)
-  | Nth n ty (i : 'I_n) : loc (Array n ty) ty.
-
-Definition smcget (ty ty' : smcty) (l : loc ty ty') :=
-  match l in loc ty ty' return smc2ty ty -> smc2ty ty' with
-  | Here ty => fun v => v
-(* cannot have pair because 
-Syntax error: [pattern level 200] expected after '(' (in [pattern]).
-  | Left ty1 ty2 => fun '(v1, v2) => v1
-  | Right ty1 ty2 => fun '(v1, v2) => v2
-*)
-  | Nth n ty i => fun v => tnth v i
-  end.
-Check smcget.
-Definition SMC (shared : smcty) (res : Type) :=
-  smc2ty shared -> res * smc2ty shared.
-
-  (*
-Notation SMCLocal := [tuple smcty; smcty].
-
-Notation SMCStates := [tuple SMCLocal; SMCLocal].
-
-Check eqType.
-Locate eqType.
-*)
-
-(* the same issue as GADT: since `compare in Monad` needs a generic `a`, not restricted type *)
-(*
-Inductive smcstates : Set :=
-| States : [tuple SMCLocal; SMCLocal]. 
-
-
-
-Notation "'SMCState'" := ((S * S * S * S) % type) (at level 99).
-Notation "'SMCExpr'" := (S -> (S * S * S * S) % type) (at level 99).
-
-Notation  (*Memo: an "abbreviation"; doesn't need `level`*)
-*)
-
-Section smc_monad_local.
-
-Variables F P : UU0.
-Variable VarName : eqType.
-
-Definition SMCLocal : UU0 := F * P.
-Definition SMCStates : UU0 := SMCLocal * SMCLocal.
-
-
-End smc_monad_local.
-(* Note: do mixin outside a section*)
-(* When shortening def by Definition, providing arguments like `SMCStates F P`, not just `SMCStates`*)
-
-(* Each local: doing local computation faithfully; no swap or other global ops*)
-HB.mixin Record isMonadSMCLocal (F P : UU0) (VarName : eqType) (M : UU0 -> UU0) of Monad M := {
-
-  (* To start a local monad computation chain. *)
-  get : VarName -> M (SMCLocal F P);
-
-  (* You give me a VarName I give you a value (assume only valid VarName will be passed),
-     Then you need to judge how to execute the op to complete the computation,
-     And how to return a new temporary (not committed yet; new results only) SMCLocals.
-
-        equal to: `expr var`
-
-     This `expr` can only handles the pure local expression.
-     Because there is no global monad passed here.
-     The direction is unidirectional `Global -> Local`, not bidirectional `Global <-> Local`
-  *)
-  expr : (SMCLocal F P -> SMCLocal F P) -> VarName -> M (SMCLocal F P);
-
-  (* Assign the expression result to var *)
-  assign : VarName -> SMCLocal F P -> M unit;
-
-  (* Actually a comonad method: this is necessary when the global holds two instances of actual local data,
-     not two monads:
-
-         SMCLocal : (F * P)
-         SMCGlobal : (F * P * F * P)
-
-         smcGlobalMonad : Monad (F P VarName)
-
-     So if the global monad needs to change its pair of SMCLocal data,
-     it "install" the monad interface to the SMCLocal data it owns:
-
-         (smcLocalMonad F P VarName * smcLocalMonad F P VarName)
-
-     And delegate operations to the locals like:
-
-     Then delegate the operations to each local by a global monad method `local`:
-
-         local >>=
-            fun (ma, mb) => (ma >>= fun a => a + 1 >>= extract, mb >>= fun b => b - 1 >>= extract)
-     
-     Without this `extract` method, the value cannot go back
-     to the SMCGlobal: (F * P * F * P) but monadic values `(smcLocalMonad F P VarName * smcLocalMonad F P VarName)`,
-     which doesn't match the expected data type owned by the `smcGlobalMonad`.
-  *)
-  extract : M (SMCLocal F P) -> SMCLocal F P;
-
-}.
-
-#[short(type=smcLocalMonad)]
-HB.structure Definition MonadSMCLocal (F P : UU0) (VarName : eqType) :=
-  {M of isMonadSMCLocal F P VarName M & isMonad M & isFunctor M }.
-  
-Section smc_monad.
-
-Variables F P : UU0.
-Variable VarName : eqType.
-Definition SMCGlobal : UU0 := SMCLocal F P * SMCLocal F P.
-Definition MonadSMCLocals : UU0 := (smcLocalMonad F P VarName * smcLocalMonad F P VarName).
-
-End smc_monad.
-
-HB.mixin Record isMonadSMCGlobal (F P : UU0) (VarName : eqType) (M : UU0 -> UU0) of Monad M := {
-
-  (* From one pair of both locals' variables,
-     install two local monad interfaces to them,
-     and thus allow the following operations be expressed in local monad operations.
-
-     After the moadic program at the local leve, this method calls local monad's `extract` method,
-     to put their computation results back to the global.
-
-     For example:
-
-     local >>=
-         fun (a , b ) => (ma >>= fun a => a + 1, mb >>= fun b => b - 1) >>=
-         fun (a', b') => globalFunc a' b'
-  *)
-  local : (SMCGlobal F P -> (MonadSMCLocals F P VarName)) -> M (SMCGlobal F P);
-
-  (* For monadic program after the compilation.
-     One `get` in global means two local `get` steps on local machines.
-  *)
-  get : VarName -> M (SMCGlobal F P);
-
-  (* expr related to Global = SMC protocols
-    
-    Whenever there is an computation over a Partial value bound to one VarName,
-     the expression needs to call the built-in SMC protocol functions to complete the computation,
-     and what those protocol functions do are simplified here as:
-
-     1. Get both locals' target Partial values by local `get`.
-     2. Generate new partial values from those partial values.
-     3. Put the generated SMC values back to locals by local `assign`.
-  *)
-  expr : (SMCGlobal F P -> SMCGlobal F P) -> VarName -> M (SMCGlobal F P);
-
-  (* A simplified "SMC protocol" for two-party communications.
-
-     It exchange the "partial" var in two locals with the same VarName.
-     So the two parties must prepare the exchanging target first,
-     and then this method call will do the "communication".
-  *)
-  exchange : SMCGlobal F P -> VarName -> M unit;
-
-  (*TODO: getResult? From this global SMC *)
-  (*TODO: Partial and Full data flow view: all Fulls eventually become Partials;
-    and "Global" is actually a Partial data handler *)
-}.
-
-#[short(type=smcMonadGlobal)]
-HB.structure Definition MonadSMCGlobal (F P : UU0) (V : eqType) :=
-  {M of isMonadSMCGlobal F P V M & isMonad M & isFunctor M }.
-
-(* Use smcMonad and smcMonadLocal, to represent the language smcSL*)
-HB.mixin Record isMonadSMCLang (F P : UU0) (VarName : eqType) (M : UU0 -> UU0) of Monad M := {
-
-    (* The `compare` built-in function at the language lavel*)
-    compare : VarName -> M (bool * smcty) %type;
-}.
-
-#[short(type=smcMonadLang)]
-HB.structure Definition MonadSMCLang (F P : UU0) (V : eqType) :=
-  {M of isMonadSMCLang F P V M & isMonad M & isFunctor M }.

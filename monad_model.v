@@ -1980,49 +1980,161 @@ HB.instance Definition _ := @isMonadExceptStateRun.Build S N (MS S N)
 End modelmonadexceptstaterun.
 End ModelMonadExceptStateRun.
 
-(* Models of SMC monads *)
 
-(* SMC Local Monad: 
-   Basically a MonadArray but every element is a `(F * P)` instead of a single `S`. *)
+
+
+(* ---- SMC type wrapper ---- *)
+(* ---- SMC data wrapper for dynamic typing ---- *)
+
+Require Import Floats PrimInt63.
+Require Import Bvector.
+Require Sint63.
+Section Int63.
+
+(* Memo: using `of` so it can be matched and extracted the wrapped inside *)
+Inductive smcvalue : Set :=
+| Int of int
+| Float of float
+| Bool of bool.
+
+(*Definition bvectorCapacity := 4611686018427387904*)
+Definition bvectorCapacity := 100.
+Definition smcglobal : UU0 := (smcvalue * Bvector bvectorCapacity * smcvalue * Bvector bvectorCapacity).
+
+End Int63.
+
+(* ---- Models of SMC monads ---- *)
+
+(* SMC Local Monad: a array monad with the element type is `smcvalue`. *)
 
 Module ModelSMCLocal.
 Section modelsmc_local.
 
-Variables (F P : UU0) (VarName : eqType).
-Local Notation SMCLocalVars := (VarName -> SMCLocal F P).
-Implicit Types (v : VarName) (l : SMCLocal F P) (e : SMCLocal F P -> SMCLocal F P) (A : UU0).
+Variables (VarName : eqType).
 
-Definition acto := StateMonad.acto SMCLocalVars.
+Implicit Types (v va vb assignee : VarName).
+
+Definition acto := ModelArray.acto smcvalue VarName.
+(* Memo: by this we define a type-specified monad (?) *)
+
+(* Automatically got run already? *)
+
 Local Notation M := acto.
+Definition aget := ModelArray.aget.
+Definition aput := ModelArray.aput.
 
-(* From the registry of all variables on one local machine, `get` and lift one var to the local monad. *)
-Definition get v : M (SMCLocal F P) := fun vars => (vars v, vars).
+(* Otherwise they become monad PlusArray's aget and aput. *)
 
-(* NOTE: how `vars v` indexes the values is unknown here, but this still can be defined. *)
-(* Because it will be defined when init the "state" monad with an init state, which must provide
-   how to get the var from `vars v`. *)
-Definition expr e v : M (SMCLocal F P) := fun vars => (e (vars v), vars).
-
-(* Update the content registered to the var name: `var = (full, pair)` *)
-Definition assign v l : M unit := fun vars => (tt, insert v l vars).
-
-Definition extract mvars : SMCLocal F P := fun vars => 
+Definition add va vb assignee : M unit :=
+  aget va >>= (fun a => aget vb >>= (fun b =>
+    match a, b with
+      | Int ia, Int ib => aput assignee (Int (add ia ib))
+      (* TODO: float + int by coercion, etc. *)
+      | _, _ => skip
+    end)).
 
 (* Memo: this line must be in order *)
 HB.instance Definition _ := isMonadSMCLocal.Build
-  F P VarName acto get expr assign extract.
+  VarName acto add.
 
 End modelsmc_local.
 End ModelSMCLocal.
 
-(* ---- ---- *)
+HB.export ModelSMCLocal.
 
-(* SMC Global: a monad composes of two instances of local data,
-   and use the local monad inteface to manipuate them
+(* SMC Global: a array monad with (smcvalue * bitvector * smcvalue * bitvector) as its elements. *)
+
+Module ModelSMCGlobal.
+Section modelsmc_global.
+
+Variables (VarName : eqType).
+
+Print MonadSMCLocal.
+HB.about MonadSMCLocal.
+
+Definition localM := [the smcLocalMonad VarName of ModelSMCLocal.acto VarName].
+
+
+Implicit Types (v va vb assignee : VarName) (MLocal : localM).
+
+Definition acto := ModelArray.acto smcglobal VarName.
+(* Memo: by this we define a type-specified monad (?)
+   It seems that except those methods required by the monad and functor definition,
+   other methods can be type-specific, if the return value is still a monadic value,
+   like `M unit` for array monad or `M (r, s)` for state monad.
 *)
+
+Local Notation M := acto.
+Definition aget := ModelArray.aget.
+Definition aput := ModelArray.aput.
+(* Otherwise they become monad PlusArray's aget and aput. *)
+
+Check ModelArray.aget.
+
+(* the parameter is just a local cannot be ran;
+   local program -- work on some monads.
+
+   already exists in the global, cannot be any local monad.
+*)
+
+Definition local MLocal : M unit :=
+  localM >> skip.
+
+(*
+
+Ask questions:
+
+1. `local`
+
+In environment
+VarName : eqType
+localM : smcLocalMonad VarName
+The term "localM" has type "MonadSMCLocal.type VarName"
+while it is expected to have type "Monad.sort ?s ?A".
+
+
+2. Confirm that we cannot make a dispatch function in Coq, and ask why
+
+----
+
+Extend the array monad.
+
+To add the stateRun monad.
+
+Cannot use Comonad : extract cannot rely on the outside input.
+
+
+----
+
+
+Global and Local. At the interface level.
+
+Two models must be related.
+
+Local monad is a param to the gloal monad.
+
+*)
+
+Definition add va vb assignee : M unit :=
+  aget va >>= (fun a => aget vb >>= (fun b =>
+    match a, b with
+      | Int ia, Int ib => aput assignee (Int (add ia ib))
+      (* TODO: float + int by coercion, etc. *)
+      | _, _ => skip
+    end)).
+
+(* Memo: this line must be in order *)
+HB.instance Definition _ := isMonadSMCLocal.Build
+  VarName acto add.
+
+End modelsmc_local.
+End ModelSMCLocal.
+
 
 
 (*
+
+
 Module ModelSMCGlobal.
 Section modelsmc_global.
 
@@ -2030,12 +2142,9 @@ Variables (F P : UU0) (VarName : eqType).
 Local Notation SMCGlobalVars :=  (VarName -> SMCGlobal F P).
 Implicit Types (v : VarName) (g : MonadSMCLocals F P VarName) (e : MonadSMCLocals F P VarName -> MonadSMCLocals F P VarName) (A : UU0).
 
-Check SMCGlobalVars.
-Check MonadSMCLocals F P VarName.
-Check StateMonad.acto (VarName -> MonadSMCLocals F P VarName).
+Definition .
 
 *)
-
 (*
 Memo: acto application must be UU0 -> UU0.
 
@@ -2085,13 +2194,38 @@ https://stackoverflow.com/questions/32153710/what-does-error-universe-inconsiste
 *)
 
 (*
-Require Import PrimInt63.
-Require Sint63.
-Section Int63.
+
 
 Inductive smcty : Set :=
   | Int
   | Float
   | Array of nat & smcty.
+
+*)
+
+(*Memo:
+
+Maybe I'm wrong but it seems that we cannot define a dispatch function
+like this, because `a` will expect to have type `smcty`.
+
+The `a` is just a parametric type. It doesn't mean really "all" type.
+Maybe this is the reason?
+
+Definition checkSMC (a : Type) bool :=
+  match a with
+  | Int => true
+  | Float => true
+  | Array n ty => true
+  | _ => false
+  end.
+
+
+Definition checkSMC (F : UU0) (a : F) bool :=
+  match F with
+  | smcty => match a with
+             | Int => true
+             | _ => false
+             end
+  end.
 
 *)
