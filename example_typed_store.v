@@ -24,7 +24,7 @@ Inductive ml_type : Set :=
 
 Inductive undef_t : Set := Undef.
 
-Module MLtypes.
+Module MLtypes0.
 Definition ml_type_eq_dec (T1 T2 : ml_type) : {T1=T2}+{T1<>T2}.
 revert T2; induction T1; destruct T2;
   try (right; intro; discriminate); try (now left);
@@ -63,14 +63,14 @@ Fixpoint coq_type (T : ml_type) : Type :=
 End with_monad.
 Local Definition coq_type0 := @coq_type idfun.
 Local Definition ml_undef := ml_undef.
-End MLtypes.
+End MLtypes0.
 
 (* Check that the models can indeed be instanciated, for soundness *)
 Module Model0.
 Require monad_model.
 (* This model does not allow functions in the store, but can be defined
    without endangering soundness. *)
-Module ModelTS := monad_model.ModelTypedStore (MLtypes).
+Module ModelTS := monad_model.ModelTypedStore (MLtypes0).
 
 (* Attempt to build an instance with HB *)
 Require Import fail_lib state_lib trace_lib.
@@ -94,22 +94,22 @@ End Model0.
 Module Model.
 Require typed_store_model.
 (* This is the full model for Coqgen, including functions in the store *)
-Module ModelTS := typed_store_model.ModelTypedStore (MLtypes).
+Module ModelTS := typed_store_model.ModelTypedStore (MLtypes0).
 (* Trying to build an instance with HB fails here too *)
 End Model.
 
 (* Our proofs just use the interface *)
 (* One can use either the "safe" interface based on Model0 *)
-Module MLtypes' := Model0.ModelTS.MLtypes'.
+Module MLtypes := Model0.ModelTS.MLtypes'.
 (* or the standard one, allowing functions in the store *)
-(* Module MLtypes' := Model.ModelTS.MLtypes'. *)
+(* Module MLtypes := Model.ModelTS.MLtypes'. *)
 
-Module IMonadTS := MonadTypedStore (MLtypes').
-Import MLtypes MLtypes' IMonadTS.
+Module MonadTS := MonadTypedStore (MLtypes).
+Import MLtypes0 MLtypes MonadTS.
 
 Section cyclic.
 Variable M : typedStoreMonad.
-Notation coq_type := (@MLtypes'.coq_type M).
+Notation coq_type := (@MLtypes.coq_type M).
 Notation "'do' x <- m ; e" := (m >>= (fun x => e))
   (at level 60, x name, m at level 200, e at level 60).
 
