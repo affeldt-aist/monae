@@ -2230,7 +2230,7 @@ move/(_ (s a)).
 by case: coerce.
 Qed.
 
-Canonical Structure isMonadTypedStoreModel :=
+Definition isMonadTypedStoreModel : isMonadTypedStore M :=
   isMonadTypedStore.Build M cnewget cnewput cgetput cgetputskip
     cgetget cputget cputput cgetC cgetnewD cgetnewE cgetputC cputC
     cputgetC cputnewC
