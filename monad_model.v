@@ -5,7 +5,7 @@ From mathcomp Require Import classical_sets.
 From infotheo Require convex classical_sets_ext.
 Require Import monae_lib.
 From HB Require Import structures.
-Require Import hierarchy monad_lib fail_lib state_lib trace_lib.
+Require Import hierarchy smc_protocol monad_lib fail_lib state_lib trace_lib.
 Require Import monad_transformer.
 
 (******************************************************************************)
@@ -70,6 +70,8 @@ Require Import monad_transformer.
 Set Implicit Arguments.
 Unset Strict Implicit.
 Unset Printing Implicit Defensive.
+
+Locate UU0.
 
 Local Open Scope monae_scope.
 
@@ -1981,28 +1983,6 @@ End modelmonadexceptstaterun.
 End ModelMonadExceptStateRun.
 
 
-
-
-(* ---- SMC type wrapper ---- *)
-(* ---- SMC data wrapper for dynamic typing ---- *)
-
-Require Import Floats PrimInt63.
-Require Import Bvector.
-Require Sint63.
-Section Int63.
-
-(* Memo: using `of` so it can be matched and extracted the wrapped inside *)
-Inductive smcvalue : Set :=
-| Int of int
-| Float of float
-| Bool of bool.
-
-(*Definition bvectorCapacity := 4611686018427387904*)
-Definition bvectorCapacity := 100.
-Definition smcglobal : UU0 := (smcvalue * Bvector bvectorCapacity * smcvalue * Bvector bvectorCapacity).
-
-End Int63.
-
 (* ---- Models of SMC monads ---- *)
 
 (* SMC Local Monad: a array monad with the element type is `smcvalue`. *)
@@ -2010,14 +1990,22 @@ End Int63.
 Module ModelSMCLocal.
 Section modelsmc_local.
 
+Require Import ZArith.
+
 Variables (VarName : eqType).
 
 Implicit Types (v va vb assignee : VarName).
 
-Definition acto := ModelArray.acto smcvalue VarName.
+Definition acto := ModelArray.acto smclocalval VarName.
 (* Memo: by this we define a type-specified monad (?) *)
 
 (* Automatically got run already? *)
+HB.instance Definition _ := Monad.on acto.
+(* The fix for the localM definition
+   Not instances from the HB outputs.
+   The defininion is a new thing and not completed (not equip all necessary types attach to that identifier).
+   So to solve it, define it here by copying
+*)
 
 Local Notation M := acto.
 Definition aget := ModelArray.aget.
@@ -2028,9 +2016,8 @@ Definition aput := ModelArray.aput.
 Definition add va vb assignee : M unit :=
   aget va >>= (fun a => aget vb >>= (fun b =>
     match a, b with
-      | Int ia, Int ib => aput assignee (Int (add ia ib))
+      | (Int ia, bva), (Int ib, bvb)=> aput assignee (Int (Z.add ia ib), bva)
       (* TODO: float + int by coercion, etc. *)
-      | _, _ => skip
     end)).
 
 (* Memo: this line must be in order *)
@@ -2054,10 +2041,12 @@ HB.about MonadSMCLocal.
 
 Definition localM := [the smcLocalMonad VarName of ModelSMCLocal.acto VarName].
 
+Implicit Types (v va vb assignee : VarName).
 
-Implicit Types (v va vb assignee : VarName) (MLocal : localM).
+(* Array of smclocal*)
+Definition smclocalstate := VarName -> smclocalval.
 
-Definition acto := ModelArray.acto smcglobal VarName.
+Definition acto := StateMonad.acto (smclocalstate * smclocalstate * commodity).
 (* Memo: by this we define a type-specified monad (?)
    It seems that except those methods required by the monad and functor definition,
    other methods can be type-specific, if the return value is still a monadic value,
@@ -2065,21 +2054,74 @@ Definition acto := ModelArray.acto smcglobal VarName.
 *)
 
 Local Notation M := acto.
-Definition aget := ModelArray.aget.
-Definition aput := ModelArray.aput.
-(* Otherwise they become monad PlusArray's aget and aput. *)
+ 
+(* symmetric local: they always run the same computation (like for SMC computations). *)
+(* NOT: only one local run it with its pure local variables. *)
+Definition local (F : localM unit) : M unit := fun state =>
+  match state with
+    | (localA, localB, c) => (tt, (snd (F localA), snd (F localB), c))
+  end.
 
-Check ModelArray.aget.
+Definition exchange v : M unit := fun state =>
+  match state with
+    | (localA, localB, c) => (tt, (insert v (localB v) localA, insert v (localB v) localA, c)) 
+  end.
 
-(* the parameter is just a local cannot be ran;
-   local program -- work on some monads.
 
-   already exists in the global, cannot be any local monad.
+(* 1. Get Ra, Rb, ra, rb from commodity
+   2. Alice: Xa' = Xa + Ra, set as Bob's tmp var
+      --> issue: we cannot create new VarName `Xa'` inside, need to pass in.
+
+   3. Bob: Xb' = Xb + Rb, set as Alice's tmp var
+      --> issue: we cannot create new VarName `Xb'` inside, need to pass in.
+
+   4. Bob: generate a random variable yb
+      --> issue: we don't have random number generator. Need to assume that it exists.
+      --> issue: we cannot create new VarName `yb` inside, need to pass in.
+
+   5. Bob: tb = Xa' x Xb'^t + rb - yb, set as Alice's tmp var
+      --> issue: we cannot create new VarName `tb` inside, need to pass in.
+
+   6. Alice: ya = tb - Ra x Xb'^t + Ra
+      --> issue: we cannot create new VarName `ya` inside, need to pass in.
 *)
+Definition sp_step1 (localA : smclocalstate) (localB : smclocalstate) (c : commodity) (xa : VarName) (xa' : VarName) : smclocalstate :=
+  insert xa' (only_partial (add_partial (get_Ra c) (get_partial (localA xa)))) localB.
 
-Definition local MLocal : M unit :=
-  localM >> skip.
+Definition sp_step2 (localA : smclocalstate) (localB : smclocalstate) (c : commodity) (xb : VarName) (xb' : VarName) : smclocalstate :=
+  insert xb' (only_partial (add_partial (get_Rb c) (get_partial (localB xb)))) localA.
 
+Definition sp_step4_5 (localA : smclocalstate) (localB : smclocalstate) (c : commodity) (xa' : VarName) (xb : VarName) (tb : VarName) : smclocalstate :=
+  insert tb (only_partial (dot_product (get_partial (localB xa')) (get_partial (localB xb))))
+
+Definition scalar_product va vb (xa : VarName) (xb : VarName) (ya : VarName) (yb : VarName) (tb : VarName) : M unit := fun state =>
+  match state with
+    | (localA, localB, c) =>
+    (tt,
+        (* step 1.)
+  end.
+
+
+(* Action Items
+1. Def the global monad as a state monad
+2. With two local monads
+3.
+
+LocalA [ vars --> (F, P), (F, P)... ]
+LocalB [ vars --> (F, P), (F, P)... ]
+Global steps to manipuate LocalA and LocalB.
+
+One global step will ... ?
+
+global_foo = compare
+
+runState (localMA, localMB)
+
+exchange 
+
+>>= fun (ma, mb) => 
+     aget v ma >>= (fun(va) => aget v mb >>= (fun (vb) => aput v vb ma) >> 
+*)
 (*
 
 Ask questions:

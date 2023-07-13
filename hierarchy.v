@@ -1267,7 +1267,6 @@ Variable VarName : eqType.
 End smc_monad.
 
 
-
 (* SMC global monad: computes over Partial values only. *)
 HB.mixin Record isMonadSMCGlobal (VarName : eqType) (M : UU0 -> UU0) of Monad M := {
 
@@ -1278,8 +1277,11 @@ HB.mixin Record isMonadSMCGlobal (VarName : eqType) (M : UU0 -> UU0) of Monad M 
      And it will directly assign related variables to the local env.
   *)
   
-  (* At interface level define a type in a record. *)
-  (* Got all deps in a record. *)
+  (* localM: At interface level define a type in a record.
+     it defines a "ready-to-run monad" can be run
+     by feeding the last argument unit.
+  *)
+  (* This is the way to get all deps in a record. *)
   localM : smcLocalMonad VarName;
   local : localM unit -> M unit;
 

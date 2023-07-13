@@ -29,5 +29,6 @@ example_monty.v
 smallstep.v
 example_transformer.v
 category_ext.v
+smc_protocol.v
 
 -R . monae
