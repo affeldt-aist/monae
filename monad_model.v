@@ -2091,6 +2091,32 @@ Definition exchange v : M unit := fun state =>
 
 *)
 
+(* Before each stateful step in this global model monad,
+   since every global step means a new SMC protocol computation (otherwise it should be done by `local`),
+   the random variables from the commodity server must be refreshed. It should work like:
+
+    runState
+      step1 >>
+      step2 >>
+      step3
+
+    = (result, state)
+
+  becomes:
+
+    runState
+      refresh_env >> step1 >>
+      refresh_env >> step2 >>
+      refresh_env >> step3
+
+    = (result, state)
+
+  TODO: it is better to define a customized `pure` (>>) and `bind` (>>=) so each step of this monad
+  will naturally come with a new environment.
+*)
+Definition refresh_env : M unit := fun state =>
+  (tt, state).
+
 Definition sp_step1 (localA : smclocalstate) (localB : smclocalstate) (c : commodity) (Xa : VarName) (Xa' : VarName) : smclocalstate :=
   insert Xa' (add_smcval (only_partial (get_Ra c)) (localA Xa)) localB. 
 
@@ -2108,13 +2134,8 @@ Definition sp_step5 (localA : smclocalstate) (localB : smclocalstate) (c : commo
   let Ra_Xb'_Ra := add_smcval Ra_Xb' Ra in
     insert ya (sub_smcval (localA t_) Ra_Xb'_Ra) localA.
 
-Definition scalar_product va vb (xa : VarName) (xb : VarName) (ya : VarName) (yb : VarName) (tb : VarName) : M unit := fun state =>
-  match state with
-    | (localA, localB, c) =>
-    (tt,
-        (* step 1.)
-  end.
-
+Definition scalar_product v assignee : M unit := fun state =>
+  (tt, state).
 
 (* Action Items
 1. Def the global monad as a state monad
@@ -2288,6 +2309,7 @@ Definition checkSMC (F : UU0) (a : F) bool :=
 
 (*
 
+Not sure
 
 --> We need array as the heaps, but we also need named registers for computations
     completed by a register machine (stack could also be used but we need to rewrite the algorithm).
@@ -2306,3 +2328,4 @@ Definition checkSMC (F : UU0) (a : F) bool :=
 
 
 *)
+

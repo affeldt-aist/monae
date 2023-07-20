@@ -1285,6 +1285,22 @@ HB.mixin Record isMonadSMCGlobal (VarName : eqType) (M : UU0 -> UU0) of Monad M 
   localM : smcLocalMonad VarName;
   local : localM unit -> M unit;
 
+  (* SMC version of the scalar product:
+
+       scalar_product Xa Xb -> (ya, yb), where ya + yb = Xa x Xb
+
+     In this interface it becomes a SMT style:
+ 
+       scalar_product x -> (ya, yb)
+    
+     Which means both Alice and Bob should hold the same name varialbe `x`
+     in their environments, not two variables with different names on two locals.
+
+     The second VarName is the assignee. So we can put the result back to the two locals.
+     This keeps the interface still in the single-assignment form.
+  *)
+  scalar_product : VarName -> VarName -> M unit;
+
   (* Note: smcLocalMonad is a record -- the type of computation in the monad *)
   (*local :  smcLocalMonad VarName -> M unit;*)
 
