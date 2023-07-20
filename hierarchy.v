@@ -3,6 +3,7 @@
 Ltac typeof X := type of X.
 
 Require Import ssrmatching Reals.
+Require Import Floats ssreflect.
 From mathcomp Require Import all_ssreflect.
 From mathcomp Require boolp.
 From infotheo Require Import Reals_ext.
@@ -1217,3 +1218,190 @@ HB.mixin Record isMonadFailFresh (S : eqType) (M : UU0 -> UU0)
 HB.structure Definition MonadFailFresh (S : eqType) :=
   { M of isMonadFailFresh S M & isFunctor M & isMonad M & isMonadFresh S M &
          isMonadFail M }.
+
+(* ---- SMC Monads ---- *)
+(* These interfaces represent the single-assignment form computations
+   over Full or Partial values on local machines.
+
+   For Full values, they belong to and exist only on one party.
+   Computations over Full values means private computations that the countpart neither knows nor involves.
+   These computation results will be assigned back to local environment.
+
+   For Partial values, they are split and shared among parties.
+   Computations over Partial values means parties execute SMC protocols collaborately to get a Partial result,
+   and this result will be split and shared among parties as a result variable.
+*)
+(*
+   About variable types:
+
+   We start with a "dynamic typing" approach at the beginning.
+   Variables in each monadic operation's type signature are with their
+   names only. The actual dispatching and checking will be proceeded
+   in the monad_model.v.
+
+   If in the future we decide to extend this interface file with exposing
+   more details here, we may then have static types at interface level.
+*)
+
+Section smc_monad_local.
+Variable VarName : eqType.
+
+End smc_monad_local.
+(* Note: do mixin outside a section*)
+
+(* SMC local monad: computes over Full variables only. *)
+HB.mixin Record isMonadSMCLocal (VarName : eqType) (M : UU0 -> UU0) of Monad M := {
+  
+  (* Pure local addition for two Full variables. *)
+  add : VarName -> VarName -> VarName -> M unit;
+}.
+
+#[short(type=smcLocalMonad)]
+HB.structure Definition MonadSMCLocal (VarName : eqType) :=
+  {M of isMonadSMCLocal VarName M & isMonad M & isFunctor M }.
+  
+Section smc_monad.
+
+Variable VarName : eqType.
+
+End smc_monad.
+
+
+(* SMC global monad: computes over Partial values only. *)
+HB.mixin Record isMonadSMCGlobal (VarName : eqType) (M : UU0 -> UU0) of Monad M := {
+
+  (* SMC global represent the whole SMC program,
+     so there are some local-only computations for Full variables.
+     
+     These local-only computations happen in the local monad.
+     And it will directly assign related variables to the local env.
+  *)
+  
+  (* localM: At interface level define a type in a record.
+     it defines a "ready-to-run monad" can be run
+     by feeding the last argument unit.
+  *)
+  (* This is the way to get all deps in a record. *)
+  localM : smcLocalMonad VarName;
+  local : localM unit -> M unit;
+
+  (* SMC version of the scalar product:
+
+       scalar_product Xa Xb -> (ya, yb), where ya + yb = Xa x Xb
+
+     In this interface it becomes a SMT style:
+ 
+       scalar_product x -> (ya, yb)
+    
+     Which means both Alice and Bob should hold the same name varialbe `x`
+     in their environments, not two variables with different names on two locals.
+
+     The second VarName is the assignee. So we can put the result back to the two locals.
+     This keeps the interface still in the single-assignment form.
+  *)
+  scalar_product : VarName -> VarName -> M unit;
+
+  (* Note: smcLocalMonad is a record -- the type of computation in the monad *)
+  (*local :  smcLocalMonad VarName -> M unit;*)
+
+  (* Exchange two partial variables with the same name at the both locals. *)
+  exchange : VarName -> M unit;
+
+
+  (* Split a Full variable to Partial SMC variable by SMC protocols. *)
+  (* Example: at Alice side, `split wealth result` equal to:
+
+       tmp = smc_zntoz2 wealth_alice
+       result_alice = smc_zntoz2
+  *)
+  split : VarName -> VarName -> M unit;
+
+  (* Execute SMC compare both local's one Partial variable, then store the result as a new Partial. *)
+  (* Example: at Alice side, `compare wealth result` equal to:
+  
+      tmp = smc_compare wealth_alice  // wealth_alice: converted from Full to Partial already.
+      bar_alice = tmp
+  
+  *)
+  compare : VarName -> VarName -> M unit;
+
+  (* Execute SMC add on two Partial variables, then store the result as a new Partial. *)
+  (* Example: at Alice side, `add foo bar result`  equal to:
+  
+      tmp = smc_add foo_alice bar_alice
+      result_alice = tmp
+  
+  *)
+  add : VarName -> VarName -> VarName -> M unit;
+}.
+
+#[short(type=smcMonadGlobal)]
+HB.structure Definition MonadSMCGlobal (V : eqType) :=
+  {M of isMonadSMCGlobal V M & isMonad M & isFunctor M }.
+
+(*
+
+For example, if we have a monadic SMC code:
+
+    compare x
+
+Then:
+
+1. `x` must exist at both locals
+    (like, index in array monad could be out of range -- but using default value instead).
+2. `x` must be SMC-type.
+3. Both locals must commit some state changes to execute the `compare` (a model thing?)
+
+What is a "local" and how to have it when defining the interface?
+Like in the isMonadArray interface: there is no "array" can be seen.
+
+  aget : I -> M S ;
+  aput : I -> S -> M unit ;
+
+(Where is the "array"? It becomes a model thing so hidden at the interface level)
+
+----
+
+About laws:
+
+Some interface methods are extended from basic operations.
+And they are laws. Like `aputput` is a law to require two put operations to store
+values at the same index, it equals to only storing the later one's result.
+
+(Ref: https://prg.is.titech.ac.jp/wp-content/uploads/2022/04/ppl2022_v2.pdf)
+
+This "law" of `aputput` is defined in `hierachy.v`:
+
+  aputput : forall i s s', aput i s >> aput i s' = aput i s' ;
+
+With a proof  in the `monad_model.v`:
+
+  Let aputput i s s' : aput i s >> aput i s' = aput i s'.
+  Proof.
+  rewrite state_bindE; apply boolp.funext => a/=.
+  by rewrite /aput insert_insert.
+  Qed.
+
+Therefore, if we define basic SMC operations at the interface,
+we can also define necessary laws the same interface,
+then prove them in the model file.
+
+And of course, these operations and laws,
+must represent SMC style on the SMC computation structure.
+
+So if SMC computation structure is about two locals,
+the laws must describe these two locals explicitly,
+and thus the two locals must be in type signatures of those interface methods.
+
+One critical thing is to keep the monad useful for the operations.
+Since now two locals are in the type signatures,
+if the operation itself can done the all things without what inside the monad,
+then having a monad becomes useless (although, at least, monad allows us to 
+have sequence of execution; but it is a pure monad, no SMC features inside.)
+
+** What is SMC feature for a monad **
+
+There could be some extra steps before or after the operation itself,
+and two locals may have or have no information exchange.
+
+*)

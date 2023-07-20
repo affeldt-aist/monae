@@ -5,8 +5,9 @@ From mathcomp Require Import classical_sets.
 From infotheo Require convex classical_sets_ext.
 Require Import monae_lib.
 From HB Require Import structures.
-Require Import hierarchy monad_lib fail_lib state_lib trace_lib.
+Require Import hierarchy smc_protocol monad_lib fail_lib state_lib trace_lib.
 Require Import monad_transformer.
+
 
 (******************************************************************************)
 (*                       Models for various monads                            *)
@@ -70,6 +71,8 @@ Require Import monad_transformer.
 Set Implicit Arguments.
 Unset Strict Implicit.
 Unset Printing Implicit Defensive.
+
+Locate UU0.
 
 Local Open Scope monae_scope.
 
@@ -150,9 +153,29 @@ Proof. by []. Qed.
 Let right_neutral : BindLaws.right_neutral bind (NId FId).
 Proof. by []. Qed.
 Let associative : BindLaws.associative bind. Proof. by []. Qed.
-Let acto := (@idfun UU0).
+
+(** SMC notes **)
+(* When expressing like this, it generates a specialized version of @idfun*)
+(* The original signature of @idfun is:
+
+    forall T : UU0, T -> T
+  
+  But (@idfun UU0), namely `acto`, becomes:
+
+    UU0 -> UU0
+
+  So (@idfun UU0) is a specialized version.
+  And then we can use it with any UU0 input.
+
+*)
+Let acto := (@idfun UU0).  
+Check left_neutral.
+
+(* `isMonad_ret_bind.Build` receives `acto` and other functions, then instance the monad *)
+
 HB.instance Definition _ := isMonad_ret_bind.Build
   acto left_neutral right_neutral associative.
+
 End identitymonad.
 End IdentityMonad.
 HB.export IdentityMonad.
@@ -160,6 +183,9 @@ HB.export IdentityMonad.
 Module ListMonad.
 Section listmonad.
 Definition acto := fun A : UU0 => seq A.
+
+Check acto.
+
 Local Notation M := acto.
 Let ret : FId ~~> M := fun (A : UU0) x => (@cons A) x [::].
 Let bind := fun A B (m : M A) (f : A -> M B) => flatten (map f m).
@@ -186,6 +212,9 @@ Module SetMonad.
 Section setmonad.
 Local Open Scope classical_set_scope.
 Definition acto := set.
+
+Check set.
+Check @bigcup.
 Local Notation M := acto.
 Let ret : idfun ~~> M := @set1.
 Let bind := fun A B => @bigcup B A.
@@ -211,10 +240,24 @@ Module ExceptMonad.
 Section exceptmonad.
 Variable E : UU0.
 Definition acto := fun A : UU0 => (E + A)%type.
+Check fun A : UU0 => (E + A)%type.
+
+(** SMC note
+
+Different `acto` has the same type signature,
+but their implementation receives different types in different monads.
+
+**)
+
 Local Notation M := acto.
 Let ret : FId ~~> M := @inr E.
+
+Check @inr.
+
 Let bind := fun A B (m : M A) (f : A -> M B) =>
   match m with inl z => inl z | inr b => f b end.
+
+Check inl.
 Let left_neutral : BindLaws.left_neutral bind ret.
 Proof. by []. Qed.
 Let right_neutral : BindLaws.right_neutral bind ret.
@@ -1939,3 +1982,350 @@ HB.instance Definition _ := @isMonadExceptStateRun.Build S N (MS S N)
 
 End modelmonadexceptstaterun.
 End ModelMonadExceptStateRun.
+
+
+(* ---- Models of SMC monads ---- *)
+
+(* SMC Local Monad: a array monad with the element type is `smcvalue`. *)
+
+Module ModelSMCLocal.
+Section modelsmc_local.
+
+Require Import ZArith.
+
+Variables (VarName : eqType).
+
+Implicit Types (v va vb assignee : VarName).
+
+Definition acto := ModelArray.acto smclocalval VarName.
+(* Memo: by this we define a type-specified monad (?) *)
+
+(* Automatically got run already? *)
+HB.instance Definition _ := Monad.on acto.
+(* The fix for the localM definition
+   Not instances from the HB outputs.
+   The defininion is a new thing and not completed (not equip all necessary types attach to that identifier).
+   So to solve it, define it here by copying
+*)
+
+Local Notation M := acto.
+Definition aget := ModelArray.aget.
+Definition aput := ModelArray.aput.
+
+(* Otherwise they become monad PlusArray's aget and aput. *)
+
+Definition add va vb assignee : M unit :=
+  aget va >>= (fun a => aget vb >>= (fun b =>
+    match a, b with
+      | (Int ia, bva), (Int ib, bvb)=> aput assignee (Int (Z.add ia ib), bva)
+      (* TODO: float + int by coercion, etc. *)
+    end)).
+
+(* Memo: this line must be in order *)
+HB.instance Definition _ := isMonadSMCLocal.Build
+  VarName acto add.
+
+End modelsmc_local.
+End ModelSMCLocal.
+
+HB.export ModelSMCLocal.
+
+(* SMC Global: a array monad with (smcvalue * bitvector * smcvalue * bitvector) as its elements. *)
+
+Module ModelSMCGlobal.
+Section modelsmc_global.
+
+Variables (VarName : eqType).
+
+Print MonadSMCLocal.
+HB.about MonadSMCLocal.
+
+Definition localM := [the smcLocalMonad VarName of ModelSMCLocal.acto VarName].
+
+Implicit Types (v va vb assignee : VarName).
+
+(* Array of smclocal*)
+Definition smclocalstate := VarName -> smclocalval.
+
+Definition acto := StateMonad.acto (smclocalstate * smclocalstate * commodity).
+(* Memo: by this we define a type-specified monad (?)
+   It seems that except those methods required by the monad and functor definition,
+   other methods can be type-specific, if the return value is still a monadic value,
+   like `M unit` for array monad or `M (r, s)` for state monad.
+*)
+
+Local Notation M := acto.
+ 
+(* symmetric local: they always run the same computation (like for SMC computations). *)
+(* NOT: only one local run it with its pure local variables. *)
+Definition local (F : localM unit) : M unit := fun state =>
+  match state with
+    | (localA, localB, c) => (tt, (snd (F localA), snd (F localB), c))
+  end.
+
+Definition exchange v : M unit := fun state =>
+  match state with
+    | (localA, localB, c) => (tt, (insert v (localB v) localA, insert v (localB v) localA, c)) 
+  end.
+
+
+(* 0. Get Ra, Rb, ra, rb from commodity
+   1. Alice: Xa' = Xa + Ra, set as Bob's tmp var
+      --> issue: we cannot create new VarName `Xa'` inside, need to pass in.
+
+   2. Bob: Xb' = Xb + Rb, set as Alice's tmp var
+      --> issue: we cannot create new VarName `Xb'` inside, need to pass in.
+
+   3. Bob: generate a random variable yb
+      --> issue: we don't have random number generator. Need to assume that it exists.
+      --> issue: we cannot create new VarName `yb` inside, need to pass in.
+
+   4. Bob: t_ = Xa' x Xb'^t + rb - yb, set `t_` as Alice's tmp var
+      --> issue: we cannot create new VarName `t_` inside, need to pass in.
+
+   5. Alice: ya = t_ - Ra x Xb'^t + Ra
+      --> issue: we cannot create new VarName `ya` inside, need to pass in.
+
+   Result: Alice, Bob: (ya, yb)
+   Property: ya + yb = Xa * Xb^t
+
+*)
+
+(* Before each stateful step in this global model monad,
+   since every global step means a new SMC protocol computation (otherwise it should be done by `local`),
+   the random variables from the commodity server must be refreshed. It should work like:
+
+    runState
+      step1 >>
+      step2 >>
+      step3
+
+    = (result, state)
+
+  becomes:
+
+    runState
+      refresh_env >> step1 >>
+      refresh_env >> step2 >>
+      refresh_env >> step3
+
+    = (result, state)
+
+  TODO: it is better to define a customized `pure` (>>) and `bind` (>>=) so each step of this monad
+  will naturally come with a new environment.
+*)
+Definition refresh_env : M unit := fun state =>
+  (tt, state).
+
+Definition sp_step1 (localA : smclocalstate) (localB : smclocalstate) (c : commodity) (Xa : VarName) (Xa' : VarName) : smclocalstate :=
+  insert Xa' (add_smcval (only_partial (get_Ra c)) (localA Xa)) localB. 
+
+Definition sp_step2 (localA : smclocalstate) (localB : smclocalstate) (c : commodity) (Xb : VarName) (Xb' : VarName) : smclocalstate :=
+  insert Xb' (add_smcval (only_partial (get_Rb c)) (localB Xb)) localA.
+
+Definition sp_step3_4 (localA : smclocalstate) (localB : smclocalstate) (c : commodity) (Xa' : VarName) (Xb : VarName) (yb : VarName) (rb : VarName) (t_ : VarName) : smclocalstate :=
+  let Xa'_Xb' := dot_product_smcval (localB Xa') (localB Xb) in
+  let rb_yb := sub_smcval (localB rb) (localB yb) in
+    insert t_ (add_smcval Xa'_Xb' rb_yb) localA.
+
+Definition sp_step5 (localA : smclocalstate) (localB : smclocalstate) (c : commodity) (t_ : VarName) (Xb' : VarName) (ya : VarName) : smclocalstate :=
+  let Ra := only_partial (get_Ra c) in
+  let Ra_Xb' := dot_product_smcval Ra (localA Xb') in
+  let Ra_Xb'_Ra := add_smcval Ra_Xb' Ra in
+    insert ya (sub_smcval (localA t_) Ra_Xb'_Ra) localA.
+
+Definition scalar_product v assignee : M unit := fun state =>
+  (tt, state).
+
+(* Action Items
+1. Def the global monad as a state monad
+2. With two local monads
+3.
+
+LocalA [ vars --> (F, P), (F, P)... ]
+LocalB [ vars --> (F, P), (F, P)... ]
+Global steps to manipuate LocalA and LocalB.
+
+One global step will ... ?
+
+global_foo = compare
+
+runState (localMA, localMB)
+
+exchange 
+
+>>= fun (ma, mb) => 
+     aget v ma >>= (fun(va) => aget v mb >>= (fun (vb) => aput v vb ma) >> 
+*)
+(*
+
+Ask questions:
+
+1. `local`
+
+In environment
+VarName : eqType
+localM : smcLocalMonad VarName
+The term "localM" has type "MonadSMCLocal.type VarName"
+while it is expected to have type "Monad.sort ?s ?A".
+
+
+2. Confirm that we cannot make a dispatch function in Coq, and ask why
+
+----
+
+Extend the array monad.
+
+To add the stateRun monad.
+
+Cannot use Comonad : extract cannot rely on the outside input.
+
+
+----
+
+
+Global and Local. At the interface level.
+
+Two models must be related.
+
+Local monad is a param to the gloal monad.
+
+*)
+
+Definition add va vb assignee : M unit :=
+  aget va >>= (fun a => aget vb >>= (fun b =>
+    match a, b with
+      | Int ia, Int ib => aput assignee (Int (add ia ib))
+      (* TODO: float + int by coercion, etc. *)
+      | _, _ => skip
+    end)).
+
+(* Memo: this line must be in order *)
+HB.instance Definition _ := isMonadSMCLocal.Build
+  VarName acto add.
+
+End modelsmc_local.
+End ModelSMCLocal.
+
+
+
+(*
+
+
+Module ModelSMCGlobal.
+Section modelsmc_global.
+
+Variables (F P : UU0) (VarName : eqType).
+Local Notation SMCGlobalVars :=  (VarName -> SMCGlobal F P).
+Implicit Types (v : VarName) (g : MonadSMCLocals F P VarName) (e : MonadSMCLocals F P VarName -> MonadSMCLocals F P VarName) (A : UU0).
+
+Definition .
+
+*)
+(*
+Memo: acto application must be UU0 -> UU0.
+
+StateMonad.acto
+	 : UU0 -> UU0 -> UU0
+StateMonad.acto (VarName -> SMCLocal F P)
+	 : UU0 -> UU0
+
+
+In array monad:
+
+  Variables (S : UU0) (I : eqType).
+  Implicit Types (i j : I) (A : UU0).
+  Definition acto := StateMonad.acto (I -> S).
+*)
+
+
+(*
+Definition acto := StateMonad.acto SMCGlobalVars.
+Local Notation M := acto.
+
+Definition get 
+
+End modelsmc_global.
+End ModelSMCGlobal.
+
+*)
+
+
+(* Memo:
+
+What does "universe inconsistency" means:
+
+https://stackoverflow.com/questions/32153710/what-does-error-universe-inconsistency-mean-in-coq
+
+(constrains like: Type_i, Type_j, and i < j -- cannot be solved internally in Coq.)
+
+*)
+
+(* Memo:
+
+1. `Int` means an interface for `()` (???), so that the caller can use Int's operations over `()`.
+2. `Array Int` means an interface for Int, so that the caller can use Array's operations over Int.
+3. `M (Array Int)` means an interface for Array Int, so that the caller can use M's operations over `Array Int`
+    --> And how to define all operations of `M` by the underlying `Array` operations is what monad transformer does.
+
+*)
+
+(*
+
+
+Inductive smcty : Set :=
+  | Int
+  | Float
+  | Array of nat & smcty.
+
+*)
+
+(*Memo:
+
+Maybe I'm wrong but it seems that we cannot define a dispatch function
+like this, because `a` will expect to have type `smcty`.
+
+The `a` is just a parametric type. It doesn't mean really "all" type.
+Maybe this is the reason?
+
+Definition checkSMC (a : Type) bool :=
+  match a with
+  | Int => true
+  | Float => true
+  | Array n ty => true
+  | _ => false
+  end.
+
+
+Definition checkSMC (F : UU0) (a : F) bool :=
+  match F with
+  | smcty => match a with
+             | Int => true
+             | _ => false
+             end
+  end.
+
+*)
+
+(*
+
+Not sure
+
+--> We need array as the heaps, but we also need named registers for computations
+    completed by a register machine (stack could also be used but we need to rewrite the algorithm).
+
+--> Each step, the new environment of the SMC program will be stored in the two heaps.
+    But for each program computation, it needs to load things from the heaps to this "register view",
+    (mainly for the vars will be used later),
+    and then compute the program,
+    and then store the result back to the two heaps.
+
+--> This is because the heaps (for the whole SMC program) are apparently different from the
+    environment needed by one specific SMC computation.
+
+--> But in theory we can compile the whole program and decide all named "register" the whole program
+    will use. So no need to have the heaps.
+
+
+*)
+
