@@ -1291,6 +1291,7 @@ HB.mixin Record isMonadSMCGlobal (VarName : eqType) (M : UU0 -> UU0) of Monad M 
   (* Exchange two partial variables with the same name at the both locals. *)
   exchange : VarName -> M unit;
 
+
   (* Split a Full variable to Partial SMC variable by SMC protocols. *)
   (* Example: at Alice side, `split wealth result` equal to:
 

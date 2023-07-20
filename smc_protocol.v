@@ -56,16 +56,34 @@ Definition build_partial (s : smclocalval) : smclocalval :=
 		end
 	).
 
-Definition add_partial (a : smcpartial) (b : smcpartial) : smcpartial :=
-	Z_to_two_compl bvectorCapacity (Z.add (two_compl_value bvectorCapacity a) (two_compl_value bvectorCapacity b)).
-
-
 (* Dot product of two bit vectors and the result is a Z,
    and then still return the result as a bit vector by the `Z_to_two_compl`
    per the SMC requirement that computation parties hold partial results of SMC computations .
 *)
-Definition dot_product (a : smcpartial) (b : smcpartial) : smcpartial :=
+Definition dot_product_partial (a : smcpartial) (b : smcpartial) : smcpartial :=
 	a.  (*TODO: define it later*)
 
 Definition only_partial (p : smcpartial) : smclocalval :=
 	(Int 0, p).
+
+Definition binop_partial (a : smcpartial) (b : smcpartial) (op: Z -> Z -> Z) : smcpartial :=
+	Z_to_two_compl bvectorCapacity (op (two_compl_value bvectorCapacity a) (two_compl_value bvectorCapacity b)).
+
+Definition add_partial (a : smcpartial) (b : smcpartial) : smcpartial :=
+	binop_partial a b Z.add.
+
+Definition sub_partial (a : smcpartial) (b : smcpartial) : smcpartial :=
+	binop_partial a b Z.sub.
+
+Definition binop (a : smclocalval) (b : smclocalval) (op: smcpartial -> smcpartial -> smcpartial) : smclocalval :=
+	only_partial (op (get_partial a) (get_partial b)).
+
+Definition add_smcval (a : smclocalval) (b : smclocalval) : smclocalval := 
+	only_partial (add_partial (get_partial a) (get_partial b)).
+
+Definition sub_smcval (a : smclocalval) (b : smclocalval) : smclocalval := 
+	only_partial (sub_partial (get_partial a) (get_partial b)).
+
+Definition dot_product_smcval (a : smclocalval) (b : smclocalval) : smclocalval :=
+	only_partial (dot_product_partial (get_partial a) (get_partial b)).
+	

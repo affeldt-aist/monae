@@ -8,6 +8,7 @@ From HB Require Import structures.
 Require Import hierarchy smc_protocol monad_lib fail_lib state_lib trace_lib.
 Require Import monad_transformer.
 
+
 (******************************************************************************)
 (*                       Models for various monads                            *)
 (*                                                                            *)
@@ -2068,31 +2069,44 @@ Definition exchange v : M unit := fun state =>
   end.
 
 
-(* 1. Get Ra, Rb, ra, rb from commodity
-   2. Alice: Xa' = Xa + Ra, set as Bob's tmp var
+(* 0. Get Ra, Rb, ra, rb from commodity
+   1. Alice: Xa' = Xa + Ra, set as Bob's tmp var
       --> issue: we cannot create new VarName `Xa'` inside, need to pass in.
 
-   3. Bob: Xb' = Xb + Rb, set as Alice's tmp var
+   2. Bob: Xb' = Xb + Rb, set as Alice's tmp var
       --> issue: we cannot create new VarName `Xb'` inside, need to pass in.
 
-   4. Bob: generate a random variable yb
+   3. Bob: generate a random variable yb
       --> issue: we don't have random number generator. Need to assume that it exists.
       --> issue: we cannot create new VarName `yb` inside, need to pass in.
 
-   5. Bob: tb = Xa' x Xb'^t + rb - yb, set as Alice's tmp var
-      --> issue: we cannot create new VarName `tb` inside, need to pass in.
+   4. Bob: t_ = Xa' x Xb'^t + rb - yb, set `t_` as Alice's tmp var
+      --> issue: we cannot create new VarName `t_` inside, need to pass in.
 
-   6. Alice: ya = tb - Ra x Xb'^t + Ra
+   5. Alice: ya = t_ - Ra x Xb'^t + Ra
       --> issue: we cannot create new VarName `ya` inside, need to pass in.
+
+   Result: Alice, Bob: (ya, yb)
+   Property: ya + yb = Xa * Xb^t
+
 *)
-Definition sp_step1 (localA : smclocalstate) (localB : smclocalstate) (c : commodity) (xa : VarName) (xa' : VarName) : smclocalstate :=
-  insert xa' (only_partial (add_partial (get_Ra c) (get_partial (localA xa)))) localB.
 
-Definition sp_step2 (localA : smclocalstate) (localB : smclocalstate) (c : commodity) (xb : VarName) (xb' : VarName) : smclocalstate :=
-  insert xb' (only_partial (add_partial (get_Rb c) (get_partial (localB xb)))) localA.
+Definition sp_step1 (localA : smclocalstate) (localB : smclocalstate) (c : commodity) (Xa : VarName) (Xa' : VarName) : smclocalstate :=
+  insert Xa' (add_smcval (only_partial (get_Ra c)) (localA Xa)) localB. 
 
-Definition sp_step4_5 (localA : smclocalstate) (localB : smclocalstate) (c : commodity) (xa' : VarName) (xb : VarName) (tb : VarName) : smclocalstate :=
-  insert tb (only_partial (dot_product (get_partial (localB xa')) (get_partial (localB xb))))
+Definition sp_step2 (localA : smclocalstate) (localB : smclocalstate) (c : commodity) (Xb : VarName) (Xb' : VarName) : smclocalstate :=
+  insert Xb' (add_smcval (only_partial (get_Rb c)) (localB Xb)) localA.
+
+Definition sp_step3_4 (localA : smclocalstate) (localB : smclocalstate) (c : commodity) (Xa' : VarName) (Xb : VarName) (yb : VarName) (rb : VarName) (t_ : VarName) : smclocalstate :=
+  let Xa'_Xb' := dot_product_smcval (localB Xa') (localB Xb) in
+  let rb_yb := sub_smcval (localB rb) (localB yb) in
+    insert t_ (add_smcval Xa'_Xb' rb_yb) localA.
+
+Definition sp_step5 (localA : smclocalstate) (localB : smclocalstate) (c : commodity) (t_ : VarName) (Xb' : VarName) (ya : VarName) : smclocalstate :=
+  let Ra := only_partial (get_Ra c) in
+  let Ra_Xb' := dot_product_smcval Ra (localA Xb') in
+  let Ra_Xb'_Ra := add_smcval Ra_Xb' Ra in
+    insert ya (sub_smcval (localA t_) Ra_Xb'_Ra) localA.
 
 Definition scalar_product va vb (xa : VarName) (xb : VarName) (ya : VarName) (yb : VarName) (tb : VarName) : M unit := fun state =>
   match state with
@@ -2269,5 +2283,26 @@ Definition checkSMC (F : UU0) (a : F) bool :=
              | _ => false
              end
   end.
+
+*)
+
+(*
+
+
+--> We need array as the heaps, but we also need named registers for computations
+    completed by a register machine (stack could also be used but we need to rewrite the algorithm).
+
+--> Each step, the new environment of the SMC program will be stored in the two heaps.
+    But for each program computation, it needs to load things from the heaps to this "register view",
+    (mainly for the vars will be used later),
+    and then compute the program,
+    and then store the result back to the two heaps.
+
+--> This is because the heaps (for the whole SMC program) are apparently different from the
+    environment needed by one specific SMC computation.
+
+--> But in theory we can compile the whole program and decide all named "register" the whole program
+    will use. So no need to have the heaps.
+
 
 *)
