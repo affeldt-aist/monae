@@ -20,10 +20,10 @@ Unset Printing Implicit Defensive.
 Local Open Scope monae_scope.
 
 Section ModelTypedStore.
-Variable MLtypes : ML_universe.
+Variable MLU : ML_universe.
 
 Record binding (M : Type -> Type) :=
-  mkbind { bind_type : MLtypes; bind_val : coq_type M bind_type }.
+  mkbind { bind_type : MLU; bind_val : coq_type M bind_type }.
 Arguments mkbind {M bind_type}.
 
 Definition M0 Env (T : UU0) := MS Env option_monad T.
@@ -31,32 +31,33 @@ Definition M0 Env (T : UU0) := MS Env option_monad T.
 End ModelTypedStore.
 
 #[bypass_check(positivity)]
-Inductive Env (MLtypes' : ML_universe) := mkEnv : seq (binding MLtypes' (M0 (Env _))) -> Env _.
+Inductive Env (MLU : ML_universe) := mkEnv : seq (binding MLU (M0 (Env _))) -> Env _.
 
 Section ModelTypedStore_contd.
 Variable MLU : ML_universe.
 
 Definition ofEnv (e : Env MLU) := let: mkEnv e := e in e.
-
-Notation mkEnv := (@mkEnv MLU).
-Notation Env := (@Env MLU).
-
 Definition sizeEnv e := size (ofEnv e).
+
+Local Notation mkEnv := (@mkEnv MLU).
+Local Notation Env := (@Env MLU).
 
 Definition acto : UU0 -> UU0 := MS Env option_monad.
 Local Notation M := acto.
+
 Local Notation coq_type := (@coq_type MLU M).
 
-Notation undef := (val_nonempty MLU).
+Local Notation undef := (val_nonempty MLU).
 
 Definition def := mkbind (undef M).
+
 Local Notation nth_error := List.nth_error.
 
 Definition extend_env T (v : coq_type T) (e : Env) :=
   mkEnv (rcons (ofEnv e) (mkbind v)).
 Definition fresh_loc (T : MLU) (e : Env) := mkloc T (sizeEnv e).
 
-Notation loc := (@loc MLU locT).
+Local Notation loc := (@loc MLU locT).
 
 Definition cnew T (v : coq_type T) : M (loc T) :=
   fun e => inr (fresh_loc T e, extend_env v e).
