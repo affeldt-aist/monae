@@ -1080,70 +1080,69 @@ HB.structure Definition MonadArray (S : UU0) (I : eqType) :=
 HB.structure Definition MonadPlusArray (S : UU0) (I : eqType) :=
   { M of MonadPlus M & isMonadArray S I M}.
 
+Variant loc (ml_type : Type) (locT : eqType) : ml_type -> Type :=
+  mkloc T : locT -> loc locT T.
+Definition loc_id (ml_type : Type) (locT : eqType) {T : ml_type} (l : loc locT T) : locT :=
+  let: mkloc _ n := l in n.
+
 (* A monad for OCaml computations *)
-Module Type MLTY.
-Parameter ml_type : Set.
-Parameter ml_type_eq_dec : forall x y : ml_type, {x=y}+{x<>y}.
-Parameter locT : eqType.
-Variant loc : ml_type -> Type := mkloc T : locT -> loc T.
-Parameter loc_id : forall T, loc T -> locT.
-Parameter coq_type : forall M : Type -> Type, ml_type -> Type.
-End MLTY.
+Structure ML_universe := {
+  ml_type :> eqType ;
+  coq_type : forall M : Type -> Type, ml_type -> Type ;
+  ml_nonempty : ml_type ;
+  val_nonempty : forall M, coq_type M ml_nonempty }.
 
-Module MonadTypedStore (MLtypes : MLTY).
-Import MLtypes.
-
-HB.mixin Record isMonadTypedStore (M : UU0 -> UU0)
+HB.mixin Record isMonadTypedStore (MLU: ML_universe) (locT : eqType) (M : UU0 -> UU0)
     of Monad M := {
-  cnew : forall {T}, coq_type M T -> M (loc T) ;
-  cget : forall {T}, loc T -> M (coq_type M T) ;
-  cput : forall {T}, loc T -> coq_type M T -> M unit ;
+  cnew : forall {T : MLU}, coq_type M T -> M (loc locT T) ;
+  cget : forall {T}, loc locT T -> M (coq_type M T) ;
+  cput : forall {T}, loc locT T -> coq_type M T -> M unit ;
   crun : forall {A : UU0}, M A -> option A ; (* execute in empty store *)
-  cnewget : forall T (s : coq_type M T) A (k : loc T -> coq_type M T -> M A),
+  cnewget : forall T (s : coq_type M T) A (k : loc locT T -> coq_type M T -> M A),
     cnew s >>= (fun r => cget r >>= k r) = cnew s >>= (fun r => k r s) ;
-  cnewput : forall T (s t : coq_type M T) A (k : loc T -> M A),
+  cnewput : forall T (s t : coq_type M T) A (k : loc locT T -> M A),
       cnew s >>= (fun r => cput r t >> k r) = cnew t >>= k ;
-  cgetput : forall T (r : loc T) (s : coq_type M T),
+  cgetput : forall T (r : loc locT T) (s : coq_type M T),
       cget r >> cput r s = cput r s ;
-  cgetputskip : forall T (r : loc T), cget r >>= cput r = cget r >> skip ;
+  cgetputskip : forall T (r : loc locT T), cget r >>= cput r = cget r >> skip ;
   cgetget :
-    forall T (r : loc T) (A : UU0) (k : coq_type M T -> coq_type M T -> M A),
+    forall T (r : loc locT T) (A : UU0) (k : coq_type M T -> coq_type M T -> M A),
     cget r >>= (fun s => cget r >>= k s) = cget r >>= fun s => k s s ;
   cputget :
-    forall T (r : loc T) (s : coq_type M T) (A : UU0) (k : coq_type M T -> M A),
+    forall T (r : loc locT T) (s : coq_type M T) (A : UU0) (k : coq_type M T -> M A),
       cput r s >> (cget r >>= k) = cput r s >> k s ;
-  cputput : forall T (r : loc T) (s s' : coq_type M T),
+  cputput : forall T (r : loc locT T) (s s' : coq_type M T),
     cput r s >> cput r s' = cput r s' ;
   cgetC :
-    forall T1 T2 (r1 : loc T1) (r2 : loc T2) (A : UU0)
+    forall T1 T2 (r1 : loc locT T1) (r2 : loc locT T2) (A : UU0)
            (k : coq_type M T1 -> coq_type M T2 -> M A),
     cget r1 >>= (fun u => cget r2 >>= (fun v => k u v)) =
     cget r2 >>= (fun v => cget r1 >>= (fun u => k u v)) ;
   cgetnewD :
-    forall T T' (r : loc T) (s : coq_type M T') A
-           (k : loc T' -> coq_type M T -> coq_type M T -> M A),
+    forall T T' (r : loc locT T) (s : coq_type M T') A
+           (k : loc locT T' -> coq_type M T -> coq_type M T -> M A),
       cget r >>= (fun u => cnew s >>= (fun r' => cget r >>= k r' u)) =
       cget r >>= (fun u => cnew s >>= (fun r' => k r' u u)) ;
-  cgetnewE : forall T1 T2 (r1 : loc T1) (s : coq_type M T2) (A : UU0)
-                   (k1 k2 : loc T2 -> M A),
-      (forall r2 : loc T2, loc_id r1 != loc_id r2 -> k1 r2 = k2 r2) ->
+  cgetnewE : forall T1 T2 (r1 : loc locT T1) (s : coq_type M T2) (A : UU0)
+                   (k1 k2 : loc locT T2 -> M A),
+      (forall r2 : loc locT T2, loc_id r1 != loc_id r2 -> k1 r2 = k2 r2) ->
       cget r1 >> (cnew s >>= k1) = cget r1 >> (cnew s >>= k2) ;
-  cgetputC : forall T1 T2 (r1 : loc T1) (r2 : loc T2) (s : coq_type M T2),
+  cgetputC : forall T1 T2 (r1 : loc locT T1) (r2 : loc locT T2) (s : coq_type M T2),
       cget r1 >> cput r2 s = cput r2 s >> cget r1 >> skip ;
   cputC :
-    forall T1 T2 (r1 : loc T1) (r2 : loc T2) (s1 : coq_type M T1)
+    forall T1 T2 (r1 : loc locT T1) (r2 : loc locT T2) (s1 : coq_type M T1)
            (s2 : coq_type M T2) (A : UU0),
       loc_id r1 != loc_id r2 \/ JMeq s1 s2 ->
       cput r1 s1 >> cput r2 s2 = cput r2 s2 >> cput r1 s1 ;
   cputgetC :
-    forall T1 T2 (r1 : loc T1) (r2 : loc T2) (s1 : coq_type M T1)
+    forall T1 T2 (r1 : loc locT T1) (r2 : loc locT T2) (s1 : coq_type M T1)
            (A : UU0) (k : coq_type M T2 -> M A),
       loc_id r1 != loc_id r2 ->
     cput r1 s1 >> cget r2 >>= k =
     cget r2 >>= (fun v => cput r1 s1 >> k v) ;
   cputnewC :
-    forall T T' (r : loc T) (s : coq_type M T) (s' : coq_type M T') A
-           (k : loc T' -> M A),
+    forall T T' (r : loc locT T) (s : coq_type M T) (s' : coq_type M T') A
+           (k : loc locT T' -> M A),
       cget r >> (cnew s' >>= fun r' => cput r s >> k r') =
       cput r s >> (cnew s' >>= k) ;
   crunret : forall (A B : UU0) (m : M A) (s : B),
@@ -1154,27 +1153,28 @@ HB.mixin Record isMonadTypedStore (M : UU0 -> UU0)
       crun m -> crun (m >>= fun x => cnew (s x)) ;
   crunnewget : forall (A : UU0) T (m : M A) (s : A -> coq_type M T),
       crun m -> crun (m >>= fun x => cnew (s x) >>= cget) ;
-  crungetnew : forall (A : UU0) T1 T2 (m : M A) (r : A -> loc T1)
+  crungetnew : forall (A : UU0) T1 T2 (m : M A) (r : A -> loc locT T1)
                       (s : A -> coq_type M T2),
       crun (m >>= fun x => cget (r x)) ->
       crun (m >>= fun x => cnew (s x) >> cget (r x)) ;
-  crungetput : forall (A : UU0) T (m : M A) (r : A -> loc T)
+  crungetput : forall (A : UU0) T (m : M A) (r : A -> loc locT T)
                       (s : A -> coq_type M T),
       crun (m >>= fun x => cget (r x)) ->
       crun (m >>= fun x => cput (r x) (s x)) ;
  }.
 
 #[short(type=typedStoreMonad)]
-HB.structure Definition MonadTypedStore :=
-  { M of isMonadTypedStore M & isMonad M & isFunctor M }.
+HB.structure Definition MonadTypedStore (ml_type : ML_universe) (locT : eqType) :=
+  { M of isMonadTypedStore ml_type locT M & isMonad M & isFunctor M }.
 
-Arguments cnew {s}.
-Arguments cget {s} [T].
-Arguments cput {s} [T].
-Arguments crun {s} [A].
+Arguments cnew {ml_type locT s}.
+Arguments cget {ml_type locT s} [T].
+Arguments cput {ml_type locT s} [T].
+Arguments crun {ml_type locT s} [A].
 
 Section cchk.
-Variable M : typedStoreMonad.
+Variables (MLU : ML_universe) (locT : eqType) (M : typedStoreMonad MLU locT).
+Notation loc := (@loc MLU locT).
 Definition cchk T (r : loc T) : M unit := cget r >> skip.
 
 Lemma cnewchk T s (A : UU0) (k : loc T -> M A) :
@@ -1251,11 +1251,10 @@ Proof. by rewrite bindmret. Qed.
 Lemma crunnew0 T s : crun (cnew T s : M _).
 Proof. by rewrite -(bindskipf (cnew T s)) crunnew // crunskip. Qed.
 
-Lemma cnewgetret T s : cnew T s >>= @cget _ _ = cnew T s >> Ret s :> M _.
+Lemma cnewgetret T s : cnew T s >>= @cget _ _ _ _ = cnew T s >> Ret s :> M _.
 Proof. under eq_bind do rewrite -cgetret; by rewrite cnewget. Qed.
 End cchk.
-Arguments cchk {M} [T].
-End MonadTypedStore.
+Arguments cchk {MLU locT M} [T].
 
 HB.mixin Record isMonadTrace (T : UU0) (M : UU0 -> UU0) of Monad M :=
  { mark : T -> M unit }.
