@@ -4,6 +4,7 @@ Require Import ZArith.
 From mathcomp Require Import all_ssreflect.
 From mathcomp Require boolp.
 From infotheo Require Import ssrZ.
+Require monad_model.
 Require Import monae_lib hierarchy monad_lib. (*fail_lib state_lib.*)
 
 (******************************************************************************)
@@ -13,18 +14,15 @@ Require Import monae_lib hierarchy monad_lib. (*fail_lib state_lib.*)
 
 Local Open Scope monae_scope.
 
+Module MLTypes.
 Inductive ml_type : Set :=
   | ml_int
   | ml_bool
   | ml_unit
   | ml_ref (_ : ml_type)
   | ml_arrow (_ : ml_type) (_ : ml_type)
-  | ml_rlist (_ : ml_type)
-  | ml_undef.
+  | ml_rlist (_ : ml_type).
 
-Inductive undef_t : Set := Undef.
-
-Module MLtypes0.
 Definition ml_type_eq_dec (T1 T2 : ml_type) : {T1=T2}+{T1<>T2}.
 revert T2; induction T1; destruct T2;
   try (right; intro; discriminate); try (now left);
@@ -36,86 +34,53 @@ revert T2; induction T1; destruct T2;
     right; injection; intros; contradiction.
 Defined.
 
-Local Definition ml_type := ml_type.
-Local Definition undef (M : UU0 -> UU0) := Undef.
-Variant loc : ml_type -> Type := mkloc T : nat -> loc T.
-Local Definition locT := [eqType of nat].
-Definition loc_id {T} (l : loc T) := let: mkloc _ n := l in n.
+Definition val_nonempty (M : UU0 -> UU0) := tt.
+
+Definition locT := [eqType of nat].
+
+Notation loc := (@loc ml_type locT).
 
 Inductive rlist (a : Type) (a_1 : ml_type) :=
   | Nil
   | Cons (_ : a) (_ : loc (ml_rlist a_1)).
 
+End MLTypes.
+
+Module MLTypesNat.
+Import MLTypes.
+
 Section with_monad.
 Context [M : Type -> Type].
 
 (* Generated type translation function *)
-Fixpoint coq_type (T : ml_type) : Type :=
+Fixpoint coq_type_nat (T : ml_type) : Type :=
   match T with
   | ml_int => nat
   | ml_bool => bool
   | ml_unit => unit
-  | ml_arrow T1 T2 => coq_type T1 -> M (coq_type T2)
+  | ml_arrow T1 T2 => coq_type_nat T1 -> M (coq_type_nat T2)
   | ml_ref T1 => loc T1
-  | ml_rlist T1 => rlist (coq_type T1) T1
-  | ml_undef => undef_t
+  | ml_rlist T1 => rlist (coq_type_nat T1) T1
   end.
 End with_monad.
-Local Definition coq_type0 := @coq_type idfun.
-Local Definition ml_undef := ml_undef.
-End MLtypes0.
 
-(* Check that the models can indeed be instanciated, for soundness *)
-Module Model0.
-Require monad_model.
-(* This model does not allow functions in the store, but can be defined
-   without endangering soundness. *)
-Module ModelTS := monad_model.ModelTypedStore (MLtypes0).
+Definition ml_type_eq_mixin := comparableMixin MLTypes.ml_type_eq_dec.
+Canonical ml_type_eqType := Eval hnf in EqType _ ml_type_eq_mixin.
 
-(* Attempt to build an instance with HB *)
-Require Import fail_lib state_lib trace_lib.
-Require Import monad_transformer monad_model.
-Import ModelTS.
-From HB Require Import structures.
-(* This fails *)
-Fail HB.instance Definition _ :=
-  MTypedStore.isMonadTypedStore.Build _ cnewget cnewput cgetput cgetputskip
-    cgetget cputget cputput cgetC cgetnewD cgetnewE cgetputC cputC
-    cputgetC cputnewC
-    crunret crunskip crunnew crunnewget crungetnew crungetput.
-(* But we can still check that the definition is correct (again) *)
-Definition isMonadTypedStoreModel :=
-  MTypedStore.isMonadTypedStore.Build _ cnewget cnewput cgetput cgetputskip
-    cgetget cputget cputput cgetC cgetnewD cgetnewE cgetputC cputC
-    cputgetC cputnewC
-    crunret crunskip crunnew crunnewget crungetnew crungetput.
-End Model0.
+(*Canonical MLU := @Build_ML_universe _ coq_type ml_unit val_nonempty.*)
 
-Module Model.
-Require typed_store_model.
-(* This is the full model for Coqgen, including functions in the store *)
-Module ModelTS := typed_store_model.ModelTypedStore (MLtypes0).
-(* Trying to build an instance with HB fails here too *)
-End Model.
-
-(* Our proofs just use the interface *)
-(* One can use either the "safe" interface based on Model0 *)
-Module MLtypes := Model0.ModelTS.MLtypes'.
-(* or the standard one, allowing functions in the store *)
-(* Module MLtypes := Model.ModelTS.MLtypes'. *)
-
-Module MonadTS := MonadTypedStore (MLtypes).
-Import MLtypes0 MLtypes MonadTS.
+Definition coq_type0 := @coq_type_nat idfun.
+Canonical MLU := @monad_model.MLU _ coq_type0 ml_unit (val_nonempty idfun).
 
 Section cyclic.
-Variable M : typedStoreMonad.
-Notation coq_type := (@MLtypes.coq_type M).
+Variables (M : typedStoreMonad MLU MLTypes.locT).
+Notation coq_type := (@hierarchy.coq_type MLU M).
 Notation "'do' x <- m ; e" := (m >>= (fun x => e))
   (at level 60, x name, m at level 200, e at level 60).
 
 Definition cycle (T : ml_type) (a b : coq_type T)
   : M (coq_type (ml_rlist T)) :=
-  do r <- @cnew M (ml_rlist T) (Nil (coq_type T) T);
+  do r <- cnew (ml_rlist T) (Nil (coq_type T) T);
   do l <-
   (do v <- cnew (ml_rlist T) (Cons (coq_type T) T b r);
    Ret (Cons (coq_type T) T a v));
@@ -144,8 +109,8 @@ Qed.
 End cyclic.
 
 Section factorial.
-Variable M : typedStoreMonad.
-Notation coq_type := (@MLtypes.coq_type M).
+Variable M : typedStoreMonad MLU MLTypes.locT.
+Notation coq_type := (@coq_type M).
 
 Fixpoint fact_ref (r : loc ml_int) (n : nat) : M unit :=
   if n is m.+1 then cget r >>= fun p => cput r (n * p) >> fact_ref r m
@@ -209,8 +174,8 @@ End forloop.
 Arguments forloop {M}.
 
 Section fact_for.
-Variable M : typedStoreMonad.
-Notation coq_type := (@MLtypes.coq_type M).
+Variable M : typedStoreMonad MLU MLTypes.locT.
+Notation coq_type := (@coq_type MLU M).
 
 Notation "'do' x <- m ; e" := (m >>= (fun x => e))
   (at level 60, x name, m at level 200, e at level 60).
@@ -252,8 +217,8 @@ Qed.
 End fact_for.
 
 Section fibonacci.
-Variable M : typedStoreMonad.
-Notation coq_type := (@MLtypes.coq_type M).
+Variable M : typedStoreMonad MLU MLTypes.locT.
+Notation coq_type := (@coq_type M).
 
 Fixpoint fibo_rec n :=
   if n is m.+1 then
@@ -307,6 +272,8 @@ rewrite cnewput.
 by under eq_bind do rewrite cnewput.
 Qed.
 End fibonacci.
+
+End MLTypesNat.
 
 Require Import PrimInt63.
 Require Sint63.
@@ -458,38 +425,31 @@ Qed.
 End Int63.
 
 Module MLtypes63.
-Local Definition ml_type_eq_dec := ml_type_eq_dec.
-Local Definition ml_type := ml_type.
-Local Definition undef (M : UU0 -> UU0) := Undef.
-Variant loc : ml_type -> Set := mkloc T : nat -> loc T.
-Local Definition locT := [eqType of nat].
-Local Definition loc_id {T} (l : loc T) := let: mkloc _ n := l in n.
+Import MLTypes.
 
 Section with_monad.
 Context [M : Type -> Type].
 
 (* Generated type translation function *)
-Fixpoint coq_type (T : ml_type) : Type :=
+Fixpoint coq_type63 (T : ml_type) : Type :=
   match T with
   | ml_int => int
   | ml_bool => bool
   | ml_unit => unit
-  | ml_arrow T1 T2 => coq_type T1 -> M (coq_type T2)
+  | ml_arrow T1 T2 => coq_type63 T1 -> M (coq_type63 T2)
   | ml_ref T1 => loc T1
-  | ml_rlist T1 => rlist (coq_type T1) T1
-  | ml_undef => undef_t
+  | ml_rlist T1 => rlist (coq_type63 T1) T1
   end.
 End with_monad.
-Local Definition ml_undef := ml_undef.
-End MLtypes63.
 
-Module IMonadTS63 := hierarchy.MonadTypedStore (MLtypes63).
-Import MLtypes63.
-Import IMonadTS63.
+Definition ml_type63_eq_mixin := comparableMixin MLTypes.ml_type_eq_dec.
+Canonical ml_type63_eqType := Eval hnf in EqType _ ml_type63_eq_mixin.
+
+Canonical ml_type63 := @Build_ML_universe _ coq_type63 ml_unit val_nonempty.
 
 Section fact_for_int63.
-Variable M : typedStoreMonad.
-Notation coq_type := (@MLtypes63.coq_type M).
+Variable M : typedStoreMonad ml_type63 MLTypes.locT.
+Notation coq_type := (@MLtypes63.coq_type63 M).
 
 Notation "'do' x <- m ; e" := (m >>= (fun x => e))
   (at level 60, x name, m at level 200, e at level 60).
@@ -611,3 +571,5 @@ by rewrite lt0n subn_eq0 -ltnNge.
 Qed.
 End fact_for63_ok.
 End fact_for_int63.
+
+End MLtypes63.
