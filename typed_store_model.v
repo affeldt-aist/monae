@@ -62,27 +62,6 @@ Local Notation loc := (@loc MLU locT).
 Definition cnew T (v : coq_type T) : M (loc T) :=
   fun e => inr (fresh_loc T e, extend_env v e).
 
-Definition coerce T1 T2 (v : coq_type T1) : option (coq_type T2) :=
-  if eqVneq T1 T2 is EqNotNeq H then Some (eq_rect _ _ v _ H) else None.
-
-Lemma coerce_sym (T T' : MLU) (s : coq_type T) (s' : coq_type T') :
-  coerce T' s -> coerce T s'.
-Proof.
-by rewrite /coerce; case: eqVneq => //= h; case: eqVneq => //; rewrite h eqxx.
-Qed.
-
-Lemma coerce_eq (T T' : MLU) (s : coq_type T) : coerce T' s -> T = T'.
-Proof. by rewrite /coerce; case: eqVneq. Qed.
-
-Lemma coerce_Some (T : MLU) (s : coq_type T) : coerce T s = Some s.
-Proof.
-by rewrite /coerce; case: eqVneq => /= [?|]; [rewrite -eq_rect_eq|rewrite eqxx].
-Qed.
-
-Lemma coerce_None (T T' : MLU) (s : coq_type T) :
-  T != T' -> coerce T' s = None.
-Proof. by rewrite /coerce; case: eqVneq. Qed.
-
 Definition cget T (r : loc T) : M (coq_type T) :=
   fun st =>
     if nth_error (ofEnv st) (loc_id r) is Some (mkbind T' v) then
@@ -511,9 +490,9 @@ apply/boolp.funext => e /=.
 rewrite bindE /= /bindS MS_mapE /= fmapE /= bindA /=.
 rewrite [in RHS]bindE /= /bindS MS_mapE /= fmapE /= bindA /= /cget /cput.
 case Hr: (nth_error _ _) => [[T1 u]|]; last by rewrite bindfailf.
-case: (eqVneq T1 T) => H /=; last by rewrite coerce_None// coerce_None// eq_sym.
+case: (eqVneq T1 T) => H //=; last by rewrite coerce_None// 1?eq_sym// coerce_None// eq_sym.
 subst T1.
-rewrite coerce_Some//.
+rewrite [in LHS]coerce_Some//.
 rewrite bindE /= /bindS /= bindE /= bindE /= /bindS /= MS_mapE /= fmapE /=.
 rewrite bindE /= /bindS /= bindE /= bindE /= /bindS /= MS_mapE /= fmapE /=.
 rewrite (nth_error_rcons_some _ Hr).
@@ -573,7 +552,8 @@ rewrite /crun /= !bindE /= /bindS !MS_mapE /= !fmapE /= !bindA /=.
 case Hm: (m _) => [|[a [b]]] //=.
 rewrite !bindE /= !bindE /= /cget /cput /=.
 case Hnth: nth_error => [[T' v]|] //.
-case: (eqVneq T' T) => T'T; last by rewrite coerce_None.
+case: (eqVneq T' T) => T'T; last first.
+  by rewrite coerce_None// 1?eq_sym// coerce_None.
 subst T'.
 by rewrite !coerce_Some.
 Qed.
