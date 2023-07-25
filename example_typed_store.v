@@ -54,6 +54,9 @@ Inductive rlist (a : Type) (a_1 : ml_type) :=
   | Nil
   | Cons (_ : a) (_ : loc (ml_rlist a_1)).
 
+Definition ml_type_eq_mixin := comparableMixin MLTypes.ml_type_eq_dec.
+Canonical ml_type_eqType := Eval hnf in EqType _ ml_type_eq_mixin.
+
 End MLTypes.
 
 Module MLTypesNat.
@@ -73,9 +76,6 @@ Fixpoint coq_type_nat (T : ml_type) : Type :=
   | ml_rlist T1 => rlist (coq_type_nat T1) T1
   end.
 End with_monad.
-
-Definition ml_type_eq_mixin := comparableMixin MLTypes.ml_type_eq_dec.
-Canonical ml_type_eqType := Eval hnf in EqType _ ml_type_eq_mixin.
 
 (*Canonical MLU := @Build_ML_universe _ coq_type ml_unit val_nonempty.*)
 
@@ -451,9 +451,6 @@ Fixpoint coq_type63 (T : ml_type) : Type :=
   | ml_rlist T1 => rlist (coq_type63 T1) T1
   end.
 End with_monad.
-
-Definition ml_type63_eq_mixin := comparableMixin MLTypes.ml_type_eq_dec.
-Canonical ml_type63_eqType := Eval hnf in EqType _ ml_type63_eq_mixin.
 
 Canonical ml_type63 := @Build_ML_universe _ coq_type63 ml_unit val_nonempty.
 
