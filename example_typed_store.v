@@ -219,11 +219,11 @@ pose y := x.
 rewrite -{2}/y.
 pose i := n.
 rewrite -[in LHS]/i.
-have : (x, y) = (fibo_rec (n-i), fibo_rec (n.+1-i)).
+have : (x, y) = (fibo_rec (n - i), fibo_rec (n.+1 - i)).
   by rewrite subnn -addn1 addKn.
 have : i <= n by [].
 elim: i x y => [|i IH] x y Hi.
-  rewrite !subn0 => -[] -> ->.
+  rewrite !subn0 => -[-> ->].
   rewrite -/(fibo_rec n.+1).
   under eq_bind do under eq_bind do rewrite /= bindskipf.
   rewrite -cnewchk.
@@ -231,11 +231,10 @@ elim: i x y => [|i IH] x y Hi.
   by rewrite cnewget -bindA crunret // crunnew // crunnew0.
 rewrite subSS => -[] Hx Hy.
 rewrite -(IH y (x + y) (ltnW Hi)); last first.
-  subst x y.
-  congr pair.
-  case: n Hi {IH} => // n.
-  rewrite subSS ltnS => Hi.
-  by rewrite -addn2 -addn1 -addnBAC // -addnBAC // addn2 addn1.
+  rewrite {}Hx {}Hy; congr pair.
+  rewrite subSn 1?ltnW//.
+  case: n {IH} => // n in Hi *.
+  by rewrite [in RHS]subSn -1?ltnS// subSS subSn -1?ltnS.
 rewrite /=.
 under eq_bind do under eq_bind do rewrite !bindA.
 rewrite -cnewchk.
