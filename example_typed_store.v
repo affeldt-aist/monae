@@ -5,11 +5,21 @@ From mathcomp Require Import all_ssreflect.
 From mathcomp Require boolp.
 From infotheo Require Import ssrZ.
 Require monad_model.
-Require Import monae_lib hierarchy monad_lib. (*fail_lib state_lib.*)
+Require Import monae_lib hierarchy monad_lib typed_store_lib.
 
 (******************************************************************************)
-(*                         Type store examples                                *)
+(*                         Typed store examples                               *)
 (*                                                                            *)
+(*  Inductive ml_type                                                         *)
+(*                                                                            *)
+(*  Module MLTypesNat                                                         *)
+(*    Definition cycle                                                        *)
+(*    Fixpoint fact_ref                                                       *)
+(*    Definition fact_for                                                     *)
+(*    Fixpoint fibo_ref                                                       *)
+(*                                                                            *)
+(*  Module MLtypes63                                                          *)
+(*    Definition fact_for63                                                   *)
 (******************************************************************************)
 
 Local Open Scope monae_scope.
@@ -537,8 +547,7 @@ rewrite /N2int -!Sint63.is_int //.
   by split; apply N2int_bounded, Z.lt_le_incl, (Z.lt_trans _ _ _ Hm).
 Qed.
 
-Theorem fact_for63_ok :
-  crun (fact_for63 (N2int n)) = Some (N2int (fact_rec n)).
+Theorem fact_for63_ok : crun (fact_for63 (N2int n)) = Some (N2int (fact_rec n)).
 Proof.
 rewrite /fact_for63.
 under eq_bind do rewrite !bindA !bindretf.

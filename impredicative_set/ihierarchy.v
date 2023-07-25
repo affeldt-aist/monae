@@ -283,11 +283,11 @@ End join_laws.
 End JoinLaws.
 
 HB.mixin Record isMonad (F : UU0 -> UU0) of Functor F := {
-  ret : FId ~> [the functor of F] ;
-  join : [the functor of F \o F] ~> [the functor of F] ;
+  ret : FId ~> F ;
+  join : F \o F ~> F ;
   bind : forall (A B : UU0), F A -> (A -> F B) -> F B ;
-  bindE : forall (A B : UU0) (f : A -> F B) (m : F A),
-    bind A B m f = join B (([the functor of F] # f) m) ;
+  __bindE : forall (A B : UU0) (f : A -> F B) (m : F A),
+    bind A B m f = join B ((F # f) m) ;
   joinretM : JoinLaws.left_unit ret join ;
   joinMret : JoinLaws.right_unit ret join ;
   joinA : JoinLaws.associativity join }.
@@ -299,6 +299,10 @@ Notation Ret := (@ret _ _).
 Notation Join := (@join _ _).
 Arguments bind {s A B} : simpl never.
 Notation "m >>= f" := (bind m f) : monae_scope.
+
+Lemma bindE (F : monad) (A B : UU0) (f : A -> F B) (m : F A) :
+  m >>= f = join B ((F # f) m).
+Proof. by rewrite __bindE. Qed.
 
 Lemma eq_bind (M : monad) (A B : UU0) (m : M A) (f1 f2 : A -> M B) :
   f1 =1 f2 -> m >>= f1 = m >>= f2.
@@ -1065,172 +1069,10 @@ HB.structure Definition MonadArray (S : UU0) (I : eqType) :=
 HB.structure Definition MonadPlusArray (S : UU0) (I : eqType) :=
   { M of MonadPlus M & isMonadArray S I M}.
 
-(* A monad for OCaml computations *)
-Module Type MLTY.
-Parameter ml_type : UU0.
-Parameter ml_type_eq_dec : forall x y : ml_type, {x=y}+{x<>y}.
-Parameter loc : ml_type -> UU0.
-Parameter locT : eqType.
-Parameter loc_id : forall T, loc T -> locT.
-Parameter coq_type : forall M : UU0 -> UU0, ml_type -> UU0.
-End MLTY.
-
-Module MonadTypedStore (MLtypes : MLTY).
-Import MLtypes.
-
-HB.mixin Record isMonadTypedStore (M : UU0 -> UU0)
-    of Monad M := {
-  cnew : forall {T}, coq_type M T -> M (loc T) ;
-  cget : forall {T}, loc T -> M (coq_type M T) ;
-  cput : forall {T}, loc T -> coq_type M T -> M unit ;
-  crun : forall {A : UU0}, M A -> option A ; (* execute in empty store *)
-  cnewget : forall T (s : coq_type M T) A (k : loc T -> coq_type M T -> M A),
-    cnew s >>= (fun r => cget r >>= k r) = cnew s >>= (fun r => k r s) ;
-  cnewput : forall T (s t : coq_type M T) A (k : loc T -> M A),
-      cnew s >>= (fun r => cput r t >> k r) = cnew t >>= k ;
-  cgetput : forall T (r : loc T) (s : coq_type M T),
-      cget r >> cput r s = cput r s ;
-  cgetputskip : forall T (r : loc T), cget r >>= cput r = cget r >> skip ;
-  cgetget :
-    forall T (r : loc T) (A : UU0) (k : coq_type M T -> coq_type M T -> M A),
-    cget r >>= (fun s => cget r >>= k s) = cget r >>= fun s => k s s ;
-  cputget :
-    forall T (r : loc T) (s : coq_type M T) (A : UU0) (k : coq_type M T -> M A),
-      cput r s >> (cget r >>= k) = cput r s >> k s ;
-  cputput : forall T (r : loc T) (s s' : coq_type M T),
-    cput r s >> cput r s' = cput r s' ;
-  cgetC :
-    forall T1 T2 (r1 : loc T1) (r2 : loc T2) (A : UU0)
-           (k : coq_type M T1 -> coq_type M T2 -> M A),
-    cget r1 >>= (fun u => cget r2 >>= (fun v => k u v)) =
-    cget r2 >>= (fun v => cget r1 >>= (fun u => k u v)) ;
-  cgetnewD :
-    forall T T' (r : loc T) (s : coq_type M T') A
-           (k : loc T' -> coq_type M T -> coq_type M T -> M A),
-      cget r >>= (fun u => cnew s >>= (fun r' => cget r >>= k r' u)) =
-      cget r >>= (fun u => cnew s >>= (fun r' => k r' u u)) ;
-  cgetnewE : forall T1 T2 (r1 : loc T1) (s : coq_type M T2) (A : UU0)
-                   (k1 k2 : loc T2 -> M A),
-      (forall r2 : loc T2, loc_id r1 != loc_id r2 -> k1 r2 = k2 r2) ->
-      cget r1 >> (cnew s >>= k1) = cget r1 >> (cnew s >>= k2) ;
-  cgetputC : forall T1 T2 (r1 : loc T1) (r2 : loc T2) (s : coq_type M T2),
-      cget r1 >> cput r2 s = cput r2 s >> cget r1 >> skip ;
-  cputC :
-    forall T1 T2 (r1 : loc T1) (r2 : loc T2) (s1 : coq_type M T1)
-           (s2 : coq_type M T2) (A : UU0),
-      loc_id r1 != loc_id r2 \/ JMeq s1 s2 ->
-      cput r1 s1 >> cput r2 s2 = cput r2 s2 >> cput r1 s1 ;
-  cputgetC :
-    forall T1 T2 (r1 : loc T1) (r2 : loc T2) (s1 : coq_type M T1)
-           (A : UU0) (k : coq_type M T2 -> M A),
-      loc_id r1 != loc_id r2 ->
-    cput r1 s1 >> cget r2 >>= k =
-    cget r2 >>= (fun v => cput r1 s1 >> k v) ;
-  cputnewC :
-    forall T T' (r : loc T) (s : coq_type M T) (s' : coq_type M T') A
-           (k : loc T' -> M A),
-      cget r >> (cnew s' >>= fun r' => cput r s >> k r') =
-      cput r s >> (cnew s' >>= k) ;
-  crunret : forall (A B : UU0) (m : M A) (s : B),
-      crun m -> crun (m >> Ret s) = Some s ;
-  crunskip :
-      crun skip = Some tt ;
-  crunnew : forall (A : UU0) T (m : M A) (s : coq_type M T),
-      crun m -> crun (m >> cnew s) ;
- }.
-
-#[short(type=typedStoreMonad)]
-HB.structure Definition MonadTypedStore :=
-  { M of isMonadTypedStore M & isMonad M & isFunctor M }.
-
-Arguments cnew {s}.
-Arguments cget {s} [T].
-Arguments cput {s} [T].
-Arguments crun {s} [A].
-
-Section cchk.
-Variable M : typedStoreMonad.
-Definition cchk T (r : loc T) : M unit := cget r >> skip.
-
-Lemma cnewchk T s (A : UU0) (k : loc T -> M A) :
-  cnew T s >>= (fun r => cchk r >> k r) = cnew T s >>= k.
-Proof.
-under eq_bind do rewrite bindA.
-rewrite cnewget.
-by under eq_bind do rewrite bindskipf.
-Qed.
-
-Lemma cchknewC T1 T2 (r : loc T1) s (A : UU0) (k : loc T2 -> M A) :
-  cchk r >> (cnew T2 s >>= fun r' => cchk r >> k r') =
-  cchk r >> (cnew T2 s >>= k).
-Proof.
-rewrite !(bindA,bindskipf).
-under eq_bind do under eq_bind do rewrite bindA.
-rewrite cgetnewD.
-by under eq_bind do under eq_bind do rewrite bindskipf.
-Qed.
-
-Lemma cchkgetC T1 T2 (r1: loc T1) (r2: loc T2) (A: UU0)
-  (k: coq_type M T2 -> M A) :
-  cchk r1 >> (cget r2 >>= k) = cget r2 >>= (fun s => cchk r1 >> k s).
-Proof.
-under [in RHS]eq_bind do rewrite bindA bindskipf.
-by rewrite !(bindA,bindskipf) cgetC.
-Qed.
-
-Lemma cchknewE T1 T2 (r1 : loc T1) s (A : UU0) (k1 k2 : loc T2 -> M A) :
-  (forall r2 : loc T2, loc_id r1 != loc_id r2 -> k1 r2 = k2 r2) ->
-  cchk r1 >> (cnew T2 s >>= k1) = cchk r1 >> (cnew T2 s >>= k2).
-Proof. move=> Hk; rewrite !(bindA,bindskipf); exact: cgetnewE. Qed.
-
-Lemma cchknewget T T' (r : loc T) s (A : UU0) k :
-  cchk r >> (cnew T' s >>= fun r' => cget r >>= k r') =
-  cget r >>= (fun u => cnew T' s >>= k ^~ u) :> M A.
-Proof. by rewrite bindA bindskipf cgetnewD. Qed.
-
-Lemma cchknewput T T' (r : loc T) s s' (A : UU0) k :
-  cchk r >> (cnew T' s' >>= fun r' => cput r s >> k r') =
-  cput r s >> (cnew T' s' >>= k) :> M A.
-Proof. by rewrite bindA bindskipf cputnewC. Qed.
-
-Lemma cchkget T (r : loc T) (A: UU0) (k : coq_type M T -> M A) :
-  cchk r >> (cget r >>= k) = cget r >>= k.
-Proof. by rewrite bindA bindskipf cgetget. Qed.
-
-Lemma cgetchk T (r : loc T) (A: UU0) (k : coq_type M T -> M A) :
-  cget r >>= (fun s => cchk r >> k s) = cget r >>= k.
-Proof. under eq_bind do rewrite bindA bindskipf; by rewrite cgetget. Qed.
-
-Lemma cchkputC T1 T2 (r1 : loc T1) (r2 : loc T2) (s : coq_type M T2) :
-  cchk r1 >> cput r2 s = cput r2 s >> cchk r1.
-Proof. by rewrite bindA bindskipf cgetputC bindA. Qed.
-
-Lemma cchkput T (r : loc T) (s : coq_type M T) :
-  cchk r >> cput r s = cput r s.
-Proof. by rewrite bindA bindskipf cgetput. Qed.
-
-Lemma cputchk T (r : loc T) (s : coq_type M T) :
-  cput r s >> cchk r = cput r s.
-Proof. by rewrite cputget bindmskip. Qed.
-
-Lemma cchkC T1 T2 (r1: loc T1) (r2: loc T2) :
-  cchk r1 >> cchk r2 = cchk r2 >> cchk r1.
-Proof. by rewrite !(bindA,bindskipf) cgetC. Qed.
-
-Lemma cchkdup T (r : loc T) : cchk r >> cchk r = cchk r.
-Proof. by rewrite bindA bindskipf cgetget. Qed.
-
-Lemma cgetret T (r : loc T) : cget r >>= Ret = cget r :> M _.
-Proof. by rewrite bindmret. Qed.
-
-Lemma crunnew0 T s : crun (cnew T s : M _).
-Proof. by rewrite -(bindskipf (cnew T s)) crunnew // crunskip. Qed.
-
-Lemma cnewgetret T s : cnew T s >>= @cget _ _ = cnew T s >> Ret s :> M _.
-Proof. under eq_bind do rewrite -cgetret; by rewrite cnewget. Qed.
-End cchk.
-Arguments cchk {M} [T].
-End MonadTypedStore.
+Variant loc (ml_type : Type) (locT : eqType) : ml_type -> Type :=
+  mkloc T : locT -> loc locT T.
+Definition loc_id (ml_type : Type) (locT : eqType) {T : ml_type} (l : loc locT T) : locT :=
+  let: mkloc _ n := l in n.
 
 HB.mixin Record isMonadTrace (T : UU0) (M : UU0 -> UU0) of Monad M :=
  { mark : T -> M unit }.

@@ -153,13 +153,13 @@ HB.instance Definition _ X :=
 Definition uncurry_F X : functor := [the functor of @uncurry_M X].
 End uncurry_functor.
 
-Lemma bind_uncurry (M : monad) A B C (f : A -> M B) (g : A -> B -> M C) x :
-  (f x >>= fun y => Ret (x,y)) >>= (fun xy => g xy.1 xy.2)(*uncurry g*) =
+Lemma bind_uncurry (M : monad) (A B C : UU0) (f : A -> M B) (g : A -> B -> M C) x :
+  (f x >>= fun y => Ret (x, y)) >>= (fun xy => g xy.1 xy.2) =
   (f x >>= g x).
 Proof. by rewrite bindA; under eq_bind do rewrite bindretf. Qed.
 
-Lemma bindA_uncurry (M : monad) A B C (m : M A) (f : A -> M B) (g : A -> B -> M C) :
-  (m >>= fun x => f x >>= fun y => Ret (x,y)) >>= (fun xy => g xy.1 xy.2) =
+Lemma bindA_uncurry (M : monad) (A B C : UU0) (m : M A) (f : A -> M B) (g : A -> B -> M C) :
+  (m >>= fun x => f x >>= fun y => Ret (x, y)) >>= (fun xy => g xy.1 xy.2) =
   (m >>= fun x => f x >>= g x).
 Proof. by rewrite bindA; by under eq_bind do rewrite bind_uncurry. Qed.
 
@@ -596,7 +596,7 @@ Proof. by []. Qed.
 Lemma naturality_mpair (M : monad) (A B : UU0) (f : A -> B) (g : A -> M A):
   (M # f^`2) \o (mpair \o g^`2) = mpair \o ((M # f) \o g)^`2.
 Proof.
-rewrite boolp.funeqE => -[a0 a1].
+apply boolp.funext => -[a0 a1].
 rewrite compE fmap_bind.
 rewrite compE mpairE compE bind_fmap; bind_ext => a2.
 rewrite fcompE fmap_bind 2!compE bind_fmap; bind_ext => a3.

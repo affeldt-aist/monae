@@ -13,6 +13,7 @@ state_lib.v
 array_lib.v
 trace_lib.v
 proba_lib.v
+typed_store_lib.v
 monad_composition.v
 monad_model.v
 proba_monad_model.v
