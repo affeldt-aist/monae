@@ -54,7 +54,7 @@ Definition val_nonempty (M : UU0 -> UU0) := tt.
 
 Definition locT := [eqType of nat].
 
-Notation loc := (@loc ml_type locT).
+Notation loc := (@loc _ locT).
 
 Inductive rlist (a : Type) (a_1 : ml_type) :=
   | Nil
@@ -94,7 +94,7 @@ Canonical MLU := @monad_model.MLU _ coq_type_nat0 ml_unit (val_nonempty idfun).
 
 Section cyclic.
 Variables (M : typedStoreMonad MLU MLTypes.locT).
-Notation coq_type := (@hierarchy.coq_type MLU M).
+Local Notation coq_type := (hierarchy.coq_type (MonadTypedStore.sort M)).
 Local Open Scope do_notation.
 
 Definition cycle (T : ml_type) (a b : coq_type T)
@@ -155,7 +155,7 @@ End factorial.
 
 Section fact_for.
 Variable M : typedStoreMonad MLU MLTypes.locT.
-Notation coq_type := (@coq_type MLU M).
+Local Notation coq_type := (hierarchy.coq_type (MonadTypedStore.sort M)).
 Local Open Scope do_notation.
 
 Definition fact_for (n : coq_type ml_int) : M (coq_type ml_int) :=
@@ -196,7 +196,7 @@ End fact_for.
 
 Section fibonacci.
 Variable M : typedStoreMonad MLU MLTypes.locT.
-Notation coq_type := (@coq_type M).
+Local Notation coq_type := (hierarchy.coq_type (MonadTypedStore.sort M)).
 
 Fixpoint fibo_rec n :=
   if n is m.+1 then
@@ -425,7 +425,7 @@ Canonical ml_type63 := @Build_ML_universe _ coq_type63 ml_unit val_nonempty.
 
 Section fact_for_int63.
 Variable M : typedStoreMonad ml_type63 MLTypes.locT.
-Notation coq_type := (@MLtypes63.coq_type63 M).
+Local Notation coq_type := (hierarchy.coq_type (MonadTypedStore.sort M)).
 Local Open Scope do_notation.
 
 Section forloop63.
