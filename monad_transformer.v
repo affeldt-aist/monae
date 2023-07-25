@@ -149,6 +149,10 @@ HB.instance Definition _ := isMonadM_ret_bind.Build
 
 End state_monad_transformer.
 
+Lemma MS_bindE [S : UU0] [M : monad] [A B : UU0] (m : MS S M A) (f : A -> MS S M B) s :
+  (m >>= f) s = m s >>= uncurry f.
+Proof. by []. Qed.
+
 Definition stateT (S : UU0) := fun M => [the monad of MS S M].
 
 HB.instance Definition _ (S : UU0) := isMonadT.Build

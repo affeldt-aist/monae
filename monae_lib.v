@@ -6,16 +6,18 @@ Require ProofIrrelevance.
 
 Definition proof_irr := boolp.Prop_irrelevance.
 
-Definition eq_rect_eq := @ProofIrrelevance.ProofIrrelevanceTheory.Eq_rect_eq.eq_rect_eq.
+Definition eq_rect_eq :=
+  @ProofIrrelevance.ProofIrrelevanceTheory.Eq_rect_eq.eq_rect_eq.
 
 Definition funext_dep := boolp.functional_extensionality_dep.
 
 (******************************************************************************)
 (*      Shared notations and easy definitions/lemmas of general interest      *)
 (*                                                                            *)
-(*           foldr1                                                           *)
-(*    curry/uncurry == currying for pairs                                     *)
-(*  curry3/uncurry3 == currying for triples                                   *)
+(*                foldr1                                                      *)
+(*         curry/uncurry == currying for pairs                                *)
+(*       curry3/uncurry3 == currying for triples                              *)
+(*  coerce T1 (v : f T1) == some (f T2) if T1 = T2 and None o.w.              *)
 (*                                                                            *)
 (******************************************************************************)
 
@@ -141,3 +143,90 @@ Proof. by []. Qed.
 Lemma if_pair A B b (x : A) y (u : A) (v : B) :
   (if b then (x, y) else (u, v)) = (if b then x else u, if b then y else v).
 Proof. by case: ifPn. Qed.
+
+Lemma iteriSr T n (f : nat -> T -> T) x :
+  iteri n.+1 f x = iteri n (f \o succn) (f 0 x).
+Proof. by elim: n x => // n IH x /=; rewrite -IH. Qed.
+
+Lemma iteriD T n m (f : nat -> T -> T) x :
+  iteri (n + m) f x = iteri m (f \o addn n) (iteri n f x).
+Proof. by elim: n x f => // n IH x f; rewrite addSn iteriSr IH iteriSr. Qed.
+
+Section nth_error.
+Context [T : Type] (def : T) (st : seq T).
+
+(* Basic lemmas for standard library's nth_error *)
+Local Notation nth_error := List.nth_error.
+
+Lemma nth_error_set_nth n x : nth_error (set_nth def st n x) n = Some x.
+Proof.
+elim: n st => [|z IH] [] // {IH}.
+elim: z.+1 => [|n <-] //=.
+by rewrite set_nth_nil.
+Qed.
+
+Lemma nth_error_rcons_size b : nth_error (rcons st b) (size st) = Some b.
+Proof. by elim: st. Qed.
+
+Lemma nth_error_rcons_some n a b :
+  nth_error st n = Some a -> nth_error (rcons st b) n = Some a.
+Proof. by elim: n st => [|n IH] []. Qed.
+
+Lemma nth_error_set_nth_id n a :
+  nth_error st n = Some a -> set_nth def st n a = st.
+Proof. by elim: n st => [|n IH] [] //= b st'; [case=> -> | move/IH ->]. Qed.
+
+Lemma nth_error_set_nth_other m n a b :
+  m != n ->
+  nth_error st m = Some a ->
+  nth_error (set_nth def st n b) m = Some a.
+Proof.
+elim: m st n => [|m IH] [|c st'] [|n] //=; rewrite eqSS => *; exact: IH.
+Qed.
+
+Lemma nth_error_set_nth_none m n a b :
+  nth_error st m = None ->
+  nth_error st n = Some a ->
+  nth_error (set_nth def st n b) m = None.
+Proof. by elim: m st n => [|m IH] [|c st'] [|n] //=; apply IH. Qed.
+
+Lemma nth_error_size n a : nth_error st n = Some a -> n < size st.
+Proof. by elim: n st => [|n IH] [|c st'] //= /IH. Qed.
+
+Lemma nth_error_size_set_nth n a b :
+  nth_error st n = Some a -> size (set_nth def st n b) = size st.
+Proof. by rewrite size_set_nth => /nth_error_size /maxn_idPr. Qed.
+
+Lemma set_nth_rcons a b : set_nth def (rcons st a) (size st) b = rcons st b.
+Proof. by elim: st => //= c st' ->. Qed.
+
+Lemma nth_error_set_nth_rcons n a b c :
+  nth_error st n = Some a ->
+  set_nth def (rcons st c) n b = rcons (set_nth def st n b) c.
+Proof. by elim: n st => [|n IH] [|d st'] //= /IH ->. Qed.
+End nth_error.
+Arguments nth_error_size {T st n a}.
+
+Section coerce.
+Variables (X : eqType) (f : X -> Type).
+
+Definition coerce (T1 T2 : X) (v : f T1) : option (f T2) :=
+  if @eqP _ T1 T2 is ReflectT H then Some (eq_rect _ _ v _ H) else None.
+
+Lemma coerce_sym (T T' : X) (s : f T) (s' : f T') : coerce T' s -> coerce T s'.
+Proof.
+by rewrite /coerce; case: eqP => //= h; case: eqP => //; rewrite h; auto.
+Qed.
+
+Lemma coerce_Some (T : X) (s : f T) : coerce T s = Some s.
+Proof.
+by rewrite /coerce; case: eqP => /= [?|]; [rewrite -eq_rect_eq|auto].
+Qed.
+
+Lemma coerce_eq (T T' : X) (s : f T) : coerce T' s -> T = T'.
+Proof. by rewrite /coerce; case: eqP. Qed.
+
+Lemma coerce_None (T T' : X) (s : f T) : T != T' -> coerce T' s = None.
+Proof. by rewrite /coerce; case: eqP. Qed.
+
+End coerce.

@@ -1,16 +1,21 @@
-From mathcomp Require Import all_ssreflect.
-From mathcomp Require Import finmap.
+(* monae: Monadic equational reasoning in Coq                                 *)
+(* Copyright (C) 2023 monae authors, license: LGPL-2.1-or-later               *)
+Require Import JMeq.
+From mathcomp Require Import all_ssreflect finmap.
 From mathcomp Require boolp.
 #[local] Remove Hints boolp.Prop_irrelevance : core.
 Require Import monae_lib.
 From HB Require Import structures.
 Require Import hierarchy monad_lib fail_lib state_lib trace_lib.
 Require Import monad_transformer monad_model.
-Require Import JMeq.
 
 (******************************************************************************)
-(*                       Models for typed store                               *)
-(*   (separate file as it requires disabling various sanity checks)           *)
+(*                        Model for typed store                               *)
+(*                                                                            *)
+(* Separate file as it requires disabling various sanity checks.              *)
+(* Reuses coerce and locT_nat from monad_model.v.                             *)
+(* Similarities with ModelTypedStore from monad_model.v                       *)
+(*                                                                            *)
 (******************************************************************************)
 
 Set Implicit Arguments.
@@ -31,7 +36,8 @@ Definition M0 Env (T : UU0) := MS Env option_monad T.
 End ModelTypedStore.
 
 #[bypass_check(positivity)]
-Inductive Env (MLU : ML_universe) := mkEnv : seq (binding MLU (M0 (Env _))) -> Env _.
+Inductive Env (MLU : ML_universe) :=
+  mkEnv : seq (binding MLU (M0 (Env _))) -> Env _.
 
 Section ModelTypedStore_contd.
 Variable MLU : ML_universe.
@@ -47,9 +53,9 @@ Local Notation M := acto.
 
 Local Notation coq_type := (@coq_type MLU M).
 
-Local Notation undef := (val_nonempty MLU).
+Local Notation val_nonundef := (val_nonempty MLU).
 
-Definition def := mkbind (undef M).
+Definition def := mkbind (val_nonempty MLU M).
 
 Local Notation nth_error := List.nth_error.
 
@@ -57,7 +63,7 @@ Definition extend_env T (v : coq_type T) (e : Env) :=
   mkEnv (rcons (ofEnv e) (mkbind v)).
 Definition fresh_loc (T : MLU) (e : Env) := mkloc T (sizeEnv e).
 
-Local Notation loc := (@loc MLU locT).
+Local Notation loc := (@loc MLU locT_nat).
 
 Definition cnew T (v : coq_type T) : M (loc T) :=
   fun e => inr (fresh_loc T e, extend_env v e).
@@ -83,11 +89,6 @@ Definition crun (A : UU0) (m : M A) : option A :=
   | inl _ => None
   | inr (a, _) => Some a
   end.
-
-(* WIP *)
-Lemma MS_bindE [S : UU0] [M : monad] [A B : UU0] (m : MS S M A) (f : A -> MS S M B) s :
-  (m >>= f) s = m s >>= uncurry f.
-Proof. by []. Qed.
 
 Lemma bind_cnew T (s : coq_type T) A (k : loc T -> M A) e :
   (cnew s >>= k) e = k (fresh_loc T e) (extend_env s e).
@@ -233,7 +234,7 @@ have [s' H|T' s' H Ts'|H] := ntherrorP e r.
 - by rewrite !MS_bindE None_cget.
 Qed.
 
-Lemma cputget T (r: loc T) (s: coq_type T) (A: UU0) (k: coq_type T -> M A) :
+Lemma cputget T (r : loc T) (s: coq_type T) (A: UU0) (k: coq_type T -> M A) :
   cput r s >> (cget r >>= k) = cput r s >> k s.
 Proof.
 apply/boolp.funext => e /=.

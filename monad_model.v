@@ -1,3 +1,4 @@
+Require Import JMeq.
 From mathcomp Require Import all_ssreflect.
 From mathcomp Require Import finmap.
 From mathcomp Require boolp.
@@ -61,6 +62,8 @@ Require Import monad_transformer.
 (* Module ModelPlusArray   == plus array monad                                *)
 (* Module ModelMonadStateRun       == stateRunMonad for MS                    *)
 (* Module ModelMonadExceptStateRun == exceptStateRunMonad                     *)
+(*                                                                            *)
+(* Module ModelTypedStore == model for typed store                            *)
 (*                                                                            *)
 (* references:                                                                *)
 (* - Wadler, P. Monads and composable continuations. LISP and Symbolic        *)
@@ -1658,126 +1661,36 @@ End modelplusarray.
 End ModelPlusArray.
 HB.export ModelPlusArray.
 
-Section nth_error.
-Context [T : Type] (def : T) (st : seq T).
+Definition locT_nat := [eqType of nat].
 
-(* Basic lemmas for standard library's nth_error *)
-Local Notation nth_error := List.nth_error.
-
-Lemma nth_error_set_nth n x : nth_error (set_nth def st n x) n = Some x.
-Proof.
-elim: n st => [|z IH] [] // {IH}.
-elim: z.+1 => [|n <-] //=.
-by rewrite set_nth_nil.
-Qed.
-
-Lemma nth_error_rcons_size b : nth_error (rcons st b) (size st) = Some b.
-Proof. by elim: st. Qed.
-
-Lemma nth_error_rcons_some n a b :
-  nth_error st n = Some a -> nth_error (rcons st b) n = Some a.
-Proof. by elim: n st => [|n IH] []. Qed.
-
-Lemma nth_error_set_nth_id n a :
-  nth_error st n = Some a -> set_nth def st n a = st.
-Proof. by elim: n st => [|n IH] [] //= b st'; [case=> -> | move/IH ->]. Qed.
-
-Lemma nth_error_set_nth_other m n a b :
-  m != n ->
-  nth_error st m = Some a ->
-  nth_error (set_nth def st n b) m = Some a.
-Proof.
-elim: m st n => [|m IH] [|c st'] [|n] //=; rewrite eqSS => *; exact: IH.
-Qed.
-
-Lemma nth_error_set_nth_none m n a b :
-  nth_error st m = None ->
-  nth_error st n = Some a ->
-  nth_error (set_nth def st n b) m = None.
-Proof. by elim: m st n => [|m IH] [|c st'] [|n] //=; apply IH. Qed.
-
-Lemma nth_error_size n a : nth_error st n = Some a -> n < size st.
-Proof. by elim: n st => [|n IH] [|c st'] //= /IH. Qed.
-
-Lemma nth_error_size_set_nth n a b :
-  nth_error st n = Some a -> size (set_nth def st n b) = size st.
-Proof. by rewrite size_set_nth => /nth_error_size /maxn_idPr. Qed.
-
-Lemma set_nth_rcons a b : set_nth def (rcons st a) (size st) b = rcons st b.
-Proof. by elim: st => //= c st' ->. Qed.
-
-Lemma nth_error_set_nth_rcons n a b c :
-  nth_error st n = Some a ->
-  set_nth def (rcons st c) n b = rcons (set_nth def st n b) c.
-Proof. by elim: n st => [|n IH] [|d st'] //= /IH ->. Qed.
-End nth_error.
-Arguments nth_error_size {T st n a}.
-
-Require Import JMeq.
-
-(*Structure ML_universe0 := {
-  ml_type0 :> eqType ;
-  coq_type0 : ml_type0 -> Type ;
-  ml_nonempty0 : ml_type0 ;
-  val_nonempty0 : coq_type0 ml_nonempty0 }.*)
-
-Section coerce.
-Variables (X : eqType) (f : X -> UU0).
-
-Definition coerce (T1 T2 : X) (v : f T1) : option (f T2) :=
-  if @eqP _ T1 T2 is ReflectT H then Some (eq_rect _ _ v _ H) else None.
-
-Lemma coerce_sym (T T' : X) (s : f T) (s' : f T') :  coerce T' s -> coerce T s'.
-Proof.
-by rewrite /coerce; case: eqP => //= h; case: eqP => //; rewrite h; auto.
-Qed.
-
-Lemma coerce_Some (T : X) (s : f T) : coerce T s = Some s.
-Proof.
-by rewrite /coerce; case: eqP => /= [?|]; [rewrite -eq_rect_eq|auto].
-Qed.
-
-Lemma coerce_eq (T T' : X) (s : f T) : coerce T' s -> T = T'.
-Proof. by rewrite /coerce; case: eqP. Qed.
-
-Lemma coerce_None (T T' : X) (s : f T) : T != T' -> coerce T' s = None.
-Proof. by rewrite /coerce; case: eqP. Qed.
-
-End coerce.
+Module ModelTypedStore.
 
 Section ModelTypedStore.
-(*Variable MLU0 : ML_universe0.*)
-Variables
-  (ml_type0 : eqType)
-  (coq_type0 : ml_type0 -> Type)
-  (ml_nonempty0 : ml_type0)
-  (val_nonempty0 : coq_type0 ml_nonempty0).
+Variables (ml_type0 : eqType) (coq_type0 : ml_type0 -> Type)
+          (ml_nonempty0 : ml_type0) (val_nonempty0 : coq_type0 ml_nonempty0).
 
 Definition MLU : ML_universe :=
   @Build_ML_universe (ml_type0) (fun M => @coq_type0)
   (ml_nonempty0) (fun M => val_nonempty0).
 
-Definition locT := [eqType of nat].
-
 Record binding (M : Type -> Type) :=
   mkbind { bind_type : MLU; bind_val : coq_type M bind_type }.
 Arguments mkbind {M}.
 
-Section typed_store.
 Definition acto : UU0 -> UU0 := MS (seq (binding idfun)) [the monad of option_monad].
 Local Notation M := acto.
+
 Local Notation coq_type' := (@coq_type MLU idfun).
 
 Definition def : binding idfun := mkbind (ml_nonempty MLU) (val_nonempty MLU idfun).
 
 Local Notation nth_error := List.nth_error.
 
-Notation loc := (@loc MLU locT).
+Notation loc := (@loc MLU locT_nat).
 
 Definition cnew T (v : coq_type M T) : M (loc T) :=
   fun st => let n := size st in
             Ret (mkloc T n, rcons st (mkbind T (v : coq_type' T))).
-
 
 Definition cget T (r : loc T) : M (coq_type M T) :=
   fun st =>
@@ -1802,48 +1715,13 @@ Definition crun (A : UU0) (m : M A) : option A :=
 
 Definition Env := seq (binding idfun).
 
+Definition fresh_loc (T : MLU) (e : Env) := mkloc T (size e).
+
+Section mkbind.
 Local Notation mkbind := (@mkbind idfun).
 
 Definition extend_env T (v : coq_type M T) (e : Env) :=
   rcons e (mkbind T v).
-Definition fresh_loc (T : MLU) (e : Env) := mkloc T (size e).
-
-Lemma MS_bindE [S : UU0] [M : monad] [A B : UU0] (m : MS S M A) (f : A -> MS S M B) s :
-  (m >>= f) s = m s >>= uncurry f.
-Proof. by []. Qed.
-
-Lemma bind_cnew T (s : coq_type M T) A (k : loc T -> M A) e :
-  (cnew s >>= k) e = k (fresh_loc T e) (extend_env s e).
-Proof. by case: e. Qed.
-
-Lemma Some_cget T (r : loc T) (s : coq_type M T) e (A : UU0) (f : coq_type M T -> M A) :
-  nth_error e (loc_id r) = Some (mkbind T s) ->
-  (cget r >>= f) e = f s e.
-Proof. by move=> H; rewrite MS_bindE /cget H coerce_Some. Qed.
-Arguments Some_cget {T r} s.
-
-(* Prove the laws *)
-Definition cnewget T (s : coq_type M T) A (k : loc T -> coq_type M T -> M A) :
-  cnew s >>= (fun r => cget r >>= k r) = cnew s >>= (fun r => k r s).
-Proof.
-(*apply/boolp.funext => st/=.
-rewrite bindE.
-transitivity (
-  Join
-    ((stateT (seq (binding idfun)) option_monad # (fun r : loc T => cget r >>= k r))
-       (cnew s)) st
-) => //.*)
-apply/boolp.funext => e.
-by rewrite bind_cnew (Some_cget s)// nth_error_rcons_size.
-Qed.
-
-Definition cnewput T (s t : coq_type M T) A (k : loc T -> M A) :
-  cnew s >>= (fun r => cput r t >> k r) = cnew t >>= k.
-Proof.
-apply/boolp.funext => e.
-rewrite bind_cnew 2!MS_bindE.
-by rewrite /cput/= nth_error_rcons_size coerce_Some set_nth_rcons.
-Qed.
 
 Variant nth_error_spec (T : MLU) (e : Env) (r : loc T) : Type :=
   | NthError : forall s : coq_type M T,
@@ -1861,6 +1739,31 @@ case H : (nth_error e (loc_id r)) => [[T' s']|].
     exact: NthError H.
   exact: NthError_nocoerce H Ts'.
 exact: NthError_None.
+Qed.
+
+Lemma bind_cnew T (s : coq_type M T) A (k : loc T -> M A) e :
+  (cnew s >>= k) e = k (fresh_loc T e) (extend_env s e).
+Proof. by case: e. Qed.
+
+Lemma Some_cget T (r : loc T) (s : coq_type M T) e (A : UU0) (f : coq_type M T -> M A) :
+  nth_error e (loc_id r) = Some (mkbind T s) ->
+  (cget r >>= f) e = f s e.
+Proof. by move=> H; rewrite MS_bindE /cget H coerce_Some. Qed.
+Arguments Some_cget {T r} s.
+
+Lemma cnewget T (s : coq_type M T) A (k : loc T -> coq_type M T -> M A) :
+  cnew s >>= (fun r => cget r >>= k r) = cnew s >>= (fun r => k r s).
+Proof.
+apply/boolp.funext => e.
+by rewrite bind_cnew (Some_cget s)// nth_error_rcons_size.
+Qed.
+
+Lemma cnewput T (s t : coq_type M T) A (k : loc T -> M A) :
+  cnew s >>= (fun r => cput r t >> k r) = cnew t >>= k.
+Proof.
+apply/boolp.funext => e.
+rewrite bind_cnew 2!MS_bindE.
+by rewrite /cput/= nth_error_rcons_size coerce_Some set_nth_rcons.
 Qed.
 
 Lemma nocoerce_cget T (r : loc T) T' (s' : coq_type M T') e :
@@ -1904,7 +1807,7 @@ Proof.
 by move=> H; rewrite /cput/= H coerce_Some/= nth_error_set_nth_id.
 Qed.
 
-Definition cgetputskip T (r : loc T) : cget r >>= cput r = cget r >> skip.
+Lemma cgetputskip T (r : loc T) : cget r >>= cput r = cget r >> skip.
 Proof.
 apply/boolp.funext => e /=.
 have [s' H|T' s' H Ts'|H] := ntherrorP e r.
@@ -1913,8 +1816,8 @@ have [s' H|T' s' H Ts'|H] := ntherrorP e r.
 - by rewrite !MS_bindE None_cget.
 Qed.
 
-Definition cgetget T (r : loc T) (A : UU0)
-  (k : coq_type M T -> coq_type M T -> M A) :
+Lemma cgetget T (r : loc T) (A : UU0)
+    (k : coq_type M T -> coq_type M T -> M A) :
   cget r >>= (fun s => cget r >>= k s) = cget r >>= fun s => k s s.
 Proof.
 apply/boolp.funext => e /=.
@@ -1940,8 +1843,8 @@ by rewrite bindE/= (Some_cget s)// nth_error_set_nth.
 Qed.
 Arguments Some_cputget {T} s'.
 
-Definition cputget T (r: loc T) (s: coq_type M T) (A: UU0)
-  (k: coq_type M T -> M A) :
+Lemma cputget T (r : loc T) (s : coq_type M T) (A : UU0)
+    (k : coq_type M T -> M A) :
   cput r s >> (cget r >>= k) = cput r s >> k s.
 Proof.
 apply/boolp.funext => e /=.
@@ -1965,8 +1868,8 @@ rewrite nth_error_set_nth coerce_Some/=.
 by rewrite set_set_nth eqxx.
 Qed.
 
-Definition cputput T (r : loc T) (s s' : coq_type M T) :
-    cput r s >> cput r s' = cput r s'.
+Lemma cputput T (r : loc T) (s s' : coq_type M T) :
+  cput r s >> cput r s' = cput r s'.
 Proof.
 apply/boolp.funext => e.
 have [s'' H|T'' s'' H Ts''|H] := ntherrorP e r.
@@ -1975,7 +1878,7 @@ have [s'' H|T'' s'' H Ts''|H] := ntherrorP e r.
 - by rewrite MS_bindE !None_cput.
 Qed.
 
-Definition cgetC T1 T2 (r1 : loc T1) (r2 : loc T2) (A : UU0)
+Lemma cgetC T1 T2 (r1 : loc T1) (r2 : loc T2) (A : UU0)
            (k : coq_type M T1 -> coq_type M T2 -> M A) :
   cget r1 >>= (fun u => cget r2 >>= (fun v => k u v)) =
   cget r2 >>= (fun v => cget r1 >>= (fun u => k u v)).
@@ -2009,7 +1912,7 @@ rewrite bind_cnew//.
 by rewrite (Some_cget v) // (nth_error_rcons_some _ H).
 Qed.
 
-Definition cgetnewD T T' (r : loc T) (s : coq_type M T') A
+Lemma cgetnewD T T' (r : loc T) (s : coq_type M T') A
            (k : loc T' -> coq_type M T -> coq_type M T -> M A) :
   cget r >>= (fun u => cnew s >>= fun r' => cget r >>= k r' u) =
   cget r >>= (fun u => cnew s >>= fun r' => k r' u u).
@@ -2021,7 +1924,7 @@ have [u Hr|u T1 Hr T1u|Hr] := ntherrorP e r.
 - by rewrite !MS_bindE None_cget.
 Qed.
 
-Definition cgetnewE T1 T2 (r1 : loc T1) (s : coq_type M T2) (A : UU0)
+Lemma cgetnewE T1 T2 (r1 : loc T1) (s : coq_type M T2) (A : UU0)
     (k1 k2 : loc T2 -> M A) :
   (forall r2 : loc T2, loc_id r1 != loc_id r2 -> k1 r2 = k2 r2) ->
   cget r1 >> (cnew s >>= k1) = cget r1 >> (cnew s >>= k2).
@@ -2035,7 +1938,7 @@ have [u r1u|T' s' Hr1 T1s'|Hr] := ntherrorP e r1.
 - by rewrite !MS_bindE None_cget.
 Qed.
 
-Definition cgetputC T1 T2 (r1 : loc T1) (r2 : loc T2) (s : coq_type M T2) :
+Lemma cgetputC T1 T2 (r1 : loc T1) (r2 : loc T2) (s : coq_type M T2) :
   cget r1 >> cput r2 s = cput r2 s >> cget r1 >> skip.
 Proof.
 apply/boolp.funext => e /=.
@@ -2100,7 +2003,7 @@ have [v Hr2|T2' v Hr2 T2v|Hr2] := ntherrorP e r2; last first.
     by rewrite (@nth_error_set_nth_other _ _ _ _ _ (mkbind T1' s1')).
 Qed.
 
-Definition cputC T1 T2 (r1 : loc T1) (r2 : loc T2) (s1 : coq_type M T1)
+Lemma cputC T1 T2 (r1 : loc T1) (r2 : loc T2) (s1 : coq_type M T1)
     (s2 : coq_type M T2) (A : UU0) :
   loc_id r1 != loc_id r2 \/ JMeq s1 s2 ->
   cput r1 s1 >> cput r2 s2 = cput r2 s2 >> cput r1 s1.
@@ -2149,7 +2052,7 @@ have [u Hr1|T1' s'd Hr1 T1s'|Hr1] := ntherrorP e r1; last first.
       by rewrite set_set_nth (negbTE Hr).
 Qed.
 
-Definition cputgetC T1 T2 (r1 : loc T1) (r2 : loc T2) (s1 : coq_type M T1)
+Lemma cputgetC T1 T2 (r1 : loc T1) (r2 : loc T2) (s1 : coq_type M T1)
     (A : UU0) (k : coq_type M T2 -> M A) :
   loc_id r1 != loc_id r2 ->
   cput r1 s1 >> cget r2 >>= k = cget r2 >>= (fun v => cput r1 s1 >> k v).
@@ -2188,7 +2091,7 @@ rewrite /bindS /= MS_mapE /= fmapE Hr1.
 by rewrite coerce_Some.
 Qed.
 
-Definition cputnewC T T' (r : loc T) (s : coq_type M T) (s' : coq_type M T') A
+Lemma cputnewC T T' (r : loc T) (s : coq_type M T) (s' : coq_type M T') A
     (k : loc T' -> M A) :
   cget r >> (cnew s' >>= fun r' => cput r s >> k r') =
   cput r s >> (cnew s' >>= k).
@@ -2267,12 +2170,13 @@ Qed.
 
 HB.instance Definition _ := Monad.on M.
 HB.instance Definition isMonadTypedStoreModel :=
-  isMonadTypedStore.Build MLU locT M cnewget cnewput cgetput cgetputskip
+  isMonadTypedStore.Build MLU locT_nat M cnewget cnewput cgetput cgetputskip
     cgetget cputget cputput cgetC cgetnewD cgetnewE cgetputC cputC
     cputgetC cputnewC
     crunret crunskip crunnew crunnewget crungetnew crungetput.
 
-End typed_store.
+End mkbind.
+End ModelTypedStore.
 End ModelTypedStore.
 
 (* TODO?

@@ -1,5 +1,5 @@
 (* monae: Monadic equational reasoning in Coq                                 *)
-(* Copyright (C) 2020 monae authors, license: LGPL-2.1-or-later               *)
+(* Copyright (C) 2023 monae authors, license: LGPL-2.1-or-later               *)
 Ltac typeof X := type of X.
 
 Require Import ssrmatching Reals JMeq.
@@ -7,6 +7,10 @@ From mathcomp Require Import all_ssreflect.
 From mathcomp Require boolp.
 From infotheo Require Import Reals_ext.
 Require Import monae_lib hierarchy.
+
+(******************************************************************************)
+(*                      Lemmas using the typed store monad                    *)
+(******************************************************************************)
 
 Set Implicit Arguments.
 Unset Strict Implicit.

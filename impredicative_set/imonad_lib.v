@@ -34,6 +34,7 @@ Require Import ihierarchy.
 (*             commute m n f := (m >>= n >>= f) = (n >>= m >>= f)             *)
 (*                              (ref: definition 4.2, mu2019tr3)              *)
 (*                  rep n mx == mx >> mx >> ... >> mx, n times                *)
+(* forloop n1 n2 (b : nat -> M unit) : M unit := for-loop                     *)
 (*                                                                            *)
 (******************************************************************************)
 
@@ -706,3 +707,40 @@ by rewrite -subn1 addnBA ?expn_gt0 // addnn -muln2 -expnSr subn1.
 Qed.
 
 End MonadCount.
+
+Lemma iteri_bind {M : monad} n (f : nat -> M unit) (m1 m2 : M unit) :
+  iteri n (fun i (m : M unit) => m >> f i) (m1 >> m2) =
+  m1 >> iteri n (fun i (m : M unit) => m >> f i) m2.
+Proof. by elim: n m2 => // n IH m2; rewrite iteriS IH !bindA. Qed.
+
+Lemma iter_bind {M : monad} (T : UU0) n (f : T -> M T) (m1 : M unit) m2 :
+  iter n (fun (m : M T) => m >>= f) (m1 >> m2) =
+  m1 >> iter n (fun (m : M T) => m >>= f) m2.
+Proof. by elim: n m2 => // n IH m2; rewrite iterS IH !bindA. Qed.
+
+Section forloop.
+Variable M : monad.
+
+Definition forloop (n_1 n_2 : nat) (b : nat -> M unit) : M unit :=
+  if n_2 < n_1 then Ret tt else
+  iteri (n_2.+1 - n_1)
+       (fun i (m : M unit) => m >> b (n_1 + i))
+       skip.
+
+Lemma forloopS m n (f : nat -> M unit) :
+  m <= n -> forloop m n f = f m >> forloop m.+1 n f.
+Proof.
+rewrite /forloop => mn.
+rewrite ltnNge mn /= subSS subSn // iteriSr bindskipf.
+rewrite -[f _]bindmskip iteri_bind addn0 ltnS -subn_eq0.
+case: (n-m) => //= k.
+rewrite addSnnS; apply eq_bind => _; congr bind.
+apply eq_iteri => i x; by rewrite addSnnS.
+Qed.
+
+Lemma forloop0 m n (f : nat -> M unit) :
+  m > n -> forloop m n f = skip.
+Proof. by rewrite /forloop => ->. Qed.
+
+End forloop.
+Arguments forloop {M}.
