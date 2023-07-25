@@ -2,7 +2,7 @@
 (* Copyright (C) 2020 monae authors, license: LGPL-2.1-or-later               *)
 Ltac typeof X := type of X.
 
-Require Import ssrmatching Reals.
+Require Import ssrmatching Reals JMeq.
 From mathcomp Require Import all_ssreflect.
 From mathcomp Require boolp.
 From infotheo Require Import Reals_ext.
@@ -65,6 +65,11 @@ From HB Require Import structures.
 (*           arrayMonad == array monad                                        *)
 (*      plusArrayMonad  == plus monad + array monad                           *)
 (*                                                                            *)
+(*          ML_universe == a type with decidable equality to represent an     *)
+(*                         OCaml type together with its Coq representation    *)
+(*                         in the type of a Tarski universe                   *)
+(*      typedStoreMonad == A monad for OCaml computations                     *)
+(*                                                                            *)
 (* Trace monads:                                                              *)
 (*            traceMonad == trace monad                                       *)
 (*       traceReifyMonad == trace + reify                                     *)
@@ -83,8 +88,10 @@ From HB Require Import structures.
 (*     failFreshMonad == freshMonad + failure                                 *)
 (*                                                                            *)
 (* references:                                                                *)
+(* - R. Affeldt, J. Garrigue, T. Saikawa, Environment-friendly monadic        *)
+(* equational reasoning for OCaml, The Coq Workshop 2023                      *)
 (* - R. Affeldt, D. Nowak, Extending Equational Monadic Reasoning with Monad  *)
-(* Transformers, https://arxiv.org/abs/2011.03463                             *)
+(* Transformers, TYPES 2020, https://arxiv.org/abs/2011.03463                 *)
 (* - R. Affeldt, D. Nowak, T. Saikawa, A Hierarchy of Monadic Effects for     *)
 (* Program Verification using Equational Reasoning, MPC 2019                  *)
 (* - J. Gibbons, R. Hinze, Just do it: simple monadic equational reasoning,   *)
@@ -294,11 +301,11 @@ End join_laws.
 End JoinLaws.
 
 HB.mixin Record isMonad (F : UU0 -> UU0) of Functor F := {
-  ret : FId ~> [the functor of F] ;
-  join : [the functor of F \o F] ~> [the functor of F] ;
+  ret : FId ~> F ;
+  join : F \o F ~> F ;
   bind : forall (A B : UU0), F A -> (A -> F B) -> F B ;
-  bindE : forall (A B : UU0) (f : A -> F B) (m : F A),
-    bind A B m f = join B (([the functor of F] # f) m) ;
+  __bindE : forall (A B : UU0) (f : A -> F B) (m : F A),
+    bind A B m f = join B ((F # f) m) ;
   joinretM : JoinLaws.left_unit ret join ;
   joinMret : JoinLaws.right_unit ret join ;
   joinA : JoinLaws.associativity join }.
@@ -310,6 +317,10 @@ Notation Ret := (@ret _ _).
 Notation Join := (@join _ _).
 Arguments bind {s A B} : simpl never.
 Notation "m >>= f" := (bind m f) : monae_scope.
+
+Lemma bindE (F : monad) (A B : UU0) (f : A -> F B) (m : F A) :
+  m >>= f = join B ((F # f) m).
+Proof. by rewrite __bindE. Qed.
 
 Lemma eq_bind (M : monad) (A B : UU0) (m : M A) (f1 f2 : A -> M B) :
   f1 =1 f2 -> m >>= f1 = m >>= f2.
@@ -1075,6 +1086,97 @@ HB.structure Definition MonadArray (S : UU0) (I : eqType) :=
 #[short(type=plusArrayMonad)]
 HB.structure Definition MonadPlusArray (S : UU0) (I : eqType) :=
   { M of MonadPlus M & isMonadArray S I M}.
+
+Variant loc (ml_type : Type) (locT : eqType) : ml_type -> Type :=
+  mkloc T : locT -> loc locT T.
+Definition loc_id (ml_type : Type) (locT : eqType) {T : ml_type} (l : loc locT T) : locT :=
+  let: mkloc _ n := l in n.
+
+Structure ML_universe := {
+  ml_type :> eqType ;
+  coq_type : forall M : Type -> Type, ml_type -> Type ;
+  ml_nonempty : ml_type ;
+  val_nonempty : forall M, coq_type M ml_nonempty }.
+
+HB.mixin Record isMonadTypedStore (MLU : ML_universe) (locT : eqType) (M : UU0 -> UU0)
+    of Monad M := {
+  cnew : forall {T : MLU}, coq_type M T -> M (loc locT T) ;
+  cget : forall {T}, loc locT T -> M (coq_type M T) ;
+  cput : forall {T}, loc locT T -> coq_type M T -> M unit ;
+  crun : forall {A : UU0}, M A -> option A ; (* execute in empty store *)
+  cnewget : forall T (s : coq_type M T) A (k : loc locT T -> coq_type M T -> M A),
+    cnew s >>= (fun r => cget r >>= k r) = cnew s >>= (fun r => k r s) ;
+  cnewput : forall T (s t : coq_type M T) A (k : loc locT T -> M A),
+      cnew s >>= (fun r => cput r t >> k r) = cnew t >>= k ;
+  cgetput : forall T (r : loc locT T) (s : coq_type M T),
+      cget r >> cput r s = cput r s ;
+  cgetputskip : forall T (r : loc locT T), cget r >>= cput r = cget r >> skip ;
+  cgetget :
+    forall T (r : loc locT T) (A : UU0) (k : coq_type M T -> coq_type M T -> M A),
+    cget r >>= (fun s => cget r >>= k s) = cget r >>= fun s => k s s ;
+  cputget :
+    forall T (r : loc locT T) (s : coq_type M T) (A : UU0) (k : coq_type M T -> M A),
+      cput r s >> (cget r >>= k) = cput r s >> k s ;
+  cputput : forall T (r : loc locT T) (s s' : coq_type M T),
+    cput r s >> cput r s' = cput r s' ;
+  cgetC :
+    forall T1 T2 (r1 : loc locT T1) (r2 : loc locT T2) (A : UU0)
+           (k : coq_type M T1 -> coq_type M T2 -> M A),
+    cget r1 >>= (fun u => cget r2 >>= (fun v => k u v)) =
+    cget r2 >>= (fun v => cget r1 >>= (fun u => k u v)) ;
+  cgetnewD :
+    forall T T' (r : loc locT T) (s : coq_type M T') A
+           (k : loc locT T' -> coq_type M T -> coq_type M T -> M A),
+      cget r >>= (fun u => cnew s >>= (fun r' => cget r >>= k r' u)) =
+      cget r >>= (fun u => cnew s >>= (fun r' => k r' u u)) ;
+  cgetnewE : forall T1 T2 (r1 : loc locT T1) (s : coq_type M T2) (A : UU0)
+                   (k1 k2 : loc locT T2 -> M A),
+      (forall r2 : loc locT T2, loc_id r1 != loc_id r2 -> k1 r2 = k2 r2) ->
+      cget r1 >> (cnew s >>= k1) = cget r1 >> (cnew s >>= k2) ;
+  cgetputC : forall T1 T2 (r1 : loc locT T1) (r2 : loc locT T2) (s : coq_type M T2),
+      cget r1 >> cput r2 s = cput r2 s >> cget r1 >> skip ;
+  cputC :
+    forall T1 T2 (r1 : loc locT T1) (r2 : loc locT T2) (s1 : coq_type M T1)
+           (s2 : coq_type M T2) (A : UU0),
+      loc_id r1 != loc_id r2 \/ JMeq s1 s2 ->
+      cput r1 s1 >> cput r2 s2 = cput r2 s2 >> cput r1 s1 ;
+  cputgetC :
+    forall T1 T2 (r1 : loc locT T1) (r2 : loc locT T2) (s1 : coq_type M T1)
+           (A : UU0) (k : coq_type M T2 -> M A),
+      loc_id r1 != loc_id r2 ->
+    cput r1 s1 >> cget r2 >>= k =
+    cget r2 >>= (fun v => cput r1 s1 >> k v) ;
+  cputnewC :
+    forall T T' (r : loc locT T) (s : coq_type M T) (s' : coq_type M T') A
+           (k : loc locT T' -> M A),
+      cget r >> (cnew s' >>= fun r' => cput r s >> k r') =
+      cput r s >> (cnew s' >>= k) ;
+  crunret : forall (A B : UU0) (m : M A) (s : B),
+      crun m -> crun (m >> Ret s) = Some s ;
+  crunskip :
+      crun skip = Some tt ;
+  crunnew : forall (A : UU0) T (m : M A) (s : A -> coq_type M T),
+      crun m -> crun (m >>= fun x => cnew (s x)) ;
+  crunnewget : forall (A : UU0) T (m : M A) (s : A -> coq_type M T),
+      crun m -> crun (m >>= fun x => cnew (s x) >>= cget) ;
+  crungetnew : forall (A : UU0) T1 T2 (m : M A) (r : A -> loc locT T1)
+                      (s : A -> coq_type M T2),
+      crun (m >>= fun x => cget (r x)) ->
+      crun (m >>= fun x => cnew (s x) >> cget (r x)) ;
+  crungetput : forall (A : UU0) T (m : M A) (r : A -> loc locT T)
+                      (s : A -> coq_type M T),
+      crun (m >>= fun x => cget (r x)) ->
+      crun (m >>= fun x => cput (r x) (s x)) ;
+ }.
+
+#[short(type=typedStoreMonad)]
+HB.structure Definition MonadTypedStore (ml_type : ML_universe) (locT : eqType) :=
+  { M of isMonadTypedStore ml_type locT M & isMonad M & isFunctor M }.
+
+Arguments cnew {ml_type locT s}.
+Arguments cget {ml_type locT s} [T].
+Arguments cput {ml_type locT s} [T].
+Arguments crun {ml_type locT s} [A].
 
 HB.mixin Record isMonadTrace (T : UU0) (M : UU0 -> UU0) of Monad M :=
  { mark : T -> M unit }.

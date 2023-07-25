@@ -17,7 +17,9 @@ jobs:
     strategy:
       matrix:
         image:
+          - 'mathcomp/mathcomp:1.16.0-coq-8.16'
           - 'mathcomp/mathcomp:1.16.0-coq-8.17'
+          - 'mathcomp/mathcomp:1.17.0-coq-8.16'
           - 'mathcomp/mathcomp:1.17.0-coq-8.17'
       fail-fast: false
     steps:

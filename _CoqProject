@@ -13,6 +13,7 @@ state_lib.v
 array_lib.v
 trace_lib.v
 proba_lib.v
+typed_store_lib.v
 monad_composition.v
 monad_model.v
 proba_monad_model.v
@@ -20,12 +21,14 @@ category.v
 gcm_model.v
 altprob_model.v
 monad_transformer.v
+typed_store_model.v
 example_spark.v
 example_nqueens.v
 example_relabeling.v
 example_quicksort.v
 example_iquicksort.v
 example_monty.v
+example_typed_store.v
 smallstep.v
 example_transformer.v
 category_ext.v

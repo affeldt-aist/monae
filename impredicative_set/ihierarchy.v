@@ -2,7 +2,7 @@
 (* Copyright (C) 2020 monae authors, license: LGPL-2.1-or-later               *)
 Ltac typeof X := type of X.
 
-Require Import ssrmatching.
+Require Import ssrmatching JMeq.
 From mathcomp Require Import all_ssreflect.
 Require Import imonae_lib.
 From HB Require Import structures.
@@ -283,11 +283,11 @@ End join_laws.
 End JoinLaws.
 
 HB.mixin Record isMonad (F : UU0 -> UU0) of Functor F := {
-  ret : FId ~> [the functor of F] ;
-  join : [the functor of F \o F] ~> [the functor of F] ;
+  ret : FId ~> F ;
+  join : F \o F ~> F ;
   bind : forall (A B : UU0), F A -> (A -> F B) -> F B ;
-  bindE : forall (A B : UU0) (f : A -> F B) (m : F A),
-    bind A B m f = join B (([the functor of F] # f) m) ;
+  __bindE : forall (A B : UU0) (f : A -> F B) (m : F A),
+    bind A B m f = join B ((F # f) m) ;
   joinretM : JoinLaws.left_unit ret join ;
   joinMret : JoinLaws.right_unit ret join ;
   joinA : JoinLaws.associativity join }.
@@ -299,6 +299,10 @@ Notation Ret := (@ret _ _).
 Notation Join := (@join _ _).
 Arguments bind {s A B} : simpl never.
 Notation "m >>= f" := (bind m f) : monae_scope.
+
+Lemma bindE (F : monad) (A B : UU0) (f : A -> F B) (m : F A) :
+  m >>= f = join B ((F # f) m).
+Proof. by rewrite __bindE. Qed.
 
 Lemma eq_bind (M : monad) (A B : UU0) (m : M A) (f1 f2 : A -> M B) :
   f1 =1 f2 -> m >>= f1 = m >>= f2.
@@ -1064,6 +1068,11 @@ HB.structure Definition MonadArray (S : UU0) (I : eqType) :=
 #[short(type=plusArrayMonad)]
 HB.structure Definition MonadPlusArray (S : UU0) (I : eqType) :=
   { M of MonadPlus M & isMonadArray S I M}.
+
+Variant loc (ml_type : Type) (locT : eqType) : ml_type -> Type :=
+  mkloc T : locT -> loc locT T.
+Definition loc_id (ml_type : Type) (locT : eqType) {T : ml_type} (l : loc locT T) : locT :=
+  let: mkloc _ n := l in n.
 
 HB.mixin Record isMonadTrace (T : UU0) (M : UU0 -> UU0) of Monad M :=
  { mark : T -> M unit }.

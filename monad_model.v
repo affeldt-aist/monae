@@ -1,3 +1,4 @@
+Require Import JMeq.
 From mathcomp Require Import all_ssreflect.
 From mathcomp Require Import finmap.
 From mathcomp Require boolp.
@@ -20,7 +21,7 @@ Require Import monad_transformer.
 (* ListMonad          == list monad seq                                       *)
 (* SetMonad           == set monads using classical_sets                      *)
 (* ExceptMonad        == exception monad E + A                                *)
-(* option_monad       == notation for ExceptMonad.acto unit                   *)
+(* option_monad       == alias for ExceptMonad.acto unit                      *)
 (* OutputMonad        == output monad X * seq L                               *)
 (* EnvironmentMonad   == environment monad E -> A                             *)
 (* StateMonad         == state monad S -> A * S                               *)
@@ -61,6 +62,8 @@ Require Import monad_transformer.
 (* Module ModelPlusArray   == plus array monad                                *)
 (* Module ModelMonadStateRun       == stateRunMonad for MS                    *)
 (* Module ModelMonadExceptStateRun == exceptStateRunMonad                     *)
+(*                                                                            *)
+(* Module ModelTypedStore == model for typed store                            *)
 (*                                                                            *)
 (* references:                                                                *)
 (* - Wadler, P. Monads and composable continuations. LISP and Symbolic        *)
@@ -232,7 +235,8 @@ Lemma except_bindE (E A B : UU0) (M := ExceptMonad.acto E)
   m >>= f = match m with inl z => inl z | inr b => f b end.
 Proof. by []. Qed.
 
-Notation option_monad := (ExceptMonad.acto unit).
+Definition option_monad := ExceptMonad.acto unit.
+HB.instance Definition _ := Monad.on option_monad.
 
 Module OutputMonad.
 Section output.
@@ -799,6 +803,7 @@ Section fail.
 Definition option_fail : forall A, option_monad A := fun A => @throw unit A tt.
 Let option_bindfailf : BindLaws.left_zero (@bind _) option_fail.
 Proof. by []. Qed.
+HB.instance Definition _ := Monad.on option_monad.
 HB.instance Definition _ := @isMonadFail.Build option_monad
   option_fail option_bindfailf.
 
@@ -820,7 +825,7 @@ HB.export Fail.
 
 Module Except.
 Section except.
-Let M : failMonad := [the failMonad of ExceptMonad.acto unit].
+Let M : failMonad := option_monad.
 Definition handle : forall A, M A -> M A -> M A :=
   fun A m1 m2 => @handle_op unit _ (m1, (fun _ => m2)).
 Lemma handleE : handle = (fun A m m' => if m is inr x then m else m').
@@ -833,7 +838,7 @@ Let catchA : forall A, ssrfun.associative (@handle A).
 Proof. by move=> A; case. Qed.
 Let catchret : forall A x, @left_zero (M A) (M A) (Ret x) (@handle A).
 Proof. by move=> A x; case. Qed.
-HB.instance Definition _ := isMonadExcept.Build (ExceptMonad.acto unit)
+HB.instance Definition _ := isMonadExcept.Build option_monad
   catchmfail catchfailm catchA catchret.
 End except.
 End Except.
@@ -1656,6 +1661,524 @@ End modelplusarray.
 End ModelPlusArray.
 HB.export ModelPlusArray.
 
+Definition locT_nat := [eqType of nat].
+
+Module ModelTypedStore.
+
+Section ModelTypedStore.
+Variables (ml_type0 : eqType) (coq_type0 : ml_type0 -> Type)
+          (ml_nonempty0 : ml_type0) (val_nonempty0 : coq_type0 ml_nonempty0).
+
+Definition MLU : ML_universe :=
+  @Build_ML_universe (ml_type0) (fun M => @coq_type0)
+  (ml_nonempty0) (fun M => val_nonempty0).
+
+Record binding (M : Type -> Type) :=
+  mkbind { bind_type : MLU; bind_val : coq_type M bind_type }.
+Arguments mkbind {M}.
+
+Definition acto : UU0 -> UU0 := MS (seq (binding idfun)) [the monad of option_monad].
+Local Notation M := acto.
+
+Local Notation coq_type' := (@coq_type MLU idfun).
+
+Definition def : binding idfun := mkbind (ml_nonempty MLU) (val_nonempty MLU idfun).
+
+Local Notation nth_error := List.nth_error.
+
+Notation loc := (@loc MLU locT_nat).
+
+Definition cnew T (v : coq_type M T) : M (loc T) :=
+  fun st => let n := size st in
+            Ret (mkloc T n, rcons st (mkbind T (v : coq_type' T))).
+
+Definition cget T (r : loc T) : M (coq_type M T) :=
+  fun st =>
+    if nth_error st (loc_id r) is Some (mkbind T' v) then
+      if coerce T v is Some u then Ret (u, st) else fail
+    else fail.
+
+Definition cput T (r : loc T) (v : coq_type M T) : M unit :=
+  fun st =>
+    let n := loc_id r in
+    if nth_error st n is Some (mkbind T' _) then
+      if coerce T' v is Some u then
+        Ret (tt, set_nth def st n (mkbind T' (u : coq_type' _)))
+      else fail
+    else fail.
+
+Definition crun (A : UU0) (m : M A) : option A :=
+  match m nil with
+  | inl _ => None
+  | inr (a, _) => Some a
+  end.
+
+Definition Env := seq (binding idfun).
+
+Definition fresh_loc (T : MLU) (e : Env) := mkloc T (size e).
+
+Section mkbind.
+Local Notation mkbind := (@mkbind idfun).
+
+Definition extend_env T (v : coq_type M T) (e : Env) :=
+  rcons e (mkbind T v).
+
+Variant nth_error_spec (T : MLU) (e : Env) (r : loc T) : Type :=
+  | NthError : forall s : coq_type M T,
+    nth_error e (loc_id r) = Some (mkbind T s) -> nth_error_spec e r
+  | NthError_nocoerce : forall T' (s' : coq_type M T'),
+    nth_error e (loc_id r) = Some (mkbind T' s') -> ~ coerce T s' ->
+    nth_error_spec e r
+  | NthError_None : nth_error e (loc_id r) = None -> nth_error_spec e r.
+
+Lemma ntherrorP (T : MLU) (e : Env) (r : loc T) : nth_error_spec e r.
+Proof.
+case H : (nth_error e (loc_id r)) => [[T' s']|].
+  have [Ts'|Ts'] := boolp.pselect (coerce T s').
+    have ? := coerce_eq Ts'; subst T'.
+    exact: NthError H.
+  exact: NthError_nocoerce H Ts'.
+exact: NthError_None.
+Qed.
+
+Lemma bind_cnew T (s : coq_type M T) A (k : loc T -> M A) e :
+  (cnew s >>= k) e = k (fresh_loc T e) (extend_env s e).
+Proof. by case: e. Qed.
+
+Lemma Some_cget T (r : loc T) (s : coq_type M T) e (A : UU0) (f : coq_type M T -> M A) :
+  nth_error e (loc_id r) = Some (mkbind T s) ->
+  (cget r >>= f) e = f s e.
+Proof. by move=> H; rewrite MS_bindE /cget H coerce_Some. Qed.
+Arguments Some_cget {T r} s.
+
+Lemma cnewget T (s : coq_type M T) A (k : loc T -> coq_type M T -> M A) :
+  cnew s >>= (fun r => cget r >>= k r) = cnew s >>= (fun r => k r s).
+Proof.
+apply/boolp.funext => e.
+by rewrite bind_cnew (Some_cget s)// nth_error_rcons_size.
+Qed.
+
+Lemma cnewput T (s t : coq_type M T) A (k : loc T -> M A) :
+  cnew s >>= (fun r => cput r t >> k r) = cnew t >>= k.
+Proof.
+apply/boolp.funext => e.
+rewrite bind_cnew 2!MS_bindE.
+by rewrite /cput/= nth_error_rcons_size coerce_Some set_nth_rcons.
+Qed.
+
+Lemma nocoerce_cget T (r : loc T) T' (s' : coq_type M T') e :
+  nth_error e (loc_id r) = Some (mkbind T' s') ->
+  ~ coerce T s' ->
+  cget r e = fail.
+Proof. by move=> H Ts'; rewrite /cget H; case: coerce Ts'. Qed.
+
+Lemma nocoerce_cput T (r : loc T) (s : coq_type M T) T' (s' : coq_type M T') e :
+  nth_error e (loc_id r) = Some (mkbind T' s') ->
+  ~ coerce T s' ->
+  cput r s e = fail.
+Proof.
+move=> H Ts'; rewrite /cput H.
+have {}Ts' : ~ coerce T' s by apply: contra_not Ts'; exact: coerce_sym.
+by case: coerce Ts'.
+Qed.
+
+Lemma None_cget T (r : loc T) e :
+  nth_error e (loc_id r) = None -> cget r e = fail.
+Proof. by move=> H; rewrite /cget H. Qed.
+
+Lemma None_cput T (r : loc T) (s : coq_type M T) e :
+  nth_error e (loc_id r) = None -> cput r s e = fail.
+Proof. by move=> H; rewrite /cput H. Qed.
+
+Definition cgetput T (r : loc T) (s : coq_type M T) :
+  cget r >> cput r s = cput r s.
+Proof.
+apply/boolp.funext => e.
+have [s' H|T' s' H Ts'|H] := ntherrorP e r.
+- by rewrite (Some_cget s').
+- by rewrite MS_bindE (nocoerce_cget H)// (nocoerce_cput _ H).
+- by rewrite MS_bindE None_cget// None_cput.
+Qed.
+
+Lemma Some_cput T (r : loc T) (s : coq_type M T) e :
+  nth_error e (loc_id r) = Some (mkbind T s) ->
+  cput r s e = (@skip M) e.
+Proof.
+by move=> H; rewrite /cput/= H coerce_Some/= nth_error_set_nth_id.
+Qed.
+
+Lemma cgetputskip T (r : loc T) : cget r >>= cput r = cget r >> skip.
+Proof.
+apply/boolp.funext => e /=.
+have [s' H|T' s' H Ts'|H] := ntherrorP e r.
+- by rewrite (Some_cget s')// (Some_cget s')// (Some_cput H).
+- by rewrite !MS_bindE (nocoerce_cget H).
+- by rewrite !MS_bindE None_cget.
+Qed.
+
+Lemma cgetget T (r : loc T) (A : UU0)
+    (k : coq_type M T -> coq_type M T -> M A) :
+  cget r >>= (fun s => cget r >>= k s) = cget r >>= fun s => k s s.
+Proof.
+apply/boolp.funext => e /=.
+have [s' H|T' s' H Ts'|H] := ntherrorP e r.
+- by do 3 rewrite (Some_cget s')//.
+- by rewrite !MS_bindE (nocoerce_cget H).
+- by rewrite !MS_bindE None_cget.
+Qed.
+
+Lemma Some_cputE T (r : loc T) (s s' : coq_type M T) e :
+  nth_error e (loc_id r) = Some (mkbind T s') ->
+  cput r s e = inr (tt, set_nth def e (loc_id r) (mkbind T s)).
+Proof. by move=> H; rewrite /cput/= H coerce_Some. Qed.
+
+Lemma Some_cputget T (s' s : coq_type M T) (r : loc T) A (k : coq_type M T -> M A)
+  (e : Env) :
+  nth_error e (loc_id r) = Some (mkbind T s') ->
+  (cput r s >> (cget r >>= k)) e = (cput r s >> k s) e.
+Proof.
+move=> H.
+rewrite 2!MS_bindE (Some_cputE _ H).
+by rewrite bindE/= (Some_cget s)// nth_error_set_nth.
+Qed.
+Arguments Some_cputget {T} s'.
+
+Lemma cputget T (r : loc T) (s : coq_type M T) (A : UU0)
+    (k : coq_type M T -> M A) :
+  cput r s >> (cget r >>= k) = cput r s >> k s.
+Proof.
+apply/boolp.funext => e /=.
+have [s' H|T' s' H Ts'|H] := ntherrorP e r.
+- by rewrite (Some_cputget s').
+- by rewrite !MS_bindE (nocoerce_cput _ H).
+- by rewrite 2!MS_bindE None_cput.
+Qed.
+
+Lemma Some_cputput (T : MLU) (r : loc T) (s s' : coq_type M T)
+  (e : Env) (s'' : coq_type M T) :
+  nth_error e (loc_id r) = Some (mkbind T s'') ->
+  (cput r s >> cput r s') e = cput r s' e.
+Proof.
+move=> H.
+rewrite MS_bindE/=.
+rewrite [in LHS](Some_cputE _ H)//.
+rewrite [in RHS](Some_cputE _ H)//.
+rewrite bindE/= /cput.
+rewrite nth_error_set_nth coerce_Some/=.
+by rewrite set_set_nth eqxx.
+Qed.
+
+Lemma cputput T (r : loc T) (s s' : coq_type M T) :
+  cput r s >> cput r s' = cput r s'.
+Proof.
+apply/boolp.funext => e.
+have [s'' H|T'' s'' H Ts''|H] := ntherrorP e r.
+- by rewrite (Some_cputput _ _ H).
+- by rewrite !MS_bindE (nocoerce_cput _ H)// (nocoerce_cput _ H).
+- by rewrite MS_bindE !None_cput.
+Qed.
+
+Lemma cgetC T1 T2 (r1 : loc T1) (r2 : loc T2) (A : UU0)
+           (k : coq_type M T1 -> coq_type M T2 -> M A) :
+  cget r1 >>= (fun u => cget r2 >>= (fun v => k u v)) =
+  cget r2 >>= (fun v => cget r1 >>= (fun u => k u v)).
+Proof.
+apply/boolp.funext => e /=.
+have [u Hr1|u T1' Hr1 T1u|Hr1] := ntherrorP e r1.
+- rewrite (Some_cget u)//.
+  have [v Hr2|v T2' Hr2 T2v|Hr2] := ntherrorP e r2.
+  + by rewrite (Some_cget v)// (Some_cget v)// (Some_cget u).
+  + by rewrite 2!MS_bindE (nocoerce_cget Hr2)// bindfailf.
+  + by rewrite !MS_bindE None_cget.
+- rewrite MS_bindE (nocoerce_cget Hr1)// bindfailf.
+  have [v Hr2|v T2' Hr2 T2v|Hr2] := ntherrorP e r2.
+  + by rewrite (Some_cget v)// MS_bindE (nocoerce_cget Hr1).
+  + by rewrite MS_bindE (nocoerce_cget Hr2).
+  + by rewrite MS_bindE None_cget.
+- rewrite MS_bindE None_cget// bindfailf.
+  have [v Hr2|v T2' Hr2 T2v|Hr2] := ntherrorP e r2.
+  + by rewrite (Some_cget v)// MS_bindE None_cget.
+  + by rewrite MS_bindE (nocoerce_cget Hr2).
+  + by rewrite MS_bindE !None_cget.
+Qed.
+
+(* NB: this is similar to the cnewget law *)
+Lemma cnewgetD_helper e T T' r v (s : coq_type M T') A (k : loc T' -> coq_type M T -> M A) :
+  nth_error e (loc_id r) = Some (mkbind T v) ->
+  (cnew s >>= (fun r' => cget r >>= k r')) e = (cnew s >>= (fun r => k r v)) e.
+Proof.
+move=> H.
+rewrite bind_cnew//.
+by rewrite (Some_cget v) // (nth_error_rcons_some _ H).
+Qed.
+
+Lemma cgetnewD T T' (r : loc T) (s : coq_type M T') A
+           (k : loc T' -> coq_type M T -> coq_type M T -> M A) :
+  cget r >>= (fun u => cnew s >>= fun r' => cget r >>= k r' u) =
+  cget r >>= (fun u => cnew s >>= fun r' => k r' u u).
+Proof.
+apply/boolp.funext => e.
+have [u Hr|u T1 Hr T1u|Hr] := ntherrorP e r.
+- by rewrite (Some_cget u)// (Some_cget u)// (cnewgetD_helper _ _ Hr)//.
+- by rewrite !MS_bindE (nocoerce_cget Hr).
+- by rewrite !MS_bindE None_cget.
+Qed.
+
+Lemma cgetnewE T1 T2 (r1 : loc T1) (s : coq_type M T2) (A : UU0)
+    (k1 k2 : loc T2 -> M A) :
+  (forall r2 : loc T2, loc_id r1 != loc_id r2 -> k1 r2 = k2 r2) ->
+  cget r1 >> (cnew s >>= k1) = cget r1 >> (cnew s >>= k2).
+Proof.
+move=> Hk.
+apply/boolp.funext => e.
+have [u r1u|T' s' Hr1 T1s'|Hr] := ntherrorP e r1.
+- rewrite (Some_cget u)// (Some_cget u)// !bind_cnew Hk// neq_ltn.
+- by move: r1u => /= /nth_error_size ->.
+- by rewrite !MS_bindE (nocoerce_cget Hr1).
+- by rewrite !MS_bindE None_cget.
+Qed.
+
+Lemma cgetputC T1 T2 (r1 : loc T1) (r2 : loc T2) (s : coq_type M T2) :
+  cget r1 >> cput r2 s = cput r2 s >> cget r1 >> skip.
+Proof.
+apply/boolp.funext => e /=.
+have [u r1u|T1' v1 Hr1 T1v1|Hr1] := ntherrorP e r1.
+- rewrite (Some_cget u)// [in RHS]bindA MS_bindE.
+  have [v r2v|T' v r2v T2v|Hr2] := ntherrorP e r2.
+  + rewrite (Some_cputE _ r2v) [in RHS]bindE/=.
+    have [r12|r12] := eqVneq (loc_id r1) (loc_id r2).
+      move: r2v; rewrite -r12 r1u => -[?] _; subst T2.
+      by rewrite MS_bindE /cget nth_error_set_nth// coerce_Some.
+    by rewrite (Some_cget u)// (nth_error_set_nth_other _ _ r12 r1u).
+  + by rewrite (nocoerce_cput _ _ T2v).
+  + by rewrite None_cput.
+- rewrite MS_bindE [RHS]MS_bindE bindA.
+  have [v r2v|T' v r2v T2v|Hr2] := ntherrorP e r2.
+  + rewrite {1}/cget Hr1.
+    have [?|T1'T1] := eqVneq T1' T1.
+    * subst T1'; rewrite coerce_Some.
+      rewrite [in LHS]bindE/= (Some_cputE _ r2v) [in RHS]bindE/=.
+      have [Hr|Hr] := eqVneq (loc_id r1) (loc_id r2).
+        move: r2v; rewrite -Hr Hr1 => -[?] _; subst T2.
+        by rewrite /cget nth_error_set_nth coerce_Some.
+      by rewrite /cget (nth_error_set_nth_other _ _ Hr Hr1) coerce_Some.
+    * rewrite coerce_None//= bindfailf (Some_cputE _ r2v) [in RHS]bindE/=.
+      have [r12|r12] := eqVneq (loc_id r1) (loc_id r2).
+        move: r2v; rewrite -r12 Hr1 => -[?] _; subst T1'.
+        by rewrite /cget nth_error_set_nth coerce_None.
+      by rewrite /cget (nth_error_set_nth_other _ _ r12 Hr1) coerce_None.
+  + by rewrite (nocoerce_cget _ T1v1)// bindfailf (nocoerce_cput _ _ T2v).
+  + by rewrite (nocoerce_cget _ T1v1)// None_cput// bindfailf.
+- rewrite MS_bindE None_cget// bindfailf bindA MS_bindE.
+  have [v r2v|T' v r2v T2v|Hr2] := ntherrorP e r2.
+  + rewrite (Some_cputE _ r2v)/=.
+    rewrite bindE/=.
+    rewrite MS_bindE None_cget/= ?bindfailf//.
+    by rewrite (nth_error_set_nth_none _ _ Hr1 r2v).
+  + by rewrite (nocoerce_cput _ r2v).
+  + by rewrite None_cput.
+Qed.
+
+Lemma cput_then_fail T1 T2 T1' e (s1' : coq_type M T1')
+    (r2 : loc T2) (s2 : coq_type M T2)
+    (r1 : loc T1) (s1 : coq_type M T1) :
+  nth_error e (loc_id r1) = Some (mkbind T1' s1') ->
+  ~ coerce T1 s1' ->
+  (cput r2 s2 >> cput r1 s1) e = fail.
+Proof.
+move=> Hr1 T1s'.
+have [v Hr2|T2' v Hr2 T2v|Hr2] := ntherrorP e r2; last first.
+- by rewrite MS_bindE None_cput.
+- by rewrite MS_bindE (nocoerce_cput _ _ T2v).
+- rewrite MS_bindE (Some_cputE _ Hr2).
+  rewrite bindE/=.
+  have [Hr|Hr] := eqVneq (loc_id r1) (loc_id r2).
+  + rewrite {1}/cput -Hr /= nth_error_set_nth.
+    have [HT|HT] := eqVneq T1 T2; last by rewrite coerce_None.
+    subst T2.
+    rewrite coerce_Some//=.
+    move: Hr1; rewrite Hr Hr2 => -[?]; subst T1' => _.
+    by rewrite coerce_Some // in T1s'.
+  + rewrite (nocoerce_cput _ _ T1s')//=.
+    by rewrite (@nth_error_set_nth_other _ _ _ _ _ (mkbind T1' s1')).
+Qed.
+
+Lemma cputC T1 T2 (r1 : loc T1) (r2 : loc T2) (s1 : coq_type M T1)
+    (s2 : coq_type M T2) (A : UU0) :
+  loc_id r1 != loc_id r2 \/ JMeq s1 s2 ->
+  cput r1 s1 >> cput r2 s2 = cput r2 s2 >> cput r1 s1.
+Proof.
+move=> H; apply/boolp.funext => e /=.
+have [u Hr1|T1' s'd Hr1 T1s'|Hr1] := ntherrorP e r1; last first.
+  rewrite MS_bindE None_cput// bindfailf.
+  have [v Hr2|T2' s' Hr2 T2s'|Hr2] := ntherrorP e r2; last first.
+    by rewrite MS_bindE None_cput.
+  + by rewrite MS_bindE (nocoerce_cput _ _ T2s').
+  + rewrite MS_bindE (Some_cputE _ Hr2).
+    rewrite bindE/=.
+    by rewrite None_cput// (nth_error_set_nth_none _ _ Hr1 Hr2).
+- rewrite MS_bindE (nocoerce_cput _ _ T1s')// bindfailf.
+  by rewrite (cput_then_fail _ _ _ Hr1).
+- rewrite MS_bindE (Some_cputE _ Hr1)/=.
+  rewrite bindE/=.
+  case/boolP: (loc_id r1 == loc_id r2) H => [/eqP|] Hr /=.
+  + case => // H.
+    rewrite MS_bindE.
+    rewrite {2}/cput -Hr Hr1.
+    case/boolP: (T1 == T2) => [/eqP HT|HT]; last first.
+      rewrite coerce_None//; last by rewrite eq_sym.
+      by rewrite /cput/= Hr nth_error_set_nth// coerce_None// eq_sym.
+    subst T2.
+    rewrite coerce_Some bindE/=.
+    have ? := JMeq_eq H; subst s2.
+    by rewrite /cput -Hr.
+  + move=> _.
+    have [v r2v|T2' s Hr2 T2s|Hr2] := ntherrorP e r2; last first.
+    * rewrite MS_bindE None_cput/=; last first.
+        by rewrite (nth_error_set_nth_none _ _ Hr2 Hr1).
+      by rewrite None_cput.
+    * rewrite MS_bindE.
+      rewrite [in RHS](nocoerce_cput _ _ T2s)// bindfailf.
+      rewrite (nocoerce_cput _ _ T2s)//=.
+      by rewrite (nth_error_set_nth_other _ _ _ Hr2) 1?eq_sym.
+    * rewrite MS_bindE.
+      rewrite [in RHS](Some_cputE _ r2v).
+      rewrite {1}/cput/=.
+      rewrite (nth_error_set_nth_other _ _ _ r2v) 1?eq_sym//.
+      rewrite coerce_Some.
+      rewrite bindE/=.
+      rewrite /cput (nth_error_set_nth_other _ _ Hr Hr1).
+      rewrite coerce_Some.
+      by rewrite set_set_nth (negbTE Hr).
+Qed.
+
+Lemma cputgetC T1 T2 (r1 : loc T1) (r2 : loc T2) (s1 : coq_type M T1)
+    (A : UU0) (k : coq_type M T2 -> M A) :
+  loc_id r1 != loc_id r2 ->
+  cput r1 s1 >> cget r2 >>= k = cget r2 >>= (fun v => cput r1 s1 >> k v).
+Proof.
+move=> Hr.
+apply/boolp.funext => e /=.
+rewrite !bindA.
+rewrite bindE /= /bindS MS_mapE /= fmapE /= bindA /=.
+rewrite [in RHS]bindE /= /bindS MS_mapE /= fmapE /= bindA /= /cput /cget.
+case Hr1: (nth_error _ _) => [[T1' u]|]; last first.
+  rewrite bindfailf.
+  case Hr2: (nth_error _ _) => [[T2' v]|]; last by rewrite bindfailf.
+  case Hc: (coerce T2 v) => [u|]; last by rewrite bindfailf.
+  by rewrite !bindE /= !bindE /= /bindS MS_mapE /= fmapE Hr1 bindfailf.
+case Hr2: (nth_error _ _) => [[T2' v]|]; last first.
+  rewrite bindfailf.
+  case Hc: (coerce T1' s1) => [v|]; last by rewrite bindfailf.
+  rewrite !bindE /= !bindE /= /bindS MS_mapE /= fmapE.
+  by rewrite (nth_error_set_nth_none _ _ Hr2 Hr1) bindfailf.
+case: (eqVneq T1 T1') => HT1; last first.
+  rewrite coerce_None//.
+  rewrite bindfailf.
+  case: (eqVneq T2' T2) => HT2; last by rewrite coerce_None// bindfailf.
+  subst T2'.
+  rewrite coerce_Some.
+  rewrite bindE/= bindE/= bindE/= /bindS /= MS_mapE /= fmapE Hr1.
+  by rewrite coerce_None.
+subst T1'.
+rewrite coerce_Some//.
+rewrite bindE /= bindE /= bindE /= /bindS /= MS_mapE /= fmapE.
+rewrite (nth_error_set_nth_other _ _ _ Hr2) 1?eq_sym//.
+case: (eqVneq T2' T2) => HT2'; last by rewrite coerce_None.
+subst T2'.
+rewrite coerce_Some bindE /= bindE /= bindE /= bindE /=.
+rewrite /bindS /= MS_mapE /= fmapE Hr1.
+by rewrite coerce_Some.
+Qed.
+
+Lemma cputnewC T T' (r : loc T) (s : coq_type M T) (s' : coq_type M T') A
+    (k : loc T' -> M A) :
+  cget r >> (cnew s' >>= fun r' => cput r s >> k r') =
+  cput r s >> (cnew s' >>= k).
+Proof.
+apply/boolp.funext => e /=.
+rewrite bindE /= /bindS MS_mapE /= fmapE /= bindA /=.
+rewrite [in RHS]bindE /= /bindS MS_mapE /= fmapE /= bindA /= /cget /cput.
+case Hr: (nth_error _ _) => [[T1 u]|]; last by rewrite bindfailf.
+case: (eqVneq T1 T) => H //=; last by rewrite coerce_None// 1?eq_sym// coerce_None// eq_sym.
+subst T1.
+rewrite [in LHS]coerce_Some//.
+rewrite bindE /= /bindS /= bindE /= bindE /= /bindS /= MS_mapE /= fmapE /=.
+rewrite bindE /= /bindS /= bindE /= bindE /= /bindS /= MS_mapE /= fmapE /=.
+rewrite (nth_error_rcons_some _ Hr).
+rewrite coerce_Some.
+rewrite bindE /= /bindS /= bindE /= bindE /= /bindS /= MS_mapE /= fmapE /=.
+rewrite bindE /= /bindS /=.
+rewrite /fresh_loc/=.
+rewrite (nth_error_size_set_nth _ _ Hr).
+by rewrite (nth_error_set_nth_rcons _ _ _ Hr).
+Qed.
+
+Definition crunret (A B : UU0) (m : M A) (s : B) :
+  crun m -> crun (m >> Ret s) = Some s.
+Proof.
+rewrite /crun /= bindE /= /bindS MS_mapE /= fmapE /= bindA /=.
+by case Hm: (m [::]).
+Qed.
+
+Definition crunskip : crun skip = Some tt.
+Proof. by []. Qed.
+
+Definition crunnew (A : UU0) T (m : M A) (s : A -> coq_type M T) :
+  crun m -> crun (m >>= fun x => cnew (s x)).
+Proof.
+rewrite /crun /= bindE /= /bindS MS_mapE /= fmapE /= bindA /=.
+by case Hm: (m [::]).
+Qed.
+
+Definition crunnewget (A : UU0) T (m : M A) (s : A -> coq_type M T) :
+  crun m -> crun (m >>= fun x => cnew (s x) >>= @cget T).
+Proof.
+rewrite /crun /= bindE /= /bindS MS_mapE /= fmapE /= bindA /=.
+case Hm: (m [::]) => [|[a b]] // _.
+by rewrite bindE /= bindE /= -(bindmret (_ >>= _)) bindA cnewget bindE.
+Qed.
+
+Definition crungetnew (A : UU0) T1 T2 (m : M A) (r : A -> loc T1)
+  (s : A -> coq_type M T2) :
+  crun (m >>= fun x => cget (r x)) ->
+  crun (m >>= fun x => cnew (s x) >> cget (r x)).
+Proof.
+rewrite /crun /= !bindE /= /bindS !MS_mapE /= !fmapE /= !bindA /=.
+case Hm: (m [::]) => [|[a b]] //.
+rewrite !bindE /= !bindE /= /bindS MS_mapE /= fmapE /= bindA.
+rewrite !bindE /= !bindE /= /cget.
+case Hnth: nth_error => [[]|] //.
+rewrite (nth_error_rcons_some _ Hnth).
+by case Hcoe: coerce.
+Qed.
+
+Definition crungetput (A : UU0) T (m : M A) (r : A -> loc T)
+  (s : A -> coq_type M T) :
+  crun (m >>= fun x => cget (r x)) ->
+  crun (m >>= fun x => cput (r x) (s x)).
+Proof.
+rewrite /crun /= !bindE /= /bindS !MS_mapE /= !fmapE /= !bindA /=.
+case Hm: (m _) => [|[a b]] //=.
+rewrite !bindE /= !bindE /= /cget /cput /=.
+case Hnth: nth_error => [[T' v]|] //.
+case: (eqVneq T' T) => T'T; last first.
+  by rewrite coerce_None// 1?eq_sym// coerce_None.
+subst T'.
+by rewrite !coerce_Some.
+Qed.
+
+HB.instance Definition _ := Monad.on M.
+HB.instance Definition isMonadTypedStoreModel :=
+  isMonadTypedStore.Build MLU locT_nat M cnewget cnewput cgetput cgetputskip
+    cgetget cputget cputput cgetC cgetnewD cgetnewE cgetputC cputC
+    cputgetC cputnewC
+    crunret crunskip crunnew crunnewget crungetnew crungetput.
+
+End mkbind.
+End ModelTypedStore.
+End ModelTypedStore.
+
 (* TODO?
 (* result of a discussion with Maxime and Enrico on 2019-09-12 *)
 (* Equality between monads from the hierarchy and their counterparts built    *)
@@ -1858,7 +2381,7 @@ End examples_of_algebraic_lifting.
 Module ModelMonadStateRun.
 Section modelmonadstaterun.
 Variable S : UU0.
-Let N : monad := [the monad of ExceptMonad.acto unit].
+Let N : monad := option_monad.
 Definition M : stateMonad S := [the stateMonad S of stateT S N].
 
 Let runStateT : forall A : UU0, M A -> S -> N (A * S)%type := fun A : UU0 => id.
@@ -1891,7 +2414,7 @@ HB.export ModelMonadStateRun.
 Module ModelMonadExceptStateRun.
 Section modelmonadexceptstaterun.
 Variable S : UU0.
-Let N : exceptMonad := [the exceptMonad of ExceptMonad.acto unit].
+Let N : exceptMonad := option_monad.
 Definition M : stateRunMonad S N := [the stateRunMonad S N of MS S N].
 
 Definition failure : forall A, MS S N A := fun A => liftS (@fail N A).

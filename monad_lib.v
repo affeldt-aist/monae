@@ -37,6 +37,7 @@ Require Import hierarchy.
 (*             preserves f g := the monadic function f : A -> M A preserves   *)
 (*                              the value of the function g : A -> B          *)
 (*                  rep n mx == mx >> mx >> ... >> mx, n times                *)
+(* forloop n1 n2 (b : nat -> M unit) : M unit := for-loop                     *)
 (*                                                                            *)
 (******************************************************************************)
 
@@ -152,6 +153,16 @@ HB.instance Definition _ X :=
   isFunctor.Build (@uncurry_M X) (uncurry_f_id X) (uncurry_f_comp X).
 Definition uncurry_F X : functor := [the functor of @uncurry_M X].
 End uncurry_functor.
+
+Lemma bind_uncurry (M : monad) (A B C : UU0) (f : A -> M B) (g : A -> B -> M C) x :
+  (f x >>= fun y => Ret (x, y)) >>= (fun xy => g xy.1 xy.2) =
+  (f x >>= g x).
+Proof. by rewrite bindA; under eq_bind do rewrite bindretf. Qed.
+
+Lemma bindA_uncurry (M : monad) (A B C : UU0) (m : M A) (f : A -> M B) (g : A -> B -> M C) :
+  (m >>= fun x => f x >>= fun y => Ret (x, y)) >>= (fun xy => g xy.1 xy.2) =
+  (m >>= fun x => f x >>= g x).
+Proof. by rewrite bindA; by under eq_bind do rewrite bind_uncurry. Qed.
 
 Section exponential_functor.
 Variable A : UU0.
@@ -586,7 +597,7 @@ Proof. by []. Qed.
 Lemma naturality_mpair (M : monad) (A B : UU0) (f : A -> B) (g : A -> M A):
   (M # f^`2) \o (mpair \o g^`2) = mpair \o ((M # f) \o g)^`2.
 Proof.
-rewrite boolp.funeqE => -[a0 a1].
+apply boolp.funext => -[a0 a1].
 rewrite compE fmap_bind.
 rewrite compE mpairE compE bind_fmap; bind_ext => a2.
 rewrite fcompE fmap_bind 2!compE bind_fmap; bind_ext => a3.
@@ -699,3 +710,40 @@ by rewrite -subn1 addnBA ?expn_gt0 // addnn -muln2 -expnSr subn1.
 Qed.
 
 End MonadCount.
+
+Lemma iteri_bind {M : monad} n (f : nat -> M unit) (m1 m2 : M unit) :
+  iteri n (fun i (m : M unit) => m >> f i) (m1 >> m2) =
+  m1 >> iteri n (fun i (m : M unit) => m >> f i) m2.
+Proof. by elim: n m2 => // n IH m2; rewrite iteriS IH !bindA. Qed.
+
+Lemma iter_bind {M : monad} (T : UU0) n (f : T -> M T) (m1 : M unit) m2 :
+  iter n (fun (m : M T) => m >>= f) (m1 >> m2) =
+  m1 >> iter n (fun (m : M T) => m >>= f) m2.
+Proof. by elim: n m2 => // n IH m2; rewrite iterS IH !bindA. Qed.
+
+Section forloop.
+Variable M : monad.
+
+Definition forloop (n_1 n_2 : nat) (b : nat -> M unit) : M unit :=
+  if n_2 < n_1 then Ret tt else
+  iteri (n_2.+1 - n_1)
+       (fun i (m : M unit) => m >> b (n_1 + i))
+       skip.
+
+Lemma forloopS m n (f : nat -> M unit) :
+  m <= n -> forloop m n f = f m >> forloop m.+1 n f.
+Proof.
+rewrite /forloop => mn.
+rewrite ltnNge mn /= subSS subSn // iteriSr bindskipf.
+rewrite -[f _]bindmskip iteri_bind addn0 ltnS -subn_eq0.
+case: (n-m) => //= k.
+rewrite addSnnS; apply eq_bind => _; congr bind.
+apply eq_iteri => i x; by rewrite addSnnS.
+Qed.
+
+Lemma forloop0 m n (f : nat -> M unit) :
+  m > n -> forloop m n f = skip.
+Proof. by rewrite /forloop => ->. Qed.
+
+End forloop.
+Arguments forloop {M}.
