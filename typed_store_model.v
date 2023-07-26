@@ -480,47 +480,36 @@ Lemma cputnewC T T' (r : loc T) (s : coq_type T) (s' : coq_type T') A
   cput r s >> (cnew s' >>= k).
 Proof.
 apply/boolp.funext => e /=.
-rewrite bindE /= /bindS MS_mapE /= fmapE /= bindA /=.
-rewrite [in RHS]bindE /= /bindS MS_mapE /= fmapE /= bindA /= /cget /cput.
-case Hr: (nth_error _ _) => [[T1 u]|]; last by rewrite bindfailf.
-case: (eqVneq T1 T) => H //=; last by rewrite coerce_None// 1?eq_sym// coerce_None// eq_sym.
-subst T1.
-rewrite [in LHS]coerce_Some//.
-rewrite bindE /= /bindS /= bindE /= bindE /= /bindS /= MS_mapE /= fmapE /=.
-rewrite bindE /= /bindS /= bindE /= bindE /= /bindS /= MS_mapE /= fmapE /=.
-rewrite (nth_error_rcons_some _ Hr).
-rewrite coerce_Some.
-rewrite bindE /= /bindS /= bindE /= bindE /= /bindS /= MS_mapE /= fmapE /=.
-rewrite bindE /= /bindS /=.
-rewrite /fresh_loc/=.
-rewrite /sizeEnv/=.
-rewrite (nth_error_size_set_nth _ _ Hr).
-by rewrite (nth_error_set_nth_rcons _ _ _ Hr).
+have [u Hr|T1 s1' Hr T1s'|Hr] := ntherrorP e r.
+- rewrite (Some_cget _ _ _ _ Hr).
+  rewrite [RHS]MS_bindE [in RHS]/cput Hr coerce_Some bindretf/=.
+  rewrite !MS_bindE /cnew !bindretf/= !MS_bindE /cput.
+  rewrite (nth_error_rcons_some _ Hr) coerce_Some bindretf/= /fresh_loc/=.
+  rewrite /sizeEnv/= /extend_env/=.
+  by rewrite (nth_error_size_set_nth _ _ Hr) (nth_error_set_nth_rcons _ _ _ Hr).
+- rewrite 2!MS_bindE (nocoerce_cget _ T1s')// bindfailf.
+  by rewrite (nocoerce_cput _ _ T1s').
+- by rewrite 2!MS_bindE None_cget// bindfailf None_cput.
 Qed.
 
 Lemma crunret (A B : UU0) (m : M A) (s : B) :
   crun m -> crun (m >> Ret s) = Some s.
-Proof.
-rewrite /crun /= bindE /= /bindS MS_mapE /= fmapE /= bindA /=.
-by case Hm: (m (mkEnv [::])).
-Qed.
+Proof. by rewrite /crun /= MS_bindE/=; case: (m _) => //- []. Qed.
 
 Lemma crunskip : crun skip = Some tt.
 Proof. by []. Qed.
 
 Lemma crunnew (A : UU0) T (m : M A) (s : A -> coq_type T) :
   crun m -> crun (m >>= fun x => cnew (s x)).
-Proof.
-rewrite /crun /= bindE /= /bindS MS_mapE /= fmapE /= bindA /=.
-by case Hm: (m _).
-Qed.
+Proof. by rewrite /crun /= MS_bindE; case: (m _) => // -[]. Qed.
 
 Lemma crunnewget (A : UU0) T (m : M A) (s : A -> coq_type T) :
   crun m -> crun (m >>= fun x => cnew (s x) >>= @cget T).
 Proof.
-rewrite /crun /= bindE /= /bindS MS_mapE /= fmapE /= bindA /=.
-case Hm: (m _) => [|[a b]] // _.
-by rewrite bindE /= bindE /= -(bindmret (_ >>= _)) bindA cnewget bindE.
+rewrite /crun /= MS_bindE.
+case: (m _) => // -[a e] _.
+by under eq_bind do under eq_uncurry do
+  rewrite -(bindmret (_ >>= _)) bindA cnewget.
 Qed.
 
 Lemma crungetnew (A : UU0) T1 T2 (m : M A) (r : A -> loc T1)
