@@ -211,26 +211,40 @@ Proof. by elim: n st => [|n IH] [|d st'] //= /IH ->. Qed.
 End nth_error.
 Arguments nth_error_size {T st n a}.
 
+(* Equality *)
+Section eqtype.
+Variable T : Type.
+Variable eq_dec : comparable T.
+Definition compareb x y : bool := eq_dec x y.
+Definition compareP' x y :=
+  match eq_dec x y as s return reflect (x = y) s with
+  | left a => ReflectT (x = y) a
+  | right b => ReflectF (x = y) b
+  end.
+Definition eqP' (E : eqType) : Equality.axiom (@eq_op E) :=
+  match E with EqType sort (EqMixin op a) => a end.
+End eqtype.
+
 Section coerce.
 Variables (X : eqType) (f : X -> Type).
 
 Definition coerce (T1 T2 : X) (v : f T1) : option (f T2) :=
-  if @eqP _ T1 T2 is ReflectT H then Some (eq_rect _ _ v _ H) else None.
+  if @eqP' _ T1 T2 is ReflectT H then Some (eq_rect _ _ v _ H) else None.
 
 Lemma coerce_sym (T T' : X) (s : f T) (s' : f T') : coerce T' s -> coerce T s'.
 Proof.
-by rewrite /coerce; case: eqP => //= h; case: eqP => //; rewrite h; auto.
+by rewrite /coerce; case: eqP' => //= h; case: eqP' => //; rewrite h; auto.
 Qed.
 
 Lemma coerce_Some (T : X) (s : f T) : coerce T s = Some s.
 Proof.
-by rewrite /coerce; case: eqP => /= [?|]; [rewrite -eq_rect_eq|auto].
+by rewrite /coerce; case: eqP' => /= [?|]; [rewrite -eq_rect_eq|auto].
 Qed.
 
 Lemma coerce_eq (T T' : X) (s : f T) : coerce T' s -> T = T'.
-Proof. by rewrite /coerce; case: eqP. Qed.
+Proof. by rewrite /coerce; case: eqP'. Qed.
 
 Lemma coerce_None (T T' : X) (s : f T) : T != T' -> coerce T' s = None.
-Proof. by rewrite /coerce; case: eqP. Qed.
+Proof. by rewrite /coerce; case: eqP'. Qed.
 
 End coerce.
