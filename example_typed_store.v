@@ -61,7 +61,7 @@ Inductive rlist (a : Type) (a_1 : ml_type) :=
   | Nil
   | Cons (_ : a) (_ : loc (ml_rlist a_1)).
 
-Definition ml_type_eq_mixin := comparableMixin MLTypes.ml_type_eq_dec.
+Definition ml_type_eq_mixin := EqMixin (compareP' MLTypes.ml_type_eq_dec).
 Canonical ml_type_eqType := Eval hnf in EqType _ ml_type_eq_mixin.
 
 End MLTypes.
@@ -555,18 +555,20 @@ Definition Env := typed_store_model.Env ml_type.
 
 Definition empty_env := @typed_store_model.mkEnv ml_type nil.
 
-Definition W T := (Env * T)%type.
-
-Definition it0 : W unit := (empty_env, tt).
+Definition it0 : W unit := inr (tt, empty_env).
 
 Local Open Scope do_notation.
 
 Definition incr (l : loc ml_int) : M int :=
   do x <- cget l; do _ <- cput l (Uint63.succ x); Ret (Uint63.succ x).
 
-Definition evalme := (do l <- @cnew ml_type ml_int 3; incr l)%int63 empty_env.
+Definition l : W (loc ml_int) := Restart it0 (cnew ml_int 3)%int63.
 
-Eval vm_compute in evalme.
+Definition it1 := Restart l (do l <- FromW l; incr l).
+Eval vm_compute in it1.
+
+Definition it2 := Restart it1 (do l <- FromW l; incr l).
+Eval vm_compute in it2.
 
 End eval.
 
