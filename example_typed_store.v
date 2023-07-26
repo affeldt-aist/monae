@@ -5,6 +5,7 @@ From mathcomp Require Import all_ssreflect.
 From mathcomp Require boolp.
 From infotheo Require Import ssrZ.
 Require monad_model.
+From HB Require Import structures.
 Require Import monae_lib hierarchy monad_lib typed_store_lib.
 
 (******************************************************************************)
@@ -84,16 +85,17 @@ Fixpoint coq_type_nat (T : ml_type) : Type :=
 End with_monad.
 
 (* use coq_type_nat (typed_store_model.v) *)
-Canonical MLU := @Build_ML_universe _ coq_type_nat ml_unit val_nonempty.
+HB.instance Definition _ := @isML_universe.Build ml_type
+  (Equality.class ml_type_eqType) coq_type_nat ml_unit val_nonempty.
 
 (* alternative: use coq_type_nat0 (monad_model.v) *)
-(*
-Definition coq_type_nat0 := @coq_type_nat idfun.
-Canonical MLU := @monad_model.MLU _ coq_type_nat0 ml_unit (val_nonempty idfun).
-*)
+(*Definition coq_type_nat0 := @coq_type_nat idfun.
+HB.instance Definition _ := @isML_universe.Build ml_type
+  (Equality.class ml_type_eqType) (fun M => @coq_type_nat0) ml_unit
+  (fun M => val_nonempty idfun).*)
 
 Section cyclic.
-Variables (M : typedStoreMonad MLU MLTypes.locT).
+Variables (M : typedStoreMonad ml_type MLTypes.locT).
 Local Notation coq_type := (hierarchy.coq_type (MonadTypedStore.sort M)).
 Local Open Scope do_notation.
 
@@ -128,7 +130,7 @@ Qed.
 End cyclic.
 
 Section factorial.
-Variable M : typedStoreMonad MLU MLTypes.locT.
+Variable M : typedStoreMonad ml_type MLTypes.locT.
 Notation coq_type := (@coq_type M).
 
 Fixpoint fact_ref (r : loc ml_int) (n : nat) : M unit :=
@@ -154,7 +156,7 @@ Qed.
 End factorial.
 
 Section fact_for.
-Variable M : typedStoreMonad MLU MLTypes.locT.
+Variable M : typedStoreMonad ml_type MLTypes.locT.
 Local Notation coq_type := (hierarchy.coq_type (MonadTypedStore.sort M)).
 Local Open Scope do_notation.
 
@@ -195,7 +197,7 @@ Qed.
 End fact_for.
 
 Section fibonacci.
-Variable M : typedStoreMonad MLU MLTypes.locT.
+Variable M : typedStoreMonad ml_type MLTypes.locT.
 Local Notation coq_type := (hierarchy.coq_type (MonadTypedStore.sort M)).
 
 Fixpoint fibo_rec n :=
@@ -421,10 +423,13 @@ Fixpoint coq_type63 (T : ml_type) : Type :=
 End with_monad.
 (******************************************************************************)
 
-Canonical ml_type63 := @Build_ML_universe _ coq_type63 ml_unit val_nonempty.
+HB.instance Definition _ := @isML_universe.Build ml_type
+  (Equality.class ml_type_eqType) coq_type63 ml_unit val_nonempty.
+
+(*Canonical ml_type63 := @Build_ML_universe _ coq_type63 ml_unit val_nonempty.*)
 
 Section fact_for_int63.
-Variable M : typedStoreMonad ml_type63 MLTypes.locT.
+Variable M : typedStoreMonad ml_type MLTypes.locT.
 Local Notation coq_type := (hierarchy.coq_type (MonadTypedStore.sort M)).
 Local Open Scope do_notation.
 
@@ -539,5 +544,30 @@ by rewrite lt0n subn_eq0 -ltnNge.
 Qed.
 End fact_for63_ok.
 End fact_for_int63.
+
+Section eval.
+Require Import typed_store_model.
+
+Definition M := [the typedStoreMonad ml_type monad_model.locT_nat of
+                 acto ml_type].
+
+Definition Env := typed_store_model.Env ml_type.
+
+Definition empty_env := @typed_store_model.mkEnv ml_type nil.
+
+Definition W T := (Env * T)%type.
+
+Definition it0 : W unit := (empty_env, tt).
+
+Local Open Scope do_notation.
+
+Definition incr (l : loc ml_int) : M int :=
+  do x <- cget l; do _ <- cput l (Uint63.succ x); Ret (Uint63.succ x).
+
+Definition evalme := (do l <- @cnew ml_type ml_int 3; incr l)%int63 empty_env.
+
+Eval vm_compute in evalme.
+
+End eval.
 
 End MLtypes63.

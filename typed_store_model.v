@@ -55,7 +55,7 @@ Local Notation coq_type := (@coq_type MLU M).
 
 Local Notation val_nonundef := (val_nonempty MLU).
 
-Definition def := mkbind (val_nonempty MLU M).
+Definition def := mkbind (@val_nonempty MLU M).
 
 Local Notation nth_error := List.nth_error.
 

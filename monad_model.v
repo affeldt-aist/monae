@@ -1666,27 +1666,31 @@ Definition locT_nat := [eqType of nat].
 Module ModelTypedStore.
 
 Section ModelTypedStore.
-Variables (ml_type0 : eqType) (coq_type0 : ml_type0 -> Type)
-          (ml_nonempty0 : ml_type0) (val_nonempty0 : coq_type0 ml_nonempty0).
+Variables (ml_type0' : eqType) (coq_type0 : ml_type0' -> Type)
+          (ml_nonempty0 : ml_type0') (val_nonempty0 : coq_type0 ml_nonempty0).
 
-Definition MLU : ML_universe :=
-  @Build_ML_universe (ml_type0) (fun M => @coq_type0)
-  (ml_nonempty0) (fun M => val_nonempty0).
+Definition ml_type0 : Type := ml_type0'.
+
+HB.instance Definition _ := @isML_universe.Build ml_type0
+  (Equality.class ml_type0') (fun M => @coq_type0) ml_nonempty0
+  (fun M => val_nonempty0).
 
 Record binding (M : Type -> Type) :=
-  mkbind { bind_type : MLU; bind_val : coq_type M bind_type }.
+  mkbind { bind_type : ml_type0; bind_val : coq_type M bind_type }.
+
 Arguments mkbind {M}.
 
-Definition acto : UU0 -> UU0 := MS (seq (binding idfun)) [the monad of option_monad].
+Definition acto : UU0 -> UU0 :=
+  MS (seq (binding idfun)) [the monad of option_monad].
 Local Notation M := acto.
 
-Local Notation coq_type' := (@coq_type MLU idfun).
+Local Notation coq_type' := (@coq_type ml_type0 idfun).
 
-Definition def : binding idfun := mkbind (ml_nonempty MLU) (val_nonempty MLU idfun).
+Definition def : binding idfun := mkbind ml_nonempty (val_nonempty idfun).
 
 Local Notation nth_error := List.nth_error.
 
-Notation loc := (@loc MLU locT_nat).
+Notation loc := (@loc ml_type0 locT_nat).
 
 Definition cnew T (v : coq_type M T) : M (loc T) :=
   fun st => let n := size st in
@@ -1715,7 +1719,7 @@ Definition crun (A : UU0) (m : M A) : option A :=
 
 Definition Env := seq (binding idfun).
 
-Definition fresh_loc (T : MLU) (e : Env) := mkloc T (size e).
+Definition fresh_loc (T : ml_type0) (e : Env) := mkloc T (size e).
 
 Section mkbind.
 Local Notation mkbind := (@mkbind idfun).
@@ -1723,7 +1727,7 @@ Local Notation mkbind := (@mkbind idfun).
 Definition extend_env T (v : coq_type M T) (e : Env) :=
   rcons e (mkbind T v).
 
-Variant nth_error_spec (T : MLU) (e : Env) (r : loc T) : Type :=
+Variant nth_error_spec (T : ml_type0) (e : Env) (r : loc T) : Type :=
   | NthError : forall s : coq_type M T,
     nth_error e (loc_id r) = Some (mkbind T s) -> nth_error_spec e r
   | NthError_nocoerce : forall T' (s' : coq_type M T'),
@@ -1731,7 +1735,7 @@ Variant nth_error_spec (T : MLU) (e : Env) (r : loc T) : Type :=
     nth_error_spec e r
   | NthError_None : nth_error e (loc_id r) = None -> nth_error_spec e r.
 
-Lemma ntherrorP (T : MLU) (e : Env) (r : loc T) : nth_error_spec e r.
+Lemma ntherrorP (T : ml_type0) (e : Env) (r : loc T) : nth_error_spec e r.
 Proof.
 case H : (nth_error e (loc_id r)) => [[T' s']|].
   have [Ts'|Ts'] := boolp.pselect (coerce T s').
@@ -1772,7 +1776,7 @@ Lemma nocoerce_cget T (r : loc T) T' (s' : coq_type M T') e :
   cget r e = fail.
 Proof. by move=> H Ts'; rewrite /cget H; case: coerce Ts'. Qed.
 
-Lemma nocoerce_cput T (r : loc T) (s : coq_type M T) T' (s' : coq_type M T') e :
+Lemma nocoerce_cput T (r : loc T) (s : coq_type M T) (T' : ml_type0) (s' : coq_type M T') e :
   nth_error e (loc_id r) = Some (mkbind T' s') ->
   ~ coerce T s' ->
   cput r s e = fail.
@@ -1854,7 +1858,7 @@ have [s' H|T' s' H Ts'|H] := ntherrorP e r.
 - by rewrite 2!MS_bindE None_cput.
 Qed.
 
-Lemma Some_cputput (T : MLU) (r : loc T) (s s' : coq_type M T)
+Lemma Some_cputput (T : ml_type0) (r : loc T) (s s' : coq_type M T)
   (e : Env) (s'' : coq_type M T) :
   nth_error e (loc_id r) = Some (mkbind T s'') ->
   (cput r s >> cput r s') e = cput r s' e.
@@ -2157,7 +2161,7 @@ Qed.
 
 HB.instance Definition _ := Monad.on M.
 HB.instance Definition isMonadTypedStoreModel :=
-  isMonadTypedStore.Build MLU locT_nat M cnewget cnewput cgetput cgetputskip
+  isMonadTypedStore.Build ml_type0 locT_nat M cnewget cnewput cgetput cgetputskip
     cgetget cputget cputput cgetC cgetnewD cgetnewE cgetputC cputC
     cputgetC cputnewC
     crunret crunskip crunnew crunnewget crungetnew crungetput.
