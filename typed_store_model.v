@@ -547,4 +547,15 @@ HB.instance Definition isMonadTypedStoreModel :=
     cputgetC cputnewC
     crunret crunskip crunnew crunnewget crungetnew crungetput.
 
+(* To restart computations *)
+Definition W (A : UU0) : UU0 := unit + (A * Env).
+
+Definition Restart A B (r : W A) (f : M B) : W B :=
+  if r is inr (_, env) then f env else inl tt.
+
+Definition FromW A (r : W A) : M A :=
+  fun env => if r is inr (a, _) then inr (a, env) else inl tt.
+
 End ModelTypedStore_contd.
+
+Arguments W {MLU}.
