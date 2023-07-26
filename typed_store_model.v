@@ -65,16 +65,16 @@ Definition fresh_loc (T : MLU) (e : Env) := mkloc T (sizeEnv e).
 
 Local Notation loc := (@loc MLU locT_nat).
 
-Definition cnew T (v : coq_type T) : M (loc T) :=
+Let cnew T (v : coq_type T) : M (loc T) :=
   fun e => inr (fresh_loc T e, extend_env v e).
 
-Definition cget T (r : loc T) : M (coq_type T) :=
+Let cget T (r : loc T) : M (coq_type T) :=
   fun st =>
     if nth_error (ofEnv st) (loc_id r) is Some (mkbind T' v) then
       if coerce T v is Some u then inr (u, st) else inl tt
     else inl tt.
 
-Definition cput T (r : loc T) (v : coq_type T) : M unit :=
+Let cput T (r : loc T) (v : coq_type T) : M unit :=
   fun st =>
     let n := loc_id r in
     if nth_error (ofEnv st) n is Some (mkbind T' _) then
@@ -84,7 +84,7 @@ Definition cput T (r : loc T) (v : coq_type T) : M unit :=
       else inl tt
     else inl tt.
 
-Definition crun (A : UU0) (m : M A) : option A :=
+Let crun (A : UU0) (m : M A) : option A :=
   match m (mkEnv nil) with
   | inl _ => None
   | inr (a, _) => Some a

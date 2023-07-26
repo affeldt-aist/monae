@@ -562,7 +562,7 @@ Local Open Scope do_notation.
 Definition incr (l : loc ml_int) : M int :=
   do x <- cget l; do _ <- cput l (Uint63.succ x); Ret (Uint63.succ x).
 
-Definition l : W (loc ml_int) := Restart it0 (@cnew _ ml_int 3)%int63.
+Definition l : W (loc ml_int) := Restart it0 (cnew ml_int 3)%int63.
 
 Definition it1 := Restart l (do l <- FromW l; incr l).
 Eval vm_compute in it1.
