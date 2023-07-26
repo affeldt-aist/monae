@@ -105,6 +105,10 @@ Proof. by move=> f; apply boolp.funext => -[]. Qed.
 
 Lemma uncurryK f : cancel (@uncurry A B C) curry.
 Proof. by []. Qed.
+
+Lemma eq_uncurry f g : f =1 g -> uncurry f = uncurry g.
+Proof. by move=> fg; apply/boolp.funext => -[a b]/=; rewrite fg. Qed.
+
 End curry.
 
 Section curry3.

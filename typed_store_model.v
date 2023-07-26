@@ -448,38 +448,30 @@ Lemma cputgetC T1 T2 (r1 : loc T1) (r2 : loc T2) (s1 : coq_type T1)
   loc_id r1 != loc_id r2 ->
   cput r1 s1 >> cget r2 >>= k = cget r2 >>= (fun v => cput r1 s1 >> k v).
 Proof.
-move=> Hr.
-apply/boolp.funext => e /=.
-rewrite !bindA.
-rewrite bindE /= /bindS MS_mapE /= fmapE /= bindA /=.
-rewrite [in RHS]bindE /= /bindS MS_mapE /= fmapE /= bindA /= /cput /cget.
-case Hr1: (nth_error _ _) => [[T1' u]|]; last first.
-  rewrite bindfailf.
-  case Hr2: (nth_error _ _) => [[T2' v]|]; last by rewrite bindfailf.
-  case Hc: (coerce T2 v) => [u|]; last by rewrite bindfailf.
-  by rewrite !bindE /= !bindE /= /bindS MS_mapE /= fmapE Hr1 bindfailf.
-case Hr2: (nth_error _ _) => [[T2' v]|]; last first.
-  rewrite bindfailf.
-  case Hc: (coerce T1' s1) => [v|]; last by rewrite bindfailf.
-  rewrite !bindE /= !bindE /= /bindS MS_mapE /= fmapE.
-  by rewrite (nth_error_set_nth_none _ _ Hr2 Hr1) bindfailf.
-case: (eqVneq T1 T1') => HT1; last first.
-  rewrite coerce_None//.
-  rewrite bindfailf.
-  case: (eqVneq T2' T2) => HT2; last by rewrite coerce_None// bindfailf.
-  subst T2'.
-  rewrite coerce_Some.
-  rewrite bindE/= bindE/= bindE/= /bindS /= MS_mapE /= fmapE Hr1.
-  by rewrite coerce_None.
-subst T1'.
-rewrite coerce_Some//.
-rewrite bindE /= bindE /= bindE /= /bindS /= MS_mapE /= fmapE.
-rewrite (nth_error_set_nth_other _ _ _ Hr2) 1?eq_sym//.
-case: (eqVneq T2' T2) => HT2'; last by rewrite coerce_None.
-subst T2'.
-rewrite coerce_Some bindE /= bindE /= bindE /= bindE /=.
-rewrite /bindS /= MS_mapE /= fmapE Hr1.
-by rewrite coerce_Some.
+move=> Hr; apply/boolp.funext => e /=; rewrite !bindA.
+have [u Hr1|T1' s1' Hr1 T1s'|Hr1] := ntherrorP e r1.
+- have [v Hr2|T' s' Hr2 T2s'|Hr2] := ntherrorP e r2.
+  + rewrite (Some_cget _ _ _ _ Hr2).
+    rewrite [in LHS]MS_bindE [in RHS]MS_bindE /cput Hr1 coerce_Some !bindretf/=.
+    rewrite MS_bindE /cget (nth_error_set_nth_other _ _ _ Hr2) 1?eq_sym//.
+    by rewrite coerce_Some.
+  + rewrite [RHS]MS_bindE (nocoerce_cget _ T2s')// bindfailf.
+    rewrite !MS_bindE /cput Hr1 coerce_Some bindretf//=.
+    rewrite MS_bindE /cget/= (nth_error_set_nth_other _ _ _ Hr2) 1?eq_sym//.
+    by move: (T2s'); case: coerce.
+  + rewrite [in RHS]MS_bindE None_cget// bindfailf.
+    rewrite MS_bindE /cput Hr1 coerce_Some bindretf/=.
+    by rewrite MS_bindE /cget (nth_error_set_nth_none _ _ Hr2 Hr1).
+- rewrite MS_bindE (nocoerce_cput _ _ T1s')// bindfailf.
+  have [v Hr2|T' s' Hr2 T2s'|Hr2] := ntherrorP e r2.
+  - by rewrite (Some_cget _ _ _ _ Hr2) MS_bindE (nocoerce_cput _ _ T1s').
+  - by rewrite MS_bindE (nocoerce_cget _ T2s').
+  - by rewrite MS_bindE None_cget.
+- rewrite MS_bindE None_cput// bindfailf MS_bindE.
+  have [v Hr2|T' s' Hr2 T2s'|Hr2] := ntherrorP e r2.
+  + by rewrite /cget Hr2 coerce_Some bindretf//= MS_bindE None_cput.
+  + by rewrite (nocoerce_cget Hr2).
+  + by rewrite None_cget.
 Qed.
 
 Lemma cputnewC T T' (r : loc T) (s : coq_type T) (s' : coq_type T') A
