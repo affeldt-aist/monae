@@ -1692,17 +1692,17 @@ Local Notation nth_error := List.nth_error.
 
 Notation loc := (@loc ml_type locT_nat).
 
-Definition cnew T (v : coq_type M T) : M (loc T) :=
+Let cnew T (v : coq_type M T) : M (loc T) :=
   fun st => let n := size st in
             Ret (mkloc T n, rcons st (mkbind T (v : coq_type' T))).
 
-Definition cget T (r : loc T) : M (coq_type M T) :=
+Let cget T (r : loc T) : M (coq_type M T) :=
   fun st =>
     if nth_error st (loc_id r) is Some (mkbind T' v) then
       if coerce T v is Some u then Ret (u, st) else fail
     else fail.
 
-Definition cput T (r : loc T) (v : coq_type M T) : M unit :=
+Let cput T (r : loc T) (v : coq_type M T) : M unit :=
   fun st =>
     let n := loc_id r in
     if nth_error st n is Some (mkbind T' _) then
@@ -1711,7 +1711,7 @@ Definition cput T (r : loc T) (v : coq_type M T) : M unit :=
       else fail
     else fail.
 
-Definition crun (A : UU0) (m : M A) : option A :=
+Let crun (A : UU0) (m : M A) : option A :=
   match m nil with
   | inl _ => None
   | inr (a, _) => Some a
@@ -1755,14 +1755,14 @@ Lemma Some_cget T (r : loc T) (s : coq_type M T) e (A : UU0) (f : coq_type M T -
 Proof. by move=> H; rewrite MS_bindE /cget H coerce_Some. Qed.
 Arguments Some_cget {T r} s.
 
-Lemma cnewget T (s : coq_type M T) A (k : loc T -> coq_type M T -> M A) :
+Let cnewget T (s : coq_type M T) A (k : loc T -> coq_type M T -> M A) :
   cnew s >>= (fun r => cget r >>= k r) = cnew s >>= (fun r => k r s).
 Proof.
 apply/boolp.funext => e.
 by rewrite bind_cnew (Some_cget s)// nth_error_rcons_size.
 Qed.
 
-Lemma cnewput T (s t : coq_type M T) A (k : loc T -> M A) :
+Let cnewput T (s t : coq_type M T) A (k : loc T -> M A) :
   cnew s >>= (fun r => cput r t >> k r) = cnew t >>= k.
 Proof.
 apply/boolp.funext => e.
@@ -1812,7 +1812,7 @@ Proof.
 by move=> H; rewrite /cput/= H coerce_Some/= nth_error_set_nth_id.
 Qed.
 
-Lemma cgetputskip T (r : loc T) : cget r >>= cput r = cget r >> skip.
+Let cgetputskip T (r : loc T) : cget r >>= cput r = cget r >> skip.
 Proof.
 apply/boolp.funext => e /=.
 have [s' H|T' s' H Ts'|H] := ntherrorP e r.
@@ -1821,7 +1821,7 @@ have [s' H|T' s' H Ts'|H] := ntherrorP e r.
 - by rewrite !MS_bindE None_cget.
 Qed.
 
-Lemma cgetget T (r : loc T) (A : UU0)
+Let cgetget T (r : loc T) (A : UU0)
     (k : coq_type M T -> coq_type M T -> M A) :
   cget r >>= (fun s => cget r >>= k s) = cget r >>= fun s => k s s.
 Proof.
@@ -1848,7 +1848,7 @@ by rewrite bindE/= (Some_cget s)// nth_error_set_nth.
 Qed.
 Arguments Some_cputget {T} s'.
 
-Lemma cputget T (r : loc T) (s : coq_type M T) (A : UU0)
+Let cputget T (r : loc T) (s : coq_type M T) (A : UU0)
     (k : coq_type M T -> M A) :
   cput r s >> (cget r >>= k) = cput r s >> k s.
 Proof.
@@ -1873,7 +1873,7 @@ rewrite nth_error_set_nth coerce_Some/=.
 by rewrite set_set_nth eqxx.
 Qed.
 
-Lemma cputput T (r : loc T) (s s' : coq_type M T) :
+Let cputput T (r : loc T) (s s' : coq_type M T) :
   cput r s >> cput r s' = cput r s'.
 Proof.
 apply/boolp.funext => e.
@@ -1883,7 +1883,7 @@ have [s'' H|T'' s'' H Ts''|H] := ntherrorP e r.
 - by rewrite MS_bindE !None_cput.
 Qed.
 
-Lemma cgetC T1 T2 (r1 : loc T1) (r2 : loc T2) (A : UU0)
+Let cgetC T1 T2 (r1 : loc T1) (r2 : loc T2) (A : UU0)
            (k : coq_type M T1 -> coq_type M T2 -> M A) :
   cget r1 >>= (fun u => cget r2 >>= (fun v => k u v)) =
   cget r2 >>= (fun v => cget r1 >>= (fun u => k u v)).
@@ -1908,7 +1908,7 @@ have [u Hr1|u T1' Hr1 T1u|Hr1] := ntherrorP e r1.
 Qed.
 
 (* NB: this is similar to the cnewget law *)
-Lemma cnewgetD_helper e T T' r v (s : coq_type M T') A (k : loc T' -> coq_type M T -> M A) :
+Let cnewgetD_helper e T T' r v (s : coq_type M T') A (k : loc T' -> coq_type M T -> M A) :
   nth_error e (loc_id r) = Some (mkbind T v) ->
   (cnew s >>= (fun r' => cget r >>= k r')) e = (cnew s >>= (fun r => k r v)) e.
 Proof.
@@ -1917,7 +1917,7 @@ rewrite bind_cnew//.
 by rewrite (Some_cget v) // (nth_error_rcons_some _ H).
 Qed.
 
-Lemma cgetnewD T T' (r : loc T) (s : coq_type M T') A
+Let cgetnewD T T' (r : loc T) (s : coq_type M T') A
            (k : loc T' -> coq_type M T -> coq_type M T -> M A) :
   cget r >>= (fun u => cnew s >>= fun r' => cget r >>= k r' u) =
   cget r >>= (fun u => cnew s >>= fun r' => k r' u u).
@@ -1929,7 +1929,7 @@ have [u Hr|u T1 Hr T1u|Hr] := ntherrorP e r.
 - by rewrite !MS_bindE None_cget.
 Qed.
 
-Lemma cgetnewE T1 T2 (r1 : loc T1) (s : coq_type M T2) (A : UU0)
+Let cgetnewE T1 T2 (r1 : loc T1) (s : coq_type M T2) (A : UU0)
     (k1 k2 : loc T2 -> M A) :
   (forall r2 : loc T2, loc_id r1 != loc_id r2 -> k1 r2 = k2 r2) ->
   cget r1 >> (cnew s >>= k1) = cget r1 >> (cnew s >>= k2).
@@ -1943,7 +1943,7 @@ have [u r1u|T' s' Hr1 T1s'|Hr] := ntherrorP e r1.
 - by rewrite !MS_bindE None_cget.
 Qed.
 
-Lemma cgetputC T1 T2 (r1 : loc T1) (r2 : loc T2) (s : coq_type M T2) :
+Let cgetputC T1 T2 (r1 : loc T1) (r2 : loc T2) (s : coq_type M T2) :
   cget r1 >> cput r2 s = cput r2 s >> cget r1 >> skip.
 Proof.
 apply/boolp.funext => e /=.
@@ -2008,7 +2008,7 @@ have [v Hr2|T2' v Hr2 T2v|Hr2] := ntherrorP e r2; last first.
     by rewrite (@nth_error_set_nth_other _ _ _ _ _ (mkbind T1' s1')).
 Qed.
 
-Lemma cputC T1 T2 (r1 : loc T1) (r2 : loc T2) (s1 : coq_type M T1)
+Let cputC T1 T2 (r1 : loc T1) (r2 : loc T2) (s1 : coq_type M T1)
     (s2 : coq_type M T2) (A : UU0) :
   loc_id r1 != loc_id r2 \/ JMeq s1 s2 ->
   cput r1 s1 >> cput r2 s2 = cput r2 s2 >> cput r1 s1.
@@ -2057,7 +2057,7 @@ have [u Hr1|T1' s'd Hr1 T1s'|Hr1] := ntherrorP e r1; last first.
       by rewrite set_set_nth (negbTE Hr).
 Qed.
 
-Lemma cputgetC T1 T2 (r1 : loc T1) (r2 : loc T2) (s1 : coq_type M T1)
+Let cputgetC T1 T2 (r1 : loc T1) (r2 : loc T2) (s1 : coq_type M T1)
     (A : UU0) (k : coq_type M T2 -> M A) :
   loc_id r1 != loc_id r2 ->
   cput r1 s1 >> cget r2 >>= k = cget r2 >>= (fun v => cput r1 s1 >> k v).
@@ -2088,7 +2088,7 @@ have [u Hr1|T1' s1' Hr1 T1s'|Hr1] := ntherrorP e r1.
   + by rewrite None_cget.
 Qed.
 
-Lemma cputnewC T T' (r : loc T) (s : coq_type M T) (s' : coq_type M T') A
+Let cputnewC T T' (r : loc T) (s : coq_type M T) (s' : coq_type M T') A
     (k : loc T' -> M A) :
   cget r >> (cnew s' >>= fun r' => cput r s >> k r') =
   cput r s >> (cnew s' >>= k).
