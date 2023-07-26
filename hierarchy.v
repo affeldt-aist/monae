@@ -1092,11 +1092,16 @@ Variant loc (ml_type : Type) (locT : eqType) : ml_type -> Type :=
 Definition loc_id (ml_type : Type) (locT : eqType) {T : ml_type} (l : loc locT T) : locT :=
   let: mkloc _ n := l in n.
 
-Structure ML_universe := {
-  ml_type :> eqType ;
+HB.mixin Structure isML_universe (ml_type : Type) := {
+  eqclass : Equality.class_of ml_type ;
   coq_type : forall M : Type -> Type, ml_type -> Type ;
   ml_nonempty : ml_type ;
   val_nonempty : forall M, coq_type M ml_nonempty }.
+
+#[short(type=ML_universe)]
+HB.structure Definition ML_UNIVERSE := {ml_type & isML_universe ml_type}.
+
+Canonical isML_universe_eqType (T : ML_universe) := EqType T eqclass.
 
 HB.mixin Record isMonadTypedStore (MLU : ML_universe) (locT : eqType) (M : UU0 -> UU0)
     of Monad M := {
