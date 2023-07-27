@@ -561,6 +561,8 @@ Definition empty_env := @typed_store_model.mkEnv ml_type nil.
 Definition it0 : W unit := inr (tt, empty_env).
 
 Local Open Scope do_notation.
+Local Notation mkloc := (mkloc (locT:=monad_model.locT_nat)).
+Local Notation coq_type := (coq_type _).
 
 Definition incr (l : loc ml_int) : M int :=
   do x <- cget l; do _ <- cput l (Uint63.succ x); Ret (Uint63.succ x).
