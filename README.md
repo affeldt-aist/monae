@@ -41,9 +41,10 @@ in several examples of monadic equational reasoning.
 - Coq namespace: `monae`
 - Related publication(s):
   - [A hierarchy of monadic effects for program verification using equational reasoning](https://staff.aist.go.jp/reynald.affeldt/documents/monae.pdf) doi:[10.1007/978-3-030-33636-3_9](https://doi.org/10.1007/978-3-030-33636-3_9)
-  - [A Trustful Monad for Axiomatic Reasoning with Probability and Nondeterminism](https://arxiv.org/abs/2003.09993) doi:[10.1017/S0956796821000137](https://doi.org/10.1017/S0956796821000137)
   - [Extending Equational Monadic Reasoning with Monad Transformers](https://drops.dagstuhl.de/opus/volltexte/2021/13881/) doi:[10.4230/LIPIcs.TYPES.2020.2](https://doi.org/10.4230/LIPIcs.TYPES.2020.2)
+  - [A Trustful Monad for Axiomatic Reasoning with Probability and Nondeterminism](https://arxiv.org/abs/2003.09993) doi:[10.1017/S0956796821000137](https://doi.org/10.1017/S0956796821000137)
   - [Towards a practical library for monadic equational reasoning in Coq](https://staff.aist.go.jp/reynald.affeldt/documents/monae-mpc2022.pdf) doi:[10.1007/978-3-031-16912-0_6](https://doi.org/10.1007/978-3-031-16912-0_6)
+  - [Environment-friendly monadic equational reasoning for OCaml](https://coq-workshop.gitlab.io/2023/abstracts/coq2023_monadic-reasoning.pdf) 
 
 ## Building and installation instructions
 
