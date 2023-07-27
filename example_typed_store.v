@@ -61,7 +61,7 @@ Inductive rlist (a : Type) (a_1 : ml_type) :=
   | Nil
   | Cons (_ : a) (_ : loc (ml_rlist a_1)).
 
-Definition ml_type_eq_mixin := EqMixin (compareP' MLTypes.ml_type_eq_dec).
+Definition ml_type_eq_mixin := EqMixin (comparePc MLTypes.ml_type_eq_dec).
 Canonical ml_type_eqType := Eval hnf in EqType _ ml_type_eq_mixin.
 
 End MLTypes.
