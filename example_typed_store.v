@@ -53,9 +53,7 @@ Defined.
 
 Definition val_nonempty (M : UU0 -> UU0) := tt.
 
-Definition locT := [eqType of nat].
-
-Notation loc := (@loc _ locT).
+Notation loc := (@loc _ monad_model.locT_nat).
 
 Inductive rlist (a : Type) (a_1 : ml_type) :=
   | Nil
@@ -67,7 +65,7 @@ Canonical ml_type_eqType := Eval hnf in EqType _ ml_type_eq_mixin.
 End MLTypes.
 (******************************************************************************)
 
-Module MLTypesNat.
+Module CoqTypeNat.
 Import MLTypes.
 
 Section with_monad.
@@ -84,18 +82,19 @@ Fixpoint coq_type_nat (T : ml_type) : Type :=
   end.
 End with_monad.
 
-(* use coq_type_nat (typed_store_model.v) *)
+(* Standard definition using [coq_type_nat M] (typed_store_model.v) *)
 HB.instance Definition _ := @isML_universe.Build ml_type
   (Equality.class ml_type_eqType) coq_type_nat ml_unit val_nonempty.
 
-(* alternative: use coq_type_nat0 (monad_model.v) *)
-(*Definition coq_type_nat0 := @coq_type_nat idfun.
-HB.instance Definition _ := @isML_universe.Build ml_type
-  (Equality.class ml_type_eqType) (fun M => @coq_type_nat0) ml_unit
-  (fun M => val_nonempty idfun).*)
+(* Alternative: use [coq_type_nat idfun] (monad_model.v) *)
+(*HB.instance Definition _ := @isML_universe.Build ml_type
+  (Equality.class ml_type_eqType) (fun M => @coq_type_nat idfun)
+  ml_unit (fun M => val_nonempty idfun).*)
+
+Definition typedStoreMonad := typedStoreMonad ml_type monad_model.locT_nat.
 
 Section cyclic.
-Variables (M : typedStoreMonad ml_type MLTypes.locT).
+Variables (M : typedStoreMonad).
 Local Notation coq_type := (hierarchy.coq_type (MonadTypedStore.sort M)).
 Local Open Scope do_notation.
 
@@ -130,7 +129,7 @@ Qed.
 End cyclic.
 
 Section factorial.
-Variable M : typedStoreMonad ml_type MLTypes.locT.
+Variable M : typedStoreMonad.
 Notation coq_type := (@coq_type M).
 
 Fixpoint fact_ref (r : loc ml_int) (n : nat) : M unit :=
@@ -156,7 +155,7 @@ Qed.
 End factorial.
 
 Section fact_for.
-Variable M : typedStoreMonad ml_type MLTypes.locT.
+Variable M : typedStoreMonad.
 Local Notation coq_type := (hierarchy.coq_type (MonadTypedStore.sort M)).
 Local Open Scope do_notation.
 
@@ -197,7 +196,7 @@ Qed.
 End fact_for.
 
 Section fibonacci.
-Variable M : typedStoreMonad ml_type MLTypes.locT.
+Variable M : typedStoreMonad.
 Local Notation coq_type := (hierarchy.coq_type (MonadTypedStore.sort M)).
 
 Fixpoint fibo_rec n :=
@@ -252,7 +251,7 @@ by under eq_bind do rewrite cnewput.
 Qed.
 End fibonacci.
 
-End MLTypesNat.
+End CoqTypeNat.
 
 Require Import PrimInt63.
 Require Sint63.
@@ -403,7 +402,7 @@ by apply Zle_0_nat.
 Qed.
 End Int63.
 
-Module MLtypes63.
+Module CoqTypeInt63.
 Import MLTypes.
 
 (******************************************************************************)
@@ -423,13 +422,17 @@ Fixpoint coq_type63 (T : ml_type) : Type :=
 End with_monad.
 (******************************************************************************)
 
+(* Standard definition *)
 HB.instance Definition _ := @isML_universe.Build ml_type
   (Equality.class ml_type_eqType) coq_type63 ml_unit val_nonempty.
 
-(*Canonical ml_type63 := @Build_ML_universe _ coq_type63 ml_unit val_nonempty.*)
+(* Alternative: use [coq_type63 idfun] (monad_model.v) *)
+(*HB.instance Definition _ := @isML_universe.Build ml_type
+  (Equality.class ml_type_eqType) (fun M => @coq_type63 idfun)
+  ml_unit (fun M => val_nonempty idfun).*)
 
 Section fact_for_int63.
-Variable M : typedStoreMonad ml_type MLTypes.locT.
+Variable M : typedStoreMonad ml_type monad_model.locT_nat.
 Local Notation coq_type := (hierarchy.coq_type (MonadTypedStore.sort M)).
 Local Open Scope do_notation.
 
@@ -558,6 +561,8 @@ Definition empty_env := @typed_store_model.mkEnv ml_type nil.
 Definition it0 : W unit := inr (tt, empty_env).
 
 Local Open Scope do_notation.
+Local Notation mkloc := (mkloc (locT:=monad_model.locT_nat)).
+Local Notation coq_type := (coq_type _).
 
 Definition incr (l : loc ml_int) : M int :=
   do x <- cget l; do _ <- cput l (Uint63.succ x); Ret (Uint63.succ x).
@@ -571,6 +576,9 @@ Eval vm_compute in it1.
 Definition it2 := Restart it1 (do l <- FromW l; incr l).
 Eval vm_compute in it2.
 
+Definition it3 := Restart it2 (fact_for63 _ 5)%uint63.
+Eval vm_compute in it3.
+
 End eval.
 
-End MLtypes63.
+End CoqTypeInt63.
