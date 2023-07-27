@@ -17,7 +17,7 @@ Definition funext_dep := boolp.functional_extensionality_dep.
 (*                foldr1                                                      *)
 (*         curry/uncurry == currying for pairs                                *)
 (*       curry3/uncurry3 == currying for triples                              *)
-(*       comparePc, eqPc == computable version of equality axioms             *)
+(*        comparePc/eqPc == computable version of equality axioms             *)
 (*  coerce T1 (v : f T1) == some (f T2) if T1 = T2 and None o.w.              *)
 (*                                                                            *)
 (******************************************************************************)
