@@ -70,10 +70,8 @@ make install
 ## Overview
 
 This repository contains a formalization of monads including examples
-of monadic equational reasoning and several models (in particular, a
-model for a monad that mixes non-deterministic choice and
-probabilistic choice). This corresponds to the formalization
-of the following papers:
+of monadic equational reasoning and several models. This includes for
+example the formalization of the following papers:
 - [Gibbons and Hinze, Just do It: Simple Monadic Equational Reasoning, ICFP 2011] (except Sect. 10.2)
 - [Gibbons, Unifying Theories of Programming with Monads, UTP 2012] (up to Sect. 7.2)
 - [Mu, Equational Reasoning for Non-determinism Monad: A Case study of Spark Aggregation, TR-IIS-19-002, Academia Sinica]
@@ -96,25 +94,31 @@ This library has been applied to other formalizations:
 
 ## Files
 
-- [monae_lib.v](./monae_lib.v): simple additions to base libraries
-- [hierarchy.v](./hierarchy.v): hierarchy of monadic effects
-- [monad_lib.v](./monad_lib.v): basic lemmas about monads
-- [category.v](./category.v): formalization of categories (generalization of `hierarchy.v`)
-- [fail_lib.v](./fail_lib.v): lemmas about fail monad and related monads
-- [state_lib.v](./state_lib.v): lemmas about state-related monads
-- [array_lib.v](./array_lib.v): lemmas about the array monad
-- [trace_lib.v](./trace_lib.v): lemmas about about the state-trace monad
-- [proba_lib.v](./proba_lib.v): about the probability monad
-- [monad_composition.v](./monad_composition.v): composing monads
-- [monad_transformer.v](./monad_transformer.v): monad transformers
-  + completed by `ifmt_lifting.v` and `iparametricty_codensity.v` in the directory `impredicative_set`
-    * the directory `impredicative_set` contains a lighter version of Monae where monads live in `Set` and that compiles with `impredicative-set`
-- [monad_model.v](./monad_model.v): concrete models of monads
-- [proba_monad_model.v](./proba_monad_model.v): concrete model of the probability monad
-- [gcm_model.v](./gcm_model.v): model of the geometrically convex monad
-- [altprob_model.v](./altprob_model.v): model of a monad that mixes non-deterministic choice and probabilistic choice
-- example_*.v: various examples (Spark aggregation, the n-queens puzzle, tree relabeling,  Monty Hall problem, monad transformers, quicksort, etc.)
-- [smallstep.v](./smallstep.v): semantics for an imperative language, with equivalence operational semantics/denotation and sample imperative programs
+- basics:
+  + [monae_lib.v](./monae_lib.v): simple additions to base libraries
+  + [hierarchy.v](./hierarchy.v): hierarchy of monadic effects
+  + [category.v](./category.v): formalization of concrete categories (generalization of the bottom layers of `hierarchy.v`)
+  + [monad_transformer.v](./monad_transformer.v): monad transformers
+    * completed by `ifmt_lifting.v` and `iparametricty_codensity.v` in the directory `impredicative_set`
+      - the directory `impredicative_set` contains a lighter version of Monae where monads live in `Set` and that compiles with `impredicative-set`
+- utility lemmas:  
+  + [monad_lib.v](./monad_lib.v): basic lemmas about monads
+  + [fail_lib.v](./fail_lib.v): lemmas about the fail monad and related monads
+  + [state_lib.v](./state_lib.v): lemmas about state-related monads
+  + [array_lib.v](./array_lib.v): lemmas about the array monad
+  + [trace_lib.v](./trace_lib.v): lemmas about about the state-trace monad
+  + [proba_lib.v](./proba_lib.v): lemmas about the probability monad
+  + [typed_store_lib.v](./typed_store_lib.v): derived definitions and lemmas about about the typed store monad
+- models of monads:
+  + [monad_model.v](./monad_model.v): concrete models of monads
+  + [proba_monad_model.v](./proba_monad_model.v): model of the probability monad
+  + [gcm_model.v](./gcm_model.v): model of the geometrically convex monad
+  + [altprob_model.v](./altprob_model.v): model of a monad that mixes non-deterministic choice and probabilistic choice
+  + [typed_store_model.v](./typed_store_model.v): alternative model of the typed store monad
+- applications:
+  + [monad_composition.v](./monad_composition.v): composing monads
+  + [smallstep.v](./smallstep.v): semantics for an imperative language, with equivalence operational semantics/denotation and sample imperative programs
+  + example_*.v: various examples (Spark aggregation, the n-queens puzzle, tree relabeling,  Monty Hall problem, monad transformers, quicksort, OCaml programs, etc.)
 
 ## About Installation with Windows 10 or 11
 

@@ -10,6 +10,9 @@ Require Import monae_lib hierarchy.
 
 (******************************************************************************)
 (*                      Lemmas using the typed store monad                    *)
+(*                                                                            *)
+(*     cchk T (r : loc T) := cget r >> skip.                                  *)
+(*                                                                            *)
 (******************************************************************************)
 
 Set Implicit Arguments.
