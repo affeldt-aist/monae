@@ -160,10 +160,8 @@ documentation: |-
   ## Overview
 
   This repository contains a formalization of monads including examples
-  of monadic equational reasoning and several models (in particular, a
-  model for a monad that mixes non-deterministic choice and
-  probabilistic choice). This corresponds to the formalization
-  of the following papers:
+  of monadic equational reasoning and several models. This includes for
+  example the formalization of the following papers:
   - [Gibbons and Hinze, Just do It: Simple Monadic Equational Reasoning, ICFP 2011] (except Sect. 10.2)
   - [Gibbons, Unifying Theories of Programming with Monads, UTP 2012] (up to Sect. 7.2)
   - [Mu, Equational Reasoning for Non-determinism Monad: A Case study of Spark Aggregation, TR-IIS-19-002, Academia Sinica]
