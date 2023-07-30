@@ -229,20 +229,39 @@ Variables (X : eqType) (f : X -> Type).
 Definition coerce (T1 T2 : X) (v : f T1) : option (f T2) :=
   if @eqPc _ T1 T2 is ReflectT H then Some (eq_rect _ _ v _ H) else None.
 
-Lemma coerce_sym (T T' : X) (s : f T) (s' : f T') : coerce T' s -> coerce T s'.
-Proof.
-by rewrite /coerce; case: eqPc => //= h; case: eqPc => //; rewrite h; auto.
-Qed.
-
 Lemma coerce_Some (T : X) (s : f T) : coerce T s = Some s.
 Proof.
 by rewrite /coerce; case: eqPc => /= [?|]; [rewrite -eq_rect_eq|auto].
 Qed.
 
-Lemma coerce_eq (T T' : X) (s : f T) : coerce T' s -> T = T'.
-Proof. by rewrite /coerce; case: eqPc. Qed.
-
 Lemma coerce_None (T T' : X) (s : f T) : T != T' -> coerce T' s = None.
 Proof. by rewrite /coerce; case: eqPc. Qed.
+
+Lemma coerce_sym (T T' : X) (s : f T) (s' : f T') :
+  coerce T' s = Some s' -> coerce T s' = Some s.
+Proof.
+rewrite /coerce; case: eqPc => //= h; case: eqPc => //.
+  by move=> h'/= [<-]; subst T'; rewrite -!eq_rect_eq.
+by rewrite {1}h; auto.
+Qed.
+
+Definition coercible (T1 T2 : X) (v : f T1) : bool := coerce T2 v.
+
+Lemma coercible_Some (T : X) (s : f T) : coercible T s.
+Proof. by rewrite /coercible coerce_Some. Qed.
+
+Lemma not_coercible (T T' : X) (s : f T) : ~~ coercible T' s -> coerce T' s = None.
+Proof. by rewrite /coercible; case: (coerce _). Qed.
+
+Lemma coercible_eq (T T' : X) (s : f T) : coercible T' s -> T = T'.
+Proof. by rewrite /coercible; apply: boolp.contraPP => /eqP/coerce_None ->. Qed.
+
+Lemma coercible_sym (T T' : X) (s : f T) (s' : f T') :
+  coercible T' s = coercible T s'.
+Proof.
+rewrite /coercible /coerce; case: eqPc; case: eqPc => //.
+- by move=> ? ?; subst T'; rewrite -!eq_rect_eq.
+- by move=> ? ?; exfalso; auto.
+Qed.
 
 End coerce.
