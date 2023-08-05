@@ -1731,15 +1731,15 @@ Variant nth_error_spec (T : ml_type) (e : Env) (r : loc T) : Type :=
   | NthError : forall s : coq_type M T,
     nth_error e (loc_id r) = Some (mkbind T s) -> nth_error_spec e r
   | NthError_nocoerce : forall T' (s' : coq_type M T'),
-    nth_error e (loc_id r) = Some (mkbind T' s') -> ~ coerce T s' ->
+    nth_error e (loc_id r) = Some (mkbind T' s') -> ~~ coercible T s' ->
     nth_error_spec e r
   | NthError_None : nth_error e (loc_id r) = None -> nth_error_spec e r.
 
 Lemma ntherrorP (T : ml_type) (e : Env) (r : loc T) : nth_error_spec e r.
 Proof.
 case H : (nth_error e (loc_id r)) => [[T' s']|].
-  have [Ts'|Ts'] := boolp.pselect (coerce T s').
-    have ? := coerce_eq Ts'; subst T'.
+  have [Ts'|Ts'] := boolP (coercible T s').
+    have ? := coercible_eq Ts'; subst T'.
     exact: NthError H.
   exact: NthError_nocoerce H Ts'.
 exact: NthError_None.
@@ -1772,19 +1772,17 @@ Qed.
 
 Lemma nocoerce_cget T (r : loc T) T' (s' : coq_type M T') e :
   nth_error e (loc_id r) = Some (mkbind T' s') ->
-  ~ coerce T s' ->
+  ~~ coercible T s' ->
   cget r e = fail.
-Proof. by move=> H Ts'; rewrite /cget H; case: coerce Ts'. Qed.
+Proof. by move=> H Ts'; rewrite /cget H not_coercible. Qed.
 
 Lemma nocoerce_cput T (r : loc T) (s : coq_type M T) (T' : ml_type)
     (s' : coq_type M T') e :
   nth_error e (loc_id r) = Some (mkbind T' s') ->
-  ~ coerce T s' ->
+  ~~ coercible T s' ->
   cput r s e = fail.
 Proof.
-move=> H Ts'; rewrite /cput H.
-have {}Ts' : ~ coerce T' s by apply: contra_not Ts'; exact: coerce_sym.
-by case: coerce Ts'.
+by move=> H Ts'; rewrite /cput H not_coercible// (coercible_sym _ s').
 Qed.
 
 Lemma None_cget T (r : loc T) e :
@@ -1808,9 +1806,7 @@ Qed.
 Lemma Some_cput T (r : loc T) (s : coq_type M T) e :
   nth_error e (loc_id r) = Some (mkbind T s) ->
   cput r s e = (@skip M) e.
-Proof.
-by move=> H; rewrite /cput/= H coerce_Some/= nth_error_set_nth_id.
-Qed.
+Proof. by move=> H; rewrite /cput/= H coerce_Some/= nth_error_set_nth_id. Qed.
 
 Let cgetputskip T (r : loc T) : cget r >>= cput r = cget r >> skip.
 Proof.
@@ -1988,7 +1984,7 @@ Lemma cput_then_fail T1 T2 T1' e (s1' : coq_type M T1')
     (r2 : loc T2) (s2 : coq_type M T2)
     (r1 : loc T1) (s1 : coq_type M T1) :
   nth_error e (loc_id r1) = Some (mkbind T1' s1') ->
-  ~ coerce T1 s1' ->
+  ~~ coercible T1 s1' ->
   (cput r2 s2 >> cput r1 s1) e = fail.
 Proof.
 move=> Hr1 T1s'.
@@ -2003,7 +1999,7 @@ have [v Hr2|T2' v Hr2 T2v|Hr2] := ntherrorP e r2; last first.
     subst T2.
     rewrite coerce_Some//=.
     move: Hr1; rewrite Hr Hr2 => -[?]; subst T1' => _.
-    by rewrite coerce_Some // in T1s'.
+    by rewrite coercible_Some // in T1s'.
   + rewrite (nocoerce_cput _ _ T1s')//=.
     by rewrite (@nth_error_set_nth_other _ _ _ _ _ (mkbind T1' s1')).
 Qed.
@@ -2072,7 +2068,7 @@ have [u Hr1|T1' s1' Hr1 T1s'|Hr1] := ntherrorP e r1.
   + rewrite [RHS]MS_bindE (nocoerce_cget _ T2s')// bindfailf.
     rewrite !MS_bindE /cput Hr1 coerce_Some bindretf//=.
     rewrite MS_bindE /cget/= (nth_error_set_nth_other _ _ _ Hr2) 1?eq_sym//.
-    by move: (T2s'); case: coerce.
+    by rewrite not_coercible.
   + rewrite [in RHS]MS_bindE None_cget// bindfailf.
     rewrite MS_bindE /cput Hr1 coerce_Some bindretf/=.
     by rewrite MS_bindE /cget (nth_error_set_nth_none _ _ Hr2 Hr1).
