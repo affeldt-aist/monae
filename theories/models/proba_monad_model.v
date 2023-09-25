@@ -3,7 +3,7 @@
 Require Import Reals.
 From mathcomp Require Import all_ssreflect ssralg ssrnum.
 From mathcomp Require boolp.
-From mathcomp Require Import reals Rstruct.
+From mathcomp Require Import mathcomp_extra reals Rstruct.
 From infotheo Require Import Reals_ext realType_ext ssr_ext fsdist.
 From infotheo Require Import convex.
 From HB Require Import structures.
@@ -62,12 +62,13 @@ Let choicemm : forall (T : Type) p, idempotent (@choice p T).
 Proof. by move=> ? ? ?; exact: convmm. Qed.
 
 Let choiceA : forall (T : Type) (p q r s : {prob R}) (a b c : acto T),
-    choice p _ a (choice q _ b c) = choice [s_of p, q] _ (choice [r_of p, q] _ a b) c.
+  choice p _ a (choice q _ b c) = choice [s_of p, q] _ (choice [r_of p, q] _ a b) c.
 Proof.
 move=> ? p q r s a b c.
-rewrite /choice.
-rewrite [LHS](_ : _ = conv p a (conv q b c))//. (* NB: this is slow *)
-by rewrite convA.
+rewrite /choice -/(conv p a (conv q b c)) -/(conv s (conv r a b) c).
+apply: convA0 => /=; rewrite RmultE.
+  by rewrite -p_is_rs.
+by rewrite s_of_pqE onemK.
 Qed.
 
 HB.instance Definition _ := isMonadConvex.Build R
