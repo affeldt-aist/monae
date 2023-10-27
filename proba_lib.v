@@ -3,8 +3,8 @@
 From HB Require Import structures.
 Require Import Reals Lra.
 From mathcomp Require Import all_ssreflect.
-From mathcomp Require boolp Rstruct.
-From infotheo Require Import ssrR Reals_ext proba.
+From mathcomp Require boolp reals Rstruct.
+From infotheo Require Import ssrR Reals_ext realType_ext proba.
 From infotheo Require Import convex.
 From infotheo Require necset.
 Require Import monae_lib hierarchy monad_lib fail_lib.
@@ -36,16 +36,18 @@ Local Open Scope proba_monad_scope.
 
 From infotheo Require Import fdist.
 
+From mathcomp Require Import reals Rstruct.
+
 Section convex.
-Variable M : probMonad.
+Variable M : probMonad real_realType.
 Variable A : Type.
 Local Open Scope proba_scope.
 
-Definition choiceA_alternative (p q : prob) (a b c : M A) :
+Definition choiceA_alternative (p q : {prob real_realType}) (a b c : M A) :
   let conv := (fun p (a b : choice_of_Type (M A)) => choice p A a b) in
   conv p a (conv q b c) = conv [s_of p, q] (conv [r_of p, q] a b) c.
 Proof.
-by apply: (choiceA p q); rewrite -p_is_rs s_of_pqE onemK.
+by apply: (choiceA p q); rewrite -2!RmultE -p_is_rs s_of_pqE onemK.
 Qed.
 
 Definition prob_convType := M A.
@@ -62,67 +64,68 @@ Proof. by []. Qed.
 
 End convex.
 
-Lemma choiceACA {M : probMonad} T q p :
+Lemma choiceACA {M : probMonad real_realType} T q p :
   @interchange (prob_convType M T) (fun a b => a <|p|> b) (fun a b => a <|q|> b).
 Proof. by move=> *; exact: convACA. Qed.
 
 (* NB: the parameter def is because Coq functions are total *)
-Fixpoint uniform {M : probMonad} {A : Type} (def : A) (s : seq A) : M A :=
+Fixpoint uniform {M : probMonad real_realType} {A : Type} (def : A) (s : seq A) : M A :=
   match s with
     | [::] => Ret def
     | [:: x] => Ret x
-    | x :: xs => Ret x <| (/ IZR (Z_of_nat (size (x :: xs))))%:pr |> uniform def xs
+    | x :: xs => Ret x <| (/ IZR (Z_of_nat (size (x :: xs))))%coqR%:pr |> uniform def xs
   end.
 
-Lemma uniform_nil (M : probMonad) (A : Type) (def : A) :
+Lemma uniform_nil (M : probMonad real_realType) (A : Type) (def : A) :
   uniform def [::] = Ret def :> M A.
 Proof. by []. Qed.
 
-Lemma choice_ext (q p : prob) (M : probMonad) A (m1 m2 : M A) :
+Lemma choice_ext (q p : {prob real_realType}) (M : probMonad real_realType) A (m1 m2 : M A) :
   p = q :> R -> m1 <| p |> m2 = m1 <| q |> m2.
 Proof. by move/val_inj => ->. Qed.
 
-Lemma uniform_cons (M : probMonad) (A : Type) (def : A) h s :
+Lemma uniform_cons (M : probMonad real_realType) (A : Type) (def : A) h s :
   uniform def (h :: s) =
-  Ret h <| (/ IZR (Z_of_nat (size (h :: s))))%:pr |> uniform def s :> M A.
+  Ret h <| (/ IZR (Z_of_nat (size (h :: s))))%coqR%:pr |> uniform def s :> M A.
 Proof.
-by case: s => //=; rewrite (@choice_ext 1%:pr) // ?choice1 //= Rinv_1.
+by case: s => //=; rewrite (@choice_ext 1%coqR%:pr) // ?choice1 //= Rinv_1.
 Qed.
 
-Lemma uniform_singl (M : probMonad) (A : Type) (def : A) h : size h = 1%nat ->
+Lemma uniform_singl (M : probMonad real_realType) (A : Type) (def : A) h : size h = 1%nat ->
   uniform def h = Ret (head def h) :> M A.
 Proof.
 case: h => // h [|//] _.
-by rewrite uniform_cons uniform_nil (@choice_ext 1%:pr) ?choice1 //= invR1.
+by rewrite uniform_cons uniform_nil (@choice_ext 1%coqR%:pr) ?choice1 //= invR1.
 Qed.
 
-Lemma uniform_nseq (M : probMonad) (A : Type) (def : A) h n :
+Lemma uniform_nseq (M : probMonad real_realType) (A : Type) (def : A) h n :
   uniform def (nseq n.+1 h) = Ret h :> M A.
 Proof.
 elim: n => // n IH.
 by rewrite (_ : nseq _ _ = h :: nseq n.+1 h) // uniform_cons IH choicemm.
 Qed.
+From infotheo Require Import Reals_ext.
 
-Lemma uniform_cat (M : probMonad) (A : Type) (a : A) s t :
+Lemma uniform_cat (M : probMonad real_realType) (A : Type) (a : A) s t :
   let m := size s in let n := size t in
   uniform a (s ++ t) = uniform a s <| (divRnnm m n)%:pr |> uniform a t :> M _.
 Proof.
 elim: s t => [t m n|s1 s2 IH t m n].
-  rewrite cat0s uniform_nil /= [X in _ <| X |> _](_ : _ = 0%:pr) ?choice0 //.
+  rewrite cat0s uniform_nil /= [X in _ <| X |> _](_ : _ = 0%coqR%:pr) ?choice0 //.
   by apply val_inj; rewrite /= /divRnnm div0R.
 case/boolP : (m.-1 + n == 0)%nat => [{IH}|] m1n0.
   have s20 : s2 = [::] by move: m1n0; rewrite {}/m /=; case: s2.
   have t0 : t = [::] by move: m1n0; rewrite {}/n /= addnC; case: t.
   subst s2 t.
-  rewrite cats0 (_ : Prob.mk _ = 1%:pr) ?choice1 //.
+  rewrite cats0 (_ : Prob.mk _ = 1%coqR%:pr) ?choice1 //.
   by apply val_inj; rewrite /= /divRnnm div1R invR1.
 rewrite cat_cons uniform_cons uniform_cons.
 set pv := ((/ _)%R).
-set v : prob := @Prob.mk pv _.
-set u := @Prob.mk (INR (size s2) / INR (size s2 + size t))%R (prob_divRnnm _ _).
+set v : {prob real_realType} := @Prob.mk _ pv _.
+set u := @Prob.mk_ _ (INR (size s2) / INR (size s2 + size t))%R (prob_divRnnm' _ _).
 rewrite -[RHS](choiceA v u).
   by rewrite IH.
-split.
+rewrite -RmultE. split.
   rewrite 3!probpK -INR_IZR_INZ.
   rewrite (_ : INR _ = INR m) // mulRA mulVR; last by rewrite INR_eq0'.
   by rewrite mul1R /pv -INR_IZR_INZ [size _]/= size_cat -addSn.
@@ -131,7 +134,8 @@ transitivity ( (1 - 1 / INR (m + n)) * (1 - INR (m.-1) / INR (m.-1 + n)))%R; las
   congr (_ .~ * _)%R.
   by rewrite /v /pv probpK INR_IZR_INZ [size _]/= size_cat -addSn div1R.
 transitivity (INR n / INR (m + n))%R.
-  rewrite {1}/onem -{1}(Rinv_r (INR (m + n))); last exact/not_0_INR.
+
+  rewrite {1}/onem -RminusE -R1E -{1}(Rinv_r (INR (m+n))); last exact/not_0_INR.
   rewrite -mulRBl -minus_INR; last by apply/leP; rewrite leq_addr.
   by rewrite minusE addnC addnK.
 rewrite {1}/Rdiv mulRC.
@@ -148,38 +152,38 @@ rewrite -minus_INR; last by apply/leP; rewrite leq_addr.
 by rewrite addnC minusE -subnBA // subnn subn0.
 Qed.
 
-Lemma uniform2 (M : probMonad) (A : Type) (def : A) a b :
+Lemma uniform2 (M : probMonad real_realType) (A : Type) (def : A) a b :
   uniform def [:: a; b] = uniform def [:: b; a] :> M _.
 Proof.
 rewrite uniform_cons uniform_singl // uniform_cons uniform_singl //.
 set pa := Prob.mk _.
 rewrite choiceC /= (@choice_ext pa) //=.
-rewrite /onem; field.
+rewrite /onem -RminusE -R1E; field.
 Qed.
 
-Lemma uniform_inde (M : probMonad) (A : Type) a (x : seq A) {B} (m : M B) :
+Lemma uniform_inde (M : probMonad real_realType) (A : Type) a (x : seq A) {B} (m : M B) :
   uniform a x >> m = m.
 Proof.
 elim: x m => [/= m|x xs IH m]; first by rewrite bindretf.
 by rewrite uniform_cons choice_bindDl IH bindretf choicemm.
 Qed.
 
-Lemma uniform_naturality (M : probMonad) (A B : Type) (a : A) (b : B) (f : A -> B) :
+Lemma uniform_naturality (M : probMonad real_realType) (A B : Type) (a : A) (b : B) (f : A -> B) :
   forall x, (0 < size x)%nat ->
   ((@uniform M _ b) \o map f) x = ((M # f) \o uniform a) x.
 Proof.
 elim=> // x [_ _|x' xs]; first by rewrite [in RHS]compE fmapE bindretf.
 move/(_ isT) => IH _.
 rewrite compE [in RHS]compE [in LHS]uniform_cons [in RHS]uniform_cons.
-set p := (@Prob.mk (/ IZR (Z.of_nat (size _)))%R _ in X in _ = X).
-rewrite (_ : @Prob.mk (/ _)%R _ = p); last first.
+set p := (@Prob.mk _ (/ IZR (Z.of_nat (size _)))%R _ in X in _ = X).
+rewrite (_ : @Prob.mk _ (/ _)%R _ = p); last first.
   by apply val_inj; rewrite /= size_map.
 move: IH; rewrite 2!compE => ->.
 by rewrite [in RHS]fmapE choice_bindDl bindretf fmapE.
 Qed.
 Arguments uniform_naturality {M A B}.
 
-Lemma mpair_uniform_base_case (M : probMonad) (A : Type) a x (y : seq A) :
+Lemma mpair_uniform_base_case (M : probMonad real_realType) (A : Type) a x (y : seq A) :
   (0 < size y)%nat ->
   uniform (a, a) (cp [:: x] y) = mpair (uniform a [:: x], uniform a y) :> M _.
 Proof.
@@ -191,7 +195,7 @@ transitivity (do z <- Ret x; do y' <- uniform a y; Ret (z, y') : M _)%Do.
 by [].
 Qed.
 
-Lemma mpair_uniform (M : probMonad) (A : Type) a (x y : seq A) :
+Lemma mpair_uniform (M : probMonad real_realType) (A : Type) a (x y : seq A) :
   (0 < size x)%nat -> (0 < size y)%nat ->
   mpair (uniform a x, uniform a y) = uniform (a, a) (cp x y) :> M (A * A)%type.
 Proof.
@@ -206,7 +210,7 @@ rewrite (_ : Prob.mk _ = probdivRnnm n l); last first.
   by rewrite -/(cp _ _) -/l; exact/val_inj.
 pose m := size xxs.
 have lmn : (l = m * n)%nat by rewrite /l /m /n size_allpairs.
-rewrite (_ : probdivRnnm _ _ = @Prob.mk (/ (1 + m)%:R) (prob_invn _))%R; last first.
+rewrite (_ : probdivRnnm _ _ = @Prob.mk _ (/ (1 + m)%:R) (prob_invn' _))%R; last first.
   apply val_inj => /=.
   rewrite lmn /divRnnm -mulSn mult_INR {1}/Rdiv Rinv_mult.
   rewrite mulRC -mulRA mulVR; last by rewrite INR_eq0' -lt0n.
@@ -222,13 +226,13 @@ by apply val_inj; rewrite /= /divRnnm div1R.
 Qed.
 
 Section altprob_semilattconvtype.
-Variable M : altProbMonad.
+Variable M : altProbMonad real_realType.
 Variable T : Type.
 Import convex necset SemiLattice.
 
 Definition altProb_semiLattConvType := M T.
 
-Let axiom (p : prob) (x y z : altProb_semiLattConvType) :
+Let axiom (p : {prob real_realType}) (x y z : altProb_semiLattConvType) :
   x <| p |> (y [~] z) = (x <| p |> y) [~] (x <| p |> z).
 Proof. by rewrite choiceDr. Qed.
 
@@ -249,7 +253,7 @@ End altprob_semilattconvtype.
 
 Section convexity_property.
 
-Variables (M : altProbMonad) (A : Type) (p q : M A).
+Variables (M : altProbMonad real_realType) (A : Type) (p q : M A).
 
 Lemma convexity w : p [~] q =
   (p <| w |> p) [~] (q <| w |> p) [~] (p <| w |> q) [~] (q <| w |> q).
@@ -263,13 +267,13 @@ Qed.
 
 End convexity_property.
 
-Definition bcoin {M : probMonad} (p : prob) : M bool :=
+Definition bcoin {M : probMonad real_realType} (p : {prob real_realType}) : M bool :=
   Ret true <| p |> Ret false.
 Arguments bcoin : simpl never.
 
 Section prob_only.
-Variable M : probMonad.
-Variable p q : prob.
+Variable M : probMonad real_realType.
+Variable p q : {prob real_realType}.
 
 Definition two_coins : M (bool * bool)%type :=
   (do a <- bcoin p; (do b <- bcoin q; Ret (a, b) : M _))%Do.
@@ -288,7 +292,7 @@ End prob_only.
 
 Section mixing_choices.
 
-Variable M : altProbMonad.
+Variable M : altProbMonad real_realType.
 
 Definition arbcoin p : M bool :=
   (do a <- arb ; (do c <- bcoin p; Ret (a == c) : M _))%Do.
@@ -309,7 +313,7 @@ Local Open Scope convex_scope.
 Local Open Scope R_scope.
 
 (* TODO? : move magnified_weight to infotheo.convex *)
-Lemma magnified_weight_proof (p q r : prob) :
+Lemma magnified_weight_proof (p q r : {prob real_realType}) :
   p < q < r -> 0 <= (r - q) / (r - p) <= 1.
 Proof.
 case => pq qr.
@@ -321,8 +325,8 @@ rewrite divRE -(leR_pmul2r rp).
 by rewrite mulRAC -mulRA mulRV // mulR1 mul1R leR_add2l leR_oppl oppRK; exact/ltRW.
 Qed.
 
-Definition magnified_weight (p q r : prob) (H : p < q < r) : prob :=
-  Eval hnf in Prob.mk_ (magnified_weight_proof H).
+Definition magnified_weight (p q r : {prob real_realType}) (H : p < q < r) : {prob real_realType} :=
+  Eval hnf in Prob.mk_ _ (magnified_weight_proof H).
 
 Local Notation m := magnified_weight.
 Local Notation "x +' y" := (addpt x y) (at level 50).
