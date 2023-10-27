@@ -4,7 +4,7 @@ From HB Require Import structures.
 Require Import Reals Lra.
 From mathcomp Require Import all_ssreflect ssralg ssrnum.
 From mathcomp Require boolp.
-From mathcomp Require Import reals Rstruct.
+From mathcomp Require Import reals Rstruct lra.
 From infotheo Require Import ssrR Reals_ext realType_ext proba.
 From infotheo Require Import convex.
 From infotheo Require necset.
@@ -334,7 +334,7 @@ Local Notation m := magnified_weight.
 Local Notation "x +' y" := (addpt x y) (at level 50).
 Local Notation "a *' x" := (scalept a x) (at level 40).
 
-Lemma magnify_conv (T : convType) (p q r : {prob R}) (x y : T) (H : p < q < r) :
+Lemma magnify_conv (T : convType) (p q r : {prob real_realType}) (x y : T) (H : p < q < r) :
   (x <|p|> y) <| magnified_weight H |> (x <|r|> y) = x <|q|> y.
 Proof.
 case: (H) => pq qr.
@@ -342,16 +342,37 @@ have rp : 0 < r - p by rewrite subR_gt0; apply (ltR_trans pq).
 have rp' : r - p != 0 by apply/gtR_eqF.
 apply: S1_inj; rewrite ![in LHS]affine_conv/= !convptE.
 rewrite !scaleptDr !scaleptA // (addptC ((m (conj pq qr) * p) *' S1 x)) addptA.
-rewrite addptC !addptA -scaleptDl// -!addptA -scaleptDl//.
-have -> : (m H).~ * r.~ + m H * p.~ = (m H * p + (m H).~ * r).~.
-  by rewrite /onem; ring.
-suff -> : m H * p + (m H).~ * r = q by rewrite affine_conv convptE addptC.
-rewrite /m /= /onem.
+rewrite addptC !addptA -scaleptDl//; last first.
+  by apply: mulR_ge0.
+  by apply: mulR_ge0.
+rewrite -!addptA -scaleptDl//; last first.
+  by apply: mulR_ge0.
+  rewrite /Prob_p.
+  by apply: mulR_ge0 => //.
+rewrite (_ : conj pq qr = H)//.
+have -> : ((m H).~ * r.~ + m H * p.~ = ((m H : R) * p + (m H).~ * r).~)%coqR.
+  rewrite /onem.
+  rewrite /Prob_p.
+  rewrite -!RminusE.
+  rewrite -R1E.
+  rewrite -RplusE -2!RmultE.
+  ring.
+rewrite [r%:pp]/Prob_p.
+pose tmp := (m H * p + (m H).~ * r).
+rewrite -[X in X.~ *' _ +' _]/tmp.
+rewrite -/tmp.
+suff -> : tmp = q.
+  by rewrite affine_conv convptE addptC.
+rewrite /tmp /m /= /onem.
 rewrite mulRDl mul1R addRCA -Rmult_opp_opp -mulRDr (addRC (- p)) addR_opp.
-by rewrite mulNR mulRAC -mulRA mulRV // mulR1; ring.
+rewrite mulNR mulRAC -mulRA.
+rewrite !RmultE.
+rewrite mulrV // mulr1.
+rewrite -RminusE.
+ring.
 Qed.
 
-Lemma arbcoin_spec_convexity (p q : prob) :
+Lemma arbcoin_spec_convexity (p q : {prob real_realType}) :
   p < q < p.~%:pr ->
   arbcoin p = (bcoin p : M _) [~] bcoin p.~%:pr [~] bcoin q.
 Proof.
@@ -406,37 +427,79 @@ Qed.
 
 End mixing_choices.
 
-Definition coins23 {M : exceptProbMonad} : M bool :=
-  Ret true <| (/ 2)%:pr |> (Ret false <| (/ 2)%:pr |> fail).
+Definition coins23 {M : exceptProbMonad real_realType} : M bool :=
+  Ret true <| (/ 2)%coqR%:pr |> (Ret false <| (/ 2)%coqR%:pr |> fail).
+
+Section tmp.
+Import Order.POrderTheory Order.TotalTheory GRing.Theory Num.Theory.
+
 
 (* NB: notation for ltac:(split; fourier?)*)
-Lemma choiceA_compute {N : probMonad} (T F : bool) (f : bool -> N bool) :
+Local Open Scope R_scope.
+Lemma choiceA_compute {N : probMonad real_realType} (T F : bool) (f : bool -> N bool) :
   f T <|(/ 9)%:pr|> (f F <|(/ 8)%:pr|> (f F <|(/ 7)%:pr|> (f F <|(/ 6)%:pr|>
  (f T <|(/ 5)%:pr|> (f F <|(/ 4)%:pr|> (f F <|(/ 3)%:pr|> (f F <|(/ 2)%:pr|>
   f T))))))) = f F <|(/ 3)%:pr|> (f F <|(/ 2)%:pr|> f T) :> N _.
 Proof.
-have H27 : (0 <b= 2/7 <b= 1)%R by apply/leR2P; split; lra.
-have H721 : (0 <b= 7/21 <b= 1)%R by apply/leR2P; split; lra.
-have H2156 : (0 <b= 21/56 <b= 1)%R by apply/leR2P; split; lra.
-have H25 : (0 <b= 2/5 <b= 1)%R by apply/leR2P; split; lra.
+have H27 : (0 <= (2/7 : R) <= 1)%mcR by apply/andP; split; lra.
+have H721 : (0 <= (7/21 : R) <= 1)%mcR by apply/andP; split; lra.
+have H2156 : (0 <= (21/56 : R) <= 1)%mcR by apply/andP; split; lra.
+have H25 : (0 <= (2/5 : R) <= 1)%mcR by apply/andP; split; lra.
 rewrite [in RHS](choiceA _ _ (/ 2)%:pr (/ 3).~%:pr); last first.
-  by rewrite 3!probpK /= /onem; split; field.
-
+  rewrite 3!probpK /= /onem.
+  rewrite -!(RmultE,RminusE,R1E).
+  split; field.
 rewrite choicemm.
 rewrite [in LHS](choiceA (/ 3)%:pr (/ 2)%:pr (/ 2)%:pr (/ 3).~%:pr); last first.
-  by rewrite 3!probpK /= /onem; split; field.
+  rewrite 3!probpK /= /onem.
+  rewrite -!(RmultE,RminusE,R1E).
+  split; field.
 rewrite choicemm.
 rewrite [in LHS](choiceA (/ 4)%:pr (/ 3).~%:pr (/ 3)%:pr (/ 4).~%:pr); last first.
-  by rewrite 4!probpK /= /onem; split; field.
+  rewrite 4!probpK /= /onem.
+  rewrite -!(RmultE,RminusE,R1E).
+  split; field.
 rewrite choicemm.
-rewrite [in LHS](choiceA (/ 7)%:pr (/ 6)%:pr (/ 2)%:pr (@Prob.mk (2/7) H27)); last first.
-  by rewrite 4!probpK /= /onem; split; field.
+rewrite [in LHS](choiceA (/ 7)%:pr (/ 6)%:pr (/ 2)%:pr (@Prob.mk _ (2/7) H27)); last first.
+  rewrite 4!probpK /= /onem; split.
+    rewrite -RmultE -RdivE; last by lra.
+    rewrite -2!INRE !INR_IZR_INZ.
+    field.
+  rewrite -!(RmultE,RminusE).
+  rewrite -RinvE; last by lra.
+  rewrite (_ : 7%mcR = 7); last first.
+    by rewrite -INRE !INR_IZR_INZ.
+  rewrite (_ : 2%mcR = 2)//.
+  rewrite -R1E.
+  field.
 rewrite choicemm.
-rewrite [in LHS](choiceA (/ 8)%:pr (@Prob.mk (2/7) H27) (@Prob.mk (7/21) H721) (@Prob.mk (21/56) H2156)); last first.
-  by rewrite probpK /= /onem; split; field.
+rewrite [in LHS](choiceA (/ 8)%:pr (@Prob.mk _ (2/7) H27) (@Prob.mk _ (7/21) H721) (@Prob.mk _ (21/56) H2156)); last first.
+  rewrite probpK /= /onem; split.
+    rewrite -RmultE -RdivE; last by lra.
+    rewrite -RdivE; last by lra.
+    rewrite (_ : 21%mcR = 21); last first.
+      by rewrite -INRE !INR_IZR_INZ.
+    rewrite (_ : 56%mcR = 56); last first.
+      by rewrite -INRE !INR_IZR_INZ.
+    rewrite (_ : 7%mcR = 7); last first.
+      by rewrite -INRE !INR_IZR_INZ.
+    field.
+  rewrite -2!RmultE -!RminusE -RdivE; last by lra.
+  rewrite -RinvE; last by lra.
+  rewrite (_ : 56%mcR = 56); last first.
+    by rewrite -INRE !INR_IZR_INZ.
+  rewrite (_ : 7%mcR = 7); last first.
+    by rewrite -INRE !INR_IZR_INZ.
+  rewrite (_ : 21%mcR = 21); last first.
+    by rewrite -INRE !INR_IZR_INZ.
+  rewrite (_ : 2%mcR = 2); last first.
+    by rewrite -INRE !INR_IZR_INZ.
+  rewrite -R1E.
+  field.
 rewrite (choiceC (/ 4).~%:pr).
-rewrite [in LHS](choiceA (/ 5)%:pr (probcplt (/ 4).~%:pr) (/ 2)%:pr (@Prob.mk (2/5) H25)); last first.
-  by rewrite 3!probpK /= /onem; split; field.
+rewrite [in LHS](choiceA (/ 5)%:pr (probcplt (/ 4).~%:pr) (/ 2)%:pr (@Prob.mk _ (2/5) H25)); last first.
+  rewrite 3!probpK /= /onem; split.
+  xxx
 rewrite 2!choicemm.
 rewrite (choiceC (@Prob.mk (2/5) H25)).
 rewrite [in LHS](choiceA (@Prob.mk (21/56) H2156) (probcplt (Prob.mk H25)) (/ 2)%:pr (/ 4).~%:pr); last first.
