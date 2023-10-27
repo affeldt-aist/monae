@@ -2,8 +2,9 @@
 (* Copyright (C) 2020 monae authors, license: LGPL-2.1-or-later               *)
 From HB Require Import structures.
 Require Import Reals Lra.
-From mathcomp Require Import all_ssreflect.
-From mathcomp Require boolp reals Rstruct.
+From mathcomp Require Import all_ssreflect ssralg ssrnum.
+From mathcomp Require boolp.
+From mathcomp Require Import reals Rstruct.
 From infotheo Require Import ssrR Reals_ext realType_ext proba.
 From infotheo Require Import convex.
 From infotheo Require necset.
@@ -120,9 +121,9 @@ case/boolP : (m.-1 + n == 0)%nat => [{IH}|] m1n0.
   rewrite cats0 (_ : Prob.mk _ = 1%coqR%:pr) ?choice1 //.
   by apply val_inj; rewrite /= /divRnnm div1R invR1.
 rewrite cat_cons uniform_cons uniform_cons.
-set pv := ((/ _)%R).
+set pv := ((/ _)%coqR).
 set v : {prob real_realType} := @Prob.mk _ pv _.
-set u := @Prob.mk_ _ (INR (size s2) / INR (size s2 + size t))%R (prob_divRnnm' _ _).
+set u := @Prob.mk_ _ (INR (size s2) / INR (size s2 + size t))%coqR (prob_divRnnm' _ _).
 rewrite -[RHS](choiceA v u).
   by rewrite IH.
 rewrite -RmultE. split.
@@ -130,21 +131,20 @@ rewrite -RmultE. split.
   rewrite (_ : INR _ = INR m) // mulRA mulVR; last by rewrite INR_eq0'.
   by rewrite mul1R /pv -INR_IZR_INZ [size _]/= size_cat -addSn.
 rewrite 3!probpK.
-transitivity ( (1 - 1 / INR (m + n)) * (1 - INR (m.-1) / INR (m.-1 + n)))%R; last first.
+transitivity ( (1 - 1 / INR (m + n)) * (1 - INR (m.-1) / INR (m.-1 + n)))%coqR; last first.
   congr (_ .~ * _)%R.
   by rewrite /v /pv probpK INR_IZR_INZ [size _]/= size_cat -addSn div1R.
-transitivity (INR n / INR (m + n))%R.
-
+transitivity (INR n / INR (m + n))%coqR.
   rewrite {1}/onem -RminusE -R1E -{1}(Rinv_r (INR (m+n))); last exact/not_0_INR.
   rewrite -mulRBl -minus_INR; last by apply/leP; rewrite leq_addr.
   by rewrite minusE addnC addnK.
 rewrite {1}/Rdiv mulRC.
 rewrite {1}/Rdiv -[in LHS](mul1R (INR n)).
 rewrite -{1}(mulRV (INR (m.-1 + n))); last by rewrite INR_eq0'.
-rewrite 2!mulRA -(mulRA (_ * _)%R); congr Rmult.
+rewrite 2!mulRA -(mulRA (_ * _)%coqR); congr Rmult.
   rewrite mulRC -subn1.
   rewrite addnC addnBA // minus_INR; last by apply/leP; rewrite addn_gt0 orbT.
-  rewrite -/(_ / INR (m + n))%R.
+  rewrite -/(_ / INR (m + n))%coqR.
   rewrite Rdiv_minus_distr {1}/Rdiv addnC Rinv_r //; exact/not_0_INR.
 rewrite -{1}(Rinv_r (INR (m.-1 + n))); last exact/not_0_INR/eqP.
 rewrite -Rdiv_minus_distr mulRC; congr (_ * _)%R.
@@ -175,8 +175,8 @@ Proof.
 elim=> // x [_ _|x' xs]; first by rewrite [in RHS]compE fmapE bindretf.
 move/(_ isT) => IH _.
 rewrite compE [in RHS]compE [in LHS]uniform_cons [in RHS]uniform_cons.
-set p := (@Prob.mk _ (/ IZR (Z.of_nat (size _)))%R _ in X in _ = X).
-rewrite (_ : @Prob.mk _ (/ _)%R _ = p); last first.
+set p := (@Prob.mk _ (/ IZR (Z.of_nat (size _)))%coqR _ in X in _ = X).
+rewrite (_ : @Prob.mk _ (/ _)%coqR _ = p); last first.
   by apply val_inj; rewrite /= size_map.
 move: IH; rewrite 2!compE => ->.
 by rewrite [in RHS]fmapE choice_bindDl bindretf fmapE.
@@ -210,7 +210,7 @@ rewrite (_ : Prob.mk _ = probdivRnnm n l); last first.
   by rewrite -/(cp _ _) -/l; exact/val_inj.
 pose m := size xxs.
 have lmn : (l = m * n)%nat by rewrite /l /m /n size_allpairs.
-rewrite (_ : probdivRnnm _ _ = @Prob.mk _ (/ (1 + m)%:R) (prob_invn' _))%R; last first.
+rewrite (_ : probdivRnnm _ _ = @Prob.mk _ (/ (1 + m)%:R) (prob_invn' _))%coqR; last first.
   apply val_inj => /=.
   rewrite lmn /divRnnm -mulSn mult_INR {1}/Rdiv Rinv_mult.
   rewrite mulRC -mulRA mulVR; last by rewrite INR_eq0' -lt0n.
@@ -312,27 +312,29 @@ Local Open Scope latt_scope.
 Local Open Scope convex_scope.
 Local Open Scope R_scope.
 
+Import Order.POrderTheory Order.TotalTheory GRing.Theory Num.Theory.
+
 (* TODO? : move magnified_weight to infotheo.convex *)
 Lemma magnified_weight_proof (p q r : {prob real_realType}) :
-  p < q < r -> 0 <= (r - q) / (r - p) <= 1.
+  p < q < r -> (0 <= ((r : R) - (q : R)) / ((r : R) - (p : R)) <= 1)%mcR.
 Proof.
-case => pq qr.
-have rp : 0 < r - p by rewrite subR_gt0; apply (ltR_trans pq).
-have rp' : r - p != 0 by apply/gtR_eqF.
-have rq : 0 < r - q by rewrite subR_gt0.
-split; first by apply divR_ge0 => //; apply ltRW.
-rewrite divRE -(leR_pmul2r rp).
-by rewrite mulRAC -mulRA mulRV // mulR1 mul1R leR_add2l leR_oppl oppRK; exact/ltRW.
+case => /RltP pq /RltP qr.
+have rp : (0 < (r : R) - (p : R))%mcR by rewrite subr_gt0 (lt_trans pq).
+have rp' : ((r : R) - (p : R) != 0)%mcR by rewrite subr_eq0 gt_eqF// -subr_gt0.
+have rq : (0 < (r : R) - (q : R))%mcR by rewrite subr_gt0.
+apply/andP; split; first by rewrite divr_ge0// ltW.
+rewrite -(ler_pmul2r rp).
+by rewrite mulrAC -mulrA mulrV // mulr1 mul1r ler_add2l ler_oppl opprK; exact/ltW.
 Qed.
 
 Definition magnified_weight (p q r : {prob real_realType}) (H : p < q < r) : {prob real_realType} :=
-  Eval hnf in Prob.mk_ _ (magnified_weight_proof H).
+  Eval hnf in Prob.mk_ (magnified_weight_proof H).
 
 Local Notation m := magnified_weight.
 Local Notation "x +' y" := (addpt x y) (at level 50).
 Local Notation "a *' x" := (scalept a x) (at level 40).
 
-Lemma magnify_conv (T : convType) (p q r : prob) (x y : T) (H : p < q < r) :
+Lemma magnify_conv (T : convType) (p q r : {prob R}) (x y : T) (H : p < q < r) :
   (x <|p|> y) <| magnified_weight H |> (x <|r|> y) = x <|q|> y.
 Proof.
 case: (H) => pq qr.
