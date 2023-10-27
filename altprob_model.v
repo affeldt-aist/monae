@@ -1,9 +1,12 @@
 (* monae: Monadic equational reasoning in Coq                                 *)
 (* Copyright (C) 2020 monae authors, license: LGPL-2.1-or-later               *)
 Require Import Reals.
-From mathcomp Require Import all_ssreflect finmap.
+From mathcomp Require Import all_ssreflect ssralg ssrnum finmap.
 From mathcomp Require Import boolp classical_sets.
+From mathcomp Require Import reals Rstruct.
 From infotheo Require Import classical_sets_ext Reals_ext Rbigop ssrR fdist.
+From infotheo Require Import ssrR Reals_ext proba.
+From infotheo Require Import Reals_ext realType_ext.
 From infotheo Require Import fsdist convex necset.
 Require category.
 From HB Require Import structures.
@@ -128,7 +131,7 @@ Lemma choiceC A p (x y : gcm A) : x <|p|> y = y <|p.~%:pr|> x.
 Proof. by rewrite convC. Qed.
 Lemma choicemm A p : idempotent (@choice p A).
 Proof. by move=> m; rewrite /choice convmm. Qed.
-Lemma choiceA A (p q r s : prob) (x y z : gcm A) :
+Lemma choiceA A (p q r s : {prob [realType of R]}) (x y z : gcm A) :
   p = (r * s) :> R /\ s.~ = (p.~ * q.~)%R ->
   x <| p |> (y <| q |> z) = (x <| r |> y) <| s |> z.
 Proof. by case => *; apply: convA0. Qed.
@@ -171,17 +174,17 @@ Qed.
 End bindchoiceDl.
 
 HB.instance Definition _ :=
-  isMonadProb.Build (Monad_of_category_monad.acto Mgcm)
+  isMonadProb.Build real_realType (Monad_of_category_monad.acto Mgcm)
     choice0 choice1 choiceC choicemm choiceA bindchoiceDl.
 
-Lemma choicealtDr A (p : prob) :
+Lemma choicealtDr A (p : {prob real_realType}) :
   right_distributive (fun x y : Mgcm A => x <| p |> y) (@alt A).
 Proof. by move=> x y z; rewrite /choice lubDr. Qed.
 
 HB.instance Definition _ :=
-  @isMonadAltProb.Build (Monad_of_category_monad.acto Mgcm) choicealtDr.
+  @isMonadAltProb.Build real_realType (Monad_of_category_monad.acto Mgcm) choicealtDr.
 
-Definition gcmAP := [the altProbMonad of gcm].
+Definition gcmAP := [the altProbMonad real_realType of gcm].
 
 End P_delta_altProbMonad.
 
@@ -190,7 +193,7 @@ Local Open Scope proba_monad_scope.
 
 (* An example that probabilistic choice in this model is not trivial:
    we can distinguish different probabilities. *)
-Example gcmAP_choice_nontrivial (p q : prob) :
+Example gcmAP_choice_nontrivial (p q : {prob real_realType}) :
   p <> q ->
   (* Ret = hierarchy.ret *)
   Ret true <|p|> Ret false <>

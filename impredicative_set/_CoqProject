@@ -20,3 +20,4 @@ iparametricity_codensity.v
 iexample_transformer.v
 
 -R . monaeImpredicativeSet
+-R ../../infotheo infotheo
