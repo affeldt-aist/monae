@@ -3,9 +3,11 @@
 Ltac typeof X := type of X.
 
 Require Import ssrmatching Reals JMeq.
-From mathcomp Require Import all_ssreflect.
+From mathcomp Require Import all_ssreflect ssralg ssrnum.
 From mathcomp Require boolp.
+From mathcomp Require Import Rstruct reals.
 From infotheo Require Import Reals_ext.
+From infotheo Require Import realType_ext.
 Require Import monae_lib.
 From HB Require Import structures.
 
@@ -1228,9 +1230,8 @@ HB.structure Definition MonadStateTraceReify (S T : UU0) :=
   { M of isMonadStateTraceReify S T M & isFunctor M & isMonad M &
          isMonadReify S M & isMonadStateTrace S T M }.
 
-Local Open Scope reals_ext_scope.
-HB.mixin Record isMonadProb (M : UU0 -> UU0) of Monad M := {
-  choice : forall (p : prob) (T : UU0), M T -> M T -> M T ;
+HB.mixin Record isMonadProb {R : realType} (M : UU0 -> UU0) of Monad M := {
+  choice : forall (p : {prob R}) (T : UU0), M T -> M T -> M T ;
   (* identity axioms *)
   choice0 : forall (T : UU0) (a b : M T), choice 0%:pr _ a b = b ;
   choice1 : forall (T : UU0) (a b : M T), choice 1%:pr _ a b = a ;
@@ -1239,8 +1240,8 @@ HB.mixin Record isMonadProb (M : UU0 -> UU0) of Monad M := {
     choice p _ a b = choice (p.~ %:pr) _ b a ;
   choicemm : forall (T : UU0) p, idempotent (@choice p T) ;
   (* quasi associativity *)
-  choiceA : forall (T : UU0) (p q r s : prob) (a b c : M T),
-    (p = r * s :> R /\ s.~ = p.~ * q.~)%R ->
+  choiceA : forall (T : UU0) (p q r s : {prob R}) (a b c : M T),
+    (p = (r : R) * (s : R) :> R /\ s.~ = p.~ * q.~)%R ->
     (*NB: needed to preserve the notation in the resulting choiceA lemma*)
     let bc := choice q _ b c in
     let ab := choice r _ a b in
@@ -1250,13 +1251,13 @@ HB.mixin Record isMonadProb (M : UU0 -> UU0) of Monad M := {
     forall p, BindLaws.left_distributive (@bind [the monad of M]) (choice p) }.
 
 #[short(type=probMonad)]
-HB.structure Definition MonadProb := {M of isMonadProb M & }.
+HB.structure Definition MonadProb {R : realType} := {M of isMonadProb R M & }.
 Notation "a <| p |> b" := (choice p _ a b) : proba_monad_scope.
-Arguments choiceA {_} {_} _ _ _ _ {_} {_} {_}.
-Arguments choiceC {_} {_} _ _ _.
-Arguments choicemm {_} {_} _.
+Arguments choiceA {_} {_} {_} _ _ _ _ {_} {_} {_}.
+Arguments choiceC {_} {_} {_} _ _ _.
+Arguments choicemm {_} {_} {_} _.
 
-HB.mixin Record isMonadProbDr (M : UU0 -> UU0) of MonadProb M := {
+HB.mixin Record isMonadProbDr {R : realType} (M : UU0 -> UU0) of MonadProb R M := {
   (* composition distributes rightwards over [probabilistic] choice *)
   (* WARNING: this should not be asserted as an axiom in conjunction with
      distributivity of <||> over [] *)
@@ -1264,34 +1265,35 @@ HB.mixin Record isMonadProbDr (M : UU0 -> UU0) of MonadProb M := {
     forall p, BindLaws.right_distributive (@bind [the monad of M]) (choice p) }.
 
 #[short(type=probDrMonad)]
-HB.structure Definition MonadProbDr := {M of isMonadProbDr M & }.
+HB.structure Definition MonadProbDr {R : realType} := {M of isMonadProbDr R M & }.
 
-HB.mixin Record isMonadAltProb (M : UU0 -> UU0) of MonadAltCI M & MonadProb M :=
+HB.mixin Record isMonadAltProb {R : realType} (M : UU0 -> UU0) of MonadAltCI M & MonadProb R M :=
   { choiceDr : forall T p, right_distributive
-      (@choice [the probMonad of M] p T) (fun a b => a [~] b) }.
+      (@choice R [the probMonad R of M] p T) (fun a b => a [~] b) }.
 
 #[short(type=altProbMonad)]
-HB.structure Definition MonadAltProb :=
-  { M of isMonadAltProb M & isFunctor M & isMonad M & isMonadAlt M &
-         isMonadAltCI M & isMonadProb M }.
+HB.structure Definition MonadAltProb {R : realType} :=
+  { M of isMonadAltProb R M & isFunctor M & isMonad M & isMonadAlt M &
+         isMonadAltCI M & isMonadProb R M }.
 
 Section altprob_lemmas.
+Context {R : realType}.
 Local Open Scope proba_monad_scope.
-Variable (M : altProbMonad).
+Variable (M : altProbMonad R).
 Lemma choiceDl A p :
   left_distributive (fun x y : M A => x <| p |> y) (fun x y => x [~] y).
 Proof. by move=> x y z; rewrite !(choiceC p) choiceDr. Qed.
 End altprob_lemmas.
 
-HB.mixin Record isMonadExceptProb (M : UU0 -> UU0)
-    of MonadExcept M & MonadProb M := {
+HB.mixin Record isMonadExceptProb {R : realType} (M : UU0 -> UU0)
+    of MonadExcept M & MonadProb R M := {
   catchDl : forall (A : UU0) w,
     left_distributive (@catch [the exceptMonad of M] A) (choice w A) }.
 
 #[short(type=exceptProbMonad)]
-HB.structure Definition MonadExceptProb :=
-  { M of isMonadExceptProb M & isFunctor M & isMonad M & isMonadFail M &
-         isMonadExcept M & isMonadProb M }.
+HB.structure Definition MonadExceptProb {R : realType} :=
+  { M of isMonadExceptProb R M & isFunctor M & isMonad M & isMonadFail M &
+         isMonadExcept M & isMonadProb R M }.
 
 HB.mixin Record isMonadFresh (S : eqType) (M : UU0 -> UU0) of Monad M :=
   { fresh : M S }.
