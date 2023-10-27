@@ -3,7 +3,8 @@
 Require Import Reals.
 From mathcomp Require Import all_ssreflect.
 From mathcomp Require boolp.
-From infotheo Require Import Reals_ext ssr_ext fsdist.
+From mathcomp Require Import reals Rstruct.
+From infotheo Require Import Reals_ext realType_ext ssr_ext fsdist.
 From infotheo Require Import convex.
 From HB Require Import structures.
 Require Import monae_lib hierarchy monad_lib proba_lib.
@@ -75,15 +76,15 @@ Qed.
 Local Open Scope reals_ext_scope.
 
 Let choice := (fun p A => @fsdist_conv (choice_of_Type A) p).
-Let choice0 (T : UU0) : forall (a b : acto T), choice 0%:pr _ a b = b.
+Let choice0 (T : UU0) : forall (a b : acto T), choice 0%R%:pr _ a b = b.
 Proof. by move=> ? ?; exact: conv0. Qed.
-Let choice1 (T : UU0) : forall (a b : acto T), choice 1%:pr _ a b = a.
+Let choice1 (T : UU0) : forall (a b : acto T), choice 1%R%:pr _ a b = a.
 Proof. by move=> ? ?; exact: conv1. Qed.
 Let choiceC (T : UU0) : forall p (a b : acto T), choice p _ a b = choice (p.~ %:pr) _ b a.
 Proof. by move=> ? ?; exact: convC. Qed.
 Let choicemm : forall (T : Type) p, idempotent (@choice p T).
 Proof. by move=> ? ? ?; exact: convmm. Qed.
-Let choiceA : forall (T : Type) (p q r s : prob) (a b c : acto T),
+Let choiceA : forall (T : Type) (p q r s : {prob real_realType}) (a b c : acto T),
     (p = r * s :> R /\ s.~ = p.~ * q.~)%R ->
     let bc := (choice q _ b c) in
     let ab := (choice r _ a b) in
@@ -97,7 +98,7 @@ rewrite !(@BindE (choice_of_Type A) (choice_of_Type B)).
 by rewrite fsdist_conv_bind_left_distr.
 Qed.
 
-HB.instance Definition mixin := isMonadProb.Build
+HB.instance Definition mixin := isMonadProb.Build real_realType
   acto choice0 choice1 choiceC choicemm choiceA prob_bindDl.
 Definition t := MonadProb.Pack (MonadProb.Class mixin).
 

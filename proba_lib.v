@@ -430,10 +430,6 @@ End mixing_choices.
 Definition coins23 {M : exceptProbMonad real_realType} : M bool :=
   Ret true <| (/ 2)%coqR%:pr |> (Ret false <| (/ 2)%coqR%:pr |> fail).
 
-Section tmp.
-Import Order.POrderTheory Order.TotalTheory GRing.Theory Num.Theory.
-
-
 (* NB: notation for ltac:(split; fourier?)*)
 Local Open Scope R_scope.
 Lemma choiceA_compute {N : probMonad real_realType} (T F : bool) (f : bool -> N bool) :
