@@ -499,22 +499,57 @@ rewrite [in LHS](choiceA (/ 8)%:pr (@Prob.mk _ (2/7) H27) (@Prob.mk _ (7/21) H72
 rewrite (choiceC (/ 4).~%:pr).
 rewrite [in LHS](choiceA (/ 5)%:pr (probcplt (/ 4).~%:pr) (/ 2)%:pr (@Prob.mk _ (2/5) H25)); last first.
   rewrite 3!probpK /= /onem; split.
-  xxx
+    rewrite -2!RmultE -RinvE; last by lra.
+    rewrite (_ : 2%mcR = 2); last first.
+      by rewrite -INRE !INR_IZR_INZ.
+    rewrite (_ : 5%mcR = 5); last first.
+      by rewrite -INRE !INR_IZR_INZ.
+    field.
+  rewrite -!RmultE -!RminusE -RinvE; last by lra.
+  rewrite (_ : 5%mcR = 5); last first.
+    by rewrite -INRE !INR_IZR_INZ.
+  rewrite (_ : 2%mcR = 2); last first.
+    by rewrite -INRE !INR_IZR_INZ.
+  rewrite -R1E.
+  field.
 rewrite 2!choicemm.
-rewrite (choiceC (@Prob.mk (2/5) H25)).
-rewrite [in LHS](choiceA (@Prob.mk (21/56) H2156) (probcplt (Prob.mk H25)) (/ 2)%:pr (/ 4).~%:pr); last first.
-  by rewrite 3!probpK /= /onem; split; field.
+rewrite (choiceC (@Prob.mk _ (2/5) H25)).
+rewrite [in LHS](choiceA (@Prob.mk _ (21/56) H2156) (probcplt (Prob.mk H25)) (/ 2)%:pr (/ 4).~%:pr); last first.
+  rewrite 3!probpK /= /onem; split.
+    rewrite -!RmultE -RminusE -RinvE; last by lra.
+    rewrite (_ : 56%mcR = 56); last first.
+      by rewrite -INRE !INR_IZR_INZ.
+    rewrite (_ : 21%mcR = 21); last first.
+      by rewrite -INRE !INR_IZR_INZ.
+    rewrite -R1E.
+    field.
+  rewrite -!(RmultE,RminusE) -RinvE; last by lra.
+  rewrite -RinvE; last by lra.
+  rewrite (_ : 56%mcR = 56); last first.
+    by rewrite -INRE !INR_IZR_INZ.
+  rewrite (_ : 21%mcR = 21); last first.
+    by rewrite -INRE !INR_IZR_INZ.
+  rewrite (_ : 5%mcR = 5); last first.
+    by rewrite -INRE !INR_IZR_INZ.
+  rewrite (_ : 2%mcR = 2); last first.
+    by rewrite -INRE !INR_IZR_INZ.
+  rewrite -R1E.
+  field.
 rewrite choicemm.
 rewrite (choiceC (/ 4).~%:pr).
 rewrite [in LHS](choiceA (/ 9)%:pr (probcplt (/ 4).~%:pr) (/ 3)%:pr (/ 3)%:pr); last first.
-  by rewrite 3!probpK /= /onem; split; field.
+  rewrite 3!probpK /= /onem; split.
+    rewrite -RmultE. field.
+  rewrite -RmultE -!RminusE.
+  rewrite -R1E.
+  field.
 by rewrite choicemm choiceC.
 Qed.
 
-Definition uFFT {M : probMonad} : M bool :=
+Definition uFFT {M : probMonad real_realType} : M bool :=
   uniform true [:: false; false; true].
 
-Lemma uFFTE (M : probMonad) : uFFT = bcoin (/ 3)%:pr :> M _.
+Lemma uFFTE (M : probMonad real_realType) : uFFT = bcoin (/ 3)%:pr :> M _.
 Proof.
 rewrite /uFFT /bcoin uniform_cons.
 rewrite (_ : _%:pr = (/ 3)%:pr)%R; last exact/val_inj.
@@ -522,15 +557,17 @@ rewrite uniform_cons.
 rewrite [in X in _ <| _ |> X](_ : _%:pr = (/ 2)%:pr)%R; last exact/val_inj.
 rewrite uniform_singl //=.
 rewrite (choiceA _ _ (/ 2)%:pr (/ 3).~%:pr); last first.
-  by rewrite /= /onem; split; field.
+  rewrite /= /onem; split.
+    rewrite -RmultE -RminusE -R1E; field.
+  rewrite -!RmultE -!RminusE -R1E; field.
 rewrite choicemm choiceC; congr (Ret true <| _ |> Ret false).
 by apply val_inj; rewrite /= onemK.
 Qed.
 
-Definition uTTF {M : probMonad} : M bool :=
+Definition uTTF {M : probMonad real_realType} : M bool :=
   uniform true [:: true; true; false].
 
-Lemma uTTFE (M : probMonad) : uTTF = bcoin (/ 3).~%:pr :> M _.
+Lemma uTTFE (M : probMonad real_realType) : uTTF = bcoin (/ 3).~%:pr :> M _.
 Proof.
 rewrite /uTTF /bcoin uniform_cons.
 rewrite (_ : _%:pr = (/ 3)%:pr)%R; last exact/val_inj.
@@ -538,10 +575,12 @@ rewrite uniform_cons.
 rewrite [in X in _ <| _ |> X](_ : _%:pr = (/ 2)%:pr)%R; last exact/val_inj.
 rewrite uniform_singl //=.
 rewrite (choiceA _ _ (/ 2)%:pr (/ 3).~%:pr) ?choicemm //.
-by rewrite /= /onem; split; field.
+rewrite /= /onem; split.
+  rewrite -RmultE -RminusE -R1E. field.
+rewrite -!RminusE -RmultE -R1E. field.
 Qed.
 
-Lemma uniform_notin (M : probMonad) (A : eqType) (def : A) (s : seq A) B
+Lemma uniform_notin (M : probMonad real_realType) (A : eqType) (def : A) (s : seq A) B
   (ma mb : A -> M B) (p : pred A) :
   s != [::] ->
   (forall x, x \in s -> ~~ p x) ->
@@ -560,14 +599,15 @@ rewrite 2!choice_bindDl; congr (_ <| _ |> _).
 by rewrite IH // => a ta; rewrite H // in_cons ta orbT.
 Qed.
 
-Lemma choice_halfC A (M : probMonad) (a b : M A) :
+Lemma choice_halfC A (M : probMonad real_realType) (a b : M A) :
   a <| (/ 2)%:pr |> b = b <| (/ 2)%:pr |> a.
 Proof.
 rewrite choiceC (_ : (_.~)%:pr = (/ 2)%:pr) //.
-by apply val_inj; rewrite /= /onem; lra.
+apply val_inj; rewrite /= /onem.
+rewrite -RminusE -R1E; field.
 Qed.
 
-Lemma choice_halfACA A (M : probMonad) (a b c d : M A) :
+Lemma choice_halfACA A (M : probMonad real_realType) (a b c d : M A) :
   (a <| (/ 2)%:pr |> b) <| (/ 2)%:pr |> (c <| (/ 2)%:pr |> d) =
   (a <| (/ 2)%:pr |> c) <| (/ 2)%:pr |> (b <| (/ 2)%:pr |> d).
 Proof.
@@ -577,7 +617,7 @@ by rewrite -choice_conv.
 Qed.
 
 Section keimel_plotkin_instance.
-Variables (M : altProbMonad) (A : Type).
+Variables (M : altProbMonad real_realType) (A : Type).
 Variables (p q : M A).
 
 Lemma keimel_plotkin_instance :
