@@ -138,24 +138,18 @@ Lemma hd_tl_tl_is_true :
   crun (do l <- cycle ml_bool true false; do l1 <- tl _ l; do l2 <- tl _ l1;
         Ret (hd ml_bool false l2)) = Some true.
 Proof.
-rewrite bindA.
-under eq_bind => r.
-  rewrite !bindA.
-  under eq_bind do rewrite !bindA bindretf !bindA bindretf /=.
-  over.
-rewrite -cnewchk.
+rewrite bindA -cnewchk.
 under eq_bind => r1.
+  under eq_bind do rewrite !bindA.
+  under eq_bind do under eq_bind do rewrite !(bindA,bindretf) /=.
   under cchknewE do rewrite -bindA cputgetC //.
   rewrite cnewget /=.
   under eq_bind do under eq_bind do rewrite cputget /=.
   rewrite -bindA.
   over.
-rewrite cnewchk.
-rewrite -bindA crunret // -bindA_uncurry /= crungetput // bindA.
-under eq_bind => tl.
-  rewrite !bindA.
-  under eq_bind do rewrite bindretf /=.
-  over.
+rewrite cnewchk -bindA crunret // -bindA_uncurry /= crungetput // bindA.
+under eq_bind do rewrite !bindA.
+under eq_bind do under eq_bind do rewrite bindretf /=.
 by rewrite crungetnew // -(bindskipf (_ >>= _)) crunnewget // crunskip.
 Qed.
 
