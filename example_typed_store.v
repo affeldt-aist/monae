@@ -126,6 +126,33 @@ under eq_bind => tl.
   over.
 by rewrite crungetnew // -(bindskipf (_ >>= _)) crunnewget // crunskip.
 Qed.
+
+Definition tl (T : ml_type) (param : coq_type (ml_rlist T))
+  : M (coq_type (ml_rlist T)) :=
+  match param with
+  | Nil => Ret (Nil (coq_type T) T)
+  | Cons _ t => cget t
+  end.
+
+Lemma hd_tl_tl_is_true :
+  crun (do l <- cycle ml_bool true false; do l1 <- tl _ l; do l2 <- tl _ l1;
+        Ret (hd ml_bool false l2)) = Some true.
+Proof.
+rewrite bindA -cnewchk.
+under eq_bind => r1.
+  under eq_bind do rewrite !bindA.
+  under eq_bind do under eq_bind do rewrite !(bindA,bindretf) /=.
+  under cchknewE do rewrite -bindA cputgetC //.
+  rewrite cnewget /=.
+  under eq_bind do under eq_bind do rewrite cputget /=.
+  rewrite -bindA.
+  over.
+rewrite cnewchk -bindA crunret // -bindA_uncurry /= crungetput // bindA.
+under eq_bind do rewrite !bindA.
+under eq_bind do under eq_bind do rewrite bindretf /=.
+by rewrite crungetnew // -(bindskipf (_ >>= _)) crunnewget // crunskip.
+Qed.
+
 End cyclic.
 
 Section factorial.
@@ -562,7 +589,7 @@ Definition it0 : W unit := inr (tt, empty_env).
 
 Local Open Scope do_notation.
 Local Notation mkloc := (mkloc (locT:=monad_model.locT_nat)).
-Local Notation coq_type := (coq_type _).
+Local Notation coq_type := (coq_type M).
 
 Definition incr (l : loc ml_int) : M int :=
   do x <- cget l; do _ <- cput l (Uint63.succ x); Ret (Uint63.succ x).
