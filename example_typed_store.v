@@ -117,14 +117,11 @@ rewrite bindA.
 under eq_bind => tl.
   rewrite !bindA.
   under eq_bind do rewrite !bindA bindretf !bindA bindretf /=.
-  rewrite -bindA.
   over.
-rewrite -bindA crunret // -bindA_uncurry /= crungetput // bindA.
-under eq_bind => tl.
-  rewrite !bindA.
-  under eq_bind do rewrite bindretf /=.
-  over.
-by rewrite crungetnew // -(bindskipf (_ >>= _)) crunnewget // crunskip.
+rewrite -bindA_uncurry -bindA crunret // crungetput // bindA.
+under eq_bind do rewrite !bindA.
+under eq_bind do under eq_bind do rewrite bindretf /=.
+by rewrite crungetnew // crunnewget0.
 Qed.
 
 Definition tl (T : ml_type) (param : coq_type (ml_rlist T))
@@ -141,16 +138,14 @@ Proof.
 rewrite bindA -cnewchk.
 under eq_bind => r1.
   under eq_bind do rewrite !bindA.
-  under eq_bind do under eq_bind do rewrite !(bindA,bindretf) /=.
-  under cchknewE do rewrite -bindA cputgetC //.
+  under cchknewE do rewrite !(bindA,bindretf) -bindA cputgetC //.
   rewrite cnewget /=.
-  under eq_bind do under eq_bind do rewrite cputget /=.
-  rewrite -bindA.
+  under cchknewE do rewrite cputget /=.
   over.
-rewrite cnewchk -bindA crunret // -bindA_uncurry /= crungetput // bindA.
+rewrite cnewchk -bindA_uncurry -bindA crunret // crungetput // bindA.
 under eq_bind do rewrite !bindA.
 under eq_bind do under eq_bind do rewrite bindretf /=.
-by rewrite crungetnew // -(bindskipf (_ >>= _)) crunnewget // crunskip.
+by rewrite crungetnew // crunnewget0.
 Qed.
 
 End cyclic.
