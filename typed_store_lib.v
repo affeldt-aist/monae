@@ -97,6 +97,9 @@ Proof. by rewrite bindA bindskipf cgetget. Qed.
 Lemma cgetret T (r : loc T) : cget r >>= Ret = cget r :> M _.
 Proof. by rewrite bindmret. Qed.
 
+Lemma crunnewget0 T s : crun (cnew T s >>= fun r => cget r : M _).
+Proof. by rewrite -(bindskipf (_ >>= _)) crunnewget // crunskip. Qed.
+
 Lemma crunnew0 T s : crun (cnew T s : M _).
 Proof. by rewrite -(bindskipf (cnew T s)) crunnew // crunskip. Qed.
 
