@@ -9,8 +9,13 @@ Definition eq_rect_eq :=
   @ProofIrrelevance.ProofIrrelevanceTheory.Eq_rect_eq.eq_rect_eq.
 
 Definition funext := @FunctionalExtensionality.functional_extensionality.
+Arguments funext {T U} [f g] : rename.
 
 Definition funext_dep := @FunctionalExtensionality.functional_extensionality_dep.
+Arguments funext_dep [A B f g] : rename.
+
+Lemma funeqP {T U : Type} (f g : T -> U) : (f = g) <-> (f =1 g).
+Proof. by split => [-> | /funext]. Qed.
 
 (******************************************************************************)
 (*      Shared notations and easy definitions/lemmas of general interest      *)
