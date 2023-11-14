@@ -3,7 +3,7 @@
 Require Import Reals Lra.
 From mathcomp Require Import all_ssreflect ssralg ssrnum.
 From mathcomp Require Import reals Rstruct.
-From infotheo Require Import ssrR Reals_ext proba.
+From infotheo Require Import ssrR Rstruct_ext Reals_ext proba.
 From infotheo Require Import Reals_ext realType_ext.
 Require Import monae_lib hierarchy monad_lib fail_lib proba_lib.
 
