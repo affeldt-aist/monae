@@ -5,7 +5,7 @@ Require Import Reals Lra.
 From mathcomp Require Import all_ssreflect ssralg ssrnum.
 From mathcomp Require boolp.
 From mathcomp Require Import reals Rstruct lra.
-From infotheo Require Import ssrR Reals_ext realType_ext proba.
+From infotheo Require Import ssrR Rstruct_ext Reals_ext realType_ext proba.
 From infotheo Require Import convex.
 From infotheo Require necset.
 Require Import monae_lib hierarchy monad_lib fail_lib.
@@ -210,7 +210,7 @@ rewrite (_ : Prob.mk _ = probdivRnnm n l); last first.
   by rewrite -/(cp _ _) -/l; exact/val_inj.
 pose m := size xxs.
 have lmn : (l = m * n)%nat by rewrite /l /m /n size_allpairs.
-rewrite (_ : probdivRnnm _ _ = @Prob.mk _ (/ (1 + m)%:R) (prob_invn' _))%coqR; last first.
+rewrite (_ : probdivRnnm _ _ = @Prob.mk _ (/ (1 + m)%:R) (prob_invn _))%coqR; last first.
   apply val_inj => /=.
   rewrite lmn /divRnnm -mulSn mult_INR {1}/Rdiv Rinv_mult.
   rewrite mulRC -mulRA mulVR; last by rewrite INR_eq0' -lt0n.
@@ -323,8 +323,8 @@ have rp : (0 < (r : R) - (p : R))%mcR by rewrite subr_gt0 (lt_trans pq).
 have rp' : ((r : R) - (p : R) != 0)%mcR by rewrite subr_eq0 gt_eqF// -subr_gt0.
 have rq : (0 < (r : R) - (q : R))%mcR by rewrite subr_gt0.
 apply/andP; split; first by rewrite divr_ge0// ltW.
-rewrite -(ler_pmul2r rp).
-by rewrite mulrAC -mulrA mulrV // mulr1 mul1r ler_add2l ler_oppl opprK; exact/ltW.
+rewrite -(ler_pM2r rp).
+by rewrite mulrAC -mulrA mulrV // mulr1 mul1r lerD2l lerNl opprK; exact/ltW.
 Qed.
 
 Definition magnified_weight (p q r : {prob real_realType}) (H : p < q < r) : {prob real_realType} :=
@@ -458,11 +458,10 @@ rewrite [in LHS](choiceA (/ 4)%:pr (/ 3).~%:pr (/ 3)%:pr (/ 4).~%:pr); last firs
 rewrite choicemm.
 rewrite [in LHS](choiceA (/ 7)%:pr (/ 6)%:pr (/ 2)%:pr (@Prob.mk _ (2/7) H27)); last first.
   rewrite 4!probpK /= /onem; split.
-    rewrite -RmultE -RdivE; last by lra.
-    rewrite -2!INRE !INR_IZR_INZ.
+    rewrite -RmultE -RdivE' -2!INRE !INR_IZR_INZ.
     field.
   rewrite -!(RmultE,RminusE).
-  rewrite -RinvE; last by lra.
+  rewrite -RinvE'.
   rewrite (_ : 7%mcR = 7); last first.
     by rewrite -INRE !INR_IZR_INZ.
   rewrite (_ : 2%mcR = 2)//.
@@ -471,8 +470,7 @@ rewrite [in LHS](choiceA (/ 7)%:pr (/ 6)%:pr (/ 2)%:pr (@Prob.mk _ (2/7) H27)); 
 rewrite choicemm.
 rewrite [in LHS](choiceA (/ 8)%:pr (@Prob.mk _ (2/7) H27) (@Prob.mk _ (7/21) H721) (@Prob.mk _ (21/56) H2156)); last first.
   rewrite probpK /= /onem; split.
-    rewrite -RmultE -RdivE; last by lra.
-    rewrite -RdivE; last by lra.
+    rewrite -RmultE -2!RdivE'.
     rewrite (_ : 21%mcR = 21); last first.
       by rewrite -INRE !INR_IZR_INZ.
     rewrite (_ : 56%mcR = 56); last first.
@@ -480,8 +478,7 @@ rewrite [in LHS](choiceA (/ 8)%:pr (@Prob.mk _ (2/7) H27) (@Prob.mk _ (7/21) H72
     rewrite (_ : 7%mcR = 7); last first.
       by rewrite -INRE !INR_IZR_INZ.
     field.
-  rewrite -2!RmultE -!RminusE -RdivE; last by lra.
-  rewrite -RinvE; last by lra.
+  rewrite -2!RmultE -!RminusE -RdivE' -RinvE'.
   rewrite (_ : 56%mcR = 56); last first.
     by rewrite -INRE !INR_IZR_INZ.
   rewrite (_ : 7%mcR = 7); last first.
@@ -495,13 +492,13 @@ rewrite [in LHS](choiceA (/ 8)%:pr (@Prob.mk _ (2/7) H27) (@Prob.mk _ (7/21) H72
 rewrite (choiceC (/ 4).~%:pr).
 rewrite [in LHS](choiceA (/ 5)%:pr (probcplt (/ 4).~%:pr) (/ 2)%:pr (@Prob.mk _ (2/5) H25)); last first.
   rewrite 3!probpK /= /onem; split.
-    rewrite -2!RmultE -RinvE; last by lra.
+    rewrite -2!RmultE -RinvE'.
     rewrite (_ : 2%mcR = 2); last first.
       by rewrite -INRE !INR_IZR_INZ.
     rewrite (_ : 5%mcR = 5); last first.
       by rewrite -INRE !INR_IZR_INZ.
     field.
-  rewrite -!RmultE -!RminusE -RinvE; last by lra.
+  rewrite -!RmultE -!RminusE -RinvE'.
   rewrite (_ : 5%mcR = 5); last first.
     by rewrite -INRE !INR_IZR_INZ.
   rewrite (_ : 2%mcR = 2); last first.
@@ -512,15 +509,14 @@ rewrite 2!choicemm.
 rewrite (choiceC (@Prob.mk _ (2/5) H25)).
 rewrite [in LHS](choiceA (@Prob.mk _ (21/56) H2156) (probcplt (Prob.mk H25)) (/ 2)%:pr (/ 4).~%:pr); last first.
   rewrite 3!probpK /= /onem; split.
-    rewrite -!RmultE -RminusE -RinvE; last by lra.
+    rewrite -!RmultE -RminusE -RinvE'.
     rewrite (_ : 56%mcR = 56); last first.
       by rewrite -INRE !INR_IZR_INZ.
     rewrite (_ : 21%mcR = 21); last first.
       by rewrite -INRE !INR_IZR_INZ.
     rewrite -R1E.
     field.
-  rewrite -!(RmultE,RminusE) -RinvE; last by lra.
-  rewrite -RinvE; last by lra.
+  rewrite -!(RmultE,RminusE) -2!RinvE'.
   rewrite (_ : 56%mcR = 56); last first.
     by rewrite -INRE !INR_IZR_INZ.
   rewrite (_ : 21%mcR = 21); last first.
