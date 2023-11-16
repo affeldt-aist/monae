@@ -80,12 +80,12 @@ Let choice0 (T : UU0) : forall (a b : acto T), choice 0%R%:pr _ a b = b.
 Proof. by move=> ? ?; exact: conv0. Qed.
 Let choice1 (T : UU0) : forall (a b : acto T), choice 1%R%:pr _ a b = a.
 Proof. by move=> ? ?; exact: conv1. Qed.
-Let choiceC (T : UU0) : forall p (a b : acto T), choice p _ a b = choice (p.~ %:pr) _ b a.
+Let choiceC (T : UU0) : forall p (a b : acto T), choice p _ a b = choice ((Prob.p p).~ %:pr) _ b a.
 Proof. by move=> ? ?; exact: convC. Qed.
 Let choicemm : forall (T : Type) p, idempotent (@choice p T).
 Proof. by move=> ? ? ?; exact: convmm. Qed.
 Let choiceA : forall (T : Type) (p q r s : {prob real_realType}) (a b c : acto T),
-    (p = r * s :> R /\ s.~ = p.~ * q.~)%R ->
+    (p = r * s :> R /\ (Prob.p s).~ = (Prob.p p).~ * (Prob.p q).~)%R ->
     let bc := (choice q _ b c) in
     let ab := (choice r _ a b) in
     choice p _ a bc = choice s _ ab c.

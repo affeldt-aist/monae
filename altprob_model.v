@@ -127,12 +127,12 @@ Lemma choice0 A (x y : gcm A) : x <| 0%:pr |> y = y.
 Proof. by rewrite conv0. Qed.
 Lemma choice1 A (x y : gcm A) : x <| 1%:pr |> y = x.
 Proof. by rewrite conv1. Qed.
-Lemma choiceC A p (x y : gcm A) : x <|p|> y = y <|p.~%:pr|> x.
+Lemma choiceC A p (x y : gcm A) : x <|p|> y = y <|(Prob.p p).~%:pr|> x.
 Proof. by rewrite convC. Qed.
 Lemma choicemm A p : idempotent (@choice p A).
 Proof. by move=> m; rewrite /choice convmm. Qed.
 Lemma choiceA A (p q r s : {prob [realType of R]}) (x y z : gcm A) :
-  p = (r * s) :> R /\ s.~ = (p.~ * q.~)%R ->
+  p = (r * s) :> R /\ (Prob.p s).~ = ((Prob.p p).~ * (Prob.p q).~)%R ->
   x <| p |> (y <| q |> z) = (x <| r |> y) <| s |> z.
 Proof. by case => *; apply: convA0. Qed.
 

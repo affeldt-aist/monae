@@ -4,8 +4,9 @@ From HB Require Import structures.
 Require Import Reals Lra.
 From mathcomp Require Import all_ssreflect ssralg ssrnum.
 From mathcomp Require boolp.
-From mathcomp Require Import reals Rstruct lra.
-From infotheo Require Import ssrR Rstruct_ext Reals_ext realType_ext proba.
+From mathcomp Require Import reals mathcomp_extra Rstruct lra.
+From infotheo Require Import ssrR Rstruct_ext Reals_ext.
+From infotheo Require Import realType_ext proba.
 From infotheo Require Import convex.
 From infotheo Require necset.
 Require Import monae_lib hierarchy monad_lib fail_lib.
@@ -300,7 +301,7 @@ Definition coinarb p : M bool :=
   (do c <- bcoin p ; (do a <- arb; Ret (a == c) : M _))%Do.
 
 Lemma arbcoin_spec p :
-  arbcoin p = (bcoin p : M _) [~] bcoin p.~%:pr.
+  arbcoin p = (bcoin p : M _) [~] bcoin (Prob.p p).~%:pr.
 Proof.
 rewrite /arbcoin /arb alt_bindDl 2!bindretf bindmret; congr (_ [~] _).
 by rewrite /bcoin choiceC choice_bindDl 2!bindretf eqxx.
@@ -350,7 +351,7 @@ rewrite -!addptA -scaleptDl//; last first.
   rewrite /Prob_p.
   by apply: mulR_ge0 => //.
 rewrite (_ : conj pq qr = H)//.
-have -> : ((m H).~ * r.~ + m H * p.~ = ((m H : R) * p + (m H).~ * r).~)%coqR.
+have -> : ((Prob.p (m H)).~ * (Prob.p r).~ + m H * (Prob.p p).~ = ((m H : R) * p + (Prob.p (m H)).~ * r).~)%coqR.
   rewrite /onem.
   rewrite /Prob_p.
   rewrite -!RminusE.
@@ -358,7 +359,7 @@ have -> : ((m H).~ * r.~ + m H * p.~ = ((m H : R) * p + (m H).~ * r).~)%coqR.
   rewrite -RplusE -2!RmultE.
   ring.
 rewrite [r%:pp]/Prob_p.
-pose tmp := (m H * p + (m H).~ * r).
+pose tmp := (m H * p + (Prob.p (m H)).~ * r).
 rewrite -[X in X.~ *' _ +' _]/tmp.
 rewrite -/tmp.
 suff -> : tmp = q.
@@ -373,8 +374,8 @@ ring.
 Qed.
 
 Lemma arbcoin_spec_convexity (p q : {prob real_realType}) :
-  p < q < p.~%:pr ->
-  arbcoin p = (bcoin p : M _) [~] bcoin p.~%:pr [~] bcoin q.
+  p < q < (Prob.p p).~%:pr ->
+  arbcoin p = (bcoin p : M _) [~] bcoin (Prob.p p).~%:pr [~] bcoin q.
 Proof.
 move=> H.
 rewrite arbcoin_spec !alt_lub.
@@ -417,7 +418,7 @@ Lemma coinarb_spec_convexity' p w : coinarb p =
 Proof. by rewrite coinarb_spec /arb /bcoin choiceC -(alt_absorbs_choice) altC. Qed.
 
 Lemma coinarb_spec_convexity p w : coinarb p =
-  (bcoin w : M _) [~] (Ret false : M _) [~] (Ret true : M _) [~] bcoin w.~%:pr.
+  (bcoin w : M _) [~] (Ret false : M _) [~] (Ret true : M _) [~] bcoin (Prob.p w).~%:pr.
 Proof.
 rewrite coinarb_spec [in LHS]/arb [in LHS](convexity _ _ w) 2!choicemm.
 rewrite -/(bcoin w) -altA altCA -!altA; congr (_ [~] _).
