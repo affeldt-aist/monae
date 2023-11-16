@@ -1237,11 +1237,11 @@ HB.mixin Record isMonadProb {R : realType} (M : UU0 -> UU0) of Monad M := {
   choice1 : forall (T : UU0) (a b : M T), choice 1%:pr _ a b = a ;
   (* skewed commutativity *)
   choiceC : forall (T : UU0) p (a b : M T),
-    choice p _ a b = choice (p.~ %:pr) _ b a ;
+    choice p _ a b = choice ((Prob.p p).~ %:pr) _ b a ;
   choicemm : forall (T : UU0) p, idempotent (@choice p T) ;
   (* quasi associativity *)
   choiceA : forall (T : UU0) (p q r s : {prob R}) (a b c : M T),
-    (p = (r : R) * (s : R) :> R /\ s.~ = p.~ * q.~)%R ->
+    (p = (r : R) * (s : R) :> R /\ (Prob.p s).~ = (Prob.p p).~ * (Prob.p q).~)%R ->
     (*NB: needed to preserve the notation in the resulting choiceA lemma*)
     let bc := choice q _ b c in
     let ab := choice r _ a b in
