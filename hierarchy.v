@@ -79,7 +79,7 @@ From HB Require Import structures.
 (*  stateTraceReifyMonad == stateTrace + reify                                *)
 (*                                                                            *)
 (* Probability monads:                                                        *)
-(*         probaMonad == probabilistic choice and bind left-distributes over  *)
+(*          probMonad == probabilistic choice and bind left-distributes over  *)
 (*                       choice                                               *)
 (*        probDrMonad == probaMonad + bind right-distributes over choice      *)
 (*       altProbMonad == combined (probabilistic and nondeterministic) choice *)
@@ -1106,8 +1106,7 @@ HB.structure Definition ML_UNIVERSE := {ml_type & isML_universe ml_type}.
 Canonical isML_universe_eqType (T : ML_universe) := EqType T eqclass.
 
 HB.mixin Record isMonadTypedStore (MLU : ML_universe) (N : monad) (locT : eqType)
-    (M : UU0 -> UU0)
-    of Monad M := {
+    (M : UU0 -> UU0) of Monad M := {
   cnew : forall {T : MLU}, coq_type N T -> M (loc locT T) ;
   cget : forall {T}, loc locT T -> M (coq_type N T) ;
   cput : forall {T}, loc locT T -> coq_type N T -> M unit ;
