@@ -203,8 +203,8 @@ apply contra_not.
 rewrite !gcm_retE /Choice /= => /(congr1 (@NECSet.car _)).
 rewrite !necset_convType.convE !conv_cset1 /=.
 move/(@set1_inj _ (conv _ _ _))/(congr1 (@FSDist.f _))/fsfunP/(_ true).
-by rewrite !fsdist_convE !fsdist1xx !mulR1 fsdist10 ?mulR0 ?addR0//;
-  [exact: val_inj|exact/eqP].
+rewrite !fsdist_convE !fsdist1xx !fsdist10//; last exact/eqP. (*TODO: we should not need that*)
+by rewrite !avgRE !mulR1 ?mulR0 ?addR0 => /val_inj.
 Qed.
 
 End probabilisctic_choice_not_trivial.
