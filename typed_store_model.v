@@ -57,13 +57,15 @@ Local Notation val_nonundef := (val_nonempty MLU).
 
 Definition def := mkbind (@val_nonempty MLU M).
 
+Local Notation ml_type := (MLU : Type).
+
 Local Notation nth_error := List.nth_error.
 
 Definition extend_env T (v : coq_type T) (e : Env) :=
   mkEnv (rcons (ofEnv e) (mkbind v)).
-Definition fresh_loc (T : MLU) (e : Env) := mkloc T (sizeEnv e).
+Definition fresh_loc (T : ml_type) (e : Env) := mkloc T (sizeEnv e).
 
-Local Notation loc := (@loc MLU locT_nat).
+Local Notation loc := (@loc ml_type locT_nat).
 
 Let cnew T (v : coq_type T) : M (loc T) :=
   fun e => inr (fresh_loc T e, extend_env v e).
@@ -161,7 +163,7 @@ rewrite !bind_cnew /fresh_loc /extend_env /= size_rcons.
 Abort.
 *)
 
-Variant nth_error_spec (T : MLU) (e : Env) (r : loc T) : Type :=
+Variant nth_error_spec (T : ml_type) (e : Env) (r : loc T) : Type :=
   | NthError : forall s : coq_type T,
     nth_error (ofEnv e) (loc_id r) = Some (mkbind s) -> nth_error_spec e r
   | NthError_nocoerce : forall T' (s' : coq_type T'),
@@ -169,7 +171,7 @@ Variant nth_error_spec (T : MLU) (e : Env) (r : loc T) : Type :=
     nth_error_spec e r
   | NthError_None : nth_error (ofEnv e) (loc_id r) = None -> nth_error_spec e r.
 
-Lemma ntherrorP (T : MLU) (e : Env) (r : loc T) : nth_error_spec e r.
+Lemma ntherrorP (T : ml_type) (e : Env) (r : loc T) : nth_error_spec e r.
 Proof.
 case H : (nth_error (ofEnv e) (loc_id r)) => [[T' s']|].
   have [Ts'|Ts'] := boolP (coercible T s').
@@ -243,7 +245,7 @@ have [s' H|T' s' H Ts'|H] := ntherrorP e r.
 - by rewrite 2!MS_bindE None_cput.
 Qed.
 
-Lemma Some_cputput (T : MLU) (r : loc T) (s s' : coq_type T)
+Lemma Some_cputput (T : ml_type) (r : loc T) (s s' : coq_type T)
   (e : Env) (s'' : coq_type T) :
   nth_error (ofEnv e) (loc_id r) = Some (mkbind s'') ->
   (cput r s >> cput r s') e = cput r s' e.
@@ -541,7 +543,7 @@ Qed.
 
 HB.instance Definition _ := Monad.on M.
 HB.instance Definition isMonadTypedStoreModel :=
-  isMonadTypedStore.Build _ _ M cnewget cnewput cgetput cgetputskip
+  isMonadTypedStore.Build _ M _ M cnewget cnewput cgetput cgetputskip
     cgetget cputget cputput cgetC cgetnewD cgetnewE cgetputC cputC
     cputgetC cputnewC
     crunret crunskip crunnew crunnewget crungetnew crungetput.

@@ -22,7 +22,7 @@ Unset Printing Implicit Defensive.
 Local Open Scope monae_scope.
 
 Section cchk.
-Variables (MLU : ML_universe) (locT : eqType) (M : typedStoreMonad MLU locT).
+Variables (MLU : ML_universe) (N : monad) (locT : eqType) (M : typedStoreMonad MLU N locT).
 Notation loc := (@loc MLU locT).
 Definition cchk T (r : loc T) : M unit := cget r >> skip.
 
@@ -45,7 +45,7 @@ by under eq_bind do under eq_bind do rewrite bindskipf.
 Qed.
 
 Lemma cchkgetC T1 T2 (r1: loc T1) (r2: loc T2) (A: UU0)
-  (k: coq_type M T2 -> M A) :
+  (k: coq_type N T2 -> M A) :
   cchk r1 >> (cget r2 >>= k) = cget r2 >>= (fun s => cchk r1 >> k s).
 Proof.
 under [in RHS]eq_bind do rewrite bindA bindskipf.
@@ -67,27 +67,27 @@ Lemma cchknewput T T' (r : loc T) s s' (A : UU0) k :
   cput r s >> (cnew T' s' >>= k) :> M A.
 Proof. by rewrite bindA bindskipf cputnewC. Qed.
 
-Lemma cchkget T (r : loc T) (A: UU0) (k : coq_type M T -> M A) :
+Lemma cchkget T (r : loc T) (A : UU0) (k : coq_type N T -> M A) :
   cchk r >> (cget r >>= k) = cget r >>= k.
 Proof. by rewrite bindA bindskipf cgetget. Qed.
 
-Lemma cgetchk T (r : loc T) (A: UU0) (k : coq_type M T -> M A) :
+Lemma cgetchk T (r : loc T) (A: UU0) (k : coq_type N T -> M A) :
   cget r >>= (fun s => cchk r >> k s) = cget r >>= k.
 Proof. under eq_bind do rewrite bindA bindskipf; by rewrite cgetget. Qed.
 
-Lemma cchkputC T1 T2 (r1 : loc T1) (r2 : loc T2) (s : coq_type M T2) :
+Lemma cchkputC T1 T2 (r1 : loc T1) (r2 : loc T2) (s : coq_type N T2) :
   cchk r1 >> cput r2 s = cput r2 s >> cchk r1.
 Proof. by rewrite bindA bindskipf cgetputC bindA. Qed.
 
-Lemma cchkput T (r : loc T) (s : coq_type M T) :
+Lemma cchkput T (r : loc T) (s : coq_type N T) :
   cchk r >> cput r s = cput r s.
 Proof. by rewrite bindA bindskipf cgetput. Qed.
 
-Lemma cputchk T (r : loc T) (s : coq_type M T) :
+Lemma cputchk T (r : loc T) (s : coq_type N T) :
   cput r s >> cchk r = cput r s.
 Proof. by rewrite cputget bindmskip. Qed.
 
-Lemma cchkC T1 T2 (r1: loc T1) (r2: loc T2) :
+Lemma cchkC T1 T2 (r1 : loc T1) (r2 : loc T2) :
   cchk r1 >> cchk r2 = cchk r2 >> cchk r1.
 Proof. by rewrite !(bindA,bindskipf) cgetC. Qed.
 
@@ -103,7 +103,7 @@ Proof. by rewrite -(bindskipf (_ >>= _)) crunnewget // crunskip. Qed.
 Lemma crunnew0 T s : crun (cnew T s : M _).
 Proof. by rewrite -(bindskipf (cnew T s)) crunnew // crunskip. Qed.
 
-Lemma cnewgetret T s : cnew T s >>= @cget _ _ _ _ = cnew T s >> Ret s :> M _.
+Lemma cnewgetret T s : cnew T s >>= @cget _ _ _ _ _ = cnew T s >> Ret s :> M _.
 Proof. under eq_bind do rewrite -cgetret; by rewrite cnewget. Qed.
 End cchk.
-Arguments cchk {MLU locT M} [T].
+Arguments cchk {MLU N locT M} [T].

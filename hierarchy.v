@@ -1105,56 +1105,57 @@ HB.structure Definition ML_UNIVERSE := {ml_type & isML_universe ml_type}.
 
 Canonical isML_universe_eqType (T : ML_universe) := EqType T eqclass.
 
-HB.mixin Record isMonadTypedStore (MLU : ML_universe) (locT : eqType) (M : UU0 -> UU0)
+HB.mixin Record isMonadTypedStore (MLU : ML_universe) (N : monad) (locT : eqType)
+    (M : UU0 -> UU0)
     of Monad M := {
-  cnew : forall {T : MLU}, coq_type M T -> M (loc locT T) ;
-  cget : forall {T}, loc locT T -> M (coq_type M T) ;
-  cput : forall {T}, loc locT T -> coq_type M T -> M unit ;
+  cnew : forall {T : MLU}, coq_type N T -> M (loc locT T) ;
+  cget : forall {T}, loc locT T -> M (coq_type N T) ;
+  cput : forall {T}, loc locT T -> coq_type N T -> M unit ;
   crun : forall {A : UU0}, M A -> option A ; (* execute in empty store *)
-  cnewget : forall T (s : coq_type M T) A (k : loc locT T -> coq_type M T -> M A),
+  cnewget : forall T (s : coq_type N T) A (k : loc locT T -> coq_type N T -> M A),
     cnew s >>= (fun r => cget r >>= k r) = cnew s >>= (fun r => k r s) ;
-  cnewput : forall T (s t : coq_type M T) A (k : loc locT T -> M A),
+  cnewput : forall T (s t : coq_type N T) A (k : loc locT T -> M A),
       cnew s >>= (fun r => cput r t >> k r) = cnew t >>= k ;
-  cgetput : forall T (r : loc locT T) (s : coq_type M T),
+  cgetput : forall T (r : loc locT T) (s : coq_type N T),
       cget r >> cput r s = cput r s ;
   cgetputskip : forall T (r : loc locT T), cget r >>= cput r = cget r >> skip ;
   cgetget :
-    forall T (r : loc locT T) (A : UU0) (k : coq_type M T -> coq_type M T -> M A),
+    forall T (r : loc locT T) (A : UU0) (k : coq_type N T -> coq_type N T -> M A),
     cget r >>= (fun s => cget r >>= k s) = cget r >>= fun s => k s s ;
   cputget :
-    forall T (r : loc locT T) (s : coq_type M T) (A : UU0) (k : coq_type M T -> M A),
+    forall T (r : loc locT T) (s : coq_type N T) (A : UU0) (k : coq_type N T -> M A),
       cput r s >> (cget r >>= k) = cput r s >> k s ;
-  cputput : forall T (r : loc locT T) (s s' : coq_type M T),
+  cputput : forall T (r : loc locT T) (s s' : coq_type N T),
     cput r s >> cput r s' = cput r s' ;
   cgetC :
     forall T1 T2 (r1 : loc locT T1) (r2 : loc locT T2) (A : UU0)
-           (k : coq_type M T1 -> coq_type M T2 -> M A),
+           (k : coq_type N T1 -> coq_type N T2 -> M A),
     cget r1 >>= (fun u => cget r2 >>= (fun v => k u v)) =
     cget r2 >>= (fun v => cget r1 >>= (fun u => k u v)) ;
   cgetnewD :
-    forall T T' (r : loc locT T) (s : coq_type M T') A
-           (k : loc locT T' -> coq_type M T -> coq_type M T -> M A),
+    forall T T' (r : loc locT T) (s : coq_type N T') A
+           (k : loc locT T' -> coq_type N T -> coq_type N T -> M A),
       cget r >>= (fun u => cnew s >>= (fun r' => cget r >>= k r' u)) =
       cget r >>= (fun u => cnew s >>= (fun r' => k r' u u)) ;
-  cgetnewE : forall T1 T2 (r1 : loc locT T1) (s : coq_type M T2) (A : UU0)
+  cgetnewE : forall T1 T2 (r1 : loc locT T1) (s : coq_type N T2) (A : UU0)
                    (k1 k2 : loc locT T2 -> M A),
       (forall r2 : loc locT T2, loc_id r1 != loc_id r2 -> k1 r2 = k2 r2) ->
       cget r1 >> (cnew s >>= k1) = cget r1 >> (cnew s >>= k2) ;
-  cgetputC : forall T1 T2 (r1 : loc locT T1) (r2 : loc locT T2) (s : coq_type M T2),
+  cgetputC : forall T1 T2 (r1 : loc locT T1) (r2 : loc locT T2) (s : coq_type N T2),
       cget r1 >> cput r2 s = cput r2 s >> cget r1 >> skip ;
   cputC :
-    forall T1 T2 (r1 : loc locT T1) (r2 : loc locT T2) (s1 : coq_type M T1)
-           (s2 : coq_type M T2) (A : UU0),
+    forall T1 T2 (r1 : loc locT T1) (r2 : loc locT T2) (s1 : coq_type N T1)
+           (s2 : coq_type N T2) (A : UU0),
       loc_id r1 != loc_id r2 \/ JMeq s1 s2 ->
       cput r1 s1 >> cput r2 s2 = cput r2 s2 >> cput r1 s1 ;
   cputgetC :
-    forall T1 T2 (r1 : loc locT T1) (r2 : loc locT T2) (s1 : coq_type M T1)
-           (A : UU0) (k : coq_type M T2 -> M A),
+    forall T1 T2 (r1 : loc locT T1) (r2 : loc locT T2) (s1 : coq_type N T1)
+           (A : UU0) (k : coq_type N T2 -> M A),
       loc_id r1 != loc_id r2 ->
     cput r1 s1 >> cget r2 >>= k =
     cget r2 >>= (fun v => cput r1 s1 >> k v) ;
   cputnewC :
-    forall T T' (r : loc locT T) (s : coq_type M T) (s' : coq_type M T') A
+    forall T T' (r : loc locT T) (s : coq_type N T) (s' : coq_type N T') A
            (k : loc locT T' -> M A),
       cget r >> (cnew s' >>= fun r' => cput r s >> k r') =
       cput r s >> (cnew s' >>= k) ;
@@ -1162,28 +1163,28 @@ HB.mixin Record isMonadTypedStore (MLU : ML_universe) (locT : eqType) (M : UU0 -
       crun m -> crun (m >> Ret s) = Some s ;
   crunskip :
       crun skip = Some tt ;
-  crunnew : forall (A : UU0) T (m : M A) (s : A -> coq_type M T),
+  crunnew : forall (A : UU0) T (m : M A) (s : A -> coq_type N T),
       crun m -> crun (m >>= fun x => cnew (s x)) ;
-  crunnewget : forall (A : UU0) T (m : M A) (s : A -> coq_type M T),
+  crunnewget : forall (A : UU0) T (m : M A) (s : A -> coq_type N T),
       crun m -> crun (m >>= fun x => cnew (s x) >>= cget) ;
   crungetnew : forall (A : UU0) T1 T2 (m : M A) (r : A -> loc locT T1)
-                      (s : A -> coq_type M T2),
+                      (s : A -> coq_type N T2),
       crun (m >>= fun x => cget (r x)) ->
       crun (m >>= fun x => cnew (s x) >> cget (r x)) ;
   crungetput : forall (A : UU0) T (m : M A) (r : A -> loc locT T)
-                      (s : A -> coq_type M T),
+                      (s : A -> coq_type N T),
       crun (m >>= fun x => cget (r x)) ->
       crun (m >>= fun x => cput (r x) (s x)) ;
  }.
 
 #[short(type=typedStoreMonad)]
-HB.structure Definition MonadTypedStore (ml_type : ML_universe) (locT : eqType) :=
-  { M of isMonadTypedStore ml_type locT M & isMonad M & isFunctor M }.
+HB.structure Definition MonadTypedStore (ml_type : ML_universe) (N : monad) (locT : eqType) :=
+  { M of isMonadTypedStore ml_type N locT M & isMonad M & isFunctor M }.
 
-Arguments cnew {ml_type locT s}.
-Arguments cget {ml_type locT s} [T].
-Arguments cput {ml_type locT s} [T].
-Arguments crun {ml_type locT s} [A].
+Arguments cnew {ml_type N locT s}.
+Arguments cget {ml_type N locT s} [T].
+Arguments cput {ml_type N locT s} [T].
+Arguments crun {ml_type N locT s} [A].
 
 HB.mixin Record isMonadTrace (T : UU0) (M : UU0 -> UU0) of Monad M :=
  { mark : T -> M unit }.
