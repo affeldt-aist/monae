@@ -1230,7 +1230,9 @@ HB.structure Definition MonadStateTraceReify (S T : UU0) :=
   { M of isMonadStateTraceReify S T M & isFunctor M & isMonad M &
          isMonadReify S M & isMonadStateTrace S T M }.
 
-HB.mixin Record isMonadProb {R : realType} (M : UU0 -> UU0) of Monad M := {
+From infotheo Require Import convex.
+
+(*HB.mixin Record isMonadConvex {R : realType} (M : UU0 -> UU0) := {
   choice : forall (p : {prob R}) (T : UU0), M T -> M T -> M T ;
   (* identity axioms *)
   choice0 : forall (T : UU0) (a b : M T), choice 0%:pr _ a b = b ;
@@ -1245,10 +1247,47 @@ HB.mixin Record isMonadProb {R : realType} (M : UU0 -> UU0) of Monad M := {
     (*NB: needed to preserve the notation in the resulting choiceA lemma*)
     let bc := choice q _ b c in
     let ab := choice r _ a b in
-    choice p _ a bc = choice s _ ab c;
+    choice p _ a bc = choice s _ ab c }.
+
+#[short(type=convexMonad)]
+HB.structure Definition MonadConvex {R : realType} :=
+  { M of isMonadConvex R M & isMonad M & isFunctor M }.
+
+HB.mixin Record isMonadConvex_ {R : realType} (M : UU0 -> UU0) of Monad M := {
+  convexity : forall T, isConvexSpace.axioms_ (M T)
+}.
+
+HB.structure Definition MonadConvex_ {R : realType} :=
+  {M of isMonadConvex_ R M}.
+
+HB.instance Definition _ {R : realType} (M : MonadConvex_.type R) (T : UU0) :=
+  @convexity R M T.
+
+HB.mixin Record isMonadProb {R : realType} (M : UU0 -> UU0) of MonadConvex_ R M := {
   (* composition distributes leftwards over [probabilistic] choice *)
   choice_bindDl :
-    forall p, BindLaws.left_distributive (@bind [the monad of M]) (choice p) }.
+    forall p, BindLaws.left_distributive
+                 (@bind [the monad of M])
+                    (fun (T : UU0) => (@conv [the convType of (M T)] p)) }.*)
+
+HB.mixin Record isMonadProb {R : realType} (M : UU0 -> UU0) of Monad(*Convex R*) M := {
+  choice : forall (p : {prob R}) (T : UU0), M T -> M T -> M T ;
+  (* identity axioms *)
+  choice0 : forall (T : UU0) (a b : M T), choice 0%:pr _ a b = b ;
+  choice1 : forall (T : UU0) (a b : M T), choice 1%:pr _ a b = a ;
+  (* skewed commutativity *)
+  choiceC : forall (T : UU0) p (a b : M T),
+    choice p _ a b = choice ((Prob.p p).~ %:pr) _ b a ;
+  choicemm : forall (T : UU0) p, idempotent (@choice p T) ;
+  (* quasi associativity *)
+  choiceA : forall (T : UU0) (p q r s : {prob R}) (a b c : M T),
+    (p = (r : R) * (s : R) :> R /\ (Prob.p s).~ = (Prob.p p).~ * (Prob.p q).~)%R ->
+    (*NB: needed to preserve the notation in the resulting choiceA lemma*)
+    let bc := choice q _ b c in
+    let ab := choice r _ a b in
+    choice p _ a bc = choice s _ ab c ;
+  (* composition distributes leftwards over [probabilistic] choice *)
+  choice_bindDl : forall p, BindLaws.left_distributive (@bind [the monad of M]) (choice p) }.
 
 #[short(type=probMonad)]
 HB.structure Definition MonadProb {R : realType} := {M of isMonadProb R M & }.
@@ -1274,7 +1313,7 @@ HB.mixin Record isMonadAltProb {R : realType} (M : UU0 -> UU0) of MonadAltCI M &
 #[short(type=altProbMonad)]
 HB.structure Definition MonadAltProb {R : realType} :=
   { M of isMonadAltProb R M & isFunctor M & isMonad M & isMonadAlt M &
-         isMonadAltCI M & isMonadProb R M }.
+         isMonadAltCI M & isMonadProb R M (*& isMonadConvex R M*) }.
 
 Section altprob_lemmas.
 Context {R : realType}.

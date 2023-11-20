@@ -8,7 +8,7 @@ From mathcomp Require Import reals mathcomp_extra Rstruct lra.
 From infotheo Require Import ssrR Rstruct_ext Reals_ext.
 From infotheo Require Import realType_ext proba.
 From infotheo Require Import convex.
-From infotheo Require necset.
+From infotheo Require Import necset.
 Require Import monae_lib hierarchy monad_lib fail_lib.
 
 (******************************************************************************)
@@ -242,7 +242,7 @@ HB.instance Definition _ := @isSemiLattice.Build altProb_semiLattConvType
   (fun x y => x [~] y)
   (@altC M T) (@altA M T) (@altmm M T).
 
-HB.instance Definition _ := @isConvexSpace.Build altProb_semiLattConvType
+HB.instance Definition _ := @isConvexSpace_.isConvexSpace.Build altProb_semiLattConvType
   (Choice.class (choice_of_Type (M T))) (fun p => choice p T)
   (choice1 _) choicemm choiceC (@choiceA_alternative M T).
 
@@ -308,7 +308,6 @@ by rewrite /bcoin choiceC choice_bindDl 2!bindretf eqxx.
 Qed.
 
 Section arbcoin_spec_convexity.
-Import Rstruct convex necset.
 Local Open Scope latt_scope.
 Local Open Scope convex_scope.
 Local Open Scope R_scope.
@@ -335,7 +334,7 @@ Local Notation m := magnified_weight.
 Local Notation "x +' y" := (addpt x y) (at level 50).
 Local Notation "a *' x" := (scalept a x) (at level 40).
 
-Lemma magnify_conv (T : convType) (p q r : {prob real_realType}) (x y : T) (H : p < q < r) :
+Lemma magnify_conv (T : isConvexSpace_.ConvexSpace.Exports.convType) (p q r : {prob real_realType}) (x y : T) (H : p < q < r) :
   (x <|p|> y) <| magnified_weight H |> (x <|r|> y) = x <|q|> y.
 Proof.
 case: (H) => pq qr.
