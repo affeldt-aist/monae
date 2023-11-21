@@ -32,6 +32,11 @@ Record binding (M : Type -> Type) :=
 Arguments mkbind {M bind_type}.
 
 Definition M0 Env (T : UU0) := MS Env option_monad T.
+(* The use of MS (MonadState transformer) is only for endowing a MonadExcept
+   structure to the type function
+   Definition M0 Env (T : UU0) : UU0 := Env -> option_monad (T * Env).
+   The fail operation is used in the constructions below, while
+   no operations provided by the additional MonadState structure are used. *)
 
 End ModelTypedStore.
 
@@ -545,8 +550,12 @@ HB.instance Definition isMonadTypedStoreModel :=
     cputgetC cputnewC
     crunret crunskip crunnew crunnewgetC crungetput crunmskip.
 
+(* HB.instance Definition _ := MonadState.on M.
+ (* this instantiation succeeds, but is of no use for now *) *)
+(* Fail Check [the exceptMonad of M].  (* and this simply fails *) *)
+
 (* To restart computations *)
-Definition W (A : UU0) : UU0 := unit + (A * Env).
+Definition W (A : UU0) : UU0 := option_monad (A * Env).
 
 Definition Restart A B (r : W A) (f : M B) : W B :=
   if r is inr (_, env) then f env else inl tt.
