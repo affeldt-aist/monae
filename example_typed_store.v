@@ -148,8 +148,6 @@ End cyclic.
 Module eval_cyclic.
 Section eval.
 Import monad_model.ModelTypedStore.
-Check @coq_type_nat idfun ml_unit.
-Print Canonical Projections.
                 
 Definition M :=
   [the typedStoreMonad idfun of @acto ml_type idfun].
