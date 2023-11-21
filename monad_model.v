@@ -2104,16 +2104,7 @@ Definition crunnew (A : UU0) T (m : M A) (s : A -> coq_type T) :
   crun m -> crun (m >>= fun x => cnew (s x)).
 Proof. by rewrite /crun /= MS_bindE; case: (m [::]) => // -[]. Qed.
 
-Definition crunnewget (A : UU0) T (m : M A) (s : A -> coq_type T) :
-  crun m -> crun (m >>= fun x => cnew (s x) >>= @cget T).
-Proof.
-rewrite /crun /= MS_bindE.
-case: (m [::]) => // -[a e] _.
-by under eq_bind do under eq_uncurry do
-  rewrite -(bindmret (_ >>= _)) bindA cnewget.
-Qed.
-
-Definition crungetnew (A : UU0) T1 T2 (m : M A) (r : A -> loc T1)
+Definition crunnewgetC (A : UU0) T1 T2 (m : M A) (r : A -> loc T1)
   (s : A -> coq_type T2) :
   crun (m >>= fun x => cget (r x)) ->
   crun (m >>= fun x => cnew (s x) >> cget (r x)).
@@ -2127,8 +2118,7 @@ rewrite (nth_error_rcons_some _ Hnth).
 by case Hcoe: coerce.
 Qed.
 
-Definition crungetput (A : UU0) T (m : M A) (r : A -> loc T)
-  (s : A -> coq_type T) :
+Definition crungetput (A : UU0) T (m : M A) (r : A -> loc T) (s : A -> coq_type T) :
   crun (m >>= fun x => cget (r x)) ->
   crun (m >>= fun x => cput (r x) (s x)).
 Proof.
@@ -2142,12 +2132,18 @@ subst T'.
 by rewrite !coerce_Some.
 Qed.
 
+Definition crunmskip (A : UU0) (m : M A) : crun (m >> skip) = crun m :> bool.
+Proof.
+rewrite /crun /= !bindE /= /bindS !MS_mapE /= !fmapE /= !bindA.
+by case Hm: (m _) => [|[]].
+Qed.
+
 HB.instance Definition _ := Monad.on M.
 HB.instance Definition isMonadTypedStoreModel :=
   isMonadTypedStore.Build ml_type N locT_nat M cnewget cnewput cgetput cgetputskip
     cgetget cputget cputput cgetC cgetnewD cgetnewE cgetputC cputC
     cputgetC cputnewC
-    crunret crunskip crunnew crunnewget crungetnew crungetput.
+    crunret crunskip crunnew crunnewgetC crungetput crunmskip.
 
 End mkbind.
 End ModelTypedStore.

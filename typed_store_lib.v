@@ -24,7 +24,7 @@ Local Open Scope monae_scope.
 Section cchk.
 Variables (MLU : ML_universe) (N : monad) (locT : eqType) (M : typedStoreMonad MLU N locT).
 Notation loc := (@loc MLU locT).
-Definition cchk T (r : loc T) : M unit := cget r >> skip.
+Definition cchk {T} (r : loc T) : M unit := cget r >> skip.
 
 Lemma cnewchk T s (A : UU0) (k : loc T -> M A) :
   cnew T s >>= (fun r => cchk r >> k r) = cnew T s >>= k.
@@ -97,11 +97,38 @@ Proof. by rewrite bindA bindskipf cgetget. Qed.
 Lemma cgetret T (r : loc T) : cget r >>= Ret = cget r :> M _.
 Proof. by rewrite bindmret. Qed.
 
-Lemma crunnewget0 T s : crun (cnew T s >>= fun r => cget r : M _).
-Proof. by rewrite -(bindskipf (_ >>= _)) crunnewget // crunskip. Qed.
-
 Lemma crunnew0 T s : crun (cnew T s : M _).
 Proof. by rewrite -(bindskipf (cnew T s)) crunnew // crunskip. Qed.
+
+Lemma crunchkget A T (m : M A) (r : A -> loc T) :
+  crun (m >>= fun x => cchk (r x)) = crun (m >>= fun x => cget (r x)) :> bool.
+Proof. by rewrite /cchk -bindA crunmskip. Qed.
+
+Lemma crunchkput A T (m : M A) (r : A -> loc T) s :
+  crun (m >>= fun x => cchk (r x)) ->
+  crun (m >>= fun x => cput (r x) (s x)).
+Proof. rewrite crunchkget; exact: crungetput. Qed.
+
+Lemma crunnewchkC A T1 T2 (m : M A) (r : A -> loc T1) s :
+  crun (m >>= fun x => cchk (r x)) ->
+  crun (m >>= fun x => cnew T2 (s x) >> cchk (r x)).
+Proof.
+rewrite crunchkget => Hck.
+under eq_bind do rewrite -bindA.
+rewrite -bindA crunmskip.
+exact: crunnewgetC.
+Qed.
+
+Lemma crunnewchk A T (m : M A) s :
+  crun m -> crun (m >>= fun x => cnew T (s x) >>= cchk).
+Proof.
+under eq_bind do rewrite /cchk cnewget.
+rewrite -bindA crunmskip.
+exact: crunnew.
+Qed.
+
+Lemma crunnewchk0 T s : crun (cnew T s >>= fun r => cchk r : M _).
+Proof. by rewrite -(bindskipf (_ >>= _)) crunnewchk // crunskip. Qed.
 
 Lemma cnewgetret T s : cnew T s >>= @cget _ _ _ _ _ = cnew T s >> Ret s :> M _.
 Proof. under eq_bind do rewrite -cgetret; by rewrite cnewget. Qed.

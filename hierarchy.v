@@ -1101,7 +1101,7 @@ HB.structure Definition ML_UNIVERSE := {ml_type & isML_universe ml_type}.
 Canonical isML_universe_eqType (T : ML_universe) := EqType T eqclass.
 
 HB.mixin Record isMonadTypedStore (MLU : ML_universe) (N : monad) (locT : eqType)
-    (M : UU0 -> UU0) of Monad M := {
+    (M : UU0 -> UU0) of Monad M :={
   cnew : forall {T : MLU}, coq_type N T -> M (loc locT T) ;
   cget : forall {T}, loc locT T -> M (coq_type N T) ;
   cput : forall {T}, loc locT T -> coq_type N T -> M unit ;
@@ -1159,9 +1159,7 @@ HB.mixin Record isMonadTypedStore (MLU : ML_universe) (N : monad) (locT : eqType
       crun skip = Some tt ;
   crunnew : forall (A : UU0) T (m : M A) (s : A -> coq_type N T),
       crun m -> crun (m >>= fun x => cnew (s x)) ;
-  crunnewget : forall (A : UU0) T (m : M A) (s : A -> coq_type N T),
-      crun m -> crun (m >>= fun x => cnew (s x) >>= cget) ;
-  crungetnew : forall (A : UU0) T1 T2 (m : M A) (r : A -> loc locT T1)
+  crunnewgetC : forall (A : UU0) T1 T2 (m : M A) (r : A -> loc locT T1)
                       (s : A -> coq_type N T2),
       crun (m >>= fun x => cget (r x)) ->
       crun (m >>= fun x => cnew (s x) >> cget (r x)) ;
@@ -1169,7 +1167,9 @@ HB.mixin Record isMonadTypedStore (MLU : ML_universe) (N : monad) (locT : eqType
                       (s : A -> coq_type N T),
       crun (m >>= fun x => cget (r x)) ->
       crun (m >>= fun x => cput (r x) (s x)) ;
- }.
+  crunmskip : forall (A : UU0) (m : M A),
+      crun (m >> skip) = crun m :> bool ;
+}.
 
 #[short(type=typedStoreMonad)]
 HB.structure Definition MonadTypedStore (ml_type : ML_universe) (N : monad) (locT : eqType) :=

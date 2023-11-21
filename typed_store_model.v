@@ -504,16 +504,7 @@ Let crunnew (A : UU0) T (m : M A) (s : A -> coq_type T) :
   crun m -> crun (m >>= fun x => cnew (s x)).
 Proof. by rewrite /crun /= MS_bindE; case: (m _) => // -[]. Qed.
 
-Let crunnewget (A : UU0) T (m : M A) (s : A -> coq_type T) :
-  crun m -> crun (m >>= fun x => cnew (s x) >>= @cget T).
-Proof.
-rewrite /crun /= MS_bindE.
-case: (m _) => // -[a e] _.
-by under eq_bind do under eq_uncurry do
-  rewrite -(bindmret (_ >>= _)) bindA cnewget.
-Qed.
-
-Let crungetnew (A : UU0) T1 T2 (m : M A) (r : A -> loc T1)
+Let crunnewgetC (A : UU0) T1 T2 (m : M A) (r : A -> loc T1)
   (s : A -> coq_type T2) :
   crun (m >>= fun x => cget (r x)) ->
   crun (m >>= fun x => cnew (s x) >> cget (r x)).
@@ -541,12 +532,18 @@ subst T'.
 by rewrite !coerce_Some.
 Qed.
 
+Let crunmskip (A : UU0) (m : M A) : crun (m >> skip) = crun m :> bool.
+Proof.
+rewrite /crun /= !bindE /= /bindS !MS_mapE /= !fmapE /= !bindA.
+by case Hm: (m _) => [|[]].
+Qed.
+
 HB.instance Definition _ := Monad.on M.
 HB.instance Definition isMonadTypedStoreModel :=
   isMonadTypedStore.Build _ M _ M cnewget cnewput cgetput cgetputskip
     cgetget cputget cputput cgetC cgetnewD cgetnewE cgetputC cputC
     cputgetC cputnewC
-    crunret crunskip crunnew crunnewget crungetnew crungetput.
+    crunret crunskip crunnew crunnewgetC crungetput crunmskip.
 
 (* To restart computations *)
 Definition W (A : UU0) : UU0 := unit + (A * Env).

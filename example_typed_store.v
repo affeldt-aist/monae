@@ -113,10 +113,10 @@ under eq_bind => tl.
   rewrite !bindA.
   under eq_bind do rewrite !bindA bindretf !bindA bindretf /=.
   over.
-rewrite -bindA_uncurry -bindA crunret // crungetput // bindA.
+rewrite -bindA_uncurry -bindA crunret // crunchkput // bindA.
 under eq_bind do rewrite !bindA.
 under eq_bind do under eq_bind do rewrite bindretf /=.
-by rewrite crungetnew // crunnewget0.
+by rewrite crunnewchkC // crunnewchk0.
 Qed.
 
 Definition tl (T : ml_type) (param : coq_type (ml_rlist T))
@@ -137,10 +137,10 @@ under eq_bind => r1.
   rewrite cnewget /=.
   under cchknewE do rewrite cputget /=.
   over.
-rewrite cnewchk -bindA_uncurry -bindA crunret // crungetput // bindA.
+rewrite cnewchk -bindA_uncurry -bindA crunret // crunchkput // bindA.
 under eq_bind do rewrite !bindA.
 under eq_bind do under eq_bind do rewrite bindretf /=.
-by rewrite crungetnew // crunnewget0.
+by rewrite crunnewchkC // crunnewchk0.
 Qed.
 
 End cyclic.
