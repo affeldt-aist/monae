@@ -90,7 +90,7 @@ Definition typedStoreMonad (N : monad) :=
 
 Section cyclic.
 Variables (N : monad) (M : typedStoreMonad N).
-(*Context [M : typedStoreMonad].*)
+
 Local Notation coq_type := (hierarchy.coq_type N).
 Local Open Scope do_notation.
 
