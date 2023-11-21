@@ -82,14 +82,18 @@ Fixpoint coq_type_nat (T : ml_type) : Type :=
   end.
 End with_monad.
 
-HB.instance Definition _ := @isML_universe.Build ml_type
+HB.instance Definition coq_type_nat_isML_universe := @isML_universe.Build ml_type
   (Equality.class ml_type_eqType) coq_type_nat ml_unit val_nonempty.
+
+Definition MLU_coq_type_nat :=
+  ML_UNIVERSE.Pack (@ML_UNIVERSE.Class ml_type coq_type_nat_isML_universe).
 
 Definition typedStoreMonad (N : monad) :=
   typedStoreMonad ml_type N monad_model.locT_nat.
 
 Section cyclic.
 Variables (N : monad) (M : typedStoreMonad N).
+(*Context [M : typedStoreMonad].*)
 Local Notation coq_type := (hierarchy.coq_type N).
 Local Open Scope do_notation.
 
@@ -142,8 +146,64 @@ under eq_bind do rewrite !bindA.
 under eq_bind do under eq_bind do rewrite bindretf /=.
 by rewrite crunnewchkC // crunnewchk0.
 Qed.
-
 End cyclic.
+
+Module eval_cyclic.
+Section eval.
+Import monad_model.ModelTypedStore.
+Check @coq_type_nat idfun ml_unit.
+Print Canonical Projections.
+                
+Check MLU_coq_type_nat.
+Print Graph.
+
+Definition M :=
+  [the typedStoreMonad idfun of @acto MLU_coq_type_nat idfun].
+
+Definition Env := Env MLU_coq_type_nat idfun.
+
+Definition empty_env : Env := [::].
+
+(* copied from typed_store_model.v *)
+Definition W (A : UU0) : UU0 := monad_model.option_monad (A * Env).
+
+Definition Restart [A B] (r : W A) (f : M B) : W B :=
+  if r is inr (_, env) then f env else inl tt.
+
+Definition FromW [A] (r : W A) : M A :=
+  fun env => if r is inr (a, _) then inr (a, env) else inl tt.
+
+Definition it0 : W unit := inr (tt, empty_env).
+
+Local Open Scope do_notation.
+Local Notation mkloc := (mkloc (locT:=monad_model.locT_nat)).
+Local Notation coq_type := (coq_type _).
+
+Definition incr (l : loc ml_int) : M nat :=
+  do x <- cget l; do _ <- cput l (succn x); Ret (succn x).
+
+Definition l : W (loc ml_int) := Restart it0 (cnew ml_int 3).
+Eval vm_compute in l.
+
+Definition it1 := Restart l (do l <- FromW l; incr l).
+Eval vm_compute in it1.
+
+Definition it2 := Restart it1 (do l <- FromW l; incr l).
+Eval vm_compute in it2.
+
+Local Notation cycle := (cycle idfun M).
+
+Definition it3 := Restart it2 (cycle ml_bool true false).
+Eval vm_compute in it3.
+
+Local Notation hd := (hd idfun).
+
+Definition it4 := Restart it3 (do l <- FromW it3; Ret (hd ml_bool false l)).
+Eval vm_compute in it4.
+Eval vm_compute in crun (FromW it4).
+
+End eval.
+End eval_cyclic.
 
 Section factorial.
 Variable (N : monad) (M : typedStoreMonad N).
@@ -589,6 +649,17 @@ Eval vm_compute in it2.
 
 Definition it3 := Restart it2 (fact_for63 M M 5)%uint63.
 Eval vm_compute in it3.
+
+Definition AppM {A B} (f : M (A -> M B)) (x : A) := do f <- f; f x.
+
+Definition omega (T : ml_type) (n : coq_type T) : M (coq_type T) :=
+  do r_1 <- cnew (ml_arrow T T) (fun x : coq_type T => Ret (x : coq_type T));
+  let delta (i : coq_type T) : M (coq_type T) :=
+    AppM (cget r_1) i in
+  do _ <- cput r_1 delta; delta n.
+
+Definition it_omega := Restart it3 (omega ml_unit tt).
+Fail Timeout 1 Eval vm_compute in it_omega.
 
 End eval.
 
