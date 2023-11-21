@@ -196,6 +196,16 @@ Definition it4 := Restart it3 (do l <- FromW it3; Ret (hd ml_bool false l)).
 Eval vm_compute in it4.
 Eval vm_compute in crun (FromW it4).
 
+Local Notation tl := (tl idfun M).
+
+Definition it5 := Restart it4
+                    (do l0 <- FromW it3;
+                     do l1 <- tl _ l0;
+                     do l2 <- tl _ l1;
+                     Ret (hd ml_bool false l2)).
+Eval vm_compute in it5.
+Eval vm_compute in crun (FromW it5).
+
 End eval.
 End eval_cyclic.
 
