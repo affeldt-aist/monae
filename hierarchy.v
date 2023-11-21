@@ -1228,11 +1228,27 @@ HB.structure Definition MonadStateTraceReify (S T : UU0) :=
 From infotheo Require Import convex.
 
 Local Open Scope reals_ext_scope.
+(*
+HB.mixin Record isMonadConvex_ {R : realType} (M : UU0 -> UU0) of Monad M := {
+  convexity : forall T, isConvexSpace.axioms_ (M T)
+}.
+
+HB.structure Definition MonadConvex_ {R : realType} :=
+  {M of isMonadConvex_ R M}.
+
+HB.instance Definition _ {R : realType} (M : MonadConvex_.type R) (T : UU0) :=
+  @convexity R M T.
+
+HB.mixin Record isMonadProb {R : realType} (M : UU0 -> UU0) of MonadConvex_ R M := {
+  (* composition distributes leftwards over [probabilistic] choice *)
+  choice_bindDl :
+    forall p, BindLaws.left_distributive
+                 (@bind [the monad of M])
+                    (fun (T : UU0) => (@conv [the convType of (M T)] p)) }.*)
 
 HB.mixin Record isMonadConvex {R : realType} (M : UU0 -> UU0) of Monad M := {
   choice : forall (p : {prob R}) (T : UU0), M T -> M T -> M T ;
   (* identity axioms *)
-  choice0 : forall (T : UU0) (a b : M T), choice 0%:pr _ a b = b ;
   choice1 : forall (T : UU0) (a b : M T), choice 1%:pr _ a b = a ;
   (* skewed commutativity *)
   choiceC : forall (T : UU0) p (a b : M T),
@@ -1254,7 +1270,14 @@ Arguments choiceA_new {_} {_} {_} _ _ _ _ {_} {_} {_}.
 Arguments choiceC {_} {_} {_} _ _ _.
 Arguments choicemm {_} {_} {_} _.
 
-(* TODO: clean *)
+Local Open Scope proba_monad_scope.
+Lemma choice0 {R : realType} (M : convexMonad R) (T : UU0) (a b : M T) :
+  a <| 0%:pr |> b = b.
+Proof.
+rewrite choiceC/= [X in _ <| X |> _](_ : _ = 1%:pr) ?choice1//; apply/val_inj => /=.
+by rewrite mathcomp_extra.onem0.
+Qed.
+
 Lemma choiceA {R : realType} (M : convexMonad R) :
   forall (T : UU0) (p q r s : {prob R}) (a b c : M T),
     (p = (r : R) * (s : R) :> R /\ (Prob.p s).~ = (Prob.p p).~ * (Prob.p q).~)%R ->
@@ -1323,7 +1346,7 @@ HB.mixin Record isMonadExceptProb {R : realType} (M : UU0 -> UU0)
 #[short(type=exceptProbMonad)]
 HB.structure Definition MonadExceptProb {R : realType} :=
   { M of isMonadExceptProb R M & isFunctor M & isMonad M & isMonadFail M &
-         isMonadExcept M & isMonadProb R M }.
+         isMonadExcept M & isMonadProb R M & }.
 
 HB.mixin Record isMonadFresh (S : eqType) (M : UU0 -> UU0) of Monad M :=
   { fresh : M S }.
