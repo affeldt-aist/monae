@@ -82,11 +82,8 @@ Fixpoint coq_type_nat (T : ml_type) : Type :=
   end.
 End with_monad.
 
-HB.instance Definition coq_type_nat_isML_universe := @isML_universe.Build ml_type
+HB.instance Definition _ := @isML_universe.Build ml_type
   (Equality.class ml_type_eqType) coq_type_nat ml_unit val_nonempty.
-
-Definition MLU_coq_type_nat :=
-  ML_UNIVERSE.Pack (@ML_UNIVERSE.Class ml_type coq_type_nat_isML_universe).
 
 Definition typedStoreMonad (N : monad) :=
   typedStoreMonad ml_type N monad_model.locT_nat.
@@ -154,13 +151,10 @@ Import monad_model.ModelTypedStore.
 Check @coq_type_nat idfun ml_unit.
 Print Canonical Projections.
                 
-Check MLU_coq_type_nat.
-Print Graph.
-
 Definition M :=
-  [the typedStoreMonad idfun of @acto MLU_coq_type_nat idfun].
+  [the typedStoreMonad idfun of @acto ml_type idfun].
 
-Definition Env := Env MLU_coq_type_nat idfun.
+Definition Env := Env ml_type idfun.
 
 Definition empty_env : Env := [::].
 
