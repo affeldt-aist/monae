@@ -550,10 +550,6 @@ HB.instance Definition isMonadTypedStoreModel :=
     cputgetC cputnewC
     crunret crunskip crunnew crunnewgetC crungetput crunmskip.
 
-(* HB.instance Definition _ := MonadState.on M.
- (* this instantiation succeeds, but is of no use for now *) *)
-(* Fail Check [the exceptMonad of M].  (* and this simply fails *) *)
-
 (* To restart computations *)
 Definition W (A : UU0) : UU0 := option_monad (A * Env).
 
