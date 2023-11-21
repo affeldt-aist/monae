@@ -426,7 +426,9 @@ rewrite /doors Set3.enumE !inE => /or3P[] /eqP ->.
 - rewrite eq_sym (negbTE (Set3.a_neq_b _)) eqxx (negbTE (Set3.b_neq_c _)).
   congr (_ <| _ |> _).
   rewrite choiceC (@choice_ext (/ 2)%coqR%:pr) //= /onem.
-  rewrite -RminusE -R1E; field.
+  congr (Ret false <| _ |> Ret true).
+  apply/val_inj => /=.
+  by rewrite -RminusE -R1E; field.
 by rewrite eq_sym (negbTE (Set3.a_neq_c _)) eq_sym (negbTE (Set3.b_neq_c _)) eqxx.
 Qed.
 

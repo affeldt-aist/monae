@@ -80,7 +80,7 @@ From HB Require Import structures.
 (* Probability monads:                                                        *)
 (*          probMonad == probabilistic choice and bind left-distributes over  *)
 (*                       choice                                               *)
-(*        probDrMonad == probaMonad + bind right-distributes over choice      *)
+(*        probDrMonad == probMonad + bind right-distributes over choice       *)
 (*       altProbMonad == combined (probabilistic and nondeterministic) choice *)
 (*    exceptProbMonad == exceptions + probabilistic choice                    *)
 (*                                                                            *)
@@ -1265,7 +1265,7 @@ HB.mixin Record isMonadProb {R : realType} (M : UU0 -> UU0) of MonadConvex_ R M 
                  (@bind [the monad of M])
                     (fun (T : UU0) => (@conv [the convType of (M T)] p)) }.*)
 
-HB.mixin Record isMonadProb {R : realType} (M : UU0 -> UU0) of Monad(*Convex R*) M := {
+HB.mixin Record isMonadConvex {R : realType} (M : UU0 -> UU0) of Monad M := {
   choice : forall (p : {prob R}) (T : UU0), M T -> M T -> M T ;
   (* identity axioms *)
   choice0 : forall (T : UU0) (a b : M T), choice 0%:pr _ a b = b ;
@@ -1280,16 +1280,21 @@ HB.mixin Record isMonadProb {R : realType} (M : UU0 -> UU0) of Monad(*Convex R*)
     (*NB: needed to preserve the notation in the resulting choiceA lemma*)
     let bc := choice q _ b c in
     let ab := choice r _ a b in
-    choice p _ a bc = choice s _ ab c ;
+    choice p _ a bc = choice s _ ab c }.
+
+#[short(type=convexMonad)]
+HB.structure Definition MonadConvex {R : realType} := {M of isMonadConvex R M & }.
+Notation "a <| p |> b" := (choice p _ a b) : proba_monad_scope.
+Arguments choiceA {_} {_} {_} _ _ _ _ {_} {_} {_}.
+Arguments choiceC {_} {_} {_} _ _ _.
+Arguments choicemm {_} {_} {_} _.
+
+HB.mixin Record isMonadProb {R : realType} (M : UU0 -> UU0) of MonadConvex R M := {
   (* composition distributes leftwards over [probabilistic] choice *)
   choice_bindDl : forall p, BindLaws.left_distributive (@bind [the monad of M]) (choice p) }.
 
 #[short(type=probMonad)]
 HB.structure Definition MonadProb {R : realType} := {M of isMonadProb R M & }.
-Notation "a <| p |> b" := (choice p _ a b) : proba_monad_scope.
-Arguments choiceA {_} {_} {_} _ _ _ _ {_} {_} {_}.
-Arguments choiceC {_} {_} {_} _ _ _.
-Arguments choicemm {_} {_} {_} _.
 
 HB.mixin Record isMonadProbDr {R : realType} (M : UU0 -> UU0) of MonadProb R M := {
   (* composition distributes rightwards over [probabilistic] choice *)
@@ -1308,7 +1313,7 @@ HB.mixin Record isMonadAltProb {R : realType} (M : UU0 -> UU0) of MonadAltCI M &
 #[short(type=altProbMonad)]
 HB.structure Definition MonadAltProb {R : realType} :=
   { M of isMonadAltProb R M & isFunctor M & isMonad M & isMonadAlt M &
-         isMonadAltCI M & isMonadProb R M (*& isMonadConvex R M*) }.
+         isMonadAltCI M & isMonadProb R M & isMonadConvex R M }.
 
 Section altprob_lemmas.
 Context {R : realType}.

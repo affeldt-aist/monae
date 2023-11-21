@@ -97,6 +97,10 @@ rewrite -[LHS]/(conv p a (conv q b c)). (* TODO: this is too slow! *)
 rewrite -[RHS]/(conv s (conv r a b) c).
 exact: convA0.
 Qed.
+
+HB.instance Definition mixin' := isMonadConvex.Build real_realType
+  acto choice0 choice1 choiceC choicemm choiceA.
+
 Let prob_bindDl p :
   BindLaws.left_distributive (@hierarchy.bind [the monad of acto]) (choice p).
 Proof.
@@ -106,7 +110,7 @@ by rewrite fsdist_conv_bind_left_distr.
 Qed.
 
 HB.instance Definition mixin := isMonadProb.Build real_realType
-  acto choice0 choice1 choiceC choicemm choiceA prob_bindDl.
+  acto prob_bindDl.
 Definition t := MonadProb.Pack (MonadProb.Class mixin).
 
 End monadprobmodel.

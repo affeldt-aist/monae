@@ -174,8 +174,11 @@ Qed.
 End bindchoiceDl.
 
 HB.instance Definition _ :=
-  isMonadProb.Build real_realType (Monad_of_category_monad.acto Mgcm)
-    choice0 choice1 choiceC choicemm choiceA bindchoiceDl.
+  isMonadConvex.Build real_realType (Monad_of_category_monad.acto Mgcm)
+    choice0 choice1 choiceC choicemm choiceA.
+
+HB.instance Definition _ :=
+  isMonadProb.Build real_realType (Monad_of_category_monad.acto Mgcm) bindchoiceDl.
 
 Lemma choicealtDr A (p : {prob real_realType}) :
   right_distributive (fun x y : Mgcm A => x <| p |> y) (@alt A).
