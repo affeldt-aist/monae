@@ -20,13 +20,13 @@ Local Open Scope monae_scope.
 
 Section comp.
 Variables (M N : monad).
-Definition ret_comp : FId ~~> [the functor of M \o N] := (@ret M) \h (@ret N).
-Lemma naturality_ret : naturality FId [the functor of M \o N] ret_comp.
+Definition ret_comp : idfun ~~> M \o N := (@ret M) \h (@ret N).
+Lemma naturality_ret : naturality idfun [the functor of M \o N] ret_comp.
 Proof. by move=> A B h; rewrite -(natural ((@ret M) \h (@ret N))). Qed.
 HB.instance Definition _ := isNatural.Build
-  FId [the functor of (M \o N)] ret_comp naturality_ret.
+  idfun [the functor of (M \o N)] ret_comp naturality_ret.
 End comp.
-Definition CRet (M N : monad) := [the FId ~> [the functor of M \o N] of ret_comp M N].
+Definition CRet (M N : monad) := [the idfun ~> [the functor of M \o N] of ret_comp M N].
 
 Module Prod.
 Section prod.

@@ -92,7 +92,7 @@ Variables (S : UU0) (M : monad).
 
 Definition MS := fun A : UU0 => S -> M (A * S)%type.
 
-Definition retS : FId ~~> MS := fun (A : UU0) => curry Ret.
+Definition retS : idfun ~~> MS := fun (A : UU0) => curry Ret.
 
 Definition bindS (A B : UU0) (m : MS A) f : MS B := fun s => m s >>= uncurry f.
 
@@ -214,7 +214,7 @@ Variables (Z : UU0) (* the type of exceptions *) (M : monad).
 Definition MX := fun X : UU0 => M (Z + X)%type.
 
 (* unit and bind operator of the transformed monad *)
-Definition retX : FId ~~> MX := fun X x => Ret (inr x).
+Definition retX : idfun ~~> MX := fun X x => Ret (inr x).
 
 Definition bindX X Y (t : MX X) (f : X -> MX Y) : MX Y :=
   t >>= fun c => match c with inl z => Ret (inl z) | inr x => f x end.
@@ -334,7 +334,7 @@ Variables (R : UU0) (M : monad).
 
 Definition MEnv := fun A : UU0 => R -> M A.
 
-Definition retEnv : FId ~~> MEnv := fun (A : UU0) a r => Ret a.
+Definition retEnv : idfun ~~> MEnv := fun (A : UU0) a r => Ret a.
 
 Definition bindEnv A B (m : MEnv A) f : MEnv B :=
   fun r => m r >>= (fun a => f a r).
@@ -386,7 +386,7 @@ Variables (R : UU0) (M : monad).
 
 Definition MO (X : UU0) := M (X * seq R)%type.
 
-Definition retO : FId ~~> MO := fun (A : UU0) a => Ret (a, [::]).
+Definition retO : idfun ~~> MO := fun (A : UU0) a => Ret (a, [::]).
 
 Definition bindO A B (m : MO A) (f : A -> MO B) : MO B :=
   m >>= (fun o => let: (x, w) := o in f x >>=
@@ -460,7 +460,7 @@ Variables (r : UU0) (M : monad).
 
 Definition MC : UU0 -> UU0 := fun A => (A -> M r) -> M r %type.
 
-Definition retC : FId ~~> MC := fun (A : UU0) (a : A) k => k a.
+Definition retC : idfun ~~> MC := fun (A : UU0) (a : A) k => k a.
 
 Definition bindC A B (m : MC A) f : MC B := fun k => m (f^~ k).
 

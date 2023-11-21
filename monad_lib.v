@@ -271,18 +271,18 @@ Lemma functor_app_natural_hcomp (S F G : functor) (nt : F ~> G) :
 Proof. by apply nattrans_ext => a; rewrite functor_app_naturalE. Qed.
 
 Section natural_transformation_example.
-Definition fork' : FId ~~> squaring := fun (A : UU0) (a : A) => (a, a).
+Definition fork' : idfun ~~> squaring := fun (A : UU0) (a : A) => (a, a).
 
 Lemma fork_natural : naturality _ _ fork'. Proof. by []. Qed.
 
-HB.instance Definition _ := isNatural.Build FId squaring fork' fork_natural.
+HB.instance Definition _ := isNatural.Build idfun squaring fork' fork_natural.
 
-Definition fork : FId ~> squaring := [the _ ~> _ of fork'].
+Definition fork : idfun ~> squaring := [the _ ~> _ of fork'].
 
 End natural_transformation_example.
 
-Definition eta_type (f g : functor) := FId ~> [the functor of g \o f].
-Definition eps_type (f g : functor) := [the functor of f \o g] ~> FId.
+Definition eta_type (f g : functor) := idfun ~> g \o f.
+Definition eps_type (f g : functor) := f \o g ~> idfun.
 Module TriangularLaws.
 Section triangularlaws.
 Variables (F G : functor) (eps : eps_type F G) (eta : eta_type F G).
@@ -314,14 +314,14 @@ Section adjoint_example.
 Variable (X : UU0).
 Definition curry_fun : curry_F X \o uncurry_F X ~~> idfun :=
   fun (A : UU0) (af : X * (X -> A)) => af.2 af.1.
-Lemma curry_naturality : naturality [the functor of curry_F X \o uncurry_F X] FId curry_fun.
+Lemma curry_naturality : naturality (curry_F X \o uncurry_F X) idfun curry_fun.
 Proof. by []. Qed.
 HB.instance Definition _ := isNatural.Build
-  [the functor of curry_F X \o uncurry_F X] FId curry_fun curry_naturality.
+  (curry_F X \o uncurry_F X) idfun curry_fun curry_naturality.
 Definition curry_eps : eps_type (curry_F X) (uncurry_F X) :=
-  [the nattrans [the functor of curry_F X \o uncurry_F X] FId of curry_fun].
+  [the nattrans (curry_F X \o uncurry_F X) idfun of curry_fun].
 
-Definition curry_fun2 : FId ~~> uncurry_F X \o curry_F X :=
+Definition curry_fun2 : idfun ~~> uncurry_F X \o curry_F X :=
   fun (A : UU0) (a : A) => pair^~ a.
 Lemma curry_naturality2 :
   naturality _ [the functor of uncurry_F X \o curry_F X] curry_fun2.
@@ -422,7 +422,7 @@ Hypothesis H : F -| U.
 Let eta : eta_type F U := AdjointFunctor.eta H.
 Let eps : eps_type F U := AdjointFunctor.eps H.
 
-Definition uni_fun : FId ~~> (U0 \o U) \o (F \o F0) :=
+Definition uni_fun : idfun ~~> (U0 \o U) \o (F \o F0) :=
   fun A : UU0 => U0 # eta (F0 A) \o eta0 A.
 
 Lemma uni_naturality :

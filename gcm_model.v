@@ -764,7 +764,7 @@ congr fsdistbind.
 by apply funext => x; rewrite fsdist1bind.
 Qed.
 
-Lemma RetE T : (Ret : FId T -> N T) = (Ret : FId T -> M T).
+Lemma RetE T : (Ret : idfun T -> N T) = (Ret : FId T -> M T).
 Proof.
 apply funext => t /=.
 rewrite /ret_.

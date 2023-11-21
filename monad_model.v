@@ -147,10 +147,10 @@ End assoc.
 
 Module IdentityMonad.
 Section identitymonad.
-Let bind := fun A B (a : FId A) (f : A -> FId B) => f a.
-Let left_neutral : BindLaws.left_neutral bind (NId FId).
+Let bind := fun A B (a : A) (f : A -> B) => f a.
+Let left_neutral : BindLaws.left_neutral bind (NId idfun).
 Proof. by []. Qed.
-Let right_neutral : BindLaws.right_neutral bind (NId FId).
+Let right_neutral : BindLaws.right_neutral bind (NId idfun).
 Proof. by []. Qed.
 Let associative : BindLaws.associative bind. Proof. by []. Qed.
 Let acto := (@idfun UU0).
@@ -164,7 +164,7 @@ Module ListMonad.
 Section listmonad.
 Definition acto := fun A : UU0 => seq A.
 Local Notation M := acto.
-Let ret : FId ~~> M := fun (A : UU0) x => (@cons A) x [::].
+Let ret : idfun ~~> M := fun (A : UU0) x => (@cons A) x [::].
 Let bind := fun A B (m : M A) (f : A -> M B) => flatten (map f m).
 Let left_neutral : BindLaws.left_neutral bind ret.
 Proof. by move=> A B m f; rewrite /bind /ret /= cats0. Qed.
@@ -215,7 +215,7 @@ Section exceptmonad.
 Variable E : UU0.
 Definition acto := fun A : UU0 => (E + A)%type.
 Local Notation M := acto.
-Let ret : FId ~~> M := @inr E.
+Let ret : idfun ~~> M := @inr E.
 Let bind := fun A B (m : M A) (f : A -> M B) =>
   match m with inl z => inl z | inr b => f b end.
 Let left_neutral : BindLaws.left_neutral bind ret.
@@ -243,7 +243,7 @@ Section output.
 Variable L : UU0.
 Definition acto := fun X : UU0 => (X * seq L)%type.
 Local Notation M := acto.
-Let ret : FId ~~> M := fun A a => (a, [::]).
+Let ret : idfun ~~> M := fun A a => (a, [::]).
 Let bind := fun (A B : UU0) (m : M A) (f : A -> M B) =>
   let: (x, w) := m in let: (x', w') := f x in (x', w ++ w').
 Let left_neutral : BindLaws.left_neutral bind ret.
@@ -271,7 +271,7 @@ Section environment.
 Variable E : UU0.
 Definition acto := fun A : UU0 => E -> A.
 Local Notation M := acto.
-Definition ret : FId ~~> M := fun A x => fun e => x.
+Definition ret : idfun ~~> M := fun A x => fun e => x.
 (* computation that ignores the environment *)
 Let bind := fun (A B : UU0) (m : M A) (f : A -> M B) => fun e => f (m e) e.
 (* binds m f applied the same environment to m and to the result of f *)
@@ -297,7 +297,7 @@ Section state.
 Variable S : UU0. (* type of states *)
 Definition acto := fun A : UU0 => S -> A * S.
 Local Notation M := acto.
-Let ret : FId ~~> M := fun A a => fun s => (a, s).
+Let ret : idfun ~~> M := fun A a => fun s => (a, s).
 Let bind := fun (A B : UU0) (m : M A) (f : A -> M B) => uncurry f \o m.
 Let left_neutral : BindLaws.left_neutral bind ret.
 Proof. by move=> A B a f; apply boolp.funext. Qed.
@@ -327,7 +327,7 @@ Section cont.
 Variable r : UU0. (* the type of answers *)
 Definition acto := fun A : UU0 => (A -> r) -> r.
 Local Notation M := acto.
-Let ret : FId ~~> M := fun A a => fun k => k a.
+Let ret : idfun ~~> M := fun A a => fun k => k a.
 Let bind := fun (A B : UU0) (m : M A) (f : A -> M B) => fun k => m (fun a => f a k).
 Let left_neutral : BindLaws.left_neutral bind ret.
 Proof. by move=> A B a f; apply boolp.funext => Br. Qed.
@@ -1526,7 +1526,7 @@ Variable (S : UU0) (I : eqType).
 Implicit Types i j : I.
 Definition acto (A : UU0) := (I -> S) -> SetMonad.acto (A * (I -> S))%type.
 Local Notation M := acto.
-Let ret : FId ~~> M := fun A a => fun s => [set (a, s)].
+Let ret : idfun ~~> M := fun A a => fun s => [set (a, s)].
 Let bind := fun A B (m : M A) (f : A -> M B) => fun s => m s >>= uncurry f.
 Let left_neutral : BindLaws.left_neutral bind ret.
 Proof.

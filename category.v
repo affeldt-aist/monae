@@ -999,7 +999,7 @@ Let F := [the functor of acto].
 Lemma actmE (a b : CT) (h : {hom a, b}) : (F # h)%monae = (M # h)%category.
 Proof. by congr (category.actm M); apply hom_ext. Qed.
 
-Definition ret_ : forall A, FId%monae A -> F A :=
+Definition ret_ : forall A, idfun A -> F A :=
   fun A (a : A) => @category.ret _ M A a.
 
 Definition join_ : forall A, [the functor of F \o F] A -> F A :=

@@ -36,7 +36,7 @@ HB.instance Definition _ := isFunctor.Build acto map_id map_comp.
 
 Local Notation M' := [the functor of acto].
 *)
-Definition ret : FId ~~> acto :=
+Definition ret : idfun ~~> acto :=
   fun A a => fsdist1 (a : choice_of_Type A).
 (*
 Let naturality_ret : naturality FId M' ret.

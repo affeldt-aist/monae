@@ -23,7 +23,6 @@ From HB Require Import structures.
 (* Module FunctorLaws == map laws of a functor                                *)
 (*            functor == type of functors                                     *)
 (*              F # g == application of the functor F to the morphism g       *)
-(*                FId == notation for the identity functor                    *)
 (*             F ~> G == natural transformation from functor F to functor G   *)
 (*            f ~~> g == forall A, f A -> g A, notation used for the          *)
 (*                       components of a natural transformation               *)
@@ -34,7 +33,7 @@ From HB Require Import structures.
 (*                >>= == notation for the standard bind operator              *)
 (*             m >> f := m >>= (fun _ => f)                                   *)
 (*              monad == type of monads                                       *)
-(*                Ret == natural transformation FId ~> M for a monad M        *)
+(*                Ret == natural transformation idfun ~> M for a monad M      *)
 (*               Join == natural transformation M \o M ~> M for a monad M     *)
 (*    Module BindLaws == bind laws of a monad                                 *)
 (*                                                                            *)
@@ -154,10 +153,7 @@ Let id_comp : FunctorLaws.comp id_actm. Proof. by []. Qed.
 HB.instance Definition _ := isFunctor.Build idfun id_id id_comp.
 End functorid.
 
-(* NB: consider eliminating? *)
-Notation FId := [the functor of idfun].
-
-Lemma FIdE (A B : UU0) (f : A -> B) : FId # f = f. Proof. by []. Qed.
+Lemma FIdE (A B : UU0) (f : A -> B) : idfun # f = f. Proof. by []. Qed.
 
 Section functor_composition.
 Variables f g : functor.
@@ -290,23 +286,25 @@ Qed.*)
 Module JoinLaws.
 Section join_laws.
 Context {F : functor}.
-Variables (ret : FId ~> F) (join : F \o F ~~> F).
+Variables (ret : idfun ~~> F) (join : F \o F ~~> F).
+Arguments ret {_}.
+Arguments join {A}.
 
-Definition left_unit := forall A, @join A \o ret (F A) = id :> (F A -> F A).
+Definition left_unit := forall A, join \o ret = id :> (F A -> F A).
 
-Definition right_unit := forall A, @join A \o F # ret A = id :> (F A -> F A).
+Definition right_unit := forall A, join \o F # ret = id :> (F A -> F A).
 
-Definition associativity :=
-  forall A, @join A \o F # @join A = @join A \o @join (F A) :> (F (F (F A)) -> F A).
+Definition associativity := forall A,
+  join \o F # join = join \o join :> (F (F (F A)) -> F A).
 
 End join_laws.
 End JoinLaws.
 
 HB.mixin Record isMonad (F : UU0 -> UU0) of Functor F := {
-  ret : FId ~> F ;
+  ret : idfun ~> F ;
   join : F \o F ~> F ;
   bind : forall (A B : UU0), F A -> (A -> F B) -> F B ;
-  __bindE : forall (A B : UU0) (f : A -> F B) (m : F A),
+  bindE : forall (A B : UU0) (f : A -> F B) (m : F A),
     bind A B m f = join B ((F # f) m) ;
   joinretM : JoinLaws.left_unit ret join ;
   joinMret : JoinLaws.right_unit ret join ;
@@ -315,14 +313,12 @@ HB.mixin Record isMonad (F : UU0 -> UU0) of Functor F := {
 #[short(type=monad)]
 HB.structure Definition Monad := {F of isMonad F &}.
 
+(* we introduce Ret as a way to make the second arguments of ret implicit,
+   o.w. Coq won't let us *)
 Notation Ret := (@ret _ _).
 Notation Join := (@join _ _).
 Arguments bind {s A B} : simpl never.
 Notation "m >>= f" := (bind m f) : monae_scope.
-
-Lemma bindE (F : monad) (A B : UU0) (f : A -> F B) (m : F A) :
-  m >>= f = join B ((F # f) m).
-Proof. by rewrite __bindE. Qed.
 
 Lemma eq_bind (M : monad) (A B : UU0) (m : M A) (f1 f2 : A -> M B) :
   f1 =1 f2 -> m >>= f1 = m >>= f2.
@@ -386,7 +382,7 @@ Definition bind_of_join (F : functor) (j : F \o F ~~> F)
   j B ((F # f) m).
 
 Section from_join_laws_to_bind_laws.
-Variable (F : functor) (ret : FId ~> F) (join : [the functor of F \o F] ~> F).
+Variable (F : functor) (ret : idfun ~> F) (join : F \o F ~> F).
 
 Hypothesis joinretM : JoinLaws.left_unit ret join.
 Hypothesis joinMret : JoinLaws.right_unit ret join.
@@ -413,8 +409,8 @@ Qed.
 End from_join_laws_to_bind_laws.
 
 HB.factory Record isMonad_ret_join (F : UU0 -> UU0) of isFunctor F := {
-  ret : FId ~> [the functor of F] ;
-  join : [the functor of F \o F] ~> [the functor of F] ;
+  ret : idfun ~> F ;
+  join : F \o F ~> F ;
   joinretM : JoinLaws.left_unit ret join ;
   joinMret : JoinLaws.right_unit ret join ;
   joinA : JoinLaws.associativity join }.
@@ -434,15 +430,15 @@ HB.instance Definition _ := isMonad.Build M bindE joinretM joinMret joinA.
 HB.end.
 
 HB.factory Record isMonad_ret_bind (F : UU0 -> UU0) := {
-  ret' : forall (A : UU0), A -> F A ;
+  ret : forall (A : UU0), A -> F A ;
   bind : forall (A B : UU0), F A -> (A -> F B) -> F B ;
-  bindretf : BindLaws.left_neutral bind ret' ;
-  bindmret : BindLaws.right_neutral bind ret' ;
+  bindretf : BindLaws.left_neutral bind ret ;
+  bindmret : BindLaws.right_neutral bind ret ;
   bindA : BindLaws.associative bind }.
 
 HB.builders Context M of isMonad_ret_bind M.
 
-Let actm (a b : UU0) (f : a -> b) m := bind m (@ret' _ \o f).
+Let actm (a b : UU0) (f : a -> b) m := bind m (@ret _ \o f).
 
 Let actm_id : FunctorLaws.id actm.
 Proof.
@@ -465,7 +461,7 @@ HB.instance Definition _ := isFunctor.Build M actm_id actm_comp.
 Let F := [the functor of M].
 Local Notation FF := [the functor of F \o F].
 
-Let ret'_naturality : naturality FId F ret'.
+Let ret_naturality : naturality idfun F ret.
 Proof.
 move=> a b h.
 rewrite FIdE /hierarchy.actm /= /actm; apply: boolp.funext => m /=.
@@ -473,8 +469,7 @@ by rewrite bindretf.
 Qed.
 
 HB.instance Definition _ :=
-  isNatural.Build FId F (ret' : FId ~~> F) ret'_naturality.
-Let ret := [the FId ~> F of ret'].
+  isNatural.Build idfun F (ret : idfun ~~> F) ret_naturality.
 
 Let join' : FF ~~> F := fun _ m => bind m idfun.
 
@@ -522,7 +517,7 @@ move=> a; apply: boolp.funext => m.
 rewrite /join /= /join'.
 rewrite /hierarchy.actm /= /actm /=.
 rewrite bindA /=.
-rewrite [X in bind m X](_ : _ = fun x => ret' x) ?bindmret //=; apply: boolp.funext => ?.
+rewrite [X in bind m X](_ : _ = fun x => ret x) ?bindmret //=; apply: boolp.funext => ?.
 by rewrite bindretf.
 Qed.
 
