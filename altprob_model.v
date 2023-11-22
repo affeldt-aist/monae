@@ -131,10 +131,10 @@ Lemma choiceC A p (x y : gcm A) : x <|p|> y = y <|(Prob.p p).~%:pr|> x.
 Proof. by rewrite convC. Qed.
 Lemma choicemm A p : idempotent (@choice p A).
 Proof. by move=> m; rewrite /choice convmm. Qed.
-Lemma choiceA A (p q r s : {prob [realType of R]}) (x y z : gcm A) :
-  p = (r * s) :> R /\ (Prob.p s).~ = ((Prob.p p).~ * (Prob.p q).~)%R ->
-  x <| p |> (y <| q |> z) = (x <| r |> y) <| s |> z.
-Proof. by case => *; apply: convA0. Qed.
+
+Let choiceA A (p q r s : {prob [realType of R]}) (x y z : gcm A) :
+  x <| p |> (y <| q |> z) = (x <| [r_of p, q] |> y) <| [s_of p, q] |> z.
+Proof. exact: convA. Qed.
 
 Section bindchoiceDl.
 Import category.

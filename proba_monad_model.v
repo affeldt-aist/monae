@@ -84,18 +84,14 @@ Let choiceC (T : UU0) : forall p (a b : acto T), choice p _ a b = choice ((Prob.
 Proof. by move=> ? ?; exact: convC. Qed.
 Let choicemm : forall (T : Type) p, idempotent (@choice p T).
 Proof. by move=> ? ? ?; exact: convmm. Qed.
+
 Let choiceA : forall (T : Type) (p q r s : {prob real_realType}) (a b c : acto T),
-    (p = r * s :> R /\ (Prob.p s).~ = (Prob.p p).~ * (Prob.p q).~)%R ->
-    let bc := (choice q _ b c) in
-    let ab := (choice r _ a b) in
-    choice p _ a bc = choice s _ ab c.
+    choice p _ a (choice q _ b c) = choice [s_of p, q] _ (choice [r_of p, q] _ a b) c.
 Proof.
-Proof.
-move=> ? p q r s a b c [] ? ? /=.
+move=> ? p q r s a b c.
 rewrite /choice.
-rewrite -[LHS]/(conv p a (conv q b c)). (* TODO: this is too slow! *)
-rewrite -[RHS]/(conv s (conv r a b) c).
-exact: convA0.
+rewrite [LHS](_ : _ = conv p a (conv q b c))//. (* TODO: this is too slow! *)
+by rewrite convA.
 Qed.
 
 HB.instance Definition mixin' := isMonadConvex.Build real_realType

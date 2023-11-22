@@ -5,7 +5,7 @@ Ltac typeof X := type of X.
 Require Import ssrmatching Reals JMeq.
 From mathcomp Require Import all_ssreflect ssralg ssrnum.
 From mathcomp Require boolp.
-From mathcomp Require Import Rstruct reals.
+From mathcomp Require Import mathcomp_extra Rstruct reals.
 From infotheo Require Import Reals_ext.
 From infotheo Require Import realType_ext.
 Require Import monae_lib.
@@ -1101,7 +1101,7 @@ HB.structure Definition ML_UNIVERSE := {ml_type & isML_universe ml_type}.
 Canonical isML_universe_eqType (T : ML_universe) := EqType T eqclass.
 
 HB.mixin Record isMonadTypedStore (MLU : ML_universe) (N : monad) (locT : eqType)
-    (M : UU0 -> UU0) of Monad M :={
+    (M : UU0 -> UU0) of Monad M := {
   cnew : forall {T : MLU}, coq_type N T -> M (loc locT T) ;
   cget : forall {T}, loc locT T -> M (coq_type N T) ;
   cput : forall {T}, loc locT T -> coq_type N T -> M unit ;
@@ -1227,43 +1227,7 @@ HB.structure Definition MonadStateTraceReify (S T : UU0) :=
 
 From infotheo Require Import convex.
 
-(*HB.mixin Record isMonadConvex {R : realType} (M : UU0 -> UU0) := {
-  choice : forall (p : {prob R}) (T : UU0), M T -> M T -> M T ;
-  (* identity axioms *)
-  choice0 : forall (T : UU0) (a b : M T), choice 0%:pr _ a b = b ;
-  choice1 : forall (T : UU0) (a b : M T), choice 1%:pr _ a b = a ;
-  (* skewed commutativity *)
-  choiceC : forall (T : UU0) p (a b : M T),
-    choice p _ a b = choice ((Prob.p p).~ %:pr) _ b a ;
-  choicemm : forall (T : UU0) p, idempotent (@choice p T) ;
-  (* quasi associativity *)
-  choiceA : forall (T : UU0) (p q r s : {prob R}) (a b c : M T),
-    (p = (r : R) * (s : R) :> R /\ (Prob.p s).~ = (Prob.p p).~ * (Prob.p q).~)%R ->
-    (*NB: needed to preserve the notation in the resulting choiceA lemma*)
-    let bc := choice q _ b c in
-    let ab := choice r _ a b in
-    choice p _ a bc = choice s _ ab c }.
-
-#[short(type=convexMonad)]
-HB.structure Definition MonadConvex {R : realType} :=
-  { M of isMonadConvex R M & isMonad M & isFunctor M }.
-
-HB.mixin Record isMonadConvex_ {R : realType} (M : UU0 -> UU0) of Monad M := {
-  convexity : forall T, isConvexSpace.axioms_ (M T)
-}.
-
-HB.structure Definition MonadConvex_ {R : realType} :=
-  {M of isMonadConvex_ R M}.
-
-HB.instance Definition _ {R : realType} (M : MonadConvex_.type R) (T : UU0) :=
-  @convexity R M T.
-
-HB.mixin Record isMonadProb {R : realType} (M : UU0 -> UU0) of MonadConvex_ R M := {
-  (* composition distributes leftwards over [probabilistic] choice *)
-  choice_bindDl :
-    forall p, BindLaws.left_distributive
-                 (@bind [the monad of M])
-                    (fun (T : UU0) => (@conv [the convType of (M T)] p)) }.*)
+Local Open Scope reals_ext_scope.
 
 HB.mixin Record isMonadConvex {R : realType} (M : UU0 -> UU0) of Monad M := {
   choice : forall (p : {prob R}) (T : UU0), M T -> M T -> M T ;
@@ -1275,19 +1239,46 @@ HB.mixin Record isMonadConvex {R : realType} (M : UU0 -> UU0) of Monad M := {
     choice p _ a b = choice ((Prob.p p).~ %:pr) _ b a ;
   choicemm : forall (T : UU0) p, idempotent (@choice p T) ;
   (* quasi associativity *)
-  choiceA : forall (T : UU0) (p q r s : {prob R}) (a b c : M T),
-    (p = (r : R) * (s : R) :> R /\ (Prob.p s).~ = (Prob.p p).~ * (Prob.p q).~)%R ->
+  choiceA_new : forall (T : UU0) (p q r s : {prob R}) (a b c : M T),
+    choice p _ a (choice q _ b c) = choice [s_of p, q] _ (choice [r_of p, q] _ a b) c }.
+(*    (p = (r : R) * (s : R) :> R /\ (Prob.p s).~ = (Prob.p p).~ * (Prob.p q).~)%R ->
     (*NB: needed to preserve the notation in the resulting choiceA lemma*)
     let bc := choice q _ b c in
     let ab := choice r _ a b in
-    choice p _ a bc = choice s _ ab c }.
+    choice p _ a bc = choice s _ ab c }.*)
 
 #[short(type=convexMonad)]
 HB.structure Definition MonadConvex {R : realType} := {M of isMonadConvex R M & }.
 Notation "a <| p |> b" := (choice p _ a b) : proba_monad_scope.
-Arguments choiceA {_} {_} {_} _ _ _ _ {_} {_} {_}.
+Arguments choiceA_new {_} {_} {_} _ _ _ _ {_} {_} {_}.
 Arguments choiceC {_} {_} {_} _ _ _.
 Arguments choicemm {_} {_} {_} _.
+
+(* TODO: clean *)
+Lemma choiceA {R : realType} (M : convexMonad R) :
+  forall (T : UU0) (p q r s : {prob R}) (a b c : M T),
+    (p = (r : R) * (s : R) :> R /\ (Prob.p s).~ = (Prob.p p).~ * (Prob.p q).~)%R ->
+    let bc := choice q _ b c in
+    let ab := choice r _ a b in
+    choice p _ a bc = choice s _ ab c.
+Proof.
+move=> T p q r s a b c [Hp Hs] bc ab.
+rewrite choiceA_new//.
+rewrite (_ : [s_of p, q] = s); last first.
+  apply/val_inj => /=.
+  rewrite s_of_pqE//.
+  by move/(congr1 (@onem _)) : Hs; rewrite onemK.
+have [->|s0] := eqVneq s 0%:pr.
+  by rewrite !choice0.
+rewrite (_ : [r_of p, q] = r)//.
+apply/val_inj => /=.
+rewrite r_of_pqE.
+rewrite s_of_pqE.
+move/(congr1 (@onem _)) : Hs; rewrite onemK => <-.
+rewrite Hp.
+by rewrite -GRing.mulrA GRing.divff// GRing.mulr1.
+Qed.
+Arguments choiceA {_} {_} {_} _ _ _ _ {_} {_} {_}.
 
 HB.mixin Record isMonadProb {R : realType} (M : UU0 -> UU0) of MonadConvex R M := {
   (* composition distributes leftwards over [probabilistic] choice *)

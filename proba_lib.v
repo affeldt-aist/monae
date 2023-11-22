@@ -5,10 +5,8 @@ Require Import Reals Lra.
 From mathcomp Require Import all_ssreflect ssralg ssrnum.
 From mathcomp Require boolp.
 From mathcomp Require Import reals mathcomp_extra Rstruct lra.
-From infotheo Require Import ssrR Rstruct_ext Reals_ext.
-From infotheo Require Import realType_ext proba.
-From infotheo Require Import convex.
-From infotheo Require Import necset.
+From infotheo Require Import ssrR realType_ext Reals_ext.
+From infotheo Require Import proba convex necset.
 Require Import monae_lib hierarchy monad_lib fail_lib.
 
 (******************************************************************************)
@@ -49,7 +47,7 @@ Definition choiceA_alternative (p q : {prob real_realType}) (a b c : M A) :
   let conv := (fun p (a b : choice_of_Type (M A)) => choice p A a b) in
   conv p a (conv q b c) = conv [s_of p, q] (conv [r_of p, q] a b) c.
 Proof.
-by apply: (choiceA p q); rewrite -2!RmultE -p_is_rs s_of_pqE onemK.
+by apply: (choiceA p q); rewrite -p_is_rs s_of_pqE onemK.
 Qed.
 
 Definition prob_convType := M A.
@@ -83,7 +81,7 @@ Lemma uniform_nil (M : probMonad real_realType) (A : Type) (def : A) :
 Proof. by []. Qed.
 
 Lemma choice_ext (q p : {prob real_realType}) (M : probMonad real_realType) A (m1 m2 : M A) :
-  p = q :> R -> m1 <| p |> m2 = m1 <| q |> m2.
+  Prob.p p = Prob.p q :> R -> m1 <| p |> m2 = m1 <| q |> m2.
 Proof. by move/val_inj => ->. Qed.
 
 Lemma uniform_cons (M : probMonad real_realType) (A : Type) (def : A) h s :
@@ -316,55 +314,54 @@ Import Order.POrderTheory Order.TotalTheory GRing.Theory Num.Theory.
 
 (* TODO? : move magnified_weight to infotheo.convex *)
 Lemma magnified_weight_proof (p q r : {prob real_realType}) :
-  p < q < r -> (0 <= ((r : R) - (q : R)) / ((r : R) - (p : R)) <= 1)%mcR.
+  Prob.p p < Prob.p q < Prob.p r -> (0 <= (Prob.p r - Prob.p q) / (Prob.p r - Prob.p p) <= 1)%mcR.
 Proof.
 case => /RltP pq /RltP qr.
-have rp : (0 < (r : R) - (p : R))%mcR by rewrite subr_gt0 (lt_trans pq).
-have rp' : ((r : R) - (p : R) != 0)%mcR by rewrite subr_eq0 gt_eqF// -subr_gt0.
-have rq : (0 < (r : R) - (q : R))%mcR by rewrite subr_gt0.
+have rp : (0 < Prob.p r - Prob.p p)%mcR by rewrite subr_gt0 (lt_trans pq).
+have rp' : (Prob.p r - Prob.p p != 0)%mcR by rewrite subr_eq0 gt_eqF// -subr_gt0.
+have rq : (0 < Prob.p r - Prob.p q)%mcR by rewrite subr_gt0.
 apply/andP; split; first by rewrite divr_ge0// ltW.
 rewrite -(ler_pM2r rp).
 by rewrite mulrAC -mulrA mulrV // mulr1 mul1r lerD2l lerNl opprK; exact/ltW.
 Qed.
 
-Definition magnified_weight (p q r : {prob real_realType}) (H : p < q < r) : {prob real_realType} :=
+Definition magnified_weight (p q r : {prob real_realType})
+    (H : Prob.p p < Prob.p q < Prob.p r) : {prob real_realType} :=
   Eval hnf in Prob.mk_ (magnified_weight_proof H).
 
 Local Notation m := magnified_weight.
 Local Notation "x +' y" := (addpt x y) (at level 50).
 Local Notation "a *' x" := (scalept a x) (at level 40).
 
-Lemma magnify_conv (T : isConvexSpace_.ConvexSpace.Exports.convType) (p q r : {prob real_realType}) (x y : T) (H : p < q < r) :
+Lemma magnify_conv (T : isConvexSpace_.ConvexSpace.Exports.convType)
+    (p q r : {prob real_realType}) (x y : T) (H : Prob.p p < Prob.p q < Prob.p r) :
   (x <|p|> y) <| magnified_weight H |> (x <|r|> y) = x <|q|> y.
 Proof.
 case: (H) => pq qr.
-have rp : 0 < r - p by rewrite subR_gt0; apply (ltR_trans pq).
-have rp' : r - p != 0 by apply/gtR_eqF.
+have rp : 0 < Prob.p r - Prob.p p by rewrite subR_gt0; apply (ltR_trans pq).
+have rp' : Prob.p r - Prob.p p != 0 by apply/gtR_eqF.
 apply: S1_inj; rewrite ![in LHS]affine_conv/= !convptE.
-rewrite !scaleptDr !scaleptA // (addptC ((m (conj pq qr) * p) *' S1 x)) addptA.
+rewrite !scaleptDr !scaleptA // (addptC ((Prob.p (m (conj pq qr)) * Prob.p p) *' S1 x)) addptA.
 rewrite addptC !addptA -scaleptDl//; last first.
   by apply: mulR_ge0.
   by apply: mulR_ge0.
 rewrite -!addptA -scaleptDl//; last first.
   by apply: mulR_ge0.
-  rewrite /Prob_p.
-  by apply: mulR_ge0 => //.
+  by apply: mulR_ge0.
 rewrite (_ : conj pq qr = H)//.
-have -> : ((Prob.p (m H)).~ * (Prob.p r).~ + m H * (Prob.p p).~ = ((m H : R) * p + (Prob.p (m H)).~ * r).~)%coqR.
+have -> : ((Prob.p (m H)).~ * (Prob.p r).~ + Prob.p (m H) * (Prob.p p).~ = (Prob.p (m H) * Prob.p p + (Prob.p (m H)).~ * Prob.p r).~)%coqR.
   rewrite /onem.
-  rewrite /Prob_p.
   rewrite -!RminusE.
   rewrite -R1E.
   rewrite -RplusE -2!RmultE.
   ring.
-rewrite [r%:pp]/Prob_p.
-pose tmp := (m H * p + (Prob.p (m H)).~ * r).
+pose tmp := (Prob.p (m H) * Prob.p p + (Prob.p (m H)).~ * Prob.p r).
 rewrite -[X in X.~ *' _ +' _]/tmp.
 rewrite -/tmp.
-suff -> : tmp = q.
+suff -> : tmp = Prob.p q.
   by rewrite affine_conv convptE addptC.
 rewrite /tmp /m /= /onem.
-rewrite mulRDl mul1R addRCA -Rmult_opp_opp -mulRDr (addRC (- p)) addR_opp.
+rewrite mulRDl mul1R addRCA -Rmult_opp_opp -mulRDr (addRC (- Prob.p p)) addR_opp.
 rewrite mulNR mulRAC -mulRA.
 rewrite !RmultE.
 rewrite mulrV // mulr1.
@@ -373,7 +370,7 @@ ring.
 Qed.
 
 Lemma arbcoin_spec_convexity (p q : {prob real_realType}) :
-  p < q < (Prob.p p).~%:pr ->
+  Prob.p p < Prob.p q < (Prob.p p).~ ->
   arbcoin p = (bcoin p : M _) [~] bcoin (Prob.p p).~%:pr [~] bcoin q.
 Proof.
 move=> H.
