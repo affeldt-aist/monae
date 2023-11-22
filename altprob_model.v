@@ -4,7 +4,7 @@ Require Import Reals.
 From mathcomp Require Import all_ssreflect ssralg ssrnum finmap.
 From mathcomp Require Import boolp classical_sets.
 From mathcomp Require Import reals Rstruct.
-From infotheo Require Import classical_sets_ext Reals_ext Rbigop ssrR fdist.
+From infotheo Require Import classical_sets_ext Reals_ext ssrR fdist.
 From infotheo Require Import ssrR Reals_ext proba.
 From infotheo Require Import Reals_ext realType_ext.
 From infotheo Require Import fsdist convex necset.

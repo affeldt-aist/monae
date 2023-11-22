@@ -1,7 +1,7 @@
 (* monae: Monadic equational reasoning in Coq                                 *)
 (* Copyright (C) 2020 monae authors, license: LGPL-2.1-or-later               *)
 Require Import Reals.
-From mathcomp Require Import all_ssreflect.
+From mathcomp Require Import all_ssreflect ssralg ssrnum.
 From mathcomp Require boolp.
 From mathcomp Require Import reals Rstruct.
 From infotheo Require Import Reals_ext realType_ext ssr_ext fsdist.
@@ -76,7 +76,7 @@ Qed.
 Local Open Scope reals_ext_scope.
 
 Let choice := (fun p A => @fsdist_conv (choice_of_Type A) p).
-Let choice0 (T : UU0) : forall (a b : acto T), choice 0%R%:pr _ a b = b.
+Let choice0 (T : UU0) : forall (a b : acto T), choice 0%:pr _ a b = b.
 Proof. by move=> ? ?; exact: conv0. Qed.
 Let choice1 (T : UU0) : forall (a b : acto T), choice 1%R%:pr _ a b = a.
 Proof. by move=> ? ?; exact: conv1. Qed.

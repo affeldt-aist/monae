@@ -43,12 +43,10 @@ Variable M : probMonad real_realType.
 Variable A : Type.
 Local Open Scope proba_scope.
 
-Definition choiceA_alternative (p q : {prob real_realType}) (a b c : M A) :
+Definition choiceA_real_realType (p q : {prob real_realType}) (a b c : M A) :
   let conv := (fun p (a b : choice_of_Type (M A)) => choice p A a b) in
   conv p a (conv q b c) = conv [s_of p, q] (conv [r_of p, q] a b) c.
-Proof.
-by apply: (choiceA p q); rewrite -p_is_rs s_of_pqE onemK.
-Qed.
+Proof. exact: (choiceA p q). Qed.
 
 Definition prob_convType := M A.
 
@@ -57,7 +55,7 @@ HB.instance Definition _ := @isConvexSpace.Build prob_convType
   (choice1 _)
   choicemm
   choiceC
-  choiceA_alternative.
+  choiceA_real_realType.
 
 Lemma choice_conv p (x y : prob_convType) : x <|p|> y = conv p x y.
 Proof. by []. Qed.
@@ -88,14 +86,14 @@ Lemma uniform_cons (M : probMonad real_realType) (A : Type) (def : A) h s :
   uniform def (h :: s) =
   Ret h <| (/ IZR (Z_of_nat (size (h :: s))))%coqR%:pr |> uniform def s :> M A.
 Proof.
-by case: s => //=; rewrite (@choice_ext 1%coqR%:pr) // ?choice1 //= Rinv_1.
+by case: s => //=; rewrite (@choice_ext 1%:pr) // ?choice1 //= Rinv_1.
 Qed.
 
 Lemma uniform_singl (M : probMonad real_realType) (A : Type) (def : A) h : size h = 1%nat ->
   uniform def h = Ret (head def h) :> M A.
 Proof.
 case: h => // h [|//] _.
-by rewrite uniform_cons uniform_nil (@choice_ext 1%coqR%:pr) ?choice1 //= invR1.
+by rewrite uniform_cons uniform_nil (@choice_ext 1%:pr) ?choice1 //= invR1.
 Qed.
 
 Lemma uniform_nseq (M : probMonad real_realType) (A : Type) (def : A) h n :
@@ -111,19 +109,20 @@ Lemma uniform_cat (M : probMonad real_realType) (A : Type) (a : A) s t :
   uniform a (s ++ t) = uniform a s <| (divRnnm m n)%:pr |> uniform a t :> M _.
 Proof.
 elim: s t => [t m n|s1 s2 IH t m n].
-  rewrite cat0s uniform_nil /= [X in _ <| X |> _](_ : _ = 0%coqR%:pr) ?choice0 //.
+  rewrite cat0s uniform_nil /= [X in _ <| X |> _](_ : _ = 0%:pr) ?choice0 //.
   by apply val_inj; rewrite /= /divRnnm div0R.
 case/boolP : (m.-1 + n == 0)%nat => [{IH}|] m1n0.
   have s20 : s2 = [::] by move: m1n0; rewrite {}/m /=; case: s2.
   have t0 : t = [::] by move: m1n0; rewrite {}/n /= addnC; case: t.
   subst s2 t.
-  rewrite cats0 (_ : Prob.mk _ = 1%coqR%:pr) ?choice1 //.
+  rewrite cats0 (_ : Prob.mk _ = 1%:pr) ?choice1 //.
   by apply val_inj; rewrite /= /divRnnm div1R invR1.
 rewrite cat_cons uniform_cons uniform_cons.
 set pv := ((/ _)%coqR).
 set v : {prob real_realType} := @Prob.mk _ pv _.
-set u := @Prob.mk_ _ (INR (size s2) / INR (size s2 + size t))%coqR (prob_divRnnm' _ _).
-rewrite -[RHS](choiceA v u).
+(*set u : {prob real_realType} := ((size s2)%:R / (size s2 + size t)%:R)%coqR%:pr.*)
+set u := @Prob.mk_ _ ((size s2)%:R / (size s2 + size t)%:R)%coqR (prob_divRnnm_subproof _ _).
+rewrite -[RHS](@choiceA_alternative _ _ _ v u).
   by rewrite IH.
 rewrite -RmultE. split.
   rewrite 3!probpK -INR_IZR_INZ.
@@ -242,7 +241,7 @@ HB.instance Definition _ := @isSemiLattice.Build altProb_semiLattConvType
 
 HB.instance Definition _ := @isConvexSpace_.isConvexSpace.Build altProb_semiLattConvType
   (Choice.class (choice_of_Type (M T))) (fun p => choice p T)
-  (choice1 _) choicemm choiceC (@choiceA_alternative M T).
+  (choice1 _) choicemm choiceC (@choiceA_real_realType M T).
 
 HB.instance Definition _ := @isSemiLattConv.Build altProb_semiLattConvType axiom.
 
@@ -438,22 +437,22 @@ have H27 : (0 <= (2/7 : R) <= 1)%mcR by apply/andP; split; lra.
 have H721 : (0 <= (7/21 : R) <= 1)%mcR by apply/andP; split; lra.
 have H2156 : (0 <= (21/56 : R) <= 1)%mcR by apply/andP; split; lra.
 have H25 : (0 <= (2/5 : R) <= 1)%mcR by apply/andP; split; lra.
-rewrite [in RHS](choiceA _ _ (/ 2)%:pr (/ 3).~%:pr); last first.
+rewrite [in RHS](@choiceA_alternative _ _ _ _ _ (/ 2)%:pr (/ 3).~%:pr); last first.
   rewrite 3!probpK /= /onem.
   rewrite -!(RmultE,RminusE,R1E).
   split; field.
 rewrite choicemm.
-rewrite [in LHS](choiceA (/ 3)%:pr (/ 2)%:pr (/ 2)%:pr (/ 3).~%:pr); last first.
+rewrite [in LHS](@choiceA_alternative _ _ _ (/ 3)%:pr (/ 2)%:pr (/ 2)%:pr (/ 3).~%:pr); last first.
   rewrite 3!probpK /= /onem.
   rewrite -!(RmultE,RminusE,R1E).
   split; field.
 rewrite choicemm.
-rewrite [in LHS](choiceA (/ 4)%:pr (/ 3).~%:pr (/ 3)%:pr (/ 4).~%:pr); last first.
+rewrite [in LHS](@choiceA_alternative _ _ _ (/ 4)%:pr (/ 3).~%:pr (/ 3)%:pr (/ 4).~%:pr); last first.
   rewrite 4!probpK /= /onem.
   rewrite -!(RmultE,RminusE,R1E).
   split; field.
 rewrite choicemm.
-rewrite [in LHS](choiceA (/ 7)%:pr (/ 6)%:pr (/ 2)%:pr (@Prob.mk _ (2/7) H27)); last first.
+rewrite [in LHS](@choiceA_alternative _ _ _ (/ 7)%:pr (/ 6)%:pr (/ 2)%:pr (@Prob.mk _ (2/7) H27)); last first.
   rewrite 4!probpK /= /onem; split.
     rewrite -RmultE -RdivE' -2!INRE !INR_IZR_INZ.
     field.
@@ -465,7 +464,7 @@ rewrite [in LHS](choiceA (/ 7)%:pr (/ 6)%:pr (/ 2)%:pr (@Prob.mk _ (2/7) H27)); 
   rewrite -R1E.
   field.
 rewrite choicemm.
-rewrite [in LHS](choiceA (/ 8)%:pr (@Prob.mk _ (2/7) H27) (@Prob.mk _ (7/21) H721) (@Prob.mk _ (21/56) H2156)); last first.
+rewrite [in LHS](@choiceA_alternative _ _ _ (/ 8)%:pr (@Prob.mk _ (2/7) H27) (@Prob.mk _ (7/21) H721) (@Prob.mk _ (21/56) H2156)); last first.
   rewrite probpK /= /onem; split.
     rewrite -RmultE -2!RdivE'.
     rewrite (_ : 21%mcR = 21); last first.
@@ -487,7 +486,7 @@ rewrite [in LHS](choiceA (/ 8)%:pr (@Prob.mk _ (2/7) H27) (@Prob.mk _ (7/21) H72
   rewrite -R1E.
   field.
 rewrite (choiceC (/ 4).~%:pr).
-rewrite [in LHS](choiceA (/ 5)%:pr (probcplt (/ 4).~%:pr) (/ 2)%:pr (@Prob.mk _ (2/5) H25)); last first.
+rewrite [in LHS](@choiceA_alternative _ _ _ (/ 5)%:pr (probcplt (/ 4).~%:pr) (/ 2)%:pr (@Prob.mk _ (2/5) H25)); last first.
   rewrite 3!probpK /= /onem; split.
     rewrite -2!RmultE -RinvE'.
     rewrite (_ : 2%mcR = 2); last first.
@@ -504,7 +503,7 @@ rewrite [in LHS](choiceA (/ 5)%:pr (probcplt (/ 4).~%:pr) (/ 2)%:pr (@Prob.mk _ 
   field.
 rewrite 2!choicemm.
 rewrite (choiceC (@Prob.mk _ (2/5) H25)).
-rewrite [in LHS](choiceA (@Prob.mk _ (21/56) H2156) (probcplt (Prob.mk H25)) (/ 2)%:pr (/ 4).~%:pr); last first.
+rewrite [in LHS](@choiceA_alternative _ _ _ (@Prob.mk _ (21/56) H2156) (probcplt (Prob.mk H25)) (/ 2)%:pr (/ 4).~%:pr); last first.
   rewrite 3!probpK /= /onem; split.
     rewrite -!RmultE -RminusE -RinvE'.
     rewrite (_ : 56%mcR = 56); last first.
@@ -526,7 +525,7 @@ rewrite [in LHS](choiceA (@Prob.mk _ (21/56) H2156) (probcplt (Prob.mk H25)) (/ 
   field.
 rewrite choicemm.
 rewrite (choiceC (/ 4).~%:pr).
-rewrite [in LHS](choiceA (/ 9)%:pr (probcplt (/ 4).~%:pr) (/ 3)%:pr (/ 3)%:pr); last first.
+rewrite [in LHS](@choiceA_alternative _ _ _ (/ 9)%:pr (probcplt (/ 4).~%:pr) (/ 3)%:pr (/ 3)%:pr); last first.
   rewrite 3!probpK /= /onem; split.
     rewrite -RmultE. field.
   rewrite -RmultE -!RminusE.
@@ -545,7 +544,7 @@ rewrite (_ : _%:pr = (/ 3)%:pr)%R; last exact/val_inj.
 rewrite uniform_cons.
 rewrite [in X in _ <| _ |> X](_ : _%:pr = (/ 2)%:pr)%R; last exact/val_inj.
 rewrite uniform_singl //=.
-rewrite (choiceA _ _ (/ 2)%:pr (/ 3).~%:pr); last first.
+rewrite (@choiceA_alternative _ _ _ _ _ (/ 2)%:pr (/ 3).~%:pr); last first.
   rewrite /= /onem; split.
     rewrite -RmultE -RminusE -R1E; field.
   rewrite -!RmultE -!RminusE -R1E; field.
@@ -563,7 +562,7 @@ rewrite (_ : _%:pr = (/ 3)%:pr)%R; last exact/val_inj.
 rewrite uniform_cons.
 rewrite [in X in _ <| _ |> X](_ : _%:pr = (/ 2)%:pr)%R; last exact/val_inj.
 rewrite uniform_singl //=.
-rewrite (choiceA _ _ (/ 2)%:pr (/ 3).~%:pr) ?choicemm //.
+rewrite (@choiceA_alternative _ _ _ _ _ (/ 2)%:pr (/ 3).~%:pr) ?choicemm //.
 rewrite /= /onem; split.
   rewrite -RmultE -RminusE -R1E. field.
 rewrite -!RminusE -RmultE -R1E. field.

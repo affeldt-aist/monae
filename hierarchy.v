@@ -1252,21 +1252,16 @@ HB.mixin Record isMonadConvex {R : realType} (M : UU0 -> UU0) of Monad M := {
   choice1 : forall (T : UU0) (a b : M T), choice 1%:pr _ a b = a ;
   (* skewed commutativity *)
   choiceC : forall (T : UU0) p (a b : M T),
-    choice p _ a b = choice ((Prob.p p).~ %:pr) _ b a ;
+    choice p _ a b = choice (p.~%:pr) _ b a ;
   choicemm : forall (T : UU0) p, idempotent (@choice p T) ;
   (* quasi associativity *)
-  choiceA_new : forall (T : UU0) (p q r s : {prob R}) (a b c : M T),
+  choiceA : forall (T : UU0) (p q r s : {prob R}) (a b c : M T),
     choice p _ a (choice q _ b c) = choice [s_of p, q] _ (choice [r_of p, q] _ a b) c }.
-(*    (p = (r : R) * (s : R) :> R /\ (Prob.p s).~ = (Prob.p p).~ * (Prob.p q).~)%R ->
-    (*NB: needed to preserve the notation in the resulting choiceA lemma*)
-    let bc := choice q _ b c in
-    let ab := choice r _ a b in
-    choice p _ a bc = choice s _ ab c }.*)
 
 #[short(type=convexMonad)]
 HB.structure Definition MonadConvex {R : realType} := {M of isMonadConvex R M & }.
 Notation "a <| p |> b" := (choice p _ a b) : proba_monad_scope.
-Arguments choiceA_new {_} {_} {_} _ _ _ _ {_} {_} {_}.
+Arguments choiceA {_} {_} {_} _ _ _ _ {_} {_} {_}.
 Arguments choiceC {_} {_} {_} _ _ _.
 Arguments choicemm {_} {_} {_} _.
 
@@ -1278,7 +1273,7 @@ rewrite choiceC/= [X in _ <| X |> _](_ : _ = 1%:pr) ?choice1//; apply/val_inj =>
 by rewrite mathcomp_extra.onem0.
 Qed.
 
-Lemma choiceA {R : realType} (M : convexMonad R) :
+Lemma choiceA_alternative {R : realType} (M : convexMonad R) :
   forall (T : UU0) (p q r s : {prob R}) (a b c : M T),
     (p = (r : R) * (s : R) :> R /\ (Prob.p s).~ = (Prob.p p).~ * (Prob.p q).~)%R ->
     let bc := choice q _ b c in
@@ -1286,17 +1281,13 @@ Lemma choiceA {R : realType} (M : convexMonad R) :
     choice p _ a bc = choice s _ ab c.
 Proof.
 move=> T p q r s a b c [Hp Hs] bc ab.
-rewrite choiceA_new//.
-rewrite (_ : [s_of p, q] = s); last first.
-  apply/val_inj => /=.
-  rewrite s_of_pqE//.
+rewrite choiceA// (_ : [s_of p, q] = s); last first.
+  apply/val_inj => /=; rewrite s_of_pqE//.
   by move/(congr1 (@onem _)) : Hs; rewrite onemK.
-have [->|s0] := eqVneq s 0%:pr.
-  by rewrite !choice0.
+have [->|s0] := eqVneq s 0%:pr; first by rewrite !choice0.
 rewrite (_ : [r_of p, q] = r)//.
 apply/val_inj => /=.
-rewrite r_of_pqE.
-rewrite s_of_pqE.
+rewrite r_of_pqE s_of_pqE. (* TODO: should be cleaner*)
 move/(congr1 (@onem _)) : Hs; rewrite onemK => <-.
 rewrite Hp.
 by rewrite -GRing.mulrA GRing.divff// GRing.mulr1.
@@ -1305,7 +1296,7 @@ Arguments choiceA {_} {_} {_} _ _ _ _ {_} {_} {_}.
 
 HB.mixin Record isMonadProb {R : realType} (M : UU0 -> UU0) of MonadConvex R M := {
   (* composition distributes leftwards over [probabilistic] choice *)
-  choice_bindDl : forall p, BindLaws.left_distributive (@bind [the monad of M]) (choice p) }.
+  choice_bindDl : forall p, BindLaws.left_distributive (@bind M) (choice p) }.
 
 #[short(type=probMonad)]
 HB.structure Definition MonadProb {R : realType} := {M of isMonadProb R M & }.
@@ -1322,7 +1313,7 @@ HB.structure Definition MonadProbDr {R : realType} := {M of isMonadProbDr R M & 
 
 HB.mixin Record isMonadAltProb {R : realType} (M : UU0 -> UU0) of MonadAltCI M & MonadProb R M :=
   { choiceDr : forall T p, right_distributive
-      (@choice R [the probMonad R of M] p T) (fun a b => a [~] b) }.
+      (@choice R M p T) (fun a b => a [~] b) }.
 
 #[short(type=altProbMonad)]
 HB.structure Definition MonadAltProb {R : realType} :=

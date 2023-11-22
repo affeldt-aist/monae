@@ -417,7 +417,7 @@ have : d \in doors by rewrite mem_enum.
 rewrite /doors Set3.enumE !inE => /or3P[] /eqP ->.
 - rewrite eqxx (negbTE (Set3.a_neq_b _)) (negbTE (Set3.a_neq_c _)).
   rewrite choiceC.
-  erewrite choiceA.
+  erewrite choiceA_alternative.
     reflexivity.
   rewrite /= /onem; split.
     rewrite -RmultE -RminusE -R1E; field.
@@ -475,12 +475,12 @@ rewrite 3!K !(@Set3.uniform_unfold _ _ _ (fun a b => a != b)) !eqxx /=.
 rewrite Set3.a_neq_b Set3.b_neq_c Set3.a_neq_c eq_sym Set3.a_neq_b eq_sym.
 rewrite Set3.a_neq_c eq_sym Set3.b_neq_c choicemm.
 rewrite (@choiceC _ _ _ (/2)%coqR%:pr).
-rewrite (@choiceA _ _ _ _ _ (/ 2)%coqR%:pr (/ 3)%coqR.~%:pr); last first.
+rewrite (@choiceA_alternative _ _ _ _ _ (/ 2)%coqR%:pr (/ 3)%coqR.~%:pr); last first.
   rewrite /onem /=; split.
     rewrite -RmultE -RminusE -R1E; field.
   rewrite -RmultE -!RminusE -R1E; field.
 rewrite choicemm.
-rewrite (@choiceA _ _ _ _ _ (/ 2)%coqR%:pr (/ 3)%coqR.~%:pr); last first.
+rewrite (@choiceA_alternative _ _ _ _ _ (/ 2)%coqR%:pr (/ 3)%coqR.~%:pr); last first.
   rewrite /onem /=; split.
     rewrite -RmultE -RminusE -R1E; field.
   rewrite -RmultE -!RminusE -R1E; field.
