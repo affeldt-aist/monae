@@ -1346,7 +1346,7 @@ HB.mixin Record isMonadExceptProb {R : realType} (M : UU0 -> UU0)
 #[short(type=exceptProbMonad)]
 HB.structure Definition MonadExceptProb {R : realType} :=
   { M of isMonadExceptProb R M & isFunctor M & isMonad M & isMonadFail M &
-         isMonadExcept M & isMonadProb R M & }.
+         isMonadExcept M & isMonadProb R M & isFunctor M}.
 
 HB.mixin Record isMonadFresh (S : eqType) (M : UU0 -> UU0) of Monad M :=
   { fresh : M S }.

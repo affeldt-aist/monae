@@ -123,8 +123,6 @@ HB.instance Definition _ :=
 
 Definition gcmACI := [the altCIMonad of gcm].
 
-Lemma choice0 A (x y : gcm A) : x <| 0%:pr |> y = y.
-Proof. by rewrite conv0. Qed.
 Lemma choice1 A (x y : gcm A) : x <| 1%:pr |> y = x.
 Proof. by rewrite conv1. Qed.
 Lemma choiceC A p (x y : gcm A) : x <|p|> y = y <|(Prob.p p).~%:pr|> x.
@@ -175,7 +173,7 @@ End bindchoiceDl.
 
 HB.instance Definition _ :=
   isMonadConvex.Build real_realType (Monad_of_category_monad.acto Mgcm)
-    choice0 choice1 choiceC choicemm choiceA.
+    choice1 choiceC choicemm choiceA.
 
 HB.instance Definition _ :=
   isMonadProb.Build real_realType (Monad_of_category_monad.acto Mgcm) bindchoiceDl.

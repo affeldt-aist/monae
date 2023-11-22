@@ -95,7 +95,7 @@ by rewrite convA.
 Qed.
 
 HB.instance Definition mixin' := isMonadConvex.Build real_realType
-  acto choice0 choice1 choiceC choicemm choiceA.
+  acto choice1 choiceC choicemm choiceA.
 
 Let prob_bindDl p :
   BindLaws.left_distributive (@hierarchy.bind [the monad of acto]) (choice p).
