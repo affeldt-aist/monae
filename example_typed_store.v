@@ -143,6 +143,52 @@ under eq_bind do under eq_bind do rewrite bindretf /=.
 by rewrite crunnewchkC // crunnewchk0.
 Qed.
 
+Fixpoint iappend (h : nat) (l1 l2 : coq_type (ml_rlist ml_int))
+  : M (coq_type (ml_rlist ml_int)) :=
+  if h is h.+1 then
+    match l1 with
+    | Nil => Ret l2
+    | Cons a l1' =>
+      do _ <-
+      (do v <- (do v <- cget l1'; iappend h v l2);
+       cput l1' v);
+      Ret l1
+    end
+  else Ret (Nil nat ml_int).
+
+Fixpoint is_int_list (l : list nat) (rl : rlist nat ml_int) : M bool :=
+  match l, rl with
+  | [::], Nil => Ret true
+  | (a :: t), (Cons b r) =>
+      if a != b then Ret false else
+      do rl' <- cget r; is_int_list t rl'
+  | _, _ => Ret false
+  end.
+
+Fixpoint loc_ids_rlist (l : list nat) (rl : rlist nat ml_int)
+  : M (list nat) :=
+  match l with
+  | [::] => Ret [::]
+  | (_ :: t) =>
+      match rl with
+      | Nil => Ret [::]
+      | Cons _ r =>
+          do rl' <- cget r; do rs <- loc_ids_rlist t rl'; Ret (loc_id r :: rs)
+      end
+  end.
+
+Lemma iappend_correct m l1 l2 :
+  crun (do p : rlist nat ml_int * rlist nat ml_int <- m; let (rl1, rl2) := p in
+        do a <- is_int_list l1 rl1; do b <- is_int_list l2 rl2;
+        do rs1 <- loc_ids_rlist l1 rl1; do rs2 <- loc_ids_rlist l2 rl2;
+        Ret (a && b && (allrel (fun r1 r2 => r1 != r2) rs1 rs2)))
+       = Some true->
+  crun (do p : rlist nat ml_int * rlist nat ml_int <- m; let (rl1, rl2) := p in
+        do rl <- iappend (size l1).+1 rl1 rl2; is_int_list (l1 ++ l2) rl)
+       = Some true.
+Proof.
+(* need more abstractions *)
+Abort.
 End cyclic.
 
 Section factorial.
