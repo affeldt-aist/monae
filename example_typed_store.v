@@ -91,19 +91,19 @@ Definition typedStoreMonad (N : monad) :=
 Section cyclic.
 Variables (N : monad) (M : typedStoreMonad N).
 
-Local Notation coq_type := (hierarchy.coq_type N).
+Local Notation coq_type := hierarchy.coq_type.
 Local Open Scope do_notation.
 
-Definition cycle (T : ml_type) (a b : coq_type T)
-  : M (coq_type (ml_rlist T)) :=
-  do r <- cnew (ml_rlist T) (Nil (coq_type T) T);
+Definition cycle (T : ml_type) (a b : coq_type N T)
+  : M (coq_type N (ml_rlist T)) :=
+  do r <- cnew (ml_rlist T) (Nil (coq_type N T) T);
   do l <-
-  (do v <- cnew (ml_rlist T) (Cons (coq_type T) T b r);
-   Ret (Cons (coq_type T) T a v));
+  (do v <- cnew (ml_rlist T) (Cons (coq_type N T) T b r);
+   Ret (Cons (coq_type N T) T a v));
   do _ <- cput r l; Ret l.
 
-Definition hd (T : ml_type) (def : coq_type T)
-  (param : coq_type (ml_rlist T)) : coq_type T :=
+Definition hd (T : ml_type) (def : coq_type N T)
+  (param : coq_type N (ml_rlist T)) : coq_type N T :=
   match param with | Nil => def | Cons a _ => a end.
 
 Lemma hd_is_true :
@@ -120,32 +120,59 @@ under eq_bind do under eq_bind do rewrite bindretf /=.
 by rewrite crunnewchkC // crunnewchk0.
 Qed.
 
-Definition tl (T : ml_type) (param : coq_type (ml_rlist T))
-  : M (coq_type (ml_rlist T)) :=
+Definition tl (T : ml_type) (param : coq_type N (ml_rlist T))
+  : M (coq_type N (ml_rlist T)) :=
   match param with
-  | Nil => Ret (Nil (coq_type T) T)
+  | Nil => Ret (Nil (coq_type N T) T)
   | Cons _ t => cget t
   end.
 
+Arguments cnew {ml_type N locT s T}.
+Arguments cput {ml_type N locT s T}.
+Arguments cget {ml_type N locT s T}.
+Arguments Nil {a a_1}.
+Arguments Cons {a a_1}.
+Arguments tl {T}.
+
 Lemma hd_tl_tl_is_true :
-  crun (do l <- cycle ml_bool true false; do l1 <- tl _ l; do l2 <- tl _ l1;
+  crun (do l <- cycle ml_bool true false; do l1 <- tl l; do l2 <- tl l1;
         Ret (hd ml_bool false l2)) = Some true.
 Proof.
-rewrite bindA -cnewchk.
+rewrite /cycle.
+rewrite bindA.
+rewrite -cnewchk.
 under eq_bind => r1.
   under eq_bind do rewrite !bindA.
-  under cchknewE do rewrite !(bindA,bindretf) -bindA cputgetC //.
-  rewrite cnewget /=.
-  under cchknewE do rewrite cputget /=.
+  under cchknewE => r2 r1r2.
+    rewrite !(bindA,bindretf) -bindA.
+    rewrite /=.
+    rewrite cputgetC //.
+    over.
+  rewrite cnewget.
+  rewrite /=.
+  under cchknewE do rewrite cputget.
+  rewrite /=.
   over.
-rewrite cnewchk -bindA_uncurry -bindA crunret // crunchkput // bindA.
+rewrite cnewchk.
+rewrite -bindA_uncurry -bindA crunret // crunchkput // bindA.
 under eq_bind do rewrite !bindA.
 under eq_bind do under eq_bind do rewrite bindretf /=.
 by rewrite crunnewchkC // crunnewchk0.
 Qed.
 
-Fixpoint iappend (h : nat) (l1 l2 : coq_type (ml_rlist ml_int))
-  : M (coq_type (ml_rlist ml_int)) :=
+Lemma perm3 T (s1 s2 s3 s4 : coq_type N T) :
+  do r1 <- cnew s1; do r2 <- cnew s2; do r3 <- cnew s3; cput r1 s4 =
+  do r1 <- cnew s4; do r2 <- cnew s2; do r3 <- cnew s3; skip :> M _.
+Proof.
+rewrite -cnewchk.
+under eq_bind do rewrite -cchknewC.
+under eq_bind do rewrite -[cput _ _]bindmskip.
+under eq_bind do rewrite 2!cchknewput.
+by rewrite cnewput.
+Qed.
+
+Fixpoint iappend (h : nat) (l1 l2 : coq_type N (ml_rlist ml_int))
+  : M (coq_type N (ml_rlist ml_int)) :=
   if h is h.+1 then
     match l1 with
     | Nil => Ret l2
@@ -155,7 +182,7 @@ Fixpoint iappend (h : nat) (l1 l2 : coq_type (ml_rlist ml_int))
        cput l1' v);
       Ret l1
     end
-  else Ret (Nil nat ml_int).
+  else Ret Nil.
 
 Fixpoint is_int_list (l : list nat) (rl : rlist nat ml_int) : M bool :=
   match l, rl with
