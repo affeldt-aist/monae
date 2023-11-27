@@ -43,10 +43,10 @@ From HB Require Import structures.
 (*           altMonad == monad with nondeterministic choice                   *)
 (*       prePlusMonad == nondeterminism + failR0 + distributivity             *)
 (*          plusMonad == preplusMonad + commutativity and idempotence         *)
-(*         altCIMonad == monadAlt + commutativity + idempotence               *)
-(*        nondetMonad == monadFail + monadAlt                                 *)
-(*      nondetCIMonad == monadFail + monadAltCI                               *)
-(*        exceptMonad == monadFail + catch                                    *)
+(*         altCIMonad == altMonad + commutativity + idempotence               *)
+(*        nondetMonad == failMonad + altMonad                                 *)
+(*      nondetCIMonad == failMOnad + altCIMonad                               *)
+(*        exceptMonad == failMonad + catch                                    *)
 (*                                                                            *)
 (* Control monads (wip):                                                      *)
 (*   contMonad, shiftresetMonad, jumpMonad                                    *)
@@ -707,9 +707,9 @@ Notation "m <=< n" := (kleisli m n) : monae_scope.
 Notation "m >=> n" := (kleisli n m) : monae_scope.
 
 HB.mixin Record isMonadFail (M : UU0 -> UU0) of Monad M := {
-  fail : forall A : UU0, M A;
+  fail : forall A : UU0, M A ;
     (* exceptions are left-zeros of sequential composition *)
-  bindfailf : BindLaws.left_zero (@bind [the monad of M]) fail
+  bindfailf : BindLaws.left_zero (@bind M) fail
     (* fail A >>= f = fail B *) }.
 
 #[short(type=failMonad)]
@@ -785,7 +785,7 @@ HB.mixin Record isMonadAlt (M : UU0 -> UU0) of Monad M := {
   alt : forall T : UU0, M T -> M T -> M T ;
   altA : forall T : UU0, associative (@alt T) ;
   (* composition distributes leftwards over choice *)
-  alt_bindDl : BindLaws.left_distributive (@bind [the monad of M]) alt
+  alt_bindDl : BindLaws.left_distributive (@bind M) alt
 (* in general, composition does not distribute rightwards over choice *)
 (* NB: no bindDr to accommodate both angelic and demonic interpretations of
    nondeterminism *) }.
@@ -796,8 +796,8 @@ HB.structure Definition MonadAlt := {M of isMonadAlt M & }.
 Notation "a [~] b" := (@alt _ _ a b). (* infix notation *)
 
 HB.mixin Record isMonadAltCI (M : UU0 -> UU0) of MonadAlt M := {
-  altmm : forall A : UU0, idempotent (@alt [the altMonad of M] A) ;
-  altC : forall A : UU0, commutative (@alt [the altMonad of M] A) }.
+  altmm : forall A : UU0, idempotent (@alt M A) ;
+  altC : forall A : UU0, commutative (@alt M A) }.
 
 #[short(type=altCIMonad)]
 HB.structure Definition MonadAltCI := {M of isMonadAltCI M & }.
@@ -820,12 +820,8 @@ Proof. move=> x y z t; rewrite !altA; congr (_ [~] _); by rewrite altAC. Qed.
 End altci_lemmas.
 
 HB.mixin Record isMonadNondet (M : UU0 -> UU0) of MonadFail M & MonadAlt M := {
-  altfailm :
-    @BindLaws.left_id [the functor of M] (@fail [the failMonad of M])
-                                         (@alt [the altMonad of M]);
-  altmfail :
-    @BindLaws.right_id [the functor of M] (@fail [the failMonad of M])
-                                          (@alt [the altMonad of M]) }.
+  altfailm : @BindLaws.left_id M (@fail M) (@alt M) ;
+  altmfail : @BindLaws.right_id M (@fail M) (@alt M) }.
 
 #[short(type=nondetMonad)]
 HB.structure Definition MonadNondet :=
@@ -855,7 +851,7 @@ HB.structure Definition MonadFailR0 := {M of isMonadFailR0 M & }.
 
 HB.mixin Record isMonadPrePlus (M : UU0 -> UU0)
     of MonadNondet M & MonadFailR0 M :=
-  { alt_bindDr : BindLaws.right_distributive (@bind [the monad of M]) alt }.
+  { alt_bindDr : BindLaws.right_distributive (@bind M) alt }.
 
 #[short(type=prePlusMonad)]
 HB.structure Definition MonadPrePlus := {M of isMonadPrePlus M & }.
@@ -1311,7 +1307,8 @@ HB.mixin Record isMonadProbDr {R : realType} (M : UU0 -> UU0) of MonadProb R M :
 #[short(type=probDrMonad)]
 HB.structure Definition MonadProbDr {R : realType} := {M of isMonadProbDr R M & }.
 
-HB.mixin Record isMonadAltProb {R : realType} (M : UU0 -> UU0) of MonadAltCI M & MonadProb R M :=
+HB.mixin Record isMonadAltProb {R : realType} (M : UU0 -> UU0)
+    of MonadAltCI M & MonadProb R M :=
   { choiceDr : forall T p, right_distributive
       (@choice R M p T) (fun a b => a [~] b) }.
 
@@ -1332,7 +1329,7 @@ End altprob_lemmas.
 HB.mixin Record isMonadExceptProb {R : realType} (M : UU0 -> UU0)
     of MonadExcept M & MonadProb R M := {
   catchDl : forall (A : UU0) w,
-    left_distributive (@catch [the exceptMonad of M] A) (choice w A) }.
+    left_distributive (@catch M A) (choice w A) }.
 
 #[short(type=exceptProbMonad)]
 HB.structure Definition MonadExceptProb {R : realType} :=
