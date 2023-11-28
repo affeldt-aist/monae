@@ -360,18 +360,16 @@ Section distributivelaw.
 Variables S T : monad.
 Record t := mk {
   f : [the functor of S \o T] ~> [the functor of T \o S] ;
-  unit1 : IV (f \v (@ret S \h [the _ ~> _ of NId T])) =
-          VI ([the _ ~> _ of NId T] \h @ret S) ;
-  unit2 : VI (f \v ([the _ ~> _ of NId S] \h @ret T)) =
-          IV (@ret T \h [the _ ~> _ of NId S]) ;
+  unit1 :
+    IV (f \v (@ret S \h NId T)) = VI (NId T \h @ret S) ;
+  unit2 :
+    VI (f \v (NId S \h @ret T)) = IV (@ret T \h NId S) ;
   multiplication1 :
-    AV (f \v (@join S \h [the _ ~> _ of NId T])) =
-    ([the _ ~> _ of NId T] \h @join S) \v
-    VA ((f \h [the _ ~> _ of NId S]) \v VA' ([the _ ~> _ of NId S] \h f)) ;
+    AV (f \v (@join S \h NId T)) =
+    (NId T \h @join S) \v VA ((f \h NId S) \v VA' (NId S \h f)) ;
   multiplication2 :
-    AV' (f \v ([the _ ~> _ of NId S] \h @join T)) =
-    (@join T \h [the _ ~> _ of NId S]) \v
-    VA' (([the _ ~> _ of NId T] \h f) \v VA (f \h [the _ ~> _ of NId T]))
+    AV' (f \v (NId S \h @join T)) =
+    (@join T \h NId S) \v VA' ((NId T \h f) \v VA (f \h NId T))
 }.
 End distributivelaw.
 End DistributiveLaw.
@@ -381,15 +379,15 @@ Coercion DistributiveLaw.f : DistributiveLaw.t >-> nattrans.
 Definition beck (S T : monad) (f : DistributiveLaw.t S T) : monad.
 have @join : [the functor of (T \o S) \o (T \o S)] ~> [the functor of T \o S].
   apply: (VComp ((@join T) \h (@join S)) _).
-  apply VA.
-  apply AV.
-  apply HComp.
-(*  exact: NId.*)admit.
-  apply VA'.
-  apply AV'.
-  apply HComp.
-  exact: f.
-(*  exact: NId.*) admit.
+  apply: VA.
+  apply: AV.
+  apply: HComp.
+    exact: NId.
+  apply: VA'.
+  apply: AV'.
+  apply: HComp.
+    exact: f.
+  exact: NId.
 apply: (Monad.Pack (Monad.Class (isMonad.Axioms_ (CRet T S) join _ _ _ _ _))).
 move=> A.
 rewrite /join.

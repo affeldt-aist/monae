@@ -519,7 +519,7 @@ Qed.
 Lemma NIdFId c : NId (@FId C) c = [hom idfun].
 Proof. by []. Qed.
 
-Lemma NIdFComp : NId (F' \O F) = (NId F') \h (NId F).
+Lemma NIdFComp : NId (F' \O F) = NId F' \h NId F.
 Proof. by apply nattrans_ext => c /=; rewrite HCompE /= compidf functor_id. Qed.
 
 (* horizontal and vertical compositions interchange *)
@@ -629,9 +629,9 @@ Definition G := G0 \O G1.
 
 Definition Eta : FId ~> G \O F :=
   [NEq G0 \O (G1 \O F1) \O F0 , G \O F]
-    \v ((NId G0) \h (eta1) \h (NId F0))
+    \v (NId G0 \h eta1 \h NId F0)
     \v [NEq G0 \O F0 , G0 \O FId \O F0]
-    \v (eta0).
+    \v eta0.
 Lemma EtaE a : Eta a = G0 # (eta1 (F0 a)) \o (eta0 a) :> (_ -> _).
 Proof. by cbn; rewrite HCompId HIdComp. Qed.
 Lemma EtaE_hom a : Eta a = [hom G0 # (eta1 (F0 a)) \o (eta0 a)].
@@ -640,7 +640,7 @@ Proof. by rewrite hom_ext EtaE. Qed.
 Definition Eps : F \O G ~> FId :=
   (eps1)
     \v [NEq F1 \O FId \O G1 , F1 \O G1]
-    \v ((NId F1) \h (eps0) \h (NId G1))
+    \v (NId F1 \h eps0 \h NId G1)
     \v [NEq F \O G , (F1 \O (F0 \O G0)) \O G1].
 Lemma EpsE a : Eps a = (eps1 _) \o F1 # (eps0 (G1 a)) :> (_ -> _).
 Proof. by cbn; rewrite HCompId HIdComp. Qed.

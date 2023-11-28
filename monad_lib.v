@@ -13,6 +13,8 @@ Require Import hierarchy.
 (*                                                                            *)
 (*            liftM2 h m1 m2 == as in Haskell                                 *)
 (*      examples of functors : squaring, curry_F, uncurry_F, exponential_F    *)
+(*         apply_pair_snd ab == f ab.2 >>= (fun c => Ret (ab.1, c))           *)
+(* apply_triple_snd abc == f abc.1.2 >>= (fun d => Ret (abc.1.1, d, abc.2))   *)
 (*                       NId == identity natural transformation               *)
 (*                        \v == vertical composition of natural               *)
 (*                              transformations                               *)
@@ -154,15 +156,52 @@ HB.instance Definition _ X :=
 Definition uncurry_F X : functor := [the functor of @uncurry_M X].
 End uncurry_functor.
 
-Lemma bind_uncurry (M : monad) (A B C : UU0) (f : A -> M B) (g : A -> B -> M C) x :
+Section bind_uncurry.
+Variables (M : monad) (A B C : UU0).
+
+Lemma bind_uncurry (f : A -> M B) (g : A -> B -> M C) x :
   (f x >>= fun y => Ret (x, y)) >>= (fun xy => g xy.1 xy.2) =
   (f x >>= g x).
 Proof. by rewrite bindA; under eq_bind do rewrite bindretf. Qed.
 
-Lemma bindA_uncurry (M : monad) (A B C : UU0) (m : M A) (f : A -> M B) (g : A -> B -> M C) :
+Lemma bindA_uncurry (m : M A) (f : A -> M B) (g : A -> B -> M C) :
   (m >>= fun x => f x >>= fun y => Ret (x, y)) >>= (fun xy => g xy.1 xy.2) =
   (m >>= fun x => f x >>= g x).
 Proof. by rewrite bindA; by under eq_bind do rewrite bind_uncurry. Qed.
+
+End bind_uncurry.
+
+Section apply_monad.
+Variable M : monad.
+Implicit Types A B C D E : UU0.
+
+Definition apply_pair_snd A B C (f : B -> M C) (ab : A * B) : M (A * C)%type :=
+  f ab.2 >>= (fun c => Ret (ab.1, c)).
+
+Lemma apply_pair_sndE A B C (f : B -> M C) (ab : A * B) D (g : A * C -> M D) :
+  apply_pair_snd f ab >>= g = f ab.2 >>= (fun x => g (ab.1, x)).
+Proof.
+rewrite /apply_pair_snd bindA.
+by under eq_bind do rewrite bindretf.
+Qed.
+
+Definition apply_triple_snd A B C D (f : B -> M D) (abc : A * B * C)
+    : M (A * D * C)%type :=
+  f abc.1.2 >>= (fun d => Ret (abc.1.1, d, abc.2)).
+
+Lemma apply_triple_sndE A B C D (f : B -> M D) a b c E (g : A * D * C -> M E) :
+  apply_triple_snd f (a, b, c) >>= g = f b >>= (fun x => g (a, x, c)).
+Proof.
+rewrite /apply_triple_snd /= bindA.
+by under eq_bind do rewrite bindretf.
+Qed.
+
+Lemma apply_triple_snd_kleisli A B C D F (f : B -> M D) (g : D -> M F) (a : A) b (c : C) :
+  apply_triple_snd (f >=> g) (a, b, c) =
+    f b >>= (fun b' => apply_triple_snd g (a, b', c)).
+Proof. by rewrite /apply_triple_snd /= kleisliE bindA. Qed.
+
+End apply_monad.
 
 Section exponential_functor.
 Variable A : UU0.
@@ -183,10 +222,14 @@ Proof. by rewrite functor_o. Qed.
 
 Section id_natural_transformation.
 Variables C : functor.
-Definition NId := fun A => @id (C A).
-Definition natural_id : naturality C C NId. Proof. by []. Qed.
+
+Definition NId := fun A => @idfun (C A).
+Let natural_id : naturality C C NId. Proof. by []. Qed.
+
 HB.instance Definition _ := isNatural.Build C C NId natural_id.
+
 End id_natural_transformation.
+
 Arguments NId C [A].
 
 Section vertical_composition.

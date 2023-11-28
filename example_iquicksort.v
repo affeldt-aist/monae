@@ -12,6 +12,7 @@ From infotheo Require Import ssr_ext ssrZ.
 (*                                                                            *)
 (*    partl p (s, t) u == partition u into (x, y) w.r.t. pivot p and returns  *)
 (*                        (s ++ x, t ++ y)                                    *)
+(*            dispatch == TODO:document                                       *)
 (* qperm_partl p s t u == fusion of qperm and partl; this is a computation    *)
 (*                        of type M (seq E * seq E * seq E) where E is the    *)
 (*                        type of the values in the array monad               *)
@@ -39,40 +40,6 @@ Local Open Scope order_scope.
 Import Order.Theory.
 Local Open Scope monae_scope.
 Local Open Scope tuple_ext_scope.
-
-(* TODO: move to monad.v *)
-Section apply_monad.
-Variable M : monad.
-Implicit Types A B C D E : UU0.
-
-Definition apply_pair_snd A B C (f : B -> M C) (ab : A * B) : M (A * C)%type :=
-  f ab.2 >>= (fun c => Ret (ab.1, c)).
-
-Lemma apply_pair_sndE A B C (f : B -> M C) (ab : A * B) D (g : A * C -> M D) :
-  apply_pair_snd f ab >>= g = f ab.2 >>= (fun x => g (ab.1, x)).
-Proof.
-rewrite /apply_pair_snd bindA.
-by under eq_bind do rewrite bindretf.
-Qed.
-
-Definition apply_triple_snd A B C D (f : B -> M D) (abc : A * B * C)
-    : M (A * D * C)%type :=
-  f abc.1.2 >>= (fun d => Ret (abc.1.1, d, abc.2)).
-
-Lemma apply_triple_sndE A B C D (f : B -> M D) a b c E (g : A * D * C -> M E) :
-  apply_triple_snd f (a, b, c) >>= g = f b >>= (fun x => g (a, x, c)).
-Proof.
-rewrite /apply_triple_snd /= bindA.
-by under eq_bind do rewrite bindretf.
-Qed.
-
-Lemma apply_triple_snd_kleisli A B C D F (f : B -> M D) (g : D -> M F) (a : A) b (c : C) :
-  apply_triple_snd (f >=> g) (a, b, c) =
-    f b >>= (fun b' => apply_triple_snd g (a, b', c)).
-Proof. by rewrite /apply_triple_snd /= kleisliE bindA. Qed.
-
-End apply_monad.
-
 Local Open Scope zarith_ext_scope.
 
 Section partl.
@@ -100,25 +67,34 @@ Proof. by rewrite partlE /=; case: partition. Qed.
 End partl.
 
 Section dispatch.
-Variable (d : unit) (E : orderType d) (M : plusArrayMonad E Z_eqType).
+Variables (d : unit) (E : orderType d) (M : plusArrayMonad E Z_eqType).
 Implicit Types i : Z.
 
-(* TODO: document *)
 Definition dispatch (x p : E) '(ys, zs, xs) : M (seq E * seq E * seq E)%type :=
   if x <= p then
     qperm zs >>= (fun zs' => Ret (rcons ys x, zs', xs))
   else
     qperm (rcons zs x) >>= (fun zs' => Ret (ys, zs', xs)).
 
+Lemma dispatchT (x p : E) a : x <= p ->
+  dispatch x p a = qperm a.1.2 >>= (fun zs' => Ret (rcons a.1.1 x, zs', a.2)).
+Proof. by move=> xp; rewrite /dispatch xp; move: a => [[a b] c]. Qed.
+
+Lemma dispatchF (x p : E) a : p < x ->
+  dispatch x p a = qperm (rcons a.1.2 x) >>= (fun zs' => Ret (a.1.1, zs', a.2)).
+Proof. by move=> xp; rewrite /dispatch leNgt xp; move: a => [[a b] c]. Qed.
+
 Lemma commute_dispatch_writeList i p ys zs xs x A
     (f : seq E * seq E * seq E -> M A) :
   commute (dispatch x p (ys, zs, xs)) (writeList i xs)
           (fun x (_ : unit) => f x).
 Proof.
-apply: commute_plus; rewrite /dispatch; case: ifPn => xp.
+apply: commute_plus; have [xp|xp] := leP x p.
+  rewrite dispatchT//=.
   have [syn syn_qperm] := @nondetPlus_sub_qperm M _ zs.
   exists (ndBind syn (fun s => ndRet (rcons ys x, s, xs))).
   by rewrite /= syn_qperm.
+rewrite dispatchF//=.
 have [syn syn_qperm] := @nondetPlus_sub_qperm M _ (rcons zs x).
 by exists (ndBind syn (fun s => ndRet (ys, s, xs))); rewrite /= syn_qperm.
 Qed.
@@ -153,8 +129,11 @@ Lemma qperm_partl_dispatch (p x : E) (ys zs xs : seq E) :
   qperm_partl p ys zs (x :: xs) =
   dispatch x p (ys, zs, xs) >>= uncurry3 (qperm_partl p).
 Proof.
-rewrite /dispatch {1}/qperm_partl.
-by case: ifPn => _; rewrite bindA; bind_ext => s; rewrite bindretf.
+have [xp|xp] := leP x p.
+  rewrite dispatchT//= xp bindA.
+  by under [RHS]eq_bind do rewrite bindretf.
+rewrite dispatchF//= leNgt xp/= bindA.
+  by under [RHS]eq_bind do rewrite bindretf.
 Qed.
 
 End qperm_partl.
@@ -266,9 +245,8 @@ Lemma qperm_preserves_length i (x p : E) (ys zs xs : seq E)
 Proof.
 rewrite bindA.
 rewrite [in RHS]bindA -[in RHS]commute_dispatch_writeList.
-(* TODO: simplify this *)
-rewrite /dispatch; case: ifPn => _.
-  rewrite !bindA.
+have [xp|xp] := leP x p.
+  rewrite dispatchT//= !bindA.
   under eq_bind do rewrite bindretf write3LE.
   under [in RHS]eq_bind do rewrite bindretf -bindA -2!addZA.
   rewrite [RHS](qperm_preserves_size2 zs (fun a b =>
@@ -280,7 +258,7 @@ rewrite /dispatch; case: ifPn => _.
     by rewrite size_cat /= intRD natZS -add1Z (addZC 1%Z).
   rewrite -writeListC; last by rewrite -cats1 -catA; exact: leZZ.
   by rewrite catA writeList_cat cat_rcons.
-rewrite !bindA.
+rewrite dispatchF//= !bindA.
 under eq_bind do rewrite bindretf write3LE.
 under [in RHS]eq_bind do rewrite bindretf -bindA -2!addZA.
 rewrite -Z_S -(size_rcons zs x).

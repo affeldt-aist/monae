@@ -823,8 +823,7 @@ End uniform_algebraic_lifting.
 
 HB.mixin Record isFunctorial (t : monad -> monad) := {
   hmap : forall {M N : monad}, (M ~> N) -> t M ~> t N ;
-  functorial_id : forall M : monad,
-    hmap [the _ ~> _ of NId M] = [the _ ~> _ of NId (t M)] ;
+  functorial_id : forall M : monad, hmap (NId M) = NId (t M) ;
   functorial_o : forall (M N P : monad) (t : M ~> N) (s : N ~> P),
     hmap (s \v t) = hmap s \v hmap t }.
 
@@ -871,8 +870,7 @@ Qed.
 HB.instance Definition hmapX (F G : monad) (tau : F ~> G) :=
   isNatural.Build (T F) (T G) (hmapX' tau) (naturality_hmapX' tau).
 
-Let hmapX_NId (M : monad) :
-  [the _ ~> _ of hmapX' [the _ ~> _ of NId M]] = [the _ ~> _ of NId (T M)].
+Let hmapX_NId (M : monad) : [the _ ~> _ of hmapX' (NId M)] = NId (T M).
 Proof. by apply/nattrans_ext => A. Qed.
 
 Let hmapX_v (M N P : monad) (t : M ~> N) (s : N ~> P) :
@@ -951,9 +949,8 @@ Qed.
 HB.instance Definition _ (F G : monad) (tau : F ~> G) := isNatural.Build
   (T F) (T G) (hmapS tau) (naturality_hmapS tau).
 
-Let hmapS_NId (M : monad) :
-  [the _ ~> _ of hmapS [the _ ~> _ of NId M]] = [the _ ~> _ of NId (T M)].
-Proof. by apply/nattrans_ext. Qed.
+Let hmapS_NId (M : monad) : [the _ ~> _ of hmapS (NId M)] = NId (T M).
+Proof. exact/nattrans_ext. Qed.
 
 Let hmapS_v (M N P : monad) (t : M ~> N) (s : N ~> P) :
   [the _ ~> _ of hmapS (s \v t)] =
@@ -1048,9 +1045,8 @@ Qed.
 HB.instance Definition _ (F G : monad) (tau : F ~> G) :=
   isNatural.Build (T F) (T G) (hmapEnv tau) (naturality_hmapEnv tau).
 
-Let hmapEnv_NId (M : monad) :
-  [the _ ~> _ of hmapEnv [the _ ~> _ of NId M]] = [the _ ~> _ of NId (T M)].
-Proof. by apply nattrans_ext. Qed.
+Let hmapEnv_NId (M : monad) : [the _ ~> _ of hmapEnv (NId M)] = NId (T M).
+Proof. exact/nattrans_ext. Qed.
 
 Let hmapEnv_v (M N P : monad) (t : M ~> N) (s : N ~> P) :
   [the _ ~> _ of hmapEnv (s \v t)] =
@@ -1112,9 +1108,8 @@ Qed.
 HB.instance Definition _ (F G : monad) (tau : F ~> G) :=
   isNatural.Build (T F) (T G) (hmapO tau) (naturality_hmapO tau).
 
-Let hmapO_NId (M : monad) :
-  [the _ ~> _ of hmapO [the _ ~> _ of NId M]] = [the _ ~> _ of NId (T M)].
-Proof. by apply nattrans_ext. Qed.
+Let hmapO_NId (M : monad) : [the _ ~> _ of hmapO (NId M)] = NId (T M).
+Proof. exact/nattrans_ext. Qed.
 
 Let hmapO_v (M N P : monad) (t : M ~> N) (s : N ~> P) :
   [the _ ~> _ of hmapO (s \v t)] =
