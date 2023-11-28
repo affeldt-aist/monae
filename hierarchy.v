@@ -1066,7 +1066,7 @@ HB.mixin Record isMonadArray (S : UU0) (I : eqType) (M : UU0 -> UU0)
   agetC : forall i j (A : UU0) (k : S -> S -> M A),
     aget i >>= (fun u => aget j >>= (fun v => k u v)) =
     aget j >>= (fun v => aget i >>= (fun u => k u v)) ;
-  aputC : forall i j u v, (i != j) \/ (u = v) ->
+  aputC : forall i j u v, i != j \/ u = v ->
     aput i u >> aput j v = aput j v >> aput i u ;
   aputgetC : forall i j u (A : UU0) (k : S -> M A), i != j ->
     aput i u >> aget j >>= k =

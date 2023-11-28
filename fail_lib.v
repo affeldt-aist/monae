@@ -1278,7 +1278,7 @@ Qed.
 
 End shiftreset_examples.
 
-Definition refin (M : altMonad) A (m1 m2 : M A) : Prop := m1 [~] m2 = m2.
+Definition refin {M : altMonad} A (m1 m2 : M A) : Prop := m1 [~] m2 = m2.
 Notation "m1 `<=` m2" := (refin m1 m2).
 
 Lemma refin_bindr (M : altMonad) A B (m1 m2 : M A) (f : A -> M B) :

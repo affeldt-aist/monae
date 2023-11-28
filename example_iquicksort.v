@@ -2,17 +2,17 @@
 (* Copyright (C) 2020 monae authors, license: LGPL-2.1-or-later               *)
 From mathcomp Require Import all_ssreflect.
 From mathcomp Require boolp.
-Require Import ZArith.
 Require Import monae_lib hierarchy monad_lib fail_lib state_lib.
 Require Import array_lib example_quicksort.
-From infotheo Require Import ssr_ext ssrZ.
+From infotheo Require Import ssr_ext.
 
 (******************************************************************************)
 (*                      Quicksort with the Array Monad                        *)
 (*                                                                            *)
 (*    partl p (s, t) u == partition u into (x, y) w.r.t. pivot p and returns  *)
 (*                        (s ++ x, t ++ y)                                    *)
-(*            dispatch == TODO:document                                       *)
+(*            dispatch == if x <= p then qperm zs >>= f (rcons ys x)          *)
+(*                        else qperm (rcons zs x) >>= f ys                    *)
 (* qperm_partl p s t u == fusion of qperm and partl; this is a computation    *)
 (*                        of type M (seq E * seq E * seq E) where E is the    *)
 (*                        type of the values in the array monad               *)
@@ -40,10 +40,9 @@ Local Open Scope order_scope.
 Import Order.Theory.
 Local Open Scope monae_scope.
 Local Open Scope tuple_ext_scope.
-Local Open Scope zarith_ext_scope.
 
 Section partl.
-Variable (d : unit) (E : orderType d) (M : plusArrayMonad E Z_eqType).
+Variable (d : unit) (E : orderType d) (M : plusArrayMonad E nat_eqType).
 Implicit Types p : E.
 
 (* tail-recursive *)
@@ -67,49 +66,39 @@ Proof. by rewrite partlE /=; case: partition. Qed.
 End partl.
 
 Section dispatch.
-Variables (d : unit) (E : orderType d) (M : plusArrayMonad E Z_eqType).
-Implicit Types i : Z.
+Variables (d : unit) (E : orderType d) (M : plusArrayMonad E nat_eqType).
+Implicit Types i : nat.
 
-Definition dispatch (x p : E) '(ys, zs, xs) : M (seq E * seq E * seq E)%type :=
-  if x <= p then
-    qperm zs >>= (fun zs' => Ret (rcons ys x, zs', xs))
-  else
-    qperm (rcons zs x) >>= (fun zs' => Ret (ys, zs', xs)).
+Definition dispatch (x p : E) '(ys, zs) A (f : seq E -> seq E -> M A) : M A :=
+  if x <= p then qperm zs >>= f (rcons ys x)
+            else qperm (rcons zs x) >>= f ys.
 
-Lemma dispatchT (x p : E) a : x <= p ->
-  dispatch x p a = qperm a.1.2 >>= (fun zs' => Ret (rcons a.1.1 x, zs', a.2)).
-Proof. by move=> xp; rewrite /dispatch xp; move: a => [[a b] c]. Qed.
+Definition dispatch_Ret (x p : E) '(ys, zs, xs) : M (seq E * seq E * seq E)%type :=
+  dispatch x p (ys, zs) (fun ys' zs' => Ret (ys', zs', xs)).
 
-Lemma dispatchF (x p : E) a : p < x ->
-  dispatch x p a = qperm (rcons a.1.2 x) >>= (fun zs' => Ret (a.1.1, zs', a.2)).
-Proof. by move=> xp; rewrite /dispatch leNgt xp; move: a => [[a b] c]. Qed.
-
-Lemma commute_dispatch_writeList i p ys zs xs x A
+Lemma commute_dispatch_Ret_writeList i p ys zs xs x A
     (f : seq E * seq E * seq E -> M A) :
-  commute (dispatch x p (ys, zs, xs)) (writeList i xs)
+  commute (dispatch_Ret x p (ys, zs, xs)) (writeList i xs)
           (fun x (_ : unit) => f x).
 Proof.
-apply: commute_plus; have [xp|xp] := leP x p.
-  rewrite dispatchT//=.
+apply: commute_plus => /=; case: ifPn => xp.
   have [syn syn_qperm] := @nondetPlus_sub_qperm M _ zs.
   exists (ndBind syn (fun s => ndRet (rcons ys x, s, xs))).
   by rewrite /= syn_qperm.
-rewrite dispatchF//=.
 have [syn syn_qperm] := @nondetPlus_sub_qperm M _ (rcons zs x).
 by exists (ndBind syn (fun s => ndRet (ys, s, xs))); rewrite /= syn_qperm.
 Qed.
 
 End dispatch.
-Arguments dispatch {d E M}.
+Arguments dispatch_Ret {d E M}.
 
 Section qperm_partl.
-Variable (d : unit) (E : orderType d) (M : plusArrayMonad E Z_eqType).
+Variable (d : unit) (E : orderType d) (M : plusArrayMonad E nat_eqType).
 Implicit Types p : E.
 
 Fixpoint qperm_partl p (ys zs xs : seq E) : M (seq E * seq E)%type :=
   if xs is x :: xs then
-    (if x <= p then qperm zs >>= ((qperm_partl p (rcons ys x))^~ xs)
-              else qperm (rcons zs x) >>= ((qperm_partl p ys)^~ xs))
+    dispatch x p (ys, zs) (fun ys' zs' => qperm_partl p ys' zs' xs)
   else Ret (ys, zs).
 
 Lemma nondetPlus_sub_qperm_partl p (s a b : seq E) :
@@ -125,15 +114,12 @@ exists (ndBind syn (fun zs' => sval (ih p a zs'))) => /=.
 by rewrite synE /=; bind_ext => ?; case: ih.
 Qed.
 
-Lemma qperm_partl_dispatch (p x : E) (ys zs xs : seq E) :
+Lemma qperm_partl_cons (p x : E) (ys zs xs : seq E) :
   qperm_partl p ys zs (x :: xs) =
-  dispatch x p (ys, zs, xs) >>= uncurry3 (qperm_partl p).
+  dispatch_Ret x p (ys, zs, xs) >>= uncurry3 (qperm_partl p).
 Proof.
-have [xp|xp] := leP x p.
-  rewrite dispatchT//= xp bindA.
-  by under [RHS]eq_bind do rewrite bindretf.
-rewrite dispatchF//= leNgt xp/= bindA.
-  by under [RHS]eq_bind do rewrite bindretf.
+by rewrite /=; case: ifPn => xp; rewrite bindA;
+  under [RHS]eq_bind do rewrite bindretf.
 Qed.
 
 End qperm_partl.
@@ -143,13 +129,13 @@ Section ipartl.
 Variables (d : unit) (T : orderType d).
 
 Section arrayMonad.
-Variable M : arrayMonad T Z_eqType.
+Variable M : arrayMonad T nat_eqType.
 
 Fixpoint ipartl p i ny nz nx : M (nat * nat)%type :=
   if nx is k.+1 then
-    aget (i + (ny + nz)%:Z)%Z >>= (fun x =>
+    aget (i + (ny + nz)) >>= (fun x =>
       if x <= p then
-        aswap (i + ny%:Z) (i + ny%:Z + nz%:Z) >> ipartl p i ny.+1 nz k
+        aswap (i + ny) (i + ny + nz) >> ipartl p i ny.+1 nz k
       else
         ipartl p i ny nz.+1 k)
   else Ret (ny, nz).
@@ -158,12 +144,12 @@ End arrayMonad.
 Arguments ipartl {M}.
 
 Section plusArrayMonad.
-Variable M : plusArrayMonad T Z_eqType.
+Variable M : plusArrayMonad T nat_eqType.
 
 Lemma ipartl_guard p i ny nz nx :
   ipartl (M := M) p i ny nz nx =
   ipartl p i ny nz nx >>= (fun '(a, b) =>
-    (guard ((a <= nx + ny + nz) && (b <= nx + ny + nz))%nat >> Ret (a, b))).
+    (guard ((a <= nx + ny + nz) && (b <= nx + ny + nz))%N >> Ret (a, b))).
 Proof.
 elim: nx ny nz => [ny nz|n ih ny nz].
   by rewrite /= bindretf add0n leq_addr leq_addl guardT bindskipf.
@@ -179,7 +165,7 @@ End ipartl.
 Arguments ipartl {d T M}.
 
 Section dipartl.
-Variables (d : unit) (T : orderType d) (M : plusArrayMonad T Z_eqType).
+Variables (d : unit) (T : orderType d) (M : plusArrayMonad T nat_eqType).
 
 Definition dipartlT y z x :=
   {n : nat * nat | (n.1 <= x + y + z) && (n.2 <= x + y + z)}.
@@ -204,7 +190,7 @@ Qed.
 Local Close Scope mprog.
 
 Section refin_dispatch_write3L_ipartl.
-Variables (i : Z) (p : T) (xs : seq T).
+Variables (i : nat) (p : T) (xs : seq T).
 Hypothesis ih : forall ys zs,
   writeList i (ys ++ zs ++ xs) >> ipartl (M := M) p i (size ys) (size zs) (size xs)
   `<=` qperm_partl p ys zs xs >>= write2L i.
@@ -217,11 +203,11 @@ case: x => ys zs.
 by apply: refin_trans (ih _ _); rewrite bindA bindretf; exact: refin_refl.
 Qed.
 
-Lemma refin_dispatch_write3L_ipartl x ys zs :
-  dispatch x p (ys, zs, xs) >>= write3L i >>= uncurry3 (ipartl (M := M) p i)
-  `<=` dispatch x p (ys, zs, xs) >>= uncurry3 (qperm_partl p) >>= write2L i.
+Lemma refin_dispatch_Ret_write3L_ipartl x ys zs :
+  dispatch_Ret x p (ys, zs, xs) >>= write3L i >>= uncurry3 (ipartl (M := M) p i)
+  `<=` dispatch_Ret x p (ys, zs, xs) >>= uncurry3 (qperm_partl p) >>= write2L i.
 Proof.
-by rewrite /dispatch !if_bind; apply: refin_if => _; rewrite !bindA;
+by rewrite /= !if_bind; apply: refin_if => _; rewrite !bindA;
   apply/refin_bindl => zs'; rewrite !bindretf; exact: refin_write3L_ipartl.
 Qed.
 End refin_dispatch_write3L_ipartl.
@@ -231,45 +217,42 @@ Arguments dipartl {d T M}.
 
 (* top of page 11 *)
 Section derivation_qperm_partl_ipartl.
-Variable (d : unit) (E : orderType d) (M : plusArrayMonad E Z_eqType).
-Implicit Types i : Z.
+Variable (d : unit) (E : orderType d) (M : plusArrayMonad E nat_eqType).
+Implicit Types i : nat.
 
 (* page 11 step 4 *)
 Lemma qperm_preserves_length i (x p : E) (ys zs xs : seq E)
     D (k : nat -> nat -> nat -> M D) :
-  (dispatch x p (ys, zs, xs) >>= write3L i) >>= uncurry3 k =
-  writeList (i + (size ys)%:Z + (size zs)%:Z + 1) xs >>
-    dispatch x p (ys, zs, xs) >>= (fun '(ys', zs', xs') =>
+  (dispatch_Ret x p (ys, zs, xs) >>= write3L i) >>= uncurry3 k =
+  writeList (i + (size ys + size zs).+1) xs >>
+    dispatch_Ret x p (ys, zs, xs) >>= (fun '(ys', zs', xs') =>
       writeList i (ys' ++ zs') >>
         k (size ys') (size zs') (size xs')) :> M _.
 Proof.
-rewrite bindA.
-rewrite [in RHS]bindA -[in RHS]commute_dispatch_writeList.
-have [xp|xp] := leP x p.
-  rewrite dispatchT//= !bindA.
+rewrite bindA [in RHS]bindA -[in RHS]commute_dispatch_Ret_writeList/=.
+case: ifPn => xp.
+  rewrite !bindA.
   under eq_bind do rewrite bindretf write3LE.
-  under [in RHS]eq_bind do rewrite bindretf -bindA -2!addZA.
+  under [in RHS]eq_bind do rewrite bindretf -bindA.
   rewrite [RHS](qperm_preserves_size2 zs (fun a b =>
-    (writeList (i + ((size ys)%:Z + (b%:Z + 1))) xs >>
-    writeList i ((rcons ys x) ++ a)) >>
+    (writeList (i + (size ys + b).+1) xs >>
+    writeList i (rcons ys x ++ a)) >>
     k (size (rcons ys x)) (size a) (size xs))).
   bind_ext => zs' /=.
-  rewrite (_ : (_ + (_ + 1))%Z = (size (ys ++ x :: zs'))%:Z); last first.
-    by rewrite size_cat /= intRD natZS -add1Z (addZC 1%Z).
-  rewrite -writeListC; last by rewrite -cats1 -catA; exact: leZZ.
-  by rewrite catA writeList_cat cat_rcons.
-rewrite dispatchF//= !bindA.
+  rewrite -writeListC; last first.
+    by rewrite size_cat size_rcons addSn.
+  rewrite catA writeList_cat cat_rcons.
+  by rewrite size_cat/= -addnS.
+rewrite !bindA.
 under eq_bind do rewrite bindretf write3LE.
-under [in RHS]eq_bind do rewrite bindretf -bindA -2!addZA.
-rewrite -Z_S -(size_rcons zs x).
+under [in RHS]eq_bind do rewrite bindretf -bindA.
+rewrite -addnS -(size_rcons zs x).
 rewrite [RHS](qperm_preserves_size2 (rcons zs x) (fun a b =>
-  (writeList (i + ((size ys)%:Z + b%:Z)) xs >>
+  (writeList (i + (size ys + b)) xs >>
   writeList i (ys ++ a)) >> k (size ys) (size a) (size xs))).
 bind_ext => zs' /=.
-rewrite (_ : (_ + (_ + _))%Z = (i + (size (ys ++ zs'))%:Z)%Z); last first.
-  by rewrite size_cat /= intRD.
-rewrite -writeListC; last exact: leZZ.
-by rewrite catA writeList_cat.
+rewrite (_ : (_ + (_ + _)) = (i + size (ys ++ zs'))); last by rewrite size_cat.
+by rewrite -writeListC// catA writeList_cat.
 Qed.
 
 Lemma refin_qperm_partl_writeList (p x : E) (ys zs xs : seq E) i :
@@ -277,7 +260,7 @@ Lemma refin_qperm_partl_writeList (p x : E) (ys zs xs : seq E) i :
      writeList (M := M) i (ys ++ zs ++ xs) >>
        ipartl p i (size ys) (size zs) (size xs)
      `<=` qperm_partl p ys zs xs >>= write2L i) ->
-  (writeList (M := M) (i + (size ys)%:Z + (size zs)%:Z + 1)%Z xs >>
+  (writeList (M := M) (i + (size ys + size zs).+1) xs >>
     if x <= p then qperm zs >>= (fun zs' => writeList i (ys ++ x :: zs') >>
       ipartl p i (size ys).+1 (size zs') (size xs))
     else qperm (rcons zs x) >>= (fun zs' => writeList i (ys ++ zs') >>
@@ -285,11 +268,11 @@ Lemma refin_qperm_partl_writeList (p x : E) (ys zs xs : seq E) i :
   `<=`
   qperm_partl p ys zs (x :: xs) >>= write2L i.
 Proof.
-move=> ih; rewrite qperm_partl_dispatch.
-apply: refin_trans; last exact: (refin_dispatch_write3L_ipartl ih).
+move=> ih; rewrite qperm_partl_cons.
+apply: refin_trans; last exact: (refin_dispatch_Ret_write3L_ipartl ih).
 rewrite qperm_preserves_length.
 rewrite bindA; apply refin_bindl => -[].
-rewrite /dispatch if_bind; apply: refin_if => _;
+rewrite if_bind; apply: refin_if => _;
   rewrite bindA; apply: refin_bindl => zs'.
 - by rewrite bindretf size_rcons -cats1 -catA /=; exact: refin_refl.
 - by rewrite bindretf; exact: refin_refl.
@@ -298,7 +281,7 @@ Qed.
 End derivation_qperm_partl_ipartl.
 
 Section refin_qperm_partl.
-Variables (d : unit) (E : orderType d) (M : plusArrayMonad E Z_eqType).
+Variables (d : unit) (E : orderType d) (M : plusArrayMonad E nat_eqType).
 
 Let refin_qperm_partl_helper a b p xs :
   (apply_triple_snd qperm >=> uncurry3 (qperm_partl p)) (a, b, xs) `<=`
@@ -333,25 +316,25 @@ End refin_qperm_partl.
 
 (* specification of ipartl *)
 Section refin_ipartl.
-Variable (d : unit) (E : orderType d) (M : plusArrayMonad E Z_eqType).
-Implicit Types i : Z.
+Variable (d : unit) (E : orderType d) (M : plusArrayMonad E nat_eqType).
+Implicit Types i : nat.
 
 (* page 12, used in the proof of lemma 10 *)
 Let writeList_ipartl (p x : E) i (s xs : seq E) (k1 k2 : M (nat * nat)%type) :
-  writeList (i + (size s)%:Z + 1) xs >>
+  writeList (i + (size s).+1) xs >>
     (if x <= p then writeList i (rcons s x) >> k1
               else writeList i (rcons s x) >> k2) =
-  writeList i (s ++ x :: xs) >> aget (i + (size s)%:Z)%Z >>=
+  writeList i (s ++ x :: xs) >> aget (i + size s) >>=
     (fun x => if x <= p then k1 else k2) :> M _.
 Proof.
 transitivity (writeList i (s ++ x :: xs) >> if x <= p then k1 else k2 : M _).
   case: ifPn => xp.
   - rewrite -cat1s catA writeList_cat.
-    rewrite [in RHS]writeListC; last exact: leZZ.
-    by rewrite cats1 size_rcons natZS Z.add_1_r bindA Zplus_succ_r_reverse.
+    rewrite [in RHS]writeListC//.
+    by rewrite cats1 size_rcons bindA.
   - rewrite -[in RHS]cat1s catA writeList_cat.
-    rewrite writeListC; last exact: leZZ.
-    by rewrite cats1 size_rcons natZS Z.add_1_r bindA Zplus_succ_r_reverse.
+    rewrite writeListC//=.
+    by rewrite cats1 size_rcons bindA.
 rewrite bindA writeList_cat 2!bindA; bind_ext => -[].
 by rewrite -bindA -writeList_ret_aget bindA bindretf.
 Qed.
@@ -372,10 +355,10 @@ have : (forall ys zs,
   by rewrite write3LE; exact: refin_refl.
 move=> /(@refin_qperm_partl_writeList _ E M p h ys zs t i).
 apply: refin_trans.
-apply: (@refin_trans _ _ (writeList (i + (size ys)%:Z + (size zs)%:Z + 1) t >>
+apply: (@refin_trans _ _ (writeList (i + (size ys + size zs).+1) t >>
   (if h <= p
    then writeList i (rcons (ys ++ zs) h) >>
-        aswap (i + (size ys)%:Z) (i + (size (ys ++ zs))%:Z) >>
+        aswap (i + size ys) (i + size (ys ++ zs)) >>
         ipartl p i (size ys).+1 (size zs) (size t)
    else writeList i (rcons (ys ++ zs) h) >>
         ipartl p i (size ys) (size zs).+1 (size t)))); last first.
@@ -389,16 +372,16 @@ apply: (@refin_trans _ _ (writeList (i + (size ys)%:Z + (size zs)%:Z + 1) t >>
     writeList i (ys ++ h :: a) >> ipartl p i (size ys).+1 b (size t))).
   rewrite -[in X in _ `<=` X]bindA.
   exact/refin_bindr/refin_writeList_rcons_cat_aswap.
-rewrite -2!addZA !(addZA (size ys)%:Z) -intRD addZA -size_cat.
+rewrite -size_cat.
 rewrite bindA writeList_ipartl write3LE.
-rewrite /uncurry3 /= -addZA -intRD -size_cat.
+rewrite /uncurry3 /= -addnA -size_cat.
 by rewrite bindA -catA; exact: refin_refl.
 Qed.
 
 End refin_ipartl.
 
 Section iqsort_def.
-Variables (d : unit) (T : orderType d) (M : plusArrayMonad T Z_eqType).
+Variables (d : unit) (T : orderType d) (M : plusArrayMonad T nat_eqType).
 
 Local Obligation Tactic := idtac.
 
@@ -435,8 +418,8 @@ move => [i [//|n']] /= _ n [<-] p [a b] /= a' _ [-> _] _.*)
 
 (* Equations? qperm (s : seq A) : M (seq A) by wf (size s) lt :=
 | [::] => Ret [::]
-| x :: xs => 
-  splits_bseq xs >>= 
+| x :: xs =>
+  splits_bseq xs >>=
     (fun '(ys, zs) => liftM2 (fun a b => a ++ x :: b) (qperm ys : M (seq A)) (qperm zs)).
 Proof.
 apply /ltP.
@@ -458,11 +441,11 @@ Program Fixpoint iqsort' ni
   match ni.2 with
   | 0 => Ret tt
   | n.+1 => aget ni.1 >>= (fun p =>
-            dipartl p (ni.1 + 1) 0 0 n >>= (fun nynz =>
+            dipartl p ni.1.+1 0 0 n >>= (fun nynz =>
               let ny := nynz.1 in
               let nz := nynz.2 in
-              aswap ni.1 (ni.1 + ny%:Z) >>
-              f (ni.1, ny) _ >> f ((ni.1 + ny%:Z + 1)%Z, nz) _))
+              aswap ni.1 (ni.1 + ny) >>
+              f (ni.1, ny) _ >> f (ni.1 + ny.+1, nz) _))
   end.
 Next Obligation.
 move => [i [//|n']] /= _ n [<-] p [[a b] /=] /andP[an _] _.
@@ -475,39 +458,39 @@ apply/ssrnat.ltP; rewrite ltnS.
 by rewrite 2!addn0 in bn.
 Qed.
 
-Lemma well_founded_lt2 : well_founded (fun x y : (Z * nat) => (x.2 < y.2)%coq_nat).
+Lemma well_founded_lt2 : well_founded (fun x y : nat * nat => (x.2 < y.2)%coq_nat).
 Proof.
-by apply: (@well_founded_lt_compat _ _) => -[x1 x2] [y1 y2]; exact.
+by apply: (@Wf_nat.well_founded_lt_compat _ _) => -[x1 x2] [y1 y2]; exact.
 Qed.
 
-Definition iqsort : (Z * nat) -> M unit :=
+Definition iqsort : nat * nat -> M unit :=
   Fix well_founded_lt2 (fun _ => M unit) iqsort'.
 
-Lemma iqsort'_Fix (ni : (Z * nat))
-  (f g : forall (n'j : (Z * nat)), (n'j.2 < ni.2)%coq_nat -> M unit) :
-  (forall (n'j : (Z * nat)) (p : (n'j.2 < ni.2)%coq_nat), f n'j p = g n'j p) ->
+Lemma iqsort'_Fix (ni : nat * nat)
+  (f g : forall (n'j : nat * nat), (n'j.2 < ni.2)%coq_nat -> M unit) :
+  (forall (n'j : nat * nat) (p : (n'j.2 < ni.2)%coq_nat), f n'j p = g n'j p) ->
   iqsort' f = iqsort' g.
 Proof.
-  by move=> ?; congr iqsort'; apply funext_dep => ?; apply boolp.funext.
+by move=> ?; congr iqsort'; apply funext_dep => ?; apply boolp.funext.
 Qed.
 
 Lemma iqsort_nil i : iqsort (i, 0) = Ret tt.
 Proof. by rewrite /iqsort Fix_eq //; exact: iqsort'_Fix. Qed.
 
 Lemma iqsort_cons i (n : nat) : iqsort (i, n.+1) = aget i >>= (fun p =>
-  dipartl p (i + 1)%Z 0 0 n >>= (fun nynz =>
+  dipartl p i.+1 0 0 n >>= (fun nynz =>
     let ny := dipartlT1 nynz in
     let nz := dipartlT2 nynz in
-    aswap i (i + ny%:Z) >>
-    iqsort (i, ny) >> iqsort ((i + ny%:Z + 1)%Z, nz))).
+    aswap i (i + ny) >>
+    iqsort (i, ny) >> iqsort (i + ny.+1, nz))).
 Proof. by rewrite [in LHS]/iqsort Fix_eq //=; exact: iqsort'_Fix. Qed.
 
 End iqsort_def.
 Arguments iqsort {d T M}.
 
 Section iqsort_spec.
-Variable (d : unit) (E : orderType d) (M : plusArrayMonad E Z_eqType).
-Implicit Types i : Z.
+Variable (d : unit) (E : orderType d) (M : plusArrayMonad E nat_eqType).
+Implicit Types i : nat.
 
 (* eqn 12 page 13 *)
 Lemma iqsort_slowsort i xs :
@@ -518,12 +501,68 @@ move: xs => [|p xs] in nxs *.
   by rewrite /= iqsort_nil slowsort_nil 2!bindretf /=; exact: refin_refl.
 (* step 1: l.342 in IQSOrt.agda,
    corresponds to second equation on page 13 of mu2020flops *)
-apply: (@refin_trans _ _ (qperm_partl p [::] [::] xs >>= (fun '(ys, zs) =>
-     writeList (i + (size ys)%:Z + 1)%Z zs >>
-     qperm ys >>= (fun ys' => writeList i (rcons ys' p) >>
-       iqsort (i, size ys) >>
-       iqsort ((i + (size ys)%:Z + 1)%Z, size zs))))); last first.
-  (* step 1a: refin_partition_slowsort *)
+pose p1 : M unit := qperm_partl p [::] [::] xs >>= (fun '(ys, zs) =>
+  writeList (i + (size ys).+1) zs >>
+  qperm ys >>= (fun ys' => writeList i (rcons ys' p) >>
+    iqsort (i, size ys) >>
+    iqsort (i + (size ys).+1, size zs))).
+apply: (@refin_trans _ _ p1).
+- (* step 2: introduce aswap *)
+  apply: (@refin_trans _ _ (qperm_partl p [::] [::] xs >>= (fun '(ys, zs) =>
+         writeList (i + (size ys).+1) zs >>
+         (writeList i (p :: ys) >> aswap i (i + size ys)) >>
+         (iqsort (i, size ys)) >> iqsort (i + (size ys).+1, size zs)))).
+    (* step 3: commute *)
+  + rewrite [X in _ `<=` X](_ : _ = qperm_partl p [::] [::] xs >>= (fun '(ys, zs) =>
+       aput i p >> writeList i.+1 (ys ++ zs) >>
+       (aswap i (i + size ys)) >>
+       (iqsort (i, size ys)) >> iqsort (i + (size ys).+1, size zs))); last first.
+      bind_ext => -[ys zs].
+      rewrite -bindA -writeListC//.
+      by rewrite /= bindA writeList_cat !bindA -addSnnS.
+    (* step 4: commute *)
+    rewrite [X in _ `<=` X](_ : _ = aput i p >>
+       qperm_partl p [::] [::] xs >>= (fun '(ys, zs) =>
+       (writeList i.+1 (ys ++ zs) >>
+        aswap i (i + size ys) >>
+        iqsort (i, size ys) >> iqsort (i + (size ys).+1, size zs)))); last first.
+      rewrite [RHS]bindA -(_ : commute (qperm_partl p [::] [::] xs) (aput i p) _); last first.
+        exact/commute_plus/nondetPlus_sub_qperm_partl.
+      by bind_ext=> -[a b]; rewrite !bindA.
+    (* step 5 *)
+    rewrite {nxs}.
+    rewrite [X in _ `<=` X](_ : _ = aput i p >> qperm_partl p [::] [::] xs >>=
+        (fun '(ys, zs) => write2L i.+1 (ys, zs)) >>= (fun '(ny, nz) =>
+          aswap i (i + ny) >> iqsort (i, ny) >>
+          iqsort (i + ny.+1, nz))); last first.
+      by rewrite [in RHS]bindA; bind_ext => -[a b]; rewrite write2LE !bindA.
+    (* step 6: refin_ipartl_qperm_partl *)
+    rewrite [in X in _ `<=` X](bindA (aput i p)).
+    apply: refin_trans; last first.
+      by rewrite bindA; apply: refin_bindl => ttt; exact/refin_bindr/refin_ipartl.
+    (* step 7 *)
+    rewrite -[in X in _ `<=` X]bindA.
+    rewrite (_ : aput i p >> _ = (writeList i (p :: xs) >> Ret p) >>=
+        (fun p => ipartl p i.+1 0 0 (size xs))); last first.
+      by rewrite /= bindA -[in LHS](bindA (aput i p)) [in RHS]bindA !bindretf.
+    (* step 8 *)
+    rewrite writeListRet 2![in X in _ `<=` X]bindA.
+    apply: refin_bindl => -[].
+    rewrite /= iqsort_cons.
+    rewrite bindA; apply: refin_bindl => x.
+    rewrite ipartlE /= fmapE [in X in _ `<=` X]bindA.
+    under [in X in _ `<=` X]eq_bind do rewrite bindretf.
+    exact: refin_refl.
+  + apply: refin_bindl => -[ys sz].
+    rewrite 4!bindA.
+    apply: refin_bindl => -[].
+    rewrite -2![in X in _ `<=` X]bindA.
+    rewrite [in X in _ `<=` X](bindA _ (fun _ => iqsort _) (fun _ => iqsort _)).
+    rewrite -2![in X in X `<=` _]bindA.
+    rewrite [in X in X `<=` _](bindA _ (fun _ => iqsort _) (fun _ => iqsort _)).
+    apply: refin_bindr.
+    exact: refin_writeList_cons_aswap.
+- (* step 1a: refin_partition_slowsort *)
   apply: refin_trans; last exact/refin_bindr/refin_partition_slowsort.
   rewrite bindretf.
   move pxs : (partition p xs) => tmp; case: tmp => [ys zs] in pxs *.
@@ -550,24 +589,24 @@ apply: (@refin_trans _ _ (qperm_partl p [::] [::] xs >>= (fun '(ys, zs) =>
   apply: refin_bind_guard => /eqP zszs'.
   (* step 1e: commutation *)
   rewrite ![in X in X `<=` _]bindA.
-  have <- : commute (qperm ys) (writeList (i + (size ys)%:Z + 1) zs' : M _) _.
+  have <- : commute (qperm ys) (writeList (i + (size ys).+1) zs' : M _) _.
     by move=> T f; exact/commute_plus/nondetPlus_sub_qperm.
   (* step 1f: qperm_preserves_size2,
      execute the second qperm and record size information *)
   rewrite (qperm_preserves_size2 ys (fun a b =>
-    (writeList (i + b%:Z + 1) zs' >> (writeList i (rcons a p) >>
-      iqsort (i, b) >> iqsort ((i + b%:Z + 1)%Z, size zs'))))).
+    (writeList (i + b.+1) zs' >> (writeList i (rcons a p) >>
+      iqsort (i, b) >> iqsort (i + b.+1, size zs'))))).
   rewrite bind_qperm_guard [in X in _ `<=` X]bind_qperm_guard (*NB: interesting?*).
   apply: refin_bindl => ys'.
   apply: refin_bind_guard => /eqP ysys'.
   (* step 1g: ih *)
-  rewrite -cats1 writeList_cat writeListC; last exact: leZZ.
+  rewrite -cats1 writeList_cat writeListC//.
   rewrite (bindA _ _ (fun _ => iqsort (i, size ys'))).
   apply: (@refin_trans _ _ (
-      (writeList (i + (size ys')%:Z + 1) zs' >>
-      (writeList (i + (size ys')%:Z) [:: p] >>
+      (writeList (i + (size ys').+1) zs' >>
+      (writeList (i + size ys') [:: p] >>
       (slowsort ys' >>= writeList i))) >>
-      iqsort ((i + (size ys')%:Z + 1)%Z, size zs'))).
+      iqsort (i + (size ys').+1, size zs'))).
     rewrite !bindA.
     do 2 apply: refin_bindl => -[].
     rewrite 2!bindretf -2!bindA; apply/refin_bindr/ih.
@@ -580,81 +619,24 @@ apply: (@refin_trans _ _ (qperm_partl p [::] [::] xs >>= (fun '(ys, zs) =>
   rewrite -[in X in X `<=` _](_ : commute (slowsort ys') _ _); last first.
     exact/commute_plus/nondetPlus_sub_slowsort.
   rewrite (slowsort_preserves_size2 _
-    (fun a b => writeList (i + b%:Z + 1) zs' >>
-      (writeList (i + b%:Z) [:: p] >> writeList i a >>
-        iqsort ((i + b%:Z + 1)%Z, size zs')))).
+    (fun a b => writeList (i + b.+1) zs' >>
+      (writeList (i + b) [:: p] >> writeList i a >>
+        iqsort (i + b.+1, size zs')))).
   rewrite bind_slowsort_guard [in X in _ `<=` X]bind_slowsort_guard.
   apply: refin_bindl => ys''.
   apply: refin_bind_guard => /eqP ys'ys''.
-  rewrite -bindA -(writeListC _ _ ys''); last exact: leZZ.
+  rewrite -bindA -(writeListC _ _ ys'')//.
   under [in X in _ `<=` X]eq_bind do rewrite -cat_rcons.
   under [in X in _ `<=` X]eq_bind do rewrite writeList_cat.
   rewrite (_ : commute (slowsort zs') _ _); last first.
     exact/commute_plus/nondetPlus_sub_slowsort.
   rewrite -(writeList_cat i ys'' [:: p]) -(writeListC _ _ _ zs'); last first.
-    by rewrite size_cat /= intRD addZA; exact: leZZ.
+    by rewrite /= cats1 size_rcons/=.
   (* step 1i: ih *)
   rewrite cats1 bindA; apply: refin_bindl => -[].
-  rewrite size_rcons natZS -Z.add_1_r -addZA; apply: ih.
+  rewrite size_rcons; apply: ih.
   move: nxs; rewrite /= ltnS; apply: leq_ltn_trans.
   by rewrite -zszs' -(size_partition p xs) pxs /= leq_addl.
-(* step 2: introduce_aswap_rcons *)
-apply: (@refin_trans _ _ (qperm_partl p [::] [::] xs >>= (fun '(ys, zs) =>
-     writeList (i + (size ys)%:Z + 1) zs >>
-     (writeList i (p :: ys) >> aswap i (i + (size ys)%:Z)) >>
-     (iqsort (i, size ys)) >> iqsort ((i + (size ys)%:Z + 1)%Z, size zs)))); last first.
-  apply: refin_bindl => -[ys sz].
-  rewrite 4!bindA.
-  apply: refin_bindl => -[].
-  rewrite -2![in X in _ `<=` X]bindA.
-  rewrite [in X in _ `<=` X](bindA _ (fun _ => iqsort _) (fun _ => iqsort _)).
-  rewrite -2![in X in X `<=` _]bindA.
-  rewrite (bindA _ (fun _ => iqsort _) (fun _ => iqsort _)).
-  apply: refin_bindr.
-  exact: refin_writeList_cons_aswap.
-(* step 3: commute *)
-rewrite [X in _ `<=` X](_ : _ = qperm_partl p [::] [::] xs >>= (fun '(ys, zs) =>
-     aput i p >> writeList (i + 1)%Z (ys ++ zs) >>
-     (aswap i (i + (size ys)%:Z)) >>
-     (iqsort (i, size ys)) >> iqsort ((i + (size ys)%:Z + 1)%Z, size zs))); last first.
-  bind_ext => -[ys zs].
-  rewrite -bindA -writeListC; last first.
-    by rewrite -addZA /= Z.add_1_r natZS; exact: leZZ.
-  by rewrite /= bindA writeList_cat addZAC !bindA.
-(* step 4: commute *)
-rewrite [X in _ `<=` X](_ : _ = aput i p >>
-   qperm_partl p [::] [::] xs >>= (fun '(ys, zs) =>
-   (writeList (i + 1)%Z (ys ++ zs) >>
-    aswap i (i + (size ys)%:Z) >>
-    iqsort (i, size ys) >> iqsort ((i + (size ys)%:Z + 1)%Z, size zs)))); last first.
-  rewrite [RHS]bindA -(_ : commute (qperm_partl p [::] [::] xs) (aput i p) _); last first.
-    exact/commute_plus/nondetPlus_sub_qperm_partl.
-  by bind_ext=> -[a b]; rewrite !bindA.
-(* step 5 *)
-rewrite {nxs}.
-rewrite [X in _ `<=` X](_ : _ = aput i p >> qperm_partl p [::] [::] xs >>=
-    (fun '(ys, zs) => write2L (i + 1)%Z (ys, zs)) >>= (fun '(ny, nz) =>
-      aswap i (i + ny%:Z) >> iqsort (i, ny) >>
-      iqsort ((i + ny%:Z + 1)%Z, nz))); last first.
-  by rewrite [in RHS]bindA; bind_ext => -[a b]; rewrite write2LE !bindA.
-(* step 6: refin_ipartl_qperm_partl *)
-rewrite [in X in _ `<=` X](bindA (aput i p)).
-apply: refin_trans; last first.
-  by rewrite bindA; apply: refin_bindl => ttt; exact/refin_bindr/refin_ipartl.
-(* step 7 *)
-rewrite -[in X in _ `<=` X]bindA.
-rewrite (_ : aput i p >> _ = (writeList i (p :: xs) >> Ret p) >>=
-    (fun p => ipartl p (i + 1)%Z 0 0 (size xs))); last first.
-  by rewrite /= bindA -[in LHS](bindA (aput i p)) [in RHS]bindA !bindretf.
-(* step 8 *)
-rewrite writeListRet 2![in X in _ `<=` X]bindA.
-apply: refin_bindl => -[].
-rewrite /= iqsort_cons.
-rewrite bindA.
-apply: refin_bindl => x.
-rewrite ipartlE /= fmapE [in X in _ `<=` X]bindA.
-under [in X in _ `<=` X]eq_bind do rewrite bindretf.
-exact: refin_refl.
 Qed.
 
 End iqsort_spec.

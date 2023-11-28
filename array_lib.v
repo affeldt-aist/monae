@@ -5,8 +5,6 @@ From mathcomp Require boolp.
 Require Import monae_lib.
 From HB Require Import structures.
 Require Import hierarchy monad_lib fail_lib.
-From infotheo Require Import ssrZ.
-Require Import ZArith.
 
 (******************************************************************************)
 (*                Definitions and lemmas about the array monad                *)
@@ -26,11 +24,12 @@ Require Import ZArith.
 (******************************************************************************)
 
 Local Open Scope monae_scope.
-Local Open Scope zarith_ext_scope.
 
 Section marray.
-Context {d : unit} {E : porderType d} {M : arrayMonad E Z_eqType}.
-Implicit Type i j : Z.
+Context {d : unit} {E : porderType d} {M : arrayMonad E nat_eqType}.
+Implicit Type i j : nat.
+
+Import Order.POrderTheory.
 
 Definition aswap i j : M unit :=
   aget i >>= (fun x => aget j >>= (fun y => aput i y >> aput j x)).
@@ -43,48 +42,48 @@ by rewrite agetputskip.
 Qed.
 
 Fixpoint writeList i (s : seq E) : M unit :=
-  if s isn't x :: xs then Ret tt else aput i x >> writeList (i + 1) xs.
+  if s isn't x :: xs then Ret tt else aput i x >> writeList i.+1 xs.
 
 Lemma writeList1 i (x : E) : writeList i [:: x] = aput i x.
 Proof. by rewrite /writeList bindmskip. Qed.
 
 Lemma writeList_cons i (x : E) (xs : seq E) :
-  writeList i (x :: xs) = aput i x >> writeList (i + 1) xs.
+  writeList i (x :: xs) = aput i x >> writeList i.+1 xs.
 Proof. by []. Qed.
 
-Lemma aput_writeListC i j (x : E) (xs : seq E) : (i < j)%Z ->
+Lemma aput_writeListC i j (x : E) (xs : seq E) : i < j ->
   aput i x >> writeList j xs = writeList j xs >> aput i x.
 Proof.
 elim: xs i j => [|h tl ih] i j ij.
   by rewrite bindretf bindmskip.
-rewrite /= -bindA aputC; last by left; apply/eqP/ltZ_eqF.
+rewrite /= -bindA aputC; last by left; rewrite lt_eqF.
 rewrite !bindA; bind_ext => -[].
-by rewrite ih// ltZadd1; apply/ltZW.
+by rewrite ih// ltnW.
 Qed.
 
-Lemma writeListC i j (ys zs : seq E) : (i + (size ys)%:Z <= j)%Z ->
+Lemma writeListC i j (ys zs : seq E) : i + size ys <= j ->
   writeList i ys >> writeList j zs = writeList j zs >> writeList i ys.
 Proof.
 elim: ys zs i j => [|h t ih] zs i j hyp; first by rewrite bindretf bindmskip.
-rewrite /= aput_writeListC; last by rewrite ltZadd1; exact: leZZ.
-rewrite bindA aput_writeListC; last exact/ltZ_leZ_trans/hyp/ltZ_addr/leZZ.
-rewrite /= natZS -add1Z addZA in hyp.
-by rewrite -!bindA ih.
+rewrite /= aput_writeListC// bindA aput_writeListC; last first.
+  by rewrite (leq_trans _ hyp)//= -addSnnS ltn_addr.
+rewrite -!bindA ih// addSn.
+by rewrite /= addnS in hyp.
 Qed.
 
-Lemma aput_writeListCR i j (x : E) (xs : seq E) : (j + (size xs)%:Z <= i)%Z ->
+Lemma aput_writeListCR i j (x : E) (xs : seq E) : j + size xs <= i ->
   aput i x >> writeList j xs = writeList j xs >> aput i x.
 Proof. by move=> ?; rewrite -writeList1 -writeListC. Qed.
 
 Lemma writeList_cat i (s1 s2 : seq E) :
-  writeList i (s1 ++ s2) = writeList i s1 >> writeList (i + (size s1)%:Z) s2.
+  writeList i (s1 ++ s2) = writeList i s1 >> writeList (i + size s1) s2.
 Proof.
-elim: s1 i => [|h t ih] i /=; first by rewrite bindretf addZ0.
-by rewrite ih bindA -addZA add1Z natZS.
+elim: s1 i => [|h t ih] i /=; first by rewrite bindretf addn0.
+by rewrite ih bindA addSnnS.
 Qed.
 
 Lemma writeList_rcons i (x : E) (xs : seq E) :
-  writeList i (rcons xs x) = writeList i xs >> aput (i + (size xs)%:Z)%Z x.
+  writeList i (rcons xs x) = writeList i xs >> aput (i + size xs) x.
 Proof. by rewrite -cats1 writeList_cat /= -bindA bindmskip. Qed.
 
 Definition writeL i (s : seq E) := writeList i s >> Ret (size s).
@@ -117,9 +116,7 @@ Proof.
 elim/last_ind: s x i => [|h t ih] /= x i.
   by rewrite bindmskip write_read.
 rewrite writeList_rcons 2![in RHS]bindA.
-rewrite write_readC; last first.
-  apply/eqP/gtZ_eqF; rewrite addZC; apply/ltZ_addl; first exact/leZ0n.
-  exact/ltZadd1/leZZ.
+rewrite write_readC; last by rewrite gtn_eqF// ltn_addr.
 rewrite -2![RHS]bindA -ih [RHS]bindA.
 rewrite !bindA; bind_ext => _.
 by under [in RHS]eq_bind do rewrite bindretf.
@@ -127,41 +124,33 @@ Qed.
 
 Lemma writeList_aswap i x h (t : seq E) :
   writeList i (rcons (h :: t) x) =
-  writeList i (rcons (x :: t) h) >> aswap i (i + (size (rcons t h))%:Z).
+  writeList i (rcons (x :: t) h) >> aswap i (i + size (rcons t h)).
 Proof.
 rewrite /aswap -!bindA writeList_rcons /=.
-rewrite aput_writeListC; last by apply/ltZ_addr => //; exact: leZZ.
-rewrite bindA.
-rewrite aput_writeListC; last by apply/ltZ_addr => //; exact: leZZ.
-rewrite writeList_rcons !bindA; bind_ext => -[].
+rewrite aput_writeListC// bindA aput_writeListC// writeList_rcons !bindA.
+bind_ext => -[].
 under [RHS] eq_bind do rewrite -bindA.
-rewrite aputget -bindA size_rcons -addZA natZS -add1Z.
+rewrite aputget -bindA size_rcons addSnnS.
 under [RHS] eq_bind do rewrite -!bindA.
-rewrite aputgetC; last first.
-  apply/eqP/ltZ_eqF; rewrite addZA addZC; apply/ltZ_addl; first exact/leZ0n.
-  by apply/ltZ_addr => //; exact: leZZ.
+rewrite aputgetC; last by rewrite -addSnnS ltn_eqF// ltn_addr.
 rewrite -!bindA aputget aputput aputC; last by right.
 by rewrite bindA aputput.
 Qed.
 
 Lemma aput_writeList_rcons i x h (t : seq E) :
-  aput i x >> writeList (i + 1) (rcons t h) =
+  aput i x >> writeList i.+1 (rcons t h) =
   aput i h >>
-      ((writeList (i + 1) t >> aput (i + 1 + (size t)%:Z)%Z x) >>
-        aswap i (i + (size t).+1%:Z)).
+      ((writeList i.+1 t >> aput (i + (size t).+1) x) >>
+        aswap i (i + (size t).+1)).
 Proof.
 rewrite /aswap -!bindA writeList_rcons -bindA.
-rewrite aput_writeListC; last by rewrite ltZadd1; exact: leZZ.
-rewrite aput_writeListC; last by rewrite ltZadd1; exact: leZZ.
-rewrite !bindA; bind_ext => -[].
+rewrite aput_writeListC// aput_writeListC// !bindA; bind_ext => -[].
 under [RHS] eq_bind do rewrite -bindA.
-rewrite aputgetC; last first.
-  apply/eqP/gtZ_eqF; rewrite addZC; apply/ltZ_addl; first exact: leZ0n.
-  by apply/ltZ_addr => //; exact: leZZ.
-rewrite -bindA -addZA natZS -add1Z aputget.
+rewrite aputgetC; last by rewrite gtn_eqF// -addSnnS ltn_addr.
+rewrite -bindA aputget.
 under [RHS] eq_bind do rewrite -!bindA.
 rewrite aputget aputC; last by right.
-by rewrite -!bindA aputput bindA aputput.
+by rewrite -!bindA aputput bindA aputput -addSnnS.
 Qed.
 
 Lemma writeList_ret_aget i x (s : seq E) (f : E -> M (nat * nat)%type):
@@ -169,28 +158,28 @@ Lemma writeList_ret_aget i x (s : seq E) (f : E -> M (nat * nat)%type):
   writeList i (x :: s) >> aget i >>= f.
 Proof.
 rewrite writeListRet 2!bindA /=.
-rewrite aput_writeListC; last by apply/ltZ_addr => //; exact: leZZ.
+rewrite aput_writeListC//.
 rewrite 2!bindA.
 under [LHS] eq_bind do rewrite -bindA aputget.
 by under [RHS] eq_bind do rewrite -bindA aputget.
 Qed.
 
 Fixpoint readList i (n : nat) : M (seq E) :=
-  if n isn't k.+1 then Ret [::] else liftM2 cons (aget i) (readList (i + 1) k).
+  if n isn't k.+1 then Ret [::] else liftM2 cons (aget i) (readList i.+1 k).
 
 End marray.
 
 Section refin_writeList_aswap.
-Variable (d : unit) (E : orderType d) (M : plusArrayMonad E Z_eqType).
+Variable (d : unit) (E : orderType d) (M : plusArrayMonad E nat_eqType).
 
 (* eqn 13 in mu2020flops, postulate introduce-swap in IQSort.agda *)
-Lemma refin_writeList_cons_aswap (i : Z) x (s : seq E) :
-  writeList i (x :: s) >> aswap (M := M) i (i + (size s)%:Z)
+Lemma refin_writeList_cons_aswap (i : nat) x (s : seq E) :
+  writeList i (x :: s) >> aswap (M := M) i (i + size s)
   `<=`
   qperm s >>= (fun s' => writeList i (rcons s' x)).
 Proof.
 elim/last_ind: s => [|t h ih] /=.
-  rewrite qperm_nil bindmskip bindretf addZ0 aswapxx /= bindmskip.
+  rewrite qperm_nil bindmskip bindretf addn0 aswapxx /= bindmskip.
   exact: refin_refl.
 rewrite bindA.
 apply: (refin_trans _ (refin_bindr _ (qperm_refin_cons _ _ _))).
@@ -198,23 +187,23 @@ by rewrite bindretf -bindA -writeList_aswap; exact: refin_refl.
 Qed.
 
 (* eqn 11 in mu2020flops, introduce-swap in IPartl.agda *)
-Lemma refin_writeList_rcons_aswap (i : Z) x (s : seq E) :
-  writeList i (rcons s x) >> aswap (M := M) i (i + (size s)%:Z)
+Lemma refin_writeList_rcons_aswap (i : nat) x (s : seq E) :
+  writeList i (rcons s x) >> aswap (M := M) i (i + size s)
   `<=`
   qperm s >>= (fun s' => writeList (M := M) i (x :: s')).
 Proof.
 case: s => [|h t] /=.
-  rewrite qperm_nil bindmskip bindretf addZ0 aswapxx bindmskip.
+  rewrite qperm_nil bindmskip bindretf addn0 aswapxx bindmskip.
   exact: refin_refl.
-rewrite bindA writeList_rcons -aput_writeList_rcons.
+rewrite bindA writeList_rcons addSnnS -aput_writeList_rcons.
 apply: (refin_trans _ (refin_bindr _ (qperm_refin_rcons _ _ _))).
 by rewrite bindretf; exact: refin_refl.
 Qed.
 
 (* bottom of the page 11, used in the proof of lemma 10 *)
-Lemma refin_writeList_rcons_cat_aswap (i : Z) x (ys zs : seq E) :
+Lemma refin_writeList_rcons_cat_aswap (i : nat) x (ys zs : seq E) :
   writeList i (rcons (ys ++ zs) x) >>
-    aswap (M := M) (i + (size ys)%:Z) (i + (size (ys ++ zs))%:Z)
+    aswap (M := M) (i + size ys) (i + size (ys ++ zs))
   `<=`
   qperm zs >>= (fun zs' => writeList i (ys ++ x :: zs')).
 Proof.
@@ -222,7 +211,8 @@ under [in X in _ `<=` X]eq_bind do rewrite writeList_cat.
 have -> : commute (qperm zs) (writeList i ys) _.
   by move=> *; exact/commute_plus/nondetPlus_sub_qperm.
 rewrite rcons_cat writeList_cat bindA; apply: refin_bindl => -[].
-by rewrite size_cat intRD addZA; exact: refin_writeList_rcons_aswap.
+rewrite size_cat/= addnA.
+exact: refin_writeList_rcons_aswap.
 Qed.
 
 End refin_writeList_aswap.
