@@ -101,23 +101,24 @@ Definition cycle (T : ml_type) (a b : coq_type N T)
    Ret (Cons (coq_type N T) T a v));
   do _ <- cput r l; Ret r.
 
-Definition hd (T : ml_type) (def : coq_type N T)
+Definition rhd (T : ml_type) (def : coq_type N T)
   (param : loc (ml_rlist T)) : M (coq_type N T) :=
   do v <- cget param; Ret (match v with Nil => def | Cons a _ => a end).
 
-Lemma hd_is_true :
-  crun (do l <- cycle ml_bool true false; hd ml_bool false l) = Some true.
+Lemma rhd_is_true :
+  crun (do l <- cycle ml_bool true false; rhd ml_bool false l) = Some true.
 Proof.
 rewrite bindA.
 under eq_bind do rewrite !bindA.
-under eq_bind do under eq_bind do rewrite !bindA bindretf !bindA bindretf cputget.
+under eq_bind do under eq_bind do
+ rewrite !bindA bindretf !bindA bindretf cputget.
 rewrite -bindA_uncurry -bindA crunret // crunchkput // bindA.
 under eq_bind do rewrite !bindA.
 under eq_bind do under eq_bind do rewrite bindretf /=.
 by rewrite crunnewchkC // crunnewchk0.
 Qed.
 
-Definition tl (T : ml_type) (param : loc (ml_rlist T))
+Definition rtl (T : ml_type) (param : loc (ml_rlist T))
   : M (loc (ml_rlist T)) :=
   do v <- cget param; Ret (match v with Nil => param | Cons _ t => t end).
 
@@ -126,11 +127,11 @@ Arguments cput {ml_type N locT s T}.
 Arguments cget {ml_type N locT s T}.
 Arguments Nil {a a_1}.
 Arguments Cons {a a_1}.
-Arguments tl {T}.
+Arguments rtl {T}.
 
-Lemma hd_tl_tl_is_true :
-  crun (do l <- cycle ml_bool true false; do l1 <- tl l; do l2 <- tl l1;
-        hd ml_bool false l2) = Some true.
+Lemma rhd_tl_tl_is_true :
+  crun (do l <- cycle ml_bool true false; do l1 <- rtl l; do l2 <- rtl l1;
+        rhd ml_bool false l2) = Some true.
 Proof.
 rewrite /cycle.
 rewrite bindA.
@@ -164,49 +165,41 @@ under eq_bind do rewrite -cchknewC -[cput _ _]bindmskip 2!cchknewput.
 by rewrite cnewput.
 Qed.
 
-Fixpoint rseqn (T : ml_type) (n : nat) (a : coq_type N T)
+Fixpoint mkrlist (T : ml_type) (l : list (coq_type N T))
   (r : loc (ml_rlist T)) : M (loc (ml_rlist T)) :=
-  if n is n.+1 then
-    do v <- rseqn T n a r;
-    cnew (T:=ml_rlist T) (@Cons (coq_type N T) T a v)
+  if l is a :: l then
+    do v <- mkrlist T l r;
+    cnew (T:=ml_rlist T) (Cons a v)
   else Ret r.
 
-Definition cyclen (T : ml_type) (n : nat)
-  (a b : coq_type N T) : M (loc (ml_rlist T)) :=
+Definition cyclel (T : ml_type) (a : coq_type N T) (l : list (coq_type N T))
+  : M (loc (ml_rlist T)) :=
   do r <- cnew (T:=ml_rlist T) Nil;
-  do l <- (do v <- rseqn T n b r; Ret (@Cons (coq_type N T) T a v));
-  do _ <- cput r l; Ret r.
+  do v <- mkrlist T l r;
+  do _ <- cput r (Cons a v); Ret r.
 
-(*
-Fixpoint nth (T : ml_type) (x : coq_type N T) (n : nat)
-  (param : coq_type N (ml_rlist T)) : M (coq_type N T) :=
-  match param with
-  | Nil => Ret x
-  | Cons a l =>
-      if n is n.+1 then do v <- cget l; nth T x n v else Ret a
-  end.
-*)
+Fixpoint rdrop {T} n (l : loc (ml_rlist T)) : M (loc (ml_rlist T)) :=
+  if n is n.+1 then rtl l >>= rdrop n else Ret l.
+Definition rnth T x n l := do l' <- rdrop n l; rhd T x l'.
 
-Fixpoint drop T n (l : loc (ml_rlist T)) : M (loc (ml_rlist T)) :=
-  if n is n.+1 then tl l >>= drop T n else Ret l.
-Definition nth T x n l := do l' <- drop T n l; hd T x l'.
-
-Lemma drop_add T m n l : drop T (m+n) l = drop T m l >>= drop T n.
+Lemma rdrop_add T m n (l : loc (ml_rlist T)) :
+  rdrop (m+n) l = rdrop m l >>= rdrop n.
 Proof.
 elim: m l => /= [|m IH] l; first by rewrite bindretf.
 by rewrite bindA; apply eq_bind => l'.
 Qed.
 
-Lemma rseqn_add T m n a r : rseqn T (m+n) a r = rseqn T m a r >>= rseqn T n a.
+Lemma mkrlist_cat T l1 l2 r :
+  mkrlist T (l1++l2) r = mkrlist T l2 r >>= mkrlist T l1.
 Proof.
-elim: n => [|n IH]; by [rewrite addn0 bindmret | rewrite addnS /= IH bindA].
+elim: l1 => [|a l1 IH]; by [rewrite cat0s bindmret | rewrite /= IH bindA].
 Qed.
 
-Lemma cchkrseqnC A T n a r k :
-  cchk r >> (rseqn T n a r >>= (fun r' => cchk r >> k r'))
-  = cchk r >> (rseqn T n a r >>= k) :> M A.
+Lemma cchkmkrlistC A T T1 l (r : loc T) r1 k :
+  cchk r >> (mkrlist T1 l r1 >>= (fun r' => cchk r >> k r'))
+  = cchk r >> (mkrlist T1 l r1 >>= k) :> M A.
 Proof.
-elim: n k => [|n IH] k /=.
+elim: l k => [|a l IH] k /=.
   by rewrite !bindretf -bindA cchkget.
 symmetry.
 rewrite bindA -IH.
@@ -214,52 +207,53 @@ under eq_bind do under eq_bind do rewrite -cchknewC.
 by rewrite IH bindA.
 Qed.
 
-Lemma cgetrseqnC A T n a r k :
-  cchk r >> (rseqn T n a r >>= (fun r' => cget r >>= k r'))
-  = cget r >>= (fun l => rseqn T n a r >>= k ^~ l) :> M A.
+Lemma cgetmkrlistC A T T1 (r : loc T) r1 l k :
+  cchk r >> (mkrlist T1 l r1 >>= (fun r' => cget r >>= k r'))
+  = cget r >>= (fun v => mkrlist T1 l r1 >>= k ^~ v) :> M A.
 Proof.
-elim: n k => [|n IH] k /=.
+elim: l k => [|a l IH] k /=.
   under [in RHS]eq_bind do rewrite bindretf.
   by rewrite !bindretf cchkget.
 symmetry.
 under eq_bind do rewrite bindA.
 rewrite -IH.
-under [rseqn _ _ _ _ >>= _]eq_bind do rewrite -cchknewget.
-by rewrite cchkrseqnC bindA.
+under [mkrlist _ _ _ >>= _]eq_bind do rewrite -cchknewget.
+by rewrite cchkmkrlistC bindA.
 Qed.
 
-Lemma rseqn_drop A T n a r k :
-  (rseqn T n a r >>= fun r' => drop T n r' >>= k r') =
-  (rseqn T n a r >>= k ^~ r) :> M A.
+Lemma mkrlist_drop A T l r k :
+  (mkrlist T l r >>= fun r' => rdrop (size l) r' >>= k r') =
+  (mkrlist T l r >>= k ^~ r) :> M A.
 Proof.
-elim: n r k => [|n IH] r k.
+elim/last_ind: l r k => [|a l IH] r k.
   by rewrite !bindretf.
-rewrite -add1n rseqn_add addnC /= bindA bindretf.
-under eq_bind do under eq_bind do rewrite drop_add -bindA bindmret bindA.
+rewrite -cats1 mkrlist_cat size_cat bindA /= bindretf.
+under eq_bind do under eq_bind do rewrite rdrop_add -bindA bindmret bindA.
 rewrite -cnewchk.
 under eq_bind => r1.
   rewrite IH.
-  under [rseqn _ _ _ _ >>= _]eq_bind do rewrite bindA.
-  rewrite cgetrseqnC.
+  under [mkrlist _ _ _ >>= _]eq_bind do rewrite bindA.
+  rewrite cgetmkrlistC.
   over.
 rewrite cnewget /= -[cnew _ >>= _]bindA.
 by under eq_bind do rewrite bindretf.
 Qed.
 
-Lemma cchk_rseqn_put_drop A T n a (r r1 : loc (ml_rlist T)) f k :
-  cchk r >> (rseqn T n a r1 >>= fun r' => cput r (f r') >> (drop T n r' >>= k r')) =
-  cchk r >> (rseqn T n a r1 >>= fun r' =>
-                 drop T n r' >>= (fun r'' => cput r (f r') >> k r' r'')) :> M A.
+Lemma cchk_mkrlist_put_drop A T l (r r1 : loc (ml_rlist T)) f k :
+  cchk r >> (mkrlist T l r1 >>= fun r' => cput r (f r') >>
+                                 (rdrop (size l) r' >>= k r')) =
+  cchk r >> (mkrlist T l r1 >>= fun r' => rdrop (size l) r' >>=
+                                 (fun r'' => cput r (f r') >> k r' r'')) :> M A.
 Proof.
-elim: n r1 k => [|n IH] r1 k.
+elim/last_ind: l r1 k => [|a l IH] r1 k.
   by rewrite !bindretf.
-rewrite -add1n rseqn_add addnC /=.
+rewrite -cats1 mkrlist_cat size_cat /=.
 under eq_bind do rewrite bindretf bindA.
 rewrite -cchknewC.
 under cchknewE => r2 rr2.
-  under [rseqn _ _ _ _ >>= _]eq_bind do rewrite drop_add bindA.
-  rewrite IH rseqn_drop /=.
-  under [rseqn _ _ _ _ >>= _]eq_bind do
+  under [mkrlist _ _ _ >>= _]eq_bind do rewrite rdrop_add bindA.
+  rewrite IH mkrlist_drop /=.
+  under [mkrlist _ _ _ >>= _]eq_bind do
     rewrite !bindA -[cput _ _ >> _]bindA cputgetC //.
   under eq_bind do under eq_bind do under eq_bind do rewrite !bindretf.
   over.
@@ -267,31 +261,33 @@ rewrite cchknewC.
 symmetry.
 under eq_bind do rewrite bindretf bindA.
 under [LHS]cchknewE => r2 rr2.
-  under eq_bind do rewrite drop_add bindA.
-  rewrite rseqn_drop /=.
-  under eq_bind do rewrite /tl bindmret /= bindA.
+  under eq_bind do rewrite rdrop_add bindA.
+  rewrite mkrlist_drop /=.
+  under eq_bind do rewrite /rtl bindmret /= bindA.
   under eq_bind do under eq_bind do rewrite bindretf.
   over.
 done.
 Qed.
 
-Lemma nth_is_true n :
-  crun (do l <- cyclen ml_bool n true false; nth ml_bool false n.+1 l) = Some true.
+Lemma rnth_is_true n :
+  crun (do l <- cyclel ml_bool true (nseq n false); rnth ml_bool false n.+1 l)
+  = Some true.
 Proof.
-rewrite /cyclen !bindA -cnewchk.
+rewrite /cyclel !bindA -cnewchk.
 under eq_bind => r.
-  rewrite bindA [(rseqn _ _ _ _ >>= _) >>= _]bindA -add1n /nth.
-  under [rseqn _ _ _ _ >>= _]eq_bind do
-    rewrite bindretf bindA bindretf drop_add /= bindA bindmret bindA cputget bindretf.
-  rewrite cchk_rseqn_put_drop rseqn_drop.
-  under [rseqn _ _ _ _ >>= _]eq_bind do rewrite cputget.
+  rewrite [(mkrlist _ _ _ >>= _) >>= _]bindA -add1n /rnth.
+  under [mkrlist _ _ _ >>= _]eq_bind do
+    rewrite bindA bindretf rdrop_add /= bindA bindmret bindA cputget bindretf.
+  rewrite -{2}(size_nseq n false).
+  rewrite cchk_mkrlist_put_drop mkrlist_drop.
+  under [mkrlist _ _ _ >>= _]eq_bind do rewrite cputget.
   rewrite -!bindA.
   over.
 rewrite -bindA crunret // -bindA_uncurry crunchkput // bindA.
 under eq_bind => r.
   rewrite bindA.
   under eq_bind do rewrite bindretf /= -[cchk _]bindmskip.
-  rewrite bindA cchkrseqnC.
+  rewrite bindA cchkmkrlistC.
   over.
 rewrite cnewchk -bindA crunmskip.
 elim: n => /= [|n IH]. by rewrite bindmret crunnew0.
