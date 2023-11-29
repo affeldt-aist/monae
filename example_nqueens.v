@@ -471,23 +471,20 @@ transitivity (do x <- Ret (u, v) [~] (do y_ys <- select v; Ret (y_ys.1, u :: y_y
   apply/esym.
   rewrite {1}/op /opdot_queens /opdot fmap_bind.
   transitivity (do st <- get;
-  (guard (queens_ok (queens_next st b)) >> do x <- Ret (u, v) [~] (do y_ys <- select v; Ret (y_ys.1, u :: y_ys.2));
-   (put (queens_next st b)) >>
-  ((cons b
-    (o) (fun x : Z * seq Z => do x0 <- fmap (cons x.1) (unfoldM p select x.2); foldr op (Ret [::]) x0)) x))).
+    (guard (queens_ok (queens_next st b)) >>
+     do x <- Ret (u, v) [~] (do y_ys <- select v; Ret (y_ys.1, u :: y_ys.2));
+     (put (queens_next st b)) >>
+     ((cons b (o) (fun x => do x0 <- fmap (cons x.1) (unfoldM p select x.2);
+      foldr op (Ret [::]) x0)) x))).
     bind_ext => st.
     rewrite !bindA.
     bind_ext; case.
-    rewrite -commute_nondetState //.
-    case: (@select_is_nondetState _ M _ v) => x /= <-.
-    by exists (ndAlt (ndRet (u, v)) (ndBind x (fun y => ndRet (y.1, u :: y.2)))).
+    by rewrite -nondetState_commute.
   transitivity (do st <- get;
-  (do x <- Ret (u, v) [~] (do y_ys <- select v; Ret (y_ys.1, u :: y_ys.2)) : M _;
-  guard (queens_ok (queens_next st b)) >>
-   put (queens_next st b) >>
-   (cons b
-    (o) (fun x0 : Z * seq Z => do x1 <- fmap (cons x0.1) (unfoldM p select x0.2); foldr op (Ret [::]) x1))
-     x)).
+    (do x <- Ret (u, v) [~] (do y_ys <- select v; Ret (y_ys.1, u :: y_ys.2)) : M _;
+    guard (queens_ok (queens_next st b)) >>
+    put (queens_next st b) >>
+    (cons b (o) (fun x0 => do x1 <- fmap (cons x0.1) (unfoldM p select x0.2); foldr op (Ret [::]) x1)) x)).
     bind_ext => st.
     rewrite -bindA guardsC; last exact: bindmfail.
     rewrite !bindA.
@@ -495,22 +492,25 @@ transitivity (do x <- Ret (u, v) [~] (do y_ys <- select v; Ret (y_ys.1, u :: y_y
     rewrite assertE !bindA.
     bind_ext; case.
     by rewrite bindretf.
-  rewrite -commute_nondetState; last first.
-    case: (@select_is_nondetState _ M _ v) => x <-.
+  rewrite -nondetState_commute//; last first.
+    (* TODO: automate? *)
+    case: (@select_isNondet _ M _ v) => x <-.
     by exists (ndAlt (ndRet (u, v)) (ndBind x (fun y => ndRet (y.1, u :: y.2)))).
   by rewrite fcomp_def.
 bind_ext => x.
 rewrite {1}/op /opdot_queens /opdot.
-rewrite commute_nondetState; last first.
+rewrite nondetState_commute; last first.
+  (* TODO: automate? *)
   rewrite fmapE.
-  case: (unfoldM_is_nondetState (@select_is_nondetState _ M Z) (@decr_size_select M _) x.2).
+  case: (unfoldM_isNondet (@select_isNondet _ M Z) (@decr_size_select M _) x.2).
   move=> m <-.
   by exists (ndBind m (fun y => ndRet (x.1 :: y))).
 rewrite {2}/op /opdot_queens /opdot.
 bind_ext => st.
-rewrite commute_nondetState //; last first.
+rewrite nondetState_commute //; last first.
+  (* TODO: automate? *)
   rewrite fmapE.
-  case: (unfoldM_is_nondetState (@select_is_nondetState _ M Z) (@decr_size_select _ _) x.2).
+  case: (unfoldM_isNondet (@select_isNondet _ M Z) (@decr_size_select _ _) x.2).
   move=> m <-.
   by exists (ndBind m (fun y => ndRet (x.1 :: y))).
 bind_ext; case.
@@ -521,7 +521,6 @@ Qed.
 End theorem51.
 
 Section section52.
-
 Variables (M : nondetStateMonad (Z * seq Z * seq Z)%type).
 
 Lemma queensBodyE : queensBody M =

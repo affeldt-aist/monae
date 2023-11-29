@@ -76,16 +76,17 @@ Definition dispatch (x p : E) '(ys, zs) A (f : seq E -> seq E -> M A) : M A :=
 Definition dispatch_Ret (x p : E) '(ys, zs, xs) : M (seq E * seq E * seq E)%type :=
   dispatch x p (ys, zs) (fun ys' zs' => Ret (ys', zs', xs)).
 
+(* TODO: use plus_commute instead of this lemma? *)
 Lemma commute_dispatch_Ret_writeList i p ys zs xs x A
     (f : seq E * seq E * seq E -> M A) :
   commute (dispatch_Ret x p (ys, zs, xs)) (writeList i xs)
           (fun x (_ : unit) => f x).
 Proof.
-apply: commute_plus => /=; case: ifPn => xp.
-  have [syn syn_qperm] := @nondetPlus_sub_qperm M _ zs.
+apply: plus_commute => /=; case: ifPn => xp.
+  have [syn syn_qperm] := @qperm_isNondet M _ zs.
   exists (ndBind syn (fun s => ndRet (rcons ys x, s, xs))).
   by rewrite /= syn_qperm.
-have [syn syn_qperm] := @nondetPlus_sub_qperm M _ (rcons zs x).
+have [syn syn_qperm] := @qperm_isNondet M _ (rcons zs x).
 by exists (ndBind syn (fun s => ndRet (ys, s, xs))); rewrite /= syn_qperm.
 Qed.
 
@@ -101,17 +102,17 @@ Fixpoint qperm_partl p (ys zs xs : seq E) : M (seq E * seq E)%type :=
     dispatch x p (ys, zs) (fun ys' zs' => qperm_partl p ys' zs' xs)
   else Ret (ys, zs).
 
-Lemma nondetPlus_sub_qperm_partl p (s a b : seq E) :
-  nondetPlus_sub (qperm_partl p a b s).
+Lemma qperm_partl_isNondet p (s a b : seq E) :
+  plus_isNondet (qperm_partl p a b s).
 Proof.
 elim: s p a b => [p a b|h t ih p a b /=]; first by exists (ndRet (a, b)).
 case: ifPn => hp.
-  have [syn synE] := @nondetPlus_sub_qperm M _ b.
+  have [syn synE] := @qperm_isNondet M _ b.
   exists (ndBind syn (fun zs' => sval (ih p (rcons a h) zs'))) => /=.
-  by rewrite synE /=; bind_ext => ?; case: ih.
-have [syn synE] := @nondetPlus_sub_qperm M _ (rcons b h).
+  by rewrite synE /=; bind_ext =>  ? /=; case: ih.
+have [syn synE] := @qperm_isNondet M _ (rcons b h).
 exists (ndBind syn (fun zs' => sval (ih p a zs'))) => /=.
-by rewrite synE /=; bind_ext => ?; case: ih.
+by rewrite synE /=; bind_ext => ? /=; case: ih.
 Qed.
 
 Lemma qperm_partl_cons (p x : E) (ys zs xs : seq E) :
@@ -124,6 +125,9 @@ Qed.
 
 End qperm_partl.
 Arguments qperm_partl {d E M}.
+
+#[global] Hint Extern 0 (plus_isNondet (qperm_partl _ _ _ _)) =>
+  solve[exact: qperm_partl_isNondet] : core.
 
 Section ipartl.
 Variables (d : unit) (T : orderType d).
@@ -526,8 +530,7 @@ apply: (@refin_trans _ _ p1).
        (writeList i.+1 (ys ++ zs) >>
         aswap i (i + size ys) >>
         iqsort (i, size ys) >> iqsort (i + (size ys).+1, size zs)))); last first.
-      rewrite [RHS]bindA -(_ : commute (qperm_partl p [::] [::] xs) (aput i p) _); last first.
-        exact/commute_plus/nondetPlus_sub_qperm_partl.
+      rewrite [RHS]bindA -(plus_commute (qperm_partl p [::] [::] xs))//.
       by bind_ext=> -[a b]; rewrite !bindA.
     (* step 5 *)
     rewrite {nxs}.
@@ -571,12 +574,10 @@ apply: (@refin_trans _ _ p1).
   rewrite [X in _ `<=` X](_ : _ =
     (do zs' <- qperm zs; do ys' <- qperm ys; do ys'' <- slowsort ys';
      do zs'' <- slowsort zs'; writeList i (ys'' ++ p :: zs''))%Do); last first.
-    have -> : commute (M := M) (qperm zs) (qperm ys) _.
-      by move=> *; exact/commute_plus/nondetPlus_sub_qperm.
+    rewrite (plus_commute (qperm zs))//.
     bind_ext => ys'.
     rewrite !bindA; under eq_bind do rewrite !bindA.
-    have <- : commute (M := M) (qperm zs) (slowsort ys') _.
-      by move=> *; exact/commute_plus/nondetPlus_sub_qperm.
+    rewrite -(plus_commute (qperm zs))//.
     bind_ext => zs'; bind_ext => ys''.
     by rewrite bindA; under eq_bind do rewrite bindretf.
   (* step 1c: refine partl to qperm_partl *)
@@ -589,8 +590,7 @@ apply: (@refin_trans _ _ p1).
   apply: refin_bind_guard => /eqP zszs'.
   (* step 1e: commutation *)
   rewrite ![in X in X `<=` _]bindA.
-  have <- : commute (qperm ys) (writeList (i + (size ys).+1) zs' : M _) _.
-    by move=> T f; exact/commute_plus/nondetPlus_sub_qperm.
+  rewrite -(plus_commute (qperm ys))//.
   (* step 1f: qperm_preserves_size2,
      execute the second qperm and record size information *)
   rewrite (qperm_preserves_size2 ys (fun a b =>
@@ -613,11 +613,9 @@ apply: (@refin_trans _ _ p1).
     move: nxs; rewrite /= ltnS; apply: leq_ltn_trans.
     by rewrite -ysys' -(size_partition p xs) pxs /= leq_addr.
   (* step 1h: slowsort_preserves_size2 *)
-  rewrite -[in X in X `<=` _](_ : commute (slowsort ys') _ _); last first.
-    exact/commute_plus/nondetPlus_sub_slowsort.
+  rewrite -[in X in X `<=` _](plus_commute (slowsort ys'))//.
   rewrite !bindA.
-  rewrite -[in X in X `<=` _](_ : commute (slowsort ys') _ _); last first.
-    exact/commute_plus/nondetPlus_sub_slowsort.
+  rewrite -[in X in X `<=` _](plus_commute (slowsort ys'))//.
   rewrite (slowsort_preserves_size2 _
     (fun a b => writeList (i + b.+1) zs' >>
       (writeList (i + b) [:: p] >> writeList i a >>
@@ -628,8 +626,7 @@ apply: (@refin_trans _ _ p1).
   rewrite -bindA -(writeListC _ _ ys'')//.
   under [in X in _ `<=` X]eq_bind do rewrite -cat_rcons.
   under [in X in _ `<=` X]eq_bind do rewrite writeList_cat.
-  rewrite (_ : commute (slowsort zs') _ _); last first.
-    exact/commute_plus/nondetPlus_sub_slowsort.
+  rewrite (plus_commute (slowsort zs'))//.
   rewrite -(writeList_cat i ys'' [:: p]) -(writeListC _ _ _ zs'); last first.
     by rewrite /= cats1 size_rcons/=.
   (* step 1i: ih *)

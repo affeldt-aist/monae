@@ -41,31 +41,36 @@ under eq_bind do rewrite aputput.
 by rewrite agetputskip.
 Qed.
 
-Fixpoint writeList i (s : seq E) : M unit :=
-  if s isn't x :: xs then Ret tt else aput i x >> writeList i.+1 xs.
+Fixpoint writeList' i (s : seq E) : M unit :=
+  if s isn't x :: xs then Ret tt else aput i x >> writeList' i.+1 xs.
 
-Lemma writeList1 i (x : E) : writeList i [:: x] = aput i x.
-Proof. by rewrite /writeList bindmskip. Qed.
+Definition writeList := writeList'.
+
+Lemma writeList_nil i : writeList i [::] = Ret tt.
+Proof. by rewrite /writeList; unlock. Qed.
 
 Lemma writeList_cons i (x : E) (xs : seq E) :
   writeList i (x :: xs) = aput i x >> writeList i.+1 xs.
-Proof. by []. Qed.
+Proof. by rewrite /writeList; unlock. Qed.
+
+Definition writeListE := (writeList_nil, writeList_cons).
+
+Lemma writeList1 i (x : E) : writeList i [:: x] = aput i x.
+Proof. by rewrite /= bindmskip. Qed.
 
 Lemma aput_writeListC i j (x : E) (xs : seq E) : i < j ->
   aput i x >> writeList j xs = writeList j xs >> aput i x.
 Proof.
-elim: xs i j => [|h tl ih] i j ij.
-  by rewrite bindretf bindmskip.
-rewrite /= -bindA aputC; last by left; rewrite lt_eqF.
-rewrite !bindA; bind_ext => -[].
-by rewrite ih// ltnW.
+elim: xs i j => [|h tl ih] i j ij /=; first by rewrite bindmskip bindretf.
+rewrite -bindA aputC; last by left; rewrite lt_eqF.
+by rewrite !bindA; bind_ext => -[]; rewrite ih// ltnW.
 Qed.
 
 Lemma writeListC i j (ys zs : seq E) : i + size ys <= j ->
   writeList i ys >> writeList j zs = writeList j zs >> writeList i ys.
 Proof.
-elim: ys zs i j => [|h t ih] zs i j hyp; first by rewrite bindretf bindmskip.
-rewrite /= aput_writeListC// bindA aput_writeListC; last first.
+elim: ys zs i j => [|h t ih] zs i j hyp /=; first by rewrite bindretf bindmskip.
+rewrite aput_writeListC// bindA aput_writeListC; last first.
   by rewrite (leq_trans _ hyp)//= -addSnnS ltn_addr.
 rewrite -!bindA ih// addSn.
 by rewrite /= addnS in hyp.
@@ -78,7 +83,7 @@ Proof. by move=> ?; rewrite -writeList1 -writeListC. Qed.
 Lemma writeList_cat i (s1 s2 : seq E) :
   writeList i (s1 ++ s2) = writeList i s1 >> writeList (i + size s1) s2.
 Proof.
-elim: s1 i => [|h t ih] i /=; first by rewrite bindretf addn0.
+elim: s1 i => [|h t ih] i/=; first by rewrite addn0 bindretf.
 by rewrite ih bindA addSnnS.
 Qed.
 
@@ -208,10 +213,8 @@ Lemma refin_writeList_rcons_cat_aswap (i : nat) x (ys zs : seq E) :
   qperm zs >>= (fun zs' => writeList i (ys ++ x :: zs')).
 Proof.
 under [in X in _ `<=` X]eq_bind do rewrite writeList_cat.
-have -> : commute (qperm zs) (writeList i ys) _.
-  by move=> *; exact/commute_plus/nondetPlus_sub_qperm.
-rewrite rcons_cat writeList_cat bindA; apply: refin_bindl => -[].
-rewrite size_cat/= addnA.
+rewrite (plus_commute (qperm zs))// rcons_cat writeList_cat bindA.
+apply: refin_bindl => -[]; rewrite size_cat/= addnA.
 exact: refin_writeList_rcons_aswap.
 Qed.
 
