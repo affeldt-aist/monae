@@ -129,31 +129,36 @@ Arguments Nil {a a_1}.
 Arguments Cons {a a_1}.
 Arguments rtl {T}.
 
+Lemma rtl_tl_self :
+  do l <- cycle ml_bool true false; do l1 <- rtl l; rtl l1
+  = cycle ml_bool true false.
+Proof.
+rewrite /cycle.
+rewrite bindA.
+rewrite -[LHS]cnewchk.
+under eq_bind => r1.
+  rewrite bindA; under eq_bind do rewrite !bindA.
+  under cchknewE => r2 r1r2.
+    rewrite bindretf bindA bindretf.
+    rewrite bindA cputget.
+    rewrite bindretf.
+    rewrite -bindA.
+    rewrite cputgetC //.
+    over.
+  rewrite cnewget.
+  over.
+rewrite cnewchk.
+under [RHS]eq_bind do (rewrite bindA; under eq_bind do rewrite bindretf).
+done.
+Qed.
+
 Lemma rhd_tl_tl_is_true :
   crun (do l <- cycle ml_bool true false; do l1 <- rtl l; do l2 <- rtl l1;
         rhd ml_bool false l2) = Some true.
 Proof.
-rewrite /cycle.
-rewrite bindA.
-rewrite -cnewchk.
-under eq_bind => r1.
-  rewrite bindA.
-  under eq_bind do rewrite !bindA.
-  under cchknewE => r2 r1r2.
-    rewrite !(bindA,bindretf).
-    rewrite cputget !(bindA,bindretf).
-    rewrite -[cput _ _ >> _]bindA.
-    rewrite cputgetC //.
-    over.
-  rewrite cnewget bindretf.
-  under cchknewE do rewrite cputget.
-  rewrite /=.
-  over.
-rewrite cnewchk.
-rewrite -bindA_uncurry -bindA crunret // crunchkput // bindA.
-under eq_bind do rewrite !bindA.
-under eq_bind do under eq_bind do rewrite bindretf /=.
-by rewrite crunnewchkC // crunnewchk0.
+rewrite -rhd_is_true -[in RHS]rtl_tl_self [in RHS]bindA.
+under [in RHS]eq_bind do rewrite bindA.
+done.
 Qed.
 
 Lemma perm3 T (s1 s2 s3 s4 : coq_type N T) :
