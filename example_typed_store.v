@@ -130,9 +130,8 @@ Arguments Nil {a a_1}.
 Arguments Cons {a a_1}.
 Arguments rtl {T}.
 
-Lemma rtl_tl_self :
-  do l <- cycle ml_bool true false; do l1 <- rtl l; rtl l1
-  = cycle ml_bool true false.
+Lemma rtl_tl_self T (a b : coq_type N T) :
+  do l <- cycle T a b; do l1 <- rtl l; rtl l1 = cycle T a b.
 Proof.
 rewrite /cycle.
 rewrite bindA.
@@ -149,8 +148,26 @@ under eq_bind => r1.
   rewrite cnewget.
   over.
 rewrite cnewchk.
+(*
+under eq_bind do under eq_bind => v do rewrite -(bindretf (Cons true v)) bindA.
+under eq_bind do rewrite -bindA.
+done.
+*)
 under [RHS]eq_bind do (rewrite bindA; under eq_bind do rewrite bindretf).
 done.
+Qed.
+
+Lemma _rtl_tl_self T (a b : coq_type N T) :
+  do l <- cycle T a b; do l1 <- rtl l; rtl l1 = cycle T a b.
+Proof.
+rewrite /cycle bindA -[LHS]cnewchk.
+under eq_bind => r1.
+  rewrite bindA; under eq_bind do rewrite !bindA.
+  under cchknewE do
+    rewrite bindretf bindA bindretf bindA cputget bindretf -bindA cputgetC //.
+  rewrite cnewget; over.
+rewrite cnewchk.
+by under [RHS]eq_bind do (rewrite bindA; under eq_bind do rewrite bindretf).
 Qed.
 
 Lemma rhd_tl_tl_is_true :
