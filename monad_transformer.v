@@ -92,7 +92,7 @@ Variables (S : UU0) (M : monad).
 
 Definition MS := fun A : UU0 => S -> M (A * S)%type.
 
-Definition retS : idfun ~~> MS := fun (A : UU0) => curry Ret.
+Definition retS : idfun ~~> MS := fun A : UU0 => curry Ret.
 
 Definition bindS (A B : UU0) (m : MS A) f : MS B := fun s => m s >>= uncurry f.
 
@@ -130,18 +130,17 @@ Definition liftS (A : UU0) (m : M A) : MS A :=
 
 Let retliftS : MonadMLaws.ret liftS.
 Proof.
-move=> A; rewrite /liftS; apply boolp.funext => a /=; apply boolp.funext => s /=.
+move=> A; rewrite /liftS; apply: boolp.funext => a /=; apply: boolp.funext => s /=.
 by rewrite bindretf.
 Qed.
 
 Let bindliftS : MonadMLaws.bind liftS.
 Proof.
-move=> A B m f; rewrite {1}/liftS; apply boolp.funext => s.
+move=> A B m f; rewrite {1}/liftS; apply: boolp.funext => s.
 rewrite [in LHS]bindA.
-transitivity ((liftS m s) >>= (uncurry (@liftS B \o f))) => //.
+transitivity (liftS m s >>= uncurry (@liftS B \o f)) => //.
 rewrite [in RHS]bindA.
-bind_ext => a.
-by rewrite [in RHS]bindretf.
+by under [RHS]eq_bind do rewrite bindretf.
 Qed.
 
 HB.instance Definition _ := isMonadM_ret_bind.Build
@@ -153,7 +152,7 @@ Lemma MS_bindE [S : UU0] [M : monad] [A B : UU0] (m : MS S M A) (f : A -> MS S M
   (m >>= f) s = m s >>= uncurry f.
 Proof. by []. Qed.
 
-Definition stateT (S : UU0) := fun M => [the monad of MS S M].
+Definition stateT (S : UU0) : monad -> monad := MS S.
 
 HB.instance Definition _ (S : UU0) := isMonadT.Build
   (stateT S) (@liftS S).
@@ -166,18 +165,17 @@ Definition mapStateT2 (A S : UU0) (N1 N2 N3 : monad)
 Section stateMonad_of_stateT.
 Variables (S : UU0) (M : monad).
 
-Local Notation M' := (MS S M).
-Let Put : S -> M' unit := fun s _ => Ret (tt, s).
-Let Get : M' S := fun s => Ret (s, s).
+Let Put : S -> MS S M unit := fun s _ => Ret (tt, s).
+Let Get : MS S M S := fun s => Ret (s, s).
 
-Let bindputput (s s' : S) : Put s >> Put s' = Put s'.
+Let bindputput s s' : Put s >> Put s' = Put s'.
 Proof.
-rewrite bindE /= /bindS.
-apply boolp.funext => s0.
+rewrite /Ret.
+rewrite bindE /= /bindS; apply: boolp.funext => s0.
 by rewrite MS_mapE bind_fmap bindretf.
 Qed.
 
-Let bindputget (s : S) : Put s >> Get = Put s >> Ret s.
+Let bindputget s : Put s >> Get = Put s >> Ret s.
 Proof.
 rewrite !bindE !MS_mapE /= /bindS.
 apply boolp.funext => s'.

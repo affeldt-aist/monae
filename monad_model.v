@@ -2234,8 +2234,7 @@ Qed.
 End eq_rect_bind.
 *)
 
-(* TODO
-Section instantiations_with_the_identity_monad.
+(*Section instantiations_with_the_identity_monad.
 
 Lemma stateT_id_ModelState S :
   stateT S [the monad of idfun] = [the monad of StateMonad.acto S].

@@ -213,7 +213,8 @@ Lemma refin_writeList_rcons_cat_aswap (i : nat) x (ys zs : seq E) :
   qperm zs >>= (fun zs' => writeList i (ys ++ x :: zs')).
 Proof.
 under [in X in _ `<=` X]eq_bind do rewrite writeList_cat.
-rewrite (plus_commute (qperm zs))// rcons_cat writeList_cat bindA.
+rewrite (plus_commute (qperm zs))//.
+rewrite rcons_cat writeList_cat bindA.
 apply: refin_bindl => -[]; rewrite size_cat/= addnA.
 exact: refin_writeList_rcons_aswap.
 Qed.

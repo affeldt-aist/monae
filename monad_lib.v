@@ -581,8 +581,7 @@ Qed.
 
 End algebraic_operation_interface.
 
-(* TODO:
-Lemma monad_of_ret_bind_ext (F G : functor) (RET1 : FId ~> F) (RET2 : FId ~> G)
+(*Lemma monad_of_ret_bind_ext (F G : functor) (RET1 : FId ~> F) (RET2 : FId ~> G)
   (bind1 : forall A B : UU0, F A -> (A -> F B) -> F B)
   (bind2 : forall A B : UU0, G A -> (A -> G B) -> G B) :
   forall (FG : F = G),
@@ -648,7 +647,8 @@ by rewrite fcompE -(compE (M # f^`2)) (natural ret) FIdE.
 Qed.
 
 Definition commute {M : monad} A B (m : M A) (n : M B) C (f : A -> B -> M C) : Prop :=
-  m >>= (fun x => n >>= (fun y => f x y)) = n >>= (fun y => m >>= (fun x => f x y)) :> M _.
+  m >>= (fun x => n >>= (fun y => f x y)) =
+  n >>= (fun y => m >>= (fun x => f x y)) :> M _.
 
 Definition preserves {M : monad} (A B : UU0) (f : A -> M A) (g : A -> B) :=
   forall x, (f x >>= fun y => Ret (y, g y)) = (f x >>= fun y => Ret (y, g x)).

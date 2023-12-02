@@ -76,13 +76,9 @@ Definition dispatch (x p : E) '(ys, zs) A (f : seq E -> seq E -> M A) : M A :=
 Definition dispatch_Ret (x p : E) '(ys, zs, xs) : M (seq E * seq E * seq E)%type :=
   dispatch x p (ys, zs) (fun ys' zs' => Ret (ys', zs', xs)).
 
-(* TODO: use plus_commute instead of this lemma? *)
-Lemma commute_dispatch_Ret_writeList i p ys zs xs x A
-    (f : seq E * seq E * seq E -> M A) :
-  commute (dispatch_Ret x p (ys, zs, xs)) (writeList i xs)
-          (fun x (_ : unit) => f x).
+Lemma dispatch_Ret_isNondet x p yszsxs : plus_isNondet (dispatch_Ret x p yszsxs).
 Proof.
-apply: plus_commute => /=; case: ifPn => xp.
+rewrite /dispatch/=; move: yszsxs => [[ys zs] xs]/=; case: ifPn => xp.
   have [syn syn_qperm] := @qperm_isNondet M _ zs.
   exists (ndBind syn (fun s => ndRet (rcons ys x, s, xs))).
   by rewrite /= syn_qperm.
@@ -92,6 +88,9 @@ Qed.
 
 End dispatch.
 Arguments dispatch_Ret {d E M}.
+
+#[global] Hint Extern 0 (plus_isNondet (dispatch_Ret _ _ _)) =>
+  solve[exact: dispatch_Ret_isNondet] : core.
 
 Section qperm_partl.
 Variable (d : unit) (E : orderType d) (M : plusArrayMonad E nat_eqType).
@@ -233,8 +232,8 @@ Lemma qperm_preserves_length i (x p : E) (ys zs xs : seq E)
       writeList i (ys' ++ zs') >>
         k (size ys') (size zs') (size xs')) :> M _.
 Proof.
-rewrite bindA [in RHS]bindA -[in RHS]commute_dispatch_Ret_writeList/=.
-case: ifPn => xp.
+rewrite bindA [in RHS]bindA -[in RHS](plus_commute (dispatch_Ret _ _ _))//.
+rewrite /=; case: ifPn => xp.
   rewrite !bindA.
   under eq_bind do rewrite bindretf write3LE.
   under [in RHS]eq_bind do rewrite bindretf -bindA.
@@ -530,7 +529,8 @@ apply: (@refin_trans _ _ p1).
        (writeList i.+1 (ys ++ zs) >>
         aswap i (i + size ys) >>
         iqsort (i, size ys) >> iqsort (i + (size ys).+1, size zs)))); last first.
-      rewrite [RHS]bindA -(plus_commute (qperm_partl p [::] [::] xs))//.
+      rewrite [RHS]bindA.
+      rewrite -(plus_commute (qperm_partl p [::] [::] xs))//.
       by bind_ext=> -[a b]; rewrite !bindA.
     (* step 5 *)
     rewrite {nxs}.
