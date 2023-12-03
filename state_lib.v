@@ -9,19 +9,16 @@ Require Import hierarchy monad_lib fail_lib.
 (******************************************************************************)
 (*              Definitions and lemmas about state monads                     *)
 (*                                                                            *)
-(*    overwrite s a := put s >> Ret s                                         *)
-(*        protect n := get >>= (fun x => n >>= overwrite x)                   *)
-(* putpermsC                                                                  *)
-(*   perms is independent of the state and so commutes with put               *)
-(* nondetState_sub m == m is a computation of the nondetStateMonad that       *)
-(*                      can be written with the syntax of                     *)
-(*                      the nondeterministic monad                            *)
-(* Section loop (ref: section 4.1, mu2019tr3)                                 *)
-(*   scanlM                                                                   *)
-(*   scanlM_of_scanl (ref: theorem 4.1, mu2019tr3)                            *)
-(* Section section43.                                                         *)
-(*   ref: mu2019tr3                                                           *)
-(*   theorem44                                                                *)
+(*          overwrite s a := put s >> Ret s                                   *)
+(*              protect n := get >>= (fun x => n >>= overwrite x)             *)
+(*              putpermsC == perms is independent of the state and so         *)
+(*                           commutes with put                                *)
+(* nondetState_isNondet m == m is a computation of the nondetStateMonad that  *)
+(*                           can be written with the syntax of the            *)
+(*                           the nondeterministic monad                       *)
+(*                 scanlM == see section 4.1, mu2019tr3                       *)
+(*        scanlM_of_scanl == see theorem 4.1, mu2019tr3                       *)
+(*              theorem44 == see mu2019tr3                                    *)
 (*                                                                            *)
 (******************************************************************************)
 
@@ -175,26 +172,56 @@ Qed.
 
 End state_commute.
 
-Definition nondetState_sub S (M : nondetStateMonad S) A (n : M A) :=
-  {m | ndDenote m = n}.
+Definition nondetState_isNondet S (M : nondetStateMonad S) A (n : M A) :=
+  {m | nondetSem m = n}.
 
-Lemma select_is_nondetState S (M : nondetStateMonad S) A (s : seq A) :
-  nondetState_sub (select s : M _).
+Lemma nondetState_commute S (M : nondetStateMonad S) A (m : M A) B (n : M B) C
+    (f : A -> B -> M C) : nondetState_isNondet m -> commute m n f.
+Proof.
+case => x.
+elim: x m n f => [{}A a m n f <-| B0 {}A n0 H0 n1 H1 m n2 f <- |
+  A0 m n f <- | A0 n0 H0 n1 H1 m n2 f <-].
+- rewrite /commute bindretf.
+  by under [RHS]eq_bind do rewrite bindretf.
+- rewrite /commute /= !bindA.
+  transitivity (do x <- nondetSem n0; do y <- n2; nondetSem (n1 x) >>= f^~ y)%Do.
+    bind_ext => s.
+    by rewrite (H1 s).
+  rewrite H0 //.
+  bind_ext => b.
+  by rewrite bindA.
+- rewrite /commute /= bindfailf.
+  transitivity (n >> fail : M C); first by rewrite bindmfail.
+  bind_ext => b.
+  by rewrite bindfailf.
+- rewrite /commute /= alt_bindDl.
+  transitivity (do y <- n2; nondetSem n0 >>= f^~ y [~]
+                            nondetSem n1 >>= f^~ y)%Do; last first.
+    bind_ext => a.
+    by rewrite alt_bindDl.
+  by rewrite alt_bindDr H0 // H1.
+Qed.
+Arguments nondetState_commute {S M A} m {B} n {C} f.
+
+Lemma select_isNondet S (M : nondetStateMonad S) A (s : seq A) :
+  nondetState_isNondet (select s : M _).
 Proof.
 elim: s => [/= | u v [x /= <-]]; first by exists (@ndFail _).
 by exists (ndAlt (ndRet (u, v)) (ndBind x (fun x => ndRet (x.1, u :: x.2)))).
 Qed.
+#[global] Hint Extern 0 (nondetState_isNondet (select _)) =>
+  solve[exact: select_isNondet] : core.
 
-Lemma unfoldM_is_nondetState S (M : nondetStateMonad S) A B
+Lemma unfoldM_isNondet S (M : nondetStateMonad S) A B
   (f : seq B -> M (A * seq B)%type) :
-  (forall s, nondetState_sub (f s)) -> bassert_size f ->
-  forall s, nondetState_sub (unfoldM (@well_founded_size B) (@nilp _) f s).
+  (forall s, nondetState_isNondet (f s)) -> bassert_size f ->
+  forall s, nondetState_isNondet (unfoldM (@well_founded_size B) (@nilp _) f s).
 Proof.
 move=> Hf size_f s.
 apply/boolp.constructive_indefinite_description.
 move: s; apply: (well_founded_induction (@well_founded_size _)) => s IH.
 have {}IH : forall x, size x < size s ->
-  { m | ndDenote m = unfoldM (@well_founded_size B) (@nilp _) f x}.
+  { m | nondetSem m = unfoldM (@well_founded_size B) (@nilp _) f x}.
   move=> x xs; exact/boolp.constructive_indefinite_description/IH.
 case: s IH => [|h t] IH.
   rewrite unfoldME //=; by exists (ndRet [::]).
@@ -211,37 +238,9 @@ rewrite [in LHS]/=.
 rewrite Hx size_f /bassert !bindA.
 bind_ext => -[x1 x2].
 case: assertPn; rewrite ltnS => b1b2; last by rewrite !bindfailf.
-rewrite !bindretf /g.
+rewrite !bindretf /g/=.
 case: Bool.bool_dec => // x2t.
-case: (IH x2) => // x0 <-; by rewrite fmapE.
-Qed.
-
-Lemma commute_nondetState S (M : nondetStateMonad S)
-  A (m : M A) B (n : M B) C (f : A -> B -> M C) :
-  nondetState_sub m -> commute m n f.
-Proof.
-case => x.
-elim: x m n f => [{}A a m n f <-| B0 {}A n0 H0 n1 H1 m n2 f <- |
-  A0 m n f <- | A0 n0 H0 n1 H1 m n2 f <-].
-- rewrite /commute bindretf.
-  by under [RHS]eq_bind do rewrite bindretf.
-- rewrite /commute /= !bindA.
-  transitivity (do x <- ndDenote n0; do y <- n2; ndDenote (n1 x) >>= f^~ y)%Do.
-    bind_ext => s.
-    by rewrite (H1 s).
-  rewrite H0 //.
-  bind_ext => b.
-  by rewrite bindA.
-- rewrite /commute /= bindfailf.
-  transitivity (n >> fail : M C); first by rewrite bindmfail.
-  bind_ext => b.
-  by rewrite bindfailf.
-- rewrite /commute /= alt_bindDl.
-  transitivity (do y <- n2; ndDenote n0 >>= f^~ y [~]
-                           ndDenote n1 >>= f^~ y)%Do; last first.
-    bind_ext => a.
-    by rewrite alt_bindDl.
-  by rewrite alt_bindDr H0 // H1.
+by case: (IH x2) => // x0 <-; rewrite fmapE.
 Qed.
 
 Section loop.

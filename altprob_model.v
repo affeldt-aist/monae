@@ -1,9 +1,12 @@
 (* monae: Monadic equational reasoning in Coq                                 *)
 (* Copyright (C) 2020 monae authors, license: LGPL-2.1-or-later               *)
 Require Import Reals.
-From mathcomp Require Import all_ssreflect finmap.
+From mathcomp Require Import all_ssreflect ssralg ssrnum finmap.
 From mathcomp Require Import boolp classical_sets.
-From infotheo Require Import classical_sets_ext Reals_ext Rbigop ssrR fdist.
+From mathcomp Require Import reals Rstruct.
+From infotheo Require Import classical_sets_ext Reals_ext ssrR fdist.
+From infotheo Require Import ssrR Reals_ext proba.
+From infotheo Require Import Reals_ext realType_ext.
 From infotheo Require Import fsdist convex necset.
 Require category.
 From HB Require Import structures.
@@ -120,18 +123,16 @@ HB.instance Definition _ :=
 
 Definition gcmACI := [the altCIMonad of gcm].
 
-Lemma choice0 A (x y : gcm A) : x <| 0%:pr |> y = y.
-Proof. by rewrite conv0. Qed.
 Lemma choice1 A (x y : gcm A) : x <| 1%:pr |> y = x.
 Proof. by rewrite conv1. Qed.
-Lemma choiceC A p (x y : gcm A) : x <|p|> y = y <|p.~%:pr|> x.
+Lemma choiceC A p (x y : gcm A) : x <|p|> y = y <|(Prob.p p).~%:pr|> x.
 Proof. by rewrite convC. Qed.
 Lemma choicemm A p : idempotent (@choice p A).
 Proof. by move=> m; rewrite /choice convmm. Qed.
-Lemma choiceA A (p q r s : prob) (x y z : gcm A) :
-  p = (r * s) :> R /\ s.~ = (p.~ * q.~)%R ->
-  x <| p |> (y <| q |> z) = (x <| r |> y) <| s |> z.
-Proof. by case => *; apply: convA0. Qed.
+
+Let choiceA A (p q r s : {prob [realType of R]}) (x y z : gcm A) :
+  x <| p |> (y <| q |> z) = (x <| [r_of p, q] |> y) <| [s_of p, q] |> z.
+Proof. exact: convA. Qed.
 
 Section bindchoiceDl.
 Import category.
@@ -171,17 +172,20 @@ Qed.
 End bindchoiceDl.
 
 HB.instance Definition _ :=
-  isMonadProb.Build (Monad_of_category_monad.acto Mgcm)
-    choice0 choice1 choiceC choicemm choiceA bindchoiceDl.
+  isMonadConvex.Build real_realType (Monad_of_category_monad.acto Mgcm)
+    choice1 choiceC choicemm choiceA.
 
-Lemma choicealtDr A (p : prob) :
+HB.instance Definition _ :=
+  isMonadProb.Build real_realType (Monad_of_category_monad.acto Mgcm) bindchoiceDl.
+
+Lemma choicealtDr A (p : {prob real_realType}) :
   right_distributive (fun x y : Mgcm A => x <| p |> y) (@alt A).
 Proof. by move=> x y z; rewrite /choice lubDr. Qed.
 
 HB.instance Definition _ :=
-  @isMonadAltProb.Build (Monad_of_category_monad.acto Mgcm) choicealtDr.
+  @isMonadAltProb.Build real_realType (Monad_of_category_monad.acto Mgcm) choicealtDr.
 
-Definition gcmAP := [the altProbMonad of gcm].
+Definition gcmAP := [the altProbMonad real_realType of gcm].
 
 End P_delta_altProbMonad.
 
@@ -190,7 +194,7 @@ Local Open Scope proba_monad_scope.
 
 (* An example that probabilistic choice in this model is not trivial:
    we can distinguish different probabilities. *)
-Example gcmAP_choice_nontrivial (p q : prob) :
+Example gcmAP_choice_nontrivial (p q : {prob real_realType}) :
   p <> q ->
   (* Ret = hierarchy.ret *)
   Ret true <|p|> Ret false <>
@@ -200,8 +204,8 @@ apply contra_not.
 rewrite !gcm_retE /Choice /= => /(congr1 (@NECSet.car _)).
 rewrite !necset_convType.convE !conv_cset1 /=.
 move/(@set1_inj _ (conv _ _ _))/(congr1 (@FSDist.f _))/fsfunP/(_ true).
-by rewrite !fsdist_convE !fsdist1xx !mulR1 fsdist10 ?mulR0 ?addR0//;
-  [exact: val_inj|exact/eqP].
+rewrite !fsdist_convE !fsdist1xx !fsdist10//; last exact/eqP. (*TODO: we should not need that*)
+by rewrite !avgRE !mulR1 ?mulR0 ?addR0 => /val_inj.
 Qed.
 
 End probabilisctic_choice_not_trivial.

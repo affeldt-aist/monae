@@ -4,7 +4,7 @@ Require Import ZArith.
 From mathcomp Require Import all_ssreflect.
 From mathcomp Require boolp.
 From infotheo Require Import ssrZ.
-Require monad_model.
+Require Import monad_model.
 From HB Require Import structures.
 Require Import monae_lib hierarchy monad_lib typed_store_lib.
 
@@ -82,20 +82,16 @@ Fixpoint coq_type_nat (T : ml_type) : Type :=
   end.
 End with_monad.
 
-(* Standard definition using [coq_type_nat M] (typed_store_model.v) *)
 HB.instance Definition _ := @isML_universe.Build ml_type
   (Equality.class ml_type_eqType) coq_type_nat ml_unit val_nonempty.
 
-(* Alternative: use [coq_type_nat idfun] (monad_model.v) *)
-(*HB.instance Definition _ := @isML_universe.Build ml_type
-  (Equality.class ml_type_eqType) (fun M => @coq_type_nat idfun)
-  ml_unit (fun M => val_nonempty idfun).*)
-
-Definition typedStoreMonad := typedStoreMonad ml_type monad_model.locT_nat.
+Definition typedStoreMonad (N : monad) :=
+  typedStoreMonad ml_type N monad_model.locT_nat.
 
 Section cyclic.
-Variables (M : typedStoreMonad).
-Local Notation coq_type := (hierarchy.coq_type (MonadTypedStore.sort M)).
+Variables (N : monad) (M : typedStoreMonad N).
+
+Local Notation coq_type := (hierarchy.coq_type N).
 Local Open Scope do_notation.
 
 Definition cycle (T : ml_type) (a b : coq_type T)
@@ -118,10 +114,10 @@ under eq_bind => tl.
   rewrite !bindA.
   under eq_bind do rewrite !bindA bindretf !bindA bindretf /=.
   over.
-rewrite -bindA_uncurry -bindA crunret // crungetput // bindA.
+rewrite -bindA_uncurry -bindA crunret // crunchkput // bindA.
 under eq_bind do rewrite !bindA.
 under eq_bind do under eq_bind do rewrite bindretf /=.
-by rewrite crungetnew // crunnewget0.
+by rewrite crunnewchkC // crunnewchk0.
 Qed.
 
 Definition tl (T : ml_type) (param : coq_type (ml_rlist T))
@@ -142,17 +138,77 @@ under eq_bind => r1.
   rewrite cnewget /=.
   under cchknewE do rewrite cputget /=.
   over.
-rewrite cnewchk -bindA_uncurry -bindA crunret // crungetput // bindA.
+rewrite cnewchk -bindA_uncurry -bindA crunret // crunchkput // bindA.
 under eq_bind do rewrite !bindA.
 under eq_bind do under eq_bind do rewrite bindretf /=.
-by rewrite crungetnew // crunnewget0.
+by rewrite crunnewchkC // crunnewchk0.
 Qed.
-
 End cyclic.
 
+Module eval_cyclic.
+Section eval.
+Import monad_model.ModelTypedStore.
+                
+Definition M :=
+  [the typedStoreMonad idfun of @acto ml_type idfun].
+
+Definition Env := Env ml_type idfun.
+
+Definition empty_env : Env := [::].
+
+(* copied from typed_store_model.v *)
+Definition W (A : UU0) : UU0 := monad_model.option_monad (A * Env).
+
+Definition Restart [A B] (r : W A) (f : M B) : W B :=
+  if r is inr (_, env) then f env else inl tt.
+
+Definition FromW [A] (r : W A) : M A :=
+  fun env => if r is inr (a, _) then inr (a, env) else inl tt.
+
+Definition it0 : W unit := inr (tt, empty_env).
+
+Local Open Scope do_notation.
+Local Notation mkloc := (mkloc (locT:=monad_model.locT_nat)).
+Local Notation coq_type := (coq_type _).
+
+Definition incr (l : loc ml_int) : M nat :=
+  do x <- cget l; do _ <- cput l (succn x); Ret (succn x).
+
+Definition l : W (loc ml_int) := Restart it0 (cnew ml_int 3).
+Eval vm_compute in l.
+
+Definition it1 := Restart l (do l <- FromW l; incr l).
+Eval vm_compute in it1.
+
+Definition it2 := Restart it1 (do l <- FromW l; incr l).
+Eval vm_compute in it2.
+
+Local Notation cycle := (cycle idfun M).
+
+Definition it3 := Restart it2 (cycle ml_bool true false).
+Eval vm_compute in it3.
+
+Local Notation hd := (hd idfun).
+
+Definition it4 := Restart it3 (do l <- FromW it3; Ret (hd ml_bool false l)).
+Eval vm_compute in it4.
+Eval vm_compute in crun (FromW it4).
+
+Local Notation tl := (tl idfun M).
+
+Definition it5 := Restart it4
+                    (do l0 <- FromW it3;
+                     do l1 <- tl _ l0;
+                     do l2 <- tl _ l1;
+                     Ret (hd ml_bool false l2)).
+Eval vm_compute in it5.
+Eval vm_compute in crun (FromW it5).
+
+End eval.
+End eval_cyclic.
+
 Section factorial.
-Variable M : typedStoreMonad.
-Notation coq_type := (@coq_type M).
+Variable (N : monad) (M : typedStoreMonad N).
 
 Fixpoint fact_ref (r : loc ml_int) (n : nat) : M unit :=
   if n is m.+1 then cget r >>= fun p => cput r (n * p) >> fact_ref r m
@@ -177,8 +233,8 @@ Qed.
 End factorial.
 
 Section fact_for.
-Variable M : typedStoreMonad.
-Local Notation coq_type := (hierarchy.coq_type (MonadTypedStore.sort M)).
+Variable (N : monad) (M : typedStoreMonad N).
+Local Notation coq_type := (hierarchy.coq_type N).
 Local Open Scope do_notation.
 
 Definition fact_for (n : coq_type ml_int) : M (coq_type ml_int) :=
@@ -218,8 +274,7 @@ Qed.
 End fact_for.
 
 Section fibonacci.
-Variable M : typedStoreMonad.
-Local Notation coq_type := (hierarchy.coq_type (MonadTypedStore.sort M)).
+Variables (N : monad) (M : typedStoreMonad N).
 
 Fixpoint fibo_rec n :=
   if n is m.+1 then
@@ -271,6 +326,7 @@ under eq_bind do rewrite cchknewput.
 rewrite cnewput.
 by under eq_bind do rewrite cnewput.
 Qed.
+
 End fibonacci.
 
 End CoqTypeNat.
@@ -444,18 +500,13 @@ Fixpoint coq_type63 (T : ml_type) : Type :=
 End with_monad.
 (******************************************************************************)
 
-(* Standard definition *)
 HB.instance Definition _ := @isML_universe.Build ml_type
   (Equality.class ml_type_eqType) coq_type63 ml_unit val_nonempty.
 
-(* Alternative: use [coq_type63 idfun] (monad_model.v) *)
-(*HB.instance Definition _ := @isML_universe.Build ml_type
-  (Equality.class ml_type_eqType) (fun M => @coq_type63 idfun)
-  ml_unit (fun M => val_nonempty idfun).*)
-
 Section fact_for_int63.
-Variable M : typedStoreMonad ml_type monad_model.locT_nat.
-Local Notation coq_type := (hierarchy.coq_type (MonadTypedStore.sort M)).
+Variable N : monad.
+Variable M : typedStoreMonad ml_type N monad_model.locT_nat.
+Local Notation coq_type := (hierarchy.coq_type N).
 Local Open Scope do_notation.
 
 Section forloop63.
@@ -573,7 +624,7 @@ End fact_for_int63.
 Section eval.
 Require Import typed_store_model.
 
-Definition M := [the typedStoreMonad ml_type monad_model.locT_nat of
+Definition M := [the typedStoreMonad ml_type _ monad_model.locT_nat of
                  acto ml_type].
 
 Definition Env := typed_store_model.Env ml_type.
@@ -598,8 +649,19 @@ Eval vm_compute in it1.
 Definition it2 := Restart it1 (do l <- FromW l; incr l).
 Eval vm_compute in it2.
 
-Definition it3 := Restart it2 (fact_for63 _ 5)%uint63.
+Definition it3 := Restart it2 (fact_for63 M M 5)%uint63.
 Eval vm_compute in it3.
+
+Definition AppM {A B} (f : M (A -> M B)) (x : A) := do f <- f; f x.
+
+Definition omega (T : ml_type) (n : coq_type T) : M (coq_type T) :=
+  do r_1 <- cnew (ml_arrow T T) (fun x : coq_type T => Ret (x : coq_type T));
+  let delta (i : coq_type T) : M (coq_type T) :=
+    AppM (cget r_1) i in
+  do _ <- cput r_1 delta; delta n.
+
+Definition it_omega := Restart it3 (omega ml_unit tt).
+Fail Timeout 1 Eval vm_compute in it_omega.
 
 End eval.
 

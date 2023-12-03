@@ -92,7 +92,7 @@ Variables (S : UU0) (M : monad).
 
 Definition MS := fun A : UU0 => S -> M (A * S)%type.
 
-Definition retS : FId ~~> MS := fun (A : UU0) => curry Ret.
+Definition retS : idfun ~~> MS := fun A : UU0 => curry Ret.
 
 Definition bindS (A B : UU0) (m : MS A) f : MS B := fun s => m s >>= uncurry f.
 
@@ -130,18 +130,17 @@ Definition liftS (A : UU0) (m : M A) : MS A :=
 
 Let retliftS : MonadMLaws.ret liftS.
 Proof.
-move=> A; rewrite /liftS; apply boolp.funext => a /=; apply boolp.funext => s /=.
+move=> A; rewrite /liftS; apply: boolp.funext => a /=; apply: boolp.funext => s /=.
 by rewrite bindretf.
 Qed.
 
 Let bindliftS : MonadMLaws.bind liftS.
 Proof.
-move=> A B m f; rewrite {1}/liftS; apply boolp.funext => s.
+move=> A B m f; rewrite {1}/liftS; apply: boolp.funext => s.
 rewrite [in LHS]bindA.
-transitivity ((liftS m s) >>= (uncurry (@liftS B \o f))) => //.
+transitivity (liftS m s >>= uncurry (@liftS B \o f)) => //.
 rewrite [in RHS]bindA.
-bind_ext => a.
-by rewrite [in RHS]bindretf.
+by under [RHS]eq_bind do rewrite bindretf.
 Qed.
 
 HB.instance Definition _ := isMonadM_ret_bind.Build
@@ -153,7 +152,7 @@ Lemma MS_bindE [S : UU0] [M : monad] [A B : UU0] (m : MS S M A) (f : A -> MS S M
   (m >>= f) s = m s >>= uncurry f.
 Proof. by []. Qed.
 
-Definition stateT (S : UU0) := fun M => [the monad of MS S M].
+Definition stateT (S : UU0) : monad -> monad := MS S.
 
 HB.instance Definition _ (S : UU0) := isMonadT.Build
   (stateT S) (@liftS S).
@@ -166,18 +165,17 @@ Definition mapStateT2 (A S : UU0) (N1 N2 N3 : monad)
 Section stateMonad_of_stateT.
 Variables (S : UU0) (M : monad).
 
-Local Notation M' := (MS S M).
-Let Put : S -> M' unit := fun s _ => Ret (tt, s).
-Let Get : M' S := fun s => Ret (s, s).
+Let Put : S -> MS S M unit := fun s _ => Ret (tt, s).
+Let Get : MS S M S := fun s => Ret (s, s).
 
-Let bindputput (s s' : S) : Put s >> Put s' = Put s'.
+Let bindputput s s' : Put s >> Put s' = Put s'.
 Proof.
-rewrite bindE /= /bindS.
-apply boolp.funext => s0.
+rewrite /Ret.
+rewrite bindE /= /bindS; apply: boolp.funext => s0.
 by rewrite MS_mapE bind_fmap bindretf.
 Qed.
 
-Let bindputget (s : S) : Put s >> Get = Put s >> Ret s.
+Let bindputget s : Put s >> Get = Put s >> Ret s.
 Proof.
 rewrite !bindE !MS_mapE /= /bindS.
 apply boolp.funext => s'.
@@ -214,7 +212,7 @@ Variables (Z : UU0) (* the type of exceptions *) (M : monad).
 Definition MX := fun X : UU0 => M (Z + X)%type.
 
 (* unit and bind operator of the transformed monad *)
-Definition retX : FId ~~> MX := fun X x => Ret (inr x).
+Definition retX : idfun ~~> MX := fun X x => Ret (inr x).
 
 Definition bindX X Y (t : MX X) (f : X -> MX Y) : MX Y :=
   t >>= fun c => match c with inl z => Ret (inl z) | inr x => f x end.
@@ -334,7 +332,7 @@ Variables (R : UU0) (M : monad).
 
 Definition MEnv := fun A : UU0 => R -> M A.
 
-Definition retEnv : FId ~~> MEnv := fun (A : UU0) a r => Ret a.
+Definition retEnv : idfun ~~> MEnv := fun (A : UU0) a r => Ret a.
 
 Definition bindEnv A B (m : MEnv A) f : MEnv B :=
   fun r => m r >>= (fun a => f a r).
@@ -386,7 +384,7 @@ Variables (R : UU0) (M : monad).
 
 Definition MO (X : UU0) := M (X * seq R)%type.
 
-Definition retO : FId ~~> MO := fun (A : UU0) a => Ret (a, [::]).
+Definition retO : idfun ~~> MO := fun (A : UU0) a => Ret (a, [::]).
 
 Definition bindO A B (m : MO A) (f : A -> MO B) : MO B :=
   m >>= (fun o => let: (x, w) := o in f x >>=
@@ -460,7 +458,7 @@ Variables (r : UU0) (M : monad).
 
 Definition MC : UU0 -> UU0 := fun A => (A -> M r) -> M r %type.
 
-Definition retC : FId ~~> MC := fun (A : UU0) (a : A) k => k a.
+Definition retC : idfun ~~> MC := fun (A : UU0) (a : A) k => k a.
 
 Definition bindC A B (m : MC A) f : MC B := fun k => m (f^~ k).
 
@@ -823,8 +821,7 @@ End uniform_algebraic_lifting.
 
 HB.mixin Record isFunctorial (t : monad -> monad) := {
   hmap : forall {M N : monad}, (M ~> N) -> t M ~> t N ;
-  functorial_id : forall M : monad,
-    hmap [the _ ~> _ of NId M] = [the _ ~> _ of NId (t M)] ;
+  functorial_id : forall M : monad, hmap (NId M) = NId (t M) ;
   functorial_o : forall (M N P : monad) (t : M ~> N) (s : N ~> P),
     hmap (s \v t) = hmap s \v hmap t }.
 
@@ -871,8 +868,7 @@ Qed.
 HB.instance Definition hmapX (F G : monad) (tau : F ~> G) :=
   isNatural.Build (T F) (T G) (hmapX' tau) (naturality_hmapX' tau).
 
-Let hmapX_NId (M : monad) :
-  [the _ ~> _ of hmapX' [the _ ~> _ of NId M]] = [the _ ~> _ of NId (T M)].
+Let hmapX_NId (M : monad) : [the _ ~> _ of hmapX' (NId M)] = NId (T M).
 Proof. by apply/nattrans_ext => A. Qed.
 
 Let hmapX_v (M N P : monad) (t : M ~> N) (s : N ~> P) :
@@ -951,9 +947,8 @@ Qed.
 HB.instance Definition _ (F G : monad) (tau : F ~> G) := isNatural.Build
   (T F) (T G) (hmapS tau) (naturality_hmapS tau).
 
-Let hmapS_NId (M : monad) :
-  [the _ ~> _ of hmapS [the _ ~> _ of NId M]] = [the _ ~> _ of NId (T M)].
-Proof. by apply/nattrans_ext. Qed.
+Let hmapS_NId (M : monad) : [the _ ~> _ of hmapS (NId M)] = NId (T M).
+Proof. exact/nattrans_ext. Qed.
 
 Let hmapS_v (M N P : monad) (t : M ~> N) (s : N ~> P) :
   [the _ ~> _ of hmapS (s \v t)] =
@@ -1048,9 +1043,8 @@ Qed.
 HB.instance Definition _ (F G : monad) (tau : F ~> G) :=
   isNatural.Build (T F) (T G) (hmapEnv tau) (naturality_hmapEnv tau).
 
-Let hmapEnv_NId (M : monad) :
-  [the _ ~> _ of hmapEnv [the _ ~> _ of NId M]] = [the _ ~> _ of NId (T M)].
-Proof. by apply nattrans_ext. Qed.
+Let hmapEnv_NId (M : monad) : [the _ ~> _ of hmapEnv (NId M)] = NId (T M).
+Proof. exact/nattrans_ext. Qed.
 
 Let hmapEnv_v (M N P : monad) (t : M ~> N) (s : N ~> P) :
   [the _ ~> _ of hmapEnv (s \v t)] =
@@ -1112,9 +1106,8 @@ Qed.
 HB.instance Definition _ (F G : monad) (tau : F ~> G) :=
   isNatural.Build (T F) (T G) (hmapO tau) (naturality_hmapO tau).
 
-Let hmapO_NId (M : monad) :
-  [the _ ~> _ of hmapO [the _ ~> _ of NId M]] = [the _ ~> _ of NId (T M)].
-Proof. by apply nattrans_ext. Qed.
+Let hmapO_NId (M : monad) : [the _ ~> _ of hmapO (NId M)] = NId (T M).
+Proof. exact/nattrans_ext. Qed.
 
 Let hmapO_v (M N P : monad) (t : M ~> N) (s : N ~> P) :
   [the _ ~> _ of hmapO (s \v t)] =

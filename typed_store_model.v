@@ -32,6 +32,11 @@ Record binding (M : Type -> Type) :=
 Arguments mkbind {M bind_type}.
 
 Definition M0 Env (T : UU0) := MS Env option_monad T.
+(* The use of MS (MonadState transformer) is only for endowing a MonadExcept
+   structure to the type function
+   Definition M0 Env (T : UU0) : UU0 := Env -> option_monad (T * Env).
+   The fail operation is used in the constructions below, while
+   no operations provided by the additional MonadState structure are used. *)
 
 End ModelTypedStore.
 
@@ -57,13 +62,15 @@ Local Notation val_nonundef := (val_nonempty MLU).
 
 Definition def := mkbind (@val_nonempty MLU M).
 
+Local Notation ml_type := (MLU : Type).
+
 Local Notation nth_error := List.nth_error.
 
 Definition extend_env T (v : coq_type T) (e : Env) :=
   mkEnv (rcons (ofEnv e) (mkbind v)).
-Definition fresh_loc (T : MLU) (e : Env) := mkloc T (sizeEnv e).
+Definition fresh_loc (T : ml_type) (e : Env) := mkloc T (sizeEnv e).
 
-Local Notation loc := (@loc MLU locT_nat).
+Local Notation loc := (@loc ml_type locT_nat).
 
 Let cnew T (v : coq_type T) : M (loc T) :=
   fun e => inr (fresh_loc T e, extend_env v e).
@@ -161,7 +168,7 @@ rewrite !bind_cnew /fresh_loc /extend_env /= size_rcons.
 Abort.
 *)
 
-Variant nth_error_spec (T : MLU) (e : Env) (r : loc T) : Type :=
+Variant nth_error_spec (T : ml_type) (e : Env) (r : loc T) : Type :=
   | NthError : forall s : coq_type T,
     nth_error (ofEnv e) (loc_id r) = Some (mkbind s) -> nth_error_spec e r
   | NthError_nocoerce : forall T' (s' : coq_type T'),
@@ -169,7 +176,7 @@ Variant nth_error_spec (T : MLU) (e : Env) (r : loc T) : Type :=
     nth_error_spec e r
   | NthError_None : nth_error (ofEnv e) (loc_id r) = None -> nth_error_spec e r.
 
-Lemma ntherrorP (T : MLU) (e : Env) (r : loc T) : nth_error_spec e r.
+Lemma ntherrorP (T : ml_type) (e : Env) (r : loc T) : nth_error_spec e r.
 Proof.
 case H : (nth_error (ofEnv e) (loc_id r)) => [[T' s']|].
   have [Ts'|Ts'] := boolP (coercible T s').
@@ -243,7 +250,7 @@ have [s' H|T' s' H Ts'|H] := ntherrorP e r.
 - by rewrite 2!MS_bindE None_cput.
 Qed.
 
-Lemma Some_cputput (T : MLU) (r : loc T) (s s' : coq_type T)
+Lemma Some_cputput (T : ml_type) (r : loc T) (s s' : coq_type T)
   (e : Env) (s'' : coq_type T) :
   nth_error (ofEnv e) (loc_id r) = Some (mkbind s'') ->
   (cput r s >> cput r s') e = cput r s' e.
@@ -502,16 +509,7 @@ Let crunnew (A : UU0) T (m : M A) (s : A -> coq_type T) :
   crun m -> crun (m >>= fun x => cnew (s x)).
 Proof. by rewrite /crun /= MS_bindE; case: (m _) => // -[]. Qed.
 
-Let crunnewget (A : UU0) T (m : M A) (s : A -> coq_type T) :
-  crun m -> crun (m >>= fun x => cnew (s x) >>= @cget T).
-Proof.
-rewrite /crun /= MS_bindE.
-case: (m _) => // -[a e] _.
-by under eq_bind do under eq_uncurry do
-  rewrite -(bindmret (_ >>= _)) bindA cnewget.
-Qed.
-
-Let crungetnew (A : UU0) T1 T2 (m : M A) (r : A -> loc T1)
+Let crunnewgetC (A : UU0) T1 T2 (m : M A) (r : A -> loc T1)
   (s : A -> coq_type T2) :
   crun (m >>= fun x => cget (r x)) ->
   crun (m >>= fun x => cnew (s x) >> cget (r x)).
@@ -539,15 +537,25 @@ subst T'.
 by rewrite !coerce_Some.
 Qed.
 
+Let crunmskip (A : UU0) (m : M A) : crun (m >> skip) = crun m :> bool.
+Proof.
+rewrite /crun /= !bindE /= /bindS !MS_mapE /= !fmapE /= !bindA.
+by case Hm: (m _) => [|[]].
+Qed.
+
 HB.instance Definition _ := Monad.on M.
 HB.instance Definition isMonadTypedStoreModel :=
-  isMonadTypedStore.Build _ _ M cnewget cnewput cgetput cgetputskip
+  isMonadTypedStore.Build _ M _ M cnewget cnewput cgetput cgetputskip
     cgetget cputget cputput cgetC cgetnewD cgetnewE cgetputC cputC
     cputgetC cputnewC
-    crunret crunskip crunnew crunnewget crungetnew crungetput.
+    crunret crunskip crunnew crunnewgetC crungetput crunmskip.
+
+(* HB.instance Definition _ := MonadState.on M.
+ (* this instantiation succeeds, but is of no use for now *) *)
+(* Fail Check [the exceptMonad of M].  (* and this simply fails *) *)
 
 (* To restart computations *)
-Definition W (A : UU0) : UU0 := unit + (A * Env).
+Definition W (A : UU0) : UU0 := option_monad (A * Env).
 
 Definition Restart A B (r : W A) (f : M B) : W B :=
   if r is inr (_, env) then f env else inl tt.

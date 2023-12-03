@@ -4,7 +4,7 @@ Require Import Reals.
 From mathcomp Require Import all_ssreflect.
 From mathcomp Require Import boolp classical_sets.
 From mathcomp Require Import finmap.
-From infotheo Require Import Reals_ext classical_sets_ext Rbigop ssrR ssr_ext.
+From infotheo Require Import Reals_ext classical_sets_ext ssrR ssr_ext.
 From infotheo Require Import fdist fsdist convex necset.
 Require Import monae_lib.
 From HB Require Import structures.
@@ -764,7 +764,7 @@ congr fsdistbind.
 by apply funext => x; rewrite fsdist1bind.
 Qed.
 
-Lemma RetE T : (Ret : FId T -> N T) = (Ret : FId T -> M T).
+Lemma RetE T : (Ret : idfun T -> N T) = (Ret : FId T -> M T).
 Proof.
 apply funext => t /=.
 rewrite /ret_.

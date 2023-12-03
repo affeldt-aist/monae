@@ -3,9 +3,11 @@
 Ltac typeof X := type of X.
 
 Require Import ssrmatching Reals JMeq.
-From mathcomp Require Import all_ssreflect.
+From mathcomp Require Import all_ssreflect ssralg ssrnum.
 From mathcomp Require boolp.
+From mathcomp Require Import mathcomp_extra Rstruct reals.
 From infotheo Require Import Reals_ext.
+From infotheo Require Import realType_ext.
 Require Import monae_lib.
 From HB Require Import structures.
 
@@ -21,7 +23,6 @@ From HB Require Import structures.
 (* Module FunctorLaws == map laws of a functor                                *)
 (*            functor == type of functors                                     *)
 (*              F # g == application of the functor F to the morphism g       *)
-(*                FId == notation for the identity functor                    *)
 (*             F ~> G == natural transformation from functor F to functor G   *)
 (*            f ~~> g == forall A, f A -> g A, notation used for the          *)
 (*                       components of a natural transformation               *)
@@ -32,7 +33,7 @@ From HB Require Import structures.
 (*                >>= == notation for the standard bind operator              *)
 (*             m >> f := m >>= (fun _ => f)                                   *)
 (*              monad == type of monads                                       *)
-(*                Ret == natural transformation FId ~> M for a monad M        *)
+(*                Ret == natural transformation idfun ~> M for a monad M      *)
 (*               Join == natural transformation M \o M ~> M for a monad M     *)
 (*    Module BindLaws == bind laws of a monad                                 *)
 (*                                                                            *)
@@ -42,10 +43,10 @@ From HB Require Import structures.
 (*           altMonad == monad with nondeterministic choice                   *)
 (*       prePlusMonad == nondeterminism + failR0 + distributivity             *)
 (*          plusMonad == preplusMonad + commutativity and idempotence         *)
-(*         altCIMonad == monadAlt + commutativity + idempotence               *)
-(*        nondetMonad == monadFail + monadAlt                                 *)
-(*      nondetCIMonad == monadFail + monadAltCI                               *)
-(*        exceptMonad == monadFail + catch                                    *)
+(*         altCIMonad == altMonad + commutativity + idempotence               *)
+(*        nondetMonad == failMonad + altMonad                                 *)
+(*      nondetCIMonad == failMOnad + altCIMonad                               *)
+(*        exceptMonad == failMonad + catch                                    *)
 (*                                                                            *)
 (* Control monads (wip):                                                      *)
 (*   contMonad, shiftresetMonad, jumpMonad                                    *)
@@ -77,9 +78,9 @@ From HB Require Import structures.
 (*  stateTraceReifyMonad == stateTrace + reify                                *)
 (*                                                                            *)
 (* Probability monads:                                                        *)
-(*         probaMonad == probabilistic choice and bind left-distributes over  *)
+(*          probMonad == probabilistic choice and bind left-distributes over  *)
 (*                       choice                                               *)
-(*        probDrMonad == probaMonad + bind right-distributes over choice      *)
+(*        probDrMonad == probMonad + bind right-distributes over choice       *)
 (*       altProbMonad == combined (probabilistic and nondeterministic) choice *)
 (*    exceptProbMonad == exceptions + probabilistic choice                    *)
 (*                                                                            *)
@@ -152,10 +153,7 @@ Let id_comp : FunctorLaws.comp id_actm. Proof. by []. Qed.
 HB.instance Definition _ := isFunctor.Build idfun id_id id_comp.
 End functorid.
 
-(* NB: consider eliminating? *)
-Notation FId := [the functor of idfun].
-
-Lemma FIdE (A B : UU0) (f : A -> B) : FId # f = f. Proof. by []. Qed.
+Lemma FIdE (A B : UU0) (f : A -> B) : idfun # f = f. Proof. by []. Qed.
 
 Section functor_composition.
 Variables f g : functor.
@@ -288,23 +286,25 @@ Qed.*)
 Module JoinLaws.
 Section join_laws.
 Context {F : functor}.
-Variables (ret : FId ~> F) (join : F \o F ~~> F).
+Variables (ret : idfun ~~> F) (join : F \o F ~~> F).
+Arguments ret {_}.
+Arguments join {A}.
 
-Definition left_unit := forall A, @join A \o ret (F A) = id :> (F A -> F A).
+Definition left_unit := forall A, join \o ret = id :> (F A -> F A).
 
-Definition right_unit := forall A, @join A \o F # ret A = id :> (F A -> F A).
+Definition right_unit := forall A, join \o F # ret = id :> (F A -> F A).
 
-Definition associativity :=
-  forall A, @join A \o F # @join A = @join A \o @join (F A) :> (F (F (F A)) -> F A).
+Definition associativity := forall A,
+  join \o F # join = join \o join :> (F (F (F A)) -> F A).
 
 End join_laws.
 End JoinLaws.
 
 HB.mixin Record isMonad (F : UU0 -> UU0) of Functor F := {
-  ret : FId ~> F ;
+  ret : idfun ~> F ;
   join : F \o F ~> F ;
   bind : forall (A B : UU0), F A -> (A -> F B) -> F B ;
-  __bindE : forall (A B : UU0) (f : A -> F B) (m : F A),
+  bindE : forall (A B : UU0) (f : A -> F B) (m : F A),
     bind A B m f = join B ((F # f) m) ;
   joinretM : JoinLaws.left_unit ret join ;
   joinMret : JoinLaws.right_unit ret join ;
@@ -313,14 +313,12 @@ HB.mixin Record isMonad (F : UU0 -> UU0) of Functor F := {
 #[short(type=monad)]
 HB.structure Definition Monad := {F of isMonad F &}.
 
+(* we introduce Ret as a way to make the second arguments of ret implicit,
+   o.w. Coq won't let us *)
 Notation Ret := (@ret _ _).
 Notation Join := (@join _ _).
 Arguments bind {s A B} : simpl never.
 Notation "m >>= f" := (bind m f) : monae_scope.
-
-Lemma bindE (F : monad) (A B : UU0) (f : A -> F B) (m : F A) :
-  m >>= f = join B ((F # f) m).
-Proof. by rewrite __bindE. Qed.
 
 Lemma eq_bind (M : monad) (A B : UU0) (m : M A) (f1 f2 : A -> M B) :
   f1 =1 f2 -> m >>= f1 = m >>= f2.
@@ -384,7 +382,7 @@ Definition bind_of_join (F : functor) (j : F \o F ~~> F)
   j B ((F # f) m).
 
 Section from_join_laws_to_bind_laws.
-Variable (F : functor) (ret : FId ~> F) (join : [the functor of F \o F] ~> F).
+Variable (F : functor) (ret : idfun ~> F) (join : F \o F ~> F).
 
 Hypothesis joinretM : JoinLaws.left_unit ret join.
 Hypothesis joinMret : JoinLaws.right_unit ret join.
@@ -411,8 +409,8 @@ Qed.
 End from_join_laws_to_bind_laws.
 
 HB.factory Record isMonad_ret_join (F : UU0 -> UU0) of isFunctor F := {
-  ret : FId ~> [the functor of F] ;
-  join : [the functor of F \o F] ~> [the functor of F] ;
+  ret : idfun ~> F ;
+  join : F \o F ~> F ;
   joinretM : JoinLaws.left_unit ret join ;
   joinMret : JoinLaws.right_unit ret join ;
   joinA : JoinLaws.associativity join }.
@@ -432,15 +430,15 @@ HB.instance Definition _ := isMonad.Build M bindE joinretM joinMret joinA.
 HB.end.
 
 HB.factory Record isMonad_ret_bind (F : UU0 -> UU0) := {
-  ret' : forall (A : UU0), A -> F A ;
+  ret : forall (A : UU0), A -> F A ;
   bind : forall (A B : UU0), F A -> (A -> F B) -> F B ;
-  bindretf : BindLaws.left_neutral bind ret' ;
-  bindmret : BindLaws.right_neutral bind ret' ;
+  bindretf : BindLaws.left_neutral bind ret ;
+  bindmret : BindLaws.right_neutral bind ret ;
   bindA : BindLaws.associative bind }.
 
 HB.builders Context M of isMonad_ret_bind M.
 
-Let actm (a b : UU0) (f : a -> b) m := bind m (@ret' _ \o f).
+Let actm (a b : UU0) (f : a -> b) m := bind m (@ret _ \o f).
 
 Let actm_id : FunctorLaws.id actm.
 Proof.
@@ -463,7 +461,7 @@ HB.instance Definition _ := isFunctor.Build M actm_id actm_comp.
 Let F := [the functor of M].
 Local Notation FF := [the functor of F \o F].
 
-Let ret'_naturality : naturality FId F ret'.
+Let ret_naturality : naturality idfun F ret.
 Proof.
 move=> a b h.
 rewrite FIdE /hierarchy.actm /= /actm; apply: boolp.funext => m /=.
@@ -471,8 +469,7 @@ by rewrite bindretf.
 Qed.
 
 HB.instance Definition _ :=
-  isNatural.Build FId F (ret' : FId ~~> F) ret'_naturality.
-Let ret := [the FId ~> F of ret'].
+  isNatural.Build idfun F (ret : idfun ~~> F) ret_naturality.
 
 Let join' : FF ~~> F := fun _ m => bind m idfun.
 
@@ -520,7 +517,7 @@ move=> a; apply: boolp.funext => m.
 rewrite /join /= /join'.
 rewrite /hierarchy.actm /= /actm /=.
 rewrite bindA /=.
-rewrite [X in bind m X](_ : _ = fun x => ret' x) ?bindmret //=; apply: boolp.funext => ?.
+rewrite [X in bind m X](_ : _ = fun x => ret x) ?bindmret //=; apply: boolp.funext => ?.
 by rewrite bindretf.
 Qed.
 
@@ -710,9 +707,9 @@ Notation "m <=< n" := (kleisli m n) : monae_scope.
 Notation "m >=> n" := (kleisli n m) : monae_scope.
 
 HB.mixin Record isMonadFail (M : UU0 -> UU0) of Monad M := {
-  fail : forall A : UU0, M A;
+  fail : forall A : UU0, M A ;
     (* exceptions are left-zeros of sequential composition *)
-  bindfailf : BindLaws.left_zero (@bind [the monad of M]) fail
+  bindfailf : BindLaws.left_zero (@bind M) fail
     (* fail A >>= f = fail B *) }.
 
 #[short(type=failMonad)]
@@ -788,7 +785,7 @@ HB.mixin Record isMonadAlt (M : UU0 -> UU0) of Monad M := {
   alt : forall T : UU0, M T -> M T -> M T ;
   altA : forall T : UU0, associative (@alt T) ;
   (* composition distributes leftwards over choice *)
-  alt_bindDl : BindLaws.left_distributive (@bind [the monad of M]) alt
+  alt_bindDl : BindLaws.left_distributive (@bind M) alt
 (* in general, composition does not distribute rightwards over choice *)
 (* NB: no bindDr to accommodate both angelic and demonic interpretations of
    nondeterminism *) }.
@@ -799,8 +796,8 @@ HB.structure Definition MonadAlt := {M of isMonadAlt M & }.
 Notation "a [~] b" := (@alt _ _ a b). (* infix notation *)
 
 HB.mixin Record isMonadAltCI (M : UU0 -> UU0) of MonadAlt M := {
-  altmm : forall A : UU0, idempotent (@alt [the altMonad of M] A) ;
-  altC : forall A : UU0, commutative (@alt [the altMonad of M] A) }.
+  altmm : forall A : UU0, idempotent (@alt M A) ;
+  altC : forall A : UU0, commutative (@alt M A) }.
 
 #[short(type=altCIMonad)]
 HB.structure Definition MonadAltCI := {M of isMonadAltCI M & }.
@@ -823,12 +820,8 @@ Proof. move=> x y z t; rewrite !altA; congr (_ [~] _); by rewrite altAC. Qed.
 End altci_lemmas.
 
 HB.mixin Record isMonadNondet (M : UU0 -> UU0) of MonadFail M & MonadAlt M := {
-  altfailm :
-    @BindLaws.left_id [the functor of M] (@fail [the failMonad of M])
-                                         (@alt [the altMonad of M]);
-  altmfail :
-    @BindLaws.right_id [the functor of M] (@fail [the failMonad of M])
-                                          (@alt [the altMonad of M]) }.
+  altfailm : @BindLaws.left_id M (@fail M) (@alt M) ;
+  altmfail : @BindLaws.right_id M (@fail M) (@alt M) }.
 
 #[short(type=nondetMonad)]
 HB.structure Definition MonadNondet :=
@@ -858,7 +851,7 @@ HB.structure Definition MonadFailR0 := {M of isMonadFailR0 M & }.
 
 HB.mixin Record isMonadPrePlus (M : UU0 -> UU0)
     of MonadNondet M & MonadFailR0 M :=
-  { alt_bindDr : BindLaws.right_distributive (@bind [the monad of M]) alt }.
+  { alt_bindDr : BindLaws.right_distributive (@bind M) alt }.
 
 #[short(type=prePlusMonad)]
 HB.structure Definition MonadPrePlus := {M of isMonadPrePlus M & }.
@@ -1073,7 +1066,7 @@ HB.mixin Record isMonadArray (S : UU0) (I : eqType) (M : UU0 -> UU0)
   agetC : forall i j (A : UU0) (k : S -> S -> M A),
     aget i >>= (fun u => aget j >>= (fun v => k u v)) =
     aget j >>= (fun v => aget i >>= (fun u => k u v)) ;
-  aputC : forall i j u v, (i != j) \/ (u = v) ->
+  aputC : forall i j u v, i != j \/ u = v ->
     aput i u >> aput j v = aput j v >> aput i u ;
   aputgetC : forall i j u (A : UU0) (k : S -> M A), i != j ->
     aput i u >> aget j >>= k =
@@ -1103,56 +1096,56 @@ HB.structure Definition ML_UNIVERSE := {ml_type & isML_universe ml_type}.
 
 Canonical isML_universe_eqType (T : ML_universe) := EqType T eqclass.
 
-HB.mixin Record isMonadTypedStore (MLU : ML_universe) (locT : eqType) (M : UU0 -> UU0)
-    of Monad M := {
-  cnew : forall {T : MLU}, coq_type M T -> M (loc locT T) ;
-  cget : forall {T}, loc locT T -> M (coq_type M T) ;
-  cput : forall {T}, loc locT T -> coq_type M T -> M unit ;
+HB.mixin Record isMonadTypedStore (MLU : ML_universe) (N : monad) (locT : eqType)
+    (M : UU0 -> UU0) of Monad M := {
+  cnew : forall {T : MLU}, coq_type N T -> M (loc locT T) ;
+  cget : forall {T}, loc locT T -> M (coq_type N T) ;
+  cput : forall {T}, loc locT T -> coq_type N T -> M unit ;
   crun : forall {A : UU0}, M A -> option A ; (* execute in empty store *)
-  cnewget : forall T (s : coq_type M T) A (k : loc locT T -> coq_type M T -> M A),
+  cnewget : forall T (s : coq_type N T) A (k : loc locT T -> coq_type N T -> M A),
     cnew s >>= (fun r => cget r >>= k r) = cnew s >>= (fun r => k r s) ;
-  cnewput : forall T (s t : coq_type M T) A (k : loc locT T -> M A),
+  cnewput : forall T (s t : coq_type N T) A (k : loc locT T -> M A),
       cnew s >>= (fun r => cput r t >> k r) = cnew t >>= k ;
-  cgetput : forall T (r : loc locT T) (s : coq_type M T),
+  cgetput : forall T (r : loc locT T) (s : coq_type N T),
       cget r >> cput r s = cput r s ;
   cgetputskip : forall T (r : loc locT T), cget r >>= cput r = cget r >> skip ;
   cgetget :
-    forall T (r : loc locT T) (A : UU0) (k : coq_type M T -> coq_type M T -> M A),
+    forall T (r : loc locT T) (A : UU0) (k : coq_type N T -> coq_type N T -> M A),
     cget r >>= (fun s => cget r >>= k s) = cget r >>= fun s => k s s ;
   cputget :
-    forall T (r : loc locT T) (s : coq_type M T) (A : UU0) (k : coq_type M T -> M A),
+    forall T (r : loc locT T) (s : coq_type N T) (A : UU0) (k : coq_type N T -> M A),
       cput r s >> (cget r >>= k) = cput r s >> k s ;
-  cputput : forall T (r : loc locT T) (s s' : coq_type M T),
+  cputput : forall T (r : loc locT T) (s s' : coq_type N T),
     cput r s >> cput r s' = cput r s' ;
   cgetC :
     forall T1 T2 (r1 : loc locT T1) (r2 : loc locT T2) (A : UU0)
-           (k : coq_type M T1 -> coq_type M T2 -> M A),
+           (k : coq_type N T1 -> coq_type N T2 -> M A),
     cget r1 >>= (fun u => cget r2 >>= (fun v => k u v)) =
     cget r2 >>= (fun v => cget r1 >>= (fun u => k u v)) ;
   cgetnewD :
-    forall T T' (r : loc locT T) (s : coq_type M T') A
-           (k : loc locT T' -> coq_type M T -> coq_type M T -> M A),
+    forall T T' (r : loc locT T) (s : coq_type N T') A
+           (k : loc locT T' -> coq_type N T -> coq_type N T -> M A),
       cget r >>= (fun u => cnew s >>= (fun r' => cget r >>= k r' u)) =
       cget r >>= (fun u => cnew s >>= (fun r' => k r' u u)) ;
-  cgetnewE : forall T1 T2 (r1 : loc locT T1) (s : coq_type M T2) (A : UU0)
+  cgetnewE : forall T1 T2 (r1 : loc locT T1) (s : coq_type N T2) (A : UU0)
                    (k1 k2 : loc locT T2 -> M A),
       (forall r2 : loc locT T2, loc_id r1 != loc_id r2 -> k1 r2 = k2 r2) ->
       cget r1 >> (cnew s >>= k1) = cget r1 >> (cnew s >>= k2) ;
-  cgetputC : forall T1 T2 (r1 : loc locT T1) (r2 : loc locT T2) (s : coq_type M T2),
+  cgetputC : forall T1 T2 (r1 : loc locT T1) (r2 : loc locT T2) (s : coq_type N T2),
       cget r1 >> cput r2 s = cput r2 s >> cget r1 >> skip ;
   cputC :
-    forall T1 T2 (r1 : loc locT T1) (r2 : loc locT T2) (s1 : coq_type M T1)
-           (s2 : coq_type M T2) (A : UU0),
+    forall T1 T2 (r1 : loc locT T1) (r2 : loc locT T2) (s1 : coq_type N T1)
+           (s2 : coq_type N T2) (A : UU0),
       loc_id r1 != loc_id r2 \/ JMeq s1 s2 ->
       cput r1 s1 >> cput r2 s2 = cput r2 s2 >> cput r1 s1 ;
   cputgetC :
-    forall T1 T2 (r1 : loc locT T1) (r2 : loc locT T2) (s1 : coq_type M T1)
-           (A : UU0) (k : coq_type M T2 -> M A),
+    forall T1 T2 (r1 : loc locT T1) (r2 : loc locT T2) (s1 : coq_type N T1)
+           (A : UU0) (k : coq_type N T2 -> M A),
       loc_id r1 != loc_id r2 ->
     cput r1 s1 >> cget r2 >>= k =
     cget r2 >>= (fun v => cput r1 s1 >> k v) ;
   cputnewC :
-    forall T T' (r : loc locT T) (s : coq_type M T) (s' : coq_type M T') A
+    forall T T' (r : loc locT T) (s : coq_type N T) (s' : coq_type N T') A
            (k : loc locT T' -> M A),
       cget r >> (cnew s' >>= fun r' => cput r s >> k r') =
       cput r s >> (cnew s' >>= k) ;
@@ -1160,28 +1153,28 @@ HB.mixin Record isMonadTypedStore (MLU : ML_universe) (locT : eqType) (M : UU0 -
       crun m -> crun (m >> Ret s) = Some s ;
   crunskip :
       crun skip = Some tt ;
-  crunnew : forall (A : UU0) T (m : M A) (s : A -> coq_type M T),
+  crunnew : forall (A : UU0) T (m : M A) (s : A -> coq_type N T),
       crun m -> crun (m >>= fun x => cnew (s x)) ;
-  crunnewget : forall (A : UU0) T (m : M A) (s : A -> coq_type M T),
-      crun m -> crun (m >>= fun x => cnew (s x) >>= cget) ;
-  crungetnew : forall (A : UU0) T1 T2 (m : M A) (r : A -> loc locT T1)
-                      (s : A -> coq_type M T2),
+  crunnewgetC : forall (A : UU0) T1 T2 (m : M A) (r : A -> loc locT T1)
+                      (s : A -> coq_type N T2),
       crun (m >>= fun x => cget (r x)) ->
       crun (m >>= fun x => cnew (s x) >> cget (r x)) ;
   crungetput : forall (A : UU0) T (m : M A) (r : A -> loc locT T)
-                      (s : A -> coq_type M T),
+                      (s : A -> coq_type N T),
       crun (m >>= fun x => cget (r x)) ->
       crun (m >>= fun x => cput (r x) (s x)) ;
- }.
+  crunmskip : forall (A : UU0) (m : M A),
+      crun (m >> skip) = crun m :> bool ;
+}.
 
 #[short(type=typedStoreMonad)]
-HB.structure Definition MonadTypedStore (ml_type : ML_universe) (locT : eqType) :=
-  { M of isMonadTypedStore ml_type locT M & isMonad M & isFunctor M }.
+HB.structure Definition MonadTypedStore (ml_type : ML_universe) (N : monad) (locT : eqType) :=
+  { M of isMonadTypedStore ml_type N locT M & isMonad M & isFunctor M }.
 
-Arguments cnew {ml_type locT s}.
-Arguments cget {ml_type locT s} [T].
-Arguments cput {ml_type locT s} [T].
-Arguments crun {ml_type locT s} [A].
+Arguments cnew {ml_type N locT s}.
+Arguments cget {ml_type N locT s} [T].
+Arguments cput {ml_type N locT s} [T].
+Arguments crun {ml_type N locT s} [A].
 
 HB.mixin Record isMonadTrace (T : UU0) (M : UU0 -> UU0) of Monad M :=
  { mark : T -> M unit }.
@@ -1228,35 +1221,83 @@ HB.structure Definition MonadStateTraceReify (S T : UU0) :=
   { M of isMonadStateTraceReify S T M & isFunctor M & isMonad M &
          isMonadReify S M & isMonadStateTrace S T M }.
 
+From infotheo Require Import convex.
+
 Local Open Scope reals_ext_scope.
-HB.mixin Record isMonadProb (M : UU0 -> UU0) of Monad M := {
-  choice : forall (p : prob) (T : UU0), M T -> M T -> M T ;
+(*
+HB.mixin Record isMonadConvex_ {R : realType} (M : UU0 -> UU0) of Monad M := {
+  convexity : forall T, isConvexSpace.axioms_ (M T)
+}.
+
+HB.structure Definition MonadConvex_ {R : realType} :=
+  {M of isMonadConvex_ R M}.
+
+HB.instance Definition _ {R : realType} (M : MonadConvex_.type R) (T : UU0) :=
+  @convexity R M T.
+
+HB.mixin Record isMonadProb {R : realType} (M : UU0 -> UU0) of MonadConvex_ R M := {
+  (* composition distributes leftwards over [probabilistic] choice *)
+  choice_bindDl :
+    forall p, BindLaws.left_distributive
+                 (@bind [the monad of M])
+                    (fun (T : UU0) => (@conv [the convType of (M T)] p)) }.*)
+
+HB.mixin Record isMonadConvex {R : realType} (M : UU0 -> UU0) of Monad M := {
+  choice : forall (p : {prob R}) (T : UU0), M T -> M T -> M T ;
   (* identity axioms *)
-  choice0 : forall (T : UU0) (a b : M T), choice 0%:pr _ a b = b ;
   choice1 : forall (T : UU0) (a b : M T), choice 1%:pr _ a b = a ;
   (* skewed commutativity *)
   choiceC : forall (T : UU0) p (a b : M T),
-    choice p _ a b = choice (p.~ %:pr) _ b a ;
+    choice p _ a b = choice (p.~%:pr) _ b a ;
   choicemm : forall (T : UU0) p, idempotent (@choice p T) ;
   (* quasi associativity *)
-  choiceA : forall (T : UU0) (p q r s : prob) (a b c : M T),
-    (p = r * s :> R /\ s.~ = p.~ * q.~)%R ->
-    (*NB: needed to preserve the notation in the resulting choiceA lemma*)
+  choiceA : forall (T : UU0) (p q r s : {prob R}) (a b c : M T),
+    choice p _ a (choice q _ b c) = choice [s_of p, q] _ (choice [r_of p, q] _ a b) c }.
+
+#[short(type=convexMonad)]
+HB.structure Definition MonadConvex {R : realType} := {M of isMonadConvex R M & }.
+Notation "a <| p |> b" := (choice p _ a b) : proba_monad_scope.
+Arguments choiceA {_} {_} {_} _ _ _ _ {_} {_} {_}.
+Arguments choiceC {_} {_} {_} _ _ _.
+Arguments choicemm {_} {_} {_} _.
+
+Local Open Scope proba_monad_scope.
+Lemma choice0 {R : realType} (M : convexMonad R) (T : UU0) (a b : M T) :
+  a <| 0%:pr |> b = b.
+Proof.
+rewrite choiceC/= [X in _ <| X |> _](_ : _ = 1%:pr) ?choice1//; apply/val_inj => /=.
+by rewrite mathcomp_extra.onem0.
+Qed.
+
+Lemma choiceA_alternative {R : realType} (M : convexMonad R) :
+  forall (T : UU0) (p q r s : {prob R}) (a b c : M T),
+    (p = (r : R) * (s : R) :> R /\ (Prob.p s).~ = (Prob.p p).~ * (Prob.p q).~)%R ->
     let bc := choice q _ b c in
     let ab := choice r _ a b in
-    choice p _ a bc = choice s _ ab c;
+    choice p _ a bc = choice s _ ab c.
+Proof.
+move=> T p q r s a b c [Hp Hs] bc ab.
+rewrite choiceA// (_ : [s_of p, q] = s); last first.
+  apply/val_inj => /=; rewrite s_of_pqE//.
+  by move/(congr1 (@onem _)) : Hs; rewrite onemK.
+have [->|s0] := eqVneq s 0%:pr; first by rewrite !choice0.
+rewrite (_ : [r_of p, q] = r)//.
+apply/val_inj => /=.
+rewrite r_of_pqE s_of_pqE. (* TODO: should be cleaner*)
+move/(congr1 (@onem _)) : Hs; rewrite onemK => <-.
+rewrite Hp.
+by rewrite -GRing.mulrA GRing.divff// GRing.mulr1.
+Qed.
+Arguments choiceA {_} {_} {_} _ _ _ _ {_} {_} {_}.
+
+HB.mixin Record isMonadProb {R : realType} (M : UU0 -> UU0) of MonadConvex R M := {
   (* composition distributes leftwards over [probabilistic] choice *)
-  choice_bindDl :
-    forall p, BindLaws.left_distributive (@bind [the monad of M]) (choice p) }.
+  choice_bindDl : forall p, BindLaws.left_distributive (@bind M) (choice p) }.
 
 #[short(type=probMonad)]
-HB.structure Definition MonadProb := {M of isMonadProb M & }.
-Notation "a <| p |> b" := (choice p _ a b) : proba_monad_scope.
-Arguments choiceA {_} {_} _ _ _ _ {_} {_} {_}.
-Arguments choiceC {_} {_} _ _ _.
-Arguments choicemm {_} {_} _.
+HB.structure Definition MonadProb {R : realType} := {M of isMonadProb R M & }.
 
-HB.mixin Record isMonadProbDr (M : UU0 -> UU0) of MonadProb M := {
+HB.mixin Record isMonadProbDr {R : realType} (M : UU0 -> UU0) of MonadProb R M := {
   (* composition distributes rightwards over [probabilistic] choice *)
   (* WARNING: this should not be asserted as an axiom in conjunction with
      distributivity of <||> over [] *)
@@ -1264,34 +1305,36 @@ HB.mixin Record isMonadProbDr (M : UU0 -> UU0) of MonadProb M := {
     forall p, BindLaws.right_distributive (@bind [the monad of M]) (choice p) }.
 
 #[short(type=probDrMonad)]
-HB.structure Definition MonadProbDr := {M of isMonadProbDr M & }.
+HB.structure Definition MonadProbDr {R : realType} := {M of isMonadProbDr R M & }.
 
-HB.mixin Record isMonadAltProb (M : UU0 -> UU0) of MonadAltCI M & MonadProb M :=
+HB.mixin Record isMonadAltProb {R : realType} (M : UU0 -> UU0)
+    of MonadAltCI M & MonadProb R M :=
   { choiceDr : forall T p, right_distributive
-      (@choice [the probMonad of M] p T) (fun a b => a [~] b) }.
+      (@choice R M p T) (fun a b => a [~] b) }.
 
 #[short(type=altProbMonad)]
-HB.structure Definition MonadAltProb :=
-  { M of isMonadAltProb M & isFunctor M & isMonad M & isMonadAlt M &
-         isMonadAltCI M & isMonadProb M }.
+HB.structure Definition MonadAltProb {R : realType} :=
+  { M of isMonadAltProb R M & isFunctor M & isMonad M & isMonadAlt M &
+         isMonadAltCI M & isMonadProb R M & isMonadConvex R M }.
 
 Section altprob_lemmas.
+Context {R : realType}.
 Local Open Scope proba_monad_scope.
-Variable (M : altProbMonad).
+Variable (M : altProbMonad R).
 Lemma choiceDl A p :
   left_distributive (fun x y : M A => x <| p |> y) (fun x y => x [~] y).
 Proof. by move=> x y z; rewrite !(choiceC p) choiceDr. Qed.
 End altprob_lemmas.
 
-HB.mixin Record isMonadExceptProb (M : UU0 -> UU0)
-    of MonadExcept M & MonadProb M := {
+HB.mixin Record isMonadExceptProb {R : realType} (M : UU0 -> UU0)
+    of MonadExcept M & MonadProb R M := {
   catchDl : forall (A : UU0) w,
-    left_distributive (@catch [the exceptMonad of M] A) (choice w A) }.
+    left_distributive (@catch M A) (choice w A) }.
 
 #[short(type=exceptProbMonad)]
-HB.structure Definition MonadExceptProb :=
-  { M of isMonadExceptProb M & isFunctor M & isMonad M & isMonadFail M &
-         isMonadExcept M & isMonadProb M }.
+HB.structure Definition MonadExceptProb {R : realType} :=
+  { M of isMonadExceptProb R M & isFunctor M & isMonad M & isMonadFail M &
+         isMonadExcept M & isMonadProb R M & isMonadConvex R M}.
 
 HB.mixin Record isMonadFresh (S : eqType) (M : UU0 -> UU0) of Monad M :=
   { fresh : M S }.

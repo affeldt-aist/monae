@@ -11,49 +11,52 @@ From Equations Require Import Equations.
 (******************************************************************************)
 (*     Definitions and lemmas using failure and nondeterministic monads       *)
 (*                                                                            *)
-(*                arb == arbitrary nondeterministic choice between booleans   *)
-(*              foldM                                                         *)
-(*      unfoldM p f y == generates a list a from a seed y, if p y holds the   *)
-(*                       generation stops,otherwise an element and a new seed *)
-(*                       of generated using f                                 *)
-(*              hyloM == [2, Sect. 5.1]                                       *)
-(*    arbitrary def s == nondeterministic choice of an element in the list s, *)
-(*                       def if the list is empty                             *)
-(*             subs s == subsequence of a list                                *)
-(*                       (ref: Sect. 3.1, gibbons2012utp)                     *)
-(*       nondetSyntax == syntax of nondeterministic monad                     *)
-(*                       (constructors: ndRet ndBind ndFail ndAlt)            *)
-(*         ndDenote x == semantics of x : nondetSyntax                        *)
-(*         insert a s == insert a in the list s nondeterministically          *)
-(*            iperm s == nondeterministic permutation of the list s, defined  *)
-(*                       as a Fixpoint using insert [1, Sect. 3]              *)
-(*           select s == nondeterministically splits the list s into a pair   *)
-(*                       of one chosen element and the rest [3, Sect. 4.4]    *)
-(*                       [2, Sect. 3.2]                                       *)
-(*          tselect s == same as select but returns a pair whose second       *)
-(*                       projection has type (size s).-1.-tuple A, useful to  *)
-(*                       write perms                                          *)
-(*            perms s == of type seq A -> M (seq A), nondeterministically     *)
-(*                       computes a permutation of s using (t)select          *)
-(*            uperm s == nondeterministically computes a permutation of s,    *)
-(*                       defined using unfoldM and select [2, Sect. 3.2]      *)
-(*        dassert p a == computation of type M {x | p x} that fails if a does *)
-(*                       not satisfy p or return a otherwise (with a proof    *)
-(*                       that is satisfies p)                                 *)
-(*           splits s == split a list nondeterministically                    *)
-(*                       type: seq A -> M (seq A * seq A) with M : plusMonad  *)
-(*      splits_bseq s == same as split with an enriched return type           *)
-(*                       M ((size s).-bseq A * (size s).-bseq A))             *)
-(*          dsplits s == same as split with an enriched return type           *)
-(*                       M {x : seq A * seq A | size x.1 + size x.2 == n}     *)
-(*            qperm s == permute the list s                                   *)
-(*                      type: seq A -> M (seq A) with M : plusMonad           *)
-(*   nondetPlus_sub m == m is a computation of the plusMonad that can be      *)
-(*                       written with the syntax of the nondeterministic monad*)
-(*         m1 `<=` m2 == m1 refines m2, i.e., every result of m1 is a         *)
-(*                       possible result of m2                                *)
-(*          f `<.=` g == refinement relation lifted to functions, i.e.,       *)
-(*                       forall x, f x `<=` g x                               *)
+(*                   arb == arbitrary nondeterministic choice between         *)
+(*                          booleans                                          *)
+(*                 foldM                                                      *)
+(*         unfoldM p f y == generates a list a from a seed y, if p y holds    *)
+(*                          the generation stops,otherwise an element and a   *)
+(*                          new seed of generated using f                     *)
+(*                 hyloM == [2, Sect. 5.1]                                    *)
+(*       arbitrary def s == nondeterministic choice of an element in the list *)
+(*                          s and def if the list is empty                    *)
+(*                subs s == subsequence of a list                             *)
+(*                          (ref: Sect. 3.1, gibbons2012utp)                  *)
+(*          nondetSyntax == syntax of nondeterministic monad                  *)
+(*                          (constructors: ndRet ndBind ndFail ndAlt)         *)
+(*           nondetSem x == semantics of x : nondetSyntax                     *)
+(*            insert a s == insert a in the list s nondeterministically       *)
+(*               iperm s == nondeterministic permutation of the list s,       *)
+(*                          defined as a Fixpoint using insert [1, Sect. 3]   *)
+(*              select s == nondeterministically splits the list s into a     *)
+(*                          pair of one chosen element and the rest           *)
+(*                          [3, Sect. 4.4] [2, Sect. 3.2]                     *)
+(*             tselect s == same as select but returns a pair whose second    *)
+(*                          projection has type (size s).-1.-tuple A, useful  *)
+(*                          to write perms                                    *)
+(*               perms s == of type seq A -> M (seq A), nondeterministically  *)
+(*                          computes a permutation of s using (t)select       *)
+(*               uperm s == nondeterministically computes a permutation of s, *)
+(*                          defined using unfoldM and select [2, Sect. 3.2]   *)
+(*           dassert p a == computation of type M {x | p x} that fails if a   *)
+(*                          does not satisfy p or return a otherwise (with a  *)
+(*                          proof that is satisfies p)                        *)
+(*              splits s == split a list nondeterministically                 *)
+(*                          type: seq A -> M (seq A * seq A)                  *)
+(*                          with M : plusMonad                                *)
+(*         splits_bseq s == same as splits with an enriched return type       *)
+(*                          M ((size s).-bseq A * (size s).-bseq A))          *)
+(*             dsplits s == same as split with an enriched return type        *)
+(*                          M {x : seq A * seq A | size x.1 + size x.2 == n}  *)
+(*               qperm s == permute the list s                                *)
+(*                          type: seq A -> M (seq A) with M : plusMonad       *)
+(*       plus_isNondet m == m is a computation of the plusMonad that can be   *)
+(*                          written with the syntax of the nondeterministic   *)
+(*                          monad                                             *)
+(*            m1 `<=` m2 == m1 refines m2, i.e., every result of m1 is a      *)
+(*                          possible result of m2                             *)
+(*             f `<.=` g == refinement relation lifted to functions, i.e.,    *)
+(*                          forall x, f x `<=` g x                            *)
 (*                                                                            *)
 (* ref:                                                                       *)
 (* - [1] mu2019tr2                                                            *)
@@ -426,12 +429,12 @@ Inductive t : Type -> Type :=
 | fail : forall A, t A
 | alt : forall A, t A -> t A -> t A.
 
-Fixpoint denote {M : nondetMonad} {A} (m : t A) : M A :=
+Fixpoint sem {M : nondetMonad} {A} (m : t A) : M A :=
   match m with
   | ret A a => Ret a
-  | bind A B m f => denote m >>= (fun x => denote (f x))
+  | bind A B m f => sem m >>= (sem \o f)
   | fail A => hierarchy.fail
-  | alt A m1 m2 => denote m1 [~] denote m2
+  | alt A m1 m2 => sem m1 [~] sem m2
   end.
 
 Module Exports.
@@ -440,7 +443,7 @@ Notation ndAlt := alt.
 Notation ndRet := ret.
 Notation ndBind := bind.
 Notation ndFail := fail.
-Notation ndDenote := denote.
+Notation nondetSem := sem.
 End Exports.
 End SyntaxNondet.
 Export SyntaxNondet.Exports.
@@ -1278,7 +1281,7 @@ Qed.
 
 End shiftreset_examples.
 
-Definition refin (M : altMonad) A (m1 m2 : M A) : Prop := m1 [~] m2 = m2.
+Definition refin {M : altMonad} A (m1 m2 : M A) : Prop := m1 [~] m2 = m2.
 Notation "m1 `<=` m2" := (refin m1 m2).
 
 Lemma refin_bindr (M : altMonad) A B (m1 m2 : M A) (f : A -> M B) :
@@ -1290,66 +1293,14 @@ Lemma refin_if (M : altMonad) A (m1 m2 m1' m2' : M A) (b : bool) :
   (if b then m1 else m2) `<=` (if b then m1' else m2').
 Proof. by case: b => [+ _|_]; exact. Qed.
 
-Section commute.
+(* NB: see also nondetState_isNondet *)
+Definition plus_isNondet {M : plusMonad} A (n : M A) := {m | nondetSem m = n}.
+
+Section plus_commute.
 Context {M : plusMonad}.
 
-(* NB: on the model of nondetState_sub in state_lib.v *)
-Definition nondetPlus_sub A (n : M A) := {m | ndDenote m = n}.
-
-Lemma nondetPlus_sub_insert A (s : seq A) a : nondetPlus_sub (@insert M _ a s).
-Proof.
-elim: s => /= [|h t ih]; first by exists (ndRet [:: a]).
-rewrite insertE /=; have [syn synE] := ih.
-exists (ndAlt (ndRet [:: a, h & t]) (ndBind syn (fun x => ndRet (h :: x)))).
-by rewrite /= synE fmapE.
-Qed.
-
-Lemma nondetPlus_sub_splits A (s : seq A) : nondetPlus_sub (splits s : M _).
-Proof.
-elim: s => [|h t ih /=]; first by exists (ndRet ([::], [::])).
-have [syn syn_splits] := ih.
-exists (ndBind syn (fun '(a, b) => ndAlt (ndRet (h :: a, b)) (ndRet (a, h :: b)))).
-by rewrite /= syn_splits; bind_ext => -[].
-Qed.
-
-Lemma nondetPlus_sub_splits_bseq A (s : seq A) :
-  nondetPlus_sub (splits_bseq s : M _).
-Proof.
-elim: s => [|h t ih]; first by exists (ndRet ([bseq], [bseq])).
-have [syn syn_tsplits] := ih.
-exists (ndBind syn (fun '(a, b) => ndAlt
-    (ndRet ([bseq of h :: a], widen_bseq (leqnSn _) b))
-    (ndRet (widen_bseq (leqnSn _) a, [bseq of h :: b])))).
-by rewrite /= syn_tsplits; bind_ext => -[].
-Qed.
-
-Lemma nondetPlus_sub_liftM2 A B C (f : A -> B -> C) (ma : M A) (mb : M B) :
-  nondetPlus_sub ma -> nondetPlus_sub mb ->
-  nondetPlus_sub (liftM2 f ma mb).
-Proof.
-move=> [s1 s1_ma] [s2 s2_mb].
-exists (ndBind s1 (fun a => ndBind s2 (fun b => ndRet (f a b)))).
-by rewrite /= s1_ma s2_mb.
-Qed.
-
-Lemma nondetPlus_sub_qperm A (s : seq A) : nondetPlus_sub (qperm s : M _).
-Proof.
-have [n sn] := ubnP (size s); elim: n s => // n ih s in sn *.
-move: s => [|h t] in sn *; first by exists (ndRet [::]); rewrite qperm_nil.
-rewrite qperm_cons splits_bseqE fmapE bindA.
-have [syn syn_tsplits] := nondetPlus_sub_splits_bseq t.
-have nondetPlus_sub_liftM2_qperm : forall a b : (size t).-bseq A,
-  nondetPlus_sub (liftM2 (fun x y => x ++ h :: y) (qperm a) (qperm b : M _)).
-  move=> a b; apply nondetPlus_sub_liftM2 => //; apply: ih.
-  - by rewrite (leq_ltn_trans (size_bseq a)).
-  - by rewrite (leq_ltn_trans (size_bseq b)).
-exists (ndBind syn (fun a => sval (nondetPlus_sub_liftM2_qperm a.1 a.2))).
-rewrite /= syn_tsplits; bind_ext => -[a b] /=.
-by rewrite bindretf; case: (nondetPlus_sub_liftM2_qperm _ _).
-Qed.
-
-Lemma commute_plus A (m : M A) B (n : M B) C (f : A -> B -> M C) :
-  nondetPlus_sub m -> commute m n f.
+Lemma plus_commute A (m : M A) B (n : M B) C (f : A -> B -> M C) :
+  plus_isNondet m -> commute m n f.
 Proof.
 case=> x; elim: x m n f => [{}A a m n f <-| D {}A n0 ih0 n1 ih1 m n2 f <- |
   D m n f <- | D n0 ih0 n1 ih1 m n2 f <-].
@@ -1366,14 +1317,77 @@ case=> x; elim: x m n f => [{}A a m n f <-| D {}A n0 ih0 n1 ih1 m n2 f <- |
   by rewrite alt_bindDr ih0 // ih1.
 Qed.
 
-Lemma commute_plus_guard (b : bool) B (n : M B) C (f : unit -> B -> M C) :
-  commute (guard b) n f.
+Lemma liftM2_isNondet A B C (f : A -> B -> C) (ma : M A) (mb : M B) :
+  plus_isNondet ma -> plus_isNondet mb -> plus_isNondet (liftM2 f ma mb).
 Proof.
-apply commute_plus; exists (if b then ndRet tt else @ndFail _).
+move=> [s1 s1_ma] [s2 s2_mb].
+exists (ndBind s1 (fun a => ndBind s2 (fun b => ndRet (f a b)))).
+by rewrite /= s1_ma /comp /= s2_mb.
+Qed.
+
+Lemma guard_isNondet (b : bool) : plus_isNondet (guard b : M _).
+Proof.
+exists (if b then ndRet tt else @ndFail _).
 by case: ifP; rewrite (guardT, guardF).
 Qed.
 
-End commute.
+Lemma insert_isNondet A (s : seq A) a : plus_isNondet (@insert M _ a s).
+Proof.
+elim: s => /= [|h t ih]; first by exists (ndRet [:: a]).
+rewrite insertE /=; have [syn synE] := ih.
+exists (ndAlt (ndRet [:: a, h & t]) (ndBind syn (fun x => ndRet (h :: x)))).
+by rewrite /= synE fmapE.
+Qed.
+
+Lemma splits_isNondet A (s : seq A) : plus_isNondet (splits s : M _).
+Proof.
+elim: s => [|h t ih /=]; first by exists (ndRet ([::], [::])).
+have [syn syn_splits] := ih.
+exists (ndBind syn (fun '(a, b) => ndAlt (ndRet (h :: a, b)) (ndRet (a, h :: b)))).
+by rewrite /= syn_splits; bind_ext => -[].
+Qed.
+
+Lemma splits_bseq_isNondet A (s : seq A) : plus_isNondet (splits_bseq s : M _).
+Proof.
+elim: s => [|h t ih]; first by exists (ndRet ([bseq], [bseq])).
+have [syn syn_tsplits] := ih.
+exists (ndBind syn (fun '(a, b) => ndAlt
+    (ndRet ([bseq of h :: a], widen_bseq (leqnSn _) b))
+    (ndRet (widen_bseq (leqnSn _) a, [bseq of h :: b])))).
+by rewrite /= syn_tsplits; bind_ext => -[].
+Qed.
+
+Lemma qperm_isNondet A (s : seq A) : plus_isNondet (qperm s : M _).
+Proof.
+have [n sn] := ubnP (size s); elim: n s => // n ih s in sn *.
+move: s => [|h t] in sn *; first by exists (ndRet [::]); rewrite qperm_nil.
+rewrite qperm_cons splits_bseqE fmapE bindA.
+have [syn syn_tsplits] := splits_bseq_isNondet t.
+have liftM2_qperm_isNondet (a b : (size t).-bseq A) :
+  plus_isNondet (liftM2 (fun x y => x ++ h :: y) (qperm a) (qperm b : M _)).
+  apply: liftM2_isNondet => //; apply: ih.
+  - by rewrite (leq_ltn_trans (size_bseq a)).
+  - by rewrite (leq_ltn_trans (size_bseq b)).
+exists (ndBind syn (fun a => sval (liftM2_qperm_isNondet a.1 a.2))).
+rewrite /= syn_tsplits; bind_ext => -[a b] /=.
+by rewrite bindretf; case: (liftM2_qperm_isNondet _ _).
+Qed.
+
+End plus_commute.
+
+Arguments plus_commute {M A} m {B} n {C} f.
+#[global] Hint Extern 0 (liftM2_isNondet (guard _)) =>
+  solve[exact: liftM2_isNondet] : core.
+#[global] Hint Extern 0 (plus_isNondet (guard _)) =>
+  solve[exact: guard_isNondet] : core.
+#[global] Hint Extern 0 (plus_isNondet (insert _ _)) =>
+  solve[exact: insert_isNondet] : core.
+#[global] Hint Extern 0 (plus_isNondet (splits _)) =>
+  solve[exact: splits_isNondet] : core.
+#[global] Hint Extern 0 (plus_isNondet (splits_bseq _)) =>
+  solve[exact: splits_bseq_isNondet] : core.
+#[global] Hint Extern 0 (plus_isNondet (qperm _)) =>
+  solve[exact: qperm_isNondet] : core.
 
 Section splits_plusMonad.
 Context {M : plusMonad}.
@@ -1392,9 +1406,7 @@ transitivity (iperm [:: h, p & t] : M _).
   by apply: perm_eq_iperm; rewrite -cat1s -(cat1s h) perm_catCA.
 rewrite [p :: t]lock /= -lock ih // bindA; bind_ext => -[a b] /=.
 rewrite liftM2E /liftM2 /= bindA -alt_bindDr; bind_ext => a'.
-rewrite bindA (_ : commute (insert h a') _ _) //; last first.
-  exact/commute_plus/nondetPlus_sub_insert.
-rewrite -alt_bindDr.
+rewrite bindA (plus_commute (insert h a'))// -alt_bindDr.
 by under eq_bind do rewrite insert_cat.
 Qed.
 

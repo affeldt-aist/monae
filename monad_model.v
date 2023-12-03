@@ -147,10 +147,10 @@ End assoc.
 
 Module IdentityMonad.
 Section identitymonad.
-Let bind := fun A B (a : FId A) (f : A -> FId B) => f a.
-Let left_neutral : BindLaws.left_neutral bind (NId FId).
+Let bind := fun A B (a : A) (f : A -> B) => f a.
+Let left_neutral : BindLaws.left_neutral bind (NId idfun).
 Proof. by []. Qed.
-Let right_neutral : BindLaws.right_neutral bind (NId FId).
+Let right_neutral : BindLaws.right_neutral bind (NId idfun).
 Proof. by []. Qed.
 Let associative : BindLaws.associative bind. Proof. by []. Qed.
 Let acto := (@idfun UU0).
@@ -164,7 +164,7 @@ Module ListMonad.
 Section listmonad.
 Definition acto := fun A : UU0 => seq A.
 Local Notation M := acto.
-Let ret : FId ~~> M := fun (A : UU0) x => (@cons A) x [::].
+Let ret : idfun ~~> M := fun (A : UU0) x => (@cons A) x [::].
 Let bind := fun A B (m : M A) (f : A -> M B) => flatten (map f m).
 Let left_neutral : BindLaws.left_neutral bind ret.
 Proof. by move=> A B m f; rewrite /bind /ret /= cats0. Qed.
@@ -215,7 +215,7 @@ Section exceptmonad.
 Variable E : UU0.
 Definition acto := fun A : UU0 => (E + A)%type.
 Local Notation M := acto.
-Let ret : FId ~~> M := @inr E.
+Let ret : idfun ~~> M := @inr E.
 Let bind := fun A B (m : M A) (f : A -> M B) =>
   match m with inl z => inl z | inr b => f b end.
 Let left_neutral : BindLaws.left_neutral bind ret.
@@ -243,7 +243,7 @@ Section output.
 Variable L : UU0.
 Definition acto := fun X : UU0 => (X * seq L)%type.
 Local Notation M := acto.
-Let ret : FId ~~> M := fun A a => (a, [::]).
+Let ret : idfun ~~> M := fun A a => (a, [::]).
 Let bind := fun (A B : UU0) (m : M A) (f : A -> M B) =>
   let: (x, w) := m in let: (x', w') := f x in (x', w ++ w').
 Let left_neutral : BindLaws.left_neutral bind ret.
@@ -271,7 +271,7 @@ Section environment.
 Variable E : UU0.
 Definition acto := fun A : UU0 => E -> A.
 Local Notation M := acto.
-Definition ret : FId ~~> M := fun A x => fun e => x.
+Definition ret : idfun ~~> M := fun A x => fun e => x.
 (* computation that ignores the environment *)
 Let bind := fun (A B : UU0) (m : M A) (f : A -> M B) => fun e => f (m e) e.
 (* binds m f applied the same environment to m and to the result of f *)
@@ -297,7 +297,7 @@ Section state.
 Variable S : UU0. (* type of states *)
 Definition acto := fun A : UU0 => S -> A * S.
 Local Notation M := acto.
-Let ret : FId ~~> M := fun A a => fun s => (a, s).
+Let ret : idfun ~~> M := fun A a => fun s => (a, s).
 Let bind := fun (A B : UU0) (m : M A) (f : A -> M B) => uncurry f \o m.
 Let left_neutral : BindLaws.left_neutral bind ret.
 Proof. by move=> A B a f; apply boolp.funext. Qed.
@@ -327,7 +327,7 @@ Section cont.
 Variable r : UU0. (* the type of answers *)
 Definition acto := fun A : UU0 => (A -> r) -> r.
 Local Notation M := acto.
-Let ret : FId ~~> M := fun A a => fun k => k a.
+Let ret : idfun ~~> M := fun A a => fun k => k a.
 Let bind := fun (A B : UU0) (m : M A) (f : A -> M B) => fun k => m (fun a => f a k).
 Let left_neutral : BindLaws.left_neutral bind ret.
 Proof. by move=> A B a f; apply boolp.funext => Br. Qed.
@@ -1526,7 +1526,7 @@ Variable (S : UU0) (I : eqType).
 Implicit Types i j : I.
 Definition acto (A : UU0) := (I -> S) -> SetMonad.acto (A * (I -> S))%type.
 Local Notation M := acto.
-Let ret : FId ~~> M := fun A a => fun s => [set (a, s)].
+Let ret : idfun ~~> M := fun A a => fun s => [set (a, s)].
 Let bind := fun A B (m : M A) (f : A -> M B) => fun s => m s >>= uncurry f.
 Let left_neutral : BindLaws.left_neutral bind ret.
 Proof.
@@ -1666,48 +1666,41 @@ Definition locT_nat := [eqType of nat].
 Module ModelTypedStore.
 
 Section ModelTypedStore.
-Variables (ml_type0 : eqType) (coq_type0 : ml_type0 -> Type)
-          (ml_nonempty0 : ml_type0) (val_nonempty0 : coq_type0 ml_nonempty0).
+Variables (MLU : ML_universe) (N : monad).
 
-Definition ml_type : Type := ml_type0.
+Local Notation coq_type := (@coq_type MLU N).
 
-HB.instance Definition _ := @isML_universe.Build ml_type
-  (Equality.class ml_type0) (fun M => @coq_type0) ml_nonempty0
-  (fun M => val_nonempty0).
+Local Notation ml_type := (MLU : Type).
 
-Record binding (M : Type -> Type) :=
-  mkbind { bind_type : ml_type; bind_val : coq_type M bind_type }.
-
-Arguments mkbind {M}.
+Record binding :=
+  mkbind { bind_type : ml_type; bind_val : coq_type bind_type }.
 
 Definition acto : UU0 -> UU0 :=
-  MS (seq (binding idfun)) [the monad of option_monad].
+  MS (seq binding) [the monad of option_monad].
 Local Notation M := acto.
 
-Local Notation coq_type' := (@coq_type ml_type idfun).
-
-Definition def : binding idfun := mkbind ml_nonempty (val_nonempty idfun).
+Definition def : binding := mkbind (val_nonempty N).
 
 Local Notation nth_error := List.nth_error.
 
 Notation loc := (@loc ml_type locT_nat).
 
-Let cnew T (v : coq_type M T) : M (loc T) :=
+Let cnew T (v : coq_type T) : M (loc T) :=
   fun st => let n := size st in
-            Ret (mkloc T n, rcons st (mkbind T (v : coq_type' T))).
+            Ret (mkloc T n, rcons st (mkbind (v : coq_type T))).
 
-Let cget T (r : loc T) : M (coq_type M T) :=
+Let cget T (r : loc T) : M (coq_type T) :=
   fun st =>
     if nth_error st (loc_id r) is Some (mkbind T' v) then
       if coerce T v is Some u then Ret (u, st) else fail
     else fail.
 
-Let cput T (r : loc T) (v : coq_type M T) : M unit :=
+Let cput T (r : loc T) (v : coq_type T) : M unit :=
   fun st =>
     let n := loc_id r in
     if nth_error st n is Some (mkbind T' _) then
       if coerce T' v is Some u then
-        Ret (tt, set_nth def st n (mkbind T' (u : coq_type' _)))
+        Ret (tt, set_nth def st n (mkbind (u : coq_type _)))
       else fail
     else fail.
 
@@ -1717,21 +1710,20 @@ Let crun (A : UU0) (m : M A) : option A :=
   | inr (a, _) => Some a
   end.
 
-Definition Env := seq (binding idfun).
+Definition Env := seq binding.
 
 Definition fresh_loc (T : ml_type) (e : Env) := mkloc T (size e).
 
 Section mkbind.
-Local Notation mkbind := (@mkbind idfun).
 
-Definition extend_env T (v : coq_type M T) (e : Env) :=
-  rcons e (mkbind T v).
+Definition extend_env T (v : coq_type T) (e : Env) :=
+  rcons e (mkbind v).
 
 Variant nth_error_spec (T : ml_type) (e : Env) (r : loc T) : Type :=
-  | NthError : forall s : coq_type M T,
-    nth_error e (loc_id r) = Some (mkbind T s) -> nth_error_spec e r
-  | NthError_nocoerce : forall T' (s' : coq_type M T'),
-    nth_error e (loc_id r) = Some (mkbind T' s') -> ~~ coercible T s' ->
+  | NthError : forall s : coq_type T,
+    nth_error e (loc_id r) = Some (mkbind s) -> nth_error_spec e r
+  | NthError_nocoerce : forall T' (s' : coq_type T'),
+    nth_error e (loc_id r) = Some (mkbind s') -> ~~ coercible T s' ->
     nth_error_spec e r
   | NthError_None : nth_error e (loc_id r) = None -> nth_error_spec e r.
 
@@ -1745,24 +1737,24 @@ case H : (nth_error e (loc_id r)) => [[T' s']|].
 exact: NthError_None.
 Qed.
 
-Lemma bind_cnew T (s : coq_type M T) A (k : loc T -> M A) e :
+Lemma bind_cnew T (s : coq_type T) A (k : loc T -> M A) e :
   (cnew s >>= k) e = k (fresh_loc T e) (extend_env s e).
 Proof. by case: e. Qed.
 
-Lemma Some_cget T (r : loc T) (s : coq_type M T) e (A : UU0) (f : coq_type M T -> M A) :
-  nth_error e (loc_id r) = Some (mkbind T s) ->
+Lemma Some_cget T (r : loc T) (s : coq_type T) e (A : UU0) (f : coq_type T -> M A) :
+  nth_error e (loc_id r) = Some (mkbind s) ->
   (cget r >>= f) e = f s e.
 Proof. by move=> H; rewrite MS_bindE /cget H coerce_Some. Qed.
 Arguments Some_cget {T r} s.
 
-Let cnewget T (s : coq_type M T) A (k : loc T -> coq_type M T -> M A) :
+Let cnewget T (s : coq_type T) A (k : loc T -> coq_type T -> M A) :
   cnew s >>= (fun r => cget r >>= k r) = cnew s >>= (fun r => k r s).
 Proof.
 apply/boolp.funext => e.
 by rewrite bind_cnew (Some_cget s)// nth_error_rcons_size.
 Qed.
 
-Let cnewput T (s t : coq_type M T) A (k : loc T -> M A) :
+Let cnewput T (s t : coq_type T) A (k : loc T -> M A) :
   cnew s >>= (fun r => cput r t >> k r) = cnew t >>= k.
 Proof.
 apply/boolp.funext => e.
@@ -1770,15 +1762,15 @@ rewrite bind_cnew 2!MS_bindE.
 by rewrite /cput/= nth_error_rcons_size coerce_Some set_nth_rcons.
 Qed.
 
-Lemma nocoerce_cget T (r : loc T) T' (s' : coq_type M T') e :
-  nth_error e (loc_id r) = Some (mkbind T' s') ->
+Lemma nocoerce_cget T (r : loc T) T' (s' : coq_type T') e :
+  nth_error e (loc_id r) = Some (mkbind s') ->
   ~~ coercible T s' ->
   cget r e = fail.
 Proof. by move=> H Ts'; rewrite /cget H not_coercible. Qed.
 
-Lemma nocoerce_cput T (r : loc T) (s : coq_type M T) (T' : ml_type)
-    (s' : coq_type M T') e :
-  nth_error e (loc_id r) = Some (mkbind T' s') ->
+Lemma nocoerce_cput T (r : loc T) (s : coq_type T) (T' : ml_type)
+    (s' : coq_type T') e :
+  nth_error e (loc_id r) = Some (mkbind s') ->
   ~~ coercible T s' ->
   cput r s e = fail.
 Proof.
@@ -1789,11 +1781,11 @@ Lemma None_cget T (r : loc T) e :
   nth_error e (loc_id r) = None -> cget r e = fail.
 Proof. by move=> H; rewrite /cget H. Qed.
 
-Lemma None_cput T (r : loc T) (s : coq_type M T) e :
+Lemma None_cput T (r : loc T) (s : coq_type T) e :
   nth_error e (loc_id r) = None -> cput r s e = fail.
 Proof. by move=> H; rewrite /cput H. Qed.
 
-Definition cgetput T (r : loc T) (s : coq_type M T) :
+Definition cgetput T (r : loc T) (s : coq_type T) :
   cget r >> cput r s = cput r s.
 Proof.
 apply/boolp.funext => e.
@@ -1803,8 +1795,8 @@ have [s' H|T' s' H Ts'|H] := ntherrorP e r.
 - by rewrite MS_bindE None_cget// None_cput.
 Qed.
 
-Lemma Some_cput T (r : loc T) (s : coq_type M T) e :
-  nth_error e (loc_id r) = Some (mkbind T s) ->
+Lemma Some_cput T (r : loc T) (s : coq_type T) e :
+  nth_error e (loc_id r) = Some (mkbind s) ->
   cput r s e = (@skip M) e.
 Proof. by move=> H; rewrite /cput/= H coerce_Some/= nth_error_set_nth_id. Qed.
 
@@ -1818,7 +1810,7 @@ have [s' H|T' s' H Ts'|H] := ntherrorP e r.
 Qed.
 
 Let cgetget T (r : loc T) (A : UU0)
-    (k : coq_type M T -> coq_type M T -> M A) :
+    (k : coq_type T -> coq_type T -> M A) :
   cget r >>= (fun s => cget r >>= k s) = cget r >>= fun s => k s s.
 Proof.
 apply/boolp.funext => e /=.
@@ -1828,14 +1820,14 @@ have [s' H|T' s' H Ts'|H] := ntherrorP e r.
 - by rewrite !MS_bindE None_cget.
 Qed.
 
-Lemma Some_cputE T (r : loc T) (s s' : coq_type M T) e :
-  nth_error e (loc_id r) = Some (mkbind T s') ->
-  cput r s e = inr (tt, set_nth def e (loc_id r) (mkbind T s)).
+Lemma Some_cputE T (r : loc T) (s s' : coq_type T) e :
+  nth_error e (loc_id r) = Some (mkbind s') ->
+  cput r s e = inr (tt, set_nth def e (loc_id r) (mkbind s)).
 Proof. by move=> H; rewrite /cput/= H coerce_Some. Qed.
 
-Lemma Some_cputget T (s' s : coq_type M T) (r : loc T) A (k : coq_type M T -> M A)
+Lemma Some_cputget T (s' s : coq_type T) (r : loc T) A (k : coq_type T -> M A)
   (e : Env) :
-  nth_error e (loc_id r) = Some (mkbind T s') ->
+  nth_error e (loc_id r) = Some (mkbind s') ->
   (cput r s >> (cget r >>= k)) e = (cput r s >> k s) e.
 Proof.
 move=> H.
@@ -1844,8 +1836,8 @@ by rewrite bindE/= (Some_cget s)// nth_error_set_nth.
 Qed.
 Arguments Some_cputget {T} s'.
 
-Let cputget T (r : loc T) (s : coq_type M T) (A : UU0)
-    (k : coq_type M T -> M A) :
+Let cputget T (r : loc T) (s : coq_type T) (A : UU0)
+    (k : coq_type T -> M A) :
   cput r s >> (cget r >>= k) = cput r s >> k s.
 Proof.
 apply/boolp.funext => e /=.
@@ -1855,9 +1847,9 @@ have [s' H|T' s' H Ts'|H] := ntherrorP e r.
 - by rewrite 2!MS_bindE None_cput.
 Qed.
 
-Lemma Some_cputput (T : ml_type) (r : loc T) (s s' : coq_type M T)
-  (e : Env) (s'' : coq_type M T) :
-  nth_error e (loc_id r) = Some (mkbind T s'') ->
+Lemma Some_cputput (T : ml_type) (r : loc T) (s s' : coq_type T)
+  (e : Env) (s'' : coq_type T) :
+  nth_error e (loc_id r) = Some (mkbind s'') ->
   (cput r s >> cput r s') e = cput r s' e.
 Proof.
 move=> H.
@@ -1869,7 +1861,7 @@ rewrite nth_error_set_nth coerce_Some/=.
 by rewrite set_set_nth eqxx.
 Qed.
 
-Let cputput T (r : loc T) (s s' : coq_type M T) :
+Let cputput T (r : loc T) (s s' : coq_type T) :
   cput r s >> cput r s' = cput r s'.
 Proof.
 apply/boolp.funext => e.
@@ -1880,7 +1872,7 @@ have [s'' H|T'' s'' H Ts''|H] := ntherrorP e r.
 Qed.
 
 Let cgetC T1 T2 (r1 : loc T1) (r2 : loc T2) (A : UU0)
-           (k : coq_type M T1 -> coq_type M T2 -> M A) :
+           (k : coq_type T1 -> coq_type T2 -> M A) :
   cget r1 >>= (fun u => cget r2 >>= (fun v => k u v)) =
   cget r2 >>= (fun v => cget r1 >>= (fun u => k u v)).
 Proof.
@@ -1904,8 +1896,8 @@ have [u Hr1|u T1' Hr1 T1u|Hr1] := ntherrorP e r1.
 Qed.
 
 (* NB: this is similar to the cnewget law *)
-Let cnewgetD_helper e T T' r v (s : coq_type M T') A (k : loc T' -> coq_type M T -> M A) :
-  nth_error e (loc_id r) = Some (mkbind T v) ->
+Let cnewgetD_helper e T T' r v (s : coq_type T') A (k : loc T' -> coq_type T -> M A) :
+  nth_error e (loc_id r) = Some (mkbind v) ->
   (cnew s >>= (fun r' => cget r >>= k r')) e = (cnew s >>= (fun r => k r v)) e.
 Proof.
 move=> H.
@@ -1913,8 +1905,8 @@ rewrite bind_cnew//.
 by rewrite (Some_cget v) // (nth_error_rcons_some _ H).
 Qed.
 
-Let cgetnewD T T' (r : loc T) (s : coq_type M T') A
-           (k : loc T' -> coq_type M T -> coq_type M T -> M A) :
+Let cgetnewD T T' (r : loc T) (s : coq_type T') A
+           (k : loc T' -> coq_type T -> coq_type T -> M A) :
   cget r >>= (fun u => cnew s >>= fun r' => cget r >>= k r' u) =
   cget r >>= (fun u => cnew s >>= fun r' => k r' u u).
 Proof.
@@ -1925,7 +1917,7 @@ have [u Hr|u T1 Hr T1u|Hr] := ntherrorP e r.
 - by rewrite !MS_bindE None_cget.
 Qed.
 
-Let cgetnewE T1 T2 (r1 : loc T1) (s : coq_type M T2) (A : UU0)
+Let cgetnewE T1 T2 (r1 : loc T1) (s : coq_type T2) (A : UU0)
     (k1 k2 : loc T2 -> M A) :
   (forall r2 : loc T2, loc_id r1 != loc_id r2 -> k1 r2 = k2 r2) ->
   cget r1 >> (cnew s >>= k1) = cget r1 >> (cnew s >>= k2).
@@ -1939,7 +1931,7 @@ have [u r1u|T' s' Hr1 T1s'|Hr] := ntherrorP e r1.
 - by rewrite !MS_bindE None_cget.
 Qed.
 
-Let cgetputC T1 T2 (r1 : loc T1) (r2 : loc T2) (s : coq_type M T2) :
+Let cgetputC T1 T2 (r1 : loc T1) (r2 : loc T2) (s : coq_type T2) :
   cget r1 >> cput r2 s = cput r2 s >> cget r1 >> skip.
 Proof.
 apply/boolp.funext => e /=.
@@ -1980,10 +1972,10 @@ have [u r1u|T1' v1 Hr1 T1v1|Hr1] := ntherrorP e r1.
   + by rewrite None_cput.
 Qed.
 
-Lemma cput_then_fail T1 T2 T1' e (s1' : coq_type M T1')
-    (r2 : loc T2) (s2 : coq_type M T2)
-    (r1 : loc T1) (s1 : coq_type M T1) :
-  nth_error e (loc_id r1) = Some (mkbind T1' s1') ->
+Lemma cput_then_fail T1 T2 T1' e (s1' : coq_type T1')
+    (r2 : loc T2) (s2 : coq_type T2)
+    (r1 : loc T1) (s1 : coq_type T1) :
+  nth_error e (loc_id r1) = Some (mkbind s1') ->
   ~~ coercible T1 s1' ->
   (cput r2 s2 >> cput r1 s1) e = fail.
 Proof.
@@ -2001,11 +1993,11 @@ have [v Hr2|T2' v Hr2 T2v|Hr2] := ntherrorP e r2; last first.
     move: Hr1; rewrite Hr Hr2 => -[?]; subst T1' => _.
     by rewrite coercible_Some // in T1s'.
   + rewrite (nocoerce_cput _ _ T1s')//=.
-    by rewrite (@nth_error_set_nth_other _ _ _ _ _ (mkbind T1' s1')).
+    by rewrite (@nth_error_set_nth_other _ _ _ _ _ (mkbind s1')).
 Qed.
 
-Let cputC T1 T2 (r1 : loc T1) (r2 : loc T2) (s1 : coq_type M T1)
-    (s2 : coq_type M T2) (A : UU0) :
+Let cputC T1 T2 (r1 : loc T1) (r2 : loc T2) (s1 : coq_type T1)
+    (s2 : coq_type T2) (A : UU0) :
   loc_id r1 != loc_id r2 \/ JMeq s1 s2 ->
   cput r1 s1 >> cput r2 s2 = cput r2 s2 >> cput r1 s1.
 Proof.
@@ -2053,8 +2045,8 @@ have [u Hr1|T1' s'd Hr1 T1s'|Hr1] := ntherrorP e r1; last first.
       by rewrite set_set_nth (negbTE Hr).
 Qed.
 
-Let cputgetC T1 T2 (r1 : loc T1) (r2 : loc T2) (s1 : coq_type M T1)
-    (A : UU0) (k : coq_type M T2 -> M A) :
+Let cputgetC T1 T2 (r1 : loc T1) (r2 : loc T2) (s1 : coq_type T1)
+    (A : UU0) (k : coq_type T2 -> M A) :
   loc_id r1 != loc_id r2 ->
   cput r1 s1 >> cget r2 >>= k = cget r2 >>= (fun v => cput r1 s1 >> k v).
 Proof.
@@ -2084,7 +2076,7 @@ have [u Hr1|T1' s1' Hr1 T1s'|Hr1] := ntherrorP e r1.
   + by rewrite None_cget.
 Qed.
 
-Let cputnewC T T' (r : loc T) (s : coq_type M T) (s' : coq_type M T') A
+Let cputnewC T T' (r : loc T) (s : coq_type T) (s' : coq_type T') A
     (k : loc T' -> M A) :
   cget r >> (cnew s' >>= fun r' => cput r s >> k r') =
   cput r s >> (cnew s' >>= k).
@@ -2108,21 +2100,12 @@ Proof. by rewrite /crun /= MS_bindE/=; case: (m [::]) => //- []. Qed.
 Definition crunskip : crun skip = Some tt.
 Proof. by []. Qed.
 
-Definition crunnew (A : UU0) T (m : M A) (s : A -> coq_type M T) :
+Definition crunnew (A : UU0) T (m : M A) (s : A -> coq_type T) :
   crun m -> crun (m >>= fun x => cnew (s x)).
 Proof. by rewrite /crun /= MS_bindE; case: (m [::]) => // -[]. Qed.
 
-Definition crunnewget (A : UU0) T (m : M A) (s : A -> coq_type M T) :
-  crun m -> crun (m >>= fun x => cnew (s x) >>= @cget T).
-Proof.
-rewrite /crun /= MS_bindE.
-case: (m [::]) => // -[a e] _.
-by under eq_bind do under eq_uncurry do
-  rewrite -(bindmret (_ >>= _)) bindA cnewget.
-Qed.
-
-Definition crungetnew (A : UU0) T1 T2 (m : M A) (r : A -> loc T1)
-  (s : A -> coq_type M T2) :
+Definition crunnewgetC (A : UU0) T1 T2 (m : M A) (r : A -> loc T1)
+  (s : A -> coq_type T2) :
   crun (m >>= fun x => cget (r x)) ->
   crun (m >>= fun x => cnew (s x) >> cget (r x)).
 Proof.
@@ -2135,8 +2118,7 @@ rewrite (nth_error_rcons_some _ Hnth).
 by case Hcoe: coerce.
 Qed.
 
-Definition crungetput (A : UU0) T (m : M A) (r : A -> loc T)
-  (s : A -> coq_type M T) :
+Definition crungetput (A : UU0) T (m : M A) (r : A -> loc T) (s : A -> coq_type T) :
   crun (m >>= fun x => cget (r x)) ->
   crun (m >>= fun x => cput (r x) (s x)).
 Proof.
@@ -2150,12 +2132,18 @@ subst T'.
 by rewrite !coerce_Some.
 Qed.
 
+Definition crunmskip (A : UU0) (m : M A) : crun (m >> skip) = crun m :> bool.
+Proof.
+rewrite /crun /= !bindE /= /bindS !MS_mapE /= !fmapE /= !bindA.
+by case Hm: (m _) => [|[]].
+Qed.
+
 HB.instance Definition _ := Monad.on M.
 HB.instance Definition isMonadTypedStoreModel :=
-  isMonadTypedStore.Build ml_type locT_nat M cnewget cnewput cgetput cgetputskip
+  isMonadTypedStore.Build ml_type N locT_nat M cnewget cnewput cgetput cgetputskip
     cgetget cputget cputput cgetC cgetnewD cgetnewE cgetputC cputC
     cputgetC cputnewC
-    crunret crunskip crunnew crunnewget crungetnew crungetput.
+    crunret crunskip crunnew crunnewgetC crungetput crunmskip.
 
 End mkbind.
 End ModelTypedStore.
@@ -2246,8 +2234,7 @@ Qed.
 End eq_rect_bind.
 *)
 
-(* TODO
-Section instantiations_with_the_identity_monad.
+(*Section instantiations_with_the_identity_monad.
 
 Lemma stateT_id_ModelState S :
   stateT S [the monad of idfun] = [the monad of StateMonad.acto S].
