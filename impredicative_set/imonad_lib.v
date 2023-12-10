@@ -12,6 +12,8 @@ Require Import ihierarchy.
 (*                                                                            *)
 (*            liftM2 h m1 m2 == as in Haskell                                 *)
 (*      examples of functors : squaring, curry_F, uncurry_F, exponential_F    *)
+(*         apply_pair_snd ab == f ab.2 >>= (fun c => Ret (ab.1, c))           *)
+(* apply_triple_snd abc == f abc.1.2 >>= (fun d => Ret (abc.1.1, d, abc.2))   *)
 (*                       NId == identity natural transformation               *)
 (*                        \v == vertical composition of natural               *)
 (*                              transformations                               *)
@@ -151,15 +153,52 @@ HB.instance Definition _ X :=
 Definition uncurry_F X : functor := [the functor of @uncurry_M X].
 End uncurry_functor.
 
-Lemma bind_uncurry (M : monad) (A B C : UU0) (f : A -> M B) (g : A -> B -> M C) x :
+Section bind_uncurry.
+Variables (M : monad) (A B C : UU0).
+
+Lemma bind_uncurry (f : A -> M B) (g : A -> B -> M C) x :
   (f x >>= fun y => Ret (x, y)) >>= (fun xy => g xy.1 xy.2) =
   (f x >>= g x).
 Proof. by rewrite bindA; under eq_bind do rewrite bindretf. Qed.
 
-Lemma bindA_uncurry (M : monad) (A B C : UU0) (m : M A) (f : A -> M B) (g : A -> B -> M C) :
+Lemma bindA_uncurry (m : M A) (f : A -> M B) (g : A -> B -> M C) :
   (m >>= fun x => f x >>= fun y => Ret (x, y)) >>= (fun xy => g xy.1 xy.2) =
   (m >>= fun x => f x >>= g x).
 Proof. by rewrite bindA; by under eq_bind do rewrite bind_uncurry. Qed.
+
+End bind_uncurry.
+
+Section apply_monad.
+Variable M : monad.
+Implicit Types A B C D E : UU0.
+
+Definition apply_pair_snd A B C (f : B -> M C) (ab : A * B) : M (A * C)%type :=
+  f ab.2 >>= (fun c => Ret (ab.1, c)).
+
+Lemma apply_pair_sndE A B C (f : B -> M C) (ab : A * B) D (g : A * C -> M D) :
+  apply_pair_snd f ab >>= g = f ab.2 >>= (fun x => g (ab.1, x)).
+Proof.
+rewrite /apply_pair_snd bindA.
+by under eq_bind do rewrite bindretf.
+Qed.
+
+Definition apply_triple_snd A B C D (f : B -> M D) (abc : A * B * C)
+    : M (A * D * C)%type :=
+  f abc.1.2 >>= (fun d => Ret (abc.1.1, d, abc.2)).
+
+Lemma apply_triple_sndE A B C D (f : B -> M D) a b c E (g : A * D * C -> M E) :
+  apply_triple_snd f (a, b, c) >>= g = f b >>= (fun x => g (a, x, c)).
+Proof.
+rewrite /apply_triple_snd /= bindA.
+by under eq_bind do rewrite bindretf.
+Qed.
+
+Lemma apply_triple_snd_kleisli A B C D F (f : B -> M D) (g : D -> M F) (a : A) b (c : C) :
+  apply_triple_snd (f >=> g) (a, b, c) =
+    f b >>= (fun b' => apply_triple_snd g (a, b', c)).
+Proof. by rewrite /apply_triple_snd /= kleisliE bindA. Qed.
+
+End apply_monad.
 
 Section exponential_functor.
 Variable A : UU0.
@@ -181,9 +220,12 @@ Proof. by rewrite functor_o. Qed.
 Section id_natural_transformation.
 Variables C : functor.
 Definition NId := fun A => @id (C A).
-Definition natural_id : naturality C C NId. Proof. by []. Qed.
+Let natural_id : naturality C C NId. Proof. by []. Qed.
+
 HB.instance Definition _ := isNatural.Build C C NId natural_id.
+
 End id_natural_transformation.
+
 Arguments NId C [A].
 
 Section vertical_composition.
@@ -278,8 +320,8 @@ Definition fork : FId ~> squaring := [the _ ~> _ of fork'].
 
 End natural_transformation_example.
 
-Definition eta_type (f g : functor) := FId ~> [the functor of g \o f].
-Definition eps_type (f g : functor) := [the functor of f \o g] ~> FId.
+Definition eta_type (f g : functor) := FId ~> g \o f.
+Definition eps_type (f g : functor) := f \o g ~> FId.
 Module TriangularLaws.
 Section triangularlaws.
 Variables (F G : functor) (eps : eps_type F G) (eta : eta_type F G).
@@ -311,12 +353,12 @@ Section adjoint_example.
 Variable (X : UU0).
 Definition curry_fun : curry_F X \o uncurry_F X ~~> idfun :=
   fun (A : UU0) (af : X * (X -> A)) => af.2 af.1.
-Lemma curry_naturality : naturality [the functor of curry_F X \o uncurry_F X] FId curry_fun.
+Lemma curry_naturality : naturality (curry_F X \o uncurry_F X) FId curry_fun.
 Proof. by []. Qed.
 HB.instance Definition _ := isNatural.Build
-  [the functor of curry_F X \o uncurry_F X] FId curry_fun curry_naturality.
+  (curry_F X \o uncurry_F X) FId curry_fun curry_naturality.
 Definition curry_eps : eps_type (curry_F X) (uncurry_F X) :=
-  [the nattrans [the functor of curry_F X \o uncurry_F X] FId of curry_fun].
+  [the nattrans (curry_F X \o uncurry_F X) FId of curry_fun].
 
 Definition curry_fun2 : FId ~~> uncurry_F X \o curry_F X :=
   fun (A : UU0) (a : A) => pair^~ a.
@@ -535,8 +577,7 @@ Qed.
 
 End algebraic_operation_interface.
 
-(* TODO:
-Lemma monad_of_ret_bind_ext (F G : functor) (RET1 : FId ~> F) (RET2 : FId ~> G)
+(*Lemma monad_of_ret_bind_ext (F G : functor) (RET1 : FId ~> F) (RET2 : FId ~> G)
   (bind1 : forall A B : UU0, F A -> (A -> F B) -> F B)
   (bind2 : forall A B : UU0, G A -> (A -> G B) -> G B) :
   forall (FG : F = G),
@@ -602,7 +643,8 @@ by rewrite fcompE -(compE (M # f^`2)) (natural ret) FIdE.
 Qed.
 
 Definition commute {M : monad} A B (m : M A) (n : M B) C (f : A -> B -> M C) : Prop :=
-  m >>= (fun x => n >>= (fun y => f x y)) = n >>= (fun y => m >>= (fun x => f x y)) :> M _.
+  m >>= (fun x => n >>= (fun y => f x y)) =
+  n >>= (fun y => m >>= (fun x => f x y)) :> M _.
 
 Definition preserves {M : monad} (A B : UU0) (f : A -> M A) (g : A -> B) :=
   forall x, (f x >>= fun y => Ret (y, g y)) = (f x >>= fun y => Ret (y, g x)).

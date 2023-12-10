@@ -61,47 +61,6 @@ Local Open Scope monae_scope.
 Local Open Scope tuple_ext_scope.
 Local Open Scope mprog.
 
-(* TODO: move *)
-Section guard_qperm.
-Variable M : plusMonad.
-Variables (d : unit) (T : orderType d).
-
-Lemma guard_splits A (p : pred T) (t : seq T) (f : seq T * seq T -> M A) :
-  splits t >>= (fun x => guard (all p t) >> f x) =
-  splits t >>= (fun x => guard (all p x.1) >> guard (all p x.2) >> f x).
-Proof.
-rewrite -plus_commute//.
-elim: t => [|h t ih] in p A f *; first by rewrite 2!bindretf guardT bindmskip.
-rewrite [LHS]/= guard_and 2!bindA ih /= plus_commute//.
-rewrite bindA; bind_ext => -[a b] /=.
-rewrite !alt_bindDl !bindretf /= !guard_and !bindA !alt_bindDr.
-by congr (_ [~] _); rewrite plus_commute.
-Qed.
-
-(* NB: corresponds to perm-preserves-all? *)
-Lemma guard_all_qperm B (p : pred T) s (f : seq T -> M B) :
-  qperm s >>= (fun x => guard (all p s) >> f x) =
-  qperm s >>= (fun x => guard (all p x) >> f x).
-Proof.
-rewrite -plus_commute//.
-have [n leMn] := ubnP (size s); elim: n => // n ih in s f leMn *.
-case: s leMn => [|h t]; first by move=> _; rewrite qperm_nil !bindretf.
-rewrite ltnS => tn.
-rewrite qperm_cons !bindA /= guard_and bindA (@plus_commute _ _ (guard (all p t)))//.
-rewrite guard_splits splits_bseqE fmapE 2!bindA plus_commute//.
-bind_ext => -[a b]; rewrite 2!bindretf !bindA /=.
-rewrite (@plus_commute _ _ (guard (all p b)))//.
-rewrite ih; last by rewrite (leq_trans _ tn) //= ltnS size_bseq.
-rewrite (@plus_commute _ _(guard (p h)))//.
-bind_ext => a'; rewrite !bindA (@plus_commute _ _ (guard (p h)))//.
-rewrite ih; last by rewrite (leq_trans _ tn) //= ltnS size_bseq.
-rewrite (@plus_commute _ _ (guard (p h)))// plus_commute//.
-bind_ext => b'; rewrite !bindretf all_cat /= andbA andbAC !guard_and !bindA.
-by under eq_bind do rewrite plus_commute//.
-Qed.
-
-End guard_qperm.
-
 Section partition.
 Variables (M : plusMonad) (d : unit) (T : orderType d).
 
@@ -128,7 +87,7 @@ Lemma size_partition p (s : seq T) :
 Proof.
 elim: s p => //= x xs ih p; have {ih} := ih p.
 move H : (partition p xs) => h; case: h H => a b ab /= abxs.
-by case: ifPn => xp; rewrite !(addSn,addnS) abxs. 
+by case: ifPn => xp; rewrite !(addSn,addnS) abxs.
 (* ! was ? :conflict with Equations TODO bug report *)
 Qed.
 

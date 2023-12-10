@@ -83,7 +83,7 @@ Qed.
 Lemma bindmret (A : UU0) (m : failPState A) :
 bind m ret = m.
 Proof.
-apply funext => s.
+apply: funext => s.
 unfold bind.
 destruct (m s) as [[|]]; reflexivity.
 Qed.
@@ -93,7 +93,7 @@ Lemma bindA
   (f : A -> failPState B) (g : B -> failPState C) :
 bind (bind m f) g = bind m (fun x => bind (f x) g).
 Proof.
-apply funext => s.
+apply: funext => s.
 unfold bind.
 destruct (m s) as [[|]]; reflexivity.
 Qed.

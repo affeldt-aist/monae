@@ -77,20 +77,6 @@ Unset Printing Implicit Defensive.
 Local Open Scope monae_scope.
 
 (* TODO *)
-Section PR_to_classical_sets.
-Local Open Scope classical_set_scope.
-
-Lemma bigsetUA A B C (s : set A) (f : A -> set B) (g : B -> set C) :
-  \bigcup_(i in \bigcup_(i in s) f i) g i = \bigcup_(x in s) \bigcup_(i in f x) g i.
-Proof.
-apply boolp.funext => c; rewrite boolp.propeqE.
-split => [[b [a' aa' ?] ?]|[a' aa' [b ? ?]]];
-  by [exists a' => //; exists b | exists b => //; exists a'].
-Qed.
-
-End PR_to_classical_sets.
-
-(* TODO *)
 Section PR_to_fset.
 Local Open Scope fset_scope.
 Variables (K V : choiceType) (f : K -> V).
@@ -199,7 +185,7 @@ Proof.
 by move=> ? ?; rewrite /bind bigcup_imset1 image_id.
 Qed.
 Let associative : BindLaws.associative bind.
-Proof. move=> ? ? ? ? ? ?; exact: bigsetUA. Qed.
+Proof. move=> ? ? ? ? ? ?; exact: bigcup_bigcup. Qed.
 HB.instance Definition _ :=
   isMonad_ret_bind.Build set left_neutral right_neutral associative.
 End setmonad.
@@ -372,8 +358,7 @@ End append.
 End Append.
 HB.export Append.
 
-(* TODO: rename *)
-Section tmp.
+Section appendop.
 Local Notation M := [the monad of ListMonad.acto].
 
 Definition empty : [the functor of Empty.acto \o M] ~~> M := fun A _ => @nil A.
@@ -404,7 +389,7 @@ Proof.
 move=> A B f [t1 t2] /=.
 by rewrite 3!list_bindE -flatten_cat -map_cat.
 Qed.
-End tmp.
+End appendop.
 
 Module Output.
 Section output.
@@ -441,9 +426,9 @@ Definition output : [the functor of Output.acto L \o M] ~~> M :=
 Let naturality_output :
   naturality [the functor of Output.acto L \o M] [the functor of M] output.
 Proof.
- move=> A B h.
- apply boolp.funext => -[w [x w']].
- by rewrite /output /= catA.
+move=> A B h.
+apply boolp.funext => -[w [x w']].
+by rewrite /output /= catA.
 Qed.
 HB.instance Definition _ := isNatural.Build
   [the functor of Output.acto L \o M] [the monad of M] output naturality_output.
@@ -1559,7 +1544,7 @@ Let aputget i s (A : UU0) (k : S -> M A) :
   aput i s >> aget i >>= k = aput i s >> k s.
 Proof.
 apply boolp.funext => a/=; rewrite !bindE /bind set_bindE.
-rewrite set_bindE/= bigsetUA !bigcup_set1/= /aput /ModelArray.aput.
+rewrite set_bindE/= bigcup_bigcup !bigcup_set1/= /aput /ModelArray.aput.
 by rewrite bindretf/= insert_same.
 Qed.
 Let agetputskip i : aget i >>= aput i = skip.

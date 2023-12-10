@@ -16,7 +16,7 @@ Require PropExtensionality.
 (* IdentityMonad      == identity monad idfun                                 *)
 (* ListMonad          == list monad seq                                       *)
 (* ExceptMonad        == exception monad E + A                                *)
-(* option_monad       == notation for ExceptMonad.acto unit                   *)
+(* option_monad       == alias for ExceptMonad.acto unit                      *)
 (* OutputMonad        == output monad X * seq L                               *)
 (* EnvironmentMonad   == environment monad E -> A                             *)
 (* StateMonad         == state monad S -> A * S                               *)
@@ -95,10 +95,10 @@ End assoc.
 
 Module IdentityMonad.
 Section identitymonad.
-Let bind := fun A B (a : FId A) (f : A -> FId B) => f a.
-Let left_neutral : BindLaws.left_neutral bind (NId FId).
+Let bind := fun A B (a : A) (f : A -> B) => f a.
+Let left_neutral : BindLaws.left_neutral bind (NId idfun).
 Proof. by []. Qed.
-Let right_neutral : BindLaws.right_neutral bind (NId FId).
+Let right_neutral : BindLaws.right_neutral bind (NId idfun).
 Proof. by []. Qed.
 Let associative : BindLaws.associative bind. Proof. by []. Qed.
 Let acto := (@idfun UU0).
@@ -112,7 +112,7 @@ Module ListMonad.
 Section listmonad.
 Definition acto := fun A : UU0 => seq A.
 Local Notation M := acto.
-Let ret : FId ~~> M := fun (A : UU0) x => (@cons A) x [::].
+Let ret : idfun ~~> M := fun (A : UU0) x => (@cons A) x [::].
 Let bind := fun A B (m : M A) (f : A -> M B) => flatten (map f m).
 Let left_neutral : BindLaws.left_neutral bind ret.
 Proof. by move=> A B m f; rewrite /bind /ret /= cats0. Qed.
@@ -138,7 +138,7 @@ Section exceptmonad.
 Variable E : UU0.
 Definition acto := fun A : UU0 => (E + A)%type.
 Local Notation M := acto.
-Let ret : FId ~~> M := @inr E.
+Let ret : idfun ~~> M := @inr E.
 Let bind := fun A B (m : M A) (f : A -> M B) =>
   match m with inl z => inl z | inr b => f b end.
 Let left_neutral : BindLaws.left_neutral bind ret.
@@ -158,14 +158,15 @@ Lemma except_bindE (E A B : UU0) (M := ExceptMonad.acto E)
   m >>= f = match m with inl z => inl z | inr b => f b end.
 Proof. by []. Qed.
 
-Notation option_monad := (ExceptMonad.acto unit).
+Definition option_monad := ExceptMonad.acto unit.
+HB.instance Definition _ := Monad.on option_monad.
 
 Module OutputMonad.
 Section output.
 Variable L : UU0.
 Definition acto := fun X : UU0 => (X * seq L)%type.
 Local Notation M := acto.
-Let ret : FId ~~> M := fun A a => (a, [::]).
+Let ret : idfun ~~> M := fun A a => (a, [::]).
 Let bind := fun (A B : UU0) (m : M A) (f : A -> M B) =>
   let: (x, w) := m in let: (x', w') := f x in (x', w ++ w').
 Let left_neutral : BindLaws.left_neutral bind ret.
@@ -193,7 +194,7 @@ Section environment.
 Variable E : UU0.
 Definition acto := fun A : UU0 => E -> A.
 Local Notation M := acto.
-Definition ret : FId ~~> M := fun A x => fun e => x.
+Definition ret : idfun ~~> M := fun A x => fun e => x.
 (* computation that ignores the environment *)
 Let bind := fun (A B : UU0) (m : M A) (f : A -> M B) => fun e => f (m e) e.
 (* binds m f applied the same environment to m and to the result of f *)
@@ -219,7 +220,7 @@ Section state.
 Variable S : UU0. (* type of states *)
 Definition acto := fun A : UU0 => S -> A * S.
 Local Notation M := acto.
-Let ret : FId ~~> M := fun A a => fun s => (a, s).
+Let ret : idfun ~~> M := fun A a => fun s => (a, s).
 Let bind := fun (A B : UU0) (m : M A) (f : A -> M B) => uncurry f \o m.
 Let left_neutral : BindLaws.left_neutral bind ret.
 Proof. by move=> A B a f; apply funext. Qed.
@@ -249,7 +250,7 @@ Section cont.
 Variable r : UU0. (* the type of answers *)
 Definition acto := fun A : UU0 => (A -> r) -> r.
 Local Notation M := acto.
-Let ret : FId ~~> M := fun A a => fun k => k a.
+Let ret : idfun ~~> M := fun A a => fun k => k a.
 Let bind := fun (A B : UU0) (m : M A) (f : A -> M B) => fun k => m (fun a => f a k).
 Let left_neutral : BindLaws.left_neutral bind ret.
 Proof. by move=> A B a f; apply funext => Br. Qed.
@@ -294,8 +295,7 @@ End append.
 End Append.
 HB.export Append.
 
-(* TODO: rename *)
-Section tmp.
+Section appendop.
 Local Notation M := [the monad of ListMonad.acto].
 
 Definition empty : [the functor of Empty.acto \o M] ~~> M := fun A _ => @nil A.
@@ -326,7 +326,7 @@ Proof.
 move=> A B f [t1 t2] /=.
 by rewrite 3!list_bindE -flatten_cat -map_cat.
 Qed.
-End tmp.
+End appendop.
 
 Module Output.
 Section output.
@@ -725,6 +725,7 @@ Section fail.
 Definition option_fail : forall A, option_monad A := fun A => @throw unit A tt.
 Let option_bindfailf : BindLaws.left_zero (@bind _) option_fail.
 Proof. by []. Qed.
+HB.instance Definition _ := Monad.on option_monad.
 HB.instance Definition _ := @isMonadFail.Build option_monad
   option_fail option_bindfailf.
 
@@ -739,7 +740,7 @@ HB.export Fail.
 
 Module Except.
 Section except.
-Let M : failMonad := [the failMonad of ExceptMonad.acto unit].
+Let M : failMonad := option_monad.
 Definition handle : forall A, M A -> M A -> M A :=
   fun A m1 m2 => @handle_op unit _ (m1, (fun _ => m2)).
 Lemma handleE : handle = (fun A m m' => if m is inr x then m else m').
@@ -752,7 +753,7 @@ Let catchA : forall A, ssrfun.associative (@handle A).
 Proof. by move=> A; case. Qed.
 Let catchret : forall A x, @left_zero (M A) (M A) (Ret x) (@handle A).
 Proof. by move=> A x; case. Qed.
-HB.instance Definition _ := isMonadExcept.Build (ExceptMonad.acto unit)
+HB.instance Definition _ := isMonadExcept.Build option_monad
   catchmfail catchfailm catchA catchret.
 End except.
 End Except.
@@ -994,7 +995,8 @@ Proof. by rewrite /addM bindretf; apply funext. Abort.
 Let N : shiftresetMonad (seq nat) := [the shiftresetMonad (seq nat) of ContMonad.acto (seq nat)].
 Fixpoint perverse (l : seq nat) : N (seq nat) :=
   if l is h :: t then
-    shift (fun f : _ -> N _ => Ret h >>= (fun x => perverse t >>= f >>= (fun y => Ret (x :: y))))
+    shift (fun f : _ -> N _ => Ret h >>=
+      (fun x => perverse t >>= f >>= (fun y => Ret (x :: y))))
   else Ret [::].
 Goal reset (perverse [:: 1; 2; 3]) = Ret [:: 3; 2; 1].
 by [].
@@ -1039,11 +1041,11 @@ Section modelreify.
 Variables S T : UU0.
 Definition state_trace := (S * seq T)%type.
 Let M := (StateMonad.acto state_trace).
-Let reify : forall A, M A -> state_trace -> option (A * state_trace) := (fun A m s => Some (m s)).
+Let reify : forall A, M A -> state_trace -> option (A * state_trace) := fun A m s => Some (m s).
 Let reifyret : forall (A : UU0) (a : A) s, @reify _ (Ret a) s = Some (a, s).
 Proof. by []. Qed.
 Let reifybind : forall (A B : UU0) (m : M A) (f : A -> M B) s,
-      @reify _ (m >>= f) s = match @reify _ m s with | Some a's' => @reify _ (f a's'.1) a's'.2 | None => None end.
+  @reify _ (m >>= f) s = match @reify _ m s with | Some a's' => @reify _ (f a's'.1) a's'.2 | None => None end.
 Proof.
 move=> A B m0 f s.
 rewrite state_bindE.
@@ -1203,8 +1205,7 @@ Qed.
 End eq_rect_bind.
 *)
 
-(* TODO
-Section instantiations_with_the_identity_monad.
+(*Section instantiations_with_the_identity_monad.
 
 Lemma stateT_id_ModelState S :
   stateT S [the monad of idfun] = [the monad of StateMonad.acto S].
@@ -1320,7 +1321,7 @@ End examples_of_algebraic_lifting.
 Module ModelMonadStateRun.
 Section modelmonadstaterun.
 Variable S : UU0.
-Let N : monad := [the monad of ExceptMonad.acto unit].
+Let N : monad := option_monad.
 Definition M : stateMonad S := [the stateMonad S of stateT S N].
 
 Let runStateT : forall A : UU0, M A -> S -> N (A * S)%type := fun A : UU0 => id.
@@ -1330,8 +1331,8 @@ Let runStateTbind : forall (A B : UU0) (m : M A) (f : A -> M B) (s : S),
   @runStateT _ (m >>= f) s = @runStateT _ m s >>= fun x => @runStateT _ (f x.1) x.2.
 Proof.
 move=> A M m f s /=.
-rewrite /= /runStateT bindE !MS_mapE /= /bindS /=.
-rewrite /actm /= /actm /=.
+rewrite /= /runStateT bindE /= /join_of_bind /bindS /=.
+rewrite MS_mapE /actm /=.
 by case: (m s).
 Qed.
 Let runStateTget : forall s : S, runStateT get s = Ret (s, s) :> N _.
@@ -1353,7 +1354,7 @@ HB.export ModelMonadStateRun.
 Module ModelMonadExceptStateRun.
 Section modelmonadexceptstaterun.
 Variable S : UU0.
-Let N : exceptMonad := [the exceptMonad of ExceptMonad.acto unit].
+Let N : exceptMonad := option_monad.
 Definition M : stateRunMonad S N := [the stateRunMonad S N of MS S N].
 
 Definition failure : forall A, MS S N A := fun A => liftS (@fail N A).

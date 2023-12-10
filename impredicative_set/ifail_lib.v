@@ -9,30 +9,31 @@ From Equations Require Import Equations.
 (******************************************************************************)
 (*     Definitions and lemmas using failure and nondeterministic monads       *)
 (*                                                                            *)
-(*                arb == arbitrary nondeterministic choice between booleans   *)
-(*              foldM                                                         *)
-(*      unfoldM p f y == generates a list a from a seed y, if p y holds the   *)
-(*                       generation stops,otherwise an element and a new seed *)
-(*                       of generated using f                                 *)
-(*              hyloM == [2, Sect. 5.1]                                       *)
-(*    arbitrary def s == nondeterministic choice of an element in the list s, *)
-(*                       def if the list is empty                             *)
-(*             subs s == subsequence of a list                                *)
-(*                       (ref: Sect. 3.1, gibbons2012utp)                     *)
-(*         insert a s == insert a in the list s nondeterministically          *)
-(*            iperm s == nondeterministic permutation of the list s, defined  *)
-(*                       as a Fixpoint using insert [1, Sect. 3]              *)
-(*           select s == nondeterministically splits the list s into a pair   *)
-(*                       of one chosen element and the rest [3, Sect. 4.4]    *)
+(*                   arb == arbitrary nondeterministic choice between         *)
+(*                          booleans                                          *)
+(*                 foldM                                                      *)
+(*         unfoldM p f y == generates a list a from a seed y, if p y holds    *)
+(*                          the generation stops,otherwise an element and a   *)
+(*                          new seed of generated using f                     *)
+(*                 hyloM == [2, Sect. 5.1]                                    *)
+(*       arbitrary def s == nondeterministic choice of an element in the list *)
+(*                          s and def if the list is empty                    *)
+(*                subs s == subsequence of a list                             *)
+(*                          (ref: Sect. 3.1, gibbons2012utp)                  *)
+(*            insert a s == insert a in the list s nondeterministically       *)
+(*               iperm s == nondeterministic permutation of the list s,       *)
+(*                          defined as a Fixpoint using insert [1, Sect. 3]   *)
+(*              select s == nondeterministically splits the list s into a     *)
+(*                          pair of one chosen element and the rest           *)
 (*                       [2, Sect. 3.2]                                       *)
-(*            uperm s == nondeterministically computes a permutation of s,    *)
-(*                       defined using unfoldM and select [2, Sect. 3.2]      *)
-(*           splits s == split a list nondeterministically                    *)
-(*                       type: seq A -> M (seq A * seq A) with M : plusMonad  *)
-(*         m1 `<=` m2 == m1 refines m2, i.e., every result of m1 is a         *)
-(*                       possible result of m2                                *)
-(*          f `<.=` g == refinement relation lifted to functions, i.e.,       *)
-(*                       forall x, f x `<=` g x                               *)
+(*               uperm s == nondeterministically computes a permutation of s, *)
+(*                          defined using unfoldM and select [2, Sect. 3.2]   *)
+(*              splits s == split a list nondeterministically                 *)
+(*                          type: seq A -> M (seq A * seq A)                  *)
+(*            m1 `<=` m2 == m1 refines m2, i.e., every result of m1 is a      *)
+(*                          possible result of m2                             *)
+(*             f `<.=` g == refinement relation lifted to functions, i.e.,    *)
+(*                          forall x, f x `<=` g x                            *)
 (*                                                                            *)
 (* ref:                                                                       *)
 (* - [1] mu2019tr2                                                            *)
@@ -733,14 +734,14 @@ rewrite /addM.
 rewrite bindretf.
 transitivity (Ret 100 >>= (fun y => Ret (1 + y)) : M _); last first.
   by rewrite bindretf.
-congr (bind _ _). (* TODO : bind_ext casse *)
+congr (bind _ _).
 rewrite (shiftreset2 _ _).
 by rewrite bindretf.
 Qed.
 
 End shiftreset_examples.
 
-Definition refin (M : altMonad) A (m1 m2 : M A) : Prop := m1 [~] m2 = m2.
+Definition refin {M : altMonad} A (m1 m2 : M A) : Prop := m1 [~] m2 = m2.
 Notation "m1 `<=` m2" := (refin m1 m2).
 
 Lemma refin_bindr (M : altMonad) A B (m1 m2 : M A) (f : A -> M B) :

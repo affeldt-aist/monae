@@ -15,9 +15,9 @@ Definition funext_dep := @FunctionalExtensionality.functional_extensionality_dep
 (******************************************************************************)
 (*      Shared notations and easy definitions/lemmas of general interest      *)
 (*                                                                            *)
-(*           foldr1                                                           *)
-(*    curry/uncurry == currying for pairs                                     *)
-(*  curry3/uncurry3 == currying for triples                                   *)
+(*                foldr1                                                      *)
+(*         curry/uncurry == currying for pairs                                *)
+(*       curry3/uncurry3 == currying for triples                              *)
 (*                                                                            *)
 (******************************************************************************)
 
@@ -105,6 +105,10 @@ Proof. by move=> f; apply funext => -[]. Qed.
 
 Lemma uncurryK f : cancel (@uncurry A B C) curry.
 Proof. by []. Qed.
+
+Lemma eq_uncurry f g : f =1 g -> uncurry f = uncurry g.
+Proof. by move=> fg; apply/funext => -[a b]/=; rewrite fg. Qed.
+
 End curry.
 
 Section curry3.

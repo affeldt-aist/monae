@@ -9,19 +9,11 @@ Require Import ihierarchy imonad_lib ifail_lib.
 (******************************************************************************)
 (*              Definitions and lemmas about state monads                     *)
 (*                                                                            *)
-(*    overwrite s a := put s >> Ret s                                         *)
-(*        protect n := get >>= (fun x => n >>= overwrite x)                   *)
-(* putpermsC                                                                  *)
-(*   perms is independent of the state and so commutes with put               *)
-(* nondetState_sub m == m is a computation of the nondetStateMonad that       *)
-(*                      can be written with the syntax of                     *)
-(*                      the nondeterministic monad                            *)
-(* Section loop (ref: section 4.1, mu2019tr3)                                 *)
-(*   scanlM                                                                   *)
-(*   scanlM_of_scanl (ref: theorem 4.1, mu2019tr3)                            *)
-(* Section section43.                                                         *)
-(*   ref: mu2019tr3                                                           *)
-(*   theorem44                                                                *)
+(*          overwrite s a := put s >> Ret s                                   *)
+(*              protect n := get >>= (fun x => n >>= overwrite x)             *)
+(*                 scanlM == see section 4.1, mu2019tr3                       *)
+(*        scanlM_of_scanl == see theorem 4.1, mu2019tr3                       *)
+(*              theorem44 == see mu2019tr3                                    *)
 (*                                                                            *)
 (******************************************************************************)
 
@@ -412,7 +404,7 @@ Definition swap {S : UU0} {I : eqType} {M : arrayMonad S I} (i j : I) : M unit :
    aput j x)%Do.
 
 Section tick_fusion.
-Variables (M : stateMonad nat).
+Context {M : stateMonad nat}.
 
 Definition tick : M unit := get >>= (put \o succn).
 

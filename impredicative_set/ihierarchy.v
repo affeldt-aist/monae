@@ -40,10 +40,10 @@ From HB Require Import structures.
 (*           altMonad == monad with nondeterministic choice                   *)
 (*       prePlusMonad == nondeterminism + failR0 + distributivity             *)
 (*          plusMonad == preplusMonad + commutativity and idempotence         *)
-(*         altCIMonad == monadAlt + commutativity + idempotence               *)
-(*        nondetMonad == monadFail + monadAlt                                 *)
-(*      nondetCIMonad == monadFail + monadAltCI                               *)
-(*        exceptMonad == monadFail + catch                                    *)
+(*         altCIMonad == altMonad + commutativity + idempotence               *)
+(*        nondetMonad == failMonad + altMonad                                 *)
+(*      nondetCIMonad == failMOnad + altCIMonad                               *)
+(*        exceptMonad == failMonad + catch                                    *)
 (*                                                                            *)
 (* Control monads (wip):                                                      *)
 (*   contMonad, shiftresetMonad, jumpMonad                                    *)
@@ -75,7 +75,7 @@ From HB Require Import structures.
 (*                                                                            *)
 (* references:                                                                *)
 (* - R. Affeldt, D. Nowak, Extending Equational Monadic Reasoning with Monad  *)
-(* Transformers, https://arxiv.org/abs/2011.03463                             *)
+(* Transformers, TYPES 2020, https://arxiv.org/abs/2011.03463                 *)
 (* - R. Affeldt, D. Nowak, T. Saikawa, A Hierarchy of Monadic Effects for     *)
 (* Program Verification using Equational Reasoning, MPC 2019                  *)
 (* - J. Gibbons, R. Hinze, Just do it: simple monadic equational reasoning,   *)
@@ -286,7 +286,7 @@ HB.mixin Record isMonad (F : UU0 -> UU0) of Functor F := {
   ret : FId ~> F ;
   join : F \o F ~> F ;
   bind : forall (A B : UU0), F A -> (A -> F B) -> F B ;
-  __bindE : forall (A B : UU0) (f : A -> F B) (m : F A),
+  bindE : forall (A B : UU0) (f : A -> F B) (m : F A),
     bind A B m f = join B ((F # f) m) ;
   joinretM : JoinLaws.left_unit ret join ;
   joinMret : JoinLaws.right_unit ret join ;
@@ -295,14 +295,12 @@ HB.mixin Record isMonad (F : UU0 -> UU0) of Functor F := {
 #[short(type=monad)]
 HB.structure Definition Monad := {F of isMonad F &}.
 
+(* we introduce Ret as a way to make the second arguments of ret implicit,
+   o.w. Coq won't let us *)
 Notation Ret := (@ret _ _).
 Notation Join := (@join _ _).
 Arguments bind {s A B} : simpl never.
 Notation "m >>= f" := (bind m f) : monae_scope.
-
-Lemma bindE (F : monad) (A B : UU0) (f : A -> F B) (m : F A) :
-  m >>= f = join B ((F # f) m).
-Proof. by rewrite __bindE. Qed.
 
 Lemma eq_bind (M : monad) (A B : UU0) (m : M A) (f1 f2 : A -> M B) :
   f1 =1 f2 -> m >>= f1 = m >>= f2.
@@ -366,7 +364,7 @@ Definition bind_of_join (F : functor) (j : F \o F ~~> F)
   j B ((F # f) m).
 
 Section from_join_laws_to_bind_laws.
-Variable (F : functor) (ret : FId ~> F) (join : [the functor of F \o F] ~> F).
+Variable (F : functor) (ret : FId ~> F) (join : F \o F ~> F).
 
 Hypothesis joinretM : JoinLaws.left_unit ret join.
 Hypothesis joinMret : JoinLaws.right_unit ret join.
@@ -393,8 +391,8 @@ Qed.
 End from_join_laws_to_bind_laws.
 
 HB.factory Record isMonad_ret_join (F : UU0 -> UU0) of isFunctor F := {
-  ret : FId ~> [the functor of F] ;
-  join : [the functor of F \o F] ~> [the functor of F] ;
+  ret : FId ~> F ;
+  join : F \o F ~> F ;
   joinretM : JoinLaws.left_unit ret join ;
   joinMret : JoinLaws.right_unit ret join ;
   joinA : JoinLaws.associativity join }.
@@ -770,7 +768,7 @@ HB.mixin Record isMonadAlt (M : UU0 -> UU0) of Monad M := {
   alt : forall T : UU0, M T -> M T -> M T ;
   altA : forall T : UU0, associative (@alt T) ;
   (* composition distributes leftwards over choice *)
-  alt_bindDl : BindLaws.left_distributive (@bind [the monad of M]) alt
+  alt_bindDl : BindLaws.left_distributive (@bind M) alt
 (* in general, composition does not distribute rightwards over choice *)
 (* NB: no bindDr to accommodate both angelic and demonic interpretations of
    nondeterminism *) }.
@@ -781,8 +779,8 @@ HB.structure Definition MonadAlt := {M of isMonadAlt M & }.
 Notation "a [~] b" := (@alt _ _ a b). (* infix notation *)
 
 HB.mixin Record isMonadAltCI (M : UU0 -> UU0) of MonadAlt M := {
-  altmm : forall A : UU0, idempotent (@alt [the altMonad of M] A) ;
-  altC : forall A : UU0, commutative (@alt [the altMonad of M] A) }.
+  altmm : forall A : UU0, idempotent (@alt M A) ;
+  altC : forall A : UU0, commutative (@alt M A) }.
 
 #[short(type=altCIMonad)]
 HB.structure Definition MonadAltCI := {M of isMonadAltCI M & }.
@@ -805,12 +803,8 @@ Proof. move=> x y z t; rewrite !altA; congr (_ [~] _); by rewrite altAC. Qed.
 End altci_lemmas.
 
 HB.mixin Record isMonadNondet (M : UU0 -> UU0) of MonadFail M & MonadAlt M := {
-  altfailm :
-    @BindLaws.left_id [the functor of M] (@fail [the failMonad of M])
-                                         (@alt [the altMonad of M]);
-  altmfail :
-    @BindLaws.right_id [the functor of M] (@fail [the failMonad of M])
-                                          (@alt [the altMonad of M]) }.
+  altfailm : @BindLaws.left_id M (@fail M) (@alt M) ;
+  altmfail : @BindLaws.right_id M (@fail M) (@alt M) }.
 
 #[short(type=nondetMonad)]
 HB.structure Definition MonadNondet :=
@@ -840,7 +834,7 @@ HB.structure Definition MonadFailR0 := {M of isMonadFailR0 M & }.
 
 HB.mixin Record isMonadPrePlus (M : UU0 -> UU0)
     of MonadNondet M & MonadFailR0 M :=
-  { alt_bindDr : BindLaws.right_distributive (@bind [the monad of M]) alt }.
+  { alt_bindDr : BindLaws.right_distributive (@bind M) alt }.
 
 #[short(type=prePlusMonad)]
 HB.structure Definition MonadPrePlus := {M of isMonadPrePlus M & }.
@@ -1055,7 +1049,7 @@ HB.mixin Record isMonadArray (S : UU0) (I : eqType) (M : UU0 -> UU0)
   agetC : forall i j (A : UU0) (k : S -> S -> M A),
     aget i >>= (fun u => aget j >>= (fun v => k u v)) =
     aget j >>= (fun v => aget i >>= (fun u => k u v)) ;
-  aputC : forall i j u v, (i != j) \/ (u = v) ->
+  aputC : forall i j u v, i != j \/ u = v ->
     aput i u >> aput j v = aput j v >> aput i u ;
   aputgetC : forall i j u (A : UU0) (k : S -> M A), i != j ->
     aput i u >> aget j >>= k =

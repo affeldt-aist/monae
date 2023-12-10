@@ -443,7 +443,7 @@ Let actm (a b : UU0) (f : a -> b) m := bind m (@ret _ \o f).
 Let actm_id : FunctorLaws.id actm.
 Proof.
 move=> a.
-rewrite /actm; apply: boolp.funext=> m /=.
+rewrite /actm; apply: boolp.funext => m /=.
 by rewrite bindmret.
 Qed.
 
