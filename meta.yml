@@ -51,7 +51,7 @@ tested_coq_opam_versions:
 dependencies:
 - opam:
     name: coq-mathcomp-ssreflect
-    version: '{ (>= "1.16.0" & < "1.19~") | (= "dev")  }'
+    version: '{ (>= "1.17.0" & < "1.19~") | (= "dev")  }'
   description: |-
     [MathComp ssreflect](https://math-comp.github.io)
 - opam:
