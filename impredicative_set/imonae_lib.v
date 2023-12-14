@@ -130,9 +130,6 @@ Definition const A B (b : B) := fun _ : A => b.
 
 Definition wrap {A} (a : A) := [:: a].
 
-Fixpoint scanl A B (op : B -> A -> B) (b : B) (s : seq A) : seq B :=
-  if s isn't x :: xs then [::] else (op b x) :: scanl op (op b x) xs.
-
 Lemma compA {A B C D} (f : C -> D) (g : B -> C) (h : A -> B) :
   f \o (g \o h) = (f \o g) \o h.
 Proof. by []. Qed.

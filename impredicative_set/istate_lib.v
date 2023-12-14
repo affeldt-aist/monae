@@ -1,6 +1,5 @@
 (* monae: Monadic equational reasoning in Coq                                 *)
 (* Copyright (C) 2020 monae authors, license: LGPL-2.1-or-later               *)
-Require Import ZArith.
 From mathcomp Require Import all_ssreflect.
 Require Import imonae_lib.
 From HB Require Import structures.
@@ -123,9 +122,9 @@ under eq_bind do rewrite putget bindA bindretf.
 rewrite scanlM_of_scanl_helper.
 transitivity (fmap (cons (op s x)) (do y <- get; put (op s x) >>
   (do a <- foldr mul (Ret [::]) xs; put y >> Ret a)))%Do; last first.
-  congr (fmap _ _); by under [RHS]eq_bind do rewrite putput.
+  by congr (fmap _ _); under [RHS]eq_bind do rewrite putput.
 transitivity (fmap (cons (op s x)) (protect (scanlM (op s x) xs))); last first.
-  congr (fmap _ _); by under eq_bind do rewrite -bindA.
+  by congr (fmap _ _); under eq_bind do rewrite -bindA.
 by rewrite -IH fmapE bindretf.
 Qed.
 
@@ -267,7 +266,7 @@ Lemma promote_assert_sufficient_condition (M : failMonad) (A : UU0) :
   promote_assert M p q.
 Proof.
 move=> right_z p q promotable_pq.
-rewrite /promote_assert; apply funext => -[x1 x2].
+rewrite /promote_assert; apply: funext => -[x1 x2].
 rewrite 3![in RHS]compE [in RHS]fmapE.
 rewrite 2![in LHS]compE {1}/bassert [in LHS]bind_fmap !bindA.
 bind_ext => s.
@@ -362,7 +361,7 @@ Proof. by rewrite symbolsE. Qed.
 Lemma symbols_prop1 :
   symbols \o const 1 = (M # wrap) \o const fresh :> (A -> M _).
 Proof.
-apply funext => n.
+apply: funext => n.
 transitivity (@symbols _ M 1) => //.
 rewrite symbolsE sequence_cons sequence_nil.
 under eq_bind do rewrite bindretf.
@@ -374,7 +373,7 @@ Local Open Scope mprog.
 Lemma symbols_prop2 :
   symbols \o uaddn = (fmap ucat) \o mpair \o (symbols : _ -> M _)^`2.
 Proof.
-apply funext => -[n1 n2].
+apply: funext => -[n1 n2].
 elim: n1 => [|n1 IH].
   rewrite [in LHS]compE uaddnE add0n.
   rewrite compE [in X in _ = _ X]/= squaringE symbols0.
@@ -387,8 +386,7 @@ rewrite compE uaddnE addSn symbolsS -uaddnE -(compE symbols) {}IH.
 rewrite [in RHS]compE [in X in _ = _ X]/= squaringE symbolsS.
 rewrite [in RHS]compE -/(fmap _ _) fmap_bind bindA; bind_ext => a.
 rewrite 2![in LHS]compE [in LHS]fmap_bind [in LHS]bindA [in RHS]bindA.
-(* TODO(rei): bind_ext? *)
-congr bind; apply funext => s.
+bind_ext => s.
 rewrite [in RHS]bindretf [in RHS]fcompE [in RHS]fmap_bind.
 rewrite [in LHS]fcompE [in LHS]bind_fmap [in LHS]bindA.
 under eq_bind do rewrite bindretf.
