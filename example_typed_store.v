@@ -404,24 +404,19 @@ Definition it2 := Restart it1 (do l <- FromW l; incr l).
 Eval vm_compute in it2.
 
 Local Notation cycle := (cycle idfun M).
-Local Notation hd := (hd idfun M).
+Local Notation rhd := (rhd idfun M).
+Local Notation rtl := (rtl idfun M).
 
 Definition it3 := Restart it2 (cycle ml_bool true false).
-Eval vm_compute in it3.
+Eval vm_compute in crun (FromW it3).
 
-Definition it4 := Restart it3 (do l <- FromW it3; Ret (hd ml_bool false l)).
-Eval vm_compute in it4.
-Eval vm_compute in crun (FromW it4).
-
-Local Notation tl := (tl idfun M).
+Definition it4 := Restart it3 (do l <- FromW it3; Ret (rhd ml_bool false l)).
 
 Definition it5 := Restart it4
                     (do l0 <- FromW it3;
-                     do l1 <- tl _ l0;
-                     do l2 <- tl _ l1;
-                     Ret (hd ml_bool false l2)).
-Eval vm_compute in it5.
-Eval vm_compute in crun (FromW it5).
+                     do l1 <- rtl _ l0;
+                     do l2 <- rtl _ l1;
+                     Ret (rhd ml_bool false l2)).
 
 End eval.
 End eval_cyclic.
