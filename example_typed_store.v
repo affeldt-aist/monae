@@ -292,25 +292,35 @@ under [LHS]cchknewE => r2 rr2.
 done.
 Qed.
 
+Lemma cyclel_rdrop_self T a l :
+  cyclel T a l >>= rdrop (size l).+1 = cyclel T a l.
+Proof.
+rewrite /cyclel -cnewchk bindA.
+apply eq_bind => r.
+rewrite bindA.
+under eq_bind do rewrite -(bindA (mkrlist _ _ _)).
+rewrite (bindA _ _ (rdrop _)) bindretf bindA /=.
+under eq_bind do under eq_bind do
+  rewrite /rtl -bindA cputget bindA bindretf -[rdrop _ _]bindmret.
+by rewrite cchk_mkrlist_put_drop mkrlist_drop.
+Qed.
+
 Lemma rnth_is_true n :
   crun (do l <- cyclel ml_bool true (nseq n false); rnth ml_bool false n.+1 l)
   = Some true.
 Proof.
-rewrite /cyclel !bindA -cnewchk.
-under eq_bind => r.
-  rewrite [(mkrlist _ _ _ >>= _) >>= _]bindA -add1n /rnth.
-  under [mkrlist _ _ _ >>= _]eq_bind do
-    rewrite bindA bindretf rdrop_add /= bindA bindmret bindA cputget bindretf.
-  rewrite -{2}(size_nseq n false).
-  rewrite cchk_mkrlist_put_drop mkrlist_drop.
-  under [mkrlist _ _ _ >>= _]eq_bind do rewrite cputget.
-  rewrite -!bindA.
+rewrite /rnth -bindA -[in n.+1](size_nseq n false) cyclel_rdrop_self.
+rewrite /rhd !bindA.
+under eq_bind=> r.
+  rewrite !bindA.
+  under eq_bind do rewrite bindA bindretf cputget.
+  rewrite -bindA.
   over.
-rewrite -bindA crunret // -bindA_uncurry crunchkput // bindA.
+rewrite -bindA crunret // -bindA_uncurry crunchkput // bindA -cnewchk.
 under eq_bind => r.
   rewrite bindA.
-  under eq_bind do rewrite bindretf /= -[cchk _]bindmskip.
-  rewrite bindA cchkmkrlistC.
+  under eq_bind do under eq_bind do rewrite bindretf /= -[cchk _]bindmskip.
+  rewrite cchkmkrlistC.
   over.
 rewrite cnewchk -bindA crunmskip.
 elim: n => /= [|n IH]. by rewrite bindmret crunnew0.
