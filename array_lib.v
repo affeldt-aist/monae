@@ -26,7 +26,7 @@ Require Import hierarchy monad_lib fail_lib.
 Local Open Scope monae_scope.
 
 Section marray.
-Context {d : unit} {E : porderType d} {M : arrayMonad E nat_eqType}.
+Context {d : unit} {E : porderType d} {M : arrayMonad E nat}.
 Implicit Type i j : nat.
 
 Import Order.POrderTheory.
@@ -78,7 +78,7 @@ Qed.
 
 Lemma aput_writeListCR i j (x : E) (xs : seq E) : j + size xs <= i ->
   aput i x >> writeList j xs = writeList j xs >> aput i x.
-Proof. by move=> ?; rewrite -writeList1 -writeListC. Qed.
+Proof. by move=> jxsu; rewrite -writeList1 -[LHS]writeListC. Qed.
 
 Lemma writeList_cat i (s1 s2 : seq E) :
   writeList i (s1 ++ s2) = writeList i s1 >> writeList (i + size s1) s2.
@@ -175,7 +175,7 @@ Fixpoint readList i (n : nat) : M (seq E) :=
 End marray.
 
 Section refin_writeList_aswap.
-Variable (d : unit) (E : orderType d) (M : plusArrayMonad E nat_eqType).
+Variable (d : unit) (E : orderType d) (M : plusArrayMonad E nat).
 
 (* eqn 13 in mu2020flops, postulate introduce-swap in IQSort.agda *)
 Lemma refin_writeList_cons_aswap (i : nat) x (s : seq E) :

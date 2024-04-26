@@ -590,7 +590,7 @@ Definition swap {S : eqType} {I : eqType} {M : arrayMonad S I} (i j : I) : M uni
 
 Section monadarray_example.
 Local Open Scope do_notation.
-Variable M : arrayMonad nat bool_eqType.
+Variable M : arrayMonad nat bool.
 
 Definition does_swap (m : M unit) :=
   (do x <- aget false ;
