@@ -90,8 +90,10 @@ Variable T : Type.
 
 Definition altCI_semiLattType := M T.
 
+HB.instance Definition _ := boolp.gen_eqMixin altCI_semiLattType.
+HB.instance Definition _ := boolp.gen_choiceMixin altCI_semiLattType.
+
 HB.instance Definition _ := @isSemiLattice.Build altCI_semiLattType
-  (Choice.class (convex.choice_of_Type (M T)))
   (fun x y => x [~] y)
   (@altC M T) (@altA M T) (@altmm M T).
 
@@ -1011,33 +1013,65 @@ Local Close Scope mprog.
 End splits_prePlusMonad.
 
 Section qperm.
+
 Variables (M : altMonad) (A : UU0) (d : unit) (T : orderType d).
 
-Equations? qperm (s : seq A) : M (seq A) by wf (size s) lt :=
+Local Obligation Tactic := idtac.
+Program Definition qperm' (s : seq A)
+  (f : forall s' : seq A, size s' < size s -> M (seq A)) : M (seq A) :=
+match s with
+| [::] => Ret [::]
+| x :: xs =>
+  splits_bseq xs >>=
+    (fun '(ys, zs) => liftM2 (fun a b => a ++ x :: b) ((*qperm ys*) f ys _ : M (seq A)) (f zs _) (*(qperm zs)*))
+end.
+Next Obligation.
+move=> s f x xs <- ? ys zs ?.
+exact: (leq_ltn_trans (size_bseq ys)).
+Defined.
+Next Obligation.
+move=> s f x xs <- ? ys zs ?.
+exact: (leq_ltn_trans (size_bseq zs)).
+Defined.
+
+(*Equations? qperm (s : seq A) : M (seq A) by wf (size s) lt :=
 | [::] => Ret [::]
 | x :: xs =>
   splits_bseq xs >>=
     (fun '(ys, zs) => liftM2 (fun a b => a ++ x :: b) (qperm ys : M (seq A)) (qperm zs)).
 Proof.
-apply /ltP.
+apply/ltP.
 exact: (leq_ltn_trans (size_bseq ys)).
-apply /ltP.
+apply/ltP.
 exact: (leq_ltn_trans (size_bseq zs)).
-Defined.
+(*
+Error: Missing universe constraint declared for inductive type: Type <= Type
+                                                                Type <= Type
+*)
+Defined.*)
+
+Definition qperm : seq A -> M (seq A) :=
+  Fix (@well_founded_size _) (fun _ => M _) qperm'.
 
 Lemma qperm_nil : qperm [::] = Ret [::].
-Proof. by []. Qed.
-(* by rewrite /qperm (Fix_eq _ _ _ qperm'_Fix). Qed. *)
+(*Proof. by []. Qed.*)
+Proof.
+rewrite /qperm Init.Wf.Fix_eq // => -[//|h t f g H].
+rewrite /qperm'; bind_ext => -[s1 s2].
+by rewrite !H.
+Qed.
 
 Lemma qperm_cons x xs : qperm (x :: xs) =
   splits xs >>= (fun '(ys, zs) =>
     liftM2 (fun a b => a ++ x :: b) (qperm ys) (qperm zs)).
 Proof.
-rewrite qperm_equation_2 splits_bseqE fmapE bindA; bind_ext => -[? ?].
+rewrite /qperm Init.Wf.Fix_eq //; last first.
+  move=> -[//|] h t f g fg.
+  rewrite /qperm'; bind_ext => -[s1 s2].
+  by rewrite !fg.
+rewrite {1}/qperm' /=.
+rewrite splits_bseqE fmapE bindA; bind_ext => -[? ?].
 by rewrite bindretf.
-(* rewrite {1}/qperm {1}(Fix_eq _ _ _ qperm'_Fix) /=.
-rewrite splitsE /= fmapE bindA; bind_ext => -[? ?].
-by rewrite bindretf. *)
 Qed.
 
 Definition qpermE := (qperm_nil, qperm_cons).
@@ -1451,14 +1485,12 @@ Context {M : plusMonad} {A : eqType}.
 
 Lemma iperm_qperm : @iperm M A = @qperm M A.
 Proof.
-rewrite boolp.funeqE => s.
+(*rewrite boolp.funeqE => s.
 apply qperm_elim => [//|h t ihys ihzs].
 rewrite iperm_cons_splits splits_bseqE fmapE bindA.
 bind_ext => -[a b]; rewrite bindretf.
 by rewrite (ihys (a, b) _ b) (ihzs (a, b) a).
-Qed.
-
-(* (* old version *)
+Qed.*)
 rewrite boolp.funeqE => s.
 have [n ns] := ubnP (size s); elim: n s ns => // n ih s ns.
 move: s ns => [na |h t]; first by rewrite qperm_nil.
@@ -1468,7 +1500,8 @@ bind_ext => -[a b] /=; rewrite !bindA.
 apply: bind_ext_guard => /and3P[ta tb _].
 rewrite !bindretf ih; last first.
   by rewrite (leq_trans _ ns)// ltnS; apply: size_subseq.
-by rewrite ih // (leq_trans _ ns)// ltnS; apply: size_subseq. *)
+by rewrite ih // (leq_trans _ ns)// ltnS; apply: size_subseq.
+Qed.
 
 Lemma perm_eq_qperm (a b : seq A) : perm_eq a b -> qperm a = qperm b :> M _.
 Proof. by rewrite -!iperm_qperm; exact: perm_eq_iperm. Qed.

@@ -217,7 +217,7 @@ Definition comparePc T (eq_dec : comparable T) : Equality.axiom eq_dec :=
   | right b => ReflectF (x = y) b
   end.
 Definition eqPc (E : eqType) : Equality.axiom (@eq_op E) :=
-  match E with EqType sort (EqMixin op a) => a end.
+  match E with Equality.Pack sort (Equality.Class (hasDecEq.Axioms_ op a)) => a end.
 End computable_eqtype.
 
 Section coerce.
