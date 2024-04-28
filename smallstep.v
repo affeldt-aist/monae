@@ -858,7 +858,7 @@ Compute run_ss p_nonce 0.
 Remark denote_p_nonce : denote _ nat p_nonce = nonce.
 Proof. by []. Qed.
 
-Program Example p_nonce_twice : program bool_eqType :=
+Program Example p_nonce_twice : program bool :=
   p_do nonce <- p_ret (
     p_do n : nat <- p_get;
     p_do _ : unit <- p_put (S n);
