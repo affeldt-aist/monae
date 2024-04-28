@@ -16,7 +16,8 @@ Require Import monae_lib hierarchy monad_lib proba_lib.
 Local Open Scope monae_scope.
 Local Open Scope proba_scope.
 
-Notation choice_of_Type := convex.choice_of_Type.
+Require monad_model.
+Notation choice_of_Type := monad_model.choice_of_Type.
 
 Module MonadProbModel.
 Section monadprobmodel.
@@ -60,7 +61,7 @@ Proof. by move=> ? ?; exact: convC. Qed.
 Let choicemm : forall (T : Type) p, idempotent (@choice p T).
 Proof. by move=> ? ? ?; exact: convmm. Qed.
 
-Let choiceA : forall (T : Type) (p q r s : {prob real_realType}) (a b c : acto T),
+Let choiceA : forall (T : Type) (p q r s : {prob R}) (a b c : acto T),
     choice p _ a (choice q _ b c) = choice [s_of p, q] _ (choice [r_of p, q] _ a b) c.
 Proof.
 move=> ? p q r s a b c.
@@ -69,7 +70,7 @@ rewrite [LHS](_ : _ = conv p a (conv q b c))//. (* NB: this is slow *)
 by rewrite convA.
 Qed.
 
-HB.instance Definition _ := isMonadConvex.Build real_realType
+HB.instance Definition _ := isMonadConvex.Build R
   acto choice1 choiceC choicemm choiceA.
 
 Let prob_bindDl p :
@@ -80,7 +81,7 @@ rewrite !(@BindE (choice_of_Type A) (choice_of_Type B)).
 by rewrite fsdist_conv_bind_left_distr.
 Qed.
 
-HB.instance Definition mixin := isMonadProb.Build real_realType
+HB.instance Definition mixin := isMonadProb.Build R
    acto prob_bindDl.
 (* NB: we use Pack here for an application in gcm_model.v *)
 Definition t := MonadProb.Pack (MonadProb.Class mixin).
