@@ -234,7 +234,7 @@ Qed.
 Section altprob_semilattconvtype.
 Variable M : altProbMonad R.
 Variable T : Type.
-Import convex necset SemiLattice.
+(*Import convex necset SemiLattice.*)
 
 Definition altProb_semiLattConvType := M T.
 
@@ -260,8 +260,9 @@ End altprob_semilattconvtype.
 (* TODO(rei): incipit of section 5 of gibbonsUTP2012 on the model of MonadAltProb *)
 
 Section convexity_property.
+From mathcomp.analysis Require Import Rstruct.
 
-Variables (M : altProbMonad real_realType) (A : Type) (p q : M A).
+Variables (M : altProbMonad R) (A : Type) (p q : M A).
 
 Lemma convexity w : p [~] q =
   (p <| w |> p) [~] (q <| w |> p) [~] (p <| w |> q) [~] (q <| w |> q).
@@ -275,13 +276,13 @@ Qed.
 
 End convexity_property.
 
-Definition bcoin {M : probMonad real_realType} (p : {prob real_realType}) : M bool :=
+Definition bcoin {M : probMonad R} (p : {prob R}) : M bool :=
   Ret true <| p |> Ret false.
 Arguments bcoin : simpl never.
 
 Section prob_only.
-Variable M : probMonad real_realType.
-Variable p q : {prob real_realType}.
+Variable M : probMonad R.
+Variable p q : {prob R}.
 
 Definition two_coins : M (bool * bool)%type :=
   (do a <- bcoin p; (do b <- bcoin q; Ret (a, b) : M _))%Do.
@@ -300,7 +301,7 @@ End prob_only.
 
 Section mixing_choices.
 
-Variable M : altProbMonad real_realType.
+Variable M : altProbMonad R.
 
 Definition arbcoin p : M bool :=
   (do a <- arb ; (do c <- bcoin p; Ret (a == c) : M _))%Do.
@@ -322,7 +323,7 @@ Local Open Scope R_scope.
 Import Order.POrderTheory Order.TotalTheory GRing.Theory Num.Theory.
 
 (* TODO? : move magnified_weight to infotheo.convex *)
-Lemma magnified_weight_proof (p q r : {prob real_realType}) :
+Lemma magnified_weight_proof (p q r : {prob R}) :
   Prob.p p < Prob.p q < Prob.p r -> (0 <= (Prob.p r - Prob.p q) / (Prob.p r - Prob.p p) <= 1)%mcR.
 Proof.
 case => /RltP pq /RltP qr.
@@ -334,16 +335,16 @@ rewrite -(ler_pM2r rp).
 by rewrite mulrAC -mulrA mulrV // mulr1 mul1r lerD2l lerNl opprK; exact/ltW.
 Qed.
 
-Definition magnified_weight (p q r : {prob real_realType})
-    (H : Prob.p p < Prob.p q < Prob.p r) : {prob real_realType} :=
+Definition magnified_weight (p q r : {prob R})
+    (H : Prob.p p < Prob.p q < Prob.p r) : {prob R} :=
   Eval hnf in Prob.mk_ (magnified_weight_proof H).
 
 Local Notation m := magnified_weight.
 Local Notation "x +' y" := (addpt x y) (at level 50).
 Local Notation "a *' x" := (scalept a x) (at level 40).
 
-Lemma magnify_conv (T : isConvexSpace_.ConvexSpace.Exports.convType)
-    (p q r : {prob real_realType}) (x y : T) (H : Prob.p p < Prob.p q < Prob.p r) :
+Lemma magnify_conv (T : convType)
+    (p q r : {prob R}) (x y : T) (H : Prob.p p < Prob.p q < Prob.p r) :
   (x <|p|> y) <| magnified_weight H |> (x <|r|> y) = x <|q|> y.
 Proof.
 case: (H) => pq qr.
@@ -378,7 +379,7 @@ rewrite -RminusE.
 ring.
 Qed.
 
-Lemma arbcoin_spec_convexity (p q : {prob real_realType}) :
+Lemma arbcoin_spec_convexity (p q : {prob R}) :
   Prob.p p < Prob.p q < (Prob.p p).~ ->
   arbcoin p = (bcoin p : M _) [~] bcoin (Prob.p p).~%:pr [~] bcoin q.
 Proof.
@@ -433,20 +434,23 @@ Qed.
 
 End mixing_choices.
 
-Definition coins23 {M : exceptProbMonad real_realType} : M bool :=
+Definition coins23 {M : exceptProbMonad R} : M bool :=
   Ret true <| (/ 2)%coqR%:pr |> (Ret false <| (/ 2)%coqR%:pr |> fail).
+
+Reserved Notation "x <= y <= z :> T" (at level 70, y, z at next level).
+Notation "x <= y <= z :> T" := ((x <= y :> T)%mcR && (y <= z :> T)%mcR).
 
 (* NB: notation for ltac:(split; fourier?)*)
 Local Open Scope R_scope.
-Lemma choiceA_compute {N : probMonad real_realType} (T F : bool) (f : bool -> N bool) :
+Lemma choiceA_compute {N : probMonad R} (T F : bool) (f : bool -> N bool) :
   f T <|(/ 9)%:pr|> (f F <|(/ 8)%:pr|> (f F <|(/ 7)%:pr|> (f F <|(/ 6)%:pr|>
  (f T <|(/ 5)%:pr|> (f F <|(/ 4)%:pr|> (f F <|(/ 3)%:pr|> (f F <|(/ 2)%:pr|>
   f T))))))) = f F <|(/ 3)%:pr|> (f F <|(/ 2)%:pr|> f T) :> N _.
 Proof.
-have H27 : (0 <= (2/7 : R) <= 1)%mcR by apply/andP; split; lra.
-have H721 : (0 <= (7/21 : R) <= 1)%mcR by apply/andP; split; lra.
-have H2156 : (0 <= (21/56 : R) <= 1)%mcR by apply/andP; split; lra.
-have H25 : (0 <= (2/5 : R) <= 1)%mcR by apply/andP; split; lra.
+have H27 : 0 <= 2/7 <= 1 :> R by lra.
+have H721 : 0 <= 7/21 <= 1 :> R by lra.
+have H2156 : 0 <= 21/56 <= 1 :> R by lra.
+have H25 : 0 <= 2/5 <= 1 :> R by lra.
 rewrite [in RHS](@choiceA_alternative _ _ _ _ _ (/ 2)%:pr (/ 3).~%:pr); last first.
   rewrite 3!probpK /= /onem.
   rewrite -!(RmultE,RminusE,R1E).
@@ -544,10 +548,10 @@ rewrite [in LHS](@choiceA_alternative _ _ _ (/ 9)%:pr (probcplt (/ 4).~%:pr) (/ 
 by rewrite choicemm choiceC.
 Qed.
 
-Definition uFFT {M : probMonad real_realType} : M bool :=
+Definition uFFT {M : probMonad R} : M bool :=
   uniform true [:: false; false; true].
 
-Lemma uFFTE (M : probMonad real_realType) : uFFT = bcoin (/ 3)%:pr :> M _.
+Lemma uFFTE (M : probMonad R) : uFFT = bcoin (/ 3)%:pr :> M _.
 Proof.
 rewrite /uFFT /bcoin uniform_cons.
 rewrite (_ : _%:pr = (/ 3)%:pr)%R; last exact/val_inj.
@@ -562,10 +566,10 @@ rewrite choicemm choiceC; congr (Ret true <| _ |> Ret false).
 by apply val_inj; rewrite /= onemK.
 Qed.
 
-Definition uTTF {M : probMonad real_realType} : M bool :=
+Definition uTTF {M : probMonad R} : M bool :=
   uniform true [:: true; true; false].
 
-Lemma uTTFE (M : probMonad real_realType) : uTTF = bcoin (/ 3).~%:pr :> M _.
+Lemma uTTFE (M : probMonad R) : uTTF = bcoin (/ 3).~%:pr :> M _.
 Proof.
 rewrite /uTTF /bcoin uniform_cons.
 rewrite (_ : _%:pr = (/ 3)%:pr)%R; last exact/val_inj.
@@ -578,7 +582,7 @@ rewrite /= /onem; split.
 rewrite -!RminusE -RmultE -R1E. field.
 Qed.
 
-Lemma uniform_notin (M : probMonad real_realType) (A : eqType) (def : A) (s : seq A) B
+Lemma uniform_notin (M : probMonad R) (A : eqType) (def : A) (s : seq A) B
   (ma mb : A -> M B) (p : pred A) :
   s != [::] ->
   (forall x, x \in s -> ~~ p x) ->
@@ -597,7 +601,7 @@ rewrite 2!choice_bindDl; congr (_ <| _ |> _).
 by rewrite IH // => a ta; rewrite H // in_cons ta orbT.
 Qed.
 
-Lemma choice_halfC A (M : probMonad real_realType) (a b : M A) :
+Lemma choice_halfC A (M : probMonad R) (a b : M A) :
   a <| (/ 2)%:pr |> b = b <| (/ 2)%:pr |> a.
 Proof.
 rewrite choiceC (_ : (_.~)%:pr = (/ 2)%:pr) //.
@@ -605,7 +609,7 @@ apply val_inj; rewrite /= /onem.
 rewrite -RminusE -R1E; field.
 Qed.
 
-Lemma choice_halfACA A (M : probMonad real_realType) (a b c d : M A) :
+Lemma choice_halfACA A (M : probMonad R) (a b c d : M A) :
   (a <| (/ 2)%:pr |> b) <| (/ 2)%:pr |> (c <| (/ 2)%:pr |> d) =
   (a <| (/ 2)%:pr |> c) <| (/ 2)%:pr |> (b <| (/ 2)%:pr |> d).
 Proof.
@@ -615,7 +619,7 @@ by rewrite -choice_conv.
 Qed.
 
 Section keimel_plotkin_instance.
-Variables (M : altProbMonad real_realType) (A : Type).
+Variables (M : altProbMonad R) (A : Type).
 Variables (p q : M A).
 
 Lemma keimel_plotkin_instance :
