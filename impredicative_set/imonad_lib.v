@@ -35,6 +35,8 @@ Require Import ihierarchy.
 (*                                (fun v => (Ret (u, v)))                     *)
 (*             commute m n f := (m >>= n >>= f) = (n >>= m >>= f)             *)
 (*                              (ref: definition 4.2, mu2019tr3)              *)
+(*             preserves f g := the monadic function f : A -> M A preserves   *)
+(*                              the value of the function g : A -> B          *)
 (*                  rep n mx == mx >> mx >> ... >> mx, n times                *)
 (* forloop n1 n2 (b : nat -> M unit) : M unit := for-loop                     *)
 (*                                                                            *)
@@ -219,7 +221,7 @@ Proof. by rewrite functor_o. Qed.
 
 Section id_natural_transformation.
 Variables C : functor.
-Definition NId := fun A => @id (C A).
+Definition NId := fun A => @idfun (C A).
 Let natural_id : naturality C C NId. Proof. by []. Qed.
 
 HB.instance Definition _ := isNatural.Build C C NId natural_id.
@@ -310,18 +312,18 @@ Lemma functor_app_natural_hcomp (S F G : functor) (nt : F ~> G) :
 Proof. by apply nattrans_ext => a; rewrite functor_app_naturalE. Qed.
 
 Section natural_transformation_example.
-Definition fork' : FId ~~> squaring := fun (A : UU0) (a : A) => (a, a).
+Definition fork' : idfun ~~> squaring := fun (A : UU0) (a : A) => (a, a).
 
 Lemma fork_natural : naturality _ _ fork'. Proof. by []. Qed.
 
-HB.instance Definition _ := isNatural.Build FId squaring fork' fork_natural.
+HB.instance Definition _ := isNatural.Build idfun squaring fork' fork_natural.
 
-Definition fork : FId ~> squaring := [the _ ~> _ of fork'].
+Definition fork : idfun ~> squaring := [the _ ~> _ of fork'].
 
 End natural_transformation_example.
 
-Definition eta_type (f g : functor) := FId ~> g \o f.
-Definition eps_type (f g : functor) := f \o g ~> FId.
+Definition eta_type (f g : functor) := idfun ~> g \o f.
+Definition eps_type (f g : functor) := f \o g ~> idfun.
 Module TriangularLaws.
 Section triangularlaws.
 Variables (F G : functor) (eps : eps_type F G) (eta : eta_type F G).
@@ -353,14 +355,14 @@ Section adjoint_example.
 Variable (X : UU0).
 Definition curry_fun : curry_F X \o uncurry_F X ~~> idfun :=
   fun (A : UU0) (af : X * (X -> A)) => af.2 af.1.
-Lemma curry_naturality : naturality (curry_F X \o uncurry_F X) FId curry_fun.
+Lemma curry_naturality : naturality (curry_F X \o uncurry_F X) idfun curry_fun.
 Proof. by []. Qed.
 HB.instance Definition _ := isNatural.Build
-  (curry_F X \o uncurry_F X) FId curry_fun curry_naturality.
+  (curry_F X \o uncurry_F X) idfun curry_fun curry_naturality.
 Definition curry_eps : eps_type (curry_F X) (uncurry_F X) :=
-  [the nattrans (curry_F X \o uncurry_F X) FId of curry_fun].
+  [the nattrans (curry_F X \o uncurry_F X) idfun of curry_fun].
 
-Definition curry_fun2 : FId ~~> uncurry_F X \o curry_F X :=
+Definition curry_fun2 : idfun ~~> uncurry_F X \o curry_F X :=
   fun (A : UU0) (a : A) => pair^~ a.
 Lemma curry_naturality2 :
   naturality _ [the functor of uncurry_F X \o curry_F X] curry_fun2.
@@ -461,7 +463,7 @@ Hypothesis H : F -| U.
 Let eta : eta_type F U := AdjointFunctor.eta H.
 Let eps : eps_type F U := AdjointFunctor.eps H.
 
-Definition uni_fun : FId ~~> (U0 \o U) \o (F \o F0) :=
+Definition uni_fun : idfun ~~> (U0 \o U) \o (F \o F0) :=
   fun A : UU0 => U0 # eta (F0 A) \o eta0 A.
 
 Lemma uni_naturality :
@@ -577,11 +579,11 @@ Qed.
 
 End algebraic_operation_interface.
 
-(*Lemma monad_of_ret_bind_ext (F G : functor) (RET1 : FId ~> F) (RET2 : FId ~> G)
+(*Lemma monad_of_ret_bind_ext (F G : functor) (RET1 : idfun ~> F) (RET2 : idfun ~> G)
   (bind1 : forall A B : UU0, F A -> (A -> F B) -> F B)
   (bind2 : forall A B : UU0, G A -> (A -> G B) -> G B) :
   forall (FG : F = G),
-  RET1 = eq_rect _ (fun m : functor => FId ~> m) RET2 _ ((*beuh*) (esym FG)) ->
+  RET1 = eq_rect _ (fun m : functor => idfun ~> m) RET2 _ ((*beuh*) (esym FG)) ->
   bind1 = eq_rect _ (fun m : functor => forall A B : UU0, m A -> (A -> m B) -> m B) bind2 _ (esym FG) ->
   forall H1 K1 H2 K2 H3 K3,
   Monad_of_ret_bind F RET1 bind1 H1 H2 H3 =

@@ -19,7 +19,6 @@ From HB Require Import structures.
 (* Module FunctorLaws == map laws of a functor                                *)
 (*            functor == type of functors                                     *)
 (*              F # g == application of the functor F to the morphism g       *)
-(*                FId == notation for the identity functor                    *)
 (*             F ~> G == natural transformation from functor F to functor G   *)
 (*            f ~~> g == forall A, f A -> g A, notation used for the          *)
 (*                       components of a natural transformation               *)
@@ -30,7 +29,7 @@ From HB Require Import structures.
 (*                >>= == notation for the standard bind operator              *)
 (*             m >> f := m >>= (fun _ => f)                                   *)
 (*              monad == type of monads                                       *)
-(*                Ret == natural transformation FId ~> M for a monad M        *)
+(*                Ret == natural transformation idfun ~> M for a monad M      *)
 (*               Join == natural transformation M \o M ~> M for a monad M     *)
 (*    Module BindLaws == bind laws of a monad                                 *)
 (*                                                                            *)
@@ -97,13 +96,13 @@ Reserved Notation "m >> f" (at level 49).
 Reserved Notation "'fmap' f" (at level 4).
 Reserved Notation "x '[~]' y" (at level 50).
 
-Notation "f ~~> g" := (forall A, f A -> g A)
-  (at level 51, only parsing) : monae_scope.
-
 Local Open Scope monae_scope.
 
 Notation UU1 := Type.
 Notation UU0 := Set.
+
+Notation "f ~~> g" := (forall A : UU0, f A -> g A)
+  (at level 51, only parsing) : monae_scope.
 
 (* NB: not putting M in Set -> Set because of expressions like:
   M (A * (size s).-1.-tuple A)%type *)
@@ -134,10 +133,7 @@ Let id_comp : FunctorLaws.comp id_actm. Proof. by []. Qed.
 HB.instance Definition _ := isFunctor.Build idfun id_id id_comp.
 End functorid.
 
-(* NB: consider eliminating? *)
-Notation FId := [the functor of idfun].
-
-Lemma FIdE (A B : UU0) (f : A -> B) : FId # f = f. Proof. by []. Qed.
+Lemma FIdE (A B : UU0) (f : A -> B) : idfun # f = f. Proof. by []. Qed.
 
 Section functor_composition.
 Variables f g : functor.
@@ -270,20 +266,22 @@ Qed.*)
 Module JoinLaws.
 Section join_laws.
 Context {F : functor}.
-Variables (ret : FId ~> F) (join : F \o F ~~> F).
+Variables (ret : idfun ~~> F) (join : F \o F ~~> F).
+Arguments ret {_}.
+Arguments join {A}.
 
-Definition left_unit := forall A, @join A \o ret (F A) = id :> (F A -> F A).
+Definition left_unit := forall A, join \o ret = id :> (F A -> F A).
 
-Definition right_unit := forall A, @join A \o F # ret A = id :> (F A -> F A).
+Definition right_unit := forall A, join \o F # ret = id :> (F A -> F A).
 
-Definition associativity :=
-  forall A, @join A \o F # @join A = @join A \o @join (F A) :> (F (F (F A)) -> F A).
+Definition associativity := forall A,
+  join \o F # join = join \o join :> (F (F (F A)) -> F A).
 
 End join_laws.
 End JoinLaws.
 
 HB.mixin Record isMonad (F : UU0 -> UU0) of Functor F := {
-  ret : FId ~> F ;
+  ret : idfun ~> F ;
   join : F \o F ~> F ;
   bind : forall (A B : UU0), F A -> (A -> F B) -> F B ;
   bindE : forall (A B : UU0) (f : A -> F B) (m : F A),
@@ -364,7 +362,7 @@ Definition bind_of_join (F : functor) (j : F \o F ~~> F)
   j B ((F # f) m).
 
 Section from_join_laws_to_bind_laws.
-Variable (F : functor) (ret : FId ~> F) (join : F \o F ~> F).
+Variable (F : functor) (ret : idfun ~> F) (join : F \o F ~> F).
 
 Hypothesis joinretM : JoinLaws.left_unit ret join.
 Hypothesis joinMret : JoinLaws.right_unit ret join.
@@ -391,7 +389,7 @@ Qed.
 End from_join_laws_to_bind_laws.
 
 HB.factory Record isMonad_ret_join (F : UU0 -> UU0) of isFunctor F := {
-  ret : FId ~> F ;
+  ret : idfun ~> F ;
   join : F \o F ~> F ;
   joinretM : JoinLaws.left_unit ret join ;
   joinMret : JoinLaws.right_unit ret join ;
@@ -412,15 +410,15 @@ HB.instance Definition _ := isMonad.Build M bindE joinretM joinMret joinA.
 HB.end.
 
 HB.factory Record isMonad_ret_bind (F : UU0 -> UU0) := {
-  ret' : forall (A : UU0), A -> F A ;
+  ret : forall (A : UU0), A -> F A ;
   bind : forall (A B : UU0), F A -> (A -> F B) -> F B ;
-  bindretf : BindLaws.left_neutral bind ret' ;
-  bindmret : BindLaws.right_neutral bind ret' ;
+  bindretf : BindLaws.left_neutral bind ret ;
+  bindmret : BindLaws.right_neutral bind ret ;
   bindA : BindLaws.associative bind }.
 
 HB.builders Context M of isMonad_ret_bind M.
 
-Let actm (a b : UU0) (f : a -> b) m := bind m (@ret' _ \o f).
+Let actm (a b : UU0) (f : a -> b) m := bind m (@ret _ \o f).
 
 Let actm_id : FunctorLaws.id actm.
 Proof.
@@ -443,7 +441,7 @@ HB.instance Definition _ := isFunctor.Build M actm_id actm_comp.
 Let F := [the functor of M].
 Local Notation FF := [the functor of F \o F].
 
-Let ret'_naturality : naturality FId F ret'.
+Let ret_naturality : naturality idfun F ret.
 Proof.
 move=> a b h.
 rewrite FIdE /ihierarchy.actm /= /actm; apply: funext => m /=.
@@ -451,8 +449,7 @@ by rewrite bindretf.
 Qed.
 
 HB.instance Definition _ :=
-  isNatural.Build FId F (ret' : FId ~~> F) ret'_naturality.
-Let ret := [the FId ~> F of ret'].
+  isNatural.Build idfun F (ret : idfun ~~> F) ret_naturality.
 
 Let join' : FF ~~> F := fun _ m => bind m idfun.
 
@@ -500,7 +497,7 @@ move=> a; apply: funext => m.
 rewrite /join /= /join'.
 rewrite /ihierarchy.actm /= /actm /=.
 rewrite bindA /=.
-rewrite [X in bind m X](_ : _ = fun x => ret' x) ?bindmret //=; apply: funext => ?.
+rewrite [X in bind m X](_ : _ = fun x => ret x) ?bindmret //=; apply: funext => ?.
 by rewrite bindretf.
 Qed.
 
@@ -690,9 +687,9 @@ Notation "m <=< n" := (kleisli m n) : monae_scope.
 Notation "m >=> n" := (kleisli n m) : monae_scope.
 
 HB.mixin Record isMonadFail (M : UU0 -> UU0) of Monad M := {
-  fail : forall A : UU0, M A;
+  fail : forall A : UU0, M A ;
     (* exceptions are left-zeros of sequential composition *)
-  bindfailf : BindLaws.left_zero (@bind [the monad of M]) fail
+  bindfailf : BindLaws.left_zero (@bind M) fail
     (* fail A >>= f = fail B *) }.
 
 #[short(type=failMonad)]
@@ -815,8 +812,8 @@ HB.structure Definition MonadCINondet := {M of MonadAltCI M & MonadNondet M}.
 
 Section nondet_big.
 Variables (M : nondetMonad) (A : UU0).
-Canonical alt_monoid :=
-  Monoid.Law (@altA M A) (@altfailm _ _) (@altmfail _ _).
+HB.instance Definition _ :=
+  Monoid.isLaw.Build _ _ _ (@altA M A) (@altfailm _ _) (@altmfail _ _).
 
 Lemma test_bigop n : \big[(@alt _ _)/fail]_(i < n) (fail : M A) = fail.
 Proof.
