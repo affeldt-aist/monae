@@ -342,7 +342,7 @@ Proof. by move=> A B C f g; apply boolp.funext => -[]. Qed.
 HB.instance Definition _ := isFunctor.Build acto func_id func_comp.
 End empty.
 End Empty.
-HB.export Empty.
+HB.export monae.monad_model.Empty.
 
 Module Append.
 Section append.
@@ -1212,7 +1212,11 @@ HB.instance Definition _ := isMonadStateTraceReify.Build S T (StateMonad.acto (S
 End modelstatetracereify.
 End ModelStateTraceReify.
 
-Notation choice_of_Type := convex.choice_of_Type.
+
+(* choice_of_Type is removed from infotheo.convex *)
+(* Notation choice_of_Type := convex.choice_of_Type. *)
+Definition choice_of_Type (T : Type) : choiceType :=
+  Choice.Pack (Choice.Class (boolp.gen_choiceMixin T) (boolp.gen_eqMixin T)).
 
 Module ModelBacktrackableState.
 Local Open Scope fset_scope.
@@ -1230,8 +1234,8 @@ Let ret : idfun ~~> M := fun A (a : A) s =>
 
 Let bind := fun A B (m : acto A)
   (f : A -> S -> {fset (choice_of_Type B * choice_of_Type S)}) =>
-  fun s => \bigcup_(i <- (fun x : [choiceType of choice_of_Type A *
-                                           choice_of_Type S] => f x.1 x.2) @` (m s))
+  fun s => \bigcup_(i <- (fun x : choice_of_Type A * choice_of_Type S => f x.1 x.2)
+                           @` (m s))
                  i.
 Let left_neutral : BindLaws.left_neutral bind ret.
 Proof.
@@ -1243,7 +1247,7 @@ Let right_neutral : BindLaws.right_neutral bind ret.
 Proof.
 move=> A B /=; rewrite boolp.funeqE => s.
 apply/fsetP => /= x; apply/bigfcupP'; case: ifPn => xBs.
-  set x' := (x : [choiceType of choice_of_Type A * choice_of_Type S]).
+  set x' := (x : choice_of_Type A * choice_of_Type S).
   exists [fset x']; last by rewrite inE.
   by apply/imfsetP; exists x' => //=; case: x'.
 case => /= SA /imfsetP[] /= sa saBs ->{SA} /fset1P => Hx.
@@ -1272,8 +1276,7 @@ HB.instance Definition _ :=
 
 Lemma bindE (A B : Type) m (f : A -> [the monad of acto] B) :
   m >>= f = fun s =>
-    \bigcup_(i <- (fun x : [choiceType of choice_of_Type A *
-                                       choice_of_Type S] => f x.1 x.2)
+    \bigcup_(i <- (fun x : choice_of_Type A * choice_of_Type S => f x.1 x.2)
                  @` (m s))
     i.
 Proof.
@@ -1314,8 +1317,7 @@ move=> s s'; apply boolp.funext => s''.
 rewrite bindE; apply/fsetP => /= x; apply/bigfcupP'/fset1P.
 - by case => /= x0 /imfsetP[/= x1] /fset1P _ -> /fset1P.
 - move=> -> /=.
-  exists [fset ((tt, s') : [choiceType of choice_of_Type unit *
-                                     choice_of_Type S])] => /=; last first.
+  exists [fset ((tt, s') : choice_of_Type unit * choice_of_Type S)] => /=; last first.
     exact/fset1P.
   apply/imfsetP => /=; exists (tt, s) => //; exact/fset1P.
 Qed.
@@ -1324,13 +1326,11 @@ Proof.
 move=> s; rewrite boolp.funeqE => s'.
 rewrite 2!bindE /=; apply/fsetP => /= x; apply/bigfcupP'/bigfcupP'.
 - case => /= x0 /imfsetP[/= x1] /fset1P -> -> /fset1P ->.
-  exists [fset ((s, s) : [choiceType of choice_of_Type S *
-                                   choice_of_Type S])]; last first.
+  exists [fset ((s, s) : choice_of_Type S * choice_of_Type S)]; last first.
     exact/fset1P.
   apply/imfsetP => /=; exists (tt, s) => //; exact/fset1P.
 - case => /= x0 /imfsetP[/= x1] /fset1P -> -> /fset1P ->.
-  exists [fset ((s ,s) : [choiceType of choice_of_Type S *
-                                   choice_of_Type S])]; last first.
+  exists [fset ((s ,s) : choice_of_Type S * choice_of_Type S)]; last first.
     exact/fset1P.
   apply/imfsetP => /=; exists (tt, s) => //; exact/fset1P.
 Qed.
@@ -1340,8 +1340,7 @@ rewrite boolp.funeqE => s.
 rewrite bindE /skip /= /Ret; apply/fsetP => /= x; apply/bigfcupP'/idP.
 - case => /= x0 /imfsetP[/= x1] /fset1P -> -> /fset1P ->; exact/fset1P.
 - move/fset1P => ->.
-  exists [fset ((tt, s) : [choiceType of choice_of_Type unit *
-                                    choice_of_Type S])]; last first.
+  exists [fset ((tt, s) : choice_of_Type unit * choice_of_Type S)]; last first.
     exact/fset1P.
   by apply/imfsetP; exists (s, s) => //; rewrite inE.
 Qed.
@@ -1358,8 +1357,7 @@ rewrite 2!bindE; apply/fsetP => x; apply/bigfcupP'/bigfcupP'.
     (choice_of_Type S -> {fset choice_of_Type A * choice_of_Type S}).
     move=> a b s'; exact: (k a b s').
   exists (\bigcup_(i <- [fset k' (s, s).1 x2.1 x2.2 |
-              x2 in [fset (((s, s).2, (s, s).2) : [choiceType of choice_of_Type S *
-                                                                 choice_of_Type S])]]) i).
+              x2 in [fset (((s, s).2, (s, s).2) : choice_of_Type S * choice_of_Type S)]]) i).
     apply/imfsetP ; exists (s, s); by [rewrite inE | rewrite bindE].
   apply/bigfcupP'; exists (k s s s) => //; apply/imfsetP; exists (s, s) => //=.
   exact/fset1P.
@@ -1377,7 +1375,7 @@ Let bindfailf : BindLaws.left_zero (@bind _ ) fail.
 Proof.
 move=> A B g; rewrite boolp.funeqE => s; apply/fsetP => x; rewrite inE bindE.
 apply/negbTE/bigfcupP'; case => /= x0 /imfsetP[/= sa].
-by rewrite (@in_fset0 [choiceType of choice_of_Type A * choice_of_Type S]).
+by rewrite (@in_fset0 (choice_of_Type A * choice_of_Type S)%type).
 Qed.
 
 HB.instance Definition _ := isMonadFail.Build (acto S) bindfailf.
@@ -1386,8 +1384,7 @@ End fail.
 Section alt.
 Variable S : choiceType.
 Let M := [the monad of acto S].
-Let alt := (fun (A : Type) (a b : S -> {fset [choiceType of choice_of_Type A *
-                                                         choice_of_Type S]}) (s : S) => a s `|` b s).
+Let alt := (fun (A : Type) (a b : S -> {fset choice_of_Type A * choice_of_Type S}) (s : S) => a s `|` b s).
 Let altA : forall T : UU0, ssrfun.associative (@alt T).
 Proof. by move=> A a b c; rewrite boolp.funeqE => s; rewrite /alt fsetUA. Qed.
 Let alt_bindDl : BindLaws.left_distributive (@bind M) (@alt).
@@ -1425,7 +1422,7 @@ Proof.
 move=> A B /= g; rewrite bindE /=; rewrite boolp.funeqE => s; apply/fsetP => /= sa.
 apply/idP/idP/bigfcupP'.
 case => /= SA /imfsetP[/= bs bsgs ->{SA}].
-by rewrite (@in_fset0 [choiceType of choice_of_Type A * choice_of_Type S]).
+by rewrite (@in_fset0 (choice_of_Type A * choice_of_Type S)%type).
 Qed.
 HB.instance Definition _ := isMonadFailR0.Build (acto S) bindmfail.
 End failR0monad.
