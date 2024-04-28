@@ -59,8 +59,8 @@ Inductive rlist (a : Type) (a_1 : ml_type) :=
   | Nil
   | Cons (_ : a) (_ : loc (ml_rlist a_1)).
 
-Definition ml_type_eq_mixin := EqMixin (comparePc MLTypes.ml_type_eq_dec).
-Canonical ml_type_eqType := Eval hnf in EqType _ ml_type_eq_mixin.
+Definition ml_type_eq_mixin := hasDecEq.Build _ (comparePc MLTypes.ml_type_eq_dec).
+HB.instance Definition ml_type_eqType := ml_type_eq_mixin.
 
 End MLTypes.
 (******************************************************************************)
@@ -82,8 +82,7 @@ Fixpoint coq_type_nat (T : ml_type) : Type :=
   end.
 End with_monad.
 
-HB.instance Definition _ := @isML_universe.Build ml_type
-  (Equality.class ml_type_eqType) coq_type_nat ml_unit val_nonempty.
+HB.instance Definition _ := @isML_universe.Build ml_type coq_type_nat ml_unit val_nonempty.
 
 Definition typedStoreMonad (N : monad) :=
   typedStoreMonad ml_type N monad_model.locT_nat.
@@ -724,8 +723,7 @@ Fixpoint coq_type63 (T : ml_type) : Type :=
 End with_monad.
 (******************************************************************************)
 
-HB.instance Definition _ := @isML_universe.Build ml_type
-  (Equality.class ml_type_eqType) coq_type63 ml_unit val_nonempty.
+HB.instance Definition _ := @isML_universe.Build ml_type coq_type63 ml_unit val_nonempty.
 
 Section fact_for_int63.
 Variable N : monad.
