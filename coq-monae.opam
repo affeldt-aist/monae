@@ -27,7 +27,7 @@ depends: [
   "coq-mathcomp-analysis" { (>= "1.1.0")}
   "coq-infotheo" { >= "0.7.1"}
   "coq-paramcoq" { >= "1.1.3" & < "1.2~" }
-  "coq-hierarchy-builder" { >= "1.7.0" }
+  "coq-hierarchy-builder" { >= "1.5.0" }
   "coq-equations" { >= "1.3" & < "1.4~" }
 ]
 
