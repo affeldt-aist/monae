@@ -89,7 +89,7 @@ dependencies:
     [Paramcoq](https://github.com/coq-community/paramcoq)
 - opam:
     name: coq-hierarchy-builder
-    version: '{ = "1.5.0" }'
+    version: '{ >= "1.7.0" }'
   description: |-
     [Hierarchy Builder](https://github.com/math-comp/hierarchy-builder)
 - opam:
