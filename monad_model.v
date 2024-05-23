@@ -1643,7 +1643,7 @@ End modelplusarray.
 End ModelPlusArray.
 HB.export ModelPlusArray.
 
-Definition locT_nat := [eqType of nat].
+Definition locT_nat : eqType := nat.
 
 Module ModelTypedStore.
 

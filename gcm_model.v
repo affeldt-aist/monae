@@ -220,7 +220,7 @@ Qed.
 (* free_convType_mor induces maps between supports *)
 Definition free_convType_mor_supp
   (A B : CC) (f : A -> B(*{hom A , B}*)) (d : {dist A}) (x : finsupp d)
-  : [finType of finsupp ((free_convType_mor (hom_choiceType f)) d)] :=
+  : finsupp ((free_convType_mor (hom_choiceType f)) d) :=
   FSetSub (mem_finsupp_free_convType_mor f x).
 Global Arguments free_convType_mor_supp [A B] f d.
 
@@ -384,6 +384,7 @@ Proof. by split; move=> ?; case: f=> ? [] [] []. Qed.
 Fact scsl_hom_is_affine : affine f.
 Proof. by case: scsl_hom_is_biglub_affine. Qed.
 
+(* NB(rei): this can actually maybe be removed *)
 HB.instance Definition SCSL_hom_affine :=
   isAffine.Build _ _ _ scsl_hom_is_affine.
 (* Canonical SCSL_hom_affine (K L : CS) (f : {hom K , L}) :=
