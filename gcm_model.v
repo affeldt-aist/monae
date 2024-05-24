@@ -91,8 +91,9 @@ Definition hom_choiceType
 End choiceType_as_a_category.
 Notation CC := [the category of choiceType].
 
+Require monad_model.
 Section free_choiceType_functor.
-Local Notation m := choice_of_Type.
+Local Notation m := monad_model.choice_of_Type.
 
 Definition free_choiceType_mor (T U : CT) (f : {hom T, U}) :
   {hom m T, m U} := hom_choiceType (f : m T -> m U).
@@ -219,7 +220,7 @@ Qed.
 (* free_convType_mor induces maps between supports *)
 Definition free_convType_mor_supp
   (A B : CC) (f : A -> B(*{hom A , B}*)) (d : {dist A}) (x : finsupp d)
-  : [finType of finsupp ((free_convType_mor (hom_choiceType f)) d)] :=
+  : finsupp ((free_convType_mor (hom_choiceType f)) d) :=
   FSetSub (mem_finsupp_free_convType_mor f x).
 Global Arguments free_convType_mor_supp [A B] f d.
 
@@ -383,6 +384,7 @@ Proof. by split; move=> ?; case: f=> ? [] [] []. Qed.
 Fact scsl_hom_is_affine : affine f.
 Proof. by case: scsl_hom_is_biglub_affine. Qed.
 
+(* NB(rei): this can actually maybe be removed *)
 HB.instance Definition SCSL_hom_affine :=
   isAffine.Build _ _ _ scsl_hom_is_affine.
 (* Canonical SCSL_hom_affine (K L : CS) (f : {hom K , L}) :=
@@ -410,12 +412,14 @@ Let acto (a : CV) : CS := {necset a}.
 Section free_semiCompSemiLattConvType_mor.
 Variables (A B : convType) (f : {hom A , B}).
 
-Definition free_semiCompSemiLattConvType_mor' (X : acto A) : acto B :=
-  NECSet.Pack (NECSet.Class
-    (CSet.Mixin (is_convex_set_image
-      (Affine.Pack (Affine.Class (isAffine.Axioms_ _ _ (conv_hom_is_affine f))))
-      X))
-    (NESet.Mixin (neset_image_neq0 _ _))).
+Local Notation affine_f :=
+  (Affine.Pack (Affine.Class (isAffine.Build _ _ _ (conv_hom_is_affine f)))).
+
+Local Notation pack_imfx X := (NECSet.Pack (NECSet.Class
+    (isConvexSet.Build _ _ (is_convex_set_image affine_f X))
+    (isNESet.Build _ _ (neset_image_neq0 _ _)))).
+
+Definition free_semiCompSemiLattConvType_mor' (X : acto A) : acto B := pack_imfx X.
 
 (* the results of free_semiCompSemiLattConvType_mor are
    semiLattConvType-morphisms, i.e., are
@@ -424,11 +428,9 @@ Lemma free_semiCompSemiLattConvType_mor'_affine :
   affine free_semiCompSemiLattConvType_mor'.
 Proof.
 move=> p a0 a1; apply necset_ext => /=; rewrite predeqE => b0; split.
-- rewrite !necset_convType.convE.
-  case=> a [] a0' a0a0'; rewrite conv_pt_setE=> -[] a1' a1a1' <- <- /=.
+- case=> a [] a0' a0a0'; rewrite conv_pt_setE=> -[] a1' a1a1' <- <- /=.
   by rewrite affine_conv /=; exact: conv_in_conv_set.
-- rewrite !necset_convType.convE.
-  move=> /conv_in_conv_set' [] x [] y [] [] a0' a0a0' <- [] [] a1' a1a1' <- ->.
+- move=> /conv_in_conv_set' [] x [] y [] [] a0' a0a0' <- [] [] a1' a1a1' <- ->.
   rewrite affine_image_conv_set /=.
   by apply conv_in_conv_set; apply imageP.
 Qed.
@@ -438,11 +440,7 @@ Lemma bigsetU_affine (X : neset (necset A)) : (f @` (\bigcup_(x in X) x) =
 Proof.
 rewrite funeqE => b; rewrite propeqE; split.
 - case => a [x Xx xa] <-{b}.
-  exists (NECSet.Pack (NECSet.Class
-    (CSet.Mixin (is_convex_set_image
-      (Affine.Pack (Affine.Class (isAffine.Axioms_ _ _ (conv_hom_is_affine f))))
-      x))
-    (NESet.Mixin (neset_image_neq0 f x)))) => /=; last by exists a.
+  exists (pack_imfx x) => /=; last by exists a.
   by exists x => //=; exact/necset_ext.
 - by case => b0 [a0 Xa0 <-{b0}] [a a0a <-{b}]; exists a => //; exists a0.
 Qed.
@@ -462,14 +460,13 @@ Definition free_semiCompSemiLattConvType_mor : {hom acto A, acto B} :=
           free_semiCompSemiLattConvType_mor'_affine)))).
 
 Lemma free_semiCompSemiLattConvType_morE (X : acto A) :
-  NECSet.mixinType (free_semiCompSemiLattConvType_mor X) = image_neset f X.
+  free_semiCompSemiLattConvType_mor X = f @` X :> neset _.
 Proof.
 by rewrite /free_semiCompSemiLattConvType_mor; unlock; apply neset_ext.
 Qed.
 
 Lemma free_semiCompSemiLattConvType_morE' (X : acto A) :
-  NESet.car (NECSet.mixinType (free_semiCompSemiLattConvType_mor X)) =
-  image_neset f X.
+  free_semiCompSemiLattConvType_mor X = f @` X :> set _.
 Proof. by rewrite /free_semiCompSemiLattConvType_mor; unlock. Qed.
 
 End free_semiCompSemiLattConvType_mor.
@@ -549,8 +546,7 @@ Qed.
 Lemma eps1''_affine L : affine (@eps1'' L).
 Proof.
 move=> p X Y; rewrite -biglub_conv_setD.
-congr (|_| _%:ne); apply/neset_ext => /=.
-by rewrite necset_convType.convE.
+by congr (|_| _%:ne); apply/neset_ext => /=.
 Qed.
 
 Let eps1' : F1 \O U1 ~~> FId := fun L => Hom.Pack (Hom.Class (isHom.Axioms_
@@ -572,17 +568,16 @@ Lemma eps1E (L : semiCompSemiLattConvType) :
   eps1 L = (fun X => |_| X) :> (_ -> _).
 Proof. by rewrite /eps1; unlock. Qed.
 
-Lemma necset1_affine (C : convType) : affine (@necset1 C).
+Lemma necset1_affine (C : convType) : affine (set1 : C -> necset C).
 Proof.
 move=> p a b /=; apply/necset_ext; rewrite eqEsubset; split=> x /=.
 - move->; rewrite necset_convType.convE.
   by apply conv_in_conv_set.
-- rewrite necset_convType.convE /necset1 /=.
-  by case/conv_in_conv_set'=> a0 [] b0 [] -> [] -> ->.
+- by case/conv_in_conv_set'=> a0 [] b0 [] -> [] -> ->.
 Qed.
 
 Let eta1' : FId ~~> U1 \O F1 := fun C => Hom.Pack (Hom.Class
-  (isHom.Axioms_ (FId C) ((U1 \O F1) C) (@necset1 C) (@necset1_affine C))).
+  (isHom.Axioms_ (FId C) ((U1 \O F1) C) set1 (@necset1_affine C))).
 
 Lemma eta1'_natural : naturality _ _ eta1'.
 Proof.
@@ -594,13 +589,10 @@ HB.instance Definition _ := isNatural.Build _ _ _ _ _ eta1'_natural.
 
 Definition eta1 := locked [the _ ~> _ of eta1'].
 
-Lemma eta1E (C : convType) : eta1 C = @necset1 _ :> (_ -> _).
+Lemma eta1E (C : convType) : eta1 C = (set1 : C -> necset C) :> (_ -> _).
 Proof. by rewrite /eta1; unlock. Qed.
 
 Import comps_notation.
-
-Lemma necset1E (T : convType) (t : T) : necset1 t = [set t] :> set T.
-Proof. by []. Qed.
 
 Lemma triL1 : TriangularLaws.left eta1 eps1.
 Proof.
@@ -608,8 +600,8 @@ move=> c; apply funext => x /=; apply/necset_ext => /=.
 rewrite eps1E /= free_semiCompSemiLattConvType_morE' /=.
 rewrite -[in RHS](hull_cset x); congr hull.
 rewrite eqEsubset eta1E; split=> a.
-- by case=> y [] b xb <-; rewrite necset1E => ->.
-- by move=> xa; exists (necset1 a); [exists a | rewrite necset1E].
+- by case=> y [] b xb <- ->.
+- by move=> xa; exists [set a]; [exists a | ].
 Qed.
 
 Lemma triR1 : TriangularLaws.right eta1 eps1.
@@ -623,9 +615,9 @@ Local Open Scope convex_scope.
 Local Open Scope classical_set_scope.
 Variable C : convType.
 
-Definition join1' (s : necset {necset C}) : {convex_set C} :=
-  CSet.Pack (CSet.Mixin
-    (hull_is_convex (\bigcup_(x in s) if x \in s then x : set _ else cset0 _))).
+Definition join1' (s : necset (necset C)) : {convex_set C} :=
+  ConvexSet.Pack (ConvexSet.Class (isConvexSet.Build C _
+    (hull_is_convex (\bigcup_(x in s) if x \in s then x : set _ else set0)))).
 
 Lemma join1'_neq0 (s : necset {necset C}) : join1' s != set0 :> set _.
 Proof.
@@ -636,8 +628,8 @@ by exists x; exists y => //; move: sy; rewrite -in_setE => ->.
 Qed.
 
 Definition join1 (s : necset {necset C}) : necset C :=
-  NECSet.Pack (NECSet.Class (CSet.Mixin (hull_is_convex _))
-                            (NESet.Mixin (join1'_neq0 s))).
+  NECSet.Pack (NECSet.Class (isConvexSet.Build _ _ (hull_is_convex _))
+                            (isNESet.Build _ _ (join1'_neq0 s))).
 
 Lemma eps1_correct (s : necset {necset C}) : @eps1 _ s = join1 s.
 Proof.
@@ -677,6 +669,8 @@ End P_delta_functor.
 Require monad_lib.
 Require Import hierarchy.
 
+Local Notation choice_of_Type := monad_model.choice_of_Type.
+
 Section P_delta_category_monad.
 Import category.
 Definition AC := AdjointFunctors.mk triLC triRC.
@@ -692,7 +686,7 @@ Section gcm_opsE.
 Import hierarchy.
 
 Lemma gcm_retE (T : Type) (x : choice_of_Type T) :
-  Ret x = necset1 (fsdist1 x) :> gcm T.
+  Ret x = [set (fsdist1 x)] :> gcm T.
 Proof.
 rewrite /= /ret_ /Monad_of_category_monad.ret /=.
 rewrite !HCompId !HIdComp /=.

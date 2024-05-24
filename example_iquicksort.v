@@ -42,7 +42,7 @@ Local Open Scope monae_scope.
 Local Open Scope tuple_ext_scope.
 
 Section partl.
-Variable (d : unit) (E : orderType d) (M : plusArrayMonad E nat_eqType).
+Variable (d : unit) (E : orderType d) (M : plusArrayMonad E nat).
 Implicit Types p : E.
 
 (* tail-recursive *)
@@ -66,7 +66,7 @@ Proof. by rewrite partlE /=; case: partition. Qed.
 End partl.
 
 Section dispatch.
-Variables (d : unit) (E : orderType d) (M : plusArrayMonad E nat_eqType).
+Variables (d : unit) (E : orderType d) (M : plusArrayMonad E nat).
 Implicit Types i : nat.
 
 Definition dispatch (x p : E) '(ys, zs) A (f : seq E -> seq E -> M A) : M A :=
@@ -93,7 +93,7 @@ Arguments dispatch_Ret {d E M}.
   solve[exact: dispatch_Ret_isNondet] : core.
 
 Section qperm_partl.
-Variable (d : unit) (E : orderType d) (M : plusArrayMonad E nat_eqType).
+Variable (d : unit) (E : orderType d) (M : plusArrayMonad E nat).
 Implicit Types p : E.
 
 Fixpoint qperm_partl p (ys zs xs : seq E) : M (seq E * seq E)%type :=
@@ -132,7 +132,7 @@ Section ipartl.
 Variables (d : unit) (T : orderType d).
 
 Section arrayMonad.
-Variable M : arrayMonad T nat_eqType.
+Variable M : arrayMonad T nat.
 
 Fixpoint ipartl p i ny nz nx : M (nat * nat)%type :=
   if nx is k.+1 then
@@ -147,7 +147,7 @@ End arrayMonad.
 Arguments ipartl {M}.
 
 Section plusArrayMonad.
-Variable M : plusArrayMonad T nat_eqType.
+Variable M : plusArrayMonad T nat.
 
 Lemma ipartl_guard p i ny nz nx :
   ipartl (M := M) p i ny nz nx =
@@ -168,7 +168,7 @@ End ipartl.
 Arguments ipartl {d T M}.
 
 Section dipartl.
-Variables (d : unit) (T : orderType d) (M : plusArrayMonad T nat_eqType).
+Variables (d : unit) (T : orderType d) (M : plusArrayMonad T nat).
 
 Definition dipartlT y z x :=
   {n : nat * nat | (n.1 <= x + y + z) && (n.2 <= x + y + z)}.
@@ -220,7 +220,7 @@ Arguments dipartl {d T M}.
 
 (* top of page 11 *)
 Section derivation_qperm_partl_ipartl.
-Variable (d : unit) (E : orderType d) (M : plusArrayMonad E nat_eqType).
+Variable (d : unit) (E : orderType d) (M : plusArrayMonad E nat).
 Implicit Types i : nat.
 
 (* page 11 step 4 *)
@@ -274,7 +274,7 @@ Proof.
 move=> ih; rewrite qperm_partl_cons.
 apply: refin_trans; last exact: (refin_dispatch_Ret_write3L_ipartl ih).
 rewrite qperm_preserves_length.
-rewrite bindA; apply refin_bindl => -[].
+rewrite bindA; apply: refin_bindl => -[].
 rewrite if_bind; apply: refin_if => _;
   rewrite bindA; apply: refin_bindl => zs'.
 - by rewrite bindretf size_rcons -cats1 -catA /=; exact: refin_refl.
@@ -284,7 +284,7 @@ Qed.
 End derivation_qperm_partl_ipartl.
 
 Section refin_qperm_partl.
-Variables (d : unit) (E : orderType d) (M : plusArrayMonad E nat_eqType).
+Variables (d : unit) (E : orderType d) (M : plusArrayMonad E nat).
 
 Let refin_qperm_partl_helper a b p xs :
   (apply_triple_snd qperm >=> uncurry3 (qperm_partl p)) (a, b, xs) `<=`
@@ -319,7 +319,7 @@ End refin_qperm_partl.
 
 (* specification of ipartl *)
 Section refin_ipartl.
-Variable (d : unit) (E : orderType d) (M : plusArrayMonad E nat_eqType).
+Variable (d : unit) (E : orderType d) (M : plusArrayMonad E nat).
 Implicit Types i : nat.
 
 (* page 12, used in the proof of lemma 10 *)
@@ -384,7 +384,7 @@ Qed.
 End refin_ipartl.
 
 Section iqsort_def.
-Variables (d : unit) (T : orderType d) (M : plusArrayMonad T nat_eqType).
+Variables (d : unit) (T : orderType d) (M : plusArrayMonad T nat).
 
 Local Obligation Tactic := idtac.
 
@@ -492,7 +492,7 @@ End iqsort_def.
 Arguments iqsort {d T M}.
 
 Section iqsort_spec.
-Variable (d : unit) (E : orderType d) (M : plusArrayMonad E nat_eqType).
+Variable (d : unit) (E : orderType d) (M : plusArrayMonad E nat).
 Implicit Types i : nat.
 
 (* eqn 12 page 13 *)

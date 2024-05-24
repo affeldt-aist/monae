@@ -35,53 +35,51 @@ license:
   file: LICENSE
 
 supported_coq_versions:
-  text: Coq 8.16-8.17
-  opam: '{ (>= "8.16" & < "8.19~") | (= "dev") }'
+  text: Coq 8.17-8.19
+  opam: '{ (>= "8.17" & < "8.20~") | (= "dev") }'
 
 tested_coq_opam_versions:
-- version: '1.17.0-coq-8.17'
+- version: '2.2.0-coq-8.17'
   repo: 'mathcomp/mathcomp'
-- version: '1.18.0-coq-8.17'
+- version: '2.2.0-coq-8.18'
   repo: 'mathcomp/mathcomp'
-- version: '1.17.0-coq-8.18'
-  repo: 'mathcomp/mathcomp'
-- version: '1.18.0-coq-8.18'
+- version: '2.2.0-coq-8.19'
   repo: 'mathcomp/mathcomp'
 
 dependencies:
 - opam:
     name: coq-mathcomp-ssreflect
-    version: '{ (>= "1.17.0" & < "1.19~") | (= "dev")  }'
+    version: '{ (>= "2.2.0") | (= "dev")  }'
   description: |-
     [MathComp ssreflect](https://math-comp.github.io)
 - opam:
     name: coq-mathcomp-fingroup
-    version: '{ (>= "1.16.0" & < "1.19~") | (= "dev")  }'
+    version: '{ (>= "2.2.0") | (= "dev")  }'
   description: |-
     [MathComp fingroup](https://math-comp.github.io)
 - opam:
     name: coq-mathcomp-algebra
-    version: '{ (>= "1.16.0" & < "1.19~") | (= "dev")  }'
+    version: '{ (>= "2.2.0") | (= "dev")  }'
   description: |-
     [MathComp algebra](https://math-comp.github.io)
 - opam:
     name: coq-mathcomp-solvable
-    version: '{ (>= "1.16.0" & < "1.19~") | (= "dev")  }'
+    version: '{ (>= "2.2.0") | (= "dev")  }'
   description: |-
     [MathComp solvable](https://math-comp.github.io)
 - opam:
     name: coq-mathcomp-field
-    version: '{ (>= "1.16.0" & < "1.19~") | (= "dev")  }'
+    version: '{ (>= "2.2.0") | (= "dev")  }'
   description: |-
     [MathComp field](https://math-comp.github.io)
 - opam:
     name: coq-mathcomp-analysis
-    version: '{ (>= "0.6.6") & (< "0.7~")}'
+    version: '{ (>= "1.1.0")}'
   description: |-
     [MathComp analysis](https://github.com/math-comp/analysis)
 - opam:
     name: coq-infotheo
-    version: '{ >= "0.6.0" & < "0.7~"}'
+    version: '{ >= "0.7.1"}'
   description: |-
     [Infotheo](https://github.com/affeldt-aist/infotheo)
 - opam:
@@ -91,7 +89,7 @@ dependencies:
     [Paramcoq](https://github.com/coq-community/paramcoq)
 - opam:
     name: coq-hierarchy-builder
-    version: '{ = "1.5.0" }'
+    version: '{ >= "1.5.0" }'
   description: |-
     [Hierarchy Builder](https://github.com/math-comp/hierarchy-builder)
 - opam:

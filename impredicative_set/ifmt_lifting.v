@@ -38,7 +38,7 @@ Definition MK (m : UU0 -> UU0) (A : UU0) := forall (B : UU0), (A -> m B) -> m B.
 Section codensity.
 Variable (M : monad).
 
-Definition retK : FId ~~> MK M :=
+Definition retK : idfun ~~> MK M :=
   fun (A : UU0) (a : A) (B : UU0) (k : A -> M B) => k a.
 
 Definition bindK (A B : UU0) (m : MK M A) f : MK M B :=

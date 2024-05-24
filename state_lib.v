@@ -411,7 +411,7 @@ Lemma nilp_intersect (A : eqType) (s t : seq A) :
   nilp (intersect s t) = ~~ has (mem s) t.
 Proof. by rewrite /intersect /nilp size_filter has_count lt0n negbK. Qed.
 
-Definition seq_disjoint {A : eqType} : pred [eqType of Squaring (seq A)] :=
+Definition seq_disjoint {A : eqType} : pred (Squaring (seq A)) :=
   (@nilp _) \o uncurry intersect.
 
 Lemma intersect0s (A : eqType) (s : seq A) : intersect [::] s = [::].
@@ -590,7 +590,7 @@ Definition swap {S : eqType} {I : eqType} {M : arrayMonad S I} (i j : I) : M uni
 
 Section monadarray_example.
 Local Open Scope do_notation.
-Variable M : arrayMonad nat bool_eqType.
+Variable M : arrayMonad nat bool.
 
 Definition does_swap (m : M unit) :=
   (do x <- aget false ;

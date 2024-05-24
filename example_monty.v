@@ -200,7 +200,7 @@ Qed.
 Local Open Scope proba_monad_scope.
 Local Open Scope mprog.
 
-Lemma uniform_unfold {M : probMonad real_realType} (P : rel X) def d :
+Lemma uniform_unfold {M : probMonad R} (P : rel X) def d :
   uniform def (enum X) >>= (fun p => Ret (P d p)) =
     Ret (P d a) <|(/ 3)%coqR%:pr|> (Ret (P d b) <|(/ 2)%coqR%:pr|> Ret (P d c)) :> M _.
 Proof.
@@ -209,7 +209,7 @@ rewrite [LHS](_ : _ = fmap (fun p => P d p) (uniform def (enum X))); last first.
 by rewrite -(compE (fmap _)) -(uniform_naturality _ true) enumE.
 Qed.
 
-Lemma uniform_unfold_pair {M : probMonad real_realType} def (P : rel X) :
+Lemma uniform_unfold_pair {M : probMonad R} def (P : rel X) :
   uniform (def, def) (cp (enum X) (enum X)) >>= (fun hp => Ret (P hp.1 hp.2)) =
   Ret (P a a) <|(/ 9)%coqR%:pr|> (Ret (P a b) <|(/ 8)%coqR%:pr|> (Ret (P a c) <|(/ 7)%coqR%:pr|>
  (Ret (P b a) <|(/ 6)%coqR%:pr|> (Ret (P b b) <|(/ 5)%coqR%:pr|> (Ret (P b c) <|(/ 4)%coqR%:pr|>
@@ -222,7 +222,7 @@ Qed.
 
 (* matching choices: the elements h and p independently chosen at random
    will match one third of the time *)
-Lemma bcoin13E_pair {M : probMonad real_realType} def (f : bool -> M bool) :
+Lemma bcoin13E_pair {M : probMonad R} def (f : bool -> M bool) :
   uniform (def, def) (cp (enum X) (enum X)) >>= (fun hp => f (hp.1 == hp.2)) =
   bcoin (/ 3)%coqR%:pr >>= f.
 Proof.
@@ -237,7 +237,7 @@ rewrite (negbTE b_neq_c).
 by rewrite choiceA_compute /= -uFFTE.
 Qed.
 
-Lemma bcoin23E_pair {M : probMonad real_realType} def :
+Lemma bcoin23E_pair {M : probMonad R} def :
   uniform (def, def) (cp (enum X) (enum X)) >>= (fun hp => Ret (hp.1 != hp.2)) =
   bcoin (/ 3)%coqR.~%:pr :> M _.
 Proof.
@@ -281,18 +281,18 @@ Local Open Scope proba_monad_scope.
 Section monty_proba.
 Variable def : door.
 
-Definition hide {M : probMonad real_realType} : M door := uniform def doors.
+Definition hide {M : probMonad R} : M door := uniform def doors.
 
-Definition pick {M : probMonad real_realType} : M door := uniform def doors.
+Definition pick {M : probMonad R} : M door := uniform def doors.
 
-Definition tease {M : probMonad real_realType} (h p : door) : M door := uniform def (doors \\ [:: h ; p]).
+Definition tease {M : probMonad R} (h p : door) : M door := uniform def (doors \\ [:: h ; p]).
 
 Definition switch {N : monad} (p t : door) : N door :=
   Ret (head def (doors \\ [:: p ; t])).
 
 Definition stick {N : monad} (p t : door) : N door := Ret p.
 
-Context {M : probMonad [realType of R]}.
+Context {M : probMonad R}.
 
 Definition play (strategy : door -> door -> M door) :=
   monty hide pick tease strategy.
@@ -380,7 +380,7 @@ Definition hide_n {M : altMonad} : M door := arbitrary def doors.
 Definition tease_n {M : altMonad} (h p : door) : M door :=
   arbitrary def (doors \\ [:: h; p]).
 
-Variable M : altProbMonad real_realType.
+Variable M : altProbMonad R.
 
 Definition play_n (strategy : door -> door -> M door) : M bool :=
   monty hide_n (pick def : M _) tease_n strategy.
@@ -423,11 +423,8 @@ rewrite /doors Set3.enumE !inE => /or3P[] /eqP ->.
     rewrite -RmultE -RminusE -R1E; field.
   rewrite -RmultE -!RminusE -R1E; field.
 - rewrite eq_sym (negbTE (Set3.a_neq_b _)) eqxx (negbTE (Set3.b_neq_c _)).
-  congr (_ <| _ |> _).
-  rewrite choiceC (@choice_ext (/ 2)%coqR%:pr) //= /onem.
-  congr (Ret false <| _ |> Ret true).
-  apply/val_inj => /=.
-  by rewrite -RminusE -R1E; field.
+  congr (_ <| _ |> _); rewrite choiceC/=; congr (Ret false <| _ |> Ret true).
+  by apply/val_inj => /=; rewrite /onem -!coqRE; field.
 by rewrite eq_sym (negbTE (Set3.a_neq_c _)) eq_sym (negbTE (Set3.b_neq_c _)) eqxx.
 Qed.
 
@@ -518,7 +515,7 @@ End monty_nondeter.
 
 Section forgetful_monty.
 
-Variable M : exceptProbMonad real_realType.
+Variable M : exceptProbMonad R.
 Variable def : door.
 
 Definition tease_f (h p : door) : M door :=

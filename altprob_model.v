@@ -97,7 +97,7 @@ Proof. exact: scsl_hom_is_lubmorph. Qed.
 (*
 Local Notation F1o := necset_semiCompSemiLattConvType.
 *)
-Local Notation F0o := FSDist_t__canonical__isConvexSpace__ConvexSpace. (* FIXME *)
+Local Notation F0o := FSDist.t. (*FSDist_t__canonical__isConvexSpace__ConvexSpace. (* FIXME *)*)
 Local Notation FCo := choice_of_Type.
 Local Notation F1m := free_semiCompSemiLattConvType_mor.
 Local Notation F0m := free_convType_mor.
@@ -130,7 +130,7 @@ Proof. by rewrite convC. Qed.
 Lemma choicemm A p : idempotent (@choice p A).
 Proof. by move=> m; rewrite /choice convmm. Qed.
 
-Let choiceA A (p q r s : {prob [realType of R]}) (x y z : gcm A) :
+Let choiceA A (p q r s : {prob R}) (x y z : gcm A) :
   x <| p |> (y <| q |> z) = (x <| [r_of p, q] |> y) <| [s_of p, q] |> z.
 Proof. exact: convA. Qed.
 
@@ -156,7 +156,7 @@ Lemma affine_e1PD_conv T (x y : el (F1 (FId (U1 (P_delta_left T))))) p :
 Proof. exact: scsl_hom_is_affine. Qed.
 
 (*Local Notation F1o := necset_semiCompSemiLattConvType.*)
-Local Notation F0o := FSDist_t__canonical__isConvexSpace__ConvexSpace. (* FIXME *)
+Local Notation F0o := FSDist.t.
 Local Notation FCo := choice_of_Type.
 Local Notation F1m := free_semiCompSemiLattConvType_mor.
 Local Notation F0m := free_convType_mor.
@@ -172,20 +172,20 @@ Qed.
 End bindchoiceDl.
 
 HB.instance Definition _ :=
-  isMonadConvex.Build real_realType (Monad_of_category_monad.acto Mgcm)
+  isMonadConvex.Build R (Monad_of_category_monad.acto Mgcm)
     choice1 choiceC choicemm choiceA.
 
 HB.instance Definition _ :=
-  isMonadProb.Build real_realType (Monad_of_category_monad.acto Mgcm) bindchoiceDl.
+  isMonadProb.Build R (Monad_of_category_monad.acto Mgcm) bindchoiceDl.
 
-Lemma choicealtDr A (p : {prob real_realType}) :
+Lemma choicealtDr A (p : {prob R}) :
   right_distributive (fun x y : Mgcm A => x <| p |> y) (@alt A).
 Proof. by move=> x y z; rewrite /choice lubDr. Qed.
 
 HB.instance Definition _ :=
-  @isMonadAltProb.Build real_realType (Monad_of_category_monad.acto Mgcm) choicealtDr.
+  @isMonadAltProb.Build R (Monad_of_category_monad.acto Mgcm) choicealtDr.
 
-Definition gcmAP := [the altProbMonad real_realType of gcm].
+Definition gcmAP := [the altProbMonad R of gcm].
 
 End P_delta_altProbMonad.
 
@@ -194,15 +194,15 @@ Local Open Scope proba_monad_scope.
 
 (* An example that probabilistic choice in this model is not trivial:
    we can distinguish different probabilities. *)
-Example gcmAP_choice_nontrivial (p q : {prob real_realType}) :
+Example gcmAP_choice_nontrivial (p q : {prob R}) :
   p <> q ->
   (* Ret = hierarchy.ret *)
   Ret true <|p|> Ret false <>
   Ret true <|q|> Ret false :> (Monad_of_category_monad.acto Mgcm) bool.
 Proof.
 apply contra_not.
-rewrite !gcm_retE /Choice /= => /(congr1 (@NECSet.car _)).
-rewrite !necset_convType.convE !conv_cset1 /=.
+rewrite !gcm_retE /hierarchy.choice => /(congr1 (@NECSet.sort _)).
+rewrite /= !necset_convType.convE !conv_cset1 /=.
 move/(@set1_inj _ (conv _ _ _))/(congr1 (@FSDist.f _))/fsfunP/(_ true).
 rewrite !fsdist_convE !fsdist1xx !fsdist10//; last exact/eqP. (*TODO: we should not need that*)
 by rewrite !avgRE !mulR1 ?mulR0 ?addR0 => /val_inj.
