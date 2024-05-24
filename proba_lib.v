@@ -134,7 +134,7 @@ rewrite -RmultE; split.
   rewrite 2!probpK.
   rewrite -INR_IZR_INZ.
   rewrite (_ : INR _ = INR m) // mulRA mulVR; last by rewrite INR_eq0'.
-  by rewrite mul1R /pv -INR_IZR_INZ [size _]/= size_cat -addSn.
+  by rewrite mul1R /= /pv -INR_IZR_INZ [size _]/= size_cat -addSn.
 rewrite 3!probpK.
 transitivity ( (1 - 1 / (m + n)%:R) * (1 - m.-1%:R / (m.-1 + n)%:R))%coqR; last first.
   by congr (_ .~ * _)%R; rewrite /v /pv/= INR_IZR_INZ/= div1R size_cat.

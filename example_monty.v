@@ -423,9 +423,8 @@ rewrite /doors Set3.enumE !inE => /or3P[] /eqP ->.
     rewrite -RmultE -RminusE -R1E; field.
   rewrite -RmultE -!RminusE -R1E; field.
 - rewrite eq_sym (negbTE (Set3.a_neq_b _)) eqxx (negbTE (Set3.b_neq_c _)).
-  congr (_ <| _ |> _).
-  rewrite choiceC (@choice_ext (/ 2)%coqR%:pr) //= /onem.
-  by rewrite -RminusE -R1E; field.
+  congr (_ <| _ |> _); rewrite choiceC/=; congr (Ret false <| _ |> Ret true).
+  by apply/val_inj => /=; rewrite /onem -!coqRE; field.
 by rewrite eq_sym (negbTE (Set3.a_neq_c _)) eq_sym (negbTE (Set3.b_neq_c _)) eqxx.
 Qed.
 
