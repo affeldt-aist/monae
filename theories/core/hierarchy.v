@@ -131,6 +131,7 @@ Reserved Notation "f (o) g" (at level 11).
 Reserved Notation "m >> f" (at level 49).
 Reserved Notation "'fmap' f" (at level 4).
 Reserved Notation "x '[~]' y" (at level 50).
+Reserved Notation "a '≈' b" (at level 70).
 
 Notation "f ~~> g" := (forall A, f A -> g A)
   (at level 51, only parsing) : monae_scope.
@@ -884,6 +885,88 @@ HB.structure Definition MonadExcept := {M of isMonadExcept M & }.
 
 Arguments catch {_} {_}.
 
+Locate reflexive.
+
+HB.mixin Record isMonadDelay (M : UU0 -> UU0) of Monad M := {
+  while : forall {A B : UU0}, (A -> M(B + A)%type) -> A ->M B;
+  wBisim: forall {A : UU0}, M A -> M A -> Prop;
+  wBisim_refl: forall A (a: M A), wBisim a a;
+  wBisim_sym: forall A (a b: M A), wBisim a b -> wBisim b a;
+  wBisim_trans: forall A (a b c: M A), wBisim a b -> wBisim b c -> wBisim a c;
+ (* wBisim'_refl: forall A, reflexive (@wBisim' A);
+  wBisim'_sym: forall A,symmetric (@wBisim' A);
+  wBisim'_trans: forall A, transitive (@wBisim' A);*)
+  fixpointE: forall (A B : UU0) (f: A -> M (B + A)%type) (a: A),
+  wBisim (while f a) ((f a) >>= (sum_rect (fun => M B ) (@ret M B) (while f)));
+  naturalityE: forall (A B C : UU0) (f: A -> M (B + A)%type) (g: B -> M C) (a: A),
+  wBisim ((while f a) >>= g)(while (fun y => (f y) >>= (sum_rect (fun => M (C + A)%type) (M # inl \o g) (M # inr \o (@ret M A )) ) ) a);
+  codiagonalE:forall (A B : UU0) (f: A -> M ((B + A) + A)%type) (a: A),
+  wBisim (while ((M # ((sum_rect (fun => (B + A)%type) idfun inr)))  \o f ) a) (while (while f) a);
+  bindmwB: forall (A B: UU0) (f: A -> M B)(d1 d2: M A),
+  wBisim d1 d2 -> wBisim (d1 >>= f) (d2>>= f);
+  bindfwB: forall (A B: UU0) (f g: A -> M B)(d: M A),
+  (forall a, wBisim (f a) (g a)) -> wBisim (d >>= f) (d >>= g);
+  whilewB: forall (A B : UU0) (f g: A -> M ((B + A))%type) (a: A),
+  (forall a, wBisim (f a) (g a)) -> wBisim (while f a) (while g a);
+}.
+
+#[short(type=delayMonad)]
+HB.structure Definition MonadDelay := {M of isMonadDelay M & }.
+
+Arguments  while {s A B}.
+Arguments  wBisim {s A}.
+(*
+Module Type wBisim.
+Axiom wBisim: forall (M: delayMonad) A (d1 d2: M A), Prop.
+Axiom  wBisimP: forall (M: delayMonad) A (d1 d2: M A), reflect (wBisim d1 d2) (wBisim' _ d1 d2).
+End wBisim.
+
+Module Export wBisimP: wBisim.
+Definition wBisim (M: delayMonad) A (d1 d2: M A) : Prop := (wBisim' _ d1 d2). 
+Lemma wBisimP (M: delayMonad) A (d1 d2: M A): reflect (wBisim d1 d2) (wBisim' _ d1 d2).
+Proof. by apply/(iffP idP). Qed.
+End wBisimP.
+
+Notation "a '≈' b" := (wBisim a b).
+
+Section wBisimSetoid.
+Variable  M : delayMonad.
+Definition wBisim_refl A (d: M A): d ≈ d.
+Proof. by apply/wBisimP/wBisim'_refl. Qed.
+Definition wBisim_sym A (d1 d2: M A): d1 ≈ d2 -> d2 ≈ d1.
+Proof. move/wBisimP => H. apply/wBisimP. by rewrite wBisim'_sym. Qed.
+Definition wBisim_trans A (d1 d2 d3: M A): d1 ≈ d2 -> d2 ≈ d3 -> d1 ≈ d3.
+Proof. move/wBisimP => H1 /wBisimP H2 . apply/wBisimP. by apply (wBisim'_trans _ _ _ _ H1 H2). Qed.
+About while.
+Lemma  fixpointE  (A B : UU0) (f: A -> M (B + A)%type) (a: A):
+  while f a ≈ (f a) >>= (sum_rect (fun => M B ) (@ret M B) (while f)).
+Proof. by apply/wBisimP/fixpointE'. Qed.
+Lemma  naturalityE (A B C : UU0) (f: A -> M (B + A)%type) (g: B -> M C) (a: A):
+  (while f a) >>= g ≈ while (fun y => (f y) >>= (sum_rect (fun => M (C + A)%type) (M # inl \o g) (M # inr \o (@ret M A )) ) ) a.
+Proof. by apply/wBisimP/naturalityE'. Qed.
+Lemma  codiagonalE (A B : UU0) (f: A -> M ((B + A) + A)%type) (a: A):
+while ((M # ((sum_rect (fun => (B + A)%type) idfun inr)))  \o f ) a ≈ while (while f) a.
+Proof. by apply/wBisimP/codiagonalE'. Qed.
+Lemma wpreserve (A B : UU0) (f g: A -> M ((B + A))%type) (a: A):
+  (forall a, f a ≈ g a) -> while f a ≈ while g a.
+Proof. move => Hfg. apply/wBisimP/wpreserve' => a'. by apply/wBisimP/Hfg. Qed.
+Lemma bpreserve (A B: UU0) (f: A -> M B)(d1 d2: M A):
+  d1 ≈ d2 -> d1 >>= f ≈ d2>>= f.
+Proof. move => H. apply/wBisimP/bpreserve'. by apply/wBisimP/H. Qed.
+End wBisimSetoid.
+*)
+Add Parametric Relation (M: delayMonad) A : (M A) (@wBisim M A)
+  reflexivity proved by (@wBisim_refl M A)
+  symmetry proved by (@wBisim_sym M A)
+  transitivity proved by (@wBisim_trans M A)
+  as wBisim_rel.
+Hint Extern 0 (wBisim _ _) => setoid_reflexivity.
+
+#[short(type=delayExceptMonad)]
+HB.structure Definition MonadDelayExcept :=
+  { M of MonadDelay M & MonadExcept M }.
+
+
 HB.mixin Record isMonadContinuation (M : UU0 -> UU0) of Monad M := {
 (* NB: interface is wip *)
   callcc : forall A B : UU0, ((A -> M B) -> M A) -> M A;
@@ -980,6 +1063,13 @@ HB.structure Definition MonadFailR0State (S : UU0) :=
 HB.structure Definition MonadNondetState (S : UU0) :=
   { M of MonadPrePlus M & MonadState S M }.
 
+(*HB.mixin Record isMonadDelayState (S: UU0) (M: monad) of MonadDelay M & MonadState S M := {}.*)
+
+#[short(type=delayStateMonad)]
+HB.structure Definition MonadDelayState (S : UU0) :=
+  { M of MonadDelay M & MonadState S M }.
+
+
 HB.mixin Record isMonadStateRun (S : UU0) (N : monad)
    (M : UU0 -> UU0) of MonadState S M := {
   runStateT : forall A : UU0, M A -> S -> N (A * S)%type ;
@@ -1009,6 +1099,7 @@ HB.mixin Record isMonadExceptStateRun
 #[short(type=exceptStateRunMonad)]
 HB.structure Definition MonadExceptStateRun (S : UU0) (N : exceptMonad) :=
   {M of isMonadExceptStateRun S N M & }.
+
 
 HB.mixin Record isMonadReify (S : UU0) (M : UU0 -> UU0) of Monad M := {
   reify : forall A : UU0, M A -> S -> option (A * S)%type ;
@@ -1160,6 +1251,11 @@ HB.mixin Record isMonadTypedStore (MLU : ML_universe) (N : monad)
 #[short(type=typedStoreMonad)]
 HB.structure Definition MonadTypedStore (ml_type : ML_universe) (N : monad) (locT : eqType) :=
   { M of isMonadTypedStore ml_type N locT M & }.
+
+#[short(type=delaytypedStoreMonad)]
+HB.structure Definition MonadDelayTypedStore (ml_type : ML_universe) (N : monad) (locT : eqType) :=
+  { M of MonadDelay M & isMonadTypedStore ml_type N locT M }.
+
 
 Arguments cnew {ml_type N locT s}.
 Arguments cget {ml_type N locT s} [T].

@@ -22,6 +22,10 @@ theories/models/proba_monad_model.v
 theories/models/gcm_model.v
 theories/models/altprob_model.v
 theories/models/typed_store_model.v
+theories/models/delay_monad_model.v
+theories/models/delayexcept_model.v
+theories/models/delaystate_model.v
+theories/models/typed_store_transformer.v
 theories/applications/monad_composition.v
 theories/applications/example_fastprod.v
 theories/applications/example_spark.v
