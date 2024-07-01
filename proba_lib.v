@@ -468,10 +468,10 @@ rewrite [in LHS](@choiceA_alternative _ _ _ (/ 4)%:pr (/ 3).~%:pr (/ 3)%:pr (/ 4
 rewrite choicemm.
 rewrite [in LHS](@choiceA_alternative _ _ _ (/ 7)%:pr (/ 6)%:pr (/ 2)%:pr (@Prob.mk _ (2/7) H27)); last first.
   rewrite 4!probpK /= /onem; split.
-    rewrite -RmultE -RdivE' -2!INRE !INR_IZR_INZ.
+    rewrite -RmultE -RdivE -2!INRE !INR_IZR_INZ.
     field.
   rewrite -!(RmultE,RminusE).
-  rewrite -RinvE'.
+  rewrite -RinvE.
   rewrite (_ : 7%mcR = 7); last first.
     by rewrite -INRE !INR_IZR_INZ.
   rewrite (_ : 2%mcR = 2)//.
@@ -480,7 +480,7 @@ rewrite [in LHS](@choiceA_alternative _ _ _ (/ 7)%:pr (/ 6)%:pr (/ 2)%:pr (@Prob
 rewrite choicemm.
 rewrite [in LHS](@choiceA_alternative _ _ _ (/ 8)%:pr (@Prob.mk _ (2/7) H27) (@Prob.mk _ (7/21) H721) (@Prob.mk _ (21/56) H2156)); last first.
   rewrite probpK /= /onem; split.
-    rewrite -RmultE -2!RdivE'.
+    rewrite -RmultE -2!RdivE.
     rewrite (_ : 21%mcR = 21); last first.
       by rewrite -INRE !INR_IZR_INZ.
     rewrite (_ : 56%mcR = 56); last first.
@@ -488,7 +488,7 @@ rewrite [in LHS](@choiceA_alternative _ _ _ (/ 8)%:pr (@Prob.mk _ (2/7) H27) (@P
     rewrite (_ : 7%mcR = 7); last first.
       by rewrite -INRE !INR_IZR_INZ.
     field.
-  rewrite -2!RmultE -!RminusE -RdivE' -RinvE'.
+  rewrite -2!RmultE -!RminusE -RdivE -RinvE.
   rewrite (_ : 56%mcR = 56); last first.
     by rewrite -INRE !INR_IZR_INZ.
   rewrite (_ : 7%mcR = 7); last first.
@@ -502,13 +502,13 @@ rewrite [in LHS](@choiceA_alternative _ _ _ (/ 8)%:pr (@Prob.mk _ (2/7) H27) (@P
 rewrite (choiceC (/ 4).~%:pr).
 rewrite [in LHS](@choiceA_alternative _ _ _ (/ 5)%:pr (probcplt (/ 4).~%:pr) (/ 2)%:pr (@Prob.mk _ (2/5) H25)); last first.
   rewrite 3!probpK /= /onem; split.
-    rewrite -2!RmultE -RinvE'.
+    rewrite -2!RmultE -RinvE.
     rewrite (_ : 2%mcR = 2); last first.
       by rewrite -INRE !INR_IZR_INZ.
     rewrite (_ : 5%mcR = 5); last first.
       by rewrite -INRE !INR_IZR_INZ.
     field.
-  rewrite -!RmultE -!RminusE -RinvE'.
+  rewrite -!RmultE -!RminusE -RinvE.
   rewrite (_ : 5%mcR = 5); last first.
     by rewrite -INRE !INR_IZR_INZ.
   rewrite (_ : 2%mcR = 2); last first.
@@ -519,14 +519,14 @@ rewrite 2!choicemm.
 rewrite (choiceC (@Prob.mk _ (2/5) H25)).
 rewrite [in LHS](@choiceA_alternative _ _ _ (@Prob.mk _ (21/56) H2156) (probcplt (Prob.mk H25)) (/ 2)%:pr (/ 4).~%:pr); last first.
   rewrite 3!probpK /= /onem; split.
-    rewrite -!RmultE -RminusE -RinvE'.
+    rewrite -!RmultE -RminusE -RinvE.
     rewrite (_ : 56%mcR = 56); last first.
       by rewrite -INRE !INR_IZR_INZ.
     rewrite (_ : 21%mcR = 21); last first.
       by rewrite -INRE !INR_IZR_INZ.
     rewrite -R1E.
     field.
-  rewrite -!(RmultE,RminusE) -2!RinvE'.
+  rewrite -!(RmultE,RminusE) -2!RinvE.
   rewrite (_ : 56%mcR = 56); last first.
     by rewrite -INRE !INR_IZR_INZ.
   rewrite (_ : 21%mcR = 21); last first.
