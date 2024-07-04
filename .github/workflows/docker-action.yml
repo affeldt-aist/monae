@@ -17,9 +17,9 @@ jobs:
     strategy:
       matrix:
         image:
-          - 'mathcomp/mathcomp:2.2.0-coq-8.17'
           - 'mathcomp/mathcomp:2.2.0-coq-8.18'
           - 'mathcomp/mathcomp:2.2.0-coq-8.19'
+          - 'mathcomp/mathcomp:2.2.0-coq-8.20'
       fail-fast: false
     steps:
       - uses: actions/checkout@v2
