@@ -1657,9 +1657,9 @@ HB.export ModelPlusArray.
       this would need parametricity axioms for its validation in a model.
    2. use syntactic reflection:
       _ : forall (M : plusarraymonad) (m : M A),
-          {m | plusarraymonad_isarraymonad m = n} -> m <> fail.
-      here, m is an abstract syntax tree for a computation in MonadArray and
-      plusarraymonad_isarraymonad is an evaluator *)
+          {S | evalArrayMonad S = n} -> m <> fail.
+      here, S is an abstract syntax tree for a computation in MonadArray and
+      evalArrayMonad is an evaluator *)
 Module TrivialPlusArray.
 Section def.
 Variable (S : UU0) (I : eqType).
