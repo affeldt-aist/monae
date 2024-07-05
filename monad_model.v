@@ -1650,13 +1650,12 @@ HB.export ModelPlusArray.
    another law to MonadPlusArray that distinguish the MonadArray operations
    from the MonadPlus ones.  Two ideas exist:
    1. use parametricity:
-      _ : forall (T : UU0) (I : eqType) A
-                 (f : forall (M : arrayMonad T I) , M A)
-                 (M : plusArrayMonad T I),
-                 f M <> fail :> M A.
+      _ : forall (T : UU0) (I : eqType) A (M : plusArrayMonad T I)
+                 (m : forall (M : arrayMonad T I) , M A),
+                 m M <> fail :> M A.
       this would need parametricity axioms for its validation in a model.
    2. use syntactic reflection:
-      _ : forall (M : plusArrayMonad) (m : M A),
+      _ : forall (T : UU0) (I : eqType) A (M : plusArrayMonad T I) (m : M A),
           {S | evalArrayMonad S = m} -> m <> fail.
       here, S is an abstract syntax tree for a computation in MonadArray and
       evalArrayMonad is an evaluator that interprets S into a computation *)
