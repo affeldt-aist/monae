@@ -65,6 +65,8 @@ Require Import monad_transformer.
 (*                                                                            *)
 (* Module ModelTypedStore == model for typed store                            *)
 (*                                                                            *)
+(* Module TrivialPlusArray == another, degenerate model of MonadPlusArray     *)
+(*                                                                            *)
 (* references:                                                                *)
 (* - Wadler, P. Monads and composable continuations. LISP and Symbolic        *)
 (*   Computation 7, 39–55 (1994)                                              *)
@@ -1501,67 +1503,6 @@ HB.instance Definition _ := isMonadArray.Build
 End modelarray.
 End ModelArray.
 
-Module TrivialPlusArray.
-Section def.
-Variable (S : UU0) (I : eqType).
-Implicit Types i j : I.
-Definition acto (A : UU0) := unit.
-Local Notation M := acto.
-Let ret : idfun ~~> M := fun A a => tt.
-Let bind := fun A B (m : M A) (f : A -> M B) => tt : M B.
-Let left_neutral : BindLaws.left_neutral bind ret.
-Proof. by move=> ? ? x f; case: (f x). Qed.
-Let right_neutral : BindLaws.right_neutral bind ret.
-Proof. by move=> ? []. Qed.
-Let associative : BindLaws.associative bind.
-Proof. by []. Qed.
-HB.instance Definition _ :=
-  isMonad_ret_bind.Build acto left_neutral right_neutral associative.
-Let bindE A B (m : M A) (f : A -> M B) : m >>= f = bind m f.
-Proof. by []. Qed.
-Definition aget i : M S := tt.
-Definition aput (i : I) (a : S) : M unit := tt.
-Let aputput i s s' : aput i s >> aput i s' = aput i s'. Proof. by []. Qed.
-Let aputget i s (A : UU0) (k : S -> M A) :
-  aput i s >> aget i >>= k = aput i s >> k s.
-Proof. by []. Qed.
-Let agetputskip i : aget i >>= aput i = skip. Proof. by []. Qed.
-Let agetget i (A : UU0) (k : S -> S -> M A) :
-  aget i >>= (fun s => aget i >>= k s) = aget i >>= fun s => k s s.
-Proof. by []. Qed.
-Let agetC i j (A : UU0) (k : S -> S -> M A) :
-  aget i >>= (fun u => aget j >>= (fun v => k u v)) =
-  aget j >>= (fun v => aget i >>= (fun u => k u v)).
-Proof. by []. Qed.
-Let aputC i j u v : (i != j) \/ (u = v) ->
-  aput i u >> aput j v = aput j v >> aput i u.
-Proof. by []. Qed.
-Let aputgetC i j u (A : UU0) (k : S -> M A) : i != j ->
-  aput i u >> aget j >>= k = aget j >>= (fun v => aput i u >> k v).
-Proof. by []. Qed.
-HB.instance Definition _ := isMonadArray.Build
-  S I acto aputput aputget agetputskip agetget agetC aputC aputgetC.
-Let fail A := tt : M A.
-Let bindfailf : BindLaws.left_zero bind fail.
-Proof. by []. Qed.
-HB.instance Definition _ := isMonadFail.Build acto bindfailf.
-Definition aalt := fun (T : UU0) (a b : M T) => tt.
-Let altA (T : UU0) : ssrfun.associative (@aalt T). Proof. by []. Qed.
-Let alt_bindDl : BindLaws.left_distributive bind (@aalt). Proof. by []. Qed.
-HB.instance Definition _ := isMonadAlt.Build M altA alt_bindDl.
-Let altfailm : @BindLaws.left_id M fail aalt. Proof. by []. Qed.
-Let altmfail : @BindLaws.right_id M fail aalt. Proof. by []. Qed.
-HB.instance Definition _ := isMonadNondet.Build M altfailm altmfail.
-Let altmm (A : UU0) : idempotent (@aalt (M A)). Proof. by case. Qed.
-Let altC (A : UU0) : commutative (@aalt (M A)). Proof. by []. Qed.
-HB.instance Definition _ := @isMonadAltCI.Build M altmm altC.
-Let bindmfail : BindLaws.right_zero bind fail. Proof. by []. Qed.
-HB.instance Definition _ := isMonadFailR0.Build M bindmfail.
-Let alt_bindDr : BindLaws.right_distributive bind aalt. Proof. by []. Qed.
-HB.instance Definition _ := isMonadPrePlus.Build M alt_bindDr.
-End def.
-End TrivialPlusArray.
-
 Module ModelPlusArray.
 Section modelplusarray.
 Local Open Scope classical_set_scope.
@@ -1703,6 +1644,82 @@ HB.instance Definition _ := isMonadPrePlus.Build M alt_bindDr.
 End modelplusarray.
 End ModelPlusArray.
 HB.export ModelPlusArray.
+
+(* In the following trivial model, every computation is degenerate to
+   (tt : unit), and especially, skip = fail holds.  This suggests an addition of
+   another law to MonadPlusArray that distinguish the MonadArray operations
+   from the MonadPlus ones.  Two ideas exist:
+   1. use parametricity:
+      _ : forall (T : UU0) (I : eqType) A
+                 (f : forall (M : arrayMonad T I) , M A)
+                 (M : plusArrayMonad T I),
+                 f M <> fail :> M A.
+      this would need parametricity axioms for its validation in a model.
+   2. use syntactic reflection:
+      _ : forall (M : plusarraymonad) (m : M A),
+          {m | plusarraymonad_isarraymonad m = n} -> m <> fail.
+      here, m is an abstract syntax tree for a computation in MonadArray and
+      plusarraymonad_isarraymonad is an evaluator *)
+Module TrivialPlusArray.
+Section def.
+Variable (S : UU0) (I : eqType).
+Implicit Types i j : I.
+Definition acto (A : UU0) := unit.
+Local Notation M := acto.
+Let ret : idfun ~~> M := fun A a => tt.
+Let bind := fun A B (m : M A) (f : A -> M B) => tt : M B.
+Let left_neutral : BindLaws.left_neutral bind ret.
+Proof. by move=> ? ? x f; case: (f x). Qed.
+Let right_neutral : BindLaws.right_neutral bind ret.
+Proof. by move=> ? []. Qed.
+Let associative : BindLaws.associative bind.
+Proof. by []. Qed.
+HB.instance Definition _ :=
+  isMonad_ret_bind.Build acto left_neutral right_neutral associative.
+Let bindE A B (m : M A) (f : A -> M B) : m >>= f = bind m f.
+Proof. by []. Qed.
+Definition aget i : M S := tt.
+Definition aput (i : I) (a : S) : M unit := tt.
+Let aputput i s s' : aput i s >> aput i s' = aput i s'. Proof. by []. Qed.
+Let aputget i s (A : UU0) (k : S -> M A) :
+  aput i s >> aget i >>= k = aput i s >> k s.
+Proof. by []. Qed.
+Let agetputskip i : aget i >>= aput i = skip. Proof. by []. Qed.
+Let agetget i (A : UU0) (k : S -> S -> M A) :
+  aget i >>= (fun s => aget i >>= k s) = aget i >>= fun s => k s s.
+Proof. by []. Qed.
+Let agetC i j (A : UU0) (k : S -> S -> M A) :
+  aget i >>= (fun u => aget j >>= (fun v => k u v)) =
+  aget j >>= (fun v => aget i >>= (fun u => k u v)).
+Proof. by []. Qed.
+Let aputC i j u v : (i != j) \/ (u = v) ->
+  aput i u >> aput j v = aput j v >> aput i u.
+Proof. by []. Qed.
+Let aputgetC i j u (A : UU0) (k : S -> M A) : i != j ->
+  aput i u >> aget j >>= k = aget j >>= (fun v => aput i u >> k v).
+Proof. by []. Qed.
+HB.instance Definition _ := isMonadArray.Build
+  S I acto aputput aputget agetputskip agetget agetC aputC aputgetC.
+Let fail A := tt : M A.
+Let bindfailf : BindLaws.left_zero bind fail.
+Proof. by []. Qed.
+HB.instance Definition _ := isMonadFail.Build acto bindfailf.
+Definition aalt := fun (T : UU0) (a b : M T) => tt.
+Let altA (T : UU0) : ssrfun.associative (@aalt T). Proof. by []. Qed.
+Let alt_bindDl : BindLaws.left_distributive bind (@aalt). Proof. by []. Qed.
+HB.instance Definition _ := isMonadAlt.Build M altA alt_bindDl.
+Let altfailm : @BindLaws.left_id M fail aalt. Proof. by []. Qed.
+Let altmfail : @BindLaws.right_id M fail aalt. Proof. by []. Qed.
+HB.instance Definition _ := isMonadNondet.Build M altfailm altmfail.
+Let altmm (A : UU0) : idempotent (@aalt (M A)). Proof. by case. Qed.
+Let altC (A : UU0) : commutative (@aalt (M A)). Proof. by []. Qed.
+HB.instance Definition _ := @isMonadAltCI.Build M altmm altC.
+Let bindmfail : BindLaws.right_zero bind fail. Proof. by []. Qed.
+HB.instance Definition _ := isMonadFailR0.Build M bindmfail.
+Let alt_bindDr : BindLaws.right_distributive bind aalt. Proof. by []. Qed.
+HB.instance Definition _ := isMonadPrePlus.Build M alt_bindDr.
+End def.
+End TrivialPlusArray.
 
 Definition locT_nat : eqType := nat.
 
