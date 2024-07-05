@@ -1656,7 +1656,7 @@ HB.export ModelPlusArray.
                  f M <> fail :> M A.
       this would need parametricity axioms for its validation in a model.
    2. use syntactic reflection:
-      _ : forall (M : plusarraymonad) (m : M A),
+      _ : forall (M : plusArrayMonad) (m : M A),
           {S | evalArrayMonad S = m} -> m <> fail.
       here, S is an abstract syntax tree for a computation in MonadArray and
       evalArrayMonad is an evaluator that interprets S into a computation *)
