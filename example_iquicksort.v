@@ -181,8 +181,7 @@ Definition dipartl p i y z x : M (dipartlT y z x) :=
     dassert [pred n | (n.1 <= x + y + z) && (n.2 <= x + y + z)].
 
 Local Open Scope mprog.
-Lemma ipartlE p i n : ipartl p i 0 0 n =
-  fmap (fun x => (dipartlT1 x, dipartlT2 x)) (dipartl p i 0 0 n).
+Lemma ipartlE p i y z x : ipartl p i y z x = (M # sval) (dipartl p i y z x).
 Proof.
 rewrite fmapE /dipartl bindA ipartl_guard bindA; bind_ext => -[a b].
 rewrite bindA; apply: bind_ext_guard => /andP[na nb].
@@ -482,8 +481,7 @@ Proof. by rewrite /iqsort Fix_eq //; exact: iqsort'_Fix. Qed.
 
 Lemma iqsort_cons i (n : nat) : iqsort (i, n.+1) = aget i >>= (fun p =>
   dipartl p i.+1 0 0 n >>= (fun nynz =>
-    let ny := dipartlT1 nynz in
-    let nz := dipartlT2 nynz in
+    let '(ny, nz) := (dipartlT1 nynz, dipartlT2 nynz) in
     aswap i (i + ny) >>
     iqsort (i, ny) >> iqsort (i + ny.+1, nz))).
 Proof. by rewrite [in LHS]/iqsort Fix_eq //=; exact: iqsort'_Fix. Qed.
@@ -553,9 +551,10 @@ apply: (@refin_trans _ _ p1).
     apply: refin_bindl => -[].
     rewrite /= iqsort_cons.
     rewrite bindA; apply: refin_bindl => x.
-    rewrite ipartlE /= fmapE [in X in _ `<=` X]bindA.
+    rewrite [in X in _ `<=` X]ipartlE fmapE [in X in _ `<=` X]bindA.
+    rewrite -/(dipartlT 0 0 (size xs)).
     under [in X in _ `<=` X]eq_bind do rewrite bindretf.
-    exact: refin_refl.
+    by apply: refin_bindl => /= -[[n1 n2]/= n1n2]; exact: refin_refl.
   + apply: refin_bindl => -[ys sz].
     rewrite 4!bindA.
     apply: refin_bindl => -[].
