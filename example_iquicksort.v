@@ -479,12 +479,23 @@ Qed.
 Lemma iqsort_nil i : iqsort (i, 0) = Ret tt.
 Proof. by rewrite /iqsort Fix_eq //; exact: iqsort'_Fix. Qed.
 
-Lemma iqsort_cons i (n : nat) : iqsort (i, n.+1) = aget i >>= (fun p =>
+Let iqsort_cons0 i (n : nat) : iqsort (i, n.+1) = aget i >>= (fun p =>
   dipartl p i.+1 0 0 n >>= (fun nynz =>
     let '(ny, nz) := (dipartlT1 nynz, dipartlT2 nynz) in
     aswap i (i + ny) >>
     iqsort (i, ny) >> iqsort (i + ny.+1, nz))).
 Proof. by rewrite [in LHS]/iqsort Fix_eq //=; exact: iqsort'_Fix. Qed.
+
+Lemma iqsort_cons i (n : nat) : iqsort (i, n.+1) = aget i >>= (fun p =>
+  ipartl p i.+1 0 0 n >>= (fun nynz =>
+    let '(ny, nz) := nynz in
+    aswap i (i + ny) >>
+    iqsort (i, ny) >> iqsort (i + ny.+1, nz))).
+Proof.
+rewrite iqsort_cons0; bind_ext => p.
+rewrite ipartlE/= fmapE [in RHS]bindA; bind_ext => -[[ny nz] Hnynz].
+by rewrite bindretf.
+Qed.
 
 End iqsort_def.
 Arguments iqsort {d T M}.
@@ -548,13 +559,7 @@ apply: (@refin_trans _ _ p1).
       by rewrite /= bindA -[in LHS](bindA (aput i p)) [in RHS]bindA !bindretf.
     (* step 8 *)
     rewrite writeListRet 2![in X in _ `<=` X]bindA.
-    apply: refin_bindl => -[].
-    rewrite /= iqsort_cons.
-    rewrite bindA; apply: refin_bindl => x.
-    rewrite [in X in _ `<=` X]ipartlE fmapE [in X in _ `<=` X]bindA.
-    rewrite -/(dipartlT 0 0 (size xs)).
-    under [in X in _ `<=` X]eq_bind do rewrite bindretf.
-    by apply: refin_bindl => /= -[[n1 n2]/= n1n2]; exact: refin_refl.
+    by apply: refin_bindl => -[]; rewrite /= iqsort_cons bindA; exact: refin_refl.
   + apply: refin_bindl => -[ys sz].
     rewrite 4!bindA.
     apply: refin_bindl => -[].

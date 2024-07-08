@@ -1498,10 +1498,12 @@ Proof.
 move=> ij; rewrite /aput !state_bindE; apply boolp.funext => a/=.
 by rewrite state_bindE/= {1}/insert (negbTE ij).
 Qed.
+HB.instance Definition _ := Monad.on M.
 HB.instance Definition _ := isMonadArray.Build
-  S I acto aputput aputget agetputskip agetget agetC aputC aputgetC.
+  S I M aputput aputget agetputskip agetget agetC aputC aputgetC.
 End modelarray.
 End ModelArray.
+HB.export ModelArray.
 
 Module ModelPlusArray.
 Section modelplusarray.
@@ -1641,6 +1643,19 @@ by left.
 by right.
 Qed.
 HB.instance Definition _ := isMonadPrePlus.Build M alt_bindDr.
+
+(*Lemma arrayMonad_fail A (f : forall (M : arrayMonad S I), M A)
+  (M : plusArrayMonad S I) : f M <> fail :> M A.*)
+
+(*Section arrayMonad_fail.
+Variables (A : UU0) (f : forall (M : arrayMonad S I), M A).
+
+Lemma arrayMonad_fail : f M <> fail :> M A.
+Proof.
+have := f (ModelArray.acto S I).
+rewrite [X in X -> _](_ : _ = ((I -> S) -> A * (I -> S)))//=.
+move=> fM FMail.*)
+
 End modelplusarray.
 End ModelPlusArray.
 HB.export ModelPlusArray.

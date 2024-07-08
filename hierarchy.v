@@ -156,10 +156,10 @@ End functorid.
 Lemma FIdE (A B : UU0) (f : A -> B) : idfun # f = f. Proof. by []. Qed.
 
 Section functor_composition.
-Variables f g : functor.
+Variables F G : functor.
 
-Let comp_actm (A B : UU0) (h : A -> B) : (f \o g) A -> (f \o g) B :=
-  f # (g # h).
+Let comp_actm (A B : UU0) (h : A -> B) : (F \o G) A -> (F \o G) B :=
+  F # (G # h).
 
 Let comp_id : FunctorLaws.id comp_actm.
 Proof. by rewrite /FunctorLaws.id => A; rewrite /comp_actm 2!functor_id. Qed.
@@ -170,12 +170,12 @@ rewrite /FunctorLaws.comp => A B C g' h; rewrite /comp_actm.
 by apply boolp.funext => m; rewrite [in RHS]compE 2!functor_o.
 Qed.
 
-HB.instance Definition _ := isFunctor.Build (f \o g) comp_id comp_comp.
+HB.instance Definition _ := isFunctor.Build (F \o G) comp_id comp_comp.
 
 End functor_composition.
 
-Lemma FCompE (f g : functor) (A B : UU0) (k : A -> B) :
-  [the functor of f \o g] # k = f # (g # k).
+Lemma FCompE (F G : functor) (A B : UU0) (k : A -> B) :
+  [the functor of F \o G] # k = F # (G # k).
 Proof. by []. Qed.
 
 (* monadic counterpart of function composition:
