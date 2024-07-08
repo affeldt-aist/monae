@@ -89,7 +89,7 @@ transitivity (do x0 <- relabel u;
             (do x <- assert q x1; (Ret \o ucat) x));
    m x0 x))%Do; last first.
   bind_ext => u'; rewrite bind_fmap bindA; bind_ext => sS.
-  rewrite 4!bindA; bind_ext => x; rewrite 2!bindretf !bindA.
+  rewrite 4!bindA; bind_ext => x; rewrite 2!bindretf bindA.
   by under eq_bind do rewrite bindretf.
 rewrite -H1.
 rewrite [in LHS]/drBin bind_fmap [in LHS]/bassert /= ![in LHS]bindA.

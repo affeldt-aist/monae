@@ -1431,7 +1431,7 @@ Lemma guard_splits {T A : UU0} (p : pred T) (t : seq T) (f : seq T * seq T -> M 
   splits t >>= (fun x => guard (all p x.1) >> guard (all p x.2) >> f x).
 Proof.
 rewrite -plus_commute//.
-elim: t => [|h t ih] in p f *; first by rewrite 2!bindretf guardT bindmskip.
+elim: t => [|h t ih] in p f *; first by rewrite /= !bindretf.
 rewrite [LHS]/= guard_and 2!bindA ih /= plus_commute//.
 rewrite bindA; bind_ext => -[a b] /=.
 rewrite !alt_bindDl !bindretf /= !guard_and !bindA !alt_bindDr.

@@ -25,7 +25,7 @@ From Equations Require Import Equations.
 (*                          defined as a Fixpoint using insert [1, Sect. 3]   *)
 (*              select s == nondeterministically splits the list s into a     *)
 (*                          pair of one chosen element and the rest           *)
-(*                       [2, Sect. 3.2]                                       *)
+(*                          [3, Sect. 4.4] [2, Sect. 3.2]                     *)
 (*               uperm s == nondeterministically computes a permutation of s, *)
 (*                          defined using unfoldM and select [2, Sect. 3.2]   *)
 (*              splits s == split a list nondeterministically                 *)

@@ -721,27 +721,26 @@ Arguments fail {_} {_}.
 Section guard_assert.
 Variable M : failMonad.
 
-Definition guard (b : bool) : M unit := locked (if b then skip else fail).
+Definition guard (b : bool) : M unit := if b then skip else fail.
 
 Lemma guardPn (b : bool) : if_spec b skip fail (~~ b) b (guard b).
-Proof. by rewrite /guard; unlock; case: ifPn => ?; constructor. Qed.
+Proof. by rewrite /guard; case: ifPn => ?; constructor. Qed.
 
-Lemma guardT : guard true = skip. Proof. by rewrite /guard; unlock. Qed.
+Lemma guardT : guard true = skip. Proof. by []. Qed.
 
-Lemma guardF : guard false = fail. Proof. by rewrite /guard; unlock. Qed.
+Lemma guardF : guard false = fail. Proof. by []. Qed.
 
 (* guard distributes over conjunction *)
 Lemma guard_and a b : guard (a && b) = guard a >> guard b.
 Proof.
-move: a b => -[|] b /=; by [rewrite guardT bindskipf | rewrite guardF bindfailf].
+by move: a b => -[|] b /=; [rewrite bindskipf | rewrite bindfailf].
 Qed.
 
-Definition assert {A : UU0} (p : pred A) (a : A) : M A :=
-  locked (guard (p a) >> Ret a).
+Definition assert {A : UU0} (p : pred A) (a : A) : M A := guard (p a) >> Ret a.
 
 Lemma assertE {A : UU0} (p : pred A) (a : A) :
   assert p a = guard (p a) >> Ret a.
-Proof. by rewrite /assert; unlock. Qed.
+Proof. by []. Qed.
 
 Lemma assertT {A : UU0} (a : A) : assert xpredT a = Ret a.
 Proof. by rewrite assertE guardT bindskipf. Qed.
@@ -778,8 +777,8 @@ case: guardPn => Hb.
 Qed.
 
 End guard_assert.
-Arguments assert {M} {A}.
-Arguments guard {M}.
+Arguments assert {M} {A} : simpl never.
+Arguments guard {M} : simpl never.
 
 HB.mixin Record isMonadAlt (M : UU0 -> UU0) of Monad M := {
   alt : forall T : UU0, M T -> M T -> M T ;
@@ -824,8 +823,7 @@ HB.mixin Record isMonadNondet (M : UU0 -> UU0) of MonadFail M & MonadAlt M := {
   altmfail : @BindLaws.right_id M (@fail M) (@alt M) }.
 
 #[short(type=nondetMonad)]
-HB.structure Definition MonadNondet :=
-  {M of isMonadNondet M & MonadFail M & MonadAlt M}.
+HB.structure Definition MonadNondet := {M of isMonadNondet M & }.
 
 #[short(type=nondetCIMonad)]
 HB.structure Definition MonadCINondet := {M of MonadAltCI M & MonadNondet M}.
@@ -1074,7 +1072,7 @@ HB.mixin Record isMonadArray (S : UU0) (I : eqType) (M : UU0 -> UU0)
 
 #[short(type=arrayMonad)]
 HB.structure Definition MonadArray (S : UU0) (I : eqType) :=
-  { M of isMonadArray S I M & isMonad M & isFunctor M }.
+  { M of isMonadArray S I M & }.
 
 #[short(type=plusArrayMonad)]
 HB.structure Definition MonadPlusArray (S : UU0) (I : eqType) :=
@@ -1311,8 +1309,7 @@ HB.mixin Record isMonadAltProb {R : realType} (M : UU0 -> UU0)
 
 #[short(type=altProbMonad)]
 HB.structure Definition MonadAltProb {R : realType} :=
-  { M of isMonadAltProb R M & isFunctor M & isMonad M & isMonadAlt M &
-         isMonadAltCI M & isMonadProb R M & isMonadConvex R M }.
+  { M of isMonadAltProb R M & }.
 
 Section altprob_lemmas.
 Context {R : realType}.
