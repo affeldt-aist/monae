@@ -915,14 +915,18 @@ Context {M : altMonad} {A : UU0}.
 Implicit Types s : seq A.
 
 Fixpoint splits s : M (seq A * seq A)%type :=
-  if s isn't x :: xs then Ret ([::], [::]) else
-    splits xs >>= (fun yz => Ret (x :: yz.1, yz.2) [~] Ret (yz.1, x :: yz.2)).
+  if s is h :: t then
+    splits t >>= (fun xy => Ret (h :: xy.1, xy.2) [~] Ret (xy.1, h :: xy.2))
+  else
+    Ret ([::], [::]).
 
 Fixpoint splits_bseq s : M ((size s).-bseq A * (size s).-bseq A)%type :=
-  if s isn't x :: xs then Ret ([bseq of [::]], [bseq of [::]])
-  else splits_bseq xs >>= (fun '(ys, zs) =>
-    Ret ([bseq of x :: ys], widen_bseq (leqnSn _) zs) [~]
-    Ret (widen_bseq (leqnSn _) ys, [bseq of x :: zs])).
+  if s is h :: t then
+    splits_bseq t >>= (fun '(x, y) =>
+      Ret ([bseq of h :: x], widen_bseq (leqnSn _) y) [~]
+      Ret (widen_bseq (leqnSn _) x, [bseq of h :: y]))
+  else
+    Ret ([bseq of [::]], [bseq of [::]]).
 
 Local Open Scope mprog.
 Lemma splits_bseqE s : splits s =
