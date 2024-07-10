@@ -1657,8 +1657,7 @@ Local Notation ml_type := (MLU : Type).
 Record binding :=
   mkbind { bind_type : ml_type; bind_val : coq_type bind_type }.
 
-Definition acto : UU0 -> UU0 :=
-  MS (seq binding) [the monad of option_monad].
+Definition acto := MS (seq binding) option_monad.
 Local Notation M := acto.
 
 Definition def : binding := mkbind (val_nonempty N).
@@ -1669,7 +1668,7 @@ Notation loc := (@loc ml_type locT_nat).
 
 Let cnew T (v : coq_type T) : M (loc T) :=
   fun st => let n := size st in
-            Ret (mkloc T n, rcons st (mkbind (v : coq_type T))).
+            Ret (mkloc T n, rcons st (mkbind v)).
 
 Let cget T (r : loc T) : M (coq_type T) :=
   fun st =>
@@ -1682,7 +1681,7 @@ Let cput T (r : loc T) (v : coq_type T) : M unit :=
     let n := loc_id r in
     if nth_error st n is Some (mkbind T' _) then
       if coerce T' v is Some u then
-        Ret (tt, set_nth def st n (mkbind (u : coq_type _)))
+        Ret (tt, set_nth def st n (mkbind u))
       else fail
     else fail.
 
