@@ -1,10 +1,11 @@
+From HB Require Import structures.
 From mathcomp Require Import all_ssreflect classical_sets.
 Require Import monad_lib hierarchy.
 
 (* WIP
    references:
    - Swierstra, Baanen, A Predicate Transformer Semantics for Effects
-   - Schrijvers, Pirog, Wu, Jaskelioff, Monad transformers and Modular ALgebraic Effects: What Binds Them Together. Haskell'19
+   - Schrijvers, Pirog, Wu, Jaskelioff, Monad transformers and Modular Algebraic Effects: What Binds Them Together. Haskell'19
    - Seynaeve, Pauwels, Schrijvers, State will do, TFP 2020
 *)
 
@@ -18,11 +19,10 @@ Inductive Free (C : Type) (R : C -> Type) (a : Type) : Type :=
 Arguments Pure {C} {R} {a} _.
 Arguments Step {C} {R} {a} _ _.
 
-Module MonadFree.
 Section monadfree.
 Variables (C : Type) (R : C -> Type).
-Definition acto : Type -> Type := Free R.
-Local Notation M := acto.
+Definition freeMonad : Type -> Type := Free R.
+Local Notation M := freeMonad.
 Fixpoint actm X Y (f : X -> Y) (m : Free R X) : Free R Y :=
   match m with
   | Pure x => Pure (f x)
@@ -38,31 +38,38 @@ Proof.
 move=> X Y Z g h; rewrite boolp.funeqE; elim => // c k ih /=; congr (Step _ _).
 rewrite boolp.funeqE => r; exact: ih.
 Qed.
-Definition func := Functor.Pack (@Functor.Mixin _ _ map_id map_comp).
-Lemma naturality_ret : naturality FId func (fun A a => Pure a).
-Proof. by move=> A B h /=; rewrite boolp.funeqE. Qed.
-Definition ret : FId ~> func := Natural.Pack (Natural.Mixin naturality_ret).
+(*HB.instance Definition _ (* func *) := isFunctor.Build acto map_id map_comp.*)
+
+Local Open Scope monae_scope.
+Definition ret : idfun ~~> M := fun A (a : A) => Pure a.
+
+(*Lemma naturality_ret : naturality idfun acto ret.
+Proof. by move=> A B h /=; rewrite boolp.funeqE. Qed.*)
+
+(*HB.instance Definition _ (*ret*) (*: idfun ~> acto*) :=
+  isNatural.Build idfun acto ret naturality_ret.*)
+
 Fixpoint bind A B (ma : M A) (f : A -> M B) :=
   match ma with
   | Pure a => f a
   | Step c k => Step c (fun r => bind (k r) f)
   end.
-Lemma left_neutral : @BindLaws.left_neutral func bind ret.
+Lemma left_neutral : @BindLaws.left_neutral M bind ret.
 Proof. by []. Qed.
-Lemma right_neutral : @BindLaws.right_neutral func bind ret.
+Lemma right_neutral : @BindLaws.right_neutral M bind ret.
 Proof.
 move=> A; elim => // c k ih /=; congr (Step _ _).
 rewrite boolp.funeqE => rc; exact: ih.
 Qed.
-Lemma associative : @BindLaws.associative func bind.
+Lemma associative : @BindLaws.associative M bind.
 Proof.
 move=> X Y Z; elim => // c k /= ih f g; congr Step.
 by rewrite boolp.funeqE => rc /=; rewrite ih.
 Qed.
-Definition t : monad := Monad_of_ret_bind left_neutral right_neutral associative.
+HB.instance Definition _ :=
+  @isMonad_ret_bind.Build M ret bind left_neutral right_neutral associative.
+
 End monadfree.
-End MonadFree.
-Notation freeMonad := MonadFree.t.
 
 Module freeFail.
 Inductive Cmd := Abort : Cmd.
@@ -78,14 +85,14 @@ End freeFail.
 
 Require Import fail_lib.
 
-Canonical nat_pointedType := PointedType nat O.
+HB.instance Definition nat_pointedType := isPointed.Build nat O.
 
 Section freefastprod.
 Local Open Scope mprog.
 Fixpoint freefastprod (s : seq nat) : freeFail.t nat :=
   match s with
   | [::] => Ret 1
-  | O :: _ => freeFail.abort nat_pointedType
+  | O :: _ => freeFail.abort nat
   | h :: t => fmap (muln^~ h) (freefastprod t)
 end.
 Example is6 :  freeFail.hdl (freefastprod [:: 1; 2; 3]) = 6.
