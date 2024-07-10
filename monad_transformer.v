@@ -152,7 +152,7 @@ Lemma MS_bindE [S : UU0] [M : monad] [A B : UU0] (m : MS S M A) (f : A -> MS S M
   (m >>= f) s = m s >>= uncurry f.
 Proof. by []. Qed.
 
-Definition stateT (S : UU0) : monad -> monad := MS S.
+Definition stateT : UU0 -> monad -> monad := MS.
 
 HB.instance Definition _ (S : UU0) := isMonadT.Build
   (stateT S) (@liftS S).
