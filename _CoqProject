@@ -32,5 +32,6 @@ example_typed_store.v
 smallstep.v
 example_transformer.v
 category_ext.v
+all_monae.v
 
 -R . monae
