@@ -1657,7 +1657,7 @@ Local Notation ml_type := (MLU : Type).
 Record binding :=
   mkbind { bind_type : ml_type; bind_val : coq_type bind_type }.
 
-Definition acto := MS (seq binding) option_monad.
+Definition acto : Type -> Type := MS (seq binding) option_monad.
 Local Notation M := acto.
 
 Definition def : binding := mkbind (val_nonempty N).
