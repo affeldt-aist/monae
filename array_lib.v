@@ -35,7 +35,7 @@ Lemma aswapxx i : aswap i i = skip :> M unit.
 Proof.
 rewrite /aswap agetget.
 under eq_bind do rewrite aputput.
-by rewrite agetputskip.
+by rewrite agetput.
 Qed.
 
 End aswap.

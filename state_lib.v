@@ -45,7 +45,7 @@ rewrite /protect.
 under eq_bind do rewrite bindA bindretf.
 rewrite /overwrite.
 under eq_bind do rewrite -bindA putput.
-by rewrite -bindA getputskip bindskipf.
+by rewrite -bindA getput bindskipf.
 Qed.
 
 Example test_nonce0 (M : stateMonad nat) : M nat :=
@@ -67,7 +67,7 @@ elim: n => [|n ih].
   rewrite loop0.
   rewrite (_ : sumn (iota 0 0) = 0) //.
   rewrite -[LHS]bindskipf.
-  rewrite -getputskip.
+  rewrite -getput.
   rewrite bindA.
   bind_ext => a.
   rewrite addn0.
@@ -83,7 +83,7 @@ End stateloop_examples.
 
 Lemma getput_prepend (S : UU0) (M : nondetStateMonad S) A (m : M A) :
   m = get >>= (fun x => put x >> m).
-Proof. by rewrite -{2}(bindskipf m) -bindA getputskip 2!bindskipf. Qed.
+Proof. by rewrite -{2}(bindskipf m) -bindA getput 2!bindskipf. Qed.
 
 Section state_commute.
 
@@ -676,7 +676,7 @@ Definition tick : M unit := get >>= (put \o succn).
 
 Lemma tick_fusion n : rep n tick = get >>= (put \o addn n).
 Proof.
-elim: n => [|n ih]; first by rewrite /= -getputskip.
+elim: n => [|n ih]; first by rewrite /= -getput.
 rewrite /= /tick ih.
 rewrite bindA.
 bind_ext => m.

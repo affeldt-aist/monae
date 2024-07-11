@@ -844,12 +844,12 @@ Let putput : forall s s', put s >> put s' = put s'.
 Proof. by []. Qed.
 Let putget : forall s, put s >> get = put s >> Ret s.
 Proof. by []. Qed.
-Let getputskip : get >>= put = skip.
+Let getput : get >>= put = skip.
 Proof. by []. Qed.
 Let getget : forall (A : UU0) (k : S -> S -> M A), get >>= (fun s => get >>= k s) = get >>= fun s => k s s.
 Proof. by []. Qed.
 HB.instance Definition _ := isMonadState.Build S (StateMonad.acto S)
-  putput putget getputskip getget.
+  putput putget getput getget.
 End state.
 End State.
 HB.export State.
@@ -970,7 +970,7 @@ Let st_putput : forall s s', st_put s >> st_put s' = st_put s'.
 Proof. by []. Qed.
 Let st_putget : forall s, st_put s >> st_get = st_put s >> Ret s.
 Proof. by []. Qed.
-Let st_getputskip : st_get >>= st_put = skip.
+Let st_getput : st_get >>= st_put = skip.
 Proof. by move=> *; apply boolp.funext => -[]. Qed.
 Let st_getget : forall (A : UU0) (k : S -> S -> M A),
       st_get >>= (fun s => st_get >>= k s) = st_get >>= fun s => k s s.
@@ -981,7 +981,7 @@ Let st_getmark : forall e (k : _ -> M S), st_get >>= (fun v => st_mark e >> k v)
                          st_mark e >> st_get >>= k.
 Proof. by []. Qed.
 HB.instance Definition _ := @isMonadStateTrace.Build S T (StateMonad.acto (S * seq T)%type)
-  st_get st_put st_mark st_putput st_putget st_getputskip st_getget st_putmark st_getmark.
+  st_get st_put st_mark st_putput st_putget st_getput st_getget st_putmark st_getmark.
 End st.
 End ModelStateTrace.
 HB.export ModelStateTrace.
@@ -1336,7 +1336,7 @@ rewrite 2!bindE /=; apply/fsetP => /= x; apply/bigfcupP'/bigfcupP'.
     exact/fset1P.
   apply/imfsetP => /=; exists (tt, s) => //; exact/fset1P.
 Qed.
-Let getputskip : get >>= put = skip.
+Let getput : get >>= put = skip.
 Proof.
 rewrite boolp.funeqE => s.
 rewrite bindE /skip /= /Ret; apply/fsetP => /= x; apply/bigfcupP'/idP.
@@ -1366,7 +1366,7 @@ rewrite 2!bindE; apply/fsetP => x; apply/bigfcupP'/bigfcupP'.
 Qed.
 
 HB.instance Definition _ := isMonadState.Build
-  S (acto S) putput putget getputskip getget.
+  S (acto S) putput putget getput getget.
 
 End state.
 
@@ -1474,7 +1474,7 @@ Proof.
 rewrite state_bindE; apply boolp.funext => a/=.
 by rewrite /aput insert_same.
 Qed.
-Let agetputskip i : aget i >>= aput i = skip.
+Let agetput i : aget i >>= aput i = skip.
 Proof.
 rewrite state_bindE; apply boolp.funext => a/=.
 by rewrite /aput insert_same2.
@@ -1500,7 +1500,7 @@ by rewrite state_bindE/= {1}/insert (negbTE ij).
 Qed.
 HB.instance Definition _ := Monad.on M.
 HB.instance Definition _ := isMonadArray.Build
-  S I M aputput aputget agetputskip agetget agetC aputC aputgetC.
+  S I M aputput aputget agetput agetget agetC aputC aputgetC.
 End modelarray.
 End ModelArray.
 HB.export ModelArray.
@@ -1548,7 +1548,7 @@ apply boolp.funext => a/=; rewrite !bindE /bind set_bindE.
 rewrite set_bindE/= bigcup_bigcup !bigcup_set1/= /aput /ModelArray.aput.
 by rewrite bindretf/= insert_same.
 Qed.
-Let agetputskip i : aget i >>= aput i = skip.
+Let agetput i : aget i >>= aput i = skip.
 Proof.
 apply boolp.funext => a/=; rewrite bindE /bind set_bindE bigcup_set1/=.
 by rewrite /aput /ModelArray.aput insert_same2.
@@ -1587,7 +1587,7 @@ rewrite !bindE /bind/= !set_bindE !bigcup_set1/= /aput /ModelArray.aput/=.
 by rewrite bindE /bind/= set_bindE bigcup_set1/= {1}/insert (negbTE ij).
 Qed.
 HB.instance Definition _ := isMonadArray.Build
-  S I acto aputput aputget agetputskip agetget agetC aputC aputgetC.
+  S I acto aputput aputget agetput agetget agetC aputC aputgetC.
 Let bindfailf : BindLaws.left_zero bind (fun A _ => @set_fail _).
 Proof.
 by move=> A B/= g; apply boolp.funext => a/=; rewrite /bind bindfailf.
@@ -1698,7 +1698,7 @@ Let aputput i s s' : aput i s >> aput i s' = aput i s'. Proof. by []. Qed.
 Let aputget i s (A : UU0) (k : S -> M A) :
   aput i s >> aget i >>= k = aput i s >> k s.
 Proof. by []. Qed.
-Let agetputskip i : aget i >>= aput i = skip. Proof. by []. Qed.
+Let agetput i : aget i >>= aput i = skip. Proof. by []. Qed.
 Let agetget i (A : UU0) (k : S -> S -> M A) :
   aget i >>= (fun s => aget i >>= k s) = aget i >>= fun s => k s s.
 Proof. by []. Qed.
@@ -1713,7 +1713,7 @@ Let aputgetC i j u (A : UU0) (k : S -> M A) : i != j ->
   aput i u >> aget j >>= k = aget j >>= (fun v => aput i u >> k v).
 Proof. by []. Qed.
 HB.instance Definition _ := isMonadArray.Build
-  S I acto aputput aputget agetputskip agetget agetC aputC aputgetC.
+  S I acto aputput aputget agetput agetget agetC aputC aputgetC.
 Let fail A := tt : M A.
 Let bindfailf : BindLaws.left_zero bind fail.
 Proof. by []. Qed.

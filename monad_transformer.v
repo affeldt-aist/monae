@@ -616,7 +616,7 @@ elim: n => [|n ih].
   rewrite loop0.
   rewrite (_ : sumn (iota 0 0) = 0) //.
   rewrite -[LHS]bindskipf.
-  rewrite -getputskip.
+  rewrite -getput.
   rewrite bindA.
   bind_ext => a.
   rewrite addn0.

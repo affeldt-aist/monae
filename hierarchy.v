@@ -826,7 +826,7 @@ HB.mixin Record isMonadNondet (M : UU0 -> UU0) of MonadFail M & MonadAlt M := {
 HB.structure Definition MonadNondet := {M of isMonadNondet M & }.
 
 #[short(type=nondetCIMonad)]
-HB.structure Definition MonadCINondet := {M of MonadAltCI M & MonadNondet M}.
+HB.structure Definition MonadCINondet := {M of MonadAltCI M & MonadNondet M }.
 
 Section nondet_big.
 Variables (M : nondetMonad) (A : UU0).
@@ -946,7 +946,7 @@ HB.mixin Record isMonadState (S : UU0) (M : UU0 -> UU0) of Monad M := {
   put : S -> M unit ;
   putput : forall s s', put s >> put s' = put s' ;
   putget : forall s, put s >> get = put s >> Ret s ;
-  getputskip : get >>= put = skip ;
+  getput : get >>= put = skip ;
   getget : forall (A : UU0) (k : S -> S -> M A),
     get >>= (fun s => get >>= k s) = get >>= fun s => k s s }.
 
@@ -1058,7 +1058,7 @@ HB.mixin Record isMonadArray (S : UU0) (I : eqType) (M : UU0 -> UU0)
   aputput : forall i s s', aput i s >> aput i s' = aput i s' ;
   aputget : forall i s (A : UU0) (k : S -> M A), aput i s >> aget i >>= k =
       aput i s >> k s ;
-  agetputskip : forall i, aget i >>= aput i = skip ;
+  agetput : forall i, aget i >>= aput i = skip ;
   agetget : forall i (A : UU0) (k : S -> S -> M A),
     aget i >>= (fun s => aget i >>= k s) = aget i >>= fun s => k s s ;
   agetC : forall i j (A : UU0) (k : S -> S -> M A),
@@ -1076,7 +1076,7 @@ HB.structure Definition MonadArray (S : UU0) (I : eqType) :=
 
 #[short(type=plusArrayMonad)]
 HB.structure Definition MonadPlusArray (S : UU0) (I : eqType) :=
-  { M of MonadPlus M & isMonadArray S I M}.
+  { M of MonadPlus M & isMonadArray S I M }.
 
 Variant loc (ml_type : Type) (locT : eqType) : ml_type -> Type :=
   mkloc T : locT -> loc locT T.
@@ -1188,7 +1188,7 @@ HB.mixin Record isMonadStateTrace (S T : UU0) (M : UU0 -> UU0) of Monad M := {
   st_mark : T -> M unit ;
   st_putput : forall s s', st_put s >> st_put s' = st_put s' ;
   st_putget : forall s, st_put s >> st_get = st_put s >> Ret s ;
-  st_getputskip : st_get >>= st_put = skip ;
+  st_getput : st_get >>= st_put = skip ;
   st_getget : forall (A : UU0) (k : S -> S -> M A),
     st_get >>= (fun s => st_get >>= k s) = st_get >>= fun s => k s s ;
   st_putmark : forall s e, st_put s >> st_mark e = st_mark e >> st_put s ;
