@@ -14,7 +14,7 @@ Require Import monad_transformer monad_model.
 (*                                                                            *)
 (* Separate file as it requires disabling various sanity checks.              *)
 (* Reuses coerce and locT_nat from monad_model.v.                             *)
-(* Similarities with ModelTypedStore from monad_model.v                       *)
+(* Similarities with ModelTypedStoreRun from monad_model.v                    *)
 (*                                                                            *)
 (******************************************************************************)
 
@@ -24,7 +24,7 @@ Unset Printing Implicit Defensive.
 
 Local Open Scope monae_scope.
 
-Section ModelTypedStore.
+Section ModelTypedStoreRun.
 Variable MLU : ML_universe.
 
 Record binding (M : Type -> Type) :=
@@ -38,13 +38,13 @@ Definition M0 Env (T : UU0) := MS Env option_monad T.
    The fail operation is used in the constructions below, while
    no operations provided by the additional MonadState structure are used. *)
 
-End ModelTypedStore.
+End ModelTypedStoreRun.
 
 #[bypass_check(positivity)]
 Inductive Env (MLU : ML_universe) :=
   mkEnv : seq (binding MLU (M0 (Env _))) -> Env _.
 
-Section ModelTypedStore_contd.
+Section ModelTypedStoreRun_contd.
 Variable MLU : ML_universe.
 
 Definition ofEnv (e : Env MLU) := let: mkEnv e := e in e.
@@ -547,7 +547,9 @@ HB.instance Definition _ := Monad.on M.
 HB.instance Definition isMonadTypedStoreModel :=
   isMonadTypedStore.Build _ M _ M cnewget cnewput cgetput cgetputskip
     cgetget cputget cputput cgetC cgetnewD cgetnewE cgetputC cputC
-    cputgetC cputnewC
+    cputgetC cputnewC.
+HB.instance Definition isMonadTypedStoreRunModel :=
+  isMonadTypedStoreRun.Build _ M _ M
     crunret crunskip crunnew crunnewgetC crungetput crunmskip.
 
 (* To restart computations *)
@@ -559,6 +561,6 @@ Definition Restart A B (r : W A) (f : M B) : W B :=
 Definition FromW A (r : W A) : M A :=
   fun env => if r is inr (a, _) then inr (a, env) else inl tt.
 
-End ModelTypedStore_contd.
+End ModelTypedStoreRun_contd.
 
 Arguments W {MLU}.

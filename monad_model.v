@@ -63,7 +63,7 @@ Require Import monad_transformer.
 (* Module ModelMonadStateRun       == stateRunMonad for MS                    *)
 (* Module ModelMonadExceptStateRun == exceptStateRunMonad                     *)
 (*                                                                            *)
-(* Module ModelTypedStore == model for typed store                            *)
+(* Module ModelTypedStoreRun == model for typed store (and crun)              *)
 (*                                                                            *)
 (* Module TrivialPlusArray == another, degenerate model of MonadPlusArray     *)
 (*                                                                            *)
@@ -1737,9 +1737,9 @@ End TrivialPlusArray.
 
 Definition locT_nat : eqType := nat.
 
-Module ModelTypedStore.
+Module ModelTypedStoreRun.
 
-Section ModelTypedStore.
+Section ModelTypedStoreRun.
 Variables (MLU : ML_universe) (N : monad).
 
 Local Notation coq_type := (@coq_type MLU N).
@@ -2215,12 +2215,14 @@ HB.instance Definition _ := Monad.on M.
 HB.instance Definition isMonadTypedStoreModel :=
   isMonadTypedStore.Build ml_type N locT_nat M cnewget cnewput cgetput cgetputskip
     cgetget cputget cputput cgetC cgetnewD cgetnewE cgetputC cputC
-    cputgetC cputnewC
+    cputgetC cputnewC.
+HB.instance Definition isMonadTypedStoreRunModel :=
+  isMonadTypedStoreRun.Build ml_type N locT_nat M
     crunret crunskip crunnew crunnewgetC crungetput crunmskip.
 
 End mkbind.
-End ModelTypedStore.
-End ModelTypedStore.
+End ModelTypedStoreRun.
+End ModelTypedStoreRun.
 
 (* TODO?
 (* result of a discussion with Maxime and Enrico on 2019-09-12 *)

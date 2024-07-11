@@ -70,6 +70,7 @@ From HB Require Import structures.
 (*                         OCaml type together with its Coq representation    *)
 (*                         in the type of a Tarski universe                   *)
 (*      typedStoreMonad == A monad for OCaml computations                     *)
+(*   typedStoreRunMonad == typedStoreMonad + crun                             *)
 (*                                                                            *)
 (* Trace monads:                                                              *)
 (*            traceMonad == trace monad                                       *)
@@ -1096,7 +1097,6 @@ HB.mixin Record isMonadTypedStore (MLU : ML_universe) (N : monad) (locT : eqType
   cnew : forall {T : MLU}, coq_type N T -> M (loc locT T) ;
   cget : forall {T}, loc locT T -> M (coq_type N T) ;
   cput : forall {T}, loc locT T -> coq_type N T -> M unit ;
-  crun : forall {A : UU0}, M A -> option A ; (* execute in empty store *)
   cnewget : forall T (s : coq_type N T) A (k : loc locT T -> coq_type N T -> M A),
     cnew s >>= (fun r => cget r >>= k r) = cnew s >>= (fun r => k r s) ;
   cnewput : forall T (s t : coq_type N T) A (k : loc locT T -> M A),
@@ -1144,16 +1144,29 @@ HB.mixin Record isMonadTypedStore (MLU : ML_universe) (N : monad) (locT : eqType
            (k : loc locT T' -> M A),
       cget r >> (cnew s' >>= fun r' => cput r s >> k r') =
       cput r s >> (cnew s' >>= k) ;
+}.
+
+#[short(type=typedStoreMonad)]
+HB.structure Definition MonadTypedStore (ml_type : ML_universe) (N : monad) (locT : eqType) :=
+  { M of isMonadTypedStore ml_type N locT M & }.
+
+Arguments cnew {ml_type N locT s}.
+Arguments cget {ml_type N locT s} [T].
+Arguments cput {ml_type N locT s} [T].
+
+HB.mixin Record isMonadTypedStoreRun (MLU : ML_universe) (N : monad) (locT : eqType)
+    (M : UU0 -> UU0) of MonadTypedStore MLU N locT M := {
+  crun : forall {A : UU0}, M A -> option A ; (* execute in empty store *)
   crunret : forall (A B : UU0) (m : M A) (s : B),
       crun m -> crun (m >> Ret s) = Some s ;
   crunskip :
       crun skip = Some tt ;
   crunnew : forall (A : UU0) T (m : M A) (s : A -> coq_type N T),
-      crun m -> crun (m >>= fun x => cnew (s x)) ;
+      crun m -> crun (m >>= fun x => cnew T (s x)) ;
   crunnewgetC : forall (A : UU0) T1 T2 (m : M A) (r : A -> loc locT T1)
                       (s : A -> coq_type N T2),
       crun (m >>= fun x => cget (r x)) ->
-      crun (m >>= fun x => cnew (s x) >> cget (r x)) ;
+      crun (m >>= fun x => cnew T2 (s x) >> cget (r x)) ;
   crungetput : forall (A : UU0) T (m : M A) (r : A -> loc locT T)
                       (s : A -> coq_type N T),
       crun (m >>= fun x => cget (r x)) ->
@@ -1162,13 +1175,10 @@ HB.mixin Record isMonadTypedStore (MLU : ML_universe) (N : monad) (locT : eqType
       crun (m >> skip) = crun m :> bool ;
 }.
 
-#[short(type=typedStoreMonad)]
-HB.structure Definition MonadTypedStore (ml_type : ML_universe) (N : monad) (locT : eqType) :=
-  { M of isMonadTypedStore ml_type N locT M & isMonad M & isFunctor M }.
+#[short(type=typedStoreRunMonad)]
+HB.structure Definition MonadTypedStoreRun (ml_type : ML_universe) (N : monad) (locT : eqType) :=
+  { M of isMonadTypedStoreRun ml_type N locT M & }.
 
-Arguments cnew {ml_type N locT s}.
-Arguments cget {ml_type N locT s} [T].
-Arguments cput {ml_type N locT s} [T].
 Arguments crun {ml_type N locT s} [A].
 
 HB.mixin Record isMonadTrace (T : UU0) (M : UU0 -> UU0) of Monad M :=

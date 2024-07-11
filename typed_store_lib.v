@@ -22,7 +22,8 @@ Unset Printing Implicit Defensive.
 Local Open Scope monae_scope.
 
 Section cchk.
-Variables (MLU : ML_universe) (N : monad) (locT : eqType) (M : typedStoreMonad MLU N locT).
+Variables (MLU : ML_universe) (N : monad) (locT : eqType)
+  (M : typedStoreRunMonad MLU N locT).
 Notation loc := (@loc MLU locT).
 Definition cchk {T} (r : loc T) : M unit := cget r >> skip.
 

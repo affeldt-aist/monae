@@ -84,11 +84,11 @@ End with_monad.
 
 HB.instance Definition _ := @isML_universe.Build ml_type coq_type_nat ml_unit val_nonempty.
 
-Definition typedStoreMonad (N : monad) :=
-  typedStoreMonad ml_type N monad_model.locT_nat.
+Definition typedStoreRunMonad (N : monad) :=
+  typedStoreRunMonad ml_type N monad_model.locT_nat.
 
 Section cyclic.
-Variables (N : monad) (M : typedStoreMonad N).
+Variables (N : monad) (M : typedStoreRunMonad N).
 
 Local Notation coq_type := hierarchy.coq_type.
 Local Open Scope do_notation.
@@ -372,10 +372,10 @@ End cyclic.
 
 Module eval_cyclic.
 Section eval.
-Import monad_model.ModelTypedStore.
+Import monad_model.ModelTypedStoreRun.
                 
 Definition M :=
-  [the typedStoreMonad idfun of @acto ml_type idfun].
+  [the typedStoreRunMonad idfun of @acto ml_type idfun].
 
 Definition Env := Env ml_type idfun.
 
@@ -427,7 +427,7 @@ End eval.
 End eval_cyclic.
 
 Section factorial.
-Variable (N : monad) (M : typedStoreMonad N).
+Variable (N : monad) (M : typedStoreRunMonad N).
 
 Fixpoint fact_ref (r : loc ml_int) (n : nat) : M unit :=
   if n is m.+1 then cget r >>= fun p => cput r (n * p) >> fact_ref r m
@@ -452,7 +452,7 @@ Qed.
 End factorial.
 
 Section fact_for.
-Variable (N : monad) (M : typedStoreMonad N).
+Variable (N : monad) (M : typedStoreRunMonad N).
 Local Notation coq_type := (hierarchy.coq_type N).
 Local Open Scope do_notation.
 
@@ -493,7 +493,7 @@ Qed.
 End fact_for.
 
 Section fibonacci.
-Variables (N : monad) (M : typedStoreMonad N).
+Variables (N : monad) (M : typedStoreRunMonad N).
 
 Fixpoint fibo_rec n :=
   if n is m.+1 then
@@ -723,7 +723,7 @@ HB.instance Definition _ := @isML_universe.Build ml_type coq_type63 ml_unit val_
 
 Section fact_for_int63.
 Variable N : monad.
-Variable M : typedStoreMonad ml_type N monad_model.locT_nat.
+Variable M : typedStoreRunMonad ml_type N monad_model.locT_nat.
 Local Notation coq_type := (hierarchy.coq_type N).
 Local Open Scope do_notation.
 
@@ -842,7 +842,7 @@ End fact_for_int63.
 Section eval.
 Require Import typed_store_model.
 
-Definition M := [the typedStoreMonad ml_type _ monad_model.locT_nat of
+Definition M := [the typedStoreRunMonad ml_type _ monad_model.locT_nat of
                  acto ml_type].
 
 Definition Env := typed_store_model.Env ml_type.
