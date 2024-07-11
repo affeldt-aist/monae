@@ -84,11 +84,14 @@ End with_monad.
 
 HB.instance Definition _ := @isML_universe.Build ml_type coq_type_nat ml_unit val_nonempty.
 
+Definition typedStoreMonad (N : monad) :=
+  typedStoreMonad ml_type N monad_model.locT_nat.
+
 Definition typedStoreRunMonad (N : monad) :=
   typedStoreRunMonad ml_type N monad_model.locT_nat.
 
 Section cyclic.
-Variables (N : monad) (M : typedStoreRunMonad N).
+Variables (N : monad) (M : typedStoreMonad N).
 
 Local Notation coq_type := hierarchy.coq_type.
 Local Open Scope do_notation.
@@ -104,19 +107,6 @@ Definition cycle (T : ml_type) (a b : coq_type N T)
 Definition rhd (T : ml_type) (def : coq_type N T)
   (param : loc (ml_rlist T)) : M (coq_type N T) :=
   do v <- cget param; Ret (match v with Nil => def | Cons a _ => a end).
-
-Lemma rhd_is_true :
-  crun (do l <- cycle ml_bool true false; rhd ml_bool false l) = Some true.
-Proof.
-rewrite bindA.
-under eq_bind do rewrite !bindA.
-under eq_bind do under eq_bind do
- rewrite !bindA bindretf !bindA bindretf cputget.
-rewrite -bindA_uncurry -bindA crunret // crunchkput // bindA.
-under eq_bind do rewrite !bindA.
-under eq_bind do under eq_bind do rewrite bindretf /=.
-by rewrite crunnewchkC // crunnewchk0.
-Qed.
 
 Definition rtl (T : ml_type) (param : loc (ml_rlist T))
   : M (loc (ml_rlist T)) :=
@@ -163,15 +153,6 @@ under eq_bind => r1.
   rewrite cnewget; over.
 rewrite cnewchk.
 by under [RHS]eq_bind do (rewrite bindA; under eq_bind do rewrite bindretf).
-Qed.
-
-Lemma rhd_tl_tl_is_true :
-  crun (do l <- cycle ml_bool true false; do l1 <- rtl l; do l2 <- rtl l1;
-        rhd ml_bool false l2) = Some true.
-Proof.
-rewrite -rhd_is_true -[in RHS]rtl_tl_self [in RHS]bindA.
-under [in RHS]eq_bind do rewrite bindA.
-done.
 Qed.
 
 Lemma perm3 T (s1 s2 s3 s4 : coq_type N T) :
@@ -300,28 +281,6 @@ under eq_bind do under eq_bind do
 by rewrite cchk_mkrlist_put_drop mkrlist_drop.
 Qed.
 
-Lemma rnth_is_true n :
-  crun (do l <- cyclel ml_bool true (nseq n false); rnth ml_bool false n.+1 l)
-  = Some true.
-Proof.
-rewrite /rnth -bindA -[in n.+1](size_nseq n false) cyclel_rdrop_self.
-rewrite /rhd !bindA.
-under eq_bind=> r.
-  rewrite !bindA.
-  under eq_bind do rewrite bindA bindretf cputget.
-  rewrite -bindA.
-  over.
-rewrite -bindA crunret // -bindA_uncurry crunchkput // bindA -cnewchk.
-under eq_bind => r.
-  rewrite bindA.
-  under eq_bind do under eq_bind do rewrite bindretf /= -[cchk _]bindmskip.
-  rewrite cchkmkrlistC.
-  over.
-rewrite cnewchk -bindA crunmskip.
-elim: n => /= [|n IH]. by rewrite bindmret crunnew0.
-by rewrite -bindA crunnew.
-Qed.
-
 Fixpoint iappend (h : nat) (l1 l2 : coq_type N (ml_rlist ml_int))
   : M (coq_type N (ml_rlist ml_int)) :=
   if h is h.+1 then
@@ -355,6 +314,67 @@ Fixpoint loc_ids_rlist (l : list nat) (rl : rlist nat ml_int)
           do rl' <- cget r; do rs <- loc_ids_rlist t rl'; Ret (loc_id r :: rs)
       end
   end.
+End cyclic.
+
+Section cyclic_run.
+Variables (N : monad) (M : typedStoreRunMonad N).
+
+Local Notation coq_type := hierarchy.coq_type.
+Local Open Scope do_notation.
+
+Local Notation cycle := (cycle N M).
+Local Notation rhd := (rhd N M).
+Local Notation rtl := (rtl N M _).
+Local Notation cyclel := (cyclel N M).
+Local Notation rnth := (rnth N M).
+
+Lemma rhd_is_true :
+  crun (do l <- cycle ml_bool true false; rhd ml_bool false l) = Some true.
+Proof.
+rewrite bindA.
+under eq_bind do rewrite !bindA.
+under eq_bind do under eq_bind do
+ rewrite !bindA bindretf !bindA bindretf cputget.
+rewrite -bindA_uncurry -bindA crunret // crunchkput // bindA.
+under eq_bind do rewrite !bindA.
+under eq_bind do under eq_bind do rewrite bindretf /=.
+by rewrite crunnewchkC // crunnewchk0.
+Qed.
+
+Lemma rhd_tl_tl_is_true :
+  crun (do l <- cycle ml_bool true false; do l1 <- rtl l; do l2 <- rtl l1;
+        rhd ml_bool false l2) = Some true.
+Proof.
+rewrite -rhd_is_true -[in RHS]rtl_tl_self [in RHS]bindA.
+under [in RHS]eq_bind do rewrite bindA.
+done.
+Qed.
+
+Lemma rnth_is_true n :
+  crun (do l <- cyclel ml_bool true (nseq n false); rnth ml_bool false n.+1 l)
+  = Some true.
+Proof.
+rewrite /rnth -bindA -[in n.+1](size_nseq n false) cyclel_rdrop_self.
+rewrite /rhd !bindA.
+under eq_bind=> r.
+  rewrite !bindA.
+  under eq_bind do rewrite bindA bindretf cputget.
+  rewrite -bindA.
+  over.
+rewrite -bindA crunret // -bindA_uncurry crunchkput // bindA -cnewchk.
+under eq_bind => r.
+  under eq_bind do rewrite bindA.
+  under eq_bind do under eq_bind do rewrite bindretf /= -[cchk _]bindmskip.
+  rewrite cchkmkrlistC.
+  over.
+rewrite cnewchk -bindA crunmskip.
+elim: n => /= [|n IH]. by rewrite bindmret crunnew0.
+by rewrite -bindA crunnew.
+Qed.
+
+Local Notation is_int_list := (is_int_list N M).
+Local Notation loc_ids_rlist := (loc_ids_rlist N M).
+Local Notation iappend := (iappend N M).
 
 Lemma iappend_correct m l1 l2 :
   crun (do p : rlist nat ml_int * rlist nat ml_int <- m; let (rl1, rl2) := p in
@@ -368,7 +388,7 @@ Lemma iappend_correct m l1 l2 :
 Proof.
 (* need more abstractions *)
 Abort.
-End cyclic.
+End cyclic_run.
 
 Module eval_cyclic.
 Section eval.
@@ -432,6 +452,12 @@ Variable (N : monad) (M : typedStoreRunMonad N).
 Fixpoint fact_ref (r : loc ml_int) (n : nat) : M unit :=
   if n is m.+1 then cget r >>= fun p => cput r (n * p) >> fact_ref r m
   else skip.
+End factorial.
+
+Section factorial_run.
+Variable (N : monad) (M : typedStoreRunMonad N).
+
+Local Notation fact_ref := (fact_ref N M).
 
 Theorem fact_ref_ok n :
   crun (cnew ml_int 1 >>= fun r => fact_ref r n >> cget r) = Some (fact_rec n).
@@ -449,10 +475,10 @@ rewrite cnewget.
 under eq_bind do rewrite bindA.
 by rewrite cnewput IH // (mulnC m.+1) -mulnA.
 Qed.
-End factorial.
+End factorial_run.
 
 Section fact_for.
-Variable (N : monad) (M : typedStoreRunMonad N).
+Variable (N : monad) (M : typedStoreMonad N).
 Local Notation coq_type := (hierarchy.coq_type N).
 Local Open Scope do_notation.
 
@@ -466,6 +492,14 @@ Definition fact_for (n : coq_type ml_int) : M (coq_type ml_int) :=
         do v_1 <- (do v_1 <- cget v; Ret (v_1 * i));
         cput v v_1));
   cget v.
+End fact_for.
+
+Section fact_for_run.
+Variable (N : monad) (M : typedStoreRunMonad N).
+Local Notation coq_type := (hierarchy.coq_type N).
+Local Open Scope do_notation.
+
+Local Notation fact_for := (fact_for N M).
 
 Theorem fact_for_ok n : crun (fact_for n) = Some (fact_rec n).
 Proof.
@@ -490,10 +524,10 @@ under eq_bind do rewrite bindretf.
 rewrite cnewput -IH; last by apply ltnW.
 by rewrite subnS mulnC -(@prednK (n-m)) // lt0n subn_eq0 -ltnNge.
 Qed.
-End fact_for.
+End fact_for_run.
 
 Section fibonacci.
-Variables (N : monad) (M : typedStoreRunMonad N).
+Variables (N : monad) (M : typedStoreMonad N).
 
 Fixpoint fibo_rec n :=
   if n is m.+1 then
@@ -505,6 +539,13 @@ Fixpoint fibo_ref n (a b : loc ml_int) : M unit :=
     cget a >>= (fun x => cget b >>= fun y => cput a y >> cput b (x + y))
            >> fibo_ref n a b
   else skip.
+
+End fibonacci.
+
+Section fibonacci_run.
+Variables (N : monad) (M : typedStoreRunMonad N).
+
+Local Notation fibo_ref := (fibo_ref N M).
 
 Theorem fibo_ref_ok n :
   crun (cnew ml_int 1 >>=
@@ -546,7 +587,7 @@ rewrite cnewput.
 by under eq_bind do rewrite cnewput.
 Qed.
 
-End fibonacci.
+End fibonacci_run.
 
 End CoqTypeNat.
 
@@ -723,7 +764,7 @@ HB.instance Definition _ := @isML_universe.Build ml_type coq_type63 ml_unit val_
 
 Section fact_for_int63.
 Variable N : monad.
-Variable M : typedStoreRunMonad ml_type N monad_model.locT_nat.
+Variable M : typedStoreMonad ml_type N monad_model.locT_nat.
 Local Notation coq_type := (hierarchy.coq_type N).
 Local Open Scope do_notation.
 
@@ -771,7 +812,7 @@ Definition fact_for63 (n : coq_type ml_int) : M (coq_type ml_int) :=
         cput v v_1));
   cget v.
 
-Section fact_for63_ok.
+Section fact_for63_lemmas.
 Variable n : nat.
 (* Note: assuming n < max_int rather than n <= max_int is not strictly
    needed, but it simplifies reasoning about loops in concrete code *)
@@ -805,6 +846,21 @@ rewrite /N2int -!Sint63.is_int //.
   by split; apply N2int_bounded, Z.lt_le_incl, (Z.lt_trans _ _ _ Hm).
 Qed.
 
+End fact_for63_lemmas.
+
+End fact_for_int63.
+
+Section fact_for63_ok.
+Variable N : monad.
+Variable M : typedStoreRunMonad ml_type N monad_model.locT_nat.
+Local Notation coq_type := (hierarchy.coq_type N).
+Local Open Scope do_notation.
+
+Local Notation fact_for63 := (fact_for63 N M).
+
+Variable n : nat.
+Hypothesis Hn : (Z.of_nat n < Sint63.to_Z Sint63.max_int)%Z.
+
 Theorem fact_for63_ok : crun (fact_for63 (N2int n)) = Some (N2int (fact_rec n)).
 Proof.
 rewrite /fact_for63.
@@ -837,7 +893,6 @@ rewrite cnewput -IH (ltnW,subnS) // -N2int_mul mulnC -(@prednK (n-m.+1)) //.
 by rewrite lt0n subn_eq0 -ltnNge.
 Qed.
 End fact_for63_ok.
-End fact_for_int63.
 
 Section eval.
 Require Import typed_store_model.
