@@ -394,8 +394,7 @@ Module eval_cyclic.
 Section eval.
 Import monad_model.ModelTypedStoreRun.
                 
-Definition M :=
-  [the typedStoreRunMonad idfun of @acto ml_type idfun].
+Definition M := @acto ml_type idfun.
 
 Definition Env := Env ml_type idfun.
 
@@ -897,8 +896,7 @@ End fact_for63_ok.
 Section eval.
 Require Import typed_store_model.
 
-Definition M := [the typedStoreRunMonad ml_type _ monad_model.locT_nat of
-                 acto ml_type].
+Definition M := acto ml_type.
 
 Definition Env := typed_store_model.Env ml_type.
 
