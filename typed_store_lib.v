@@ -23,7 +23,7 @@ Local Open Scope monae_scope.
 
 Section cchk.
 Variables (MLU : ML_universe) (N : monad) (locT : eqType)
-  (M : typedStoreRunMonad MLU N locT).
+  (M : typedStoreMonad MLU N locT).
 Notation loc := (@loc MLU locT).
 Definition cchk {T} (r : loc T) : M unit := cget r >> skip.
 
@@ -98,6 +98,18 @@ Proof. by rewrite bindA bindskipf cgetget. Qed.
 Lemma cgetret T (r : loc T) : cget r >>= Ret = cget r :> M _.
 Proof. by rewrite bindmret. Qed.
 
+Lemma cnewgetret T s : cnew T s >>= @cget _ _ _ _ _ = cnew T s >> Ret s :> M _.
+Proof. under eq_bind do rewrite -cgetret; by rewrite cnewget. Qed.
+
+End cchk.
+
+Section crun.
+Variables (MLU : ML_universe) (N : monad) (locT : eqType)
+  (M : typedStoreRunMonad MLU N locT).
+Notation loc := (@loc MLU locT).
+
+Local Notation cchk := (cchk M).
+
 Lemma crunnew0 T s : crun (cnew T s : M _).
 Proof. by rewrite -(bindskipf (cnew T s)) crunnew // crunskip. Qed.
 
@@ -131,7 +143,6 @@ Qed.
 Lemma crunnewchk0 T s : crun (cnew T s >>= fun r => cchk r : M _).
 Proof. by rewrite -(bindskipf (_ >>= _)) crunnewchk // crunskip. Qed.
 
-Lemma cnewgetret T s : cnew T s >>= @cget _ _ _ _ _ = cnew T s >> Ret s :> M _.
-Proof. under eq_bind do rewrite -cgetret; by rewrite cnewget. Qed.
-End cchk.
+End crun.
+
 Arguments cchk {MLU N locT M} [T].
