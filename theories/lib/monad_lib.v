@@ -4,7 +4,7 @@ Ltac typeof X := type of X.
 Require Import ssrmatching.
 From mathcomp Require Import all_ssreflect.
 From mathcomp Require boolp.
-Require Import monae_lib.
+Require Import preamble.
 From HB Require Import structures.
 Require Import hierarchy.
 

@@ -2,7 +2,7 @@
 (* Copyright (C) 2020 monae authors, license: LGPL-2.1-or-later               *)
 From mathcomp Require Import all_ssreflect.
 From HB Require Import structures.
-Require Import monae_lib hierarchy monad_lib.
+Require Import preamble hierarchy monad_lib.
 
 (******************************************************************************)
 (*                          Composing monads                                  *)

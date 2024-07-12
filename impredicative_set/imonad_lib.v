@@ -3,7 +3,7 @@
 Ltac typeof X := type of X.
 Require Import ssrmatching.
 From mathcomp Require Import all_ssreflect.
-Require Import imonae_lib.
+Require Import ipreamble.
 From HB Require Import structures.
 Require Import ihierarchy.
 

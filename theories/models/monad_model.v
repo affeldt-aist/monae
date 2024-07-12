@@ -4,7 +4,7 @@ From mathcomp Require Import finmap.
 From mathcomp Require boolp.
 From mathcomp Require Import classical_sets.
 From infotheo Require convex classical_sets_ext.
-Require Import monae_lib.
+Require Import preamble.
 From HB Require Import structures.
 Require Import hierarchy monad_lib fail_lib state_lib trace_lib.
 Require Import monad_transformer.
@@ -344,7 +344,7 @@ Proof. by move=> A B C f g; apply boolp.funext => -[]. Qed.
 HB.instance Definition _ := isFunctor.Build acto func_id func_comp.
 End empty.
 End Empty.
-HB.export monae.monad_model.Empty.
+HB.export monae.theories.models.monad_model.Empty.
 
 Module Append.
 Section append.

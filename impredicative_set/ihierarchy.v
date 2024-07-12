@@ -4,7 +4,7 @@ Ltac typeof X := type of X.
 
 Require Import ssrmatching JMeq.
 From mathcomp Require Import all_ssreflect.
-Require Import imonae_lib.
+Require Import ipreamble.
 From HB Require Import structures.
 
 (******************************************************************************)

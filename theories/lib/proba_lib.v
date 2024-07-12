@@ -7,7 +7,7 @@ From mathcomp Require boolp.
 From mathcomp Require Import reals mathcomp_extra Rstruct lra.
 From infotheo Require Import ssrR realType_ext Reals_ext.
 From infotheo Require Import proba convex necset.
-Require Import monae_lib hierarchy monad_lib fail_lib.
+Require Import preamble hierarchy monad_lib fail_lib.
 
 (******************************************************************************)
 (*             Definitions and lemmas for probability monads                  *)

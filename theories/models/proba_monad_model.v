@@ -7,7 +7,7 @@ From mathcomp Require Import reals Rstruct.
 From infotheo Require Import Reals_ext realType_ext ssr_ext fsdist.
 From infotheo Require Import convex.
 From HB Require Import structures.
-Require Import monae_lib hierarchy monad_lib proba_lib.
+Require Import preamble hierarchy monad_lib proba_lib.
 
 (******************************************************************************)
 (*                     Model for the probability monad                        *)

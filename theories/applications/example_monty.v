@@ -4,7 +4,7 @@ Require Import Reals Lra.
 From mathcomp Require Import all_ssreflect ssralg ssrnum.
 From mathcomp Require Import mathcomp_extra reals Rstruct.
 From infotheo Require Import ssrR realType_ext Reals_ext proba.
-Require Import monae_lib hierarchy monad_lib fail_lib proba_lib.
+Require Import preamble hierarchy monad_lib fail_lib proba_lib.
 
 (******************************************************************************)
 (*                            Monty Hall example                              *)

@@ -6,7 +6,7 @@ Require Import ssrmatching Reals JMeq.
 From mathcomp Require Import all_ssreflect.
 From mathcomp Require boolp.
 From infotheo Require Import Reals_ext.
-Require Import monae_lib hierarchy.
+Require Import preamble hierarchy.
 
 (******************************************************************************)
 (*                      Lemmas using the typed store monad                    *)

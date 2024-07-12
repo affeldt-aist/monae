@@ -94,36 +94,44 @@ This library has been applied to other formalizations:
 
 ## Files
 
-- basics:
-  + [monae_lib.v](./monae_lib.v): simple additions to base libraries
-  + [hierarchy.v](./hierarchy.v): hierarchy of monadic effects
-  + [category.v](./category.v): formalization of concrete categories (generalization of the bottom layers of `hierarchy.v`)
-  + [monad_transformer.v](./monad_transformer.v): monad transformers
+- core:
+  + [monae_lib.v](./theories/core/monae_lib.v): simple additions to base libraries
+  + [hierarchy.v](./theories/core/hierarchy.v): hierarchy of monadic effects
+  + [category.v](./theories/core/category.v): formalization of concrete categories (generalization of the bottom layers of `hierarchy.v`)
+  + [monad_transformer.v](./theories/core/monad_transformer.v): monad transformers
     * completed by `ifmt_lifting.v` and `iparametricty_codensity.v` in the directory `impredicative_set`
       - the directory `impredicative_set` contains a lighter version of Monae where monads live in `Set` and that compiles with `impredicative-set`
-- utility lemmas:  
-  + [monad_lib.v](./monad_lib.v): basic lemmas about monads
-  + [fail_lib.v](./fail_lib.v): lemmas about the fail monad and related monads
-  + [state_lib.v](./state_lib.v): lemmas about state-related monads
-  + [array_lib.v](./array_lib.v): lemmas about the array monad
-  + [trace_lib.v](./trace_lib.v): lemmas about about the state-trace monad
-  + [proba_lib.v](./proba_lib.v): lemmas about the probability monad
-  + [typed_store_lib.v](./typed_store_lib.v): derived definitions and lemmas about about the typed store monad
+- libraries for each monad theory:  
+  + [monad_lib.v](./theories/lib/monad_lib.v): basic lemmas about monads
+  + [fail_lib.v](./theories/lib/fail_lib.v): lemmas about the fail monad and related monads
+  + [state_lib.v](./theories/lib/state_lib.v): lemmas about state-related monads
+  + [array_lib.v](./theories/lib/array_lib.v): lemmas about the array monad
+  + [trace_lib.v](./theories/lib/trace_lib.v): lemmas about about the state-trace monad
+  + [proba_lib.v](./theories/lib/proba_lib.v): lemmas about the probability monad
+  + [typed_store_lib.v](./theories/lib/typed_store_lib.v): derived definitions and lemmas about about the typed store monad
 - models of monads:
-  + [monad_model.v](./monad_model.v): concrete models of monads
-  + [proba_monad_model.v](./proba_monad_model.v): model of the probability monad
-  + [gcm_model.v](./gcm_model.v): model of the geometrically convex monad
-  + [altprob_model.v](./altprob_model.v): model of a monad that mixes non-deterministic choice and probabilistic choice
-  + [typed_store_model.v](./typed_store_model.v): alternative model of the typed store monad
+  + [monad_model.v](./theories/models/monad_model.v): concrete models of monads
+  + [proba_monad_model.v](./theories/models//proba_monad_model.v): model of the probability monad
+  + [gcm_model.v](./theories/models//gcm_model.v): model of the geometrically convex monad
+  + [altprob_model.v](./theories/models//altprob_model.v): model of a monad that mixes non-deterministic choice and probabilistic choice
+  + [typed_store_model.v](./theories/models//typed_store_model.v): alternative model of the typed store monad
 - applications:
-  + [monad_composition.v](./monad_composition.v): composing monads
-  + [smallstep.v](./smallstep.v): semantics for an imperative language, with equivalence operational semantics/denotation and sample imperative programs
-  + example_*.v: various examples (Spark aggregation, the n-queens puzzle, tree relabeling,  Monty Hall problem, monad transformers, quicksort, OCaml programs, etc.)
+  + [example_relabeling.v](./theories/applications/example_relabeling.v): tree relabeling
+  + [example_monty.v](./theories/applications/example_monty.v): Monty Hall problem
+  + [example_spark.v](./theories/applications/example_spark.v): Spark aggregation
+  + [example_iquicksort.v](./theories/applications/example_iquicksort.v): in-place quicksort
+  + [example_quicksort.v](./theories/applications/example_quicksort.v): functional quicksort
+  + [example_nqueens.v](./theories/applications/example_nqueens.v): the n-queens puzzle
+  + [example_typed_store.v](./theories/applications/example_typed_store.v): ML programs with references
+  + [example_transformer.v](./theories/applications/example_transformer.v): monad transformers
+  + [smallstep.v](./theories/applications/smallstep.v): semantics for an imperative language, with equivalence operational semantics/denotation and sample imperative programs
+  + [monad_composition.v](./theories/applications/monad_composition.v): composing monads
+  + [category_ext.v](./theories/applications/category_ext.v): experimental library about categories
 
-## About Installation with Windows 10 or 11
+## About Installation with Windows 11
 
 Installation of monae on Windows is less simple.
-First install infotheo following the [instructions for Windows 10](https://github.com/affeldt-aist/infotheo).
+First install infotheo following the [instructions for Windows 11](https://github.com/affeldt-aist/infotheo).
 Once infotheo is installed (with opam), do:
 - `opam install coq-monae` or `git clone git@github.com:affeldt-aist/monae.git; opam install .`
 

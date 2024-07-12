@@ -10,7 +10,7 @@ From infotheo Require Import Reals_ext realType_ext.
 From infotheo Require Import fsdist convex necset.
 Require category.
 From HB Require Import structures.
-Require Import monae_lib hierarchy monad_lib proba_lib monad_model gcm_model.
+Require Import preamble hierarchy monad_lib proba_lib monad_model gcm_model.
 Require Import category.
 
 (******************************************************************************)

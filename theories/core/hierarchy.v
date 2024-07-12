@@ -8,7 +8,7 @@ From mathcomp Require boolp.
 From mathcomp Require Import mathcomp_extra Rstruct reals.
 From infotheo Require Import Reals_ext.
 From infotheo Require Import realType_ext.
-Require Import monae_lib.
+Require Import preamble.
 From HB Require Import structures.
 
 (******************************************************************************)
