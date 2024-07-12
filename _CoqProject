@@ -5,33 +5,33 @@
 -arg -w -arg -notation-incompatible-format
 -arg -w -arg -elpi.add-const-for-axiom-or-sectionvar
 
-monae_lib.v
-hierarchy.v
-monad_lib.v
-fail_lib.v
-state_lib.v
-array_lib.v
-trace_lib.v
-proba_lib.v
-typed_store_lib.v
-monad_composition.v
-monad_model.v
-proba_monad_model.v
-category.v
-gcm_model.v
-altprob_model.v
-monad_transformer.v
-typed_store_model.v
-example_spark.v
-example_nqueens.v
-example_relabeling.v
-example_quicksort.v
-example_iquicksort.v
-example_monty.v
-example_typed_store.v
-smallstep.v
-example_transformer.v
-category_ext.v
-all_monae.v
+theories/core/monae_lib.v
+theories/core/hierarchy.v
+theories/core/category.v
+theories/core/monad_transformer.v
+theories/lib/monad_lib.v
+theories/lib/fail_lib.v
+theories/lib/state_lib.v
+theories/lib/array_lib.v
+theories/lib/trace_lib.v
+theories/lib/proba_lib.v
+theories/lib/typed_store_lib.v
+theories/models/monad_model.v
+theories/models/proba_monad_model.v
+theories/models/gcm_model.v
+theories/models/altprob_model.v
+theories/models/typed_store_model.v
+theories/applications/monad_composition.v
+theories/applications/example_spark.v
+theories/applications/example_nqueens.v
+theories/applications/example_relabeling.v
+theories/applications/example_quicksort.v
+theories/applications/example_iquicksort.v
+theories/applications/example_monty.v
+theories/applications/example_typed_store.v
+theories/applications/smallstep.v
+theories/applications/example_transformer.v
+theories/applications/category_ext.v
+theories/all_monae.v
 
 -R . monae
