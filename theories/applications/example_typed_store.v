@@ -6,7 +6,7 @@ From mathcomp Require boolp.
 From infotheo Require Import ssrZ.
 Require Import monad_model.
 From HB Require Import structures.
-Require Import monae_lib hierarchy monad_lib typed_store_lib.
+Require Import preamble hierarchy monad_lib typed_store_lib.
 
 (******************************************************************************)
 (*                         Typed store examples                               *)

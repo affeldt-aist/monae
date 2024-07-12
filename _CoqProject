@@ -5,7 +5,7 @@
 -arg -w -arg -notation-incompatible-format
 -arg -w -arg -elpi.add-const-for-axiom-or-sectionvar
 
-theories/core/monae_lib.v
+theories/core/preamble.v
 theories/core/hierarchy.v
 theories/core/category.v
 theories/core/monad_transformer.v

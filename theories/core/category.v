@@ -2,7 +2,7 @@
 (* Copyright (C) 2020 monae authors, license: LGPL-2.1-or-later               *)
 From mathcomp Require Import all_ssreflect.
 From mathcomp Require Import boolp.
-Require Import monae_lib.
+Require Import preamble.
 From HB Require Import structures.
 
 (******************************************************************************)

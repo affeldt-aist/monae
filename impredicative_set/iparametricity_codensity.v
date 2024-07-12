@@ -4,7 +4,7 @@ From Param Require Import Param.
 
 From mathcomp Require Import all_ssreflect.
 From HB Require Import structures.
-Require Import imonae_lib ihierarchy imonad_lib ifmt_lifting imonad_model.
+Require Import ipreamble ihierarchy imonad_lib ifmt_lifting imonad_model.
 
 (******************************************************************************)
 (* Instantiations of uniform lifting (Theorem 27 of [Mauro Jaskelioff,        *)

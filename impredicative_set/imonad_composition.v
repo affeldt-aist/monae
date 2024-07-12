@@ -2,7 +2,7 @@
 (* Copyright (C) 2020 monae authors, license: LGPL-2.1-or-later               *)
 From mathcomp Require Import all_ssreflect.
 From HB Require Import structures.
-Require Import imonae_lib ihierarchy imonad_lib.
+Require Import ipreamble ihierarchy imonad_lib.
 
 (******************************************************************************)
 (*                          Composing monads                                  *)

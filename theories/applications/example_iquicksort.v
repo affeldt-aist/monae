@@ -2,7 +2,7 @@
 (* Copyright (C) 2020 monae authors, license: LGPL-2.1-or-later               *)
 From mathcomp Require Import all_ssreflect.
 From mathcomp Require boolp.
-Require Import monae_lib hierarchy monad_lib fail_lib state_lib.
+Require Import preamble hierarchy monad_lib fail_lib state_lib.
 Require Import array_lib example_quicksort.
 From infotheo Require Import ssr_ext.
 

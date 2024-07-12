@@ -4,7 +4,7 @@ From mathcomp Require Import finmap.
 From mathcomp Require boolp.
 From mathcomp Require Import classical_sets.
 From infotheo Require convex classical_sets_ext.
-Require Import monae_lib.
+Require Import preamble.
 From HB Require Import structures.
 Require Import hierarchy monad_lib fail_lib state_lib trace_lib.
 Require Import monad_transformer.

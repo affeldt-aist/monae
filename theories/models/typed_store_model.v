@@ -4,7 +4,7 @@ Require Import JMeq.
 From mathcomp Require Import all_ssreflect finmap.
 From mathcomp Require boolp.
 #[local] Remove Hints boolp.Prop_irrelevance : core.
-Require Import monae_lib.
+Require Import preamble.
 From HB Require Import structures.
 Require Import hierarchy monad_lib fail_lib state_lib trace_lib.
 Require Import monad_transformer monad_model.
