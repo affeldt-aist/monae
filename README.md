@@ -95,7 +95,7 @@ This library has been applied to other formalizations:
 ## Files
 
 - core:
-  + [monae_lib.v](./theories/core/monae_lib.v): simple additions to base libraries
+  + [preamble.v](./theories/core/preamble.v): simple additions to base libraries
   + [hierarchy.v](./theories/core/hierarchy.v): hierarchy of monadic effects
   + [category.v](./theories/core/category.v): formalization of concrete categories (generalization of the bottom layers of `hierarchy.v`)
   + [monad_transformer.v](./theories/core/monad_transformer.v): monad transformers
