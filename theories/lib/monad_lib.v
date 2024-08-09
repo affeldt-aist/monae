@@ -527,47 +527,31 @@ Qed.
 
 End composite_adjoint.
 
-Definition operation (E : functor) (M : monad) := [the functor of E \o M] ~> M.
+Definition operation (E : functor) (M : monad) := E \o M ~> M.
 Notation "E .-operation M" := (operation E M).
 
 Section algebraicity.
 Variables (E : functor) (M : monad).
-Definition algebraicity (op : (*E.-operation M*)E \o M ~~> M) :=
+Definition algebraicity (op : E \o M ~~> M) :=
   forall (A B : UU0) (f : A -> M B) (t : E (M A)),
     op A t >>= f = op B ((E # (fun m => m >>= f)) t).
 End algebraicity.
 
 HB.mixin Record isAOperation (E : functor) (M : monad) (op : E \o M ~~> M) := {
   algebraic : algebraicity op }.
+
+#[short(type=aoperation)]
 HB.structure Definition AOperation (E : functor) (M : monad) :=
   {op of isAOperation E M op &
-         isNatural [the functor of E \o M] M op (*NB: this is an operation in fact*)}.
-Notation aoperation := AOperation.type.
-Arguments algebraic {E} {M} s.
+         isNatural (E \o M) M op (*NB: this is an operation in fact*)}.
 
-(*Module AOperation.
-Section aoperation.
-Variables (E : functor) (M : monad).
-Record mixin_of (op : E \O M ~> M) := Mixin { _ : algebraicity op }.
-Record class_of (op : E \O M ~~> M) := Class {
-  base : Natural.mixin_of op ;
-  mixin : mixin_of (Natural.Pack base) }.
-Structure t := Pack { m : E \O M ~~> M ; class : class_of m }.
-Definition baseType (o : t) := Natural.Pack (base (class o)).
-End aoperation.
-Module Exports.
-Arguments m {E} {M}.
-Notation aoperation := t.
-Coercion baseType : aoperation >-> nattrans.
-Canonical baseType.
-End Exports.
-End AOperation.
-Export AOperation.Exports.*)
+Arguments algebraic {E} {M} s.
 
 Notation "E .-aoperation M" := (aoperation E M).
 
 Section algebraic_operation_interface.
 Variables (E : functor) (M : monad) (op : E.-aoperation M).
+
 Lemma aoperation_ext (f g : E.-aoperation M) :
   f = g <-> forall a, (f a = g a :> (_ -> _)).
 Proof.
@@ -581,11 +565,11 @@ Qed.
 
 End algebraic_operation_interface.
 
-(*Lemma monad_of_ret_bind_ext (F G : functor) (RET1 : FId ~> F) (RET2 : FId ~> G)
+(*Lemma monad_of_ret_bind_ext (F G : functor) (RET1 : idfun ~> F) (RET2 : idfun ~> G)
   (bind1 : forall A B : UU0, F A -> (A -> F B) -> F B)
   (bind2 : forall A B : UU0, G A -> (A -> G B) -> G B) :
   forall (FG : F = G),
-  RET1 = eq_rect _ (fun m : functor => FId ~> m) RET2 _ ((*beuh*) (esym FG)) ->
+  RET1 = eq_rect _ (fun m : functor => idfun ~> m) RET2 _ ((*beuh*) (esym FG)) ->
   bind1 = eq_rect _ (fun m : functor => forall A B : UU0, m A -> (A -> m B) -> m B) bind2 _ (esym FG) ->
   forall H1 K1 H2 K2 H3 K3,
   Monad_of_ret_bind F RET1 bind1 H1 H2 H3 =

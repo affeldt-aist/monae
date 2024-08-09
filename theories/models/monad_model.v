@@ -363,34 +363,40 @@ HB.export Append.
 Section appendop.
 Local Notation M := [the monad of ListMonad.acto].
 
-Definition empty : [the functor of Empty.acto \o M] ~~> M := fun A _ => @nil A.
-Lemma naturality_empty : naturality [the functor of Empty.acto \o M] M empty.
-Proof. by move=> A B h; apply boolp.funext. Qed.
+Definition empty : Empty.acto \o M ~~> M := fun A _ => @nil A.
+
+Let naturality_empty : naturality (Empty.acto \o M) M empty.
+Proof. by move=> A B h; exact: boolp.funext. Qed.
 
 HB.instance Definition _ :=
-  isNatural.Build [the functor of Empty.acto \o M] M empty naturality_empty.
-Definition empty_op : [the functor of Empty.acto].-operation M :=
-  [the _ ~> _ of empty].
+  isNatural.Build (Empty.acto \o M) M empty naturality_empty.
+
+Definition empty_op : Empty.acto.-operation M := [the _ ~> _ of empty].
+
 Lemma algebraic_empty : algebraicity empty_op.
 Proof. by []. Qed.
 
-Definition append : [the functor of Append.acto \o M] ~~> M :=
+Definition append : Append.acto \o M ~~> M :=
   fun A x => let: (s1, s2) := x in (s1 ++ s2).
-Let naturality_append : naturality [the functor of Append.acto \o M] M append.
+
+Let naturality_append : naturality (Append.acto \o M) M append.
 Proof.
 move=> A B h; apply boolp.funext => -[s1 s2] /=.
 rewrite /actm /=.
 by rewrite map_cat flatten_cat.
 Qed.
+
 HB.instance Definition _ :=
-  isNatural.Build [the functor of Append.acto \o M] M append naturality_append.
-Definition append_op : [the functor of Append.acto].-operation M :=
-  [the _ ~> _ of append].
+  isNatural.Build (Append.acto \o M) M append naturality_append.
+
+Definition append_op : Append.acto.-operation M := [the _ ~> _ of append].
+
 Lemma algebraic_append : algebraicity append_op.
 Proof.
 move=> A B f [t1 t2] /=.
 by rewrite 3!list_bindE -flatten_cat -map_cat.
 Qed.
+
 End appendop.
 
 Module Output.
@@ -423,19 +429,22 @@ Section outputops.
 Variable L : UU0.
 Local Notation M := (OutputMonad.acto L).
 
-Definition output : [the functor of Output.acto L \o M] ~~> M :=
+Definition output : Output.acto L \o M ~~> M :=
   fun A m => let: (x, w') := m.2 in (x, m.1 ++ w'). (*NB: w'++m.1 in the esop paper*)
+
 Let naturality_output :
-  naturality [the functor of Output.acto L \o M] [the functor of M] output.
+  naturality (Output.acto L \o M) M output.
 Proof.
 move=> A B h.
 apply boolp.funext => -[w [x w']].
 by rewrite /output /= catA.
 Qed.
+
 HB.instance Definition _ := isNatural.Build
-  [the functor of Output.acto L \o M] [the monad of M] output naturality_output.
-Definition output_op : [the functor of Output.acto L].-operation [the monad of M] :=
-  [the _ ~> _ of output].
+  (Output.acto L \o M) M output naturality_output.
+
+Definition output_op : (Output.acto L).-operation M := [the _ ~> _ of output].
+
 Lemma algebraic_output : algebraicity output_op.
 Proof.
 move=> A B f [w [x w']].
@@ -445,17 +454,20 @@ rewrite output_bindE.
 by case: f => x' w''; rewrite catA.
 Qed.
 
-Definition flush : [the functor of Flush.acto \o M] ~~> M :=
+Definition flush : (Flush.acto \o M) ~~> M :=
   fun A m => let: (x, _) := m in (x, [::]).
+
 (* performing a computation in a modified environment *)
-Let naturality_flush :
-  naturality [the functor of Flush.acto \o M] [the functor of M] flush.
-Proof. by move=> A B h; apply boolp.funext => -[]. Qed.
+Let naturality_flush : naturality (Flush.acto \o M) M flush.
+Proof. by move=> A B h; apply: boolp.funext => -[]. Qed.
+
 HB.instance Definition _ := isNatural.Build
-  [the functor of Flush.acto \o M] [the monad of M] flush naturality_flush.
+  (Flush.acto \o M) M flush naturality_flush.
+
 (* NB: flush is not algebraic *)
-Definition flush_op : [the functor of Flush.acto].-operation [the monad of M] :=
+Definition flush_op : Flush.acto.-operation M :=
   [the _ ~> _ of flush].
+
 Lemma algebraic_flush : algebraicity flush_op.
 Proof.
 move=> A B f [x w].
@@ -516,28 +528,34 @@ Section environmentops.
 Variable E : UU0.
 Local Notation M := (EnvironmentMonad.acto E).
 
-Definition ask : [the functor of Ask.acto E \o M](*E -> M A?*) ~~> M :=
+Definition ask : (Ask.acto E \o M)(*E -> M A?*) ~~> M :=
   fun A f s => f s s. (* reading the environment *)
-Let naturality_ask :
-  naturality [the functor of Ask.acto E \o M] [the functor of M] ask.
+
+Let naturality_ask : naturality (Ask.acto E \o M) M ask.
 Proof. by []. Qed.
+
 HB.instance Definition _ := isNatural.Build
-  [the functor of Ask.acto E \o M] [the functor of M] ask naturality_ask.
-Definition ask_op :  [the functor of Ask.acto E].-operation [the monad of M] :=
+  (Ask.acto E \o M) M ask naturality_ask.
+
+Definition ask_op : (Ask.acto E).-operation M :=
   [the _ ~> _ of ask].
+
 Lemma algebraic_ask : algebraicity ask_op.
 Proof. by []. Qed.
 
-Definition local : [the functor of Local.acto E \o M](*(E -> E) * M A*) ~~> M :=
+Definition local : (Local.acto E \o M)(*(E -> E) * M A*) ~~> M :=
   fun A x s => let: (e, t) := x in t (e s).
 (* performing a computation in a modified environment *)
-Lemma naturality_local :
-  naturality [the functor of Local.acto E \o M] [the functor of M] local.
+
+Let naturality_local : naturality (Local.acto E \o M) M local.
 Proof. by move=> A B h; apply boolp.funext => -[]. Qed.
+
 HB.instance Definition _ := isNatural.Build
-  [the functor of Local.acto E \o M] [the functor of M] local naturality_local.
-Definition local_op : [the functor of Local.acto E].-operation [the monad of M] :=
+  (Local.acto E \o M) M local naturality_local.
+
+Definition local_op : (Local.acto E).-operation M :=
   [the _ ~> _ of local].
+
 (* NB: local is not algebraic *)
 Lemma algebraic_local : algebraicity local_op.
 Proof.
@@ -596,32 +614,42 @@ Section exceptops.
 Variable Z : UU0.
 Local Notation M := (ExceptMonad.acto Z).
 
-Definition throw : [the functor of Throw.acto Z \o M] ~~> M :=
+Definition throw : (Throw.acto Z \o M) ~~> M :=
   fun (A : UU0) z => inl z.
-Let naturality_throw :
-  naturality [the functor of Throw.acto Z \o M] [the functor of M] throw.
+
+Let naturality_throw : naturality (Throw.acto Z \o M) M throw.
 Proof. by []. Qed.
+
 HB.instance Definition _ := isNatural.Build
-  [the functor of Throw.acto Z \o M] [the functor of M] throw naturality_throw.
-Definition throw_op : [the functor of Throw.acto Z].-operation [the monad of M] :=
+  (Throw.acto Z \o M) M throw naturality_throw.
+
+Definition throw_op : (Throw.acto Z).-operation M :=
   [the _ ~> _ of throw].
+
 Lemma algebraic_throw : algebraicity throw_op.
 Proof. by []. Qed.
-HB.instance Definition _ := isAOperation.Build _ [the monad of M] throw algebraic_throw.
-Definition throw_aop : [the functor of Throw.acto Z].-aoperation [the monad of M] :=
+
+HB.instance Definition _ := isAOperation.Build _ M throw algebraic_throw.
+
+Definition throw_aop : (Throw.acto Z).-aoperation M :=
   [the aoperation _ _ of throw].
 
 Definition handle' A (m : M A) (h : Z -> M A) : M A :=
   match m with inl z => h z | inr x => inr x end.
-Definition handle : [the functor of Handle.acto Z \o M] ~~> M :=
+
+Definition handle : Handle.acto Z \o M ~~> M :=
   fun A => uncurry (@handle' A).
-Let naturality_handle :
-  naturality [the functor of Handle.acto Z \o M] [the functor of M] handle.
+
+Let naturality_handle : naturality (Handle.acto Z \o M) M handle.
+
 Proof. by move=> A B h; apply boolp.funext => -[[]]. Qed.
+
 HB.instance Definition _ := isNatural.Build
-  [the functor of Handle.acto Z \o M] [the monad of M] handle naturality_handle.
-Definition handle_op : [the functor of Handle.acto Z].-operation [the monad of M] :=
+  (Handle.acto Z \o M) M handle naturality_handle.
+
+Definition handle_op : (Handle.acto Z).-operation M :=
   [the _ ~> _ of handle].
+
 (* NB: handle is not algebraic *)
 Lemma algebraic_handle : algebraicity handle_op.
 Proof.
@@ -676,43 +704,51 @@ Section stateops.
 Variable S : UU0.
 Local Notation M := (StateMonad.acto S).
 
-Let get : [the functor of StateOpsGet.acto S \o M] ~~> M := fun A k s => k s s.
-Let naturality_get :
-  naturality [the functor of StateOpsGet.acto S \o M] [the functor of M] get.
+Let get : StateOpsGet.acto S \o M ~~> M := fun A k s => k s s.
+
+Let naturality_get : naturality (StateOpsGet.acto S \o M) M get.
 Proof.
 move=> A B h; apply boolp.funext => /= m; apply boolp.funext => s.
 by rewrite FCompE.
 Qed.
-HB.instance Definition _ :=
-  isNatural.Build _ [the functor of M] get naturality_get.
-Definition get_op :
-    [the functor of StateOpsGet.acto S].-operation [the monad of M] :=
+
+HB.instance Definition _ := isNatural.Build _ M get naturality_get.
+
+Definition get_op : (StateOpsGet.acto S).-operation M :=
   [the _ ~> _ of get].
+
 Lemma algebraic_get : algebraicity get_op.
 Proof. by []. Qed.
+
 HB.instance Definition _ := isAOperation.Build
-  [the functor of StateOpsGet.acto S] [the monad of M] get algebraic_get.
-Definition get_aop :
-    [the functor of StateOpsGet.acto S].-aoperation [the monad of M] :=
+  (StateOpsGet.acto S) M get algebraic_get.
+
+Definition get_aop : (StateOpsGet.acto S).-aoperation M :=
   [the aoperation _ _ of get].
 
 Let put' A (s : S) (m : M A) : M A := fun _ => m s.
-Let put : [the functor of StateOpsPut.acto S \o M] ~~> M :=
+
+Let put : StateOpsPut.acto S \o M ~~> M :=
   fun A => uncurry (put' (A := A)).
-Let naturality_put :
-  naturality [the functor of StateOpsPut.acto S \o M] [the functor of M] put.
-Proof. by move=> A B h; apply boolp.funext => /= -[s m /=]; apply boolp.funext. Qed.
+
+Let naturality_put : naturality (StateOpsPut.acto S \o M) M put.
+Proof.
+by move=> A B h; apply boolp.funext => /= -[s m /=]; apply boolp.funext.
+Qed.
+
 HB.instance Definition _ :=
-  isNatural.Build _ [the monad of M] put naturality_put.
-Definition put_op :
-    [the functor of StateOpsPut.acto S].-operation [the monad of M] :=
+  isNatural.Build _ M put naturality_put.
+
+Definition put_op : (StateOpsPut.acto S).-operation M :=
   [the _ ~> _ of put].
+
 Lemma algebraic_put : algebraicity put_op.
 Proof. by move=> ? ? ? []. Qed.
+
 HB.instance Definition _ := isAOperation.Build
-  [the functor of StateOpsPut.acto S] [the monad of M] put algebraic_put.
-Definition put_aop :
-    [the functor of StateOpsPut.acto S].-aoperation [the monad of M] :=
+  (StateOpsPut.acto S) M put algebraic_put.
+
+Definition put_aop : (StateOpsPut.acto S).-aoperation M :=
   [the aoperation _ _ of put].
 
 End stateops.
@@ -749,38 +785,46 @@ Section contops.
 Variable r : UU0.
 Local Notation M := (ContMonad.acto r).
 
-Definition abort : [the functor of ContOpsAbort.acto r \o M] ~~> M :=
+Definition abort : ContOpsAbort.acto r \o M ~~> M :=
   fun (A : UU0) r _ => r.
-Lemma naturality_abort :
-  naturality [the functor of ContOpsAbort.acto r \o M] [the monad of M] abort.
+
+Lemma naturality_abort : naturality (ContOpsAbort.acto r \o M) M abort.
 Proof. by []. Qed.
-HB.instance Definition _ := isNatural.Build
-  _ [the monad of M] abort naturality_abort.
-Definition abort_op : [the functor of ContOpsAbort.acto r].-operation [the monad of M] :=
+
+HB.instance Definition _ := isNatural.Build _ M abort naturality_abort.
+
+Definition abort_op : (ContOpsAbort.acto r).-operation M :=
   [the _ ~> _ of abort].
-Lemma algebraicity_abort : algebraicity abort_op.
+
+Let algebraicity_abort : algebraicity abort_op.
 Proof. by []. Qed.
-HB.instance Definition _ := isAOperation.Build
-  [the functor of ContOpsAbort.acto r] [the monad of M]
+
+HB.instance Definition _ := isAOperation.Build (ContOpsAbort.acto r) M
   abort algebraicity_abort.
-Definition abort_aop : [the functor of ContOpsAbort.acto r].-aoperation [the monad of M] :=
+
+Definition abort_aop : (ContOpsAbort.acto r).-aoperation M :=
   [the aoperation _ _ of abort].
 
 (* alebgraic call/cc *)
-Definition acallcc : [the functor of ContOpsAcallcc.acto r \o M](*(f : (M A -> r) -> M A)*) ~~> M :=
+Definition acallcc : (ContOpsAcallcc.acto r \o M)(*(f : (M A -> r) -> M A)*) ~~> M :=
   fun A f k => f (fun m => m k) k.
-Let naturality_acallcc :
-  naturality [the functor of ContOpsAcallcc.acto r \o M] [the functor of M] acallcc.
+
+Let naturality_acallcc : naturality (ContOpsAcallcc.acto r \o M) M acallcc.
 Proof. by []. Qed.
-HB.instance Definition _ := isNatural.Build _ [the monad of M] acallcc naturality_acallcc.
-Definition acallcc_op : [the functor of ContOpsAcallcc.acto r].-operation [the monad of M] :=
+
+HB.instance Definition _ :=
+  isNatural.Build _ M acallcc naturality_acallcc.
+
+Definition acallcc_op : (ContOpsAcallcc.acto r).-operation M :=
   [the _ ~> _ of acallcc].
+
 Let algebraicity_callcc : algebraicity acallcc_op.
 Proof. by []. Qed.
-HB.instance Definition _ := isAOperation.Build
-  [the functor of ContOpsAcallcc.acto r] [the monad of M]
+
+HB.instance Definition _ := isAOperation.Build (ContOpsAcallcc.acto r) M
   acallcc algebraicity_callcc.
-Definition callcc_aop : [the functor of ContOpsAcallcc.acto r].-aoperation [the monad of M] :=
+
+Definition callcc_aop : (ContOpsAcallcc.acto r).-aoperation M :=
   [the aoperation _ _ of acallcc].
 
 End contops.
