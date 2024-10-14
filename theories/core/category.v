@@ -909,8 +909,7 @@ rewrite bind_fmap_fun/= bindA/=.
 congr (fun f => bind f mmma).
 by rewrite hom_ext.
 Qed.
-HB.instance Definition _ := isMonad.Build C F bindE joinretM joinMret joinA.
-(* TODO: eliminate Warning: non forgetful inheritance detected *)
+HB.instance Definition _ := isMonad.Build C M bindE joinretM joinMret joinA.
 HB.end.
 
 Module _Monad_of_adjoint_functors.
@@ -963,8 +962,8 @@ Let bindE (a b : C) (f : {hom a, M b}) (m : el (M a)) :
   bind f m = join b (([the {functor C -> C} of M] # f) m).
 Proof. by []. Qed.
 HB.instance Definition monad_of_adjoint_mixin :=
-  isMonad.Build C M bindE join_left_unit join_right_unit join_associativity.
-(* TODO: eliminate Warning: non forgetful inheritance detected *)
+  isMonad.Build C (M : _ -> _)
+    bindE join_left_unit join_right_unit join_associativity.
 End def.
 Definition build (C D : category)
            (F : {functor C -> D}) (G : {functor D -> C}) (A : F -| G) :=
