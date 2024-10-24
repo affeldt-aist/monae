@@ -115,7 +115,6 @@ Reserved Notation "f (o) g" (at level 11).
 Reserved Notation "m >> f" (at level 49).
 Reserved Notation "'fmap' f" (at level 4).
 Reserved Notation "x '[~]' y" (at level 50).
-Reserved Notation "mx <| p |> my" (format "mx  <| p |>  my", at level 49).
 
 Notation "f ~~> g" := (forall A, f A -> g A)
   (at level 51, only parsing) : monae_scope.

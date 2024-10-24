@@ -26,7 +26,7 @@ in several examples of monadic equational reasoning.
   - Celestine Sauvage
   - Kazunari Tanaka
 - License: [LGPL-2.1-or-later](LICENSE)
-- Compatible Coq versions: Coq 8.18-8.19
+- Compatible Coq versions: Coq 8.19-8.20
 - Additional dependencies:
   - [MathComp ssreflect](https://math-comp.github.io)
   - [MathComp fingroup](https://math-comp.github.io)
