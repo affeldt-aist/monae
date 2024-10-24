@@ -45,7 +45,7 @@ From HB Require Import structures.
 (*          plusMonad == preplusMonad + commutativity and idempotence         *)
 (*         altCIMonad == altMonad + commutativity + idempotence               *)
 (*        nondetMonad == failMonad + altMonad                                 *)
-(*      nondetCIMonad == failMOnad + altCIMonad                               *)
+(*      nondetCIMonad == failMonad + altCIMonad                               *)
 (*        exceptMonad == failMonad + catch                                    *)
 (*                                                                            *)
 (* Control monads (wip):                                                      *)
@@ -1091,8 +1091,8 @@ HB.mixin Structure isML_universe (ml_type : Type) := {
 #[short(type=ML_universe)]
 HB.structure Definition ML_UNIVERSE := {ml_type of isML_universe ml_type & Equality ml_type}.
 
-HB.mixin Record isMonadTypedStore (MLU : ML_universe) (N : monad) (locT : eqType)
-    (M : UU0 -> UU0) of Monad M := {
+HB.mixin Record isMonadTypedStore (MLU : ML_universe) (N : monad)
+    (locT : eqType) (M : UU0 -> UU0) of Monad M := {
   cnew : forall {T : MLU}, coq_type N T -> M (loc locT T) ;
   cget : forall {T}, loc locT T -> M (coq_type N T) ;
   cput : forall {T}, loc locT T -> coq_type N T -> M unit ;
