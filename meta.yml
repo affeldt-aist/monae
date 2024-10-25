@@ -35,13 +35,13 @@ license:
   file: LICENSE
 
 supported_coq_versions:
-  text: Coq 8.18-8.19
-  opam: '{ (>= "8.18" & < "8.20~") | (= "dev") }'
+  text: Coq 8.19-8.20
+  opam: '{ (>= "8.19" & < "8.21~") | (= "dev") }'
 
 tested_coq_opam_versions:
-- version: '2.2.0-coq-8.18'
-  repo: 'mathcomp/mathcomp'
 - version: '2.2.0-coq-8.19'
+  repo: 'mathcomp/mathcomp'
+- version: '2.2.0-coq-8.20'
   repo: 'mathcomp/mathcomp'
 
 dependencies:
@@ -72,12 +72,12 @@ dependencies:
     [MathComp field](https://math-comp.github.io)
 - opam:
     name: coq-mathcomp-analysis
-    version: '{ (>= "1.2.0")}'
+    version: '{ (>= "1.5.0")}'
   description: |-
     [MathComp analysis](https://github.com/math-comp/analysis)
 - opam:
     name: coq-infotheo
-    version: '{ >= "0.7.2"}'
+    version: '{ >= "0.7.3"}'
   description: |-
     [Infotheo](https://github.com/affeldt-aist/infotheo)
 - opam:
