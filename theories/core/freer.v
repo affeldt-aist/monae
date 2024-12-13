@@ -68,7 +68,7 @@ Admitted.
 
 End free_monad.
 
-Section monad_morphism.
+Section monad_morphism1.
 Variable S : UU0.
 
 Inductive effect : UU0 -> UU0 :=
@@ -83,68 +83,49 @@ Definition freer_put (s : S) : freer effect S :=
 
 Variable M : stateMonad S.
 
-Definition denote_effect (A V : UU0)
-    (eff : effect V) (k : V -> M A) : M A :=
-  get >>= (fun s => k
+HB.instance Definition _ := Monad.on (freer effect).
+
+Inductive equiv : forall X : UU0, freer effect X -> freer effect X -> Prop :=
+| PutGet : forall (s : S),
+    equiv (freer_put s >> freer_get) (freer_put s >> Ret s).
+
+Definition denote_effect (A : UU0) (eff : effect A) : M A :=
   match eff with
-  | Get => s
-  | Put s' => (fun=> tt) s'
-  end).
+  | Get => get
+  | Put s => put s
+  end.
 
-Definition freer_effect := freer effect.
+Definition denote : freer effect ~~> M :=
+  fun T => freer_fold Ret (fun V eff => bind (denote_effect eff)).
 
-HB.instance Definition _ := Monad.on freer_effect.
-
-Definition e : freer_effect ~~> M :=
-  fun T => freer_fold Ret (@denote_effect T).
-
-Let monadMret : MonadMLaws.ret e.
+Let monadMret : MonadMLaws.ret denote.
 Proof. by move=> T; exact/boolp.funext. Qed.
 
-Lemma test (T U : UU0) (m : freer effect T) g
-    (h := denote_effect)
-(*    (h : forall U V : UU0, effect V -> (V -> M U) -> M U)*) :
-  freer_fold Ret (h U) (m >>= g) =
-  freer_fold Ret (h T) m >>=
-  (freer_fold Ret (h U) \o g).
-Proof.
-(*rewrite fold_bind/=.
-elim: m => //= [t|].
-  by rewrite bindretf.
-move=> A eff f ih.*)
-elim: m => /= [t|V eff f ih].
-  by rewrite !bindretf.
-transitivity (
-  h U V eff
-    (fun v : V => freer_fold Ret (h U) ((f v) >>= g))
-) => //.
-rewrite (_ : (fun v : V => freer_fold Ret (h U) (f v >>= g)) =
-  (fun v => freer_fold Ret (h T) (f v) >>= (freer_fold Ret (h U) \o g))); last first.
-  apply/boolp.funext => u.
-  by rewrite ih.
-rewrite /=.
-rewrite /h/=.
-destruct eff => //=.
-rewrite /denote_effect /=.
-rewrite !bindA.
-by bind_ext.
-by rewrite !bindA.
-Qed.
-
-Let monadMbind : MonadMLaws.bind e.
+Let monadMbind : MonadMLaws.bind denote.
 Proof.
 move=> T U; elim=> /= [t f|V eff f ih g].
-  by rewrite /e/= !bindretf.
-rewrite /e/=.
+  by rewrite /denote/= !bindretf.
+rewrite /denote/=.
+rewrite /denote_effect/=.
+destruct eff => /=.
+  rewrite !bindA.
+  bind_ext => s.
+  exact: ih.
 rewrite !bindA.
-rewrite {1}/denote_effect/=.
-bind_ext => s.
-destruct eff.
-  by rewrite test//.
-by rewrite test//.
+bind_ext => -[].
+exact: ih.
 Qed.
 
-HB.instance Definition _ := isMonadM_ret_bind.Build freer_effect M
-  e monadMret monadMbind.
+HB.instance Definition _ := isMonadM_ret_bind.Build (freer effect) M
+  denote monadMret monadMbind.
 
-End monad_morphism.
+Lemma equiv_eq (X : UU0) (m1 m2 : freer effect X) :
+   equiv m1 m2 -> denote m1 = denote m2.
+Proof.
+case=> s.
+by rewrite /denote /= -bindA bindmret putget.
+(* TODO: put the congruence in the equiv relation,
+prove that equiv is an equivalence relation *)
+Admitted.
+
+End rel.
