@@ -5,8 +5,10 @@ Require Import Reals Lra.
 From mathcomp Require Import all_ssreflect ssralg ssrnum.
 From mathcomp Require boolp.
 From mathcomp Require Import reals mathcomp_extra Rstruct lra.
+From mathcomp Require Import reals Rstruct.
 From infotheo Require Import ssrR realType_ext Reals_ext.
 From infotheo Require Import proba convex necset.
+From infotheo Require Import fdist.
 Require Import preamble hierarchy monad_lib fail_lib.
 
 (******************************************************************************)
@@ -33,10 +35,6 @@ Unset Printing Implicit Defensive.
 Local Open Scope monae_scope.
 Local Open Scope reals_ext_scope.
 Local Open Scope proba_monad_scope.
-
-From infotheo Require Import fdist.
-
-From mathcomp Require Import reals Rstruct.
 
 Section convex.
 Variable M : probMonad R.
@@ -106,7 +104,6 @@ Proof.
 elim: n => // n IH.
 by rewrite (_ : nseq _ _ = h :: nseq n.+1 h) // uniform_cons IH choicemm.
 Qed.
-From infotheo Require Import Reals_ext.
 
 Lemma uniform_cat (M : probMonad R) (A : Type) (a : A) s t :
   let m := size s in let n := size t in
@@ -260,7 +257,6 @@ End altprob_semilattconvtype.
 (* TODO(rei): incipit of section 5 of gibbonsUTP2012 on the model of MonadAltProb *)
 
 Section convexity_property.
-From mathcomp.analysis Require Import Rstruct.
 
 Variables (M : altProbMonad R) (A : Type) (p q : M A).
 

@@ -6,7 +6,7 @@
 
 { lib, mkCoqDerivation, which, coq
   ## declare extra dependencies here, to be used in propagateBuildInputs e.g.
-  , mathcomp, mathcomp-analysis, mathcomp-infotheo
+  , mathcomp, mathcomp-analysis-stdlib, mathcomp-infotheo
   , paramcoq, hierarchy-builder, equations
   , version ? null }:
 
@@ -43,7 +43,8 @@ with lib; mkCoqDerivation {
   ## - OCaml packages (use `coq.ocamlPackages.xxx`, no need to require them at the beginning of the file)
   propagatedBuildInputs = [
    mathcomp.ssreflect mathcomp.fingroup mathcomp.algebra
-   mathcomp.solvable mathcomp-analysis mathcomp-infotheo
+   mathcomp.solvable mathcomp-analysis-stdlib
+   mathcomp-infotheo
    paramcoq hierarchy-builder equations
   ]; ## e.g. `= [ mathcomp coq-elpi ]`
 
