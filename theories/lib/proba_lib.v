@@ -260,7 +260,7 @@ End altprob_semilattconvtype.
 (* TODO(rei): incipit of section 5 of gibbonsUTP2012 on the model of MonadAltProb *)
 
 Section convexity_property.
-From mathcomp.analysis Require Import Rstruct.
+From mathcomp Require Import Rstruct.
 
 Variables (M : altProbMonad R) (A : Type) (p q : M A).
 
