@@ -179,7 +179,7 @@ Fixpoint readList i (n : nat) : M (seq S) :=
 End write_read.
 
 Section refin_writeList_aswap.
-Variable (d : unit) (E : orderType d) (M : plusArrayMonad E nat).
+Context d (E : orderType d) (M : plusArrayMonad E nat).
 
 (* eqn 13 in mu2020flops, postulate introduce-swap in IQSort.agda *)
 Lemma refin_writeList_cons_aswap (i : nat) x (s : seq E) :
