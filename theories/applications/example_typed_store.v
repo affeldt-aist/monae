@@ -459,12 +459,12 @@ Variable (N : monad) (M : typedStoreRunMonad N).
 Local Notation fact_ref := (fact_ref N M).
 
 Theorem fact_ref_ok n :
-  crun (cnew ml_int 1 >>= fun r => fact_ref r n >> cget r) = Some (fact_rec n).
+  crun (cnew ml_int 1 >>= fun r => fact_ref r n >> cget r) = Some n`!.
 Proof.
-set fn := fact_rec n.
+set fn := n`!.
 set m := n.
 set s := 1.
-have smn : s * fact_rec m = fn by rewrite mul1n.
+have smn : s * m`! = fn by rewrite mul1n.
 elim: m s smn => [|m IH] s /= smn.
   rewrite /fact_ref -smn muln1.
   under eq_bind do rewrite bindskipf.
@@ -500,14 +500,14 @@ Local Open Scope do_notation.
 
 Local Notation fact_for := (fact_for N M).
 
-Theorem fact_for_ok n : crun (fact_for n) = Some (fact_rec n).
+Theorem fact_for_ok n : crun (fact_for n) = Some n`!.
 Proof.
 rewrite /fact_for.
 under eq_bind do rewrite !bindA !bindretf.
-transitivity (crun (cnew ml_int (fact_rec n) >> Ret (fact_rec n) : M _));
+transitivity (crun (cnew ml_int n`! >> Ret n`! : M _));
   last by rewrite crunret // crunnew0.
 congr crun.
-rewrite -{1}/(fact_rec 0).
+rewrite -{1}/(factorial 0).
 pose m := n.
 have -> : 0 = n - m by rewrite subnn.
 have : m <= n by [].
@@ -860,16 +860,16 @@ Local Notation fact_for63 := (fact_for63 N M).
 Variable n : nat.
 Hypothesis Hn : (Z.of_nat n < Sint63.to_Z Sint63.max_int)%Z.
 
-Theorem fact_for63_ok : crun (fact_for63 (N2int n)) = Some (N2int (fact_rec n)).
+Theorem fact_for63_ok : crun (fact_for63 (N2int n)) = Some (N2int n`!).
 Proof.
 rewrite /fact_for63.
 under eq_bind do rewrite !bindA !bindretf.
-set fn := N2int (fact_rec n).
+set fn := N2int n`!.
 transitivity (crun (cnew ml_int fn >> Ret fn : M _));
   last by rewrite crunret // crunnew0.
 congr crun.
 have {1}-> : (1 = N2int 1)%int63 by [].
-rewrite -/(fact_rec 0).
+rewrite -/(0`!).
 have -> : (1 = Uint63.succ (N2int 0))%int63 by [].
 pose m := n.
 have -> : 0 = n - m by rewrite subnn.
@@ -884,7 +884,7 @@ case: m IH mn => [|m] IH mn.
   rewrite cnewget.
   under eq_bind do rewrite bindretf -cgetret.
   rewrite cnewput -N2int_mul mulnC -{1}(prednK mn) cnewget subn1.
-  by rewrite -/(fact_rec n.-1.+1) prednK.
+  by rewrite -/(n.-1.+1`!) prednK.
 under eq_bind do rewrite forloop63S !(ltsb_subr,bindA) //.
 rewrite cnewget.
 under eq_bind do rewrite bindretf.

@@ -386,7 +386,7 @@ rewrite -fmap_oE (_ : map f \o cons y = cons (f y) \o map f) //.
 by rewrite fmap_oE -(fcompE (map f)) -IH [RHS]/= insertE.
 Qed.
 
-Hypothesis Mmm : forall A, idempotent (@alt _ A : M A -> M A -> M A).
+Hypothesis Mmm : forall A, idempotent_op (@alt _ A : M A -> M A -> M A).
 
 Variables (A : UU0) (p : pred A).
 
@@ -547,7 +547,7 @@ apply funext; elim => [/=|x xs IH].
 by rewrite fcompE [in iperm _]/= fmap_bind -insert_map -bind_fmap -fcompE -IH.
 Qed.
 
-Hypothesis Mmm : forall A, idempotent (@alt _ A : M A -> M A -> M A).
+Hypothesis Mmm : forall A, idempotent_op (@alt _ A : M A -> M A -> M A).
 
 Variables (A : UU0) (p : pred A).
 
@@ -815,7 +815,7 @@ move=> mn1 mn2; rewrite /liftM2.
 by apply: (refin_bind mn1 _) => a; exact: refin_bindr.
 Qed.
 
-Lemma refin_guard_le (M : plusMonad) (d : unit) (T : orderType d) (x y : T) :
+Lemma refin_guard_le (M : plusMonad) d (T : orderType d) (x y : T) :
   (guard (~~ (y <= x)%O) : M _) `<=` guard (x <= y)%O.
 Proof.
 rewrite -ltNge le_eqVlt.

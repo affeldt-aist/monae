@@ -37,7 +37,7 @@ Local Open Scope order_scope.
 From mathcomp Require Import ssrnat.
 
 Section sorted.
-Variables (d : unit) (T : orderType d).
+Context d (T : orderType d).
 
 Local Notation sorted := (sorted <=%O).
 
@@ -62,7 +62,7 @@ Local Open Scope tuple_ext_scope.
 Local Open Scope mprog.
 
 Section partition.
-Variables (M : plusMonad) (d : unit) (T : orderType d).
+Context (M : plusMonad) d (T : orderType d).
 
 Definition is_partition p (yz : seq T * seq T) :=
   all (<= p) yz.1 && all (>= p) yz.2.
@@ -123,7 +123,7 @@ Qed.
 End partition.
 
 Section slowsort.
-Variables (M : plusMonad) (d : unit) (T : orderType d).
+Context (M : plusMonad) d (T : orderType d).
 
 Local Notation sorted := (sorted <=%O).
 
@@ -204,7 +204,7 @@ Ltac sub := repeat rewrite !alt_bindDl !bindretf;
             repeat rewrite !qpermE !bindA !bindretf /=.
 Ltac bindSF := rewrite !bindskipf !bindfailf.
 
-Variables (d : unit) (T : orderType d).
+Context d (T : orderType d).
 
 Example slowsort2 : @slowsort M _ _ [:: 2; 1]%N = Ret [:: 1; 2]%N.
 Proof.
@@ -219,7 +219,7 @@ Qed.
 End slowsort_example.
 
 Section slowsort_preserves.
-Context (M : plusMonad) {d : unit} {E : orderType d}.
+Context (M : plusMonad) d {E : orderType d}.
 
 Let slowsort_preserves_size : preserves (@slowsort M _ E) size.
 Proof.
@@ -252,7 +252,7 @@ End slowsort_preserves.
 
 Section qsort.
 Variables (M : plusMonad).
-Variables (d : unit) (T : orderType d).
+Context d (T : orderType d).
 
 (* let *)
 Equations? qsort (s : seq T) : seq T by wf (size s) lt :=
@@ -307,7 +307,8 @@ End qsort.
 
 Module qsort_function.
 Section qsort_function.
-Variables (M : plusMonad) (d : unit) (T : orderType d).
+Context (M : plusMonad) d (T : orderType d).
+
 Function qsort (s : seq T) {measure size s} : seq T :=
   (* if s is h :: t
   then let '(ys, zs) := partition h t in
@@ -326,5 +327,6 @@ by rewrite pht_yz /= => <-; apply/ltP; rewrite ltnS leq_addl.
 move=> s h t _ ys zs pht_yz; have := size_partition h t.
 by rewrite pht_yz /= => <-; apply/ltP; rewrite ltnS leq_addr.
 Defined.
+
 End qsort_function.
 End qsort_function.
