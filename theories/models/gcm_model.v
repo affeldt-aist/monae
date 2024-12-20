@@ -85,7 +85,7 @@ HB.instance Definition _ :=
     (fun _ _ _ => True) (fun=> I) (fun _ _ _ _ _ _ _ => I).
 
 Definition hom_choiceType
-           (a b : [the category of choiceType]) (f : a -> b) : {hom a, b} :=
+           (a b : [the category of choiceType]) (f : a -> b) : {hom a -> b} :=
   Hom.Pack (Hom.Class (isHom.Axioms_ a b f I)).
 
 End choiceType_as_a_category.
@@ -95,8 +95,8 @@ Require monad_model.
 Section free_choiceType_functor.
 Local Notation m := monad_model.choice_of_Type.
 
-Definition free_choiceType_mor (T U : CT) (f : {hom T, U}) :
-  {hom m T, m U} := hom_choiceType (f : m T -> m U).
+Definition free_choiceType_mor (T U : CT) (f : {hom T -> U}) :
+  {hom m T -> m U} := hom_choiceType (f : m T -> m U).
 
 Let free_choiceType_mor_id : FunctorLaws.id free_choiceType_mor.
 Proof. by move=> a; rewrite hom_ext. Qed.
@@ -109,8 +109,8 @@ HB.instance Definition _ := isFunctor.Build CT CC _
 
 Definition free_choiceType := [the {functor CT -> CC} of m].
 
-Lemma free_choiceType_mor_comp_fun (a b c : Type) (g : {hom b, c})
-      (h : {hom a, b}):
+Lemma free_choiceType_mor_comp_fun (a b c : Type) (g : {hom b -> c})
+      (h : {hom a -> b}):
   free_choiceType_mor [hom g \o h] =
   (free_choiceType_mor g) \o (free_choiceType_mor h) :> (_ -> _).
 Proof. by rewrite free_choiceType_mor_comp. Qed.
@@ -121,7 +121,7 @@ Section forget_choiceType_functor.
 
 Let m : CC -> CT := idfun.
 
-Let h (a b : CC) (f : {hom a, b}) : {hom CT; m a, m b} :=
+Let h (a b : CC) (f : {hom a -> b}) : {hom[CT] m a -> m b} :=
   Hom.Pack (Hom.Class (isHom.Axioms_ (a : CT) (b : _) (FId # f) I)).
 
 Lemma h_id : FunctorLaws.id h. Proof. by move=> *; apply hom_ext. Qed.
@@ -133,7 +133,7 @@ HB.instance Definition _ := isFunctor.Build _ _ _ h_id h_comp.
 Definition forget_choiceType := [the {functor CC -> CT} of m].
 
 Lemma forget_choiceTypeE : (forall a : CC, forget_choiceType a = a) /\
-  (forall (a b : CC) (f : {hom CC; a , b}), forget_choiceType # f = f :> (a -> b)).
+  (forall (a b : CC) (f : {hom[CC] a -> b}), forget_choiceType # f = f :> (a -> b)).
 Proof. by []. Qed.
 
 End forget_choiceType_functor.
@@ -194,19 +194,19 @@ Notation CV := [the category of convType].
 
 Section conv_hom_is_affine.
 
-Fact conv_hom_is_affine (a b : CV) (f : {hom a, b}) : affine f.
+Fact conv_hom_is_affine (a b : CV) (f : {hom a -> b}) : affine f.
 Proof. by case: f=> ? [] []. Qed.
 
-HB.instance Definition _ (A B : convType) (f : {hom A, B}) :=
-  isAffine.Build _ _ _ (conv_hom_is_affine f).
+HB.instance Definition _ (A B : convType) (f : {hom A -> B}) :=
+  isAffine.Build _ _ (f : _ -> _) (conv_hom_is_affine f).
 
 End conv_hom_is_affine.
 
 Section free_convType_functor.
 Let acto (a : CC) : CV := [the convType of {dist a}].
 
-Definition free_convType_mor (A B : CC) (f : {hom A, B})
-    : {hom acto A, acto B} :=
+Definition free_convType_mor (A B : CC) (f : {hom A -> B})
+    : {hom acto A -> acto B} :=
   Hom.Pack (Hom.Class (isHom.Axioms_ (acto A) (acto B)
                                      (fsdistmap f) (fsdistmap_affine f))).
 
@@ -219,12 +219,12 @@ Qed.
 
 (* free_convType_mor induces maps between supports *)
 Definition free_convType_mor_supp
-  (A B : CC) (f : A -> B(*{hom A , B}*)) (d : {dist A}) (x : finsupp d)
+  (A B : CC) (f : A -> B(*{hom A  -> B}*)) (d : {dist A}) (x : finsupp d)
   : finsupp ((free_convType_mor (hom_choiceType f)) d) :=
   FSetSub (mem_finsupp_free_convType_mor f x).
 Global Arguments free_convType_mor_supp [A B] f d.
 
-Lemma fsval_free_convType_mor_supp (A B : choiceType) (f : {hom A , B}) d i :
+Lemma fsval_free_convType_mor_supp (A B : choiceType) (f : {hom A  -> B}) d i :
   fsval (free_convType_mor_supp f d i) = f (fsval i).
 Proof. by case: i. Qed.
 
@@ -241,7 +241,7 @@ HB.instance Definition _ :=
 
 Definition free_convType := [the {functor CC -> CV} of acto].
 
-Lemma free_convType_mor_comp_fun (A B C : CC) (g : {hom B, C}) (h : {hom A, B}) :
+Lemma free_convType_mor_comp_fun (A B C : CC) (g : {hom B -> C}) (h : {hom A -> B}) :
   free_convType_mor [hom g \o h] =
   (free_convType_mor g) \o (free_convType_mor h) :> (_ -> _).
 Proof. by rewrite free_convType_mor_comp. Qed.
@@ -252,7 +252,7 @@ Section forget_convType_functor.
 
 Let m1 : CV -> CC := idfun.
 
-Let h1 := fun (a b : CV) (f : {hom CV; a, b}) =>
+Let h1 := fun (a b : CV) (f : {hom[CV] a -> b}) =>
   Hom.Pack (Hom.Class (isHom.Axioms_ (m1 a) (m1 b) f I)).
 
 Let h1_id : FunctorLaws.id h1. Proof. by move=> *; apply hom_ext. Qed.
@@ -264,7 +264,7 @@ HB.instance Definition _ := isFunctor.Build _ _ _ h1_id h1_comp.
 Definition forget_convType := [the {functor CV -> CC} of m1].
 
 Lemma forget_convTypeE : (forall a : CV, forget_convType a = a) /\
-  (forall (a b : CV) (f : {hom CV; a , b}), forget_convType # f = f :> (a -> b)).
+  (forall (a b : CV) (f : {hom[CV] a -> b}), forget_convType # f = f :> (a -> b)).
 Proof. by []. Qed.
 
 End forget_convType_functor.
@@ -372,7 +372,7 @@ Local Open Scope latt_scope.
 Section scsl_hom_is_biglub_affine.
 Import category.
 Local Open Scope convex_scope.
-Variables (K L : CS) (f : {hom K , L}).
+Variables (K L : CS) (f : {hom K  -> L}).
 
 Fact scsl_hom_is_biglub_affine : biglub_affine f.
 Proof. by split; move=> ?; case: f=> ? [] [] []. Qed.
@@ -380,23 +380,23 @@ Proof. by split; move=> ?; case: f=> ? [] [] []. Qed.
 (* TODO: The following three lemmas should be inferred from the above one. *)
 (* NB: HB.instance? *)
 (* Canonical SCSL_hom_biglub_affine (A B : CS)
-  (f : {hom A, B}) := BiglubAffine (scsl_hom_is_biglub_affine f). *)
+  (f : {hom A -> B}) := BiglubAffine (scsl_hom_is_biglub_affine f). *)
 Fact scsl_hom_is_affine : affine f.
 Proof. by case: scsl_hom_is_biglub_affine. Qed.
 
 (* NB(rei): this can actually maybe be removed *)
 HB.instance Definition SCSL_hom_affine :=
-  isAffine.Build _ _ _ scsl_hom_is_affine.
-(* Canonical SCSL_hom_affine (K L : CS) (f : {hom K , L}) :=
+  isAffine.Build _ _ (f : _ -> _) scsl_hom_is_affine.
+(* Canonical SCSL_hom_affine (K L : CS) (f : {hom K  -> L}) :=
   Affine (scsl_hom_is_affine f). *)
 
 Fact scsl_hom_is_biglubmorph : biglubmorph f.
 Proof. by case: scsl_hom_is_biglub_affine. Qed.
 
 HB.instance Definition SCSL_hom_biglubmorph :=
-  isBiglubMorph.Build _ _ _ scsl_hom_is_biglubmorph.
+  isBiglubMorph.Build _ _ (f : _ -> _) scsl_hom_is_biglubmorph.
 (* Canonical SCSL_hom_biglubmorph (K L : CS)
-  (f : {hom K, L}) := BiglubMorph (scsl_hom_is_biglubmorph f). *)
+  (f : {hom K -> L}) := BiglubMorph (scsl_hom_is_biglubmorph f). *)
 
 Fact scsl_hom_is_lubmorph : lub_morph f. Proof. exact: biglub_lub_morph. Qed.
 
@@ -410,7 +410,7 @@ Let acto (a : CV) : CS := {necset a}.
 
 (* the morphism part of necset *)
 Section free_semiCompSemiLattConvType_mor.
-Variables (A B : convType) (f : {hom A , B}).
+Variables (A B : convType) (f : {hom A  -> B}).
 
 Local Notation affine_f :=
   (Affine.Pack (Affine.Class (isAffine.Build _ _ _ (conv_hom_is_affine f)))).
@@ -452,7 +452,7 @@ move=> /= X; apply necset_ext => /=; rewrite funeqE => b.
 by rewrite image_preserves_convex_hull bigsetU_affine.
 Qed.
 
-Definition free_semiCompSemiLattConvType_mor : {hom acto A, acto B} :=
+Definition free_semiCompSemiLattConvType_mor : {hom acto A -> acto B} :=
   locked (Hom.Pack (Hom.Class (isHom.Axioms_
     (acto A) (acto B)
     free_semiCompSemiLattConvType_mor'
@@ -499,7 +499,7 @@ Section forget_semiCompSemiLattConvType_functor.
 
 Let m2 : CS -> CV := idfun.
 
-Let h2 := fun (a b : CS) (f : {hom CS; a, b}) => Hom.Pack (Hom.Class
+Let h2 := fun (a b : CS) (f : {hom[CS] a -> b}) => Hom.Pack (Hom.Class
   (isHom.Axioms_ (m2 a) (m2 b) f (scsl_hom_is_affine f))).
 
 Let h2_id : FunctorLaws.id h2. Proof. by move=> *; apply hom_ext. Qed.
@@ -515,7 +515,7 @@ Local Notation U1 := forget_semiCompSemiLattConvType.
 (* TODO: document the removal of forget_semiCompSemiLattConvTypeE *)
 (*
 Lemma forget_semiCompSemiLattConvTypeE : (forall a : CS, forget_convType a = a)
-  /\ (forall (a b : CS) (f : {hom CS; a , b}), U1 # f = f :> (a -> b)).
+  /\ (forall (a b : CS) (f : {hom[CS] a -> b}), U1 # f = f :> (a -> b)).
 Proof. by []. Qed.
 *)
 End forget_semiCompSemiLattConvType_functor.
@@ -656,7 +656,7 @@ Definition P_delta_acto (T : Type) : Type := P_delta_left T.
 
 Definition P_delta : {functor CT -> CT} := P_delta_right \O P_delta_left.
 
-Lemma P_deltaE (A B : Type) (f : {hom A, B}) :
+Lemma P_deltaE (A B : Type) (f : {hom A -> B}) :
   P_delta # f = P_delta_left # f :> (_ -> _).
 Proof. exact: funext. Qed.
 
