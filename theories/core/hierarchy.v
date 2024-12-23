@@ -2,7 +2,7 @@
 (* Copyright (C) 2025 monae authors, license: LGPL-2.1-or-later               *)
 Ltac typeof X := type of X.
 
-Require Import ssrmatching JMeq.
+Require Import ssrmatching JMeq Morphisms.
 From mathcomp Require Import all_ssreflect ssralg ssrnum.
 From mathcomp Require boolp.
 From mathcomp Require Import unstable mathcomp_extra reals.
@@ -132,7 +132,7 @@ Reserved Notation "m >> f" (at level 49).
 Reserved Notation "'fmap' f" (at level 4).
 Reserved Notation "x '[~]' y" (at level 50).
 Reserved Notation "a '≈' b" (at level 70).
-
+Reserved Notation "f '≈1' g" (at level 70).
 Notation "f ~~> g" := (forall A, f A -> g A)
   (at level 51, only parsing) : monae_scope.
 
@@ -885,17 +885,12 @@ HB.structure Definition MonadExcept := {M of isMonadExcept M & }.
 
 Arguments catch {_} {_}.
 
-Locate reflexive.
-
 HB.mixin Record isMonadDelay (M : UU0 -> UU0) of Monad M := {
   while : forall {A B : UU0}, (A -> M(B + A)%type) -> A ->M B;
   wBisim: forall {A : UU0}, M A -> M A -> Prop;
   wBisim_refl: forall A (a: M A), wBisim a a;
   wBisim_sym: forall A (a b: M A), wBisim a b -> wBisim b a;
   wBisim_trans: forall A (a b c: M A), wBisim a b -> wBisim b c -> wBisim a c;
- (* wBisim'_refl: forall A, reflexive (@wBisim' A);
-  wBisim'_sym: forall A,symmetric (@wBisim' A);
-  wBisim'_trans: forall A, transitive (@wBisim' A);*)
   fixpointE: forall (A B : UU0) (f: A -> M (B + A)%type) (a: A),
   wBisim (while f a) ((f a) >>= (sum_rect (fun => M B ) (@ret M B) (while f)));
   naturalityE: forall (A B C : UU0) (f: A -> M (B + A)%type) (g: B -> M C) (a: A),
@@ -915,52 +910,64 @@ HB.structure Definition MonadDelay := {M of isMonadDelay M & }.
 
 Arguments  while {s A B}.
 Arguments  wBisim {s A}.
-(*
-Module Type wBisim.
-Axiom wBisim: forall (M: delayMonad) A (d1 d2: M A), Prop.
-Axiom  wBisimP: forall (M: delayMonad) A (d1 d2: M A), reflect (wBisim d1 d2) (wBisim' _ d1 d2).
-End wBisim.
-
-Module Export wBisimP: wBisim.
-Definition wBisim (M: delayMonad) A (d1 d2: M A) : Prop := (wBisim' _ d1 d2). 
-Lemma wBisimP (M: delayMonad) A (d1 d2: M A): reflect (wBisim d1 d2) (wBisim' _ d1 d2).
-Proof. by apply/(iffP idP). Qed.
-End wBisimP.
 
 Notation "a '≈' b" := (wBisim a b).
+Hint Extern 0 (wBisim _ _) => apply wBisim_refl : core.
 
-Section wBisimSetoid.
-Variable  M : delayMonad.
-Definition wBisim_refl A (d: M A): d ≈ d.
-Proof. by apply/wBisimP/wBisim'_refl. Qed.
-Definition wBisim_sym A (d1 d2: M A): d1 ≈ d2 -> d2 ≈ d1.
-Proof. move/wBisimP => H. apply/wBisimP. by rewrite wBisim'_sym. Qed.
-Definition wBisim_trans A (d1 d2 d3: M A): d1 ≈ d2 -> d2 ≈ d3 -> d1 ≈ d3.
-Proof. move/wBisimP => H1 /wBisimP H2 . apply/wBisimP. by apply (wBisim'_trans _ _ _ _ H1 H2). Qed.
-About while.
-Lemma  fixpointE  (A B : UU0) (f: A -> M (B + A)%type) (a: A):
-  while f a ≈ (f a) >>= (sum_rect (fun => M B ) (@ret M B) (while f)).
-Proof. by apply/wBisimP/fixpointE'. Qed.
-Lemma  naturalityE (A B C : UU0) (f: A -> M (B + A)%type) (g: B -> M C) (a: A):
-  (while f a) >>= g ≈ while (fun y => (f y) >>= (sum_rect (fun => M (C + A)%type) (M # inl \o g) (M # inr \o (@ret M A )) ) ) a.
-Proof. by apply/wBisimP/naturalityE'. Qed.
-Lemma  codiagonalE (A B : UU0) (f: A -> M ((B + A) + A)%type) (a: A):
-while ((M # ((sum_rect (fun => (B + A)%type) idfun inr)))  \o f ) a ≈ while (while f) a.
-Proof. by apply/wBisimP/codiagonalE'. Qed.
-Lemma wpreserve (A B : UU0) (f g: A -> M ((B + A))%type) (a: A):
-  (forall a, f a ≈ g a) -> while f a ≈ while g a.
-Proof. move => Hfg. apply/wBisimP/wpreserve' => a'. by apply/wBisimP/Hfg. Qed.
-Lemma bpreserve (A B: UU0) (f: A -> M B)(d1 d2: M A):
-  d1 ≈ d2 -> d1 >>= f ≈ d2>>= f.
-Proof. move => H. apply/wBisimP/bpreserve'. by apply/wBisimP/H. Qed.
-End wBisimSetoid.
-*)
-Add Parametric Relation (M: delayMonad) A : (M A) (@wBisim M A)
+Section setoid.
+Variable M: delayMonad.
+Import Setoid.
+
+#[global] Add Parametric Relation A : (M A) (@wBisim M A)
   reflexivity proved by (@wBisim_refl M A)
   symmetry proved by (@wBisim_sym M A)
   transitivity proved by (@wBisim_trans M A)
   as wBisim_rel.
-Hint Extern 0 (wBisim _ _) => setoid_reflexivity.
+
+#[global] Add Parametric Morphism A B : bind
+  with signature (@wBisim M A) ==> (pointwise_relation A (@wBisim M B)) ==> (@wBisim M B) as bindmor.
+Proof.
+move => x y Hxy f g Hfg.
+apply: wBisim_trans.
+- apply: (bindmwB _ _ _ _ _ Hxy).
+- apply: (bindfwB _ _ _ _ y Hfg).
+Qed.
+
+#[global] Add Parametric Morphism A B : while
+  with signature (pointwise_relation A (@wBisim M (B + A))) ==> @eq A ==> (@wBisim M B ) as whilemor.
+Proof.
+move => f g Hfg a.
+by apply: (whilewB _ _ _ _ _ Hfg).
+Qed.
+End setoid.
+(*Existing Instances wBisim_rel wBisimext_rel.
+Existing Instances bindmor_Proper whilemor_Proper.
+*)
+(*Notation "f '≈1' g" := (wBisimext f g).*)
+
+Section example.
+Variable M: delayMonad.
+
+Lemma testbindfmor (f : nat -> M nat) (d1 d2 : M nat): d1 ≈ d2 -> d1 >>= f ≈ d2 >>= f.
+Proof.
+move => Hd.
+by rewrite Hd.
+Qed.
+
+Lemma testpointwise (f g: nat -> M nat): (pointwise_relation nat wBisim f g) <-> forall a, f a ≈ g a.
+Proof. by split;by []. Qed.
+Lemma testbindmmor (f g: nat -> M nat): (pointwise_relation nat wBisim f g) -> forall d, (d >>= f) ≈ ( d >>= g).
+Proof.
+move => Hfg d.
+by rewrite Hfg.
+Qed.
+
+Lemma testwhilepmor (f g: nat -> M (nat + nat)%type) (a : nat): (pointwise_relation nat wBisim f g) ->  while f a ≈ while g a.
+Proof.
+move => Hfg.
+by rewrite Hfg.
+Qed.
+End example.
 
 #[short(type=delayExceptMonad)]
 HB.structure Definition MonadDelayExcept :=
