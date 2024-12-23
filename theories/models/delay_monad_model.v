@@ -614,7 +614,7 @@ case: d1 Hd => [[b|a]|d1'].
   + move => Hd Hf.
     rewrite -spinE bindDmf.
     apply BLater.
-    have Had: DNow (inr a) ≈ d2'.
+    assert (Had: DNow (inr a) ≈ d2').
       by rewrite Hd wBisim_DLater.
     by apply (whilewB1 _ _ f g Hfg (DNow (inr a)) d2' Had Hf).
 - case: d2 =>[[b|a]|d2'].
@@ -626,8 +626,9 @@ case: d1 Hd => [[b|a]|d1'].
   + move => Hd.
     set x := (x in DLater d1' >>= x).
     move => Hf.
-    have: (DLater d1' >>= x) ≈ (DNow (inr a) >>= x).
+    assert (Hs: (DLater d1' >>= x) ≈ (DNow (inr a) >>= x)).
       by rewrite (bindmwB _ Hd).
+    move: Hs.
     subst x.
     rewrite Hf bindretf.
     move => Hs.
@@ -640,7 +641,7 @@ case: d1 Hd => [[b|a]|d1'].
   + move => Hd Hf.
     rewrite -spinE bindDmf.
     apply BLater.
-    have Hd2 : DLater d1' ≈ d2'.
+    assert (Hd2 : DLater d1' ≈ d2').
       by rewrite Hd wBisim_DLater.
     by apply (whilewB1 _ _ f g Hfg (DLater d1') d2' Hd2 Hf).
 Qed.
