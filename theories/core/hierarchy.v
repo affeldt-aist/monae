@@ -887,21 +887,21 @@ Arguments catch {_} {_}.
 
 HB.mixin Record isMonadDelay (M : UU0 -> UU0) of Monad M := {
   while : forall {A B : UU0}, (A -> M(B + A)%type) -> A ->M B;
-  wBisim: forall {A : UU0}, M A -> M A -> Prop;
-  wBisim_refl: forall A (a: M A), wBisim a a;
-  wBisim_sym: forall A (a b: M A), wBisim a b -> wBisim b a;
-  wBisim_trans: forall A (a b c: M A), wBisim a b -> wBisim b c -> wBisim a c;
-  fixpointE: forall (A B : UU0) (f: A -> M (B + A)%type) (a: A),
+  wBisim : forall {A : UU0}, M A -> M A -> Prop;
+  wBisim_refl : forall A (a : M A), wBisim a a;
+  wBisim_sym : forall A (a b : M A), wBisim a b -> wBisim b a;
+  wBisim_trans : forall A (a b c : M A), wBisim a b -> wBisim b c -> wBisim a c;
+  fixpointE : forall (A B : UU0) (f : A -> M (B + A)%type) (a : A),
   wBisim (while f a) ((f a) >>= (sum_rect (fun => M B ) (@ret M B) (while f)));
-  naturalityE: forall (A B C : UU0) (f: A -> M (B + A)%type) (g: B -> M C) (a: A),
+  naturalityE : forall (A B C : UU0) (f : A -> M (B + A)%type) (g : B -> M C) (a : A),
   wBisim ((while f a) >>= g)(while (fun y => (f y) >>= (sum_rect (fun => M (C + A)%type) (M # inl \o g) (M # inr \o (@ret M A )) ) ) a);
-  codiagonalE:forall (A B : UU0) (f: A -> M ((B + A) + A)%type) (a: A),
-  wBisim (while ((M # ((sum_rect (fun => (B + A)%type) idfun inr)))  \o f ) a) (while (while f) a);
-  bindmwB: forall (A B: UU0) (f: A -> M B)(d1 d2: M A),
-  wBisim d1 d2 -> wBisim (d1 >>= f) (d2>>= f);
-  bindfwB: forall (A B: UU0) (f g: A -> M B)(d: M A),
+  codiagonalE :forall (A B : UU0) (f : A -> M ((B + A) + A)%type) (a : A),
+  wBisim (while ((M # ((sum_rect (fun => (B + A)%type) idfun inr))) \o f ) a) (while (while f) a);
+  bindmwB : forall (A B : UU0) (f : A -> M B)(d1 d2 : M A),
+  wBisim d1 d2 -> wBisim (d1 >>= f) (d2 >>= f);
+  bindfwB : forall (A B : UU0) (f g : A -> M B)(d : M A),
   (forall a, wBisim (f a) (g a)) -> wBisim (d >>= f) (d >>= g);
-  whilewB: forall (A B : UU0) (f g: A -> M ((B + A))%type) (a: A),
+  whilewB: forall (A B : UU0) (f g : A -> M ((B + A))%type) (a : A),
   (forall a, wBisim (f a) (g a)) -> wBisim (while f a) (while g a);
 }.
 
@@ -915,7 +915,7 @@ Notation "a '≈' b" := (wBisim a b).
 Hint Extern 0 (wBisim _ _) => apply wBisim_refl : core.
 
 Section setoid.
-Variable M: delayMonad.
+Variable M : delayMonad.
 Import Setoid.
 
 #[global] Add Parametric Relation A : (M A) (@wBisim M A)
@@ -943,26 +943,31 @@ End setoid.
 (*Existing Instances wBisim_rel wBisimext_rel.
 Existing Instances bindmor_Proper whilemor_Proper.
 *)
-(*Notation "f '≈1' g" := (wBisimext f g).*)
 
 Section example.
-Variable M: delayMonad.
+Variable M : delayMonad.
 
-Lemma testbindfmor (f : nat -> M nat) (d1 d2 : M nat): d1 ≈ d2 -> d1 >>= f ≈ d2 >>= f.
+Lemma testbindfmor (f : nat -> M nat) (d1 d2 : M nat) : d1 ≈ d2 -> d1 >>= f ≈ d2 >>= f.
 Proof.
 move => Hd.
 by rewrite Hd.
 Qed.
 
-Lemma testpointwise (f g: nat -> M nat): (pointwise_relation nat wBisim f g) <-> forall a, f a ≈ g a.
+Lemma testpointwise (f g : nat -> M nat) : (pointwise_relation nat wBisim f g) <-> forall a, f a ≈ g a.
 Proof. by split;by []. Qed.
-Lemma testbindmmor (f g: nat -> M nat): (pointwise_relation nat wBisim f g) -> forall d, (d >>= f) ≈ ( d >>= g).
+Lemma testbindmmor (f g : nat -> M nat) : (pointwise_relation nat wBisim f g) -> forall d, (d >>= f) ≈ ( d >>= g).
 Proof.
 move => Hfg d.
 by rewrite Hfg.
 Qed.
+(*
+Lemma testbindmmor' (f g : nat -> M nat) : (forall a, f a ≈ g a) -> forall d, (d >>= f) ≈ ( d >>= g).
+Proof.
+move => Hfg d.
+rewrite Hfg.
+Qed.*)
 
-Lemma testwhilepmor (f g: nat -> M (nat + nat)%type) (a : nat): (pointwise_relation nat wBisim f g) ->  while f a ≈ while g a.
+Lemma testwhilepmor (f g : nat -> M (nat + nat)%type) (a : nat) : (pointwise_relation nat wBisim f g) -> while f a ≈ while g a.
 Proof.
 move => Hfg.
 by rewrite Hfg.

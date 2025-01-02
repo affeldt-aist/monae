@@ -8,9 +8,9 @@ Notation "a '≈' b" := (wBisim a b).
 Section delayexcept_example.
 Variable M : delayExceptMonad.
 
-Definition select (l: seq nat) := let max := \max_(i <- l) i in (max, rem max l).
+Definition select (l : seq nat) := let max := \max_(i <- l) i in (max, rem max l).
 (*bigopでselectを定義する*)
-Definition muloflistover10d_body (ln: (seq nat)*nat): M (nat + (seq nat)*nat)%type :=
+Definition muloflistover10d_body (ln : (seq nat) * nat) : M (nat + (seq nat) * nat)%type :=
   match ln with (l, n) =>
                   match l with
                     |[::] => @ret M _ (inl n)
@@ -18,8 +18,8 @@ Definition muloflistover10d_body (ln: (seq nat)*nat): M (nat + (seq nat)*nat)%ty
 end
 end.
 Definition muloflistover10d := while muloflistover10d_body.
-Definition muloflistover10 (l: seq nat) :=  foldr (fun x z => if 10 < x then x*z else z) 1 l.
-Lemma all_under10 (l: seq nat): (forall i, i \in l -> i <= 10) -> muloflistover10 l = 1.
+Definition muloflistover10 (l : seq nat) := foldr (fun x z => if 10 < x then x*z else z) 1 l.
+Lemma all_under10 (l : seq nat) : (forall i, i \in l -> i <= 10) -> muloflistover10 l = 1.
 Proof.
 elim: l => //= n l' Hl H.
 case/boolP: (10 < n) => H10.
@@ -38,7 +38,7 @@ case/boolP: (10 < n) => H10.
   apply/orP.
   by right.
 Qed.
-Lemma muloflistover10_aux(l:seq nat)(k: nat): 10 < k -> k \in l -> k * muloflistover10 (rem k l) = muloflistover10 l.
+Lemma muloflistover10_aux(l : seq nat) (k : nat): 10 < k -> k \in l -> k * muloflistover10 (rem k l) = muloflistover10 l.
 move => Hk Hink.
 rewrite/muloflistover10.
 elim: l Hink => //= n l' IH Hink.
@@ -59,10 +59,8 @@ case/boolP: (10 < n) => Hn10.
   by rewrite mulnA (mulnC k n) -mulnA.
   by rewrite -(IH Hkl').
 Qed.
-Lemma maxinseq (l:seq nat): ~~(nilp l) -> \max_(i <- l) i \in l.
+Lemma maxinseq (l : seq nat): ~~(nilp l) -> \max_(i <- l) i \in l.
 Proof.
-(*seq_sub in Fintype.v*)
-(*ex_maxn *)
 move => Hn.
 rewrite -(in_tupleE l).
 rewrite big_tuple.
@@ -74,7 +72,7 @@ case: (eq_bigmax (tnth (in_tuple l))).
   by rewrite mem_tnth.
 Qed.
 
-Lemma muloflistover10E (l: seq nat)(n: nat): muloflistover10d (l, n) ≈ @ret _ _ (n * (muloflistover10 l)).
+Lemma muloflistover10E (l : seq nat) (n : nat) : muloflistover10d (l, n) ≈ @ret _ _ (n * (muloflistover10 l)).
 Proof.
 move Hlen: (size l) => len.
 move: n.
@@ -118,7 +116,7 @@ elim: len l Hlen.
             by [].
           rewrite IH.
           ** rewrite -ltnNge /= (mulnC k n) -mulnA.
-             have -> : (k * (if 10 < h then h * muloflistover10 (rem k l'') else muloflistover10 (rem k l''))) = ((if 10 < h then h * (k * muloflistover10 (rem k l'')) else k*muloflistover10 (rem k l''))).
+             have -> : (k * (if 10 < h then h * muloflistover10 (rem k l'') else muloflistover10 (rem k l''))) = ((if 10 < h then h * (k * muloflistover10 (rem k l'')) else k * muloflistover10 (rem k l''))).
                case/boolP : (10 < h) => Hh10 //=.
                by rewrite mulnA (mulnC k h) -mulnA.
              move => Hk.
