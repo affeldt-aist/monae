@@ -22,7 +22,7 @@ Let fact_body a : M (nat + nat * nat)%type :=
 
 Let factdelay := fun nm => while fact_body nm.
 
-Lemma eq_fact_factdelay : forall n m, factdelay (n,m) ≈ Ret (m * fact n).
+Lemma eq_fact_factdelay : forall n m, factdelay (n, m) ≈ Ret (m * fact n).
 Proof.
 move => n.
 rewrite /factdelay.
@@ -77,7 +77,7 @@ Let minus2_body nm : M (nat + nat * nat)%type :=
 
 Let minus2 := fun nm => while minus2_body nm.
 
-Lemma eq_minus : forall nm, minus1 nm  ≈  minus2 nm.
+Lemma eq_minus : forall nm, minus1 nm ≈ minus2 nm.
 Proof.
 move => nm.
 rewrite /minus1 /minus2 -codiagonalE.
@@ -156,18 +156,16 @@ Let mc91 n m := while mc91_body (n.+1, m).
 
 Lemma mc91succE n m : 90 <= m < 101 -> mc91 n m ≈ mc91 n (m.+1).
 Proof.
-move => /andP [Hmin Hmax].
-rewrite /mc91 /mc91_body fixpointE /=.
-move: Hmax.
-rewrite ltnNge.
-case: ifP => //= Hf _.
+move => /andP [Hmin].
+rewrite /mc91.
+rewrite fixpointE /= ltnNge => Hmax. (*ltnNge.*)
+rewrite ifN //.
 rewrite bindretf /= fixpointE /=.
 have -> : 100 = 89 + 11 by [].
-rewrite ltn_add2r Hmin bindretf fixpointE /= fixpointE /=.
-have -> : m + 11 - 10 = m.+1.
-  rewrite -addnBA // /=.
-  by rewrite addn1.
-by [].
+rewrite ltn_add2r ifT //.
+rewrite bindretf fixpointE /= fixpointE.
+have -> // : m + 11 - 10 = m.+1.
+by rewrite -addnBA // addn1.
 Qed.
 
 Lemma mc91E_aux m n : 90 <= m <= 101 -> mc91 n m ≈ mc91 n 101.
@@ -180,24 +178,17 @@ case/boolP: (m < 101).
   move: m Hmin Hmax.
   elim: k.
   + move => m Hmin Hmax.
-    rewrite addn0 => Hm.
-    by rewrite Hm.
+    by rewrite addn0 => ->.
   + move => l IH m Hmin.
     rewrite leq_eqVlt => /orP [/eqP H101 | Hm].
     * by rewrite H101 => _.
-    * rewrite -addn1 (addnC l 1) addnA mc91succE//.
-      ** rewrite addn1.
-         apply IH => //.
-         rewrite -(addn1 m).
-         by apply ltn_addr.
-      ** apply/andP.
-         by split => //.
+    * rewrite -addn1 (addnC l 1) addnA mc91succE ?Hmin // addn1.
+      apply IH => //.
+      by apply: leq_trans.
 - rewrite -leqNgt => H100.
-  have ->: m = 101.
-    apply anti_leq => //.
-    apply/andP.
-    by split => //= .
-  by [].
+  have -> //: m = 101.
+  apply anti_leq => //.
+  by rewrite Hmax.
 Qed.
 
 Lemma mc91_101E n : mc91 n 101 ≈ Ret 91.
