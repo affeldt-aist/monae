@@ -45,7 +45,7 @@ End delaystatenat_example.
 Section delaystateseq_example.
 Variable M : delayStateMonad (seq nat).
 
-Definition collatzs1_body nml : M ((nat*nat + nat*nat*nat) + nat*nat*nat)%type :=
+Definition collatzs1_body nml : M ((nat * nat + nat * nat * nat) + nat * nat * nat)%type :=
   match nml with (n, m, l) =>
     do s' <- get;
     do _ <- put (n :: s');
@@ -58,7 +58,7 @@ Definition collatzs1_body nml : M ((nat*nat + nat*nat*nat) + nat*nat*nat)%type :
 
 Definition collatzs1 n := while (while collatzs1_body) (n,n,0).
 
-Definition collatzs2_body nml : M ((nat*nat + nat*nat*nat))%type :=
+Definition collatzs2_body nml : M ((nat * nat + nat * nat * nat))%type :=
   match nml with (n,m,l) =>
     do s' <- get;
     do _ <- put (n :: s');
