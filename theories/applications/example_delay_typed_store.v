@@ -1,7 +1,7 @@
 (* monae: Monadic equational reasoning in Coq                                 *)
 (* Copyright (C) 2023 monae authors, license: LGPL-2.1-or-later               *)
 Require Import ZArith Morphisms.
-From mathcomp Require Import all_ssreflect.
+From mathcomp Require Import all_ssreflect ssrnat.
 From mathcomp Require boolp.
 From infotheo Require Import ssrZ.
 Require Import monad_model.
@@ -85,10 +85,9 @@ Definition factdts_aux_body (r : loc ml_int) (n : nat) : M (unit + nat)%type  :=
           |S m => do _ <- cput r (n*v); Ret (inr m)
         end.
 
-Fixpoint fact n := match n with |O => 1 |m.+1 => n * fact m end.
 Definition factn_aux (n: nat) (r : loc ml_int) :=
   do s <- cget r;
-  do _ <- cput r (fact n * s); @ret M _ tt.
+  do _ <- cput r (factorial n * s); @ret M _ tt.
 Definition factdts_aux (n : nat) (r : loc ml_int) := while (factdts_aux_body r) n.
 
 Lemma factE_aux (n : nat) (r : loc ml_int) : factdts_aux n r ≈ factn_aux n r.
@@ -100,13 +99,13 @@ elim: n => /= [|n' IH].
 rewrite fixpointE/= bindA.
 under eq_bind => s do rewrite bindA bindretf/=.
 setoid_rewrite IH.
-by under eq_bind => x do rewrite cputget -bindA cputput mulnA (mulnC (fact n') _).
+by under eq_bind => x do rewrite cputget -bindA cputput mulnA (mulnC (factorial n') _).
 Qed.
 
 Definition factdts n := do r <- cnew ml_int 1;
                         do _ <- factdts_aux n r ;
                         do v <- cget r; Ret v.
-Definition factn n := do r <- cnew ml_int (fact n);
+Definition factn n := do r <- cnew ml_int (factorial n);
                       do v <- cget r; @ret M _ v.
 
 Lemma factE n : factdts n ≈ factn n.

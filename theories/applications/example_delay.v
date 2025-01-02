@@ -1,4 +1,4 @@
-From mathcomp Require Import all_ssreflect.
+From mathcomp Require Import all_ssreflect ssrnat.
 From mathcomp Require boolp.
 Require Import hierarchy.
 Require Import Lia.
@@ -9,11 +9,6 @@ Section delayexample.
 Notation "a '≈' b" := (wBisim a b).
 Variable M : delayMonad.
 
-Fixpoint fact n : nat := match n with
-                       |O => 1
-                       |S n' => n * fact n'
-                       end.
-
 Let fact_body a : M (nat + nat * nat)%type :=
   match a with
   |(O, a2) => Ret (inl a2)
@@ -22,7 +17,7 @@ Let fact_body a : M (nat + nat * nat)%type :=
 
 Let factdelay := fun nm => while fact_body nm.
 
-Lemma eq_fact_factdelay : forall n m, factdelay (n, m) ≈ Ret (m * fact n).
+Lemma eq_fact_factdelay : forall n m, factdelay (n, m) ≈ Ret (m * factorial n).
 Proof.
 move => n.
 rewrite /factdelay.
@@ -40,9 +35,8 @@ Let collatzm m := fun n => while (collatzm_body m) n.
 
 Let delaymul m d : M nat := d >>= (fun n => Ret (m * n)).
 
-Lemma collatzmwB : forall m n p, delaymul p (collatzm m n) ≈ collatzm (p * m) n.
+Lemma collatzmwB m n p : delaymul p (collatzm m n) ≈ collatzm (p * m) n.
 Proof.
-move => m n p.
 rewrite /collatzm /delaymul naturalityE.
 set x := (x in while x).
 set y := collatzm_body (p*m).
