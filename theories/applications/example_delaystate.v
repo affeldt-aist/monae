@@ -51,24 +51,24 @@ Definition collatzs1_body nml : M ((nat * nat + nat * nat * nat) + nat * nat * n
     do _ <- put (n :: s');
     if n==1 then if (l %% 4 == 1)
             then Ret (inl (inl (m,l)))
-                 else do _ <- put [::]; Ret (inl (inr (m+1, m+1, 0)))
-    else if (n %% 2 == 0) then Ret (inr (n./2,m,l+1))
-         else Ret (inr (3*n + 1, m, l+1))
+                 else do _ <- put [::]; Ret (inl (inr (m + 1, m + 1, 0)))
+    else if (n %% 2 == 0) then Ret (inr (n./2, m, l + 1))
+         else Ret (inr (3 * n + 1, m, l + 1))
   end.
 
-Definition collatzs1 n := while (while collatzs1_body) (n,n,0).
+Definition collatzs1 n := while (while collatzs1_body) (n, n, 0).
 
 Definition collatzs2_body nml : M ((nat * nat + nat * nat * nat))%type :=
-  match nml with (n,m,l) =>
+  match nml with (n, m, l) =>
     do s' <- get;
     do _ <- put (n :: s');
-    if (l %% 4 == 1) && (n == 1) then Ret (inl (m,l))
-    else if (n == 1) then do _ <- put [::]; Ret (inr (m+1,m+1,0))
-         else if (n %% 2) == 0 then Ret (inr (n./2,m,l+1))
-              else Ret (inr (3*n + 1, m, l+1))
+    if (l %% 4 == 1) && (n == 1) then Ret (inl (m, l))
+    else if (n == 1) then do _ <- put [::]; Ret (inr (m +1, m + 1, 0))
+         else if (n %% 2) == 0 then Ret (inr (n./2, m, l + 1))
+              else Ret (inr (3 * n + 1, m, l + 1))
   end.
 
-Definition collatzs2 n := while collatzs2_body (n,n,0).
+Definition collatzs2 n := while collatzs2_body (n, n, 0).
 
 Lemma collatzstepE n : collatzs1 n ≈ collatzs2 n.
 Proof.
