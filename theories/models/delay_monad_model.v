@@ -3,7 +3,6 @@ From mathcomp Require boolp.
 From HB Require Import structures.
 Require Import hierarchy monad_lib.
 
-
 Set Implicit Arguments.
 Unset Strict Implicit.
 Unset Printing Implicit Defensive.
@@ -99,13 +98,7 @@ case: x IH.
   apply (IH d).
   by apply Ha.
 Qed.
-Lemma nmSleq (n : nat) (m : nat) : n<= m.+1 -> n = m.+1 \/ n <= m.
-Proof.
-move=> H.
-  case: (leqP n m) => [Hleq | Hnleq].
-  - by right.
-  - left. apply/eqP. by rewrite eqn_leq H Hnleq.
-Qed.
+
 Lemma monotonicity_steps A (x : M A) (a : A) (n : nat) :  steps n x = DNow a -> forall m, n <= m -> steps m x = DNow a.
 Proof.
 move => Hn m.
@@ -640,7 +633,7 @@ Qed.
 Lemma whilewB2 {A B} (d1 d2 : M (B + A)) (f g : A -> M (B + A)) (b : B) : (forall a, wBisim (f a) (g a)) -> wBisim d1 d2 -> wBisim (d1 >>= (fun ab : B + A => match ab with
                                    | inl b => DNow b
                                    | inr a => DLater (while f a)
-                                   end)) (@ret M B b) -> wBisim(d2 >>= (fun ab : B + A => match ab with
+                                   end)) (@ret M B b) -> wBisim (d2 >>= (fun ab : B + A => match ab with
                                    | inl b => DNow b
                                    | inr a => DLater (while g a)
                                    end)) (@ret M B b).
@@ -676,7 +669,7 @@ case: (TerminatesP (while f a)) => [[b /iff_Terminates_wBret HT]| /Diverges_spin
   setoid_symmetry.
   apply/iff_Diverges_wBisimspin/Diverges_spinP/Bisim_eq.
   move: HD.
-  rewrite! whileE.
+  rewrite !whileE.
   by apply (whilewB1 Hfg (Hfg a)).
 Qed.
 (*
