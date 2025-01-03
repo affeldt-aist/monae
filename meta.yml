@@ -47,32 +47,32 @@ tested_coq_opam_versions:
 dependencies:
 - opam:
     name: coq-mathcomp-ssreflect
-    version: '{ (>= "2.3.0") | (= "dev")  }'
+    version: '{ (>= "2.3.0") }'
   description: |-
     [MathComp ssreflect](https://math-comp.github.io)
 - opam:
     name: coq-mathcomp-fingroup
-    version: '{ (>= "2.3.0") | (= "dev")  }'
+    version: '{ (>= "2.3.0") }'
   description: |-
     [MathComp fingroup](https://math-comp.github.io)
 - opam:
     name: coq-mathcomp-algebra
-    version: '{ (>= "2.3.0") | (= "dev")  }'
+    version: '{ (>= "2.3.0") }'
   description: |-
     [MathComp algebra](https://math-comp.github.io)
 - opam:
     name: coq-mathcomp-solvable
-    version: '{ (>= "2.3.0") | (= "dev")  }'
+    version: '{ (>= "2.3.0") }'
   description: |-
     [MathComp solvable](https://math-comp.github.io)
 - opam:
     name: coq-mathcomp-field
-    version: '{ (>= "2.3.0") | (= "dev")  }'
+    version: '{ (>= "2.3.0") }'
   description: |-
     [MathComp field](https://math-comp.github.io)
 - opam:
     name: coq-mathcomp-analysis
-    version: '{ (>= "1.8.0")}'
+    version: '{ (>= "1.8.0") }'
   description: |-
     [MathComp analysis](https://github.com/math-comp/analysis)
 - opam:
