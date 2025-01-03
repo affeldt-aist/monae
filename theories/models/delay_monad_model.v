@@ -329,7 +329,7 @@ Add Parametric Relation A : (M A) (@wBisims A)
   symmetry proved by (@wBisims_sym A)
   transitivity proved by (@wBisims_trans A)
   as wBisims_rel.
-Notation "a '≈s' b" := (wBisims a b) at level 49.
+Notation "a '≈s' b" := (wBisims a b) (at level 70).
 Hint Extern 0 (wBisims _ _) => setoid_reflexivity.
 Lemma terminatesP A (a : M A) : decidable (exists c, exists m, steps m a = DNow c ).
 Proof.
@@ -337,7 +337,7 @@ case/boolP: `[< exists c, exists m, steps m a = DNow c >].
 - move/asboolP; by left.
 - move/asboolP; by right.
 Qed.
-Lemma wBisims_DLater A (d : M A) : (DLater d) ≈ d.
+Lemma wBisims_DLater A (d : M A) : (DLater d) ≈s d.
 Proof.
 case: (TerminatesP d).
 - move => [a /Terminates_steps [n Hs]].
@@ -346,7 +346,7 @@ case: (TerminatesP d).
 - move => /Diverges_spinP Hs.
   by rewrite! Hs spinE.
 Qed.
-Lemma wBisims_steps A (d : M A) (n : nat) : steps n d ≈ d .
+Lemma wBisims_steps A (d : M A) (n : nat) : steps n d ≈s d .
 Proof.
 elim: n d => [|n IH] d //=.
 case: d IH.
@@ -354,7 +354,7 @@ case: d IH.
   - move => d IH //=.
     by rewrite IH wBisims_DLater.
 Qed.
-Lemma Terminates_wBisims A (d1 d2 : M A) (a : A) : Terminates d1 a -> d1 ≈ d2 -> Terminates d2 a.
+Lemma Terminates_wBisims A (d1 d2 : M A) (a : A) : Terminates d1 a -> d1 ≈s d2 -> Terminates d2 a.
 Proof.
 move => Ht1.
 elim: Ht1 => [b|d b].
@@ -372,7 +372,7 @@ split => Ht.
 - by apply (Terminates_wBisims Ht (wBisims_sym (wBisims_steps d n))).
 - by apply (Terminates_wBisims Ht (wBisims_steps d n)).
 Qed.
-Lemma iff_Terminates_wBret {A} (d : M A) (a : A) : Terminates d a <-> (d ≈ Ret a).
+Lemma iff_Terminates_wBret {A} (d : M A) (a : A) : Terminates d a <-> (d ≈s Ret a).
 Proof.
 split.
 - move => H.
@@ -406,7 +406,7 @@ split.
   exists a.
   by apply (Terminates_wBisim Ht Ho).
 Qed.
-Lemma iff_Diverges_wBisimsspin {A} (d : M A) : Diverges d <-> d ≈ (@spin A).
+Lemma iff_Diverges_wBisimsspin {A} (d : M A) : Diverges d <-> d ≈s (@spin A).
 Proof.
 split.
 - move => /Diverges_spinP HD.
@@ -416,7 +416,7 @@ split.
   rewrite Hs.
   by apply/(iff_Diverges_steps (@spin A) n)/(Diverges_spinP).
 Qed.
-Theorem iff_wBisims_wBisim A (d1 d2 : M A) : d1 ≈ d2 <-> wBisim d1 d2.
+Theorem iff_wBisims_wBisim A (d1 d2 : M A) : d1 ≈s d2 <-> wBisim d1 d2.
 Proof.
 split.
 - case: (TerminatesP d1).
@@ -440,11 +440,11 @@ split.
     by rewrite Hs.
 Qed.
 (*
-Lemma steps_bind {A B} (n : nat) (m : M A) (f : A -> M B) : steps n (m >>= f) ≈  m >>= ((steps n) \o f).
+Lemma steps_bind {A B} (n : nat) (m : M A) (f : A -> M B) : steps n (m >>= f) ≈s  m >>= ((steps n) \o f).
 Abort.
-Lemma steps_ret {A} (n:nat) (a : A) : steps n (@ret M A a) ≈ @ret M A a.
+Lemma steps_ret {A} (n:nat) (a : A) : steps n (@ret M A a) ≈s @ret M A a.
 Abort.
-Lemma steps_monotonisity {A} (n : nat) (d : Delay A) : steps n d  ≈ d.
+Lemma steps_monotonisity {A} (n : nat) (d : Delay A) : steps n d  ≈s d.
 Abort.
 *)
 CoFixpoint while {A B} (body : A -> M (B + A)) : A -> M B :=
@@ -467,14 +467,14 @@ cofix CIH.
 rewrite -spinE -(spinE B) bindDmf.
 by apply sBLater.
 Qed.
-Lemma Terminates_bindmf A B (d : M A) (a : A) (f : A -> M B) : Terminates d a -> d >>= f ≈ f a.
+Lemma Terminates_bindmf A B (d : M A) (a : A) (f : A -> M B) : Terminates d a -> d >>= f ≈s f a.
 Proof.
 move => Ht.
 elim: Ht => [a'|d' a' Ht Hd'].
 - by rewrite bindretf.
 - by rewrite -Hd' bindDmf wBisims_DLater.
 Qed.
-Lemma bindmwB {A B} (f : A -> M B) (d1 d2 : M A) : d1 ≈ d2 -> d1 >>= f ≈ d2 >>= f.
+Lemma bindmwBs {A B} (f : A -> M B) (d1 d2 : M A) : d1 ≈s d2 -> d1 >>= f ≈s d2 >>= f.
 Proof.
 case: (TerminatesP d1).
 - move => [a Ht1].
@@ -483,7 +483,13 @@ case: (TerminatesP d1).
 - move => /Diverges_spinP HD; subst.
   by move => /wBisims_sym/iff_Diverges_wBisimsspin/Diverges_spinP Hd2; subst.
 Qed.
-Lemma bindfwB {A B} (f g : A -> M B) (d : M A) : (forall a, f a ≈ g a) -> d >>= f ≈ d >>= g.
+Lemma bindmwB {A B} (f : A -> M B) (d1 d2 : M A) : d1 ≈ d2 -> d1 >>= f ≈ d2 >>= f.
+Proof.
+move => /iff_wBisims_wBisim H.
+apply iff_wBisims_wBisim.
+exact: (bindmwBs _ H).
+Qed.
+Lemma bindfwBs {A B} (f g : A -> M B) (d : M A) : (forall a, f a ≈s g a) -> d >>= f ≈s d >>= g.
 Proof.
 move => H.
 apply/iff_wBisims_wBisim.
@@ -495,16 +501,26 @@ case: d => [a|d].
 - rewrite! bindDmf.
   by apply wBLater.
 Qed.
+Lemma bindfwB {A B} (f g : A -> M B) (d : M A) : (forall a, f a ≈ g a) -> d >>= f ≈ d >>= g.
+Proof.
+move => H.
+apply iff_wBisims_wBisim.
+apply bindfwBs => a.
+apply iff_wBisims_wBisim.
+by apply (H a).
+Qed.
 (* the next four laws derived from Complete Elgot monads *)
-Lemma fixpointE {A B} (f : A -> M (B + A)) : forall (a : A), while f a ≈ (f a) >>= (sum_rect (fun => M B ) (@ret M B ) (while f)).
+Lemma fixpointEs {A B} (f : A -> M (B + A)) : forall (a : A), while f a ≈s (f a) >>= (sum_rect (fun => M B ) (@ret M B ) (while f)).
 Proof.
 move => a.
 rewrite whileE.
-apply bindfwB => ab.
+apply bindfwBs => ab.
 case: ab => [b'|a'] //=.
 by apply wBisims_DLater.
 Qed.
-CoFixpoint naturality' {A B C} (f : A -> M (B + A))(g : B -> M C)(d : M (B + A)) :
+Lemma fixpointE {A B} (f : A -> M (B + A)) : forall (a : A), while f a ≈ (f a) >>= (sum_rect (fun => M B ) (@ret M B ) (while f)).
+Proof. by move => a; apply iff_wBisims_wBisim; apply fixpointEs. Qed.
+CoFixpoint naturalityE' {A B C} (f : A -> M (B + A))(g : B -> M C)(d : M (B + A)) :
 wBisim ((d >>= (fun ab : B + A => match ab with
                                    | inl b => DNow b
                                    | inr a => DLater (while f a)
@@ -534,15 +550,15 @@ case: d => [[b|a]|d].
 - rewrite! bindretf /= fmapE bindA bindretf /= bindretf /= bindDmf.
   apply wBLater.
   rewrite whileE whileE.
-  by apply naturality'.
+  by apply naturalityE'.
 - rewrite! bindDmf.
   apply wBLater.
-  by apply naturality'.
+  by apply naturalityE'.
 Qed.
 Lemma naturalityE {A B C} (f : A -> M (B + A)) (g : B -> M C) (a : A) :
    (while f a) >>= g ≈ while (fun y => (f y) >>= (sum_rect (fun => M (C + A)) (M # inl \o g) (M # inr \o (@ret M A )))) a.
-Proof. by apply iff_wBisims_wBisim; rewrite whileE whileE; apply naturality'. Qed.
-CoFixpoint codiagonal' {A B} (f: A -> M ((B + A) + A))(d: M ((B + A) + A)) :
+Proof. by rewrite whileE whileE; apply naturalityE'. Qed.
+CoFixpoint codiagonalE' {A B} (f: A -> M ((B + A) + A))(d: M ((B + A) + A)) :
 wBisim (( d >>= (Ret \o sum_rect (fun=> (B + A)%type) idfun inr)) >>=
   (fun ab : B + A => match ab with
                      | inl b => DNow b
@@ -561,20 +577,20 @@ case: d => [baa|d'].
   + by rewrite bindretf bindretf bindretf //= bindretf.
   + rewrite bindretf bindretf bindretf //= bindretf whileE whileE whileE //= fmapE.
     apply wBLater.
-    by apply codiagonal'.
+    by apply codiagonalE'.
   + rewrite bindretf bindretf bindretf //= bindDmf whileE whileE //= fmapE.
     apply wBLater.
-    by apply codiagonal'.
+    by apply codiagonalE'.
 - rewrite! bindDmf.
   apply wBLater.
-  by apply codiagonal'.
+  by apply codiagonalE'.
 Qed.
 Lemma codiagonalE {A B} (f : A -> M ((B + A) + A)) (a : A) : while ((Delay # ((sum_rect (fun => (B + A)%type) idfun inr)))  \o f ) a ≈ while (while f) a.
-Proof. by apply iff_wBisims_wBisim; rewrite whileE whileE whileE //= fmapE; apply codiagonal'. Qed.
-CoFixpoint whilewB1 {X A} (f g : X -> M(A + X)) :
+Proof. by rewrite whileE whileE whileE //= fmapE; apply codiagonalE'. Qed.
+CoFixpoint whilewBs1 {X A} (f g : X -> M(A + X)) :
   (forall x, wBisims (f x) (g x)) ->
   forall d1 d2: M (A + X),
-    d1 ≈ d2 ->
+    d1 ≈s d2 ->
     d1 >>= (fun ax : A + X => match ax with
                                | inl a => DNow a
                                | inr x => DLater (while f x)
@@ -597,42 +613,42 @@ case: d1 Hd => [[b|a]|d1'].
     case: Hf.
     rewrite whileE whileE => Hf.
     apply sBLater.
-    by apply (whilewB1 _ _ f g Hfg _ _ (Hfg a)).
+    by apply (whilewBs1 _ _ f g Hfg _ _ (Hfg a)).
   + move => Hd Hf.
     rewrite -spinE bindDmf.
     apply: sBLater.
-    assert (Had : DNow (inr a) ≈ d2').
+    assert (Had : DNow (inr a) ≈s d2').
       by rewrite Hd wBisims_DLater.
-    by apply (whilewB1 _ _ f g Hfg (DNow (inr a)) d2' Had Hf).
+    by apply (whilewBs1 _ _ f g Hfg (DNow (inr a)) d2' Had Hf).
 - case: d2 =>[[b|a]|d2'].
   + move => Hd.
     move/Diverges_spinP/iff_Diverges_wBisimsspin.
-    rewrite (bindmwB _ Hd) bindretf => /iff_Diverges_wBisimsspin/Diverges_spinP contr.
+    rewrite (bindmwBs _ Hd) bindretf => /iff_Diverges_wBisimsspin/Diverges_spinP contr.
     contradict contr.
     by rewrite -spinE.
   + move => Hd.
     set x := (x in DLater d1' >>= x).
     move => Hf.
-    assert (Hs: (DLater d1' >>= x) ≈ (DNow (inr a) >>= x)).
-      by rewrite (bindmwB _ Hd).
+    assert (Hs: (DLater d1' >>= x) ≈s (DNow (inr a) >>= x)).
+      by rewrite (bindmwBs _ Hd).
     move: Hs.
     subst x.
     rewrite Hf bindretf.
     move => Hs.
     rewrite bindretf -spinE whileE.
     apply sBLater.
-    apply (whilewB1 _ _ _ _ Hfg _ _ (Hfg a)).
+    apply (whilewBs1 _ _ _ _ Hfg _ _ (Hfg a)).
     rewrite -whileE.
     apply/Diverges_spinP/iff_Diverges_wBisimsspin.
     by rewrite Hs wBisims_DLater.
   + move => Hd Hf.
     rewrite -spinE bindDmf.
     apply: sBLater.
-    assert (Hd2 : DLater d1' ≈ d2').
+    assert (Hd2 : DLater d1' ≈s d2').
       by rewrite Hd wBisims_DLater.
-    by apply (whilewB1 _ _ f g Hfg (DLater d1') d2' Hd2 Hf).
+    by apply (whilewBs1 _ _ f g Hfg (DLater d1') d2' Hd2 Hf).
 Qed.
-Lemma whilewB2 {A B} (d1 d2 : M (B + A)) (f g : A -> M (B + A)) (b : B) : (forall a, wBisims (f a) (g a)) -> wBisims d1 d2 -> wBisims (d1 >>= (fun ab : B + A => match ab with
+Lemma whilewBs2 {A B} (d1 d2 : M (B + A)) (f g : A -> M (B + A)) (b : B) : (forall a, wBisims (f a) (g a)) -> wBisims d1 d2 -> wBisims (d1 >>= (fun ab : B + A => match ab with
                                    | inl b => DNow b
                                    | inr a => DLater (while f a)
                                    end)) (@ret M B b) -> wBisims (d2 >>= (fun ab : B + A => match ab with
@@ -646,19 +662,19 @@ rewrite steps_Dnow.
 elim: n => [d1 d2|n IH d1 d2].
 - case: d1 => [[b'|a']|d1'].
   + rewrite bindretf => /wBisims_sym Hd //= Hf.
-    by rewrite (bindmwB _ Hd) bindretf Hf.
+    by rewrite (bindmwBs _ Hd) bindretf Hf.
   + by rewrite bindretf /= => _ Hf.
   + by rewrite bindDmf /= => _ Hf.
 - case: d1 => [[b'|a']|d1'] H.
-  + rewrite bindretf steps_Dnow -(bindmwB _ H) bindretf => Hb.
+  + rewrite bindretf steps_Dnow -(bindmwBs _ H) bindretf => Hb.
     by rewrite Hb.
-  + rewrite bindretf /= -(bindmwB _ H) bindretf wBisims_DLater whileE whileE.
+  + rewrite bindretf /= -(bindmwBs _ H) bindretf wBisims_DLater whileE whileE.
     by apply (IH (f a') (g a') (Hfg a')).
   + move: H.
     rewrite bindDmf /= wBisims_DLater.
     by apply IH.
 Qed.
-Lemma whilewB {A B} (f g : A -> M (B + A)) (a : A) : (forall a, (f a) ≈ (g a)) -> while f a ≈ while g a.
+Lemma whilewBs {A B} (f g : A -> M (B + A)) (a : A) : (forall a, (f a) ≈s (g a)) -> while f a ≈s while g a.
 Proof.
 move => Hfg.
 case: (TerminatesP (while f a)) => [[b /iff_Terminates_wBret HT]| /Diverges_spinP HD].
@@ -666,19 +682,27 @@ case: (TerminatesP (while f a)) => [[b /iff_Terminates_wBret HT]| /Diverges_spin
   setoid_symmetry.
   move: HT.
   rewrite! whileE.
-  by apply (whilewB2 Hfg (Hfg a)).
+  by apply (whilewBs2 Hfg (Hfg a)).
 - rewrite HD.
   setoid_symmetry.
   apply/iff_Diverges_wBisimsspin/Diverges_spinP/strongBisim_eq.
   move: HD.
   rewrite !whileE.
-  by apply (whilewB1 Hfg (Hfg a)).
+  by apply (whilewBs1 Hfg (Hfg a)).
+Qed.
+Lemma whilewB {A B} (f g : A -> M (B + A)) (a : A) : (forall a, (f a) ≈ (g a)) -> while f a ≈ while g a.
+Proof.
+move => H.
+apply iff_wBisims_wBisim.
+apply whilewBs => a'.
+apply iff_wBisims_wBisim.
+by apply (H a').
 Qed.
 (*
 Lemma uniform {A B C} (f:A -> Delay(B + A)) (g: C -> Delay (B + C)) (h: C -> Delay A) :
-  forall (z:C),(h z) >>= f  ≈ ( (g z) >>= (sum_functin ((Delay # inl) \o (fun (y:B) => DNow y)(*ret*)) ((Delay # inr) \o h ))) -> forall (z:C), (h z) >>= (while f)  ≈  while g z. Abort.*)
+  forall (z:C),(h z) >>= f  ≈s ( (g z) >>= (sum_functin ((Delay # inl) \o (fun (y:B) => DNow y)(*ret*)) ((Delay # inr) \o h ))) -> forall (z:C), (h z) >>= (while f)  ≈s  while g z. Abort.*)
 HB.instance Definition _ := @isMonadDelay.Build M
-  (@while) wBisims wBisims_refl wBisims_sym wBisims_trans (@fixpointE) (@naturalityE) (@codiagonalE) (@bindmwB) (@bindfwB) (@whilewB).
+  (@while) wBisim wBisim_refl wBisim_sym wBisim_trans (@fixpointE) (@naturalityE) (@codiagonalE) (@bindmwB) (@bindfwB) (@whilewB).
 End wBisims.
 End delayops.
 End DelayOps.
