@@ -172,7 +172,6 @@ wlog:n m a b Ha Hb/ n <= m.
   by case: Hb.
 Qed.
 Definition Diverges A (d : M A) : Prop := ~ (exists a, Terminates d a).
-(*TerminatesPに直す*)
 Lemma TerminatesP A (d : M A) : decidable (exists a, Terminates d a).
 Proof.
 case/boolP: `[< exists a, Terminates d a >].
@@ -211,20 +210,20 @@ split.
   elim: n => //=.
   by rewrite -spinE.
 Qed.
-CoInductive Oeq A : M A -> M A -> Prop :=
-  |OTerminate d1 d2 a : Terminates d1 a -> Terminates d2 a -> Oeq d1 d2
-  |OLater d1 d2 : Oeq d1 d2 -> Oeq (DLater d1) (DLater d2).
-CoFixpoint Oeq_refl A (d : M A) : Oeq d d.
+CoInductive wBisim A : M A -> M A -> Prop :=
+  |wBTerminate d1 d2 a : Terminates d1 a -> Terminates d2 a -> wBisim d1 d2
+  |wBLater d1 d2 : wBisim d1 d2 -> wBisim (DLater d1) (DLater d2).
+CoFixpoint wBisim_refl A (d : M A) : wBisim d d.
 Proof.
 case: d.
 - move => a.
   have Ha: Terminates (DNow a) a.
     apply TDNow.
-  apply (OTerminate Ha Ha).
+  apply (wBTerminate Ha Ha).
 - move => d.
-  by apply OLater.
+  by apply wBLater.
 Qed.
-Lemma Oeq_sym A (d1 d2 : M A) : Oeq d1 d2 -> Oeq d2 d1.
+Lemma wBisim_sym A (d1 d2 : M A) : wBisim d1 d2 -> wBisim d2 d1.
 - move: d1 d2.
   cofix CIH.
   move => d1 d2 H12.
@@ -232,20 +231,20 @@ Lemma Oeq_sym A (d1 d2 : M A) : Oeq d1 d2 -> Oeq d2 d1.
   + case: d2.
     + move => a b H12.
       inversion H12.
-      apply (OTerminate H0 H).
+      apply (wBTerminate H0 H).
     + move => d a H12.
       inversion H12.
-      apply (OTerminate H0 H).
+      apply (wBTerminate H0 H).
   + case: d2.
     + move => a d H12.
       inversion H12.
-      apply (OTerminate H0 H).
+      apply (wBTerminate H0 H).
       move => d1 d2 H12.
       inversion H12.
-      apply (OTerminate H0 H).
-      apply (OLater (CIH d2 d1 H1)).
+      apply (wBTerminate H0 H).
+      apply (wBLater (CIH d2 d1 H1)).
 Qed.
-Lemma Terminates_Oeq A (d1 d2 : M A) (a : A) : Terminates d1 a -> Oeq d1 d2 -> Terminates d2 a.
+Lemma Terminates_wBisim A (d1 d2 : M A) (a : A) : Terminates d1 a -> wBisim d1 d2 -> Terminates d2 a.
 Proof.
 move => Ha.
 elim: Ha d2.
@@ -261,68 +260,31 @@ elim: Ha d2.
   + apply TDLater.
     by apply IH.
 Qed.
-Lemma Diverges_Oeq A (d1 d2 : M A) : Diverges d1 -> Oeq d1 d2 -> Diverges d2.
+Lemma Diverges_wBisim A (d1 d2 : M A) : Diverges d1 -> wBisim d1 d2 -> Diverges d2.
 Proof.
-move => Hd1 /Oeq_sym Ho [a Ht].
+move => Hd1 /wBisim_sym Ho [a Ht].
 apply: Hd1.
 exists a.
-by apply (Terminates_Oeq Ht Ho).
+by apply (Terminates_wBisim Ht Ho).
 Qed.
-CoFixpoint Oeq_trans A (d1 d2 d3 : M A) : Oeq d1 d2 -> Oeq d2 d3 -> Oeq d1 d3.
+CoFixpoint wBisim_trans A (d1 d2 d3 : M A) : wBisim d1 d2 -> wBisim d2 d3 -> wBisim d1 d3.
 Proof.
 move => Hd1 Hd2.
 case: d1 d2/ Hd1 Hd2 => d1 d2.
 - move => a Ht1 Ht2 Hd2.
-  apply: (OTerminate Ht1).
-  by apply: (Terminates_Oeq Ht2).
+  apply: (wBTerminate Ht1).
+  by apply: (Terminates_wBisim Ht2).
 - move => Hd1 Hd2.
   inversion Hd2.
   + subst.
      have Hda: Terminates (DLater d1) a.
        apply TDLater.
        inversion H; subst.
-       apply: (Terminates_Oeq  H2).
-       by apply Oeq_sym.
-     by apply: (OTerminate Hda).
-  + apply OLater.
-     by apply: (Oeq_trans _ _ _ _ Hd1).
-Qed.
-Add Parametric Relation A : (M A) (@Oeq A)
-  reflexivity proved by (@Oeq_refl A)
-  symmetry proved by (@Oeq_sym A)
-  transitivity proved by (@Oeq_trans A)
-  as Oeq_rel.
-Hint Extern 0 (Oeq _ _) => setoid_reflexivity.
-CoFixpoint Oeq_DLater A (d : M A) :  Oeq (DLater d) d.
-Proof.
-case: d => [a | d'].
-- apply : OTerminate.
-  + by apply/TDLater/TDNow.
-  + by apply TDNow.
-- apply : OLater.
-  by apply Oeq_DLater.
-Qed.
-Lemma Oeq_steps A (d : M A) (n : nat) : Oeq (steps n d) d .
-Proof.
-elim: n d => [|n IH] d //=.
-- case: d IH.
-  + move => a _ //=.
-  + move => d IH //=.
-     by rewrite IH Oeq_DLater.
-Qed.
-Section wBisim.
-Import boolp.
-Definition wBisim (A : UU0) (d1 d2 : M A) : Prop :=
-  exists n, steps n d1 = steps n d2.
-Lemma wBisim_refl A (a : M A) : wBisim a a.
-Proof. rewrite/wBisim. by exists 0. Qed.
-Lemma wBisim_sym A (d1 d2 : M A) : wBisim d1 d2 -> wBisim d2 d1.
-Proof. move => [n Hs]. by exists n. Qed.
-Lemma wBisim_trans A (d1 d2 d3 : M A): wBisim d1 d2 -> wBisim d2 d3 -> wBisim d1 d3.
-Proof.
-move => [n Hs1] [m Hs2].
-exists (n + m).
-by rewrite stepsD Hs1 addnC stepsD -Hs2 -stepsD -stepsD addnC.
+       apply: (Terminates_wBisim  H2).
+       by apply wBisim_sym.
+     by apply: (wBTerminate Hda).
+  + apply wBLater.
+     by apply: (wBisim_trans _ _ _ _ Hd1).
 Qed.
 Add Parametric Relation A : (M A) (@wBisim A)
   reflexivity proved by (@wBisim_refl A)
@@ -330,14 +292,51 @@ Add Parametric Relation A : (M A) (@wBisim A)
   transitivity proved by (@wBisim_trans A)
   as wBisim_rel.
 Hint Extern 0 (wBisim _ _) => setoid_reflexivity.
-Notation "a '≈' b" := (wBisim a b).
+CoFixpoint wBisim_DLater A (d : M A) :  wBisim (DLater d) d.
+Proof.
+case: d => [a | d'].
+- apply : wBTerminate.
+  + by apply/TDLater/TDNow.
+  + by apply TDNow.
+- apply : wBLater.
+  by apply wBisim_DLater.
+Qed.
+Lemma wBisim_steps A (d : M A) (n : nat) : wBisim (steps n d) d .
+Proof.
+elim: n d => [|n IH] d //=.
+- case: d IH.
+  + move => a _ //=.
+  + move => d IH //=.
+     by rewrite IH wBisim_DLater.
+Qed.
+Section wBisims.
+Import boolp.
+Definition wBisims (A : UU0) (d1 d2 : M A) : Prop :=
+  exists n, steps n d1 = steps n d2.
+Lemma wBisims_refl A (a : M A) : wBisims a a.
+Proof. rewrite/wBisims. by exists 0. Qed.
+Lemma wBisims_sym A (d1 d2 : M A) : wBisims d1 d2 -> wBisims d2 d1.
+Proof. move => [n Hs]. by exists n. Qed.
+Lemma wBisims_trans A (d1 d2 d3 : M A): wBisims d1 d2 -> wBisims d2 d3 -> wBisims d1 d3.
+Proof.
+move => [n Hs1] [m Hs2].
+exists (n + m).
+by rewrite stepsD Hs1 addnC stepsD -Hs2 -stepsD -stepsD addnC.
+Qed.
+Add Parametric Relation A : (M A) (@wBisims A)
+  reflexivity proved by (@wBisims_refl A)
+  symmetry proved by (@wBisims_sym A)
+  transitivity proved by (@wBisims_trans A)
+  as wBisims_rel.
+Hint Extern 0 (wBisims _ _) => setoid_reflexivity.
+Notation "a '≈' b" := (wBisims a b).
 Lemma terminatesP A (a : M A) : decidable (exists c, exists m, steps m a = DNow c ).
 Proof.
 case/boolP: `[< exists c, exists m, steps m a = DNow c >].
 - move/asboolP; by left.
 - move/asboolP; by right.
 Qed.
-Lemma wBisim_DLater A (d : M A) : (DLater d) ≈ d.
+Lemma wBisims_DLater A (d : M A) : (DLater d) ≈ d.
 Proof.
 case: (TerminatesP d).
 - move => [a /Terminates_steps [n Hs]].
@@ -346,15 +345,15 @@ case: (TerminatesP d).
 - move => /Diverges_spinP Hs.
   by rewrite! Hs spinE.
 Qed.
-Lemma wBisim_steps A (d : M A) (n : nat) : steps n d ≈ d .
+Lemma wBisims_steps A (d : M A) (n : nat) : steps n d ≈ d .
 Proof.
 elim: n d => [|n IH] d //=.
 case: d IH.
   - move => a _ //=.
   - move => d IH //=.
-    by rewrite IH wBisim_DLater.
+    by rewrite IH wBisims_DLater.
 Qed.
-Lemma Terminates_wBisim A (d1 d2 : M A) (a : A) : Terminates d1 a -> d1 ≈ d2 -> Terminates d2 a.
+Lemma Terminates_wBisims A (d1 d2 : M A) (a : A) : Terminates d1 a -> d1 ≈ d2 -> Terminates d2 a.
 Proof.
 move => Ht1.
 elim: Ht1 => [b|d b].
@@ -364,20 +363,20 @@ elim: Ht1 => [b|d b].
   exists n.
   by symmetry.
 - move => Ht1 IH.
-  by rewrite wBisim_DLater.
+  by rewrite wBisims_DLater.
 Qed.
 Corollary iff_Terminates_steps {A} (d : M A) (n : nat) (a : A) : Terminates d a <-> Terminates (steps n d) a.
 Proof.
 split => Ht.
-- by apply (Terminates_wBisim Ht (wBisim_sym (wBisim_steps d n))).
-- by apply (Terminates_wBisim Ht (wBisim_steps d n)).
+- by apply (Terminates_wBisims Ht (wBisims_sym (wBisims_steps d n))).
+- by apply (Terminates_wBisims Ht (wBisims_steps d n)).
 Qed.
 Lemma iff_Terminates_wBret {A} (d : M A) (a : A) : Terminates d a <-> (d ≈ Ret a).
 Proof.
 split.
 - move => H.
   elim: H => //= d' a' _ H.
-  by rewrite (wBisim_DLater d') H.
+  by rewrite (wBisims_DLater d') H.
 - move => [m H].
   apply/(iff_Terminates_steps d m a).
   rewrite H steps_Dnow.
@@ -394,7 +393,7 @@ split.
   exists a.
   by apply/(iff_Terminates_steps _ n _).
 Qed.
-Lemma iff_Diverges_Oeqspin {A} (d : M A) : Diverges d <-> Oeq d (@spin A).
+Lemma iff_Diverges_wBisimspin {A} (d : M A) : Diverges d <-> wBisim d (@spin A).
 Proof.
 split.
 - move => /Diverges_spinP HD.
@@ -404,9 +403,9 @@ split.
     by apply/Diverges_spinP.
   apply H.
   exists a.
-  by apply (Terminates_Oeq Ht Ho).
+  by apply (Terminates_wBisim Ht Ho).
 Qed.
-Lemma iff_Diverges_wBisimspin {A} (d : M A) : Diverges d <-> d ≈ (@spin A).
+Lemma iff_Diverges_wBisimsspin {A} (d : M A) : Diverges d <-> d ≈ (@spin A).
 Proof.
 split.
 - move => /Diverges_spinP HD.
@@ -416,26 +415,26 @@ split.
   rewrite Hs.
   by apply/(iff_Diverges_steps (@spin A) n)/(Diverges_spinP).
 Qed.
-Theorem iff_wBisim_Oeq A (d1 d2 : M A) : d1 ≈ d2 <-> Oeq d1 d2.
+Theorem iff_wBisims_wBisim A (d1 d2 : M A) : d1 ≈ d2 <-> wBisim d1 d2.
 Proof.
 split.
 - case: (TerminatesP d1).
    + move => [a Ht] Hd.
-     apply: OTerminate.
+     apply: wBTerminate.
      * by apply Ht.
-     * by apply (Terminates_wBisim Ht Hd).
+     * by apply (Terminates_wBisims Ht Hd).
    + move => /Diverges_spinP Hs.
     rewrite Hs;clear Hs.
-    move =>/wBisim_sym/iff_Diverges_wBisimspin/Diverges_spinP Hs.
+    move =>/wBisims_sym/iff_Diverges_wBisimsspin/Diverges_spinP Hs.
     by rewrite Hs.
 - case: (TerminatesP d1).
   + move =>[a Ht].
-    move/(Terminates_Oeq Ht).
+    move/(Terminates_wBisim Ht).
     move: Ht => /Terminates_steps [n Ht1] /Terminates_steps [m Ht2].
-    by rewrite -(wBisim_steps d1 n) -(wBisim_steps d2 m) Ht1 Ht2.
+    by rewrite -(wBisims_steps d1 n) -(wBisims_steps d2 m) Ht1 Ht2.
     + move => /Diverges_spinP Hs.
     rewrite Hs;clear Hs.
-    move/Oeq_sym/iff_Diverges_Oeqspin/Diverges_spinP.
+    move/wBisim_sym/iff_Diverges_wBisimspin/Diverges_spinP.
     move => Hs.
     by rewrite Hs.
 Qed.
@@ -472,28 +471,28 @@ Proof.
 move => Ht.
 elim: Ht => [a'|d' a' Ht Hd'].
 - by rewrite bindretf.
-- by rewrite -Hd' bindDmf wBisim_DLater.
+- by rewrite -Hd' bindDmf wBisims_DLater.
 Qed.
 Lemma bindmwB {A B} (f : A -> M B) (d1 d2 : M A) : d1 ≈ d2 -> d1 >>= f ≈ d2 >>= f.
 Proof.
 case: (TerminatesP d1).
 - move => [a Ht1].
-  move => /(Terminates_wBisim Ht1) Ht2.
+  move => /(Terminates_wBisims Ht1) Ht2.
   by rewrite (Terminates_bindmf f Ht1) (Terminates_bindmf f Ht2).
 - move => /Diverges_spinP HD; subst.
-  by move => /wBisim_sym/iff_Diverges_wBisimspin/Diverges_spinP Hd2; subst.
+  by move => /wBisims_sym/iff_Diverges_wBisimsspin/Diverges_spinP Hd2; subst.
 Qed.
 Lemma bindfwB {A B} (f g : A -> M B) (d : M A) : (forall a, f a ≈ g a) -> d >>= f ≈ d >>= g.
 Proof.
 move => H.
-apply/iff_wBisim_Oeq.
+apply/iff_wBisims_wBisim.
 move: d.
 cofix CIH => d.
 case: d => [a|d].
 - rewrite! bindretf.
-  by apply iff_wBisim_Oeq.
+  by apply iff_wBisims_wBisim.
 - rewrite! bindDmf.
-  by apply OLater.
+  by apply wBLater.
 Qed.
 (* the next four laws derived from Complete Elgot monads *)
 Lemma fixpointE {A B} (f : A -> M (B + A)) : forall (a : A), while f a ≈ (f a) >>= (sum_rect (fun => M B ) (@ret M B ) (while f)).
@@ -502,10 +501,10 @@ move => a.
 rewrite whileE.
 apply bindfwB => ab.
 case: ab => [b'|a'] //=.
-by apply wBisim_DLater.
+by apply wBisims_DLater.
 Qed.
 CoFixpoint naturality' {A B C} (f : A -> M (B + A))(g : B -> M C)(d : M (B + A)) :
-Oeq ((d >>= (fun ab : B + A => match ab with
+wBisim ((d >>= (fun ab : B + A => match ab with
                                    | inl b => DNow b
                                    | inr a => DLater (while f a)
                                    end)) >>= g)
@@ -516,7 +515,7 @@ Oeq ((d >>= (fun ab : B + A => match ab with
                         end)).
 Proof.
 case: d => [[b|a]|d].
-- apply iff_wBisim_Oeq.
+- apply iff_wBisims_wBisim.
   rewrite! bindretf /= fmapE bindA.
   case: (TerminatesP (g b)).
   + move => [c Ht].
@@ -525,25 +524,25 @@ case: d => [[b|a]|d].
     subst h.
     rewrite /= bindretf.
     move: Ht => /Terminates_steps [n Ht].
-    by rewrite -(wBisim_steps (g b) n) Ht.
+    by rewrite -(wBisims_steps (g b) n) Ht.
   + move => /Diverges_spinP HD.
     rewrite HD.
     setoid_symmetry.
-    apply/iff_Diverges_wBisimspin.
+    apply/iff_Diverges_wBisimsspin.
     by apply Diverges_bindspinf.
 - rewrite! bindretf /= fmapE bindA bindretf /= bindretf /= bindDmf.
-  apply OLater.
+  apply wBLater.
   rewrite whileE whileE.
   by apply naturality'.
 - rewrite! bindDmf.
-  apply OLater.
+  apply wBLater.
   by apply naturality'.
 Qed.
 Lemma naturalityE {A B C} (f : A -> M (B + A)) (g : B -> M C) (a : A) :
    (while f a) >>= g ≈ while (fun y => (f y) >>= (sum_rect (fun => M (C + A)) (M # inl \o g) (M # inr \o (@ret M A )))) a.
-Proof. by apply iff_wBisim_Oeq; rewrite whileE whileE; apply naturality'. Qed.
+Proof. by apply iff_wBisims_wBisim; rewrite whileE whileE; apply naturality'. Qed.
 CoFixpoint codiagonal' {A B} (f: A -> M ((B + A) + A))(d: M ((B + A) + A)) :
-Oeq (( d >>= (Ret \o sum_rect (fun=> (B + A)%type) idfun inr)) >>=
+wBisim (( d >>= (Ret \o sum_rect (fun=> (B + A)%type) idfun inr)) >>=
   (fun ab : B + A => match ab with
                      | inl b => DNow b
                      | inr a => DLater (while (M # sum_rect (fun=> (B + A)%type) idfun inr \o f) a)
@@ -560,19 +559,19 @@ case: d => [baa|d'].
 - case: baa => [[b|a]|a].
   + by rewrite bindretf bindretf bindretf //= bindretf.
   + rewrite bindretf bindretf bindretf //= bindretf whileE whileE whileE //= fmapE.
-    apply OLater.
+    apply wBLater.
     by apply codiagonal'.
   + rewrite bindretf bindretf bindretf //= bindDmf whileE whileE //= fmapE.
-    apply OLater.
+    apply wBLater.
     by apply codiagonal'.
 - rewrite! bindDmf.
-  apply OLater.
+  apply wBLater.
   by apply codiagonal'.
 Qed.
 Lemma codiagonalE {A B} (f : A -> M ((B + A) + A)) (a : A) : while ((Delay # ((sum_rect (fun => (B + A)%type) idfun inr)))  \o f ) a ≈ while (while f) a.
-Proof. by apply iff_wBisim_Oeq; rewrite whileE whileE whileE //= fmapE; apply codiagonal'. Qed.
+Proof. by apply iff_wBisims_wBisim; rewrite whileE whileE whileE //= fmapE; apply codiagonal'. Qed.
 CoFixpoint whilewB1 {X A} (f g : X -> M(A + X)) :
-  (forall x, wBisim (f x) (g x)) ->
+  (forall x, wBisims (f x) (g x)) ->
   forall d1 d2: M (A + X),
     d1 ≈ d2 ->
     d1 >>= (fun ax : A + X => match ax with
@@ -602,12 +601,12 @@ case: d1 Hd => [[b|a]|d1'].
     rewrite -spinE bindDmf.
     apply: sBLater.
     assert (Had : DNow (inr a) ≈ d2').
-      by rewrite Hd wBisim_DLater.
+      by rewrite Hd wBisims_DLater.
     by apply (whilewB1 _ _ f g Hfg (DNow (inr a)) d2' Had Hf).
 - case: d2 =>[[b|a]|d2'].
   + move => Hd.
-    move/Diverges_spinP/iff_Diverges_wBisimspin.
-    rewrite (bindmwB _ Hd) bindretf => /iff_Diverges_wBisimspin/Diverges_spinP contr.
+    move/Diverges_spinP/iff_Diverges_wBisimsspin.
+    rewrite (bindmwB _ Hd) bindretf => /iff_Diverges_wBisimsspin/Diverges_spinP contr.
     contradict contr.
     by rewrite -spinE.
   + move => Hd.
@@ -623,19 +622,19 @@ case: d1 Hd => [[b|a]|d1'].
     apply sBLater.
     apply (whilewB1 _ _ _ _ Hfg _ _ (Hfg a)).
     rewrite -whileE.
-    apply/Diverges_spinP/iff_Diverges_wBisimspin.
-    by rewrite Hs wBisim_DLater.
+    apply/Diverges_spinP/iff_Diverges_wBisimsspin.
+    by rewrite Hs wBisims_DLater.
   + move => Hd Hf.
     rewrite -spinE bindDmf.
     apply: sBLater.
     assert (Hd2 : DLater d1' ≈ d2').
-      by rewrite Hd wBisim_DLater.
+      by rewrite Hd wBisims_DLater.
     by apply (whilewB1 _ _ f g Hfg (DLater d1') d2' Hd2 Hf).
 Qed.
-Lemma whilewB2 {A B} (d1 d2 : M (B + A)) (f g : A -> M (B + A)) (b : B) : (forall a, wBisim (f a) (g a)) -> wBisim d1 d2 -> wBisim (d1 >>= (fun ab : B + A => match ab with
+Lemma whilewB2 {A B} (d1 d2 : M (B + A)) (f g : A -> M (B + A)) (b : B) : (forall a, wBisims (f a) (g a)) -> wBisims d1 d2 -> wBisims (d1 >>= (fun ab : B + A => match ab with
                                    | inl b => DNow b
                                    | inr a => DLater (while f a)
-                                   end)) (@ret M B b) -> wBisim (d2 >>= (fun ab : B + A => match ab with
+                                   end)) (@ret M B b) -> wBisims (d2 >>= (fun ab : B + A => match ab with
                                    | inl b => DNow b
                                    | inr a => DLater (while g a)
                                    end)) (@ret M B b).
@@ -645,17 +644,17 @@ move : d1 d2 Hd Hf.
 rewrite steps_Dnow.
 elim: n => [d1 d2|n IH d1 d2].
 - case: d1 => [[b'|a']|d1'].
-  + rewrite bindretf => /wBisim_sym Hd //= Hf.
+  + rewrite bindretf => /wBisims_sym Hd //= Hf.
     by rewrite (bindmwB _ Hd) bindretf Hf.
   + by rewrite bindretf /= => _ Hf.
   + by rewrite bindDmf /= => _ Hf.
 - case: d1 => [[b'|a']|d1'] H.
   + rewrite bindretf steps_Dnow -(bindmwB _ H) bindretf => Hb.
     by rewrite Hb.
-  + rewrite bindretf /= -(bindmwB _ H) bindretf wBisim_DLater whileE whileE.
+  + rewrite bindretf /= -(bindmwB _ H) bindretf wBisims_DLater whileE whileE.
     by apply (IH (f a') (g a') (Hfg a')).
   + move: H.
-    rewrite bindDmf /= wBisim_DLater.
+    rewrite bindDmf /= wBisims_DLater.
     by apply IH.
 Qed.
 Lemma whilewB {A B} (f g : A -> M (B + A)) (a : A) : (forall a, (f a) ≈ (g a)) -> while f a ≈ while g a.
@@ -669,7 +668,7 @@ case: (TerminatesP (while f a)) => [[b /iff_Terminates_wBret HT]| /Diverges_spin
   by apply (whilewB2 Hfg (Hfg a)).
 - rewrite HD.
   setoid_symmetry.
-  apply/iff_Diverges_wBisimspin/Diverges_spinP/strongBisim_eq.
+  apply/iff_Diverges_wBisimsspin/Diverges_spinP/strongBisim_eq.
   move: HD.
   rewrite !whileE.
   by apply (whilewB1 Hfg (Hfg a)).
@@ -678,8 +677,8 @@ Qed.
 Lemma uniform {A B C} (f:A -> Delay(B + A)) (g: C -> Delay (B + C)) (h: C -> Delay A) :
   forall (z:C),(h z) >>= f  ≈ ( (g z) >>= (sum_functin ((Delay # inl) \o (fun (y:B) => DNow y)(*ret*)) ((Delay # inr) \o h ))) -> forall (z:C), (h z) >>= (while f)  ≈  while g z. Abort.*)
 HB.instance Definition _ := @isMonadDelay.Build M
-  (@while) wBisim wBisim_refl wBisim_sym wBisim_trans (@fixpointE) (@naturalityE) (@codiagonalE) (@bindmwB) (@bindfwB) (@whilewB).
-End wBisim.
+  (@while) wBisims wBisims_refl wBisims_sym wBisims_trans (@fixpointE) (@naturalityE) (@codiagonalE) (@bindmwB) (@bindfwB) (@whilewB).
+End wBisims.
 End delayops.
 End DelayOps.
 HB.export DelayOps.
