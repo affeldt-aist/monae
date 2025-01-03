@@ -34,8 +34,6 @@ Set Implicit Arguments.
 Unset Strict Implicit.
 Unset Printing Implicit Defensive.
 
-Set Bullet Behavior "Strict Subproofs".
-
 Obligation Tactic := idtac.
 
 Reserved Notation "'p_do' x <- m ; e"
@@ -198,10 +196,10 @@ induction Hss1 as [
   | sk1' sk2'' sk2''' t2 l2' Hstep2 Hss2' Hsk1 Hl2 Hsl2
   ].
   + subst sk1' l2 sk2.
-    do 3 eexists.
-    split; [ apply ss_refl | ].
-    split; [ eapply ss_step_None; eassumption | ].
-    rewrite cats0; reflexivity.
+    exists [::], l1, sk3.
+    split; first exact: ss_refl.
+    split; first exact: (ss_step_None Hstep1 Hss1).
+    by rewrite cats0.
   + subst sk1' l2' sk2'''.
     specialize (step_deterministic Hstep1 Hstep2).
     intros [ [] Heq2].
@@ -210,7 +208,7 @@ induction Hss1 as [
     exact Hss2'.
   + subst sk1' l2 sk2'''.
     specialize (step_deterministic Hstep1 Hstep2).
-    intros [ [=] ?].
+    by move=> [].
 - intros l2 sk2 Hss2.
   inversion Hss2 as [
     sk1' Hsk1 Hl2 Hsk2
@@ -218,10 +216,10 @@ induction Hss1 as [
   | sk1' sk2'' sk2''' t2 l2' Hstep2 Hss2' Hsk1 Hl2 Hsl2
   ].
   + subst sk1' l2 sk2.
-    do 3 eexists.
-    split; [ apply ss_refl | ].
-    split; [ eapply ss_step_Some; eassumption | ].
-    rewrite cats0; reflexivity.
+    exists [::], (t1 :: l1),  sk3.
+    split; first exact: ss_refl.
+    split; first exact: (ss_step_Some Hstep1).
+    by rewrite cats0.
   + subst sk1' l2' sk2'''.
     specialize (step_deterministic Hstep1 Hstep2).
     intros [ [=] ?].
@@ -231,11 +229,8 @@ induction Hss1 as [
     subst t2 sk2''.
     apply IH in Hss2'.
     destruct Hss2' as (l1' & l2'' & skf & Hss3 & Hss4 & Heq).
-    do 3 eexists.
-    do 2 (split; [ eassumption | ]).
-    cbn.
-    f_equal.
-    exact Heq.
+    exists l1', l2'', skf; split => //; split => //.
+    by rewrite /= Heq.
 Qed.
 
 Lemma step_star_deterministic ski l1 l2 s1 s2 A1 A2 a1 a2 :
