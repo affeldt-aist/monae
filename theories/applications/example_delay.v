@@ -12,7 +12,7 @@ Variable M : delayMonad.
 Let fact_body a : M (nat + nat * nat)%type :=
   match a with
   |(O, a2) => Ret (inl a2)
-  |(S n', a2) => Ret (inr (n', a2 * (S n')))
+  |(n'.+1, a2) => Ret (inr (n', a2 * (S n')))
   end.
 
 Let factdelay := fun nm => while fact_body nm.
@@ -29,7 +29,7 @@ Qed.
 Let collatzm_body m n : M (nat + nat)%type :=
   if n == 1 then Ret (inl m)
   else if n %% 2 == 0 then Ret (inr (n./2))
-       else Ret (inr (3 * n + 1)).
+       else Ret (inr ((3 * n).+1)).
 
 Let collatzm m := fun n => while (collatzm_body m) n.
 
@@ -55,7 +55,7 @@ Let minus1_body nm : M ((nat + nat * nat) + nat * nat)%type :=
              |O => Ret (inl (inl O))
              |S m' => Ret (inl (inr (m', m')))
              end
-  |(S n', m) => Ret (inr (n', m))
+  |(n'.+1, m) => Ret (inr (n', m))
   end.
 
 Let minus1 := fun nm => while (while minus1_body) nm.
@@ -66,7 +66,7 @@ Let minus2_body nm : M (nat + nat * nat)%type :=
             |O => Ret (inl O)
             |S m' => Ret (inr (m', m'))
             end
-  |(S n', m) => Ret (inr (n',m))
+  |(n'.+1, m) => Ret (inr (n',m))
   end.
 
 Let minus2 := fun nm => while minus2_body nm.
