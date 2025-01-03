@@ -213,7 +213,8 @@ Qed.
 CoInductive wBisim A : M A -> M A -> Prop :=
   |wBTerminate d1 d2 a : Terminates d1 a -> Terminates d2 a -> wBisim d1 d2
   |wBLater d1 d2 : wBisim d1 d2 -> wBisim (DLater d1) (DLater d2).
-CoFixpoint wBisim_refl A (d : M A) : wBisim d d.
+Notation "a '≈' b" := (wBisim a b).
+CoFixpoint wBisim_refl A (d : M A) : d ≈ d.
 Proof.
 case: d.
 - move => a.
@@ -223,7 +224,7 @@ case: d.
 - move => d.
   by apply wBLater.
 Qed.
-Lemma wBisim_sym A (d1 d2 : M A) : wBisim d1 d2 -> wBisim d2 d1.
+Lemma wBisim_sym A (d1 d2 : M A) : d1 ≈ d2 -> d2 ≈ d1.
 - move: d1 d2.
   cofix CIH.
   move => d1 d2 H12.
@@ -244,7 +245,7 @@ Lemma wBisim_sym A (d1 d2 : M A) : wBisim d1 d2 -> wBisim d2 d1.
       apply (wBTerminate H0 H).
       apply (wBLater (CIH d2 d1 H1)).
 Qed.
-Lemma Terminates_wBisim A (d1 d2 : M A) (a : A) : Terminates d1 a -> wBisim d1 d2 -> Terminates d2 a.
+Lemma Terminates_wBisim A (d1 d2 : M A) (a : A) : Terminates d1 a -> d1 ≈ d2 -> Terminates d2 a.
 Proof.
 move => Ha.
 elim: Ha d2.
@@ -260,14 +261,14 @@ elim: Ha d2.
   + apply TDLater.
     by apply IH.
 Qed.
-Lemma Diverges_wBisim A (d1 d2 : M A) : Diverges d1 -> wBisim d1 d2 -> Diverges d2.
+Lemma Diverges_wBisim A (d1 d2 : M A) : Diverges d1 -> d1 ≈ d2 -> Diverges d2.
 Proof.
 move => Hd1 /wBisim_sym Ho [a Ht].
 apply: Hd1.
 exists a.
 by apply (Terminates_wBisim Ht Ho).
 Qed.
-CoFixpoint wBisim_trans A (d1 d2 d3 : M A) : wBisim d1 d2 -> wBisim d2 d3 -> wBisim d1 d3.
+CoFixpoint wBisim_trans A (d1 d2 d3 : M A) : d1 ≈ d2 -> d2 ≈d3 -> d1 ≈ d3.
 Proof.
 move => Hd1 Hd2.
 case: d1 d2/ Hd1 Hd2 => d1 d2.
@@ -292,7 +293,7 @@ Add Parametric Relation A : (M A) (@wBisim A)
   transitivity proved by (@wBisim_trans A)
   as wBisim_rel.
 Hint Extern 0 (wBisim _ _) => setoid_reflexivity.
-CoFixpoint wBisim_DLater A (d : M A) :  wBisim (DLater d) d.
+CoFixpoint wBisim_DLater A (d : M A) : DLater d ≈ d.
 Proof.
 case: d => [a | d'].
 - apply : wBTerminate.
@@ -301,7 +302,7 @@ case: d => [a | d'].
 - apply : wBLater.
   by apply wBisim_DLater.
 Qed.
-Lemma wBisim_steps A (d : M A) (n : nat) : wBisim (steps n d) d .
+Lemma wBisim_steps A (d : M A) (n : nat) : steps n d ≈ d .
 Proof.
 elim: n d => [|n IH] d //=.
 - case: d IH.
@@ -328,8 +329,8 @@ Add Parametric Relation A : (M A) (@wBisims A)
   symmetry proved by (@wBisims_sym A)
   transitivity proved by (@wBisims_trans A)
   as wBisims_rel.
+Notation "a '≈s' b" := (wBisims a b) at level 49.
 Hint Extern 0 (wBisims _ _) => setoid_reflexivity.
-Notation "a '≈' b" := (wBisims a b).
 Lemma terminatesP A (a : M A) : decidable (exists c, exists m, steps m a = DNow c ).
 Proof.
 case/boolP: `[< exists c, exists m, steps m a = DNow c >].
