@@ -795,7 +795,7 @@ HB.structure Definition MonadAlt := {M of isMonadAlt M & }.
 Notation "a [~] b" := (@alt _ _ a b). (* infix notation *)
 
 HB.mixin Record isMonadAltCI (M : UU0 -> UU0) of MonadAlt M := {
-  altmm : forall A : UU0, idempotent (@alt M A) ;
+  altmm : forall A : UU0, idempotent_op (@alt M A) ;
   altC : forall A : UU0, commutative (@alt M A) }.
 
 #[short(type=altCIMonad)]
@@ -1253,7 +1253,7 @@ HB.mixin Record isMonadConvex {R : realType} (M : UU0 -> UU0) of Monad M := {
   (* skewed commutativity *)
   choiceC : forall (T : UU0) p (a b : M T),
     choice p _ a b = choice (p.~%:pr) _ b a ;
-  choicemm : forall (T : UU0) p, idempotent (@choice p T) ;
+  choicemm : forall (T : UU0) p, idempotent_op (@choice p T) ;
   (* quasi associativity *)
   choiceA : forall (T : UU0) (p q r s : {prob R}) (a b c : M T),
     choice p _ a (choice q _ b c) = choice [s_of p, q] _ (choice [r_of p, q] _ a b) c }.

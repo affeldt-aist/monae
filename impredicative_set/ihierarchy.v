@@ -776,7 +776,7 @@ HB.structure Definition MonadAlt := {M of isMonadAlt M & }.
 Notation "a [~] b" := (@alt _ _ a b). (* infix notation *)
 
 HB.mixin Record isMonadAltCI (M : UU0 -> UU0) of MonadAlt M := {
-  altmm : forall A : UU0, idempotent (@alt M A) ;
+  altmm : forall A : UU0, idempotent_op (@alt M A) ;
   altC : forall A : UU0, commutative (@alt M A) }.
 
 #[short(type=altCIMonad)]

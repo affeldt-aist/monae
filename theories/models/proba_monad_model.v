@@ -58,7 +58,7 @@ Proof. by move=> ? ?; exact: conv1. Qed.
 Let choiceC (T : UU0) : forall p (a b : acto T), choice p _ a b = choice ((Prob.p p).~ %:pr) _ b a.
 Proof. by move=> ? ?; exact: convC. Qed.
 
-Let choicemm : forall (T : Type) p, idempotent (@choice p T).
+Let choicemm : forall (T : Type) p, idempotent_op (@choice p T).
 Proof. by move=> ? ? ?; exact: convmm. Qed.
 
 Let choiceA : forall (T : Type) (p q r s : {prob R}) (a b c : acto T),
