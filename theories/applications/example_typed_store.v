@@ -117,7 +117,7 @@ Arguments Nil {a a_1}.
 Arguments Cons {a a_1}.
 Arguments rtl {T}.
 Notation "x ':::' y" := (Cons x y) (at level 60).
-b
+
 Lemma rtl_tl_self T (a b : coq_type N T) :
   do l <- cycle T a b; do l1 <- rtl l; rtl l1 = cycle T a b.
 Proof.
