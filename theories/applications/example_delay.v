@@ -1,4 +1,4 @@
-From mathcomp Require Import all_ssreflect ssrnat.
+From mathcomp Require Import all_ssreflect.
 From mathcomp Require boolp.
 Require Import hierarchy.
 Require Import Lia.
@@ -17,7 +17,7 @@ Let fact_body a : M (nat + nat * nat)%type :=
 
 Let factdelay := fun nm => while fact_body nm.
 
-Lemma eq_fact_factdelay : forall n m, factdelay (n, m) ≈ Ret (m * factorial n).
+Lemma eq_fact_factdelay : forall n m, factdelay (n, m) ≈ Ret (m * n`!).
 Proof.
 move => n.
 rewrite /factdelay.
@@ -90,7 +90,7 @@ Definition divide5_body (f : nat -> M nat) nm : M (nat + nat * nat)%type :=
 
 Let dividefac1 n := while (divide5_body (fun n => factdelay (n, 1))) (n, 1).
 
-Let dividefac2 n := while (divide5_body (fun n => Ret (fact n))) (n, 1).
+Let dividefac2 n := while (divide5_body (fun n => Ret n`!)) (n, 1).
 
 Lemma eq_dividefac : forall n, dividefac1 n ≈ dividefac2 n.
 Proof.
