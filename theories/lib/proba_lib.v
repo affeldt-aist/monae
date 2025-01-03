@@ -257,7 +257,6 @@ End altprob_semilattconvtype.
 (* TODO(rei): incipit of section 5 of gibbonsUTP2012 on the model of MonadAltProb *)
 
 Section convexity_property.
-
 Variables (M : altProbMonad R) (A : Type) (p q : M A).
 
 Lemma convexity w : p [~] q =
