@@ -6,13 +6,12 @@ Require Import Lia.
 Local Open Scope monae_scope.
 
 Section delayexample.
-Notation "a '≈' b" := (wBisim a b).
 Variable M : delayMonad.
 
 Let fact_body a : M (nat + nat * nat)%type :=
   match a with
   |(O, a2) => Ret (inl a2)
-  |(n'.+1, a2) => Ret (inr (n', a2 * (S n')))
+  |(n'.+1, a2) => Ret (inr (n', a2 * n'.+1))
   end.
 
 Let factdelay := fun nm => while fact_body nm.
@@ -28,7 +27,7 @@ Qed.
 
 Let collatzm_body m n : M (nat + nat)%type :=
   if n == 1 then Ret (inl m)
-  else if n %% 2 == 0 then Ret (inr (n./2))
+  else if n %% 2 == 0 then Ret (inr n./2)
        else Ret (inr ((3 * n).+1)).
 
 Let collatzm m := fun n => while (collatzm_body m) n.
@@ -38,15 +37,11 @@ Let delaymul m d : M nat := d >>= (fun n => Ret (m * n)).
 Lemma collatzmwB m n p : delaymul p (collatzm m n) ≈ collatzm (p * m) n.
 Proof.
 rewrite /collatzm /delaymul naturalityE.
-set x := (x in while x).
-set y := collatzm_body (p*m).
-have <-: x = y.
-  apply boolp.funext => q.
-  subst x y.
-  case_eq (q == 1) => Hs; rewrite /collatzm_body Hs//.
-  + by rewrite bindretf/= fmapE bindretf/=.
-  + by case He: (q %% 2 == 0); rewrite bindretf/= fmapE bindretf/=.
-done.
+apply: whilewB => q.
+have [|] := eqVneq q 1 => Hs.
+  + by rewrite Hs bindretf/= fmapE bindretf/=.
+  + rewrite /collatzm_body !(ifN_eq _ _ Hs).
+    by have [|] := eqVneq (q %% 2) 0 => Hq; rewrite bindretf/= fmapE bindretf.
 Qed.
 
 Let minus1_body nm : M ((nat + nat * nat) + nat * nat)%type :=
@@ -71,9 +66,8 @@ Let minus2_body nm : M (nat + nat * nat)%type :=
 
 Let minus2 := fun nm => while minus2_body nm.
 
-Lemma eq_minus : forall nm, minus1 nm ≈ minus2 nm.
+Lemma eq_minus nm : minus1 nm ≈ minus2 nm.
 Proof.
-move => nm.
 rewrite /minus1 /minus2 -codiagonalE.
 apply: whilewB.
 move => [n m].
@@ -98,11 +92,9 @@ move => n.
 rewrite /dividefac1 /dividefac2.
 apply whilewB.
 move => [k l].
-case/boolP: (l %% 5 == 0) => Hl /=.
+have [|] := eqVneq (l %% 5) 0 => Hl/=.
 - by rewrite Hl.
-- rewrite !ifN // bindretf.
-  rewrite bindmwB; last by apply (eq_fact_factdelay k 1).
-  by rewrite bindretf mul1n.
+- by rewrite !(ifN_eq _ _ Hl) eq_fact_factdelay !bindretf mul1n.
 Qed.
 
 Let fastexp_body nmk : M (nat + nat * nat * nat)%type :=
@@ -113,8 +105,6 @@ Let fastexp_body nmk : M (nat + nat * nat * nat)%type :=
 
 Let fastexp n m k := while fastexp_body (n, m, k).
 
-Fixpoint exp n k := match n with |O => 1 | S n' => k * exp n' k end.
-
 Lemma expE_aux n : n <= n.*2.
 Proof.
 elim: n => //= n IH.
@@ -122,9 +112,8 @@ rewrite doubleS ltnS.
 by apply (leq_trans IH (leqnSn _)).
 Qed.
 
-Lemma expE : forall n m k, fastexp n m k ≈ Ret (m * expn k n).
+Lemma expE n: forall m k, fastexp n m k ≈ Ret (m * expn k n).
 Proof.
-move => n.
 rewrite /fastexp /fastexp_body.
 elim: n {-2}n (leqnn n) => n.
 - rewrite leqn0 => /eqP H0 m k.
@@ -141,7 +130,7 @@ elim: n {-2}n (leqnn n) => n.
 Qed.
 
 Let mc91_body nm : M (nat + nat * nat)%type :=
-  match nm with (n, m) => if n==0 then Ret (inl m)
+  match nm with (n, m) => if n == 0 then Ret (inl m)
                           else if m > 100 then Ret (inr (n.-1, m - 10))
                                           else Ret (inr (n.+1, m + 11))
   end.
@@ -151,10 +140,8 @@ Let mc91 n m := while mc91_body (n.+1, m).
 Lemma mc91succE n m : 90 <= m < 101 -> mc91 n m ≈ mc91 n (m.+1).
 Proof.
 move => /andP [Hmin].
-rewrite /mc91.
-rewrite fixpointE /= ltnNge => Hmax. (*ltnNge.*)
-rewrite ifN //.
-rewrite bindretf /= fixpointE /=.
+rewrite /mc91 fixpointE /= ltnNge => Hmax.
+rewrite ifN // bindretf /= fixpointE /=.
 have -> : 100 = 89 + 11 by [].
 rewrite ltn_add2r ifT //.
 rewrite bindretf fixpointE /= fixpointE.
