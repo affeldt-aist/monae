@@ -47,7 +47,7 @@ Definition collatzs1_body nml : M ((nat * nat + nat * nat * nat) + nat * nat * n
     do s' <- get;
     do _ <- put (n :: s');
     if n == 1 then if (l %% 4 == 1)
-            then Ret (inl (inl (m,l)))
+            then Ret (inl (inl (m, l)))
                  else do _ <- put [::]; Ret (inl (inr (m.+1, m.+1, 0)))
     else if (n %% 2 == 0) then Ret (inr (n./2, m, l.+1))
          else Ret (inr ((3 * n).+1, m, l.+1))
@@ -73,19 +73,18 @@ rewrite/collatzs1/collatzs2 -codiagonalE.
 apply whilewB.
 move => [[n' m] l].
 rewrite/collatzs1_body/collatzs2_body.
-have [|] := eqVneq (l %% 4) 1 => Hl/=.
-- have [|] := eqVneq n' 1 => Hn'/=.
-  + rewrite Hl fmapE bindA.
+have [Hl|?] := eqVneq (l %% 4) 1 => /=.
+  have [|] := eqVneq n' 1 => /=.
+    rewrite Hl fmapE bindA.
     rewrite bindfwB//= => a.
     by rewrite bindA bindretf/=.
-  + have [|] := eqVneq (n' %% 2) 0 => He/=;
-    rewrite fmapE/= bindA bindfwB//= => a;
-    by rewrite bindA bindretf.
-- have [|] := eqVneq n' 1 => Hn' //=.
-  + rewrite ifN //= fmapE bindA.
-    rewrite bindfwB //= => a.
-    by rewrite  bindA bindA bindretf.
-   + have [|] := eqVneq (n' %% 2) 0 => He/=;
-    rewrite fmapE/= bindA bindfwB//= => a;
-    by rewrite bindA bindretf.
+  have [|] := eqVneq (n' %% 2) 0 => /=;
+  rewrite fmapE/= bindA bindfwB//= => a;
+  by rewrite bindA bindretf.
+have [Hn'|_] := eqVneq n' 1 => /=.
+  rewrite Hn' ifN //= fmapE bindA.
+  by under eq_bind do rewrite bindA bindA bindretf.
+have [|] := eqVneq (n' %% 2) 0 => /=;
+rewrite fmapE/= bindA bindfwB//= => a;
+by rewrite bindA bindretf.
 Qed.
