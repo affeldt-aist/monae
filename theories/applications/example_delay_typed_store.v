@@ -82,12 +82,13 @@ Definition factdts_aux_body (r : loc ml_int) (n : nat) : M (unit + nat)%type  :=
         do v <- cget r;
         match n with
           |O => do _ <- cput r v; Ret (inl tt)
-          |S m => do _ <- cput r (n*v); Ret (inr m)
+          |m.+1 => do _ <- cput r (n * v); Ret (inr m)
         end.
 
 Definition factn_aux (n: nat) (r : loc ml_int) :=
   do s <- cget r;
   do _ <- cput r (n`! * s); @ret M _ tt.
+
 Definition factdts_aux (n : nat) (r : loc ml_int) := while (factdts_aux_body r) n.
 
 Lemma factE_aux (n : nat) (r : loc ml_int) : factdts_aux n r ≈ factn_aux n r.
