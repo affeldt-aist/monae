@@ -935,44 +935,11 @@ Qed.
 
 #[global] Add Parametric Morphism A B : while
   with signature (pointwise_relation A (@wBisim M (B + A))) ==> @eq A ==> (@wBisim M B ) as whilemor.
-Proof.
-move => f g Hfg a.
-by apply: (whilewB _ _ _ _ _ Hfg).
-Qed.
+Proof. by move=> f g + a; exact: whilewB. Qed.
 End setoid.
 (*Existing Instances wBisim_rel wBisimext_rel.
 Existing Instances bindmor_Proper whilemor_Proper.
 *)
-
-Section example.
-Variable M : delayMonad.
-
-Lemma testbindfmor (f : nat -> M nat) (d1 d2 : M nat) : d1 ≈ d2 -> d1 >>= f ≈ d2 >>= f.
-Proof.
-move => Hd.
-by rewrite Hd.
-Qed.
-
-Lemma testpointwise (f g : nat -> M nat) : (pointwise_relation nat wBisim f g) <-> forall a, f a ≈ g a.
-Proof. by split;by []. Qed.
-Lemma testbindmmor (f g : nat -> M nat) : (pointwise_relation nat wBisim f g) -> forall d, (d >>= f) ≈ ( d >>= g).
-Proof.
-move => Hfg d.
-by rewrite Hfg.
-Qed.
-(*
-Lemma testbindmmor' (f g : nat -> M nat) : (forall a, f a ≈ g a) -> forall d, (d >>= f) ≈ ( d >>= g).
-Proof.
-move => Hfg d.
-rewrite Hfg.
-Qed.*)
-
-Lemma testwhilepmor (f g : nat -> M (nat + nat)%type) (a : nat) : (pointwise_relation nat wBisim f g) -> while f a ≈ while g a.
-Proof.
-move => Hfg.
-by rewrite Hfg.
-Qed.
-End example.
 
 #[short(type=delayExceptMonad)]
 HB.structure Definition MonadDelayExcept :=
