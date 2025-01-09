@@ -3,8 +3,6 @@ From mathcomp Require Import boolp.
 Require Import preamble hierarchy monad_lib fail_lib state_lib.
 
 Local Open Scope monae_scope.
-Notation "a '≈' b" := (wBisim a b).
-
 Local Open Scope do_notation.
 
 Section delaystatenat_example.
@@ -19,9 +17,7 @@ Definition factds_body m : M (unit + nat)%type :=
 
 Definition factds := while factds_body.
 
-Fixpoint fact n := match n with |O => 1 |m.+1 => n * fact m end.
-
-Lemma factE n : factds n ≈ do s <- get; do _ <- put (fact n * s); Ret tt.
+Lemma factE n : factds n ≈ do s <- get; do _ <- put (n`! * s); Ret tt.
 Proof.
 rewrite/factds/factds_body.
 elim: n => /= [|n' IH].
@@ -38,11 +34,12 @@ apply: wBisim_trans.
 apply: bindfwB => a'.
 apply IH.
 rewrite -!bindA putget !bindA bindretf.
-by rewrite -bindA putput mulnA (mulnC (fact n') _).
+by rewrite -bindA putput mulnA (mulnC n'`! _).
 Qed.
 End delaystatenat_example.
 
 Section delaystateseq_example.
+
 Variable M : delayStateMonad (seq nat).
 
 Definition collatzs1_body nml : M ((nat * nat + nat * nat * nat) + nat * nat * nat)%type :=
@@ -76,19 +73,19 @@ rewrite/collatzs1/collatzs2 -codiagonalE.
 apply whilewB.
 move => [[n' m] l].
 rewrite/collatzs1_body/collatzs2_body.
-case/boolP: (l %% 4 == 1) => Hl/=.
-- case/boolP: (n' == 1) => Hn'/=.
+have [|] := eqVneq (l %% 4) 1 => Hl/=.
+- have [|] := eqVneq n' 1 => Hn'/=.
   + rewrite Hl fmapE bindA.
     rewrite bindfwB//= => a.
     by rewrite bindA bindretf/=.
-  + case/boolP: (n' %% 2 == 0) => He/=;
+  + have [|] := eqVneq (n' %% 2) 0 => He/=;
     rewrite fmapE/= bindA bindfwB//= => a;
     by rewrite bindA bindretf.
-- case/boolP: (n' == 1) => Hn' //=.
+- have [|] := eqVneq n' 1 => Hn' //=.
   + rewrite ifN //= fmapE bindA.
     rewrite bindfwB //= => a.
     by rewrite  bindA bindA bindretf.
-   + case/boolP: (n' %% 2 == 0) => He/=;
+   + have [|] := eqVneq (n' %% 2) 0 => He/=;
     rewrite fmapE/= bindA bindfwB//= => a;
     by rewrite bindA bindretf.
 Qed.

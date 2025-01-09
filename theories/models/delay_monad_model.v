@@ -29,9 +29,9 @@ Proof. by case: m. Qed.
 Lemma left_neutral : BindLaws.left_neutral bind ret.
 Proof. by move=> A B a f; rewrite [LHS]DelayE [RHS]DelayE. Qed.
 CoInductive strongBisim (A : UU0) : M A -> M A -> Prop :=
-| sBRefl (m : M A) : @strongBisim A m m
+| sBRefl (m : M A) : strongBisim A m m
 | sBLater (m m' : M A) :
-  @strongBisim A m m' -> @strongBisim A (DLater m) (DLater m').
+  strongBisim A m m' -> strongBisim A (DLater m) (DLater m').
 Arguments strongBisim [A].
 Arguments sBLater [A].
 Axiom strongBisim_eq : forall A (m m' : M A), strongBisim m m' -> m = m'.
