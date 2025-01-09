@@ -21,8 +21,8 @@ Proof.
 move => n.
 rewrite /factdelay.
 elim: n => [m | n IH m]; rewrite fixpointE bindretf/=.
-- by rewrite muln1.
-- by rewrite mulnA.
+  by rewrite muln1.
+by rewrite mulnA.
 Qed.
 
 Let collatzm_body m n : M (nat + nat)%type :=
@@ -38,10 +38,10 @@ Lemma collatzmwB m n p : delaymul p (collatzm m n) ≈ collatzm (p * m) n.
 Proof.
 rewrite /collatzm /delaymul naturalityE.
 apply: whilewB => q.
-have [|] := eqVneq q 1 => Hs.
+have [Hs|Hns] := eqVneq q 1.
   by rewrite Hs bindretf/= fmapE bindretf/=.
-rewrite /collatzm_body !(ifN_eq _ _ Hs).
-by have [|] := eqVneq (q %% 2) 0 => Hq; rewrite bindretf/= fmapE bindretf.
+rewrite /collatzm_body !(ifN_eq _ _ Hns).
+by have [|] := eqVneq (q %% 2) 0; rewrite bindretf/= fmapE bindretf.
 Qed.
 
 Let minus1_body nm : M ((nat + nat * nat) + nat * nat)%type :=
@@ -92,9 +92,9 @@ move => n.
 rewrite /dividefac1 /dividefac2.
 apply whilewB.
 move => [k l].
-have [|] := eqVneq (l %% 5) 0 => Hl/=.
-- by rewrite Hl.
-- by rewrite !(ifN_eq _ _ Hl) eq_fact_factdelay !bindretf mul1n.
+have [Hl|Hln] := eqVneq (l %% 5) 0 => /=.
+  by rewrite Hl.
+by rewrite !(ifN_eq _ _ Hln) eq_fact_factdelay !bindretf mul1n.
 Qed.
 
 Let fastexp_body nmk : M (nat + nat * nat * nat)%type :=
@@ -177,11 +177,9 @@ Qed.
 Lemma mc91E n m : m <= 101 -> mc91 n m ≈ Ret 91.
 Proof.
 move => H101.
-case/boolP: (90 <= m).
-  move => H89.
+have [H89|] := leqP 90 m.
   move: (conj H89 H101) => /andP Hm.
   by rewrite mc91E_aux // mc91_101E.
-rewrite -leqNgt -ltnS.
 move/ltnW/subnKC.
 set k:= 90 - m.
 clearbody k.
