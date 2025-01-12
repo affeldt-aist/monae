@@ -9,10 +9,7 @@ Section delayexample.
 Variable M : delayMonad.
 
 Let fact_body a : M (nat + nat * nat)%type :=
-  match a with
-  | (O, a2) => Ret (inl a2)
-  | (n'.+1, a2) => Ret (inr (n', a2 * n'.+1))
-  end.
+  if a.1 is m.+1 then Ret (inr (m, a.2 * m.+1)) else Ret (inl a.2).
 Let factdelay := fun nm => while fact_body nm.
 
 Lemma eq_fact_factdelay : forall n m, factdelay (n, m) ≈ Ret (m * n`!).
@@ -42,22 +39,14 @@ by have [|] := eqVneq (q %% 2) 0; rewrite bindretf/= fmapE bindretf.
 Qed.
 
 Let minus1_body nm : M ((nat + nat * nat) + nat * nat)%type :=
-  match nm with
-  | (O, m) => match m with
-             |O => Ret (inl (inl O))
-             |S m' => Ret (inl (inr (m', m')))
-             end
-  | (n'.+1, m) => Ret (inr (n', m))
-  end.
+  if nm.1 is n'.+1 then Ret (inr (n', nm.2))
+                   else if nm.2 is m'.+1 then Ret (inl (inr (m', m')))
+                                         else Ret (inl (inl  O)).
 Let minus1 := fun nm => while (while minus1_body) nm.
 Let minus2_body nm : M (nat + nat * nat)%type :=
-  match nm with
-  | (O, m) => match m with
-            |O => Ret (inl O)
-            |S m' => Ret (inr (m', m'))
-            end
-  | (n'.+1, m) => Ret (inr (n',m))
-  end.
+  if nm.1 is n'.+1 then Ret (inr (n', nm.2))
+                   else if nm.2 is m'.+1 then Ret (inr (m', m'))
+                                         else Ret (inl 0).
 Let minus2 := fun nm => while minus2_body nm.
 
 Lemma eq_minus nm : minus1 nm ≈ minus2 nm.
@@ -71,29 +60,26 @@ by rewrite fmapE bindretf.
 Qed.
 
 Let divide5_body (f : nat -> M nat) nm : M (nat + nat * nat)%type :=
-  match nm with (n, m) =>
-    if m %% 5 == 0 then Ret (inl m)
-    else f n >>= (fun x => Ret (inr (n.+1, x)))
-  end.
+    if nm.2 %% 5 == 0 then Ret (inl nm.2)
+    else f nm.1 >>= (fun x => Ret (inr (nm.1.+1, x))).
 Let dividefac1 n := while (divide5_body (fun n => factdelay (n, 1))) (n, 1).
 Let dividefac2 n := while (divide5_body (fun n => Ret n`!)) (n, 1).
 
-Lemma eq_dividefac : forall n, dividefac1 n ≈ dividefac2 n.
+Lemma eq_dividefac n : dividefac1 n ≈ dividefac2 n.
 Proof.
-move => n.
-rewrite /dividefac1 /dividefac2.
-apply whilewB.
+rewrite /dividefac1/dividefac2/divide5_body.
+apply: whilewB.
 move => [k l].
-have [Hl|Hln] := eqVneq (l %% 5) 0 => /=.
-  by rewrite Hl.
-by rewrite !(ifN_eq _ _ Hln) eq_fact_factdelay !bindretf mul1n.
+have [Hl|Hln] := eqVneq (l %% 5) 0 => //.
+by rewrite eq_fact_factdelay !bindretf mul1n.
 Qed.
 
 Let fastexp_body nmk : M (nat + nat * nat * nat)%type :=
   match nmk with (n, m, k) =>
     if n == 0 then Ret (inl m)
     else (if odd n then Ret (inr (n.-1 , m * k, k))
-          else Ret (inr (n./2, m, k * k) )) end.
+          else Ret (inr (n./2, m, k * k) ))
+  end.
 Let fastexp n m k := while fastexp_body (n, m, k).
 
 Lemma expE n: forall m k, fastexp n m k ≈ Ret (m * expn k n).
