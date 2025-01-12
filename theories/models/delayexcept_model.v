@@ -15,8 +15,8 @@ Variable M : delayMonad.
 Notation DE := (MX unit M).
 Definition DEA {A B} : DE (A + B) -> M ((unit + A) + B )%type :=
   M # (fun uab => match uab with
-                 |inl u => inl (inl u)
-                 |inr ab => match ab with
+                 | inl u => inl (inl u)
+                 | inr ab => match ab with
                             |inl a => inl (inr a)
                             |inr b => inr b
                             end
@@ -58,9 +58,9 @@ Lemma naturalityDEE {A B C} (f : A -> DE (B + A)) (g : B -> DE C) (a : A) :
 @bind DE _ _  (whileDE f a) g ≈ whileDE (fun y => (f y) >>= (sum_rect (fun => DE (C + A)) (DE # inl \o g) (DE # inr \o (@ret DE A )))) a.
 Proof.
 rewrite/whileDE/DEA bindXE naturalityE.
-apply whilewB => a' /=.
+apply: whilewB => a' /=.
 rewrite fmapE fmapE !bindA.
-apply (bindfwB _ _ _ _ (f a')) => uba.
+apply: (bindfwB _ _ _ _ (f a')) => uba.
 case: uba => [u|[b''|a'']] /=.
 - by rewrite !bindretf /= fmapE bindretf.
 - rewrite !bindretf /= fmapE /= fmapE bindA.
@@ -75,16 +75,15 @@ rewrite/whileDE/DEA/=.
 set g := {2} (fun uab => _).
 setoid_symmetry.
 apply: wBisim_trans.
-- apply whilewB => a' /=.
+  apply whilewB => a' /=.
   set m := {1}(while _ ).
   by rewrite (fmapE g (m a')) naturalityE //.
-- rewrite -codiagonalE.
-  apply whilewB => a' /=.
-  rewrite !fmapE !bindA.
-  apply bindfwB => ubaa.
-  case: ubaa => [u|[[b|a1]|a2]] /= ; by rewrite  !bindretf /= fmapE bindretf /= bindretf /=.
+rewrite -codiagonalE.
+apply whilewB => a' /=.
+rewrite !fmapE !bindA.
+apply bindfwB => ubaa.
+case: ubaa => [u|[[b|a1]|a2]] /= ; by rewrite  !bindretf /= fmapE bindretf /= bindretf /=.
 Qed.
-
 Lemma whilewBDE {A B} (f g : A -> DE (B + A)) (a : A) : (forall a, (f a) ≈ (g a)) -> whileDE f a ≈ whileDE g a.
 Proof.
 move => Hfg.
@@ -94,6 +93,7 @@ rewrite !fmapE.
 apply bindmwB.
 by apply Hfg.
 Qed.
+
 HB.instance Definition _ := MonadExcept.on DE.
 HB.instance Definition _ := @isMonadDelay.Build DE
   (@whileDE) (@wBisimDE) wBisimDE_refl wBisimDE_sym wBisimDE_trans (@fixpointDEE) (@naturalityDEE) (@codiagonalDEE)  (@bindmwBDE) (@bindfwBDE) (@whilewBDE).

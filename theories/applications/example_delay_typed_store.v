@@ -74,7 +74,9 @@ Definition delayTypedStoreMonad (N : monad) :=
   delaytypedStoreMonad ml_type N monad_model.locT_nat.
 
 Section factorial.
+
 Variables (N : monad) (M : delayTypedStoreMonad N).
+
 Local Notation coq_type := hierarchy.coq_type.
 Local Open Scope do_notation.
 
@@ -84,11 +86,9 @@ Definition factdts_aux_body (r : loc ml_int) (n : nat) : M (unit + nat)%type  :=
           |O => do _ <- cput r v; Ret (inl tt)
           |m.+1 => do _ <- cput r (n * v); Ret (inr m)
         end.
-
 Definition factn_aux (n: nat) (r : loc ml_int) :=
   do s <- cget r;
   do _ <- cput r (n`! * s); @ret M _ tt.
-
 Definition factdts_aux (n : nat) (r : loc ml_int) := while (factdts_aux_body r) n.
 
 Lemma factE_aux (n : nat) (r : loc ml_int) : factdts_aux n r ≈ factn_aux n r.
