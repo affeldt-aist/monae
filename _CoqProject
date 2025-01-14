@@ -34,6 +34,7 @@ theories/applications/example_relabeling.v
 theories/applications/example_quicksort.v
 theories/applications/example_iquicksort.v
 theories/applications/example_monty.v
+theories/applications/typed_store_universe.v
 theories/applications/example_typed_store.v
 theories/applications/smallstep.v
 theories/applications/example_transformer.v
