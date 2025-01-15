@@ -34,7 +34,10 @@ CoInductive strongBisim (A : UU0) : M A -> M A -> Prop :=
   strongBisim m m' -> strongBisim (DLater m) (DLater m').
 Arguments strongBisim [A].
 Arguments sBLater [A].
+
+#[deprecated(since = "0.7.3", note = "non standard axiom for strong bisimilarity")]
 Axiom strongBisim_eq : forall A (m m' : M A), strongBisim m m' -> m = m'.
+
 CoFixpoint right_neutral_bisim A (m : M A) : strongBisim (bind m (@ret A)) m.
 case: m=> [a|m].
   rewrite [X in strongBisim X]DelayE /=.
