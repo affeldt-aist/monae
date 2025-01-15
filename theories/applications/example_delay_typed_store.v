@@ -74,49 +74,40 @@ Definition delayTypedStoreMonad (N : monad) :=
   delaytypedStoreMonad ml_type N monad_model.locT_nat.
 
 Section factorial.
-
 Variables (N : monad) (M : delayTypedStoreMonad N).
 
 Local Notation coq_type := hierarchy.coq_type.
 Local Open Scope do_notation.
 
-Definition factdts_aux_body (r : loc ml_int) (n : nat) : M (unit + nat)%type  :=
-        do v <- cget r;
-        match n with
-          |O => do _ <- cput r v; Ret (inl tt)
-          |m.+1 => do _ <- cput r (n * v); Ret (inr m)
-        end.
-Definition factn_aux (n: nat) (r : loc ml_int) :=
-  do s <- cget r;
-  do _ <- cput r (n`! * s); @ret M _ tt.
-Definition factdts_aux (n : nat) (r : loc ml_int) := while (factdts_aux_body r) n.
+Let factdts_body (r : loc ml_int) n : M (unit + nat)%type :=
+  do v <- cget r;
+  if n is m.+1 then do _ <- cput r (n * v); Ret (inr m)
+               else Ret (inl tt).
 
-Lemma factE_aux (n : nat) (r : loc ml_int) : factdts_aux n r ≈ factn_aux n r.
+Let while_factdtsE n r :
+  while (factdts_body r) n ≈ do s <- cget r; cput r (n`! * s).
 Proof.
-rewrite/factdts_aux/factn_aux.
 elim: n => /= [|n' IH].
   rewrite fixpointE/= !bindA.
-  by under eq_bind => s do rewrite bindA bindretf/= -{1}(mul1n s).
+  under [x in _ ≈ x]eq_bind => s do rewrite fact0 mul1n.
+  rewrite cgetputskip.
+  by under eq_bind do rewrite bindretf.
 rewrite fixpointE/= bindA.
 under eq_bind => s do rewrite bindA bindretf/=.
 setoid_rewrite IH.
-by under eq_bind => x do rewrite cputget -bindA cputput mulnA (mulnC n'`! _).
+by under eq_bind do rewrite cputget cputput mulnA (mulnC n'`! _).
 Qed.
 
-Definition factdts n := do r <- cnew ml_int 1;
-                        do _ <- factdts_aux n r ;
-                        do v <- cget r; Ret v.
-Definition factn n := do r <- cnew ml_int n`!;
-                      do v <- cget r; @ret M _ v.
+Definition factdts n :=
+  do r <- cnew ml_int 1;
+  do _ <- while (factdts_body r) n ;
+  cget r.
 
-Lemma factE n : factdts n ≈ factn n.
+Lemma factdtsE n : factdts n ≈ cnew ml_int n`! >> Ret n`!.
 Proof.
-rewrite/factdts/factn.
-setoid_rewrite factE_aux.
-under eq_bind => r.
-  rewrite bindA.
-  under eq_bind => x do rewrite bindA bindretf.
-  over.
-by rewrite cnewget cnewput muln1.
+rewrite/factdts.
+setoid_rewrite factdts_loopE.
+under eq_bind do rewrite bindA.
+by rewrite cnewget cnewput muln1 cnewgetret.
 Qed.
 End factorial.
