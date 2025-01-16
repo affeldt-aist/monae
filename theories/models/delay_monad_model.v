@@ -282,8 +282,6 @@ move => d IH //=.
 by rewrite IH wBisim_DLater.
 Qed.
 
-Section wBisims.
-Import boolp.
 Definition wBisims (A : UU0) (d1 d2 : M A) : Prop :=
   exists n, steps n d1 = steps n d2.
 Lemma wBisims_refl A (a : M A) : wBisims a a.
@@ -656,7 +654,6 @@ Lemma uniform {A B C} (f:A -> Delay(B + A)) (g: C -> Delay (B + C)) (h: C -> Del
   forall (z:C),(h z) >>= f  ≈s ( (g z) >>= (sum_functin ((Delay # inl) \o (fun (y:B) => DNow y)(*ret*)) ((Delay # inr) \o h ))) -> forall (z:C), (h z) >>= (while f)  ≈s  while g z. Abort.*)
 HB.instance Definition _ := @isMonadDelay.Build M
   (@while) wBisim wBisim_refl wBisim_sym wBisim_trans (@fixpointE) (@naturalityE) (@codiagonalE) (@bindmwB) (@bindfwB) (@whilewB).
-End wBisims.
 End delayops.
 End DelayOps.
 HB.export DelayOps.
