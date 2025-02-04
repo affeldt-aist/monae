@@ -5,7 +5,6 @@ Ltac typeof X := type of X.
 Require Import ssrmatching Reals JMeq.
 From mathcomp Require Import all_ssreflect.
 From mathcomp Require boolp.
-From infotheo Require Import Reals_ext.
 Require Import preamble hierarchy.
 
 (******************************************************************************)

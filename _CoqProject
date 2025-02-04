@@ -35,3 +35,4 @@ theories/applications/category_ext.v
 theories/all_monae.v
 
 -R . monae
+-Q ../../infotheo-dev/infotheo infotheo
