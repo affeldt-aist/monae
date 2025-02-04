@@ -1,4 +1,5 @@
 From mathcomp Require Import all_ssreflect.
+From HB Require Import structures.
 Require Import monad_transformer hierarchy delay_monad_model delayexcept_model.
 
 Set Implicit Arguments.
@@ -12,21 +13,19 @@ Notation M := (MX unit Delay).
 Notation "a '≈e' b" := (wBisimDE a b) (at level 70).
 Hint Extern 0 (wBisimDE _ _) => setoid_reflexivity.
 
-Definition sum_f A B (f : A -> B) := sum_rect (fun => B) f f.
-
 (*Equality between hierarchy.while and delay_monad_model.while*)
 Lemma whileDEE A B (body : A -> M (B + A)) x :
   whileDE body x = while (@DEA Delay _ _ \o body) x.
 Proof. by []. Qed.
-
-Lemma partial_correctness X x p (body : X -> M (X + X)) :
+Check assert.
+Lemma pcorrect X x p (f : X -> M (X + X)) :
    assert p x ≈e @ret M _ x  ->
    (forall x, assert p x ≈e @ret M _ x ->
-          body x >>= sum_f (assert p) ≈e body x >>= sum_f Ret) ->
-   bassert p (whileDE body x) ≈e whileDE body x.
+          f x >>= sum_rect (fun => M X) (assert p) (assert p) ≈e f x >>= sum_rect (fun => M X) Ret Ret) ->
+   bassert p (whileDE f x) ≈e whileDE f x.
 Proof.
 move => Hx HInv.
-case: (TerminatesP (whileDE body x)) =>
+case: (TerminatesP (whileDE f x)) =>
   [[[u' /iff_Terminates_wBret/iff_wBisims_wBisim Hs
     |x' /iff_Terminates_wBret [n Hs]]]|/iff_Diverges_wBisimspin Hs].
 - by rewrite/bassert bindXE Hs bindretf.
@@ -34,7 +33,7 @@ case: (TerminatesP (whileDE body x)) =>
   move: x x' Hx Hs.
   elim: n => [/=|n IH] x x' Hx;
              rewrite whileDEE whileE /DEA functions.compE fmapE.
-    case Hb: (body x) => [uxx|].
+    case Hb: (f x) => [uxx|].
       case: uxx Hb => [u//|[y/=|y/=]] Hb;
                       rewrite bindretf/=bindretf.
       - by rewrite/bassert bindXE bindretf.
@@ -43,8 +42,8 @@ case: (TerminatesP (whileDE body x)) =>
         by rewrite Hb !bindretf /=.
       - by rewrite /retX => contr.
     by rewrite !bindDmf/retX => contr.
-  set d := body x.
-  have : d ≈ body x by [].
+  set d := f x.
+  have : d ≈ f x by [].
   move: d.
   cofix CIH => d.
   case Hb: d => [uxx|d'].
@@ -70,3 +69,23 @@ case: (TerminatesP (whileDE body x)) =>
 rewrite/bassert bindXE Hs.
 by apply/iff_Diverges_wBisimspin/Diverges_bindspinf.
 Qed.
+
+HB.instance Definition _ := @isMonadDelayAssert.Build M (@pcorrect).
+
+Section bubblesort.
+Let testseq := 8::4::3::7::6::5::2::1::nil.
+Fixpoint sortl (l : seq nat) :=
+  match l with
+  | nil => nil
+  | n :: tl => match tl with
+              | nil => l
+              | m :: tl' => if m < n then m :: n :: sortl tl'
+                                    else n :: sortl tl
+              end
+  end.
+Compute (sortl testseq).
+Definition bubblesort_body (l : seq nat) : M (seq nat + seq nat) :=
+  if l == sortl l then Ret (inl l) else Ret (inr (sortl l)).
+Definition bubblesort l := whileDE bubblesort_body l.
+Compute (steps 100 (bubblesort testseq)).
+End bubblesort.
