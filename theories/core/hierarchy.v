@@ -945,6 +945,18 @@ Existing Instances bindmor_Proper whilemor_Proper.
 HB.structure Definition MonadDelayExcept :=
   { M of MonadDelay M & MonadExcept M }.
 
+HB.mixin Record isMonadDelayAssert (M : UU0 -> UU0)
+    of MonadDelayExcept M := {
+  pcorrect : forall (X : UU0) (x : X) (p : pred X) (f : X -> M (X + X)%type) ,
+  assert p x ≈ @ret M _ x  ->
+   (forall x, assert p x ≈ @ret M _ x ->
+          f x >>= sum_rect (fun => M X) (assert p) (assert p) ≈ f x >>= sum_rect (fun => M X) Ret Ret) ->
+   bassert p (while f x) ≈ while f x
+ }.
+
+#[short(type=delayAssertMonad)]
+HB.structure Definition MonadDelayAssert :=
+  { M of isMonadDelayAssert M &}.
 
 HB.mixin Record isMonadContinuation (M : UU0 -> UU0) of Monad M := {
 (* NB: interface is wip *)
