@@ -1,9 +1,7 @@
 (* monae: Monadic equational reasoning in Coq                                 *)
 (* Copyright (C) 2020 monae authors, license: LGPL-2.1-or-later               *)
-Require Import ZArith.
-From mathcomp Require Import all_ssreflect.
+From mathcomp Require Import all_ssreflect ssralg ssrint.
 From mathcomp Require boolp.
-From infotheo Require Import ssrZ.
 Require Import preamble hierarchy monad_lib fail_lib state_lib.
 
 (******************************************************************************)
@@ -16,41 +14,42 @@ Require Import preamble hierarchy monad_lib fail_lib state_lib.
 (* Monadic Program Derivation, TR-IIS-19-003                                  *)
 (******************************************************************************)
 
+Local Open Scope ring_scope.
 Local Open Scope monae_scope.
 
 Section nqueens_gibbons2011icfp.
 Local Notation "A `2" := (Squaring A) (at level 2).
 
-Definition place n {B} (rs : seq B) := zip (map Z_of_nat (iota 0 n)) rs.
+Definition place n {B} (rs : seq B) := zip (map Posz (iota 0 n)) rs.
 
 Definition empty {B} : (seq B * seq B):= ([::] , [::]).
 
 (* input: queen position, already threatened up/down diagonals
    output: safe or not, update up/down diagonals *)
-Definition test : Z`2 -> (seq Z)`2 -> bool * (seq Z)`2 :=
+Definition test : int`2 -> (seq int)`2 -> bool * (seq int)`2 :=
   fun '(c, r) '(upds, downs) =>
-    let (u, d) := (r - c, r + c)%Z in
+    let (u, d) := (r - c, r + c) in
     ((u \notin upds) && (d \notin downs), (u :: upds, d :: downs)).
 
 (* section 6.1 *)
 Section purely_functional.
 
-Definition start1 : (seq Z)`2 -> bool * (seq Z)`2 :=
+Definition start1 : (seq int)`2 -> bool * (seq int)`2 :=
   fun updowns => (true, updowns).
 
-Definition step1 : Z`2 -> (bool * (seq Z)`2) -> bool * (seq Z)`2 :=
+Definition step1 : int`2 -> (bool * (seq int)`2) -> bool * (seq int)`2 :=
   fun cr '(restOK, updowns) =>
     let (thisOK, updowns') := test cr updowns in
     (thisOK && restOK, updowns').
 
 (* over the list of column-row pairs
-   bool * (seq Z)`2: queens to the right safe or not,
+   bool * (seq int)`2: queens to the right safe or not,
                        up/down diagonals under threat from the queens so far *)
-Definition safe1 : (seq Z)`2 -> seq Z`2 -> bool * (seq Z)`2 :=
+Definition safe1 : (seq int)`2 -> seq int`2 -> bool * (seq int)`2 :=
   foldr step1 \o start1.
 
-Definition queens {M : nondetMonad} n : M (seq Z) :=
-  perms (map Z_of_nat (iota 0 n)) >>=
+Definition queens {M : nondetMonad} n : M (seq int) :=
+  perms (map Posz (iota 0 n)) >>=
      assert (fun x => (safe1 empty (place n x)).1).
 
 End purely_functional.
@@ -59,17 +58,17 @@ End purely_functional.
 (* statefully constructing the sets of up/down diagonals threatened by the queens so far *)
 Section statefully.
 
-Variable M : stateMonad (seq Z)`2.
+Variable M : stateMonad (seq int)`2.
 
 Definition start2 : M bool := Ret true.
 
-Definition step2 (cr : Z`2) (k : M bool) : M bool :=
+Definition step2 (cr : int`2) (k : M bool) : M bool :=
   (do b' <- k ;
    do uds <- get;
    let (b, uds') := test cr uds in
    put uds' >> Ret (b && b'))%Do.
 
-Definition safe2 : seq Z`2 -> M bool :=
+Definition safe2 : seq int`2 -> M bool :=
   foldr step2 start2.
 
 Lemma safe2E crs :
@@ -154,7 +153,7 @@ Arguments start2 {M}.
 
 Section safe_reification.
 
-Variable M : stateReifyMonad (seq Z)`2.
+Variable M : stateReifyMonad (seq int)`2.
 
 Lemma reify_safe2 crs updowns : reify (safe2 crs : M _) updowns = Some (safe1 updowns crs).
 Proof.
@@ -168,11 +167,11 @@ End safe_reification.
 Section queens_statefully_nondeterministically.
 Local Open Scope do_notation.
 
-Variable M : nondetStateMonad (seq Z)`2.
+Variable M : nondetStateMonad (seq int)`2.
 
-Definition queens_state_nondeter n : M (seq Z) :=
+Definition queens_state_nondeter n : M (seq int) :=
   do s <- get ;
-    do rs <- perms (map Z_of_nat (iota 0 n));
+    do rs <- perms (map Posz (iota 0 n));
       put empty >>
         (do ok <- safe2 (place n rs) ;
              (put s >> guard ok)) >> Ret rs.
@@ -205,11 +204,11 @@ Arguments queens_state_nondeter {M}.
 (* section 6.2 *)
 Section queens_exploratively.
 Local Open Scope do_notation.
-Variable M : nondetStateMonad (seq Z)`2.
+Variable M : nondetStateMonad (seq int)`2.
 
 Definition queens_explor n : M _ :=
   do s <- get;
-    do rs <- perms (map Z_of_nat (iota 0 n));
+    do rs <- perms (map Posz (iota 0 n));
       put empty >>
         (do ok <- safe2 (place n rs) ;
              (guard ok >> put s)) >> Ret rs.
@@ -232,7 +231,7 @@ Definition safe3 crs : M _ := safe2 crs >>= fun b => guard b.
 
 Definition queens_safe3 n : M _ :=
   do s <- get;
-    (do rs <- perms (map Z_of_nat (iota 0 n)) ;
+    (do rs <- perms (map Posz (iota 0 n)) ;
       put empty >> safe3 (place n rs) >> put s >> Ret rs).
 
 Lemma queens_safe3E n : queens_safe3 n = queens_explor n :> M _.
@@ -310,8 +309,8 @@ Section nqueens_mu2019tr3.
 Section queens_definition.
 
 (* section 3.3 *)
-Definition ups s i := zipWith Zplus (map Z_of_nat (iota i (size s))) s.
-Definition downs s i := zipWith Zminus (map Z_of_nat (iota i (size s))) s.
+Definition ups s i := zipWith (+%R) (map Posz (iota i (size s))) s.
+Definition downs s i := zipWith (fun x y => x - y) (map Posz (iota i (size s))) s.
 Definition safe s := uniq (ups s 0) && uniq (downs s 0).
 
 Definition queens_example := [:: 3; 5; 7; 1; 6; 0; 2; 4]%Z.
@@ -319,10 +318,10 @@ Definition queens_example := [:: 3; 5; 7; 1; 6; 0; 2; 4]%Z.
 Eval compute in safe queens_example.
 *)
 
-Definition mu_queens {M : nondetMonad} n : M (seq Z) :=
-  perms (map Z_of_nat (iota 0 n)) >>= assert safe.
+Definition mu_queens {M : nondetMonad} n : M (seq int) :=
+  perms (map Posz (iota 0 n)) >>= assert safe.
 
-Definition safeAcc i (us ds : seq Z) (xs : seq Z) :=
+Definition safeAcc i (us ds : seq int) (xs : seq int) :=
   let us' := ups xs i in let ds' := downs xs i in
   uniq us' && uniq ds' && all (fun x => x \notin us) us' && all (fun x => x \notin ds) ds'.
 
@@ -332,27 +331,27 @@ move=> s; rewrite /safe /safeAcc.
 by rewrite (sub_all _ (@all_predT _ _)) // (sub_all _ (@all_predT _ _)) // !andbT.
 Qed.
 
-Definition queens_ok (i_xus_yds : Z * seq Z * seq Z) :=
+Definition queens_ok (i_xus_yds : int * seq int * seq int) :=
   let: (_, xus, yds) := i_xus_yds in
   match xus, yds with
   | x :: us, y :: ds => (x \notin us) && (y \notin ds)
   | _, _ => false
   end.
 
-Definition queens_next i_us_ds x :=
-  let: (i, us, ds) := i_us_ds in (i + 1, (i + x) :: us, (i - x) :: ds)%Z.
+Definition queens_next i_us_ds (x : int) :=
+  let: (i, us, ds) := i_us_ds in (i + 1, (i + x) :: us, (i - x) :: ds).
 
-Definition safeAcc_scanl i (us ds : seq Z) :=
+Definition safeAcc_scanl i (us ds : seq int) :=
   let ok i_xus_yds := queens_ok i_xus_yds in
   let op i_us_ds x := queens_next i_us_ds x in
   all ok \o scanl op (i, us, ds).
 
-Lemma safeAccE i a b : safeAcc i a b =1 safeAcc_scanl (Z_of_nat i) a b.
+Lemma safeAccE i a b : safeAcc i a b =1 safeAcc_scanl (Posz i) a b.
 Proof.
 move=> s; elim: s i a b => // h t IH i a b.
 rewrite /safeAcc_scanl /=.
-move: (IH i.+1 ((Z.of_nat i + h) :: a) ((Z.of_nat i - h) :: b))%Z.
-rewrite (_ : Z.of_nat i.+1 = (Z.of_nat i) + 1)%Z; last by rewrite -addn1 Nat2Z.inj_add.
+move: (IH i.+1 ((Posz i + h) :: a) ((Posz i - h) :: b))%Z.
+rewrite (_ : Posz i.+1 = (Posz i) + 1)%Z; last by rewrite -addn1.  
 rewrite /safeAcc_scanl => /= <-.
 rewrite /safeAcc /= !andbA /zipWith /=.
 set A := uniq _. set B := uniq _. set sa := map _ _. set sb := map _ _.
@@ -363,16 +362,16 @@ rewrite -[in LHS]andbC -!andbA; congr andb.
 do 2 rewrite ![in RHS]andbA [in RHS]andbC.
 congr andb.
 rewrite [in LHS]andbCA -![in RHS]andbA; congr andb.
-have H : forall (op : Z -> Z -> Z) y s, all (fun x : Z => x \notin op (Z_of_nat i) h :: y) s =
-  all (fun x : Z => x \notin y) s && (op (Z_of_nat i) h \notin s).
+have H : forall (op : int -> int -> int) y s, all (fun x : int => x \notin op (Posz i) h :: y) s =
+  all (fun x : int => x \notin y) s && (op (Posz i) h \notin s).
   move=> op y; elim => //= s1 s2 ih /=; rewrite ih !inE !negb_or.
   rewrite -andbA andbCA !andbA; congr (_ && _); rewrite -!andbA; congr(_ && _).
   by rewrite andbC eq_sym.
-by rewrite andbA andbCA -!andbA andbCA !andbA -H -andbA -H.
+by rewrite andbA andbCA -!andbA andbCA !andbA -H -andbA -(H (fun x y => x - y)).
 Qed.
 
 Lemma mu_queensE {M : nondetMonad} n : mu_queens n =
-  perms (map Z_of_nat (iota 0 n)) >>= assert (safeAcc_scanl 0 [::] [::]) :> M _.
+  perms (map Posz (iota 0 n)) >>= assert (safeAcc_scanl 0 [::] [::]) :> M _.
 Proof.
 rewrite /mu_queens; bind_ext => s.
 by rewrite assertE (safeE s) safeAccE -assertE.
@@ -382,9 +381,9 @@ End queens_definition.
 
 Section section5a.
 
-Variable M : nondetStateMonad (Z * seq Z * seq Z)%type.
+Variable M : nondetStateMonad (int * seq int * seq int)%type.
 
-Definition opdot_queens : Z -> M (seq Z) -> M (seq Z) := opdot queens_next queens_ok.
+Definition opdot_queens : int -> M (seq int) -> M (seq int) := opdot queens_next queens_ok.
 
 Lemma corollary45 s : assert (safeAcc_scanl 0 [::] [::]) s =
   protect (put (0%Z, [::], [::]) >> foldr opdot_queens (Ret [::]) s).
@@ -396,19 +395,19 @@ bind_ext; case.
 by rewrite -theorem44 bindA.
 Qed.
 
-Definition queensBody (xs : seq Z) : M (seq Z) :=
+Definition queensBody (xs : seq int) : M (seq int) :=
   perms xs >>= foldr opdot_queens (Ret [::]).
 
 Lemma mu_queens_state_nondeter n : mu_queens n =
-  protect (put (0, [::], [::])%Z >> queensBody (map Z_of_nat (iota 0 n))).
+  protect (put (0, [::], [::])%Z >> queensBody (map Posz (iota 0 n))).
 Proof.
 rewrite mu_queensE.
-transitivity (perms (map Z.of_nat (iota 0 n)) >>= (fun xs =>
+transitivity (perms (map Posz (iota 0 n)) >>= (fun xs =>
     protect (put (0, [::], [::])%Z >> foldr opdot_queens (Ret [::]) xs))).
   bind_ext => s /=.
   exact: corollary45.
 transitivity (protect (put (0, [::], [::])%Z >>
-    perms (map Z.of_nat (iota 0 n)) >>= foldr opdot_queens (Ret [::]))).
+    perms (map Posz (iota 0 n)) >>= foldr opdot_queens (Ret [::]))).
   rewrite -getpermsC /protect; bind_ext => s.
   rewrite !bindA putpermsC.
   by under eq_bind do rewrite bindA.
@@ -418,20 +417,20 @@ Qed.
 
 End section5a.
 
-Definition seed_select {M : nondetStateMonad (Z * seq Z * seq Z)%type} :=
-  fun (p : pred (seq Z)) (f : seq Z -> M (Z * seq Z)%type)
-  (a b : seq Z) => size a < size b.
+Definition seed_select {M : nondetStateMonad (int * seq int * seq int)%type} :=
+  fun (p : pred (seq int)) (f : seq int -> M (int * seq int)%type)
+  (a b : seq int) => size a < size b.
 
 Section theorem51.
 Local Open Scope do_notation.
-Variables (M : nondetStateMonad (Z * seq Z * seq Z)%type).
+Variables (M : nondetStateMonad (int * seq int * seq int)%type).
 
 Local Open Scope mprog.
 
 Notation unfoldM := (unfoldM (@well_founded_size _)).
 
 Let op := @opdot_queens M.
-Let p := @nilp Z.
+Let p := @nilp int.
 
 Lemma base_case y : p y -> (unfoldM p select >=> foldr op (Ret [::])) y = Ret [::].
 Proof.
@@ -502,7 +501,7 @@ rewrite {1}/op /opdot_queens /opdot.
 rewrite nondetState_commute; last first.
   (* TODO: automate? *)
   rewrite fmapE.
-  case: (unfoldM_isNondet (@select_isNondet _ M Z) (@decr_size_select M _) x.2).
+  case: (unfoldM_isNondet (@select_isNondet _ M int) (@decr_size_select M _) x.2).
   move=> m <-.
   by exists (ndBind m (fun y => ndRet (x.1 :: y))).
 rewrite {2}/op /opdot_queens /opdot.
@@ -510,7 +509,7 @@ bind_ext => st.
 rewrite nondetState_commute //; last first.
   (* TODO: automate? *)
   rewrite fmapE.
-  case: (unfoldM_isNondet (@select_isNondet _ M Z) (@decr_size_select _ _) x.2).
+  case: (unfoldM_isNondet (@select_isNondet _ M int) (@decr_size_select _ _) x.2).
   move=> m <-.
   by exists (ndBind m (fun y => ndRet (x.1 :: y))).
 bind_ext; case.
@@ -521,7 +520,7 @@ Qed.
 End theorem51.
 
 Section section52.
-Variables (M : nondetStateMonad (Z * seq Z * seq Z)%type).
+Variables (M : nondetStateMonad (int * seq int * seq int)%type).
 
 Lemma queensBodyE : queensBody M =
   hyloM (@opdot_queens M) [::] (@nilp _) select seed_select (@well_founded_size _).
