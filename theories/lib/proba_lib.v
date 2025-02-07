@@ -3,7 +3,7 @@
 From HB Require Import structures.
 From mathcomp Require Import all_ssreflect ssralg ssrnum.
 From mathcomp Require boolp.
-From mathcomp Require Import reals mathcomp_extra Rstruct lra ring.
+From mathcomp Require Import reals mathcomp_extra lra ring.
 From infotheo Require Import realType_ext.
 From infotheo Require Import proba convex necset.
 From infotheo Require Import fdist.
@@ -328,7 +328,6 @@ Qed.
 Section arbcoin_spec_convexity.
 Local Open Scope latt_scope.
 Local Open Scope convex_scope.
-Local Open Scope R_scope.
 
 (* TODO? : move magnified_weight to infotheo.convex *)
 Lemma magnified_weight_proof (p q r : {prob R}) :

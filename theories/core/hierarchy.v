@@ -2,7 +2,7 @@
 (* Copyright (C) 2020 monae authors, license: LGPL-2.1-or-later               *)
 Ltac typeof X := type of X.
 
-Require Import ssrmatching Reals JMeq.
+Require Import ssrmatching JMeq.
 From mathcomp Require Import all_ssreflect ssralg ssrnum.
 From mathcomp Require boolp.
 From mathcomp Require Import mathcomp_extra reals.

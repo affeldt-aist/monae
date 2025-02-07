@@ -721,8 +721,6 @@ Variables (T : Type) (X : gcm (gcm T)).
 Import category.
 Local Open Scope convex_scope.
 
-STOP
-
 Lemma gcm_joinE : Join X = necset_join X.
 Proof.
 apply/necset_ext.
@@ -733,7 +731,7 @@ set E := epsC _; have->: E = [hom idfun] by apply/hom_ext; rewrite epsCE.
 rewrite functor_id_hom.
 rewrite !functor_o functor_id !compfid.
 set F1J := F1 # _.
-have-> : F1J = @necset_join.F1join0 _ :> (_ -> _).
+have-> : F1J = @necset_join.F1join0 _ _ :> (_ -> _).
 - apply funext=> x; apply necset_ext=> /=.
   rewrite /F1J /= /necset_join.F1join0' /=.
   cbn.
@@ -749,19 +747,20 @@ End P_delta_category_monad.
 Require proba_monad_model.
 
 Section probMonad_out_of_F0U0.
+Variable R : realType.
 Import category.
 (* probability monad built directly *)
 Definition M := proba_monad_model.MonadProbModel.t.
 (* probability monad built using adjunctions *)
 Definition N := [the hierarchy.Monad.Exports.monad of
-  Monad_of_category_monad.acto (Monad_of_adjoint_functors Aprob)].
+  Monad_of_category_monad.acto (Monad_of_adjoint_functors (Aprob R))].
 
-Lemma actmE T : N T = M T. Proof. by []. Qed.
+Lemma actmE T : N T = M R T. Proof. by []. Qed.
 
 Import comps_notation hierarchy.
 Local Open Scope monae_scope.
 
-Lemma JoinE T : (Join : (N \o N) T -> N T) = (Join : (M \o M) T -> M T).
+Lemma JoinE T : (Join : (N \o N) T -> N T) = (Join : (M R \o M R) T -> M R T).
 Proof.
 apply funext => t /=.
 rewrite /join_.
@@ -774,7 +773,7 @@ congr fsdistbind.
 by apply funext => x; rewrite fsdist1bind.
 Qed.
 
-Lemma RetE T : (Ret : idfun T -> N T) = (Ret : FId T -> M T).
+Lemma RetE T : (Ret : idfun T -> N T) = (Ret : FId T -> M R T).
 Proof.
 apply funext => t /=.
 rewrite /ret_.

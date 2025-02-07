@@ -1,8 +1,5 @@
 (* monae: Monadic equational reasoning in Coq                                 *)
 (* Copyright (C) 2023 monae authors, license: LGPL-2.1-or-later               *)
-Ltac typeof X := type of X.
-
-Require Import ssrmatching Reals JMeq.
 From mathcomp Require Import all_ssreflect.
 From mathcomp Require boolp.
 Require Import preamble hierarchy.
