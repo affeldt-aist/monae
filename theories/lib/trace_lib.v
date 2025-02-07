@@ -21,7 +21,6 @@ Local Open Scope ring_scope.
 
 Section statetrace_program_equivalence_example.
 Local Open Scope do_notation.
-
 Variable M : stateTraceMonad int nat.
 
 (* NB: `| _ | = absz from ssrint. Not Num.norm from ssrnum. *)
