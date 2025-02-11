@@ -903,6 +903,9 @@ HB.mixin Record isMonadDelay (M : UU0 -> UU0) of Monad M := {
   (forall a, wBisim (f a) (g a)) -> wBisim (d >>= f) (d >>= g);
   whilewB: forall (A B : UU0) (f g : A -> M ((B + A))%type) (a : A),
   (forall a, wBisim (f a) (g a)) -> wBisim (while f a) (while g a);
+  uniformE : forall (A B C : UU0) (f : A -> M (B + A)%type) (g : C -> M (B + C)%type) (h : C -> A),
+  (forall c, (f (h c) = (g c >>= sum_rect (fun => M (B + A)%type) ((M # inl) \o Ret) ((M # inr) \o Ret \o h)))) ->
+  forall c, wBisim ((while f) (h c)) (while g c);
 }.
 
 #[short(type=delayMonad)]
@@ -932,7 +935,7 @@ apply: wBisim_trans.
 - apply: (bindmwB _ _ _ _ _ Hxy).
 - apply: (bindfwB _ _ _ _ y Hfg).
 Qed.
-
+About pointwise_relation.
 #[global] Add Parametric Morphism A B : while
   with signature (pointwise_relation A (@wBisim M (B + A))) ==> @eq A ==> (@wBisim M B ) as whilemor.
 Proof. by move=> f g + a; exact: whilewB. Qed.
@@ -950,7 +953,7 @@ HB.mixin Record isMonadDelayAssert (M : UU0 -> UU0)
   pcorrect : forall (X : UU0) (x : X) (p : pred X) (f : X -> M (X + X)%type) ,
   assert p x ≈ @ret M _ x  ->
    (forall x, assert p x ≈ @ret M _ x ->
-          f x >>= sum_rect (fun => M X) (assert p) (assert p) ≈ f x >>= sum_rect (fun => M X) Ret Ret) ->
+    f x >>= sum_rect (fun => M X) (assert p) (assert p) ≈ f x >>= sum_rect (fun => M X) Ret Ret) ->
    bassert p (while f x) ≈ while f x
  }.
 

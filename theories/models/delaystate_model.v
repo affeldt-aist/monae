@@ -162,9 +162,25 @@ Proof. by rewrite /wBisimDS => Hd s /=;rewrite !MS_bindE;apply bindmwB. Qed.
 Lemma bindfwBDS {A B} (f g : A -> DS B) (d : DS A) : (forall a, wBisimDS (f a) (g a)) -> wBisimDS (d >>= f) (d >>= g).
 Proof. by rewrite /wBisimDS => Hfg s /=; rewrite !MS_bindE /=; apply bindfwB => a's'; case: a's'. Qed.
 
+Lemma uniformEDS {A B C} (f : A -> DS (B + A)) (g : C -> DS (B + C)) (h : C -> A) :
+  (forall c, f (h c) = g c >>= sum_rect (fun => DS (B + A)) ((DS # inl) \o Ret) ((DS # inr) \o Ret \o h)) ->
+  forall c, wBisimDS ((whileDS f) (h c)) (whileDS g c).
+Proof.
+move => H c s.
+rewrite/whileDS/curry /=.
+set h' := fun (cs : C * S) => let (c, s) := cs in (h c, s).
+have -> : (h c, s) = h' (c, s). by [].
+apply: (uniformE _ _ _ _ _ h') => cs.
+case: cs => [c' s'].
+subst h'.
+rewrite /= fmapE (H c') fmapE /= !bindA.
+apply eq_bind => bcs.
+by case: bcs =>  [[?|?] ?]; rewrite /=bindretf fmapE !bindretf/= fmapE bindretf/=.
+Qed.
+
 HB.instance Definition _ := MonadState.on DS.
 HB.instance Definition _ := @isMonadDelay.Build DS
-  (@whileDS) (@wBisimDS) wBisimDS_refl wBisimDS_sym wBisimDS_trans (@fixpointDSE) (@naturalityDSE) (@codiagonalDSE)  (@bindmwBDS) (@bindfwBDS) (@whilewBDS).
+  (@whileDS) (@wBisimDS) wBisimDS_refl wBisimDS_sym wBisimDS_trans (@fixpointDSE) (@naturalityDSE) (@codiagonalDSE)  (@bindmwBDS) (@bindfwBDS) (@whilewBDS) (@uniformEDS).
 
 End stateTdelay.
 End StateTdelay.
