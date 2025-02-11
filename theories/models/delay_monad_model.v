@@ -1,7 +1,8 @@
 From mathcomp Require Import all_ssreflect.
 From mathcomp Require boolp.
 From HB Require Import structures.
-Require Import hierarchy monad_lib.
+Require Import hierarchy monad_lib Morphisms.
+Import Setoid.
 
 Set Implicit Arguments.
 Unset Strict Implicit.
@@ -468,6 +469,18 @@ apply iff_wBisims_wBisim.
 apply bindfwBs => a.
 by apply/iff_wBisims_wBisim/(H a).
 Qed.
+
+Import Setoid.
+
+Add Parametric Morphism A B : bind
+  with signature (@wBisim A) ==> (pointwise_relation A (@wBisim B)) ==> (@wBisim B) as bindmor.
+Proof.
+move => x y Hxy f g Hfg.
+apply: wBisim_trans.
+- apply: (bindmwB _ Hxy).
+- apply: (bindfwB y Hfg).
+Qed.
+
 (* the next four laws derived from Complete Elgot monads *)
 Lemma fixpointEs {A B} (f : A -> M (B + A)) : forall (a : A), while f a ≈s (f a) >>= (sum_rect (fun => M B ) (@ret M B ) (while f)).
 Proof.
@@ -649,11 +662,32 @@ apply whilewBs => a'.
 apply iff_wBisims_wBisim.
 by apply (H a').
 Qed.
-(*
-Lemma uniform {A B C} (f:A -> Delay(B + A)) (g: C -> Delay (B + C)) (h: C -> Delay A) :
-  forall (z:C),(h z) >>= f  ≈s ( (g z) >>= (sum_functin ((Delay # inl) \o (fun (y:B) => DNow y)(*ret*)) ((Delay # inr) \o h ))) -> forall (z:C), (h z) >>= (while f)  ≈s  while g z. Abort.*)
+
+Add Parametric Morphism A B : while
+  with signature (pointwise_relation A (@wBisim (B + A))) ==> @eq A ==> (@wBisim B ) as whilemor.
+Proof. by move=> f g + a; exact: whilewB. Qed.
+
+Lemma uniformE {A B C} (f : A -> M (B + A)) (g : C -> M (B + C)) (h : C -> A) :
+  (forall c, (f (h c) = (g c >>= sum_rect (fun => M (B + A)) ((M # inl) \o Ret) ((M # inr) \o Ret \o h)))) ->
+  forall c, (while f) (h c) ≈  while g c.
+move => H c.
+rewrite whileE (H c) whileE.
+set d := (g c).
+move : d.
+cofix CIH => d.
+case: d => [[b'|c']|d].
+- by rewrite !bindretf/= fmapE !bindretf/=.
+- rewrite !bindretf/= fmapE !bindretf/=.
+  apply: wBLater.
+  rewrite whileE whileE H.
+  exact: CIH.
+- rewrite !bindDmf.
+  apply: wBLater.
+  exact: CIH.
+Qed.
 HB.instance Definition _ := @isMonadDelay.Build M
-  (@while) wBisim wBisim_refl wBisim_sym wBisim_trans (@fixpointE) (@naturalityE) (@codiagonalE) (@bindmwB) (@bindfwB) (@whilewB).
+  (@while) wBisim wBisim_refl wBisim_sym wBisim_trans (@fixpointE) (@naturalityE) (@codiagonalE) (@bindmwB) (@bindfwB) (@whilewB)
+  (@uniformE).
 End delayops.
 End DelayOps.
 HB.export DelayOps.
