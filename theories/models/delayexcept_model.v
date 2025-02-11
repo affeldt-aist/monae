@@ -47,7 +47,8 @@ rewrite (bindfwB _ _ f' g') // => a.
 subst f' g'.
 by case: a => //=.
 Qed.
-Lemma fixpointDEE {A B} (f : A -> DE (B + A)) : forall (a : A), whileDE f a ≈ (f a) >>= (sum_rect (fun => DE B ) (@ret DE B ) (whileDE f)).
+Lemma fixpointDEE {A B} (f : A -> DE (B + A)) :
+  forall (a : A), whileDE f a ≈ (f a) >>= (sum_rect (fun => DE B ) (@ret DE B ) (whileDE f)).
 Proof.
 move => a.
 rewrite/whileDE/DEA fixpointE /= fmapE /= bindA.
@@ -55,7 +56,8 @@ apply (bindfwB _ _ _ _ (f a)) => uba.
 case: uba => [u|[b'|a']] /=; by rewrite bindretf.
 Qed.
 Lemma naturalityDEE {A B C} (f : A -> DE (B + A)) (g : B -> DE C) (a : A) :
-@bind DE _ _  (whileDE f a) g ≈ whileDE (fun y => (f y) >>= (sum_rect (fun => DE (C + A)) (DE # inl \o g) (DE # inr \o (@ret DE A )))) a.
+@bind DE _ _  (whileDE f a) g ≈
+  whileDE (fun y => (f y) >>= (sum_rect (fun => DE (C + A)) (DE # inl \o g) (DE # inr \o (@ret DE A )))) a.
 Proof.
 rewrite/whileDE/DEA bindXE naturalityE.
 apply: whilewB => a' /=.
@@ -94,10 +96,20 @@ apply bindmwB.
 by apply Hfg.
 Qed.
 
+Lemma uniformDEE {A B C} (f : A -> DE (B + A)) (g : C -> DE (B + C)) (h : C -> A) :
+  (forall c, (f (h c) = (g c >>= sum_rect (fun => DE (B + A)) ((DE # inl) \o Ret) ((DE # inr) \o Ret \o h)))) ->
+  forall c, wBisimDE ((whileDE f) (h c)) (whileDE g c).
+Proof.
+move => H c.
+rewrite/whileDE.
+apply: (uniformE _ _ _ (DEA \o f)) => c' /=.
+rewrite /DEA/= !fmapE (H c') !bindA.
+apply: eq_bind => xbc.
+by case: xbc => [x|[b''|c'']]; rewrite /= !bindretf /= fmapE !bindretf // fmapE bindretf.
+Qed.
 HB.instance Definition _ := MonadExcept.on DE.
 HB.instance Definition _ := @isMonadDelay.Build DE
-  (@whileDE) (@wBisimDE) wBisimDE_refl wBisimDE_sym wBisimDE_trans (@fixpointDEE) (@naturalityDEE) (@codiagonalDEE)  (@bindmwBDE) (@bindfwBDE) (@whilewBDE).
-
+  (@whileDE) (@wBisimDE) wBisimDE_refl wBisimDE_sym wBisimDE_trans (@fixpointDEE) (@naturalityDEE) (@codiagonalDEE)  (@bindmwBDE) (@bindfwBDE) (@whilewBDE) (@uniformDEE).
 End exceptTdelay.
 End exceptTdelay.
 HB.export exceptTdelay.
