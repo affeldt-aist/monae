@@ -1,10 +1,9 @@
 (* monae: Monadic equational reasoning in Coq                                 *)
 (* Copyright (C) 2020 monae authors, license: LGPL-2.1-or-later               *)
-Require Import Reals.
 From mathcomp Require Import all_ssreflect.
-From mathcomp Require Import boolp classical_sets.
+From mathcomp Require Import boolp classical_sets reals.
 From mathcomp Require Import finmap.
-From infotheo Require Import Reals_ext classical_sets_ext ssrR ssr_ext.
+From infotheo Require Import realType_ext classical_sets_ext ssr_ext.
 From infotheo Require Import fdist fsdist convex necset.
 Require Import preamble.
 From HB Require Import structures.
@@ -180,30 +179,34 @@ End epsC_etaC.
 Section convType_as_a_category.
 Local Obligation Tactic := idtac.
 
-Let affine_idfun' (U : convType) : affine (@idfun U). Proof. by []. Qed.
+Variable R : realType.
 
-Let affine_comp' (a b c : convType) (f : a -> b) (g : b -> c) :
+Let affine_idfun' (U : convType R) : affine (@idfun U). Proof. by []. Qed.
+
+Let affine_comp' (a b c : convType R) (f : a -> b) (g : b -> c) :
   affine f -> affine g -> affine (g \o f).
 Proof. by move=> hf hg ? ? ? /=; rewrite hf hg. Qed.
 
-HB.instance Definition _ := isCategory.Build convType (fun A : convType => A)
+HB.instance Definition _ := isCategory.Build (convType R) (fun A : convType R => A)
   _ affine_idfun' affine_comp'.
 
 End convType_as_a_category.
-Notation CV := [the category of convType].
+Notation CV R := ([the category of convType R]).
 
 Section conv_hom_is_affine.
 
-Fact conv_hom_is_affine (a b : CV) (f : {hom a -> b}) : affine f.
+Fact conv_hom_is_affine (R : realType) (a b : CV R) (f : {hom a -> b}) : affine f.
 Proof. by case: f=> ? [] []. Qed.
 
-HB.instance Definition _ (A B : convType) (f : {hom A -> B}) :=
-  isAffine.Build _ _ (f : _ -> _) (conv_hom_is_affine f).
+HB.instance Definition _ (R : realType) (A B : convType R) (f : {hom A -> B}) :=
+  isAffine.Build _ _ _ (f : _ -> _) (conv_hom_is_affine f).
 
 End conv_hom_is_affine.
 
 Section free_convType_functor.
-Let acto (a : CC) : CV := [the convType of {dist a}].
+Variable R : realType.
+
+Let acto (a : CC) : CV R := [the convType R of R.-dist a].
 
 Definition free_convType_mor (A B : CC) (f : {hom A -> B})
     : {hom acto A -> acto B} :=
@@ -211,7 +214,7 @@ Definition free_convType_mor (A B : CC) (f : {hom A -> B})
                                      (fsdistmap f) (fsdistmap_affine f))).
 
 Lemma mem_finsupp_free_convType_mor (A B : CC) (f : A -> B)
-    (d : {dist A}) (x : finsupp d) :
+    (d : R.-dist A) (x : finsupp d) :
   f (fsval x) \in finsupp (free_convType_mor (hom_choiceType f) d).
 Proof.
 by rewrite /= supp_fsdistmap; apply/imfsetP => /=; exists (fsval x).
@@ -219,7 +222,7 @@ Qed.
 
 (* free_convType_mor induces maps between supports *)
 Definition free_convType_mor_supp
-  (A B : CC) (f : A -> B(*{hom A  -> B}*)) (d : {dist A}) (x : finsupp d)
+  (A B : CC) (f : A -> B(*{hom A  -> B}*)) (d : R.-dist A) (x : finsupp d)
   : finsupp ((free_convType_mor (hom_choiceType f)) d) :=
   FSetSub (mem_finsupp_free_convType_mor f x).
 Global Arguments free_convType_mor_supp [A B] f d.
@@ -237,9 +240,9 @@ Let free_convType_mor_comp : FunctorLaws.comp free_convType_mor.
 Proof. by move=> a b c g h; apply/hom_ext; exact: fsdistmap_comp. Qed.
 
 HB.instance Definition _ :=
-  isFunctor.Build CC CV acto free_convType_mor_id free_convType_mor_comp.
+  isFunctor.Build CC (CV R) acto free_convType_mor_id free_convType_mor_comp.
 
-Definition free_convType := [the {functor CC -> CV} of acto].
+Definition free_convType := [the {functor CC -> CV R} of acto].
 
 Lemma free_convType_mor_comp_fun (A B C : CC) (g : {hom B -> C}) (h : {hom A -> B}) :
   free_convType_mor [hom g \o h] =
@@ -249,10 +252,11 @@ Proof. by rewrite free_convType_mor_comp. Qed.
 End free_convType_functor.
 
 Section forget_convType_functor.
+Variable R : realType.
 
-Let m1 : CV -> CC := idfun.
+Let m1 : CV R -> CC := idfun.
 
-Let h1 := fun (a b : CV) (f : {hom[CV] a -> b}) =>
+Let h1 := fun (a b : CV R) (f : {hom[CV R] a -> b}) =>
   Hom.Pack (Hom.Class (isHom.Axioms_ (m1 a) (m1 b) f I)).
 
 Let h1_id : FunctorLaws.id h1. Proof. by move=> *; apply hom_ext. Qed.
@@ -261,10 +265,10 @@ Let h1_comp : FunctorLaws.comp h1. Proof. by move=> *; apply hom_ext. Qed.
 
 HB.instance Definition _ := isFunctor.Build _ _ _ h1_id h1_comp.
 
-Definition forget_convType := [the {functor CV -> CC} of m1].
+Definition forget_convType := [the {functor CV R -> CC} of m1].
 
-Lemma forget_convTypeE : (forall a : CV, forget_convType a = a) /\
-  (forall (a b : CV) (f : {hom[CV] a -> b}), forget_convType # f = f :> (a -> b)).
+Lemma forget_convTypeE : (forall a : CV R, forget_convType a = a) /\
+  (forall (a b : CV R) (f : {hom[CV R] a -> b}), forget_convType # f = f :> (a -> b)).
 Proof. by []. Qed.
 
 End forget_convType_functor.
@@ -274,15 +278,16 @@ End forget_convType_functor.
   it is essentially Convn (p.164).
 *)
 Section eps0_eta0.
+Variable R : realType.
 Local Open Scope fset_scope.
-Local Open Scope R_scope.
+Local Open Scope ring_scope.
 Local Open Scope convex_scope.
-Local Notation F0 := free_convType.
-Local Notation U0 := forget_convType.
+Local Notation F0 := (free_convType R).
+Local Notation U0 := (forget_convType R).
 
 Let eps0' : F0 \O U0 ~~> FId := fun a =>
   Hom.Pack (Hom.Class (isHom.Axioms_ ((F0 \O U0) a) (FId a)
-    (@Convn_of_fsdist a) (@Convn_of_fsdist_affine (FId a)))).
+    (@Convn_of_fsdist _ a) (@Convn_of_fsdist_affine _ (FId a)))).
 
 Let eps0'_natural : naturality _ _ eps0'.
 Proof.
@@ -293,11 +298,11 @@ Qed.
 HB.instance Definition _ := isNatural.Build _ _ _ _ _ eps0'_natural.
 Definition eps0 := locked [the _ ~> _ of eps0'].
 
-Lemma eps0E (C : convType) : eps0 C = @Convn_of_fsdist C :> (_ -> _).
+Lemma eps0E (C : convType R) : eps0 C = @Convn_of_fsdist _ C :> (_ -> _).
 Proof. by rewrite /eps0; unlock. Qed.
 
 Let eta0' : FId ~~> U0 \O F0 := fun T =>
-  Hom.Pack (Hom.Class (isHom.Axioms_ (FId T) ((U0 \O F0) T) (@fsdist1 _) I)).
+  Hom.Pack (Hom.Class (isHom.Axioms_ (FId T) ((U0 \O F0) T) (@fsdist1 _ _) I)).
 
 Lemma eta0'_natural : naturality _ _ eta0'.
 Proof.
@@ -307,12 +312,12 @@ Qed.
 HB.instance Definition _ := isNatural.Build _ _ _ _ _ eta0'_natural.
 Definition eta0 := locked [the _ ~> _ of eta0'].
 
-Lemma eta0E (T : choiceType) : eta0 T = @fsdist1 _ :> (_ -> _).
+Lemma eta0E (T : choiceType) : eta0 T = @fsdist1 _ _ :> (_ -> _).
 Proof. by rewrite /eta0; unlock. Qed.
 
 Import comps_notation.
 Local Open Scope fset_scope.
-Local Open Scope R_scope.
+Local Open Scope ring_scope.
 
 Lemma triL0 : TriangularLaws.left eta0 eps0.
 Proof.
@@ -328,24 +333,26 @@ End eps0_eta0.
 
 (* the join operator for Dist is ((coercion) \o eps0) *)
 Section eps0_correct.
+Variable R : realType.
 Import category.
-Local Open Scope R_scope.
+Local Open Scope ring_scope.
 Local Open Scope convex_scope.
-Variables (A : choiceType) (D : {dist {dist A}}).
+Variables (A : choiceType) (D : R.-dist (R.-dist A)).
 
-Lemma eps0_correct : eps0 _ D = fsdistjoin D.
+Lemma eps0_correct : eps0 _ _ D = fsdistjoin D.
 Proof. by rewrite eps0E Convn_of_fsdistjoin. Qed.
 
 End eps0_correct.
 
 Section semiCompSemiLattConvType_as_a_category.
+Variable R : realType.
 Import category.
 Local Obligation Tactic := idtac.
 
-Definition biglub_affine (a b : semiCompSemiLattConvType) (f : a -> b) :=
+Definition biglub_affine (a b : semiCompSemiLattConvType R) (f : a -> b) :=
   biglubmorph f /\ affine f.
 
-Let comp_is_biglub_affine (a b c : semiCompSemiLattConvType)
+Let comp_is_biglub_affine (a b c : semiCompSemiLattConvType R)
     (f : a -> b) (g : b -> c) :
   biglub_affine f -> biglub_affine g -> biglub_affine (g \o f).
 Proof.
@@ -355,24 +362,25 @@ move=> [bf af] [bg ag]; split => x/=.
 by move=> ? ? /=; rewrite af ag.
 Qed.
 
-Let idfun_is_biglub_affine (a : semiCompSemiLattConvType) :
+Let idfun_is_biglub_affine (a : semiCompSemiLattConvType R) :
   biglub_affine (@idfun a).
 Proof. by split => //; exact: biglub_morph. Qed.
 
-HB.instance Definition _ := isCategory.Build semiCompSemiLattConvType
-  (fun U : semiCompSemiLattConvType => U) biglub_affine idfun_is_biglub_affine
+HB.instance Definition _ := isCategory.Build (semiCompSemiLattConvType R)
+  (fun U : semiCompSemiLattConvType R => U) biglub_affine idfun_is_biglub_affine
   comp_is_biglub_affine.
 
 End semiCompSemiLattConvType_as_a_category.
-Notation CS := [the category of semiCompSemiLattConvType].
+Notation CS R := [the category of semiCompSemiLattConvType R].
 
 Local Open Scope classical_set_scope.
 Local Open Scope latt_scope.
 
 Section scsl_hom_is_biglub_affine.
+Variable R : realType.
 Import category.
 Local Open Scope convex_scope.
-Variables (K L : CS) (f : {hom K  -> L}).
+Variables (K L : CS R) (f : {hom K  -> L}).
 
 Fact scsl_hom_is_biglub_affine : biglub_affine f.
 Proof. by split; move=> ?; case: f=> ? [] [] []. Qed.
@@ -386,7 +394,7 @@ Proof. by case: scsl_hom_is_biglub_affine. Qed.
 
 (* NB(rei): this can actually maybe be removed *)
 HB.instance Definition SCSL_hom_affine :=
-  isAffine.Build _ _ (f : _ -> _) scsl_hom_is_affine.
+  isAffine.Build _ _ _ (f : _ -> _) scsl_hom_is_affine.
 (* Canonical SCSL_hom_affine (K L : CS) (f : {hom K  -> L}) :=
   Affine (scsl_hom_is_affine f). *)
 
@@ -403,20 +411,21 @@ Fact scsl_hom_is_lubmorph : lub_morph f. Proof. exact: biglub_lub_morph. Qed.
 End scsl_hom_is_biglub_affine.
 
 Section free_semiCompSemiLattConvType_functor.
+Variable R : realType.
 Import category.
 Local Open Scope convex_scope.
 
-Let acto (a : CV) : CS := {necset a}.
+Let acto (a : CV R) : CS R := {necset a}.
 
 (* the morphism part of necset *)
 Section free_semiCompSemiLattConvType_mor.
-Variables (A B : convType) (f : {hom A  -> B}).
+Variables (A B : convType R) (f : {hom A -> B}).
 
 Local Notation affine_f :=
-  (Affine.Pack (Affine.Class (isAffine.Build _ _ _ (conv_hom_is_affine f)))).
+  (Affine.Pack (Affine.Class (isAffine.Build _ _ _ _ (conv_hom_is_affine f)))).
 
 Local Notation pack_imfx X := (NECSet.Pack (NECSet.Class
-    (isConvexSet.Build _ _ (is_convex_set_image affine_f X))
+    (isConvexSet.Build _ _ _ (is_convex_set_image affine_f X))
     (isNESet.Build _ _ (neset_image_neq0 _ _)))).
 
 Definition free_semiCompSemiLattConvType_mor' (X : acto A) : acto B := pack_imfx X.
@@ -491,15 +500,16 @@ HB.instance Definition _ := isFunctor.Build _ _ acto
   free_semiCompSemiLattConvType_mor_id free_semiCompSemiLattConvType_mor_comp.
 
 (* F1 *)
-Definition free_semiCompSemiLattConvType := [the {functor CV -> CS} of acto].
+Definition free_semiCompSemiLattConvType := [the {functor CV R -> CS R} of acto].
 
 End free_semiCompSemiLattConvType_functor.
 
 Section forget_semiCompSemiLattConvType_functor.
+Variable R : realType.
 
-Let m2 : CS -> CV := idfun.
+Let m2 : CS R -> CV R := idfun.
 
-Let h2 := fun (a b : CS) (f : {hom[CS] a -> b}) => Hom.Pack (Hom.Class
+Let h2 := fun (a b : CS R) (f : {hom[CS R] a -> b}) => Hom.Pack (Hom.Class
   (isHom.Axioms_ (m2 a) (m2 b) f (scsl_hom_is_affine f))).
 
 Let h2_id : FunctorLaws.id h2. Proof. by move=> *; apply hom_ext. Qed.
@@ -508,7 +518,7 @@ Let h2_comp : FunctorLaws.comp h2. Proof. by move=> *; apply hom_ext. Qed.
 
 HB.instance Definition _ := isFunctor.Build _ _ m2 h2_id h2_comp.
 
-Definition forget_semiCompSemiLattConvType := [the {functor CS -> CV} of m2].
+Definition forget_semiCompSemiLattConvType := [the {functor CS R -> CV R} of m2].
 
 Local Notation U1 := forget_semiCompSemiLattConvType.
 
@@ -521,12 +531,13 @@ Proof. by []. Qed.
 End forget_semiCompSemiLattConvType_functor.
 
 Section eps1_eta1.
+Variable R : realType.
 Import category.
 Local Open Scope classical_set_scope.
 Local Open Scope convex_scope.
-Local Notation F1 := free_semiCompSemiLattConvType.
-Local Notation U1 := forget_semiCompSemiLattConvType.
-Implicit Types L : semiCompSemiLattConvType.
+Local Notation F1 := (free_semiCompSemiLattConvType R).
+Local Notation U1 := (forget_semiCompSemiLattConvType R).
+Implicit Types L : semiCompSemiLattConvType R.
 
 Let eps1'' L := (fun X : {necset L} => |_| X).
 
@@ -564,11 +575,11 @@ HB.instance Definition _ := isNatural.Build _ _ _ _ _ eps1'_natural.
 
 Definition eps1 := locked [the _ ~> _ of eps1'].
 
-Lemma eps1E (L : semiCompSemiLattConvType) :
+Lemma eps1E (L : semiCompSemiLattConvType R) :
   eps1 L = (fun X => |_| X) :> (_ -> _).
 Proof. by rewrite /eps1; unlock. Qed.
 
-Lemma necset1_affine (C : convType) : affine (set1 : C -> necset C).
+Lemma necset1_affine (C : convType R) : affine (set1 : C -> necset C).
 Proof.
 move=> p a b /=; apply/necset_ext; rewrite eqEsubset; split=> x /=.
 - move->; rewrite necset_convType.convE.
@@ -589,7 +600,7 @@ HB.instance Definition _ := isNatural.Build _ _ _ _ _ eta1'_natural.
 
 Definition eta1 := locked [the _ ~> _ of eta1'].
 
-Lemma eta1E (C : convType) : eta1 C = (set1 : C -> necset C) :> (_ -> _).
+Lemma eta1E (C : convType R) : eta1 C = (set1 : C -> necset C) :> (_ -> _).
 Proof. by rewrite /eta1; unlock. Qed.
 
 Import comps_notation.
@@ -610,13 +621,14 @@ Proof. by move=> c; apply funext=> /= x; rewrite eps1E eta1E /= biglub1. Qed.
 End eps1_eta1.
 
 Section join1.
+Variable R : realType.
 Import category.
 Local Open Scope convex_scope.
 Local Open Scope classical_set_scope.
-Variable C : convType.
+Variable C : convType R.
 
 Definition join1' (s : necset (necset C)) : {convex_set C} :=
-  ConvexSet.Pack (ConvexSet.Class (isConvexSet.Build C _
+  ConvexSet.Pack (ConvexSet.Class (isConvexSet.Build _ C _
     (hull_is_convex (\bigcup_(x in s) if x \in s then x : set _ else set0)))).
 
 Lemma join1'_neq0 (s : necset {necset C}) : join1' s != set0 :> set _.
@@ -628,10 +640,10 @@ by exists x; exists y => //; move: sy; rewrite -in_setE => ->.
 Qed.
 
 Definition join1 (s : necset {necset C}) : necset C :=
-  NECSet.Pack (NECSet.Class (isConvexSet.Build _ _ (hull_is_convex _))
+  NECSet.Pack (NECSet.Class (isConvexSet.Build _ _ _ (hull_is_convex _))
                             (isNESet.Build _ _ (join1'_neq0 s))).
 
-Lemma eps1_correct (s : necset {necset C}) : @eps1 _ s = join1 s.
+Lemma eps1_correct (s : necset {necset C}) : @eps1 _ _ s = join1 s.
 Proof.
 rewrite eps1E; apply/necset_ext => /=; congr (hull _).
 rewrite /bigcup; rewrite funeqE => c; rewrite propeqE; split.
@@ -643,13 +655,14 @@ Qed.
 End join1.
 
 Section P_delta_functor.
+Variable R : realType.
 Import category.
 
 Definition P_delta_left :=
-  free_semiCompSemiLattConvType \O free_convType \O free_choiceType.
+  free_semiCompSemiLattConvType R \O free_convType R \O free_choiceType.
 
 Definition P_delta_right :=
-  forget_choiceType \O forget_convType \O forget_semiCompSemiLattConvType.
+  forget_choiceType \O forget_convType R \O forget_semiCompSemiLattConvType R.
 
 (* action on objects *)
 Definition P_delta_acto (T : Type) : Type := P_delta_left T.
@@ -660,7 +673,7 @@ Lemma P_deltaE (A B : Type) (f : {hom A -> B}) :
   P_delta # f = P_delta_left # f :> (_ -> _).
 Proof. exact: funext. Qed.
 
-Lemma eps0_Dist1 (A : Type) (d : P_delta_acto A) : eps0 _ (fsdist1 d) = d.
+Lemma eps0_Dist1 (A : Type) (d : P_delta_acto A) : eps0 _ _ (fsdist1 d) = d.
 Proof. by rewrite eps0E Convn_of_fsdist1. Qed.
 
 End P_delta_functor.
@@ -672,10 +685,11 @@ Require Import hierarchy.
 Local Notation choice_of_Type := monad_model.choice_of_Type.
 
 Section P_delta_category_monad.
+Variable R : realType.
 Import category.
 Definition AC := AdjointFunctors.mk triLC triRC.
-Definition A0 := AdjointFunctors.mk triL0 triR0.
-Definition A1 := AdjointFunctors.mk triL1 triR1.
+Definition A0 := AdjointFunctors.mk (triL0 R) (@triR0 R).
+Definition A1 := AdjointFunctors.mk (@triL1 R) (@triR1 R).
 Definition Aprob := adj_comp AC A0.
 Definition Agcm := adj_comp Aprob A1.
 Definition Mgcm := Monad_of_adjoint_functors Agcm.
@@ -695,12 +709,12 @@ unlock => /=.
 by rewrite eta0E eta1E.
 Qed.
 
-Local Notation F1 := free_semiCompSemiLattConvType.
-Local Notation F0 := free_convType.
+Local Notation F1 := (free_semiCompSemiLattConvType R).
+Local Notation F0 := (free_convType R).
 Local Notation FC := free_choiceType.
 Local Notation UC := forget_choiceType.
-Local Notation U0 := forget_convType.
-Local Notation U1 := forget_semiCompSemiLattConvType.
+Local Notation U0 := (forget_convType R).
+Local Notation U1 := (forget_semiCompSemiLattConvType R).
 
 Variables (T : Type) (X : gcm (gcm T)).
 
@@ -717,7 +731,7 @@ set E := epsC _; have->: E = [hom idfun] by apply/hom_ext; rewrite epsCE.
 rewrite functor_id_hom.
 rewrite !functor_o functor_id !compfid.
 set F1J := F1 # _.
-have-> : F1J = @necset_join.F1join0 _ :> (_ -> _).
+have-> : F1J = @necset_join.F1join0 _ _ :> (_ -> _).
 - apply funext=> x; apply necset_ext=> /=.
   rewrite /F1J /= /necset_join.F1join0' /=.
   cbn.
@@ -733,19 +747,20 @@ End P_delta_category_monad.
 Require proba_monad_model.
 
 Section probMonad_out_of_F0U0.
+Variable R : realType.
 Import category.
 (* probability monad built directly *)
 Definition M := proba_monad_model.MonadProbModel.t.
 (* probability monad built using adjunctions *)
 Definition N := [the hierarchy.Monad.Exports.monad of
-  Monad_of_category_monad.acto (Monad_of_adjoint_functors Aprob)].
+  Monad_of_category_monad.acto (Monad_of_adjoint_functors (Aprob R))].
 
-Lemma actmE T : N T = M T. Proof. by []. Qed.
+Lemma actmE T : N T = M R T. Proof. by []. Qed.
 
 Import comps_notation hierarchy.
 Local Open Scope monae_scope.
 
-Lemma JoinE T : (Join : (N \o N) T -> N T) = (Join : (M \o M) T -> M T).
+Lemma JoinE T : (Join : (N \o N) T -> N T) = (Join : (M R \o M R) T -> M R T).
 Proof.
 apply funext => t /=.
 rewrite /join_.
@@ -758,7 +773,7 @@ congr fsdistbind.
 by apply funext => x; rewrite fsdist1bind.
 Qed.
 
-Lemma RetE T : (Ret : idfun T -> N T) = (Ret : FId T -> M T).
+Lemma RetE T : (Ret : idfun T -> N T) = (Ret : FId T -> M R T).
 Proof.
 apply funext => t /=.
 rewrite /ret_.

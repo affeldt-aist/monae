@@ -183,13 +183,13 @@ induction Hss1 as [
   | sk1 sk2' sk3 l1 Hstep1 Hss1 IH
   | sk1 sk2' sk3 t1 l1 Hstep1 Hss1 IH
   ].
-- intros l2 sk2 Hss2.
-  exists l2. exists []. exists sk2.
+- move=> l2 sk2 Hss2.
+  exists l2; exists []; exists sk2.
   split; [ | split ].
-  + exact Hss2.
-  + apply ss_refl.
-  + rewrite cats0; reflexivity.
-- intros l2 sk2 Hss2.
+  + exact: Hss2.
+  + exact: ss_refl.
+  + by rewrite cats0; reflexivity.
+- move=> l2 sk2 Hss2.
   inversion Hss2 as [
     sk1' Hsk1 Hl2 Hsk2
   | sk1' sk2'' sk2''' l2' Hstep2 Hss2' Hsk1 Hl2 Hsl2
@@ -204,12 +204,12 @@ induction Hss1 as [
     specialize (step_deterministic Hstep1 Hstep2).
     intros [ [] Heq2].
     subst sk2''.
-    apply IH.
-    exact Hss2'.
+    apply: IH.
+    exact: Hss2'.
   + subst sk1' l2 sk2'''.
     specialize (step_deterministic Hstep1 Hstep2).
     by move=> [].
-- intros l2 sk2 Hss2.
+- move=> l2 sk2 Hss2.
   inversion Hss2 as [
     sk1' Hsk1 Hl2 Hsk2
   | sk1' sk2'' sk2''' l2' Hstep2 Hss2' Hsk1 Hl2 Hsl2
@@ -561,7 +561,11 @@ elim: p s l1 l2 => /= {A} [A a|A B p1 IH1 p2 IH2|A b p1 IH1 p2 IH2|
 - by rewrite !reifystmark rcons_cat.
 Qed.
 
-Lemma denote_continuation_prefix_independent (m : M _) :
+Section speed_up_Qed_part1.
+(* Directly proving denote_continuation_prefix_independent as a Lemma
+   takes 1 minute to typecheck at Qed.  Doing it by Let or finishing it by
+   Defined has no problems. *)
+Let denote_continuation_prefix_independent_aux (m : M _) :
   continuation_sub m -> forall s l1 l2,
   reify m (s, l1 ++ l2) =
   let res := reify m (s, l2) in
@@ -570,16 +574,27 @@ Lemma denote_continuation_prefix_independent (m : M _) :
   | Some res => Some (res.1, (res.2.1, l1 ++ res.2.2))
   end.
 Proof.
-intros [ k Hk ].
-subst m.
+case=> k <-.
 elim: k => // [A a s l1 l2|A p k IH s l1 l2].
-by rewrite !reifyret.
+  by rewrite !reifyret.
 rewrite /= !reifybind.
 rewrite denote_prefix_independent /=; [ | now exists p ].
-destruct (reify (denote M _ p) (s, l2)) as [ (a, (s', l)) | ].
-- by rewrite IH.
-- reflexivity.
+case: reify=> // -[a [s' l]].
+by rewrite IH.
 Qed.
+
+(* If we state and prove it as a Lemma again, Qed is quick. *)
+Lemma denote_continuation_prefix_independent (m : M _) :
+  continuation_sub m -> forall s l1 l2,
+  reify m (s, l1 ++ l2) =
+  let res := reify m (s, l2) in
+  match res with
+  | None => None
+  | Some res => Some (res.1, (res.2.1, l1 ++ res.2.2))
+  end.
+Proof. exact: denote_continuation_prefix_independent_aux. Qed.
+
+End speed_up_Qed_part1.
 
 Lemma step_None_correct s s' k k' l :
   step (s, k) None (s', k') ->
@@ -628,6 +643,7 @@ induction Hstep as
   by rewrite /= reifybind reifystget.
 - subst s1 k1 s2 k2.
   by rewrite /= reifybind reifystput.
+- rewrite -Hs1 -Hs2.
 - discriminate Heqo.
 Qed.
 
@@ -651,7 +667,10 @@ injection Heqo; intro; subst t.
 by rewrite /= reifybind reifystmark.
 Qed.
 
-Lemma step_star_correct_gen s s' k k' l l' :
+Section speed_up_Qed_part2.
+(* similar to denote_continuation_prefix_independent *)
+
+Let step_star_correct_gen s s' k k' l l' :
   step_star (s, k) l' (s', k') ->
   reify (denote_continuation M k) (s, l) = reify (denote_continuation M k') (s', l++l').
 Proof.
@@ -697,7 +716,7 @@ destruct (reify (denote M _ p) (s, [])) as [[a'' [s'' l'']] | ].
 - discriminate.
 Qed.
 
-Lemma step_star_complete_gen
+Let step_star_complete_gen
   (s s' : S) (A : Type) (a : A) (p : program A) (l1 l2 : list T) f :
   reify (denote M _ p) (s, l1) = Some (a, (s', l1 ++ l2)) ->
   step_star (s, p `; f) l2 (s', f a).
@@ -822,6 +841,8 @@ intro Hp.
 apply step_star_complete_gen with (l1 := []).
 exact Hp.
 Qed.
+
+End speed_up_Qed_part2.
 
 End semantics_equivalence.
 

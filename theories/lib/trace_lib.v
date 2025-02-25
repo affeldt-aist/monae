@@ -1,9 +1,7 @@
 (* monae: Monadic equational reasoning in Coq                                 *)
 (* Copyright (C) 2020 monae authors, license: LGPL-2.1-or-later               *)
 Ltac typeof X := type of X.
-Require Import ZArith.
-From mathcomp Require Import all_ssreflect.
-From infotheo Require Import ssrZ.
+From mathcomp Require Import all_ssreflect ssralg ssrint.
 Require Import hierarchy monad_lib.
 
 (******************************************************************************)
@@ -19,24 +17,25 @@ Local Open Scope monae_scope.
 Definition marks T {M : traceMonad T} (l : seq T) : M (seq unit) :=
   sequence (map mark l).
 
-Local Open Scope zarith_ext_scope.
+Local Open Scope ring_scope.
 
 Section statetrace_program_equivalence_example.
 Local Open Scope do_notation.
-Variable M : stateTraceMonad Z nat.
+Variable M : stateTraceMonad int nat.
 
-Let st_none1 : M Z :=
-  do _ <- st_mark '|0|;
+(* NB: `| _ | = absz from ssrint. Not Num.norm from ssrnum. *)
+Let st_none1 : M int :=
+  do _ <- st_mark `|0|;
   do n <- st_get;
-  do _ <- st_put (n + 1)%Z;
-  do _ <- st_mark '|n|;
+  do _ <- st_put (n + 1);
+  do _ <- st_mark `|n|;
   Ret n.
 
-Let st_none2 : M Z :=
+Let st_none2 : M int :=
   do n <- st_get;
-  do _ <- st_mark '|0|;
-  do _ <- st_mark '|n|;
-  do _ <- st_put (n + 1)%Z;
+  do _ <- st_mark `|0|;
+  do _ <- st_mark `|n|;
+  do _ <- st_put (n + 1);
   Ret n.
 
 Goal st_none1 = st_none2.
@@ -51,17 +50,17 @@ End statetrace_program_equivalence_example.
 
 Section statetrace_example.
 Local Open Scope do_notation.
-Variables (T : UU0) (M : stateTraceMonad Z T).
+Variables (T : UU0) (M : stateTraceMonad int T).
 Variables (log0 log1 : T).
 
 Definition monadtrace_example (m0 m1 m2 : M nat) : M nat :=
   do x <- m0;
-    st_put (Z_of_nat x) >>
+    st_put x%:Z >>
       do y <- st_get;
         st_mark log0 >>
           do z <- m2;
             st_mark log1 >>
-            Ret (x + Z.abs_nat y + z).
+            Ret (x + `|y| + z).
 
 End statetrace_example.
 

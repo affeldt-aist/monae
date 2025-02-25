@@ -1,10 +1,9 @@
 (* monae: Monadic equational reasoning in Coq                                 *)
 (* Copyright (C) 2020 monae authors, license: LGPL-2.1-or-later               *)
-Require Import Reals.
 From mathcomp Require Import all_ssreflect ssralg ssrnum.
 From mathcomp Require boolp.
-From mathcomp Require Import mathcomp_extra reals Rstruct.
-From infotheo Require Import Reals_ext realType_ext ssr_ext fsdist.
+From mathcomp Require Import mathcomp_extra reals.
+From infotheo Require Import realType_ext ssr_ext fsdist.
 From infotheo Require Import convex.
 From HB Require Import structures.
 Require Import preamble hierarchy monad_lib proba_lib.
@@ -21,8 +20,9 @@ Notation choice_of_Type := monad_model.choice_of_Type.
 
 Module MonadProbModel.
 Section monadprobmodel.
+Variable R : realType.
 
-Definition acto : UU0 -> UU0 := fun A => {dist (choice_of_Type A)}.
+Definition acto : UU0 -> UU0 := fun A => R.-dist (choice_of_Type A).
 
 Definition ret : idfun ~~> acto :=
   fun A a => fsdist1 (a : choice_of_Type A).
@@ -50,7 +50,7 @@ Qed.
 
 Local Open Scope reals_ext_scope.
 
-Let choice := (fun p A => @fsdist_conv (choice_of_Type A) p).
+Let choice := (fun p A => @fsdist_conv R (choice_of_Type A) p).
 
 Let choice1 (T : UU0) : forall (a b : acto T), choice 1%R%:pr _ a b = a.
 Proof. by move=> ? ?; exact: conv1. Qed.
@@ -58,7 +58,7 @@ Proof. by move=> ? ?; exact: conv1. Qed.
 Let choiceC (T : UU0) : forall p (a b : acto T), choice p _ a b = choice ((Prob.p p).~ %:pr) _ b a.
 Proof. by move=> ? ?; exact: convC. Qed.
 
-Let choicemm : forall (T : Type) p, idempotent_op (@choice p T).
+Let choicemm : forall (T : Type) p, idempotent (@choice p T).
 Proof. by move=> ? ? ?; exact: convmm. Qed.
 
 Let choiceA : forall (T : Type) (p q r s : {prob R}) (a b c : acto T),
@@ -66,8 +66,7 @@ Let choiceA : forall (T : Type) (p q r s : {prob R}) (a b c : acto T),
 Proof.
 move=> ? p q r s a b c.
 rewrite /choice -/(conv p a (conv q b c)) -/(conv s (conv r a b) c).
-apply: convA0 => /=; rewrite RmultE.
-  by rewrite -p_is_rs.
+apply: convA0 => /=; first by rewrite -p_is_rs.
 by rewrite s_of_pqE onemK.
 Qed.
 

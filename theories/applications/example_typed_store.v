@@ -3,7 +3,6 @@
 Require Import ZArith.
 From mathcomp Require Import all_ssreflect.
 From mathcomp Require boolp.
-From infotheo Require Import ssrZ.
 Require Import monad_model.
 From HB Require Import structures.
 Require Import preamble hierarchy monad_lib typed_store_lib.
@@ -643,9 +642,11 @@ case HnZ: (Uint63.to_Z n) => [|m|m].
   move/Uint63.to_Z_inj in HnZ.
   by elim Hn.
 - have Hm1 : (0 <= Z.pos m - 1 < Uint63.wB)%Z.
-    split. by apply leZsub1, Pos2Z.is_pos.
-    apply (Z.lt_trans _ (Z.pos m)).
-      by apply leZsub1, Z.le_refl.
+    split.
+      exact/ZMicromega.lt_le_iff/Pos2Z.is_pos.
+    apply: (Z.lt_trans _ (Z.pos m)).
+      rewrite Z.lt_sub_lt_add_r Z.add_1_r Z.lt_succ_r.
+      exact: Z.le_refl.
     rewrite -HnZ; by apply uint63_max.
   rewrite Zmod_small //.
   case HmZ: (Z.pos m - 1)%Z => [|p|p].
@@ -666,7 +667,7 @@ move/Sint63.lebP => mn.
 split. by apply Zle_minus_le_0.
 apply
  (Z.le_lt_trans _ (Sint63.to_Z Sint63.max_int - Sint63.to_Z Sint63.min_int))%Z.
-  apply leZ_sub.
+  apply Z.sub_le_mono.
     by case: (Sint63.to_Z_bounded n).
   by case: (Sint63.to_Z_bounded m).
 done.
@@ -827,7 +828,9 @@ apply/Sint63.ltbP.
 rewrite Sint63.succ_spec Sint63.cmod_small.
   by apply/Zle_lt_succ/Z.le_refl.
 split.
-  apply leZ_addr => //; by case: (Sint63.to_Z_bounded (N2int n)).
+  rewrite -[X in (X <= _)%Z]Z.add_0_r.
+  apply: Z.add_le_mono=> //.
+  by case: (Sint63.to_Z_bounded (N2int n)).
 apply Z.lt_add_lt_sub_r; by rewrite -Sint63.is_int.
 Qed.
 
