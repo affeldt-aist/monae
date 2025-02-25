@@ -940,7 +940,7 @@ Module AltCI.
 
 Section set.
 Let M := [the altMonad of set].
-Let altmm (A : UU0) : idempotent_op (@alt M A).
+Let altmm (A : UU0) : idempotent (@alt M A).
 Proof. by move=> ?; exact: setUid. Qed.
 Let altC (A : UU0) : commutative (@alt M A).
 Proof. by move=> ?; exact: setUC. Qed.
@@ -1659,7 +1659,7 @@ move=> A m; apply boolp.funext => a/=; apply boolp.funext => -[x a1]/=.
 by rewrite /alt/= /aalt altmfail.
 Qed.
 HB.instance Definition _ := isMonadNondet.Build M altfailm altmfail.
-Let altmm (A : UU0) : idempotent_op (@alt [the altMonad of M] A).
+Let altmm (A : UU0) : idempotent (@alt [the altMonad of M] A).
 Proof.
 move=> m; apply boolp.funext => a/=; apply boolp.funext => -[x a1]/=.
 by rewrite /alt/= /aalt altmm.
@@ -1769,7 +1769,7 @@ HB.instance Definition _ := isMonadAlt.Build M altA alt_bindDl.
 Let altfailm : @BindLaws.left_id M fail aalt. Proof. by []. Qed.
 Let altmfail : @BindLaws.right_id M fail aalt. Proof. by []. Qed.
 HB.instance Definition _ := isMonadNondet.Build M altfailm altmfail.
-Let altmm (A : UU0) : idempotent_op (@aalt (M A)). Proof. by case. Qed.
+Let altmm (A : UU0) : idempotent (@aalt (M A)). Proof. by case. Qed.
 Let altC (A : UU0) : commutative (@aalt (M A)). Proof. by []. Qed.
 HB.instance Definition _ := @isMonadAltCI.Build M altmm altC.
 Let bindmfail : BindLaws.right_zero bind fail. Proof. by []. Qed.
