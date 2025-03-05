@@ -449,7 +449,7 @@ under eq_bind do rewrite !bindA !bindretf.
 transitivity (crun (cnew ml_int (fact_rec n) >> Ret (fact_rec n) : M _));
   last by rewrite crunret // crunnew0.
 congr crun.
-rewrite -{1}/(fact_rec 0).
+rewrite -[X in cnew ml_int X]/(fact_rec 0).
 pose m := n.
 have -> : 0 = n - m by rewrite subnn.
 have : m <= n by [].
@@ -792,7 +792,7 @@ transitivity (crun (cnew ml_int fn >> Ret fn : M _));
   last by rewrite crunret // crunnew0.
 congr crun.
 have {1}-> : (1 = N2int 1)%int63 by [].
-rewrite -/(fact_rec 0).
+rewrite -[X in N2int X]/(fact_rec 0).
 have -> : (1 = Uint63.succ (N2int 0))%int63 by [].
 pose m := n.
 have -> : 0 = n - m by rewrite subnn.
@@ -807,7 +807,7 @@ case: m IH mn => [|m] IH mn.
   rewrite cnewget.
   under eq_bind do rewrite bindretf -cgetret.
   rewrite cnewput -N2int_mul mulnC -{1}(prednK mn) cnewget subn1.
-  by rewrite -/(fact_rec n.-1.+1) prednK.
+  by rewrite -[X in N2int X]/(fact_rec n.-1.+1) prednK.
 under eq_bind do rewrite forloop63S !(ltsb_subr,bindA) //.
 rewrite cnewget.
 under eq_bind do rewrite bindretf.
