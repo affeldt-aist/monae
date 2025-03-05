@@ -592,9 +592,8 @@ case: d1 Hd => [[b|a]|d1'].
   move => Hd Hf.
   rewrite -spinE bindDmf.
   apply sBLater.
-  assert (Had : DNow (inr a) ≈s d2').
-    by rewrite Hd wBisims_DLater.
-  exact: (whilewBs1 _ _ f g Hfg (DNow (inr a)) d2' Had Hf).
+  apply: (whilewBs1 _ _ f g Hfg (DNow (inr a)) d2') => //.
+  by rewrite Hd wBisims_DLater.
 case: d2 =>[[b|a]|d2'] Hd.
 - move/Diverges_spinP/iff_Diverges_wBisimsspin.
   rewrite (bindmwBs _ Hd) bindretf => /iff_Diverges_wBisimsspin/Diverges_spinP contr.
@@ -602,23 +601,22 @@ case: d2 =>[[b|a]|d2'] Hd.
   by rewrite -spinE.
 - set x := (x in DLater d1' >>= x).
   move => Hf.
+  rewrite bindretf -spinE whileE.
+  apply/sBLater/(whilewBs1 _ _ _ _ Hfg _ _ (Hfg a)).
+  rewrite -whileE.
+  apply/Diverges_spinP/iff_Diverges_wBisimsspin.
   assert (Hs : (DLater d1' >>= x) ≈s (DNow (inr a) >>= x)).
     by rewrite (bindmwBs _ Hd).
   move: Hs.
   subst x.
   rewrite Hf bindretf.
   move => Hs.
-  rewrite bindretf -spinE whileE.
-  apply/sBLater/(whilewBs1 _ _ _ _ Hfg _ _ (Hfg a)).
-  rewrite -whileE.
-  apply/Diverges_spinP/iff_Diverges_wBisimsspin.
   by rewrite Hs wBisims_DLater.
 - move => Hf.
   rewrite -spinE bindDmf.
   apply sBLater.
-  assert (Hd2 : DLater d1' ≈s d2').
-    by rewrite Hd wBisims_DLater.
-  exact: (whilewBs1 _ _ f g Hfg (DLater d1') d2' Hd2 Hf).
+  apply: (whilewBs1 _ _ f g Hfg (DLater d1') d2') => //.
+  by rewrite Hd wBisims_DLater.
 Qed.
 Lemma whilewBs2 {A B} (d1 d2 : M (B + A)) (f g : A -> M (B + A)) (b : B) : (forall a, wBisims (f a) (g a)) -> wBisims d1 d2 -> wBisims (d1 >>= (fun ab : B + A => match ab with
                                    | inl b => DNow b
