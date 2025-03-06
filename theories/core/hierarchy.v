@@ -944,9 +944,29 @@ End setoid.
 Existing Instances bindmor_Proper whilemor_Proper.
 *)
 
+HB.mixin Record isMonadDelayExcept (M : UU0 -> UU0)
+    of MonadDelay M & MonadExcept M := {
+  catchmwB : forall (A : UU0) (d1 d2 h : M A),
+    d1 ≈ d2 -> catch d1 h ≈ catch d2 h;
+  catchhwB : forall (A : UU0) (d h1 h2 : M A),
+    h1 ≈ h2 -> catch d h1 ≈ catch d h2
+}.
+
 #[short(type=delayExceptMonad)]
-HB.structure Definition MonadDelayExcept :=
-  { M of MonadDelay M & MonadExcept M }.
+HB.structure Definition MonadDelayExcept := { M of isMonadDelayExcept M }.
+
+Section setoid.
+Variable M : delayExceptMonad.
+Import Setoid.
+#[global] Add Parametric Morphism A : catch
+  with signature (@wBisim M A) ==> (@wBisim M A) ==> (@wBisim M A) as catchmor.
+Proof.
+move => x y Hxy f g Hfg.
+apply: wBisim_trans.
+- apply: (catchmwB _ _ _ _ Hxy).
+- apply: (catchhwB _ _ _ _ Hfg).
+Qed.
+End setoid.
 
 HB.mixin Record isMonadDelayAssert (M : UU0 -> UU0)
     of MonadDelayExcept M := {

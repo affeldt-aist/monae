@@ -110,6 +110,15 @@ Qed.
 HB.instance Definition _ := MonadExcept.on DE.
 HB.instance Definition _ := @isMonadDelay.Build DE
   (@whileDE) (@wBisimDE) wBisimDE_refl wBisimDE_sym wBisimDE_trans (@fixpointDEE) (@naturalityDEE) (@codiagonalDEE)  (@bindmwBDE) (@bindfwBDE) (@whilewBDE) (@uniformDEE).
+
+Lemma catchmwBDE A (d1 d2 h : DE A) :
+  d1 ≈ d2 -> catch d1 h ≈ catch d2 h.
+Proof. by move=> Hd12; apply/bindmwB. Qed.
+Lemma catchhwBDE A (d h1 h2 : DE A) :
+  h1 ≈ h2 -> catch d h1 ≈ catch d h2.
+Proof. by move=> h12; apply/bindfwB => -[]. Qed.
+
+HB.instance Definition _ := @isMonadDelayExcept.Build DE catchmwBDE catchhwBDE.
 End exceptTdelay.
 End exceptTdelay.
 HB.export exceptTdelay.
