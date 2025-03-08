@@ -6,10 +6,8 @@ Follow the instructions on https://github.com/coq-community/templates to regener
 
 [![Docker CI][docker-action-shield]][docker-action-link]
 
-[docker-action-shield]: https://github.com/affeldt-aist/monae/workflows/Docker%20CI/badge.svg?branch=master
-[docker-action-link]: https://github.com/affeldt-aist/monae/actions?query=workflow:"Docker%20CI"
-
-
+[docker-action-shield]: https://github.com/affeldt-aist/monae/actions/workflows/docker-action.yml/badge.svg?branch=master
+[docker-action-link]: https://github.com/affeldt-aist/monae/actions?query=branch%3Amaster+event%3Apush
 
 
 This Coq library contains a hierarchy of monads with their laws used
