@@ -462,6 +462,16 @@ case: d => [a|d].
 rewrite! bindDmf.
 by apply wBLater.
 Qed.
+
+Add Parametric Morphism A B : bind
+  with signature (@wBisims A) ==> (pointwise_relation A (@wBisims B)) ==> (@wBisims B) as bindmors.
+Proof.
+move => x y Hxy f g Hfg.
+apply: wBisims_trans.
+- apply: (bindmwBs _ Hxy).
+- apply: (bindfwBs y Hfg).
+Qed.
+
 Lemma bindfwB {A B} (f g : A -> M B) (d : M A) : (forall a, f a ≈ g a) -> d >>= f ≈ d >>= g.
 Proof.
 move => H.
@@ -469,8 +479,6 @@ apply iff_wBisims_wBisim.
 apply bindfwBs => a.
 by apply/iff_wBisims_wBisim/(H a).
 Qed.
-
-Import Setoid.
 
 Add Parametric Morphism A B : bind
   with signature (@wBisim A) ==> (pointwise_relation A (@wBisim B)) ==> (@wBisim B) as bindmor.
@@ -668,8 +676,8 @@ Add Parametric Morphism A B : while
 Proof. by move=> f g + a; exact: whilewB. Qed.
 
 Lemma uniformE {A B C} (f : A -> M (B + A)) (g : C -> M (B + C)) (h : C -> A) :
-  (forall c, (f (h c) = (g c >>= sum_rect (fun => M (B + A)) ((M # inl) \o Ret) ((M # inr) \o Ret \o h)))) ->
-  forall c, (while f) (h c) ≈  while g c.
+  (forall c, f (h c) = g c >>= sum_rect (fun => M (B + A)) ((M # inl) \o Ret) ((M # inr) \o Ret \o h)) ->
+  forall c, (while f) (h c) ≈ while g c.
 move => H c.
 rewrite whileE (H c) whileE.
 set d := (g c).
@@ -686,8 +694,7 @@ case: d => [[b'|c']|d].
   exact: CIH.
 Qed.
 HB.instance Definition _ := @isMonadDelay.Build M
-  (@while) wBisim wBisim_refl wBisim_sym wBisim_trans (@fixpointE) (@naturalityE) (@codiagonalE) (@bindmwB) (@bindfwB) (@whilewB)
-  (@uniformE).
+  (@while) wBisim wBisim_refl wBisim_sym wBisim_trans (@fixpointE) (@naturalityE) (@codiagonalE) (@bindmwB) (@bindfwB) (@whilewB) (@uniformE).
 End delayops.
 End DelayOps.
 HB.export DelayOps.
