@@ -101,17 +101,17 @@ rewrite -addnn.
 by apply: leq_addr.
 Qed.
 
+
 Let mc91_body nm : M (nat + nat * nat)%type :=
-  match nm with (n, m) => if n == 0 then Ret (inl m)
-                          else if m > 100 then Ret (inr (n.-1, m - 10))
-                                          else Ret (inr (n.+1, m + 11))
-  end.
+  if nm.1 == 0 then Ret (inl nm.2)
+  else if nm.2 > 100 then Ret (inr (nm.1.-1, nm.2 - 10))
+       else Ret (inr (nm.1.+1, nm.2 + 11)).
 Let mc91 n m := while mc91_body (n.+1, m).
 
 Lemma mc91succE n m : 90 <= m < 101 -> mc91 n m ≈ mc91 n (m.+1).
 Proof.
 move => /andP [Hmin].
-rewrite /mc91 fixpointE /= ltnNge => Hmax.
+rewrite /mc91/mc91_body fixpointE /= ltnNge => Hmax.
 rewrite ifN // bindretf /= fixpointE /=.
 have -> : 100 = 89 + 11 by [].
 rewrite ltn_add2r ifT //.

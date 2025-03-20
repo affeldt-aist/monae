@@ -32,7 +32,7 @@ Let factdts_body (r : loc ml_int) n : M (unit + nat)%type :=
 Let while_factdtsE n r :
   while (factdts_body r) n ≈ do s <- cget r; cput r (n`! * s).
 Proof.
-elim: n => /= [|n' IH].
+elim: n => /= [|m IH].
   rewrite fixpointE/= !bindA.
   under [x in _ ≈ x]eq_bind => s do rewrite fact0 mul1n.
   rewrite cgetputskip.
@@ -40,7 +40,7 @@ elim: n => /= [|n' IH].
 rewrite fixpointE/= bindA.
 under eq_bind => s do rewrite bindA bindretf/=.
 setoid_rewrite IH.
-by under eq_bind do rewrite cputget cputput mulnA (mulnC n'`! _).
+by under eq_bind do rewrite cputget cputput mulnA (mulnC m`! _).
 Qed.
 
 Definition factdts n :=
