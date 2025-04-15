@@ -1,5 +1,5 @@
 (* monae: Monadic equational reasoning in Coq                                 *)
-(* Copyright (C) 2020 monae authors, license: LGPL-2.1-or-later               *)
+(* Copyright (C) 2025 monae authors, license: LGPL-2.1-or-later               *)
 From HB Require Import structures.
 From mathcomp Require Import all_ssreflect ssralg ssrnum.
 From mathcomp Require boolp.
@@ -7,11 +7,12 @@ From mathcomp Require Import reals mathcomp_extra lra ring.
 From infotheo Require Import realType_ext.
 From infotheo Require Import proba convex necset.
 From infotheo Require Import fdist.
-Require Import preamble hierarchy monad_lib fail_lib.
+Require Import preamble hierarchy monad_lib alt_lib fail_lib.
 
-(******************************************************************************)
-(*             Definitions and lemmas for probability monads                  *)
+(**md**************************************************************************)
+(* # Definitions and lemmas for probability monads                            *)
 (*                                                                            *)
+(* ```                                                                        *)
 (* uniform s == uniform choice from a sequence s with a probMonad             *)
 (* mpair_uniform ==                                                           *)
 (*   uniform choices are independent, in the sense that choosing              *)
@@ -21,6 +22,7 @@ Require Import preamble hierarchy monad_lib fail_lib.
 (* Sample programs:                                                           *)
 (*   arbcoin == arbitrary choice followed by probabilistic choice             *)
 (*   coinarb == probabilistic choice followed by arbitrary choice             *)
+(* ```                                                                        *)
 (*                                                                            *)
 (******************************************************************************)
 

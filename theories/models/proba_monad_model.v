@@ -1,5 +1,5 @@
 (* monae: Monadic equational reasoning in Coq                                 *)
-(* Copyright (C) 2020 monae authors, license: LGPL-2.1-or-later               *)
+(* Copyright (C) 2025 monae authors, license: LGPL-2.1-or-later               *)
 From mathcomp Require Import all_ssreflect ssralg ssrnum.
 From mathcomp Require boolp.
 From mathcomp Require Import mathcomp_extra reals.
@@ -8,8 +8,8 @@ From infotheo Require Import convex.
 From HB Require Import structures.
 Require Import preamble hierarchy monad_lib proba_lib.
 
-(******************************************************************************)
-(*                     Model for the probability monad                        *)
+(**md**************************************************************************)
+(* # Model for the probability monad                                          *)
 (******************************************************************************)
 
 Local Open Scope monae_scope.
@@ -58,7 +58,7 @@ Proof. by move=> ? ?; exact: conv1. Qed.
 Let choiceC (T : UU0) : forall p (a b : acto T), choice p _ a b = choice ((Prob.p p).~ %:pr) _ b a.
 Proof. by move=> ? ?; exact: convC. Qed.
 
-Let choicemm : forall (T : Type) p, idempotent (@choice p T).
+Let choicemm : forall (T : Type) p, idempotent_op (@choice p T).
 Proof. by move=> ? ? ?; exact: convmm. Qed.
 
 Let choiceA : forall (T : Type) (p q r s : {prob R}) (a b c : acto T),

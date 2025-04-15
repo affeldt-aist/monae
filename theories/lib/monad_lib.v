@@ -1,5 +1,5 @@
 (* monae: Monadic equational reasoning in Coq                                 *)
-(* Copyright (C) 2020 monae authors, license: LGPL-2.1-or-later               *)
+(* Copyright (C) 2025 monae authors, license: LGPL-2.1-or-later               *)
 Ltac typeof X := type of X.
 Require Import ssrmatching.
 From mathcomp Require Import all_ssreflect.
@@ -8,10 +8,17 @@ Require Import preamble.
 From HB Require Import structures.
 Require Import hierarchy.
 
-(******************************************************************************)
-(*  Properties and examples of functors, natural transformations, and monads  *)
+(**md**************************************************************************)
+(* # Properties and examples of functors, natural transformations, and monads *)
 (*                                                                            *)
+(* ```                                                                        *)
 (*            liftM2 h m1 m2 == as in Haskell                                 *)
+(*                     foldM == TODO                                          *)
+(*             unfoldM p f y == generates a list a from a seed y, if p y      *)
+(*                              holds the generation stops,otherwise an       *)
+(*                              element and a new seed of generated using f   *)
+(*                    a +m b == addM a b                                      *)
+(*                    a *m b == mulM a b                                      *)
 (*      examples of functors : squaring, curry_F, uncurry_F, exponential_F    *)
 (*         apply_pair_snd ab == f ab.2 >>= (fun c => Ret (ab.1, c))           *)
 (* apply_triple_snd abc == f abc.1.2 >>= (fun d => Ret (abc.1.1, d, abc.2))   *)
@@ -40,6 +47,7 @@ Require Import hierarchy.
 (*                              the value of the function g : A -> B          *)
 (*                  rep n mx == mx >> mx >> ... >> mx, n times                *)
 (* forloop n1 n2 (b : nat -> M unit) : M unit := for-loop                     *)
+(* ```                                                                        *)
 (*                                                                            *)
 (******************************************************************************)
 
@@ -104,6 +112,45 @@ Qed.
 
 End liftM2_lemmas.
 Arguments bind_liftM2_size {M A B C} {f} m1 m2 n.
+
+Section foldM.
+Variables (M : monad) (T R : UU0) (f : R -> T -> M R).
+Fixpoint foldM z s : M _ := if s is x :: s' then f z x >>= (fun y => foldM y s') else (Ret z).
+End foldM.
+
+Section unfoldM.
+
+Local Open Scope mprog.
+
+Section unfoldM_monad.
+Variables (M : monad) (A B : UU0).
+Variable (r : B -> B -> bool).
+Hypothesis wfr : well_founded r.
+Variables (p : pred B) (f : B -> M (A * B)%type).
+
+Definition unfoldM' (y : B) (g : forall y' : B, r y' y -> M (seq A)) : M (seq A) :=
+  if p y then Ret [::] else f y >>=
+    (fun xz => match Bool.bool_dec (r xz.2 y) true with
+            | left H => fmap (cons xz.1) (g xz.2 H)
+            | right H => Ret [::]
+            end).
+(* superfluous match to define the "recursive" call,
+   to be removed by unfoldME under hypo. *)
+
+Definition unfoldM := Fix wfr (fun _ => _ _) unfoldM'.
+
+End unfoldM_monad.
+
+End unfoldM.
+Arguments unfoldM : simpl never.
+
+Definition addM (M : monad) (a b : M nat) : M nat :=
+  a >>= (fun x => b >>= (fun y => Ret (x + y))).
+Notation "a +m b" := (addM a b) (at level 50, format "a  +m  b").
+
+Definition mulM (M : monad) (a b : M nat) : M nat :=
+  a >>= (fun x => b >>= (fun y => Ret (x * y))).
+Notation "a *m b" := (mulM a b) (at level 50, format "a  *m  b").
 
 Definition Squaring (A : UU0) := (A * A)%type.
 Definition squaring_f (A B : UU0) (f : A -> B) : Squaring A -> Squaring B :=
@@ -326,6 +373,7 @@ End natural_transformation_example.
 
 Definition eta_type (f g : functor) := idfun ~> g \o f.
 Definition eps_type (f g : functor) := f \o g ~> idfun.
+
 Module TriangularLaws.
 Section triangularlaws.
 Variables (F G : functor) (eps : eps_type F G) (eta : eta_type F G).

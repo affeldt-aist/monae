@@ -1,14 +1,15 @@
 (* monae: Monadic equational reasoning in Coq                                 *)
-(* Copyright (C) 2020 monae authors, license: LGPL-2.1-or-later               *)
+(* Copyright (C) 2025 monae authors, license: LGPL-2.1-or-later               *)
 From mathcomp Require Import all_ssreflect.
 From mathcomp Require boolp.
 Require Import preamble.
 From HB Require Import structures.
-Require Import hierarchy monad_lib fail_lib.
+Require Import hierarchy monad_lib alt_lib fail_lib.
 
-(******************************************************************************)
-(*              Definitions and lemmas about state monads                     *)
+(**md**************************************************************************)
+(* # Definitions and lemmas about state monads                                *)
 (*                                                                            *)
+(* ```                                                                        *)
 (*          overwrite s a := put s >> Ret s                                   *)
 (*              protect n := get >>= (fun x => n >>= overwrite x)             *)
 (*              putpermsC == perms is independent of the state and so         *)
@@ -19,6 +20,7 @@ Require Import hierarchy monad_lib fail_lib.
 (*                 scanlM == see section 4.1, mu2019tr3                       *)
 (*        scanlM_of_scanl == see theorem 4.1, mu2019tr3                       *)
 (*              theorem44 == see mu2019tr3                                    *)
+(* ```                                                                        *)
 (*                                                                            *)
 (******************************************************************************)
 

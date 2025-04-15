@@ -1,19 +1,20 @@
 (* monae: Monadic equational reasoning in Coq                                 *)
-(* Copyright (C) 2020 monae authors, license: LGPL-2.1-or-later               *)
+(* Copyright (C) 2025 monae authors, license: LGPL-2.1-or-later               *)
 From mathcomp Require Import all_ssreflect.
 From mathcomp Require boolp.
 Require Import preamble.
-Require Import hierarchy monad_lib fail_lib state_lib.
+Require Import hierarchy monad_lib alt_lib fail_lib state_lib.
 From infotheo Require Import ssr_ext.
 Require Import Recdef.
 From Equations Require Import Equations.
 
-(******************************************************************************)
-(*                            Quicksort example                               *)
+(**md**************************************************************************)
+(* # Quicksort example                                                        *)
 (*                                                                            *)
 (* This file provides a formalization of quicksort on lists as proved in      *)
 (* [1, Sect. 4]. The main lemmas is quicksort_slowsort.                       *)
 (*                                                                            *)
+(* ```                                                                        *)
 (* is_partition p (s, t) == elements of s are smaller or equal to p, and      *)
 (*                          elements of t are greater of equal to p           *)
 (*         partition p s == partitions s into a partition w.r.t. p            *)
@@ -21,6 +22,7 @@ From Equations Require Import Equations.
 (*            slowsort s == choose a sorted list among all permutations of s  *)
 (*               qsort s == sort s by quicksort                               *)
 (*                          type: seq T -> seq T                              *)
+(* ```                                                                        *)
 (*                                                                            *)
 (* Reference:                                                                 *)
 (* - [1] Shin-Cheng Mu, Tsung-Ju Chiang, Declarative Pearl: Deriving Monadic  *)

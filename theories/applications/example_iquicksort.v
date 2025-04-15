@@ -1,14 +1,15 @@
 (* monae: Monadic equational reasoning in Coq                                 *)
-(* Copyright (C) 2020 monae authors, license: LGPL-2.1-or-later               *)
+(* Copyright (C) 2025 monae authors, license: LGPL-2.1-or-later               *)
 From mathcomp Require Import all_ssreflect.
 From mathcomp Require boolp.
-Require Import preamble hierarchy monad_lib fail_lib state_lib.
+Require Import preamble hierarchy monad_lib alt_lib fail_lib state_lib.
 Require Import array_lib example_quicksort.
 From infotheo Require Import ssr_ext.
 
-(******************************************************************************)
-(*                      Quicksort with the Array Monad                        *)
+(**md**************************************************************************)
+(* # Quicksort with the Array Monad                                           *)
 (*                                                                            *)
+(* ```                                                                        *)
 (*    partl p (s, t) u == partition u into (x, y) w.r.t. pivot p and returns  *)
 (*                        (s ++ x, t ++ y)                                    *)
 (*            dispatch == if x <= p then qperm zs >>= f (rcons ys x)          *)
@@ -25,7 +26,7 @@ From infotheo Require Import ssr_ext.
 (*                        pair of type                                        *)
 (*                        {(a, b)| a <= x + y + z && b <= x + y +z}           *)
 (*       iqsort (i, n) == quicksort the list of size n stored from address i  *)
-(*                                                                            *)
+(* ```                                                                        *)
 (*                                                                            *)
 (* Reference:                                                                 *)
 (* - [1] Shin-Cheng Mu, Tsung-Ju Chiang, Declarative Pearl: Deriving Monadic  *)
