@@ -1,11 +1,11 @@
 (* monae: Monadic equational reasoning in Coq                                 *)
-(* Copyright (C) 2020 monae authors, license: LGPL-2.1-or-later               *)
+(* Copyright (C) 2025 monae authors, license: LGPL-2.1-or-later               *)
 From mathcomp Require Import all_ssreflect.
 From mathcomp Require boolp.
 Require Import preamble hierarchy monad_lib fail_lib state_lib.
 
-(******************************************************************************)
-(*                           Tree relabeling                                  *)
+(**md**************************************************************************)
+(* # Tree relabeling                                                          *)
 (*                                                                            *)
 (* see Sect. 9 of J. Gibbons, R. Hinze, Just do it: simple monadic equational *)
 (* reasoning, ICFP 2011                                                       *)

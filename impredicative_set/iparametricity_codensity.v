@@ -1,12 +1,12 @@
 (* monae: Monadic equational reasoning in Coq                                 *)
-(* Copyright (C) 2020 monae authors, license: LGPL-2.1-or-later               *)
+(* Copyright (C) 2025 monae authors, license: LGPL-2.1-or-later               *)
 From Param Require Import Param.
 
 From mathcomp Require Import all_ssreflect.
 From HB Require Import structures.
 Require Import ipreamble ihierarchy imonad_lib ifmt_lifting imonad_model.
 
-(******************************************************************************)
+(**md**************************************************************************)
 (* Instantiations of uniform lifting (Theorem 27 of [Mauro Jaskelioff,        *)
 (* Modular Monad Transformers, ESOP 2009]) with:                              *)
 (* - the identity monad (Module Identity)                                     *)

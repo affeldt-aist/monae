@@ -1,10 +1,10 @@
 (* monae: Monadic equational reasoning in Coq                                 *)
-(* Copyright (C) 2020 monae authors, license: LGPL-2.1-or-later               *)
+(* Copyright (C) 2025 monae authors, license: LGPL-2.1-or-later               *)
 From mathcomp Require Import all_ssreflect.
 From HB Require Import structures.
 Require Import ipreamble ihierarchy imonad_lib.
 
-(******************************************************************************)
+(**md**************************************************************************)
 (*                          Composing monads                                  *)
 (*                                                                            *)
 (* formalization of [Jones and Duponcheel, Composing Monads, Yale RR 1993]    *)

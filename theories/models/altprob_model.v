@@ -1,5 +1,5 @@
 (* monae: Monadic equational reasoning in Coq                                 *)
-(* Copyright (C) 2020 monae authors, license: LGPL-2.1-or-later               *)
+(* Copyright (C) 2025 monae authors, license: LGPL-2.1-or-later               *)
 From mathcomp Require Import all_ssreflect ssralg ssrnum finmap.
 From mathcomp Require Import boolp classical_sets reals.
 From infotheo Require Import classical_sets_ext realType_ext fdist proba.
@@ -9,11 +9,13 @@ From HB Require Import structures.
 Require Import preamble hierarchy monad_lib proba_lib monad_model gcm_model.
 Require Import category.
 
-(******************************************************************************)
-(*                  Model of the monad type altProbMonad                      *)
+(**md**************************************************************************)
+(* # Model of the monad type altProbMonad                                     *)
 (*                                                                            *)
+(* ```                                                                        *)
 (* gcmAP == model of a monad that combines non-deterministic choice and       *)
 (*          probability, built on top of the geometrically convex monad       *)
+(* ```                                                                        *)
 (******************************************************************************)
 
 Set Implicit Arguments.
@@ -112,7 +114,7 @@ End bindaltDl.
 HB.instance Definition _ :=
   @isMonadAlt.Build (Monad_of_category_monad.acto (Mgcm R)) alt altA bindaltDl.
 
-Lemma altxx A : idempotent (@alt A).
+Lemma altxx A : idempotent_op (@alt A).
 Proof. by move=> x; rewrite /= /alt lubxx. Qed.
 Lemma altC A : commutative (@alt A).
 Proof. by move=> a b; rewrite /= /alt /= lubC. Qed.
@@ -126,7 +128,7 @@ Lemma choice1 A (x y : gcm R A) : x <| 1%:pr |> y = x.
 Proof. by rewrite conv1. Qed.
 Lemma choiceC A p (x y : gcm R A) : x <|p|> y = y <|(Prob.p p).~%:pr|> x.
 Proof. by rewrite convC. Qed.
-Lemma choicemm A p : idempotent (@choice p A).
+Lemma choicemm A p : idempotent_op (@choice p A).
 Proof. by move=> m; rewrite /choice convmm. Qed.
 
 Let choiceA A (p q r s : {prob R}) (x y z : gcm R A) :

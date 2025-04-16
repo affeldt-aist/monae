@@ -1,14 +1,16 @@
 (* monae: Monadic equational reasoning in Coq                                 *)
-(* Copyright (C) 2020 monae authors, license: LGPL-2.1-or-later               *)
+(* Copyright (C) 2025 monae authors, license: LGPL-2.1-or-later               *)
 From mathcomp Require Import all_ssreflect.
 From mathcomp Require boolp.
-Require Import preamble hierarchy monad_lib fail_lib.
+Require Import preamble hierarchy monad_lib alt_lib fail_lib.
 
-(******************************************************************************)
-(*                              Spark example                                 *)
+(**md**************************************************************************)
+(* # Spark example                                                            *)
 (*                                                                            *)
+(* ```                                                                        *)
 (* see Shin-Cheng Mu, Equational Reasoning for Non-deterministic Monad: A     *)
 (* Case study of Spark Aggregation, TR-IIS-19-002                             *)
+(* ```                                                                        *)
 (*                                                                            *)
 (******************************************************************************)
 
@@ -21,7 +23,6 @@ Local Open Scope mprog.
 
 Section definitions.
 Variable M : altMonad.
-
 Variables (A B : Type).
 
 Definition deterministic A B (f : A -> M B) := exists g : A -> B, f = Ret \o g.
@@ -272,8 +273,8 @@ Hypothesis injective_return : forall C x1 x2,
   Ret x1 = Ret x2 :> M C -> x1 = x2.
 
 Lemma theorem47 :
- aggregate b mul add = Ret \o foldl mul b \o flatten :> (_ -> M _) ->
- is_hom add (mul b) b (foldl mul b).
+  aggregate b mul add = Ret \o foldl mul b \o flatten :> (_ -> M _) ->
+  is_hom add (mul b) b (foldl mul b).
 Proof.
 move=> H.
 split; first by [].

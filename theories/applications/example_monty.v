@@ -1,13 +1,14 @@
 (* monae: Monadic equational reasoning in Coq                                 *)
-(* Copyright (C) 2020 monae authors, license: LGPL-2.1-or-later               *)
+(* Copyright (C) 2025 monae authors, license: LGPL-2.1-or-later               *)
 From mathcomp Require Import all_ssreflect ssralg ssrnum.
 From mathcomp Require Import mathcomp_extra reals lra ring.
 From infotheo Require Import realType_ext proba.
-Require Import preamble hierarchy monad_lib fail_lib proba_lib.
+Require Import preamble hierarchy monad_lib alt_lib fail_lib proba_lib.
 
-(******************************************************************************)
-(*                            Monty Hall example                              *)
+(**md**************************************************************************)
+(* # Monty Hall example                                                       *)
 (*                                                                            *)
+(* ```                                                                        *)
 (* Module Set3 == a small theory about sets of three elements                 *)
 (*   Sample lemma: bcoin13E_pair == matching choices: the elements h and p    *)
 (*   independently chosen at random will match one third of the time          *)
@@ -15,6 +16,7 @@ Require Import preamble hierarchy monad_lib fail_lib proba_lib.
 (* Section monty_proba == Monty Hall with the probability monad               *)
 (* Section monty_nondeter == nondeterministic Monty Hall                      *)
 (* Section forgetful_monty == with the exceptProbMonad                        *)
+(* ```                                                                        *)
 (*                                                                            *)
 (* references:                                                                *)
 (* - J. Gibbons, R. Hinze, Just do it: simple monadic equational reasoning,   *)

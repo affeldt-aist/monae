@@ -1,14 +1,15 @@
 (* monae: Monadic equational reasoning in Coq                                 *)
-(* Copyright (C) 2020 monae authors, license: LGPL-2.1-or-later               *)
+(* Copyright (C) 2025 monae authors, license: LGPL-2.1-or-later               *)
 From mathcomp Require Import all_ssreflect.
 From mathcomp Require boolp.
 Require Import preamble.
 From HB Require Import structures.
-Require Import hierarchy monad_lib fail_lib.
+Require Import hierarchy monad_lib alt_lib fail_lib.
 
-(******************************************************************************)
-(*                Definitions and lemmas about the array monad                *)
+(**md**************************************************************************)
+(* # Definitions and lemmas about the array monad                             *)
 (*                                                                            *)
+(* ```                                                                        *)
 (*           aswap i j == swap the cells at addresses i and j; this is a      *)
 (*                        computation of type (M unit)                        *)
 (*       writeList i s == write the list s at address i; this is a            *)
@@ -20,6 +21,7 @@ Require Import hierarchy monad_lib fail_lib.
 (*        readList i n == read the list of values of size n starting at       *)
 (*                        address i; it is a computation of type (M (seq E))  *)
 (*                        where E is the type of stored elements              *)
+(* ```                                                                        *)
 (*                                                                            *)
 (******************************************************************************)
 

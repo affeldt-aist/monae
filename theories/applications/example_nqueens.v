@@ -1,11 +1,11 @@
 (* monae: Monadic equational reasoning in Coq                                 *)
-(* Copyright (C) 2020 monae authors, license: LGPL-2.1-or-later               *)
+(* Copyright (C) 2025 monae authors, license: LGPL-2.1-or-later               *)
 From mathcomp Require Import all_ssreflect ssralg ssrint.
 From mathcomp Require boolp.
-Require Import preamble hierarchy monad_lib fail_lib state_lib.
+Require Import preamble hierarchy monad_lib alt_lib fail_lib state_lib.
 
-(******************************************************************************)
-(*                            N-queens example                                *)
+(**md**************************************************************************)
+(* # N-queens example                                                         *)
 (*                                                                            *)
 (* references:                                                                *)
 (* - J. Gibbons, R. Hinze, Just do it: simple monadic equational reasoning,   *)

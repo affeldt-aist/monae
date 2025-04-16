@@ -1,5 +1,5 @@
 (* monae: Monadic equational reasoning in Coq                                 *)
-(* Copyright (C) 2020 monae authors, license: LGPL-2.1-or-later               *)
+(* Copyright (C) 2025 monae authors, license: LGPL-2.1-or-later               *)
 From mathcomp Require Import all_ssreflect.
 From mathcomp Require boolp.
 Require ProofIrrelevance.
@@ -11,14 +11,16 @@ Definition eq_rect_eq :=
 
 Definition funext_dep := boolp.functional_extensionality_dep.
 
-(******************************************************************************)
-(*      Shared notations and easy definitions/lemmas of general interest      *)
+(**md**************************************************************************)
+(* # Shared notations and easy definitions/lemmas of general interest         *)
 (*                                                                            *)
+(* ```                                                                        *)
 (*                foldr1                                                      *)
 (*         curry/uncurry == currying for pairs                                *)
 (*       curry3/uncurry3 == currying for triples                              *)
 (*        comparePc/eqPc == computable version of equality axioms             *)
 (*  coerce T1 (v : f T1) == some (f T2) if T1 = T2 and None o.w.              *)
+(* ```                                                                        *)
 (*                                                                            *)
 (******************************************************************************)
 

@@ -1,11 +1,11 @@
 (* monae: Monadic equational reasoning in Coq                                 *)
-(* Copyright (C) 2020 monae authors, license: LGPL-2.1-or-later               *)
+(* Copyright (C) 2025 monae authors, license: LGPL-2.1-or-later               *)
 From mathcomp Require Import all_ssreflect.
 Require Import ipreamble ihierarchy imonad_lib ifail_lib istate_lib.
 Require Import imonad_transformer.
 
-(******************************************************************************)
-(*               Examples of programs using monad transformers                *)
+(**md**************************************************************************)
+(* # Examples of programs using monad transformers                            *)
 (*                                                                            *)
 (* reference:                                                                 *)
 (* - R. Affeldt, D. Nowak, Extending Equational Monadic Reasoning with Monad  *)

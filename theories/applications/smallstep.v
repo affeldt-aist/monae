@@ -1,12 +1,12 @@
 (* monae: Monadic equational reasoning in Coq                                 *)
-(* Copyright (C) 2020 monae authors, license: LGPL-2.1-or-later               *)
+(* Copyright (C) 2025 monae authors, license: LGPL-2.1-or-later               *)
 Require Import Eqdep JMeq List ssreflect.
 Import ListNotations.
 From mathcomp Require Import ssreflect ssrfun ssrbool eqtype ssrnat seq.
 Require Import hierarchy monad_lib state_lib trace_lib monad_model.
 
-(******************************************************************************)
-(*              Application of monadTrace to program semantics                *)
+(**md**************************************************************************)
+(* # Application of monadTrace to program semantics                           *)
 (*                                                                            *)
 (* Inductive program, Inductive continuation:                                 *)
 (*   Syntax for an imperative language with a primitive to record execution   *)
