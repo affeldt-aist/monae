@@ -1,5 +1,5 @@
 (* monae: Monadic equational reasoning in Coq                                 *)
-(* Copyright (C) 2020 monae authors, license: LGPL-2.1-or-later               *)
+(* Copyright (C) 2025 monae authors, license: LGPL-2.1-or-later               *)
 From mathcomp Require Import all_ssreflect.
 From mathcomp Require Import boolp classical_sets reals.
 From mathcomp Require Import finmap.
@@ -9,12 +9,13 @@ Require Import preamble.
 From HB Require Import structures.
 Require Import category.
 
-(******************************************************************************)
-(*             Construction of the geometrically convex monad                 *)
+(**md**************************************************************************)
+(* # Construction of the geometrically convex monad                            *)
 (*                                                                            *)
 (* This file defines the functor P_delta and shows that it is a monad.        *)
 (* The proof uses the adjointness relations depicted as follows:              *)
 (*                                                                            *)
+(* ```                                                                        *)
 (* Functors:  |       FC            F0           F1                           *)
 (*            |     ---->          ---->        ---->                         *)
 (* Categories:| Type     choiceType     convType     semiCompSemiLattConvType *)
@@ -22,8 +23,10 @@ Require Import category.
 (*            |     <----          <----        <----                         *)
 (* Forgetful  |       UC             U0           U1                          *)
 (* Functors:  |                                                               *)
+(* ```                                                                        *)
 (*                                                                            *)
 (* FC -| UC:                                                                  *)
+(* ```                                                                        *)
 (*                  CC := [the category of choiceType]                        *)
 (*     free_choiceType := [the {functor CT -> CC} of choice_of_Type]          *)
 (*                        (notation FC)                                       *)
@@ -31,7 +34,9 @@ Require Import category.
 (*                        (notation UC)                                       *)
 (*                epsC == counit FC \O UC ~> 1                                *)
 (*                etaC == unit 1 ~> UC \O FC                                  *)
+(* ```                                                                        *)
 (* F0 -| U0:                                                                  *)
+(* ```                                                                        *)
 (*                  CV := [the category of convType]                          *)
 (*                        (morphisms are affine functions)                    *)
 (*       free_convType := [the {functor CC -> CV} of                          *)
@@ -41,7 +46,9 @@ Require Import category.
 (*                eps0 == counit F0 \O U0 ~> 1                                *)
 (*                eta0 == unit 1 ~> U0 \O F0                                  *)
 (*        triL0, triR0 == triangular laws                                     *)
+(* ```                                                                        *)
 (* F1 -| U1:                                                                  *)
+(* ```                                                                        *)
 (*                  CS := [the category of semiCompSemiLattConvType]          *)
 (*                        the category of semi-complete semi-lattice convex   *)
 (*                        spaces, morphisms are biglubmorph and affine        *)
@@ -53,7 +60,9 @@ Require Import category.
 (*                eps1 == counit F1 \O U1 ~> FId                              *)
 (*                eta1 == unit FId ~> U1 \O F1                                *)
 (*        triL1, triR1 == triangular laws                                     *)
+(* ```                                                                        *)
 (*                                                                            *)
+(* ```                                                                        *)
 (*               join1 == eps1 : necset (necset C) -> necset C where C is a   *)
 (*                        convType                                            *)
 (*                        | F1                                                *)
@@ -68,6 +77,7 @@ Require Import category.
 (*                join == P_delta \O P_delta ~> P_delta                       *)
 (*                 gcm == geometrically convex monad in the context of        *)
 (*                        monad.v                                             *)
+(* ```                                                                        *)
 (******************************************************************************)
 
 Set Implicit Arguments.

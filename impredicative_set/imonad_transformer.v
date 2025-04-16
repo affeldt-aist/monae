@@ -1,16 +1,17 @@
 (* monae: Monadic equational reasoning in Coq                                 *)
-(* Copyright (C) 2020 monae authors, license: LGPL-2.1-or-later               *)
+(* Copyright (C) 2025 monae authors, license: LGPL-2.1-or-later               *)
 From mathcomp Require Import all_ssreflect.
 Require Import ipreamble.
 From HB Require Import structures.
 Require Import ihierarchy imonad_lib ifail_lib istate_lib.
 
-(******************************************************************************)
-(*                    Formalization of monad transformers                     *)
+(**md**************************************************************************)
+(* # Formalization of monad transformers                                      *)
 (*                                                                            *)
 (* This file corresponds to the formalization of [Mauro Jaskelioff, Modular   *)
 (* Monad Transformers, ESOP 2009] (roughly, up to Sect. 5, Example 22).       *)
 (*                                                                            *)
+(* ```                                                                        *)
 (*  Module MonadMLaws == laws of monad morphisms                              *)
 (*             monadM == type of monad morphisms                              *)
 (*             monadT == type of monad transformers, i.e., functions t of     *)
@@ -28,7 +29,9 @@ Require Import ihierarchy imonad_lib ifail_lib istate_lib.
 (*           alifting == algebraic operation defined using an algebraic       *)
 (*                       operation op and a monad morphism e                  *)
 (* uniform_algebraic_lifting == Theorem: alifting is a lifting                *)
+(* ```                                                                        *)
 (*                                                                            *)
+(* ```                                                                        *)
 (*         functorial == type of functors where the action on objects as type *)
 (*                       monad -> monad                                       *)
 (*                fmt == type of functorial monad transformers                *)
@@ -37,6 +40,7 @@ Require Import ihierarchy imonad_lib ifail_lib istate_lib.
 (*                       - stateFMT                                           *)
 (*                       - envFMT                                             *)
 (*                       - outputFMT                                          *)
+(* ```                                                                        *)
 (*                                                                            *)
 (******************************************************************************)
 

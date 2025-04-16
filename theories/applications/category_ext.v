@@ -1,12 +1,12 @@
 (* monae: Monadic equational reasoning in Coq                                 *)
-(* Copyright (C) 2020 monae authors, license: LGPL-2.1-or-later               *)
+(* Copyright (C) 2025 monae authors, license: LGPL-2.1-or-later               *)
 From mathcomp Require Import all_ssreflect.
 From mathcomp Require Import boolp.
 Require Import preamble category.
 From HB Require Import structures.
 
-(******************************************************************************)
-(*                    Extra definitions in category theory                    *)
+(**md**************************************************************************)
+(* # Extra definitions in category theory                                     *)
 (*                                                                            *)
 (* This file provides some constructions over categories.                     *)
 (* Module SliceCategory                                                       *)

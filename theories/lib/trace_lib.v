@@ -1,11 +1,11 @@
 (* monae: Monadic equational reasoning in Coq                                 *)
-(* Copyright (C) 2020 monae authors, license: LGPL-2.1-or-later               *)
+(* Copyright (C) 2025 monae authors, license: LGPL-2.1-or-later               *)
 Ltac typeof X := type of X.
 From mathcomp Require Import all_ssreflect ssralg ssrint.
 Require Import hierarchy monad_lib.
 
-(******************************************************************************)
-(*                     Example using the trace monad                          *)
+(**md**************************************************************************)
+(* # Example using the trace monad                                            *)
 (******************************************************************************)
 
 Set Implicit Arguments.

@@ -1,5 +1,5 @@
 (* monae: Monadic equational reasoning in Coq                                 *)
-(* Copyright (C) 2020 monae authors, license: LGPL-2.1-or-later               *)
+(* Copyright (C) 2025 monae authors, license: LGPL-2.1-or-later               *)
 From mathcomp Require Import all_ssreflect.
 Require ProofIrrelevance FunctionalExtensionality.
 
@@ -12,12 +12,14 @@ Definition funext := @FunctionalExtensionality.functional_extensionality.
 
 Definition funext_dep := @FunctionalExtensionality.functional_extensionality_dep.
 
-(******************************************************************************)
-(*      Shared notations and easy definitions/lemmas of general interest      *)
+(**md**************************************************************************)
+(* # Shared notations and easy definitions/lemmas of general interest         *)
 (*                                                                            *)
+(* ```                                                                        *)
 (*                foldr1                                                      *)
 (*         curry/uncurry == currying for pairs                                *)
 (*       curry3/uncurry3 == currying for triples                              *)
+(* ```                                                                        *)
 (*                                                                            *)
 (******************************************************************************)
 

@@ -1,17 +1,18 @@
 (* monae: Monadic equational reasoning in Coq                                 *)
-(* Copyright (C) 2020 monae authors, license: LGPL-2.1-or-later               *)
+(* Copyright (C) 2025 monae authors, license: LGPL-2.1-or-later               *)
 From mathcomp Require Import all_ssreflect.
 From mathcomp Require Import boolp.
 Require Import preamble.
 From HB Require Import structures.
 
-(******************************************************************************)
-(*                  Formalization of basic category theory                    *)
+(**md**************************************************************************)
+(* # Formalization of basic category theory                                   *)
 (*                                                                            *)
 (* This file provides definitions of category, functor, monad, as well as     *)
 (* basic theorems. It comes as a generalization of the first part of          *)
 (* hierarchy.v which is specialized to the category of sets.                  *)
 (*                                                                            *)
+(* ```                                                                        *)
 (*            category == type of categories, a category C is implemented     *)
 (*                        with a universe a la Tarski, there is a realizer    *)
 (*                        function el that associates to each object A the    *)
@@ -46,6 +47,7 @@ From HB Require Import structures.
 (* Monad_of_category_monad == module, interface to isMonad from hierarchy.v   *)
 (* Monad_of_category_monad.m == turns a monad over the Type category into     *)
 (*                        a monad in the sense of isMonad from hierarchy.v    *)
+(* ```                                                                        *)
 (******************************************************************************)
 
 Reserved Notation "F ~~> G" (at level 51).

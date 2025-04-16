@@ -1,5 +1,5 @@
 (* monae: Monadic equational reasoning in Coq                                 *)
-(* Copyright (C) 2023 monae authors, license: LGPL-2.1-or-later               *)
+(* Copyright (C) 2025 monae authors, license: LGPL-2.1-or-later               *)
 Require Import JMeq.
 From mathcomp Require Import all_ssreflect finmap.
 From mathcomp Require boolp.
@@ -9,8 +9,8 @@ From HB Require Import structures.
 Require Import hierarchy monad_lib fail_lib state_lib trace_lib.
 Require Import monad_transformer monad_model.
 
-(******************************************************************************)
-(*                        Model for typed store                               *)
+(**md**************************************************************************)
+(* # Model for typed store                                                    *)
 (*                                                                            *)
 (* Separate file as it requires disabling various sanity checks.              *)
 (* Reuses coerce and locT_nat from monad_model.v.                             *)

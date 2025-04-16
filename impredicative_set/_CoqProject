@@ -9,6 +9,7 @@
 ipreamble.v
 ihierarchy.v
 imonad_lib.v
+ialt_lib.v
 ifail_lib.v
 istate_lib.v
 itrace_lib.v

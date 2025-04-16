@@ -1,3 +1,5 @@
+(* monae: Monadic equational reasoning in Coq                                 *)
+(* Copyright (C) 2025 monae authors, license: LGPL-2.1-or-later               *)
 From mathcomp Require Import all_ssreflect.
 Require Import ipreamble.
 From HB Require Import structures.
@@ -5,14 +7,15 @@ Require Import ihierarchy imonad_lib ifail_lib istate_lib itrace_lib.
 Require Import imonad_transformer.
 Require PropExtensionality.
 
-(******************************************************************************)
-(*                       Models for various monads                            *)
+(**md**************************************************************************)
+(* # Models for various monads                                                *)
 (*                                                                            *)
 (* Sample models for monads in hierarchy.v (see also other *_model.v files).  *)
 (* As for naming, we tend to use the identifier acto for the actions on       *)
 (* objects and actm for the actions on morphisms.                             *)
 (*                                                                            *)
 (* Instances of monads (Modules):                                             *)
+(* ```                                                                        *)
 (* IdentityMonad      == identity monad idfun                                 *)
 (* ListMonad          == list monad seq                                       *)
 (* ExceptMonad        == exception monad E + A                                *)
@@ -21,8 +24,10 @@ Require PropExtensionality.
 (* EnvironmentMonad   == environment monad E -> A                             *)
 (* StateMonad         == state monad S -> A * S                               *)
 (* ContMonad          == continuation monad (A -> r) -> r                     *)
+(* ```                                                                        *)
 (*                                                                            *)
 (* Sigma-operations (with algebraicity proofs):                               *)
+(* ```                                                                        *)
 (* empty_op                == empty operation                                 *)
 (* append_op               == append operation                                *)
 (* flush_op                == flush operation                                 *)
@@ -35,8 +40,10 @@ Require PropExtensionality.
 (* put_op                  == put operation                                   *)
 (* abort_op                == abort operation                                 *)
 (* acallcc_op              == algebraic callcc operation                      *)
+(* ```                                                                        *)
 (*                                                                            *)
 (* Models of interfaces:                                                      *)
+(* ```                                                                        *)
 (* Module Fail             == failMonad for option_monad, ListMonad.acto, set *)
 (* Module Except           == exceptMonad for ExcetMonad.acto unit            *)
 (* Module State            == stateMonad for StateMonad.acto S                *)
@@ -52,6 +59,7 @@ Require PropExtensionality.
 (* Module ModelArray       == array monad                                     *)
 (* Module ModelMonadStateRun       == stateRunMonad for MS                    *)
 (* Module ModelMonadExceptStateRun == exceptStateRunMonad                     *)
+(* ```                                                                        *)
 (*                                                                            *)
 (* references:                                                                *)
 (* - Wadler, P. Monads and composable continuations. LISP and Symbolic        *)

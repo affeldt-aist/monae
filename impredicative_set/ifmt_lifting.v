@@ -1,15 +1,16 @@
 (* monae: Monadic equational reasoning in Coq                                 *)
-(* Copyright (C) 2020 monae authors, license: LGPL-2.1-or-later               *)
+(* Copyright (C) 2025 monae authors, license: LGPL-2.1-or-later               *)
 From mathcomp Require Import all_ssreflect.
 From HB Require Import structures.
 Require Import ipreamble ihierarchy imonad_lib imonad_transformer.
 
-(******************************************************************************)
-(*   Uniform Lifting of Sigma-operations Along Functorial Monad Transformers  *)
+(**md**************************************************************************)
+(* # Uniform Lifting of Sigma-operations Along Functorial Monad Transformers  *)
 (*                                                                            *)
 (* This file corresponds to the formalization of [Mauro Jaskelioff,           *)
 (* Modular Monad Transformers, ESOP 2009] (from Sect. 5, definition 23).      *)
 (*                                                                            *)
+(* ```                                                                        *)
 (*            codensityT == codensity monad transformer                       *)
 (*              slifting == definition of a sigma-operation using a           *)
 (*                          sigma-operation and a functorial monad            *)
@@ -25,6 +26,7 @@ Require Import ipreamble ihierarchy imonad_lib imonad_transformer.
 (*              local_*E == Lemmas: liftings of local                         *)
 (*             handle_*E == Lemmas: liftings of handle                        *)
 (*              flush_*E == Lemmas: liftings of flush                         *)
+(* ```                                                                        *)
 (******************************************************************************)
 
 Set Implicit Arguments.
