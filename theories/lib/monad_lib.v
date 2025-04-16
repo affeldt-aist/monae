@@ -113,6 +113,45 @@ Qed.
 End liftM2_lemmas.
 Arguments bind_liftM2_size {M A B C} {f} m1 m2 n.
 
+Section foldM.
+Variables (M : monad) (T R : UU0) (f : R -> T -> M R).
+Fixpoint foldM z s : M _ := if s is x :: s' then f z x >>= (fun y => foldM y s') else (Ret z).
+End foldM.
+
+Section unfoldM.
+
+Local Open Scope mprog.
+
+Section unfoldM_monad.
+Variables (M : monad) (A B : UU0).
+Variable (r : B -> B -> bool).
+Hypothesis wfr : well_founded r.
+Variables (p : pred B) (f : B -> M (A * B)%type).
+
+Definition unfoldM' (y : B) (g : forall y' : B, r y' y -> M (seq A)) : M (seq A) :=
+  if p y then Ret [::] else f y >>=
+    (fun xz => match Bool.bool_dec (r xz.2 y) true with
+            | left H => fmap (cons xz.1) (g xz.2 H)
+            | right H => Ret [::]
+            end).
+(* superfluous match to define the "recursive" call,
+   to be removed by unfoldME under hypo. *)
+
+Definition unfoldM := Fix wfr (fun _ => _ _) unfoldM'.
+
+End unfoldM_monad.
+
+End unfoldM.
+Arguments unfoldM : simpl never.
+
+Definition addM (M : monad) (a b : M nat) : M nat :=
+  a >>= (fun x => b >>= (fun y => Ret (x + y))).
+Notation "a +m b" := (addM a b) (at level 50, format "a  +m  b").
+
+Definition mulM (M : monad) (a b : M nat) : M nat :=
+  a >>= (fun x => b >>= (fun y => Ret (x * y))).
+Notation "a *m b" := (mulM a b) (at level 50, format "a  *m  b").
+
 Definition Squaring (A : UU0) := (A * A)%type.
 Definition squaring_f (A B : UU0) (f : A -> B) : Squaring A -> Squaring B :=
   fun x => (f x.1, f x.2).
