@@ -14,7 +14,6 @@ From Equations Require Import Equations.
 (* ```                                                                        *)
 (*                   arb == arbitrary nondeterministic choice between         *)
 (*                          booleans                                          *)
-(*               alt_lub == TODO                                              *)
 (*       arbitrary def s == nondeterministic choice of an element in the list *)
 (*                          s and def if the list is empty                    *)
 (*                subs s == subsequence of a list                             *)

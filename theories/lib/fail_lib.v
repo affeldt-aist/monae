@@ -175,7 +175,7 @@ case: s ns => [|h t].
   by rewrite !insertE !bindretf !insertE altC !fmapE !bindretf.
 rewrite ltnS /= => ns.
 rewrite (insertE _ (h :: t)) alt_bindDl bindretf.
-rewrite [in LHS](insertE _ [:: b, h & t]) [in LHS](insertE _ (h :: t))
+rewrite [in LHS](insertE _ [:: b, h & t]) [in LHS](insertE _ (h :: t)).
 rewrite [in RHS](insertE _ (h :: t)) [in RHS]alt_bindDl bindretf.
 rewrite 2![in RHS]insertE.
 rewrite [in LHS]alt_fmapDr ![in LHS]altA [in LHS](altC (Ret [:: a, b, h & t])).
@@ -254,6 +254,67 @@ suff : (do x <- iperm (rcons tl b ++ t); do x0 <- insert a x; insert h x0 =
   by under eq_bind do rewrite insertC.
 rewrite -bindA -ih /= -bindA -[in RHS]ih /= !bindA; bind_ext => a'.
 by rewrite -bindA insertC bindA.
+Qed.
+
+Lemma perm_eq_iperm (A : eqType) (a b : seq A) :
+  perm_eq a b -> iperm a = iperm b :> M _.
+Proof.
+have [n na] := ubnP (size a); elim: n a na b => // n ih a na b.
+case: a na => [na|a1 a2]; first by move=> /perm_size/esym/size0nil ->.
+rewrite [in X in X -> _]/= ltnS => na.
+case: b => [/perm_size //|b1 b2].
+have [a1b1|a1b1 ab] := eqVneq a1 b1.
+  by rewrite {}a1b1 perm_cons => ab /=; rewrite (ih _ na b2).
+have [b21 [b22 Hb]] : exists b21 b22, b2 = rcons b21 a1 ++ b22.
+  apply: mem_rcons_cat.
+  by move/perm_mem : ab => /(_ a1); rewrite mem_head inE (negbTE a1b1).
+have {} : perm_eq a2 (b1 :: b21 ++ b22).
+  move: ab; rewrite Hb -cats1 -catA -cat_cons perm_sym.
+  by rewrite perm_catCA perm_cons perm_sym.
+by move=> /(ih _ na) /= ->; rewrite Hb iperm_insert.
+Qed.
+
+Lemma iperm_rcons (A : eqType) t (x : A) :
+  iperm (rcons t x) = iperm (x :: t) :> M _.
+Proof. by apply perm_eq_iperm; rewrite perm_rcons. Qed.
+
+Lemma iperm_insertC (A : eqType) x y (s : seq A) :
+  (do s' <- iperm (rcons s x); insert y s' =
+   do s' <- insert y s; iperm (rcons s' x) :> M _)%Do.
+Proof.
+have [n ns] := ubnP (size s); elim: n s ns x y => // n ih.
+move=> [/= _ x y|h t].
+  by rewrite !bindA !bindretf /= bindA bindretf [in RHS]insertE bindretf.
+rewrite ltnS /= => tn x y.
+rewrite bindA iperm_rcons /= !bindA [in RHS]insertE alt_bindDl bindretf /=.
+rewrite bindA iperm_rcons /= bindA bind_fmap /comp /= -[in X in _ [~]X]bindA.
+rewrite -ih// bindA iperm_rcons /= !bindA -alt_bindDr; bind_ext => s'.
+rewrite -alt_bindDr; bind_ext => t'.
+by rewrite insertC altmm.
+Qed.
+
+Lemma iperm_rcons_bind (E : eqType) (s : seq E) x :
+  iperm (rcons s x) = iperm s >>= (fun s' => iperm (rcons s' x)) :> M _.
+Proof.
+have [n ns] := ubnP (size s); elim: n s ns x => // n ih.
+case=> [_ x|h t]; first by rewrite /= 2!bindretf /= bindretf.
+rewrite ltnS /= => tn x; rewrite ih// !bindA.
+by under [in RHS]eq_bind do rewrite -iperm_insertC.
+Qed.
+
+Lemma iperm_idempotent (E : eqType) : iperm >=> iperm = iperm :> (seq E -> M _).
+Proof.
+apply: funext_dep => s; rewrite kleisliE.
+elim: s => [|h t ih]; first by rewrite /= bindretf.
+rewrite /= -[in RHS]ih !bindA; bind_ext.
+elim/last_ind => [|s x _].
+  by rewrite insertE /= !bindretf insertE /= bindretf insertE.
+rewrite iperm_insertC insert_rcons alt_bindDl bind_fmap /= /comp /=.
+under [in RHS]eq_bind do rewrite iperm_rcons_bind.
+rewrite bindretf (@perm_eq_iperm _ _ (h :: rcons s x)); last first.
+  by rewrite -cats1 -cat1s catA perm_catC.
+rewrite /= iperm_insertC -alt_bindDr; bind_ext => s'.
+by rewrite altmm iperm_rcons_bind.
 Qed.
 
 End iperm_plusMonad.

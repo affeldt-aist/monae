@@ -14,7 +14,6 @@ From Equations Require Import Equations.
 (* ```                                                                        *)
 (*                   arb == arbitrary nondeterministic choice between         *)
 (*                          booleans                                          *)
-(*               alt_lub == TODO                                              *)
 (*       arbitrary def s == nondeterministic choice of an element in the list *)
 (*                          s and def if the list is empty                    *)
 (*                subs s == subsequence of a list                             *)
@@ -53,6 +52,7 @@ rewrite -cats1 -catA -{1}(cat_take_drop (index h b) b); congr (_ ++ _) => /=.
 by rewrite -{2}(nth_index h hb) -drop_nth // index_mem.
 Qed.
 
+(* TODO: move *)
 Lemma well_founded_size A : well_founded (fun x y : seq A => size x < size y).
 Proof. by apply: (@Wf_nat.well_founded_lt_compat _ size) => ? ? /ltP. Qed.
 
@@ -74,7 +74,7 @@ HB.instance Definition _ := @isSemiLattice.Build altCI_semiLattType
 
 Local Open Scope latt_scope.
 
-Definition alt_lub (x y : altCI_semiLattType) : x [~] y = x [+] y.
+Lemma alt_lub (x y : altCI_semiLattType) : x [~] y = x [+] y.
 Proof. by []. Qed.
 
 End altci_semilatttype.
