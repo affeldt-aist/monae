@@ -9,7 +9,6 @@ Follow the instructions on https://github.com/coq-community/templates to regener
 [docker-action-shield]: https://github.com/affeldt-aist/monae/actions/workflows/docker-action.yml/badge.svg?branch=master
 [docker-action-link]: https://github.com/affeldt-aist/monae/actions?query=branch%3Amaster+event%3Apush
 
-
 This Coq library contains a hierarchy of monads with their laws used
 in several examples of monadic equational reasoning.
 
@@ -43,6 +42,7 @@ in several examples of monadic equational reasoning.
   - [A Trustful Monad for Axiomatic Reasoning with Probability and Nondeterminism](https://arxiv.org/abs/2003.09993) doi:[10.1017/S0956796821000137](https://doi.org/10.1017/S0956796821000137)
   - [Towards a practical library for monadic equational reasoning in Coq](https://staff.aist.go.jp/reynald.affeldt/documents/monae-mpc2022.pdf) doi:[10.1007/978-3-031-16912-0_6](https://doi.org/10.1007/978-3-031-16912-0_6)
   - [Environment-friendly monadic equational reasoning for OCaml](https://coq-workshop.gitlab.io/2023/abstracts/coq2023_monadic-reasoning.pdf) 
+  - [A practical formalization of monadic equational reasoning in dependent-type theory](https://www.cambridge.org/core/services/aop-cambridge-core/content/view/B59B87DE000F48B9807F24AEDB11452E/S0956796824000157a.pdf/a-practical-formalization-of-monadic-equational-reasoning-in-dependent-type-theory.pdf) doi:[10.1017/S0956796824000157](https://doi.org/10.1017/S0956796824000157)
 
 ## Building and installation instructions
 
