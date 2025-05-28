@@ -43,6 +43,8 @@ tested_coq_opam_versions:
   repo: 'mathcomp/mathcomp'
 - version: '2.3.0-coq-8.20'
   repo: 'mathcomp/mathcomp'
+- version: '2.4.0-coq-8.20'
+  repo: 'mathcomp/mathcomp'
 
 dependencies:
 - opam:
@@ -72,12 +74,12 @@ dependencies:
     [MathComp field](https://math-comp.github.io)
 - opam:
     name: coq-mathcomp-analysis
-    version: '{ (>= "1.7.0")}'
+    version: '{ (>= "1.11.0")}'
   description: |-
     [MathComp analysis](https://github.com/math-comp/analysis)
 - opam:
     name: coq-infotheo
-    version: '{ >= "0.7.6"}'	
+    version: '{ >= "0.9.3"}'
   description: |-
     [Infotheo](https://github.com/affeldt-aist/infotheo)
 - opam:
@@ -87,7 +89,7 @@ dependencies:
     [Paramcoq](https://github.com/coq-community/paramcoq)
 - opam:
     name: coq-hierarchy-builder
-    version: '{ >= "1.7.0" }'
+    version: '{ (>= "1.7.0") & (< "1.9"~) }'
   description: |-
     [Hierarchy Builder](https://github.com/math-comp/hierarchy-builder)
 - opam:
@@ -122,6 +124,9 @@ publications:
   pub_doi: 10.1007/978-3-031-16912-0_6
 - pub_url: https://coq-workshop.gitlab.io/2023/abstracts/coq2023_monadic-reasoning.pdf
   pub_title: Environment-friendly monadic equational reasoning for OCaml
+- pub_url: https://www.cambridge.org/core/services/aop-cambridge-core/content/view/B59B87DE000F48B9807F24AEDB11452E/S0956796824000157a.pdf/a-practical-formalization-of-monadic-equational-reasoning-in-dependent-type-theory.pdf
+  pub_title: A practical formalization of monadic equational reasoning in dependent-type theory
+  pub_doi: 10.1017/S0956796824000157
 
 #make_target: [
 #  [make "-j%{jobs}%"]

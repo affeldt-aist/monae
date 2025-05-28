@@ -19,14 +19,14 @@ jobs:
         image:
           - 'mathcomp/mathcomp:2.3.0-coq-8.19'
           - 'mathcomp/mathcomp:2.3.0-coq-8.20'
-          - 'mathcomp/mathcomp:2.4.0-coq-8.20'
       fail-fast: false
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v4
       - uses: coq-community/docker-coq-action@v1
         with:
           opam_file: 'coq-monae.opam'
           custom_image: ${{ matrix.image }}
+
 
 # See also:
 # https://github.com/coq-community/docker-coq-action#readme
