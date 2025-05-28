@@ -5,7 +5,7 @@ Ltac typeof X := type of X.
 Require Import ssrmatching JMeq.
 From mathcomp Require Import all_ssreflect ssralg ssrnum.
 From mathcomp Require boolp.
-From mathcomp Require Import mathcomp_extra reals.
+From mathcomp Require Import unstable mathcomp_extra reals.
 From infotheo Require Import realType_ext.
 Require Import preamble.
 From HB Require Import structures.
@@ -1285,7 +1285,7 @@ Lemma choice0 {R : realType} (M : convexMonad R) (T : UU0) (a b : M T) :
   a <| 0%:pr |> b = b.
 Proof.
 rewrite choiceC/= [X in _ <| X |> _](_ : _ = 1%:pr) ?choice1//; apply/val_inj => /=.
-by rewrite mathcomp_extra.onem0.
+by rewrite onem0.
 Qed.
 
 Lemma choiceA_alternative {R : realType} (M : convexMonad R) :

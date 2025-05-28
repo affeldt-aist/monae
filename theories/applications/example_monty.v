@@ -1,7 +1,7 @@
 (* monae: Monadic equational reasoning in Coq                                 *)
 (* Copyright (C) 2025 monae authors, license: LGPL-2.1-or-later               *)
-From mathcomp Require Import all_ssreflect ssralg ssrnum.
-From mathcomp Require Import mathcomp_extra reals lra ring.
+From mathcomp Require Import all_ssreflect ssralg ssrnum ring.
+From mathcomp Require Import unstable mathcomp_extra reals lra.
 From infotheo Require Import realType_ext proba.
 Require Import preamble hierarchy monad_lib alt_lib fail_lib proba_lib.
 

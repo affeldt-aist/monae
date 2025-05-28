@@ -1,9 +1,9 @@
 (* monae: Monadic equational reasoning in Coq                                 *)
 (* Copyright (C) 2025 monae authors, license: LGPL-2.1-or-later               *)
 From HB Require Import structures.
-From mathcomp Require Import all_ssreflect ssralg ssrnum.
+From mathcomp Require Import all_ssreflect ssralg ssrnum lra ring.
 From mathcomp Require boolp.
-From mathcomp Require Import reals mathcomp_extra lra ring.
+From mathcomp Require Import reals unstable mathcomp_extra.
 From infotheo Require Import realType_ext.
 From infotheo Require Import proba convex necset.
 From infotheo Require Import fdist.
@@ -213,7 +213,7 @@ rewrite (_ : Prob.mk _ = probdivrnnm _ n l); last first.
   by rewrite -/(cp _ _) -/l; exact/val_inj.
 pose m := size xxs.
 have lmn : (l = m * n)%nat by rewrite /l /m /n size_allpairs.
-rewrite (_ : probdivrnnm _ _ _ = @Prob.mk _ ((1 + m)%:R)^-1 (prob_invn_subproof _ _)); last first.
+rewrite (_ : probdivrnnm _ _ _ = @Prob.mk _ ((1 + m)%:R)^-1 (prob_invn _)); last first.
   apply val_inj => /=.
   rewrite lmn /divrnnm -mulSn natrM invfM mulrCA divff ?mulr1 ?add1n//.
   by rewrite (eqr_nat _ _ 0) gt_eqF.
@@ -333,12 +333,12 @@ Local Open Scope convex_scope.
 
 (* TODO? : move magnified_weight to infotheo.convex *)
 Lemma magnified_weight_proof (p q r : {prob R}) :
-  Prob.p p < Prob.p q < Prob.p r -> (0 <= (Prob.p r - Prob.p q) / (Prob.p r - Prob.p p) <= 1)%mcR.
+  Prob.p p < Prob.p q < Prob.p r -> (0 <= (Prob.p r - Prob.p q) / (Prob.p r - Prob.p p) <= 1)%R.
 Proof.
 case/andP => pq qr.
-have rp : (0 < Prob.p r - Prob.p p)%mcR by rewrite subr_gt0 (lt_trans pq).
-have rp' : (Prob.p r - Prob.p p != 0)%mcR by rewrite subr_eq0 gt_eqF// -subr_gt0.
-have rq : (0 < Prob.p r - Prob.p q)%mcR by rewrite subr_gt0.
+have rp : (0 < Prob.p r - Prob.p p)%R by rewrite subr_gt0 (lt_trans pq).
+have rp' : (Prob.p r - Prob.p p != 0)%R by rewrite subr_eq0 gt_eqF// -subr_gt0.
+have rq : (0 < Prob.p r - Prob.p q)%R by rewrite subr_gt0.
 apply/andP; split; first by rewrite divr_ge0// ltW.
 by rewrite -(ler_pM2r rp) -mulrA mulVf// mulr1 mul1r lerD2l lerNl opprK ltW.
 Qed.
@@ -435,7 +435,7 @@ Definition coins23 {R : realType} {M : exceptProbMonad R} : M bool :=
 
 (* TODO: check if we PRed this notation to mathcomp *)
 Reserved Notation "x <= y <= z :> T" (at level 70, y, z at next level).
-Notation "x <= y <= z :> T" := ((x <= y :> T)%mcR && (y <= z :> T)%mcR).
+Notation "x <= y <= z :> T" := ((x <= y :> T)%R && (y <= z :> T)%R).
 
 Section for_example_monty.
 
