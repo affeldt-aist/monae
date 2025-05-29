@@ -1,5 +1,6 @@
 (* monae: Monadic equational reasoning in Coq                                 *)
 (* Copyright (C) 2025 monae authors, license: LGPL-2.1-or-later               *)
+From Coq Require List.
 From mathcomp Require Import all_ssreflect.
 Require ProofIrrelevance FunctionalExtensionality.
 
