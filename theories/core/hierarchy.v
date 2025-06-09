@@ -885,30 +885,39 @@ HB.structure Definition MonadExcept := {M of isMonadExcept M & }.
 
 Arguments catch {_} {_}.
 
-HB.mixin Record isMonadDelay (M : UU0 -> UU0) of Monad M := {
-  while : forall {A B : UU0}, (A -> M(B + A)%type) -> A ->M B;
-  wBisim : forall {A : UU0}, M A -> M A -> Prop;
-  wBisim_refl : forall A (a : M A), wBisim a a;
-  wBisim_sym : forall A (a b : M A), wBisim a b -> wBisim b a;
-  wBisim_trans : forall A (a b c : M A), wBisim a b -> wBisim b c -> wBisim a c;
+HB.mixin Record hasWBisim (M : UU0 -> UU0) of Monad M := {
+  wBisim : forall {A : UU0}, M A -> M A -> Prop ;
+  wBisim_refl : forall A (a : M A), wBisim a a ;
+  wBisim_sym : forall A (a b : M A), wBisim a b -> wBisim b a ;
+  wBisim_trans : forall A (a b c : M A), wBisim a b -> wBisim b c -> wBisim a c ;
+  bindmwB : forall (A B : UU0) (f : A -> M B) (d1 d2 : M A),
+    wBisim d1 d2 -> wBisim (d1 >>= f) (d2 >>= f) ;
+  bindfwB : forall (A B : UU0) (f g : A -> M B) (d : M A),
+    (forall a, wBisim (f a) (g a)) -> wBisim (d >>= f) (d >>= g)
+}.
+
+HB.structure Definition WBisim := {M of hasWBisim M & }.
+Arguments wBisim {s A}.
+Notation "a '≈' b" := (wBisim a b).
+Hint Extern 0 (wBisim _ _) => apply wBisim_refl : core.
+
+HB.mixin Record isMonadDelay (M : UU0 -> UU0) of WBisim M := {
+  while : forall {A B : UU0}, (A -> M(B + A)%type) -> A -> M B;
+  whilewB : forall (A B : UU0) (f g : A -> M (B + A)%type) (a : A),
+    (forall a, wBisim (f a) (g a)) -> wBisim (while f a) (while g a) ;
   fixpointE : forall (A B : UU0) (f : A -> M (B + A)%type) (a : A),
     wBisim (while f a)
            (f a >>= sum_rect (fun => M B) (@ret M B) (while f));
   naturalityE : forall (A B C : UU0) (f : A -> M (B + A)%type) (g : B -> M C) (a : A),
     wBisim (while f a >>= g)
            (while (fun y => f y >>= sum_rect (fun => M (C + A)%type)
-                                   (M # inl \o g)
-                                   (M # inr \o (@ret M A))) a);
-  codiagonalE :forall (A B : UU0) (f : A -> M ((B + A) + A)%type) (a : A),
+                                             (M # inl \o g)
+                                             (M # inr \o @ret M A)) a);
+  codiagonalE : forall (A B : UU0) (f : A -> M ((B + A) + A)%type) (a : A),
     wBisim (while ((M # ((sum_rect (fun => (B + A)%type) idfun inr))) \o f) a)
            (while (while f) a);
-  bindmwB : forall (A B : UU0) (f : A -> M B)(d1 d2 : M A),
-    wBisim d1 d2 -> wBisim (d1 >>= f) (d2 >>= f);
-  bindfwB : forall (A B : UU0) (f g : A -> M B)(d : M A),
-    (forall a, wBisim (f a) (g a)) -> wBisim (d >>= f) (d >>= g);
-  whilewB : forall (A B : UU0) (f g : A -> M ((B + A))%type) (a : A),
-    (forall a, wBisim (f a) (g a)) -> wBisim (while f a) (while g a);
-  uniformE : forall (A B C : UU0) (f : A -> M (B + A)%type) (g : C -> M (B + C)%type) (h : C -> A),
+  uniformE : forall (A B C : UU0) (f : A -> M (B + A)%type)
+      (g : C -> M (B + C)%type) (h : C -> A),
     (forall c, f (h c) = g c >>=
                          sum_rect (fun => M (B + A)%type)
                                   ((M # inl) \o Ret)
@@ -918,12 +927,7 @@ HB.mixin Record isMonadDelay (M : UU0 -> UU0) of Monad M := {
 
 #[short(type=delayMonad)]
 HB.structure Definition MonadDelay := {M of isMonadDelay M & }.
-
 Arguments while {s A B}.
-Arguments wBisim {s A}.
-
-Notation "a '≈' b" := (wBisim a b).
-Hint Extern 0 (wBisim _ _) => apply wBisim_refl : core.
 
 Section setoid.
 Variable M : delayMonad.

@@ -66,12 +66,14 @@ apply: (bindfwB _ _ _ _ (f a')) => uba.
 case: uba => [u|[b''|a'']] /=.
 - by rewrite !bindretf /= fmapE bindretf.
 - rewrite !bindretf /= fmapE /= fmapE bindA.
-  apply bindfwB => uc.
-  case: uc => [u|c]; by rewrite bindretf.
+  by apply: bindfwB => -[u|c]; rewrite bindretf.
 - by rewrite bindretf /= !fmapE !bindretf.
 Qed.
+
 Lemma codiagonalDEE {A B} (f : A -> DE ((B + A) + A)) (a : A) :
-   whileDE ((DE # ((sum_rect (fun => (B + A)%type) idfun inr)))  \o f ) a  ≈ whileDE (whileDE f) a.
+  whileDE ((DE # (sum_rect (fun => (B + A)%type) idfun inr)) \o f ) a
+  ≈
+  whileDE (whileDE f) a.
 Proof.
 rewrite/whileDE/DEA/=.
 set g := {2} (fun uab => _).
@@ -83,42 +85,51 @@ apply: wBisim_trans.
 rewrite -codiagonalE.
 apply whilewB => a' /=.
 rewrite !fmapE !bindA.
-apply bindfwB => ubaa.
-case: ubaa => [u|[[b|a1]|a2]] /= ; by rewrite  !bindretf /= fmapE bindretf /= bindretf /=.
+apply: bindfwB.
+by move=> [u|[[b|a1]|a2]] /= ; by rewrite  !bindretf /= fmapE bindretf /= bindretf.
 Qed.
-Lemma whilewBDE {A B} (f g : A -> DE (B + A)) (a : A) : (forall a, (f a) ≈ (g a)) -> whileDE f a ≈ whileDE g a.
+
+Lemma whilewBDE {A B} (f g : A -> DE (B + A)) (a : A) :
+  (forall a, (f a) ≈ (g a)) -> whileDE f a ≈ whileDE g a.
 Proof.
-move => Hfg.
-rewrite/whileDE/DEA.
+move=> Hfg.
+rewrite /whileDE /DEA.
 apply whilewB => a' /=.
 rewrite !fmapE.
-apply bindmwB.
-by apply Hfg.
+apply: bindmwB.
+exact: Hfg.
 Qed.
 
 Lemma uniformDEE {A B C} (f : A -> DE (B + A)) (g : C -> DE (B + C)) (h : C -> A) :
   (forall c, (f (h c) = (g c >>= sum_rect (fun => DE (B + A)) ((DE # inl) \o Ret) ((DE # inr) \o Ret \o h)))) ->
-  forall c, wBisimDE ((whileDE f) (h c)) (whileDE g c).
+  forall c, (whileDE f) (h c) ≈ whileDE g c.
 Proof.
-move => H c.
-rewrite/whileDE.
+move=> H c.
+rewrite /whileDE.
 apply: (uniformE _ _ _ (DEA \o f)) => c' /=.
 rewrite /DEA/= !fmapE (H c') !bindA.
-apply: eq_bind => xbc.
-by case: xbc => [x|[b''|c'']]; rewrite /= !bindretf /= fmapE !bindretf // fmapE bindretf.
+apply: eq_bind.
+by move=> [x|[b''|c'']]; rewrite /= !bindretf /= fmapE !bindretf // fmapE bindretf.
 Qed.
+
 HB.instance Definition _ := MonadExcept.on DE.
-HB.instance Definition _ := @isMonadDelay.Build DE
-  (@whileDE) (@wBisimDE) wBisimDE_refl wBisimDE_sym wBisimDE_trans (@fixpointDEE) (@naturalityDEE) (@codiagonalDEE)  (@bindmwBDE) (@bindfwBDE) (@whilewBDE) (@uniformDEE).
+
+HB.instance Definition _ := @hasWBisim.Build DE (@wBisimDE)
+  wBisimDE_refl wBisimDE_sym wBisimDE_trans (@bindmwBDE) (@bindfwBDE).
+
+HB.instance Definition _ := @isMonadDelay.Build DE (@whileDE)
+  (@whilewBDE) (@fixpointDEE) (@naturalityDEE) (@codiagonalDEE) (@uniformDEE).
 
 Lemma catchmwBDE A (d1 d2 h : DE A) :
   d1 ≈ d2 -> catch d1 h ≈ catch d2 h.
 Proof. by move=> Hd12; apply/bindmwB. Qed.
+
 Lemma catchhwBDE A (d h1 h2 : DE A) :
   h1 ≈ h2 -> catch d h1 ≈ catch d h2.
 Proof. by move=> h12; apply/bindfwB => -[]. Qed.
 
 HB.instance Definition _ := @isMonadDelayExcept.Build DE catchmwBDE catchhwBDE.
+
 End exceptTdelay.
 End exceptTdelay.
 HB.export exceptTdelay.
