@@ -546,100 +546,6 @@ apply bindfwBs => a.
 exact/iff_wBisims_wBisim/(H a).
 Qed.
 
-Add Parametric Morphism A B : bind with signature
-  (@wBisim A) ==> (pointwise_relation A (@wBisim B)) ==> (@wBisim B)
-  as bindmor.
-Proof.
-move => x y Hxy f g Hfg.
-apply: wBisim_trans.
-- exact: (bindmwB _ Hxy).
-- exact: (bindfwB y Hfg).
-Qed.
-
-(* the next four laws derived from Complete Elgot monads *)
-Lemma fixpointEs {A B} (f : A -> M (B + A)) (a : A) :
-  while f a ≈s f a >>= sum_rect (fun => M B) (@ret M B) (while f).
-Proof.
-rewrite whileE.
-apply: bindfwBs => -[b'|a'] //=.
-exact: wBisims_DLater.
-Qed.
-
-Lemma fixpointE {A B} (f : A -> M (B + A)) (a : A) :
-  while f a ≈ f a >>= sum_rect (fun => M B) (@ret M B ) (while f).
-Proof. by apply iff_wBisims_wBisim; exact: fixpointEs. Qed.
-
-CoFixpoint naturalityE' {A B C} (f : A -> M (B + A)) (g : B -> M C) (d : M (B + A)) :
-  (d >>= (fun ab : B + A => match ab with
-                            | inl b => DNow b
-                            | inr a => DLater (while f a)
-                            end)) >>= g
-  ≈
-  (d >>= sum_rect (fun=> M (C + A)) (M # inl \o g) (M # inr \o (@ret M A))) >>=
-   (fun ab : C + A => match ab with
-                      | inl b => DNow b
-                      | inr a => DLater (while (fun y : A => f y >>= sum_rect (fun=> M (C + A)) (M # inl \o g) (M # inr \o (@ret M A))) a)
-                      end).
-Proof.
-case: d => [[b|a]|d].
-- apply iff_wBisims_wBisim.
-  rewrite !bindretf /= fmapE bindA.
-  have [[c Ht]|/Diverges_spinP HD] := TerminatesP (g b).
-    set h := fun x => (Ret \o inl) x >>= _.
-    rewrite (Terminates_bindmf h Ht).
-    rewrite {}/h /= bindretf.
-    move: Ht => /Terminates_steps [n Ht].
-    by rewrite -(wBisims_steps (g b) n) Ht.
-  rewrite HD.
-  setoid_symmetry.
-  apply/iff_Diverges_wBisimsspin.
-  by apply Diverges_bindspinf.
-- rewrite! bindretf /= fmapE bindA bindretf /= bindretf /= bindDmf.
-  apply wBLater.
-  rewrite whileE whileE.
-  exact: naturalityE'.
-- rewrite! bindDmf.
-  apply wBLater.
-  exact: naturalityE'.
-Qed.
-
-Lemma naturalityE {A B C} (f : A -> M (B + A)) (g : B -> M C) (a : A) :
-  (while f a) >>= g ≈
-  while (fun y => f y >>= sum_rect (fun => M (C + A)) (M # inl \o g) (M # inr \o (@ret M A ))) a.
-Proof. by rewrite whileE whileE; apply naturalityE'. Qed.
-
-CoFixpoint codiagonalE' {A B} (f: A -> M ((B + A) + A))(d: M ((B + A) + A)) :
-  ((d >>= (Ret \o sum_rect (fun=> (B + A)%type) idfun inr)) >>=
-  (fun ab : B + A => match ab with
-                     | inl b => DNow b
-                     | inr a => DLater (while (M # sum_rect (fun=> (B + A)%type) idfun inr \o f) a)
-                     end))
-  ≈
-  ((d >>= (fun ab : B + A + A => match ab with
-                                 | inl b => DNow b
-                                 | inr a => DLater (while f a)
-                                  end)) >>=
-   (fun ab : B + A => match ab with
-                      | inl b => DNow b
-                      | inr a => DLater (while (while f) a)
-                      end)).
-Proof.
-case: d => [ [[b|a]|a]|d'].
-- by rewrite bindretf bindretf bindretf //= bindretf.
-- rewrite bindretf bindretf bindretf //= bindretf whileE whileE whileE //= fmapE.
-  by apply/wBLater/codiagonalE'.
-- rewrite bindretf bindretf bindretf //= bindDmf whileE whileE //= fmapE.
-  by apply/wBLater/codiagonalE'.
-- rewrite! bindDmf.
-  apply wBLater.
-  exact: codiagonalE'.
-Qed.
-
-Lemma codiagonalE {A B} (f : A -> M ((B + A) + A)) (a : A) :
-  while ((Delay # ((sum_rect (fun => (B + A)%type) idfun inr))) \o f) a
-  ≈
-  while (while f) a.
-Proof. by rewrite whileE whileE whileE //= fmapE; apply codiagonalE'. Qed.
 
 CoFixpoint whilewBs1 {X A} (f g : X -> M (A + X)) :
   (forall x, f x ≈s g x) ->
@@ -747,6 +653,104 @@ have [[b /iff_Terminates_wBret HT]| /Diverges_spinP HD] := TerminatesP (while f 
   exact: (whilewBs1 Hfg (Hfg a)).
 Qed.
 
+HB.instance Definition _ := @hasWBisim.Build M wBisim
+  wBisim_refl wBisim_sym wBisim_trans (@bindmwB) (@bindfwB).
+
+Add Parametric Morphism A B : bind with signature
+  (@wBisim A) ==> (pointwise_relation A (@wBisim B)) ==> (@wBisim B)
+  as bindmor.
+Proof.
+move => x y Hxy f g Hfg.
+apply: wBisim_trans.
+- exact: (bindmwB _ Hxy).
+- exact: (bindfwB y Hfg).
+Qed.
+
+(* the next four laws derived from Complete Elgot monads *)
+Lemma fixpointEs {A B} (f : A -> M (B + A)) (a : A) :
+  while f a ≈s f a >>= sum_rect (fun => M B) (@ret M B) (while f).
+Proof.
+rewrite whileE.
+apply: bindfwBs => -[b'|a'] //=.
+exact: wBisims_DLater.
+Qed.
+
+Lemma fixpointE {A B} (f : A -> M (B + A)) (a : A) :
+  while f a ≈ f a >>= sum_rect (fun => M B) (@ret M B ) (while f).
+Proof. by apply iff_wBisims_wBisim; exact: fixpointEs. Qed.
+
+CoFixpoint naturalityE' {A B C} (f : A -> M (B + A)) (g : B -> M C) (d : M (B + A)) :
+  (d >>= (fun ab : B + A => match ab with
+                            | inl b => DNow b
+                            | inr a => DLater (while f a)
+                            end)) >>= g
+  ≈
+  (d >>= sum_rect (fun=> M (C + A)) (M # inl \o g) (M # inr \o (@ret M A))) >>=
+   (fun ab : C + A => match ab with
+                      | inl b => DNow b
+                      | inr a => DLater (while (fun y : A => f y >>= sum_rect (fun=> M (C + A)) (M # inl \o g) (M # inr \o (@ret M A))) a)
+                      end).
+Proof.
+case: d => [[b|a]|d].
+- apply iff_wBisims_wBisim.
+  rewrite !bindretf /= fmapE bindA.
+  have [[c Ht]|/Diverges_spinP HD] := TerminatesP (g b).
+    set h := fun x => (Ret \o inl) x >>= _.
+    rewrite (Terminates_bindmf h Ht).
+    rewrite {}/h /= bindretf.
+    move: Ht => /Terminates_steps [n Ht].
+    by rewrite -(wBisims_steps (g b) n) Ht.
+  rewrite HD.
+  setoid_symmetry.
+  apply/iff_Diverges_wBisimsspin.
+  by apply Diverges_bindspinf.
+- rewrite! bindretf /= fmapE bindA bindretf /= bindretf /= bindDmf.
+  apply wBLater.
+  rewrite whileE whileE.
+  exact: naturalityE'.
+- rewrite! bindDmf.
+  apply wBLater.
+  exact: naturalityE'.
+Qed.
+
+Lemma naturalityE {A B C} (f : A -> M (B + A)) (g : B -> M C) (a : A) :
+  (while f a) >>= g ≈
+  while (fun y => f y >>= sum_rect (fun => M (C + A)) (M # inl \o g) (M # inr \o (@ret M A ))) a.
+Proof. by rewrite whileE whileE; apply naturalityE'. Qed.
+
+CoFixpoint codiagonalE' {A B} (f: A -> M ((B + A) + A))(d: M ((B + A) + A)) :
+  ((d >>= (Ret \o sum_rect (fun=> (B + A)%type) idfun inr)) >>=
+  (fun ab : B + A => match ab with
+                     | inl b => DNow b
+                     | inr a => DLater (while (M # sum_rect (fun=> (B + A)%type) idfun inr \o f) a)
+                     end))
+  ≈
+  ((d >>= (fun ab : B + A + A => match ab with
+                                 | inl b => DNow b
+                                 | inr a => DLater (while f a)
+                                  end)) >>=
+   (fun ab : B + A => match ab with
+                      | inl b => DNow b
+                      | inr a => DLater (while (while f) a)
+                      end)).
+Proof.
+case: d => [ [[b|a]|a]|d'].
+- by rewrite bindretf bindretf bindretf //= bindretf.
+- rewrite bindretf bindretf bindretf //= bindretf whileE whileE whileE //= fmapE.
+  by apply/wBLater/codiagonalE'.
+- rewrite bindretf bindretf bindretf //= bindDmf whileE whileE //= fmapE.
+  by apply/wBLater/codiagonalE'.
+- rewrite! bindDmf.
+  apply wBLater.
+  exact: codiagonalE'.
+Qed.
+
+Lemma codiagonalE {A B} (f : A -> M ((B + A) + A)) (a : A) :
+  while ((Delay # ((sum_rect (fun => (B + A)%type) idfun inr))) \o f) a
+  ≈
+  while (while f) a.
+Proof. by rewrite whileE whileE whileE //= fmapE; apply codiagonalE'. Qed.
+
 Lemma whilewB {A B} (f g : A -> M (B + A)) (a : A) :
   (forall a, (f a) ≈ (g a)) ->
   while f a ≈ while g a.
@@ -785,9 +789,8 @@ case: d => [[b'|c']|d].
   exact: CIH.
 Qed.
 
-HB.instance Definition _ := @isMonadDelay.Build M (@while) wBisim
-  wBisim_refl wBisim_sym wBisim_trans (@fixpointE) (@naturalityE) (@codiagonalE)
- (@bindmwB) (@bindfwB) (@whilewB) (@uniformE).
+HB.instance Definition _ := @isMonadDelay.Build M (@while)
+ (@whilewB) (@fixpointE) (@naturalityE) (@codiagonalE) (@uniformE).
 
 End delayops.
 End DelayOps.
