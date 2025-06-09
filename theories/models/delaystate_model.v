@@ -93,13 +93,17 @@ Definition whileDS {X Y} (body : X -> DS (Y + X)) := curry (while (M # dist1 \o 
 Definition wBisimDS A (a b : DS A) := forall s, wBisim (a s) (b s).
 
 Section wBisimDS.
-Notation "a '≈' b" := (wBisimDS a b).
+Local Notation "a '≈' b" := (wBisimDS a b).
+
 Lemma wBisimDS_refl A (a : DS A) : a ≈ a.
 Proof. move => s. apply wBisim_refl. Qed.
+
 Lemma wBisimDS_sym A (d1 d2 : DS A) : d1 ≈ d2 -> d2 ≈ d1.
 Proof. move => Hs s. exact: wBisim_sym. Qed.
+
 Lemma wBisimDS_trans A (d1 d2 d3 : DS A) : d1 ≈ d2 -> d2 ≈ d3 -> d1 ≈ d3.
 Proof. move => H1 H2 s. exact/wBisim_trans/H2. Qed.
+
 End wBisimDS.
 
 Lemma fixpointDSE {A B} (f : A -> DS (B + A)%type) :
@@ -107,9 +111,10 @@ forall (a : A), wBisimDS (whileDS f a) ( f a >>= (sum_rect (fun => DS B ) Ret (w
 Proof.
 move => a s.
 rewrite/whileDS/curry/dist1/= MS_bindE/uncurry/= fixpointE/= fmapE !bindA.
-apply bindfwB => bas.
-case: bas => [[b'|a'] s'] /=; by rewrite bindretf.
+apply: bindfwB => bas.
+by case: bas => [[b'|a'] s'] /=; rewrite bindretf.
 Qed.
+
 Lemma naturalityDSE {A B C} (f : A -> DS (B + A)%type) (g : B -> DS C) (a : A) :
    wBisimDS (bindS (whileDS f a) g) (whileDS (fun y => (f y) >>= (sum_rect (fun => DS (C + A)) (DS # inl \o g) (DS # inr \o (@ret DS A )))) a).
 Proof.
@@ -118,18 +123,19 @@ rewrite naturalityE /=.
 apply whilewB => sa.
 case: sa => s' a' /=.
 rewrite fmapE fmapE /=MS_bindE !bindA.
-apply bindfwB => sba //=.
+apply: bindfwB => sba //=.
 rewrite/dist1/uncurry bindretf.
 case: sba => [[b''|a''] s''] /=.
 - rewrite DSmapE -compA FCompE FCompE homSmap/= fmapE fmapE bindA.
-  apply bindfwB => cs /=.
+  apply: bindfwB => cs /=.
   rewrite bindretf /= tensorSmap /=.
-  by case: cs => c cs /=.
+  by case: cs.
 - rewrite DSmapE -compA FCompE FCompE homSmap/= fmapE fmapE bindA.
-  apply bindfwB => cs/=.
+  apply: bindfwB => cs/=.
   rewrite bindretf /= tensorSmap /=.
-  by case: cs => c cs.
+  by case: cs.
 Qed.
+
 Lemma codiagonalDSE {A B} (f : A -> DS ((B + A) + A)) (a : A) :
    wBisimDS (whileDS ((DS # ((sum_rect (fun => (B + A)%type) idfun inr)))  \o f ) a) (whileDS (whileDS f) a).
 Proof.
@@ -146,41 +152,56 @@ rewrite //=!fmapE.
 have -> : ((homS S \o M) \o tensorS S) # sum_rect (fun=> (B + A)%type) idfun inr = homS S # (M # (tensorS S # sum_rect (fun=> (B + A)%type) idfun inr)).
   by rewrite -compA FCompE.
 rewrite homSmap /= fmapE !bindA.
-apply bindfwB => sbaa.
-case: sbaa => [[[bl|al']|al] sl]; by rewrite !bindretf /= fmapE bindretf /= bindretf.
+apply: bindfwB => sbaa.
+by case: sbaa => [[[bl|al']|al] sl]; rewrite !bindretf /= fmapE bindretf /= bindretf.
 Qed.
+
 Lemma whilewBDS {A B} (f g : A -> DS (B + A)) (a : A) : (forall a, wBisimDS (f a) (g a)) -> wBisimDS (whileDS f a) (whileDS g a).
 Proof.
 rewrite/wBisimDS/whileDS/uncurry/curry => Hfg s.
 apply whilewB => sa /=.
 rewrite! fmapE /=.
 case: sa => a'' s'' /=.
-by apply bindmwB.
+by apply: bindmwB.
 Qed.
-Lemma bindmwBDS {A B} (f : A -> DS B) (d1 d2 : DS A) : wBisimDS d1 d2 -> wBisimDS (d1 >>= f) (d2 >>= f).
-Proof. by rewrite /wBisimDS => Hd s /=;rewrite !MS_bindE;apply bindmwB. Qed.
-Lemma bindfwBDS {A B} (f g : A -> DS B) (d : DS A) : (forall a, wBisimDS (f a) (g a)) -> wBisimDS (d >>= f) (d >>= g).
-Proof. by rewrite /wBisimDS => Hfg s /=; rewrite !MS_bindE /=; apply bindfwB => a's'; case: a's'. Qed.
+
+Lemma bindmwBDS {A B} (f : A -> DS B) (d1 d2 : DS A) :
+  wBisimDS d1 d2 -> wBisimDS (d1 >>= f) (d2 >>= f).
+Proof. by rewrite /wBisimDS => Hd s /=; rewrite !MS_bindE; exact: bindmwB. Qed.
+
+Lemma bindfwBDS {A B} (f g : A -> DS B) (d : DS A) :
+  (forall a, wBisimDS (f a) (g a)) ->
+  wBisimDS (d >>= f) (d >>= g).
+Proof.
+by rewrite /wBisimDS => Hfg s /=; rewrite !MS_bindE /=; apply: bindfwB => -[].
+Qed.
 
 Lemma uniformEDS {A B C} (f : A -> DS (B + A)) (g : C -> DS (B + C)) (h : C -> A) :
-  (forall c, f (h c) = g c >>= sum_rect (fun => DS (B + A)) ((DS # inl) \o Ret) ((DS # inr) \o Ret \o h)) ->
+  (forall c, f (h c) = g c >>=
+                       sum_rect (fun => DS (B + A))
+                                ((DS # inl) \o Ret)
+                                ((DS # inr) \o Ret \o h)) ->
   forall c, wBisimDS ((whileDS f) (h c)) (whileDS g c).
 Proof.
-move => H c s.
-rewrite/whileDS/curry /=.
+move=> H c s.
+rewrite /whileDS /curry /=.
 set h' := fun (cs : C * S) => let (c, s) := cs in (h c, s).
-have -> : (h c, s) = h' (c, s). by [].
+have -> : (h c, s) = h' (c, s) by [].
 apply: (uniformE _ _ _ _ _ h') => cs.
 case: cs => [c' s'].
 subst h'.
 rewrite /= fmapE (H c') fmapE /= !bindA.
 apply eq_bind => bcs.
-by case: bcs =>  [[?|?] ?]; rewrite /=bindretf fmapE !bindretf/= fmapE bindretf/=.
+by case: bcs =>  [[?|?] ?]; rewrite /=bindretf fmapE !bindretf/= fmapE bindretf.
 Qed.
 
 HB.instance Definition _ := MonadState.on DS.
-HB.instance Definition _ := @isMonadDelay.Build DS
-  (@whileDS) (@wBisimDS) wBisimDS_refl wBisimDS_sym wBisimDS_trans (@fixpointDSE) (@naturalityDSE) (@codiagonalDSE)  (@bindmwBDS) (@bindfwBDS) (@whilewBDS) (@uniformEDS).
+
+HB.instance Definition _ := @hasWBisim.Build DS (@wBisimDS)
+  wBisimDS_refl wBisimDS_sym wBisimDS_trans (@bindmwBDS) (@bindfwBDS).
+
+HB.instance Definition _ := @isMonadDelay.Build DS (@whileDS)
+  (@whilewBDS) (@fixpointDSE) (@naturalityDSE) (@codiagonalDSE) (@uniformEDS).
 
 End stateTdelay.
 End StateTdelay.
