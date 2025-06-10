@@ -939,18 +939,20 @@ Import Setoid.
   transitivity proved by (@wBisim_trans M A)
   as wBisim_rel.
 
-#[global] Add Parametric Morphism A B : bind
-  with signature (@wBisim M A) ==> (pointwise_relation A (@wBisim M B)) ==> (@wBisim M B) as bindmor.
+#[global] Add Parametric Morphism A B : bind with signature
+  (@wBisim M A) ==> (pointwise_relation A (@wBisim M B)) ==> (@wBisim M B)
+  as bindmor.
 Proof.
-move => x y Hxy f g Hfg.
-apply: wBisim_trans.
-- apply: (bindmwB _ _ _ _ _ Hxy).
-- apply: (bindfwB _ _ _ _ y Hfg).
+move => x y Hxy f g Hfg; apply: wBisim_trans.
+- exact: (bindmwB _ _ _ _ _ Hxy).
+- exact: (bindfwB _ _ _ _ y Hfg).
 Qed.
-About pointwise_relation.
-#[global] Add Parametric Morphism A B : while
-  with signature (pointwise_relation A (@wBisim M (B + A))) ==> @eq A ==> (@wBisim M B ) as whilemor.
+
+#[global] Add Parametric Morphism A B : while with signature
+  (pointwise_relation A (@wBisim M (B + A))) ==> @eq A ==> (@wBisim M B)
+  as whilemor.
 Proof. by move=> f g + a; exact: whilewB. Qed.
+
 End setoid.
 (*Existing Instances wBisim_rel wBisimext_rel.
 Existing Instances bindmor_Proper whilemor_Proper.
@@ -970,14 +972,15 @@ HB.structure Definition MonadDelayExcept := { M of isMonadDelayExcept M }.
 Section setoid.
 Variable M : delayExceptMonad.
 Import Setoid.
-#[global] Add Parametric Morphism A : catch
-  with signature (@wBisim M A) ==> (@wBisim M A) ==> (@wBisim M A) as catchmor.
+#[global] Add Parametric Morphism A : catch with signature
+  (@wBisim M A) ==> (@wBisim M A) ==> (@wBisim M A)
+  as catchmor.
 Proof.
-move => x y Hxy f g Hfg.
-apply: wBisim_trans.
-- apply: (catchmwB _ _ _ _ Hxy).
-- apply: (catchhwB _ _ _ _ Hfg).
+move=> x y Hxy f g Hfg; apply: wBisim_trans.
+- exact: (catchmwB _ _ _ _ Hxy).
+- exact: (catchhwB _ _ _ _ Hfg).
 Qed.
+
 End setoid.
 
 HB.mixin Record isMonadDelayAssert (M : UU0 -> UU0)
@@ -985,13 +988,13 @@ HB.mixin Record isMonadDelayAssert (M : UU0 -> UU0)
   pcorrect : forall (X : UU0) (x : X) (p : pred X) (f : X -> M (X + X)%type) ,
   assert p x ≈ @ret M _ x  ->
    (forall x, assert p x ≈ @ret M _ x ->
-    f x >>= sum_rect (fun => M X) (assert p) (assert p) ≈ f x >>= sum_rect (fun => M X) Ret Ret) ->
+    f x >>= sum_rect (fun => M X) (assert p) (assert p) ≈
+    f x >>= sum_rect (fun => M X) Ret Ret) ->
    bassert p (while f x) ≈ while f x
  }.
 
 #[short(type=delayAssertMonad)]
-HB.structure Definition MonadDelayAssert :=
-  { M of isMonadDelayAssert M &}.
+HB.structure Definition MonadDelayAssert := { M of isMonadDelayAssert M &}.
 
 HB.mixin Record isMonadContinuation (M : UU0 -> UU0) of Monad M := {
 (* NB: interface is wip *)
@@ -1095,6 +1098,20 @@ HB.structure Definition MonadNondetState (S : UU0) :=
 HB.structure Definition MonadDelayState (S : UU0) :=
   { M of MonadDelay M & MonadState S M }.
 
+Section setoid.
+Variables (S : Type) (M : delayStateMonad S).
+Import Setoid.
+
+#[global] Add Parametric Morphism A B : bind with signature
+  (@wBisim M A) ==> (pointwise_relation A (@wBisim M B)) ==> (@wBisim M B)
+  as bindmor_delaystate.
+Proof.
+move => x y Hxy f g Hfg; apply: wBisim_trans.
+- exact: (bindmwB _ _ _ _ _ Hxy).
+- exact: (bindfwB _ _ _ _ y Hfg).
+Qed.
+
+End setoid.
 
 HB.mixin Record isMonadStateRun (S : UU0) (N : monad)
    (M : UU0 -> UU0) of MonadState S M := {
@@ -1275,11 +1292,13 @@ HB.mixin Record isMonadTypedStore (MLU : ML_universe) (N : monad)
 }.
 
 #[short(type=typedStoreMonad)]
-HB.structure Definition MonadTypedStore (ml_type : ML_universe) (N : monad) (locT : eqType) :=
+HB.structure Definition MonadTypedStore
+    (ml_type : ML_universe) (N : monad) (locT : eqType) :=
   { M of isMonadTypedStore ml_type N locT M & }.
 
 #[short(type=delaytypedStoreMonad)]
-HB.structure Definition MonadDelayTypedStore (ml_type : ML_universe) (N : monad) (locT : eqType) :=
+HB.structure Definition MonadDelayTypedStore
+    (ml_type : ML_universe) (N : monad) (locT : eqType) :=
   { M of MonadDelay M & isMonadTypedStore ml_type N locT M }.
 
 
@@ -1309,7 +1328,8 @@ HB.mixin Record isMonadTypedStoreRun (MLU : ML_universe) (N : monad) (locT : eqT
 }.
 
 #[short(type=typedStoreRunMonad)]
-HB.structure Definition MonadTypedStoreRun (ml_type : ML_universe) (N : monad) (locT : eqType) :=
+HB.structure Definition MonadTypedStoreRun
+    (ml_type : ML_universe) (N : monad) (locT : eqType) :=
   { M of isMonadTypedStoreRun ml_type N locT M & }.
 
 Arguments crun {ml_type N locT s} [A].

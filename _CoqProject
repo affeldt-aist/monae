@@ -34,6 +34,11 @@ theories/applications/example_relabeling.v
 theories/applications/example_quicksort.v
 theories/applications/example_iquicksort.v
 theories/applications/example_monty.v
+theories/applications/example_delay.v
+theories/applications/example_delaystate.v
+theories/applications/example_delayassert.v
+theories/applications/example_delayexcept.v
+theories/applications/example_delay_typed_store.v
 theories/applications/typed_store_universe.v
 theories/applications/example_typed_store.v
 theories/applications/smallstep.v

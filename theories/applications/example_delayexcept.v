@@ -1,21 +1,22 @@
+(* monae: Monadic equational reasoning in Coq                                 *)
+(* Copyright (C) 2025 monae authors, license: LGPL-2.1-or-later               *)
 From mathcomp Require Import all_ssreflect.
 From mathcomp Require Import boolp.
 Require Import preamble hierarchy monad_lib fail_lib state_lib.
 
 Local Open Scope monae_scope.
 
-Section delayexcept_example.
-
+Section select.
 Variable M : delayExceptMonad.
 
 Definition select l := let max := \max_(i <- l) i in (max, rem max l).
 
 Definition muloflistover10d_body ln : M (nat + (seq nat) * nat)%type :=
-  match ln with (l, n) =>
-                  match l with
-                    |[::] => Ret (inl n)
-                    |h::tl => let (m, res) := select l in catch (if m <= 10 then fail else Ret (inr (res, m * n))) (Ret (inl n))
-                  end
+  match ln with
+    (l, n) => match l with
+              | [::] => Ret (inl n)
+              | h::tl => let (m, res) := select l in catch (if m <= 10 then fail else Ret (inr (res, m * n))) (Ret (inl n))
+              end
   end.
 
 Definition muloflistover10d := while muloflistover10d_body.
@@ -37,6 +38,7 @@ by rewrite in_cons Hl' orbT.
 Qed.
 
 Lemma muloflistover10_aux(l : seq nat) (k : nat): 10 < k -> k \in l -> k * muloflistover10 (rem k l) = muloflistover10 l.
+Proof.
 move => Hk Hink.
 rewrite/muloflistover10.
 elim: l Hink => //= n l' IH Hink.
@@ -56,7 +58,7 @@ have [Hn|HnN] := ltnP 10 n.
 by rewrite -(IH Hkl')/= ltnNge HnN/=.
 Qed.
 
-Lemma maxinseq (l : seq nat): ~~(nilp l) -> \max_(i <- l) i \in l.
+Lemma maxinseq (l : seq nat) : ~~ nilp l -> \max_(i <- l) i \in l.
 Proof.
 move => Hn.
 rewrite -(in_tupleE l) big_tuple.
@@ -110,3 +112,5 @@ rewrite  size_rem.
 move: Hmaxin.
 by rewrite in_cons eq_sym (negPf Hf) /=.
 Qed.
+
+End select.
