@@ -5,7 +5,7 @@ From mathcomp Require boolp.
 Require Import preamble hierarchy monad_lib Morphisms fail_lib state_lib.
 
 (**md**************************************************************************)
-(* # Example of use of the state-Delay monad                                  *)
+(* # Example of use of the Delay-state monad                                  *)
 (*                                                                            *)
 (* ```                                                                        *)
 (*     factds == factorial                                                    *)
