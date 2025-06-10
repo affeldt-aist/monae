@@ -1,3 +1,5 @@
+(* monae: Monadic equational reasoning in Coq                                 *)
+(* Copyright (C) 2025 monae authors, license: LGPL-2.1-or-later               *)
 From mathcomp Require Import all_ssreflect.
 Require Import hierarchy.
 
@@ -8,9 +10,8 @@ Unset Printing Implicit Defensive.
 Local Open Scope monae_scope.
 Local Open Scope do_notation.
 
-Variable M : delayAssertMonad.
-
 Section bubblesort.
+Variable M : delayAssertMonad.
 
 Fixpoint sortl (l : seq nat) :=
   match l with
@@ -21,13 +22,17 @@ Fixpoint sortl (l : seq nat) :=
                                     else n :: sortl tl
               end
   end.
+
 Definition bubblesort_body (l : seq nat) : M (seq nat + seq nat)%type :=
   if l == sortl l then Ret (inl l) else Ret (inr (sortl l)).
+
 Definition bubblesort l := while bubblesort_body l.
+
 Definition sizelE (l : seq nat) : pred (seq nat) := fun l' => size l == size l'.
 
 Lemma sizeE (n : nat) l : size (n :: l) = (size l).+1.
 Proof. by []. Qed.
+
 Lemma sortl_length (l : seq nat) : size l = size (sortl l).
 Proof.
 move Hlen: (size l) => n.
@@ -49,7 +54,7 @@ rewrite -Hs -addn1 -(addn1 n) (leq_add2r 1 _ _)/=.
 exact: ltnW.
 Qed.
 
-Theorem  bubblesort_length l : bassert (sizelE l) (bubblesort l) ≈ bubblesort l.
+Theorem bubblesort_length l : bassert (sizelE l) (bubblesort l) ≈ bubblesort l.
 Proof.
 apply: pcorrect.
   by rewrite assertE /sizelE eq_refl guardT bindskipf.
@@ -65,4 +70,5 @@ rewrite !bindfailf => contr.
 pose f := fun (_ :seq nat) => @ret M _ (sortl l').
 by rewrite -(bindfailf _ _ f) contr bindretf.
 Qed.
+
 End bubblesort.
