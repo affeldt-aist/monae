@@ -6,6 +6,10 @@ From HB Require Import structures.
 Require Import preamble hierarchy monad_lib typed_store_lib.
 Require Import typed_store_universe.
 
+(**md**************************************************************************)
+(* # Application of the Delay-typedstore monad                                *)
+(******************************************************************************)
+
 Set Implicit Arguments.
 Unset Strict Implicit.
 Unset Printing Implicit Defensive.
@@ -66,7 +70,7 @@ Definition factdts n :=
 
 Lemma factdtsE n : factdts n ≈ cnew ml_int n`! >> Ret n`!.
 Proof.
-rewrite/factdts.
+rewrite /factdts.
 setoid_rewrite while_factdtsE.
 under eq_bind do rewrite bindA.
 by rewrite cnewget cnewput muln1 cnewgetret.

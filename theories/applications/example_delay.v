@@ -7,6 +7,7 @@ Require Import hierarchy.
 
 (**md**************************************************************************)
 (* # Applications of the Delay monad                                          *)
+(*                                                                            *)
 (* ```                                                                        *)
 (*   factdelay == factorial                                                   *)
 (*    collatzm == Collatz sequence                                            *)
@@ -59,15 +60,15 @@ Let collatzm_body m n : M (nat + nat)%type :=
   else if n %% 2 == 0 then Ret (inr n./2)
        else Ret (inr (3 * n).+1).
 
-Definition collatzm m := fun n => while (collatzm_body m) n.
+Definition collatzm m := while (collatzm_body m).
 
-Let delaymul m d : M nat := d >>= fun n => Ret (m * n).
-
-Lemma collatzmwB m n p : delaymul p (collatzm m n) ≈ collatzm (p * m) n.
+Lemma collatzmwB m n p :
+  collatzm m n >>= (fun q => Ret (p * q)) ≈ collatzm (p * m) n.
 Proof.
-rewrite /collatzm /delaymul naturalityE/=.
+rewrite /collatzm naturalityE/=.
 apply: whilewB => q.
-have [->|q1] := eqVneq q 1; first by rewrite bindretf/= fmapE bindretf.
+have [->|q1] := eqVneq q 1.
+  by rewrite bindretf/= fmapE bindretf.
 rewrite /collatzm_body (negbTE q1).
 by case: ifPn; rewrite bindretf/= fmapE bindretf.
 Qed.
