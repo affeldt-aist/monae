@@ -185,9 +185,10 @@ Qed.
 
 
 Lemma uniformEDS {A B C} (f : A -> DS (B + A)) (g : C -> DS (B + C)) (h : C -> A) :
-  (forall c, f (h c) = g c >>= sum_rect (fun => DS (B + A))
+  (forall c, wBisimDS (f (h c))
+                      (g c >>= sum_rect (fun => DS (B + A))
                                         ((DS # inl) \o Ret)
-                                        ((DS # inr) \o Ret \o h)) ->
+                                        ((DS # inr) \o Ret \o h))) ->
   forall c, wBisimDS ((whileDS f) (h c)) (whileDS g c).
 Proof.
 move=> H c s.
@@ -196,7 +197,7 @@ set h' := fun cs : C * S => let (c, s) := cs in (h c, s).
 have -> : (h c, s) = h' (c, s) by [].
 apply: (uniformE _ _ _ _ _ h') => -[c' s'].
 rewrite {}/h' /= fmapE (H c') fmapE /= !bindA.
-by apply: eq_bind => -[[?|?] ?];
+by apply: bindfwB => -[[?|?] ?];
   rewrite /=bindretf fmapE !bindretf/= fmapE bindretf.
 Qed.
 

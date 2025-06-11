@@ -918,10 +918,10 @@ HB.mixin Record isMonadDelay (M : UU0 -> UU0) of WBisim M := {
            (while (while f) a);
   uniformE : forall (A B C : UU0) (f : A -> M (B + A)%type)
       (g : C -> M (B + C)%type) (h : C -> A),
-    (forall c, f (h c) = g c >>=
-                         sum_rect (fun => M (B + A)%type)
+    (forall c, wBisim (f (h c))
+                      (g c >>= sum_rect (fun => M (B + A)%type)
                                   ((M # inl) \o Ret)
-                                  ((M # inr) \o Ret \o h)) ->
+                                  ((M # inr) \o Ret \o h))) ->
     forall c, wBisim (while f (h c)) (while g c)
 }.
 
