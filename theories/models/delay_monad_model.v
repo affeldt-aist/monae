@@ -831,14 +831,9 @@ case: (TerminatesP (while g c)).
     exists (n1 + 0).
     apply: (steps_bindD Tfhc).
     by rewrite -Ha !steps_DNow.
-  have Hnn2 : n - n2 > 0.
-    rewrite ltnNge.
-    apply/negP.
-    rewrite leqn0 => /eqP Hn.
-    by rewrite Hn in Ha.
-  have Hn : (n - n2).-1 < n.
-    by rewrite prednK ?leq_subr.
+  have Hnn2 : n - n2 > 0 by case: (n - n2) Ha.
   rewrite -(prednK Hnn2) /= in Ha.
+  have Hn : (n - n2).-1 < n by rewrite prednK // leq_subr.
   have := IH _ Hn _ _ Ha.
   case/Terminates_steps => n3 Hwf.
   apply/Terminates_steps.
@@ -869,14 +864,9 @@ have [[b'|a'] [n3] [] /= Hgc] := steps_bind Tgc.
   exact: (steps_bindD Hgc).
 rewrite fmapE bindretf /= steps_DNow => -[] Hha'.
 rewrite -Hha' in Ha.
-have Hnn2 : n - n2 > 0.
-  rewrite ltnNge.
-  apply/negP.
-  rewrite leqn0 => /eqP Hn.
-  by rewrite Hn in Ha.
-have Hn : (n - n2).-1 < n.
-  by rewrite prednK ?leq_subr.
+have Hnn2 : n - n2 > 0 by case: (n - n2) Ha.
 rewrite -(prednK Hnn2) /= in Ha.
+have Hn : (n - n2).-1 < n by rewrite prednK // leq_subr.
 have [b'] := IH _ Hn _ _ Ha.
 case/Terminates_steps => n4 Hwg.
 exists b'.
