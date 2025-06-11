@@ -116,14 +116,14 @@ elim: m x => //= m IH [a|x].
 exact: IH.
 Qed.
 
-Lemma steps_Dnow A n (a : A) : steps n (DNow a) = DNow a.
+Lemma steps_DNow A n (a : A) : steps n (DNow a) = DNow a.
 Proof. by elim: n => //=. Qed.
 
 Lemma monotonicity_steps' A n (a : A) : forall (x : M A),
   steps n (DLater x) = DNow a -> steps n x = DNow a.
 Proof.
 elim: n => //= n IH [a'|x'] Ha.
-  by rewrite -(steps_Dnow n a').
+  by rewrite -(steps_DNow n a').
 by apply: (IH x').
 Qed.
 
@@ -135,7 +135,7 @@ elim: m => //= [|m IH].
   rewrite leqn0 => /eqP n0.
   by rewrite -Hn n0.
 case: x Hn IH => [a'|x'] Ha' IH.
-  by rewrite -Ha' -{1}(steps_Dnow n a').
+  by rewrite -Ha' -{1}(steps_DNow n a').
 rewrite leq_eqVlt => /predU1P[H| H].
   by rewrite -Ha' H.
 exact/monotonicity_steps'/IH.
@@ -169,7 +169,7 @@ elim: m => [d Hda /= Hs|n IH d' Hs Hd].
   rewrite Hs.
   exact: (TDNow a).
 case: d' Hs Hd => [a'|d'] Hs.
-  rewrite steps_Dnow => ->.
+  rewrite steps_DNow => ->.
   exact: (TDNow a).
 move=> /= Hd.
 apply: TDLater.
@@ -383,7 +383,7 @@ Lemma Terminates_wBisims A (d1 d2 : M A) (a : A) :
   Terminates d1 a -> d1 ≈s d2 -> Terminates d2 a.
 Proof.
 elim => [b [n]|d b db ih].
-  rewrite steps_Dnow => Hd.
+  rewrite steps_DNow => Hd.
   apply Terminates_steps.
   by exists n.
 by rewrite wBisims_DLater.
@@ -405,7 +405,7 @@ split.
   by rewrite (wBisims_DLater d') H.
 move=> [m H].
 apply (iff_Terminates_steps d m a).
-rewrite H steps_Dnow.
+rewrite H steps_DNow.
 exact: TDNow.
 Qed.
 
@@ -569,7 +569,7 @@ case: d1 => [[b|a]|d1'].
   by rewrite bindretf -spinE.
 - case: d2 => [ba|d2'].
     move=> [n].
-    rewrite steps_Dnow steps_Dnow => Hd.
+    rewrite steps_DNow steps_DNow => Hd.
     rewrite -Hd bindretf bindretf -spinE.
     case.
     rewrite whileE whileE => Hf.
@@ -619,7 +619,7 @@ Lemma whilewBs2 {A B} (d1 d2 : M (B + A)) (f g : A -> M (B + A)) (b : B) :
 Proof.
 move => Hfg Hd [n].
 move: d1 d2 Hd.
-rewrite steps_Dnow.
+rewrite steps_DNow.
 elim: n => [d1 d2|n IH d1 d2].
   case: d1 => [[b'|a']|d1'].
     rewrite bindretf => /wBisims_sym Hd //= Hf.
@@ -627,7 +627,7 @@ elim: n => [d1 d2|n IH d1 d2].
   by rewrite bindretf /= => _ Hf.
   by rewrite bindDmf /= => _ Hf.
 case: d1 => [[b'|a']|d1'] H.
-- by rewrite bindretf steps_Dnow -(bindmwBs _ H) bindretf => ->.
+- by rewrite bindretf steps_DNow -(bindmwBs _ H) bindretf => ->.
 - rewrite bindretf /= -(bindmwBs _ H) bindretf wBisims_DLater whileE whileE.
   exact: (IH (f a') (g a') (Hfg a')).
 - move: H.
@@ -768,26 +768,121 @@ Add Parametric Morphism A B : while with signature
   as while_mor.
 Proof. by move=> f g + a; exact: whilewB. Qed.
 
+Lemma steps_bind A B (m : M A) (f : A -> M B) b n1 :
+  steps n1 (m >>= f) = DNow b ->
+  exists a n2, steps n2 m = DNow a /\ steps (n1-n2) (f a) = DNow b.
+Proof.
+elim: n1 m => [|n1 IH] [a|m] /=.
+- rewrite bindretf => fa.
+  by exists a; exists 0.
+- by rewrite bindDmf.
+- move=> Hfa.
+  by exists a; exists 0.
+- move=> Hfa.
+  case: (IH _ Hfa) => a [n2].
+  exists a; exists n2.+1.
+  by rewrite subSS.
+Qed.
+
+Lemma steps_bindD A B (m : M A) (f : A -> M B) n1 n2 a b :
+  steps n1 m = DNow a -> steps n2 (f a) = DNow b ->
+  steps (n1+n2) (m >>= f) = DNow b.
+Proof.
+elim: n1 m => /= [m ->|n1 IH [a' [] ->|m']].
+    by rewrite bindretf.
+  move=> Hfa.
+  have := monotonicity_steps Hfa (m:=(n1 + n2).+1).
+  apply.
+  by rewrite -addSn leq_addl.
+move=> Ha Hb.
+by apply: IH.
+Qed.
+
 Lemma uniformE {A B C} (f : A -> M (B + A)) (g : C -> M (B + C)) (h : C -> A) :
-  (forall c, f (h c) = g c >>= sum_rect (fun => M (B + A))
+  (forall c, f (h c) ≈ g c >>= sum_rect (fun => M (B + A))
                                         ((M # inl) \o Ret)
                                         ((M # inr) \o Ret \o h)) ->
   forall c, while f (h c) ≈ while g c.
 Proof.
 move => H c.
-rewrite whileE (H c) whileE.
-set d := (g c).
-move: d.
-cofix CIH => d.
-case: d => [[b'|c']|d].
-- by rewrite !bindretf/= fmapE !bindretf/=.
-- rewrite !bindretf/= fmapE !bindretf/=.
-  apply: wBLater.
-  rewrite whileE whileE H.
-  exact: CIH.
-- rewrite !bindDmf.
-  apply: wBLater.
-  exact: CIH.
+case: (TerminatesP (while g c)).
+  case => b Tgb.
+  suff Tfb : Terminates (while f (h c)) b.
+    exact/wBTerminate/Tgb.
+  case/Terminates_steps: Tgb => n.
+  elim/ltn_ind: n c b => n IH c b.
+  rewrite whileE whileE.
+  move=> Hsteps.
+  have [a [n2] [Hg Ha]] := steps_bind Hsteps.
+  move/wBisim_sym: (H c).
+  set gch := g c >>= _.
+  have Tgch : Terminates gch
+              (match a with inl b => inl b | inr a => inr (h a) end).
+    apply/Terminates_steps.
+    exists n2.
+    rewrite /gch -(addn0 n2).
+    apply: (steps_bindD Hg).
+    by case a => a' /= ; rewrite fmapE bindretf.
+  move/(Terminates_wBisim Tgch).
+  clear gch Tgch.
+  case/Terminates_steps => n1 Tfhc.
+  destruct a as [b'|a].
+    apply/Terminates_steps.
+    exists (n1 + 0).
+    apply: (steps_bindD Tfhc).
+    by rewrite -Ha !steps_DNow.
+  have Hnn2 : n - n2 > 0.
+    rewrite ltnNge.
+    apply/negP.
+    rewrite leqn0 => /eqP Hn.
+    by rewrite Hn in Ha.
+  have Hn : (n - n2).-1 < n.
+    by rewrite prednK ?leq_subr.
+  rewrite -(prednK Hnn2) /= in Ha.
+  have := IH _ Hn _ _ Ha.
+  case/Terminates_steps => n3 Hwf.
+  apply/Terminates_steps.
+  exists (n1 + n3.+1).
+  exact: (steps_bindD Tfhc).
+move=> Twgc.
+case: (TerminatesP (while f (h c))); last first.
+  move/Diverges_spinP ->.
+  by move/Diverges_spinP: Twgc => ->.
+case=> b Twfh.
+elim: Twgc.
+case/Terminates_steps: Twfh => n.
+elim/ltn_ind: n c b => n IH c b.
+rewrite whileE whileE.
+move=> Hsteps.
+have [a [n2] [Hg Ha]] := steps_bind Hsteps.
+have Tfhc : Terminates (f (h c)) a.
+  apply/Terminates_steps.
+  by exists n2.
+move: (H c).
+move/(Terminates_wBisim Tfhc).
+case/Terminates_steps => n1 Tgc.
+have [[b'|a'] [n3] [] /= Hgc] := steps_bind Tgc.
+  rewrite fmapE bindretf /= steps_DNow => -[] Hb'.
+  exists b'.
+  apply/Terminates_steps.
+  exists (n3 + 0).
+  exact: (steps_bindD Hgc).
+rewrite fmapE bindretf /= steps_DNow => -[] Hha'.
+rewrite -Hha' in Ha.
+have Hnn2 : n - n2 > 0.
+  rewrite ltnNge.
+  apply/negP.
+  rewrite leqn0 => /eqP Hn.
+  by rewrite Hn in Ha.
+have Hn : (n - n2).-1 < n.
+  by rewrite prednK ?leq_subr.
+rewrite -(prednK Hnn2) /= in Ha.
+have [b'] := IH _ Hn _ _ Ha.
+case/Terminates_steps => n4 Hwg.
+exists b'.
+apply/Terminates_steps.
+exists (n3 + n4.+1).
+exact: (steps_bindD Hgc).
 Qed.
 
 HB.instance Definition _ := @isMonadDelay.Build M (@while)
