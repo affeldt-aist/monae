@@ -4,7 +4,6 @@ From mathcomp Require Import all_ssreflect.
 From mathcomp Require boolp.
 From HB Require Import structures.
 Require Import hierarchy monad_lib Morphisms.
-Import Setoid.
 
 (**md**************************************************************************)
 (* # Model of the Delay monad                                                 *)
@@ -531,7 +530,7 @@ Qed.
 
 Add Parametric Morphism A B : bind with signature
   (@wBisims A) ==> (pointwise_relation A (@wBisims B)) ==> (@wBisims B)
-  as bindmors.
+  as bind_mors.
 Proof.
 move=> x y Hxy f g Hfg.
 apply: wBisims_trans.
@@ -660,7 +659,7 @@ HB.instance Definition _ := @hasWBisim.Build M wBisim
 
 Add Parametric Morphism A B : bind with signature
   (@wBisim A) ==> (pointwise_relation A (@wBisim B)) ==> (@wBisim B)
-  as bindmor.
+  as bind_mor.
 Proof.
 move => x y Hxy f g Hfg.
 apply: wBisim_trans.
@@ -765,8 +764,8 @@ exact: (H a').
 Qed.
 
 Add Parametric Morphism A B : while with signature
-  (pointwise_relation A (@wBisim (B + A))) ==> @eq A ==> (@wBisim B )
-  as whilemor.
+  (pointwise_relation A (@wBisim (B + A))) ==> @eq A ==> (@wBisim B)
+  as while_mor.
 Proof. by move=> f g + a; exact: whilewB. Qed.
 
 Lemma uniformE {A B C} (f : A -> M (B + A)) (g : C -> M (B + C)) (h : C -> A) :
