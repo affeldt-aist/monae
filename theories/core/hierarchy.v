@@ -929,9 +929,8 @@ HB.mixin Record isMonadDelay (M : UU0 -> UU0) of WBisim M := {
 HB.structure Definition MonadDelay := {M of isMonadDelay M & }.
 Arguments while {s A B}.
 
-Section setoid.
+Section setoid_delayMonad.
 Variable M : delayMonad.
-Import Setoid.
 
 #[global] Add Parametric Relation A : (M A) (@wBisim M A)
   reflexivity proved by (@wBisim_refl M A)
@@ -941,7 +940,7 @@ Import Setoid.
 
 #[global] Add Parametric Morphism A B : bind with signature
   (@wBisim M A) ==> (pointwise_relation A (@wBisim M B)) ==> (@wBisim M B)
-  as bindmor.
+  as bind_mor_delay.
 Proof.
 move => x y Hxy f g Hfg; apply: wBisim_trans.
 - exact: (bindmwB _ _ _ _ _ Hxy).
@@ -950,13 +949,10 @@ Qed.
 
 #[global] Add Parametric Morphism A B : while with signature
   (pointwise_relation A (@wBisim M (B + A))) ==> @eq A ==> (@wBisim M B)
-  as whilemor.
+  as while_mor_delay.
 Proof. by move=> f g + a; exact: whilewB. Qed.
 
-End setoid.
-(*Existing Instances wBisim_rel wBisimext_rel.
-Existing Instances bindmor_Proper whilemor_Proper.
-*)
+End setoid_delayMonad.
 
 HB.mixin Record isMonadDelayExcept (M : UU0 -> UU0)
     of MonadDelay M & MonadExcept M := {
@@ -969,19 +965,19 @@ HB.mixin Record isMonadDelayExcept (M : UU0 -> UU0)
 #[short(type=delayExceptMonad)]
 HB.structure Definition MonadDelayExcept := { M of isMonadDelayExcept M }.
 
-Section setoid.
+Section setoid_delayExceptMonad.
 Variable M : delayExceptMonad.
-Import Setoid.
+
 #[global] Add Parametric Morphism A : catch with signature
   (@wBisim M A) ==> (@wBisim M A) ==> (@wBisim M A)
-  as catchmor.
+  as catch_mor_delayExcept.
 Proof.
 move=> x y Hxy f g Hfg; apply: wBisim_trans.
 - exact: (catchmwB _ _ _ _ Hxy).
 - exact: (catchhwB _ _ _ _ Hfg).
 Qed.
 
-End setoid.
+End setoid_delayExceptMonad.
 
 HB.mixin Record isMonadDelayAssert (M : UU0 -> UU0)
     of MonadDelayExcept M := {
@@ -1098,20 +1094,19 @@ HB.structure Definition MonadNondetState (S : UU0) :=
 HB.structure Definition MonadDelayState (S : UU0) :=
   { M of MonadDelay M & MonadState S M }.
 
-Section setoid.
+Section setoid_delayStateMonad.
 Variables (S : Type) (M : delayStateMonad S).
-Import Setoid.
 
 #[global] Add Parametric Morphism A B : bind with signature
   (@wBisim M A) ==> (pointwise_relation A (@wBisim M B)) ==> (@wBisim M B)
-  as bindmor_delaystate.
+  as bind_mor_delayState.
 Proof.
 move => x y Hxy f g Hfg; apply: wBisim_trans.
 - exact: (bindmwB _ _ _ _ _ Hxy).
 - exact: (bindfwB _ _ _ _ y Hfg).
 Qed.
 
-End setoid.
+End setoid_delayStateMonad.
 
 HB.mixin Record isMonadStateRun (S : UU0) (N : monad)
    (M : UU0 -> UU0) of MonadState S M := {
@@ -1301,10 +1296,23 @@ HB.structure Definition MonadDelayTypedStore
     (ml_type : ML_universe) (N : monad) (locT : eqType) :=
   { M of MonadDelay M & isMonadTypedStore ml_type N locT M }.
 
-
 Arguments cnew {ml_type N locT s}.
 Arguments cget {ml_type N locT s} [T].
 Arguments cput {ml_type N locT s} [T].
+
+Section setoid_delaytypedStoreMonad.
+Variables (T : ML_universe) (N : monad) (M : delaytypedStoreMonad T N nat).
+
+#[global] Add Parametric Morphism A B : bind with signature
+  (@wBisim M A) ==> (pointwise_relation A (@wBisim M B)) ==> (@wBisim M B)
+  as bindmor_delaytypedStore.
+Proof.
+move => x y Hxy f g Hfg; apply: wBisim_trans.
+- exact: (bindmwB _ _ _ _ _ Hxy).
+- exact: (bindfwB _ _ _ _ y Hfg).
+Qed.
+
+End setoid_delaytypedStoreMonad.
 
 HB.mixin Record isMonadTypedStoreRun (MLU : ML_universe) (N : monad) (locT : eqType)
     (M : UU0 -> UU0) of MonadTypedStore MLU N locT M := {

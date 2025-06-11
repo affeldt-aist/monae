@@ -22,22 +22,6 @@ Import MLTypes CoqTypeNat.
 Definition delayTypedStoreMonad (N : monad) :=
   delaytypedStoreMonad ml_type N nat.
 
-Section setoid.
-Variables (N : monad) (M : delayTypedStoreMonad N).
-Import Setoid.
-
-(* TODO: move *)
-#[global] Add Parametric Morphism A B : bind with signature
-  (@wBisim M A) ==> (pointwise_relation A (@wBisim M B)) ==> (@wBisim M B)
-  as bindmor_delaystate.
-Proof.
-move => x y Hxy f g Hfg; apply: wBisim_trans.
-- exact: (bindmwB _ _ _ _ _ Hxy).
-- exact: (bindfwB _ _ _ _ y Hfg).
-Qed.
-
-End setoid.
-
 Section factorial.
 Variables (N : monad) (M : delayTypedStoreMonad N).
 
