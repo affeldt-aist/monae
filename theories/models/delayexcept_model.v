@@ -125,7 +125,7 @@ exact: Hfg.
 Qed.
 
 Lemma uniformDEE {A B C} (f : A -> DE (B + A)) (g : C -> DE (B + C)) (h : C -> A) :
-  (forall c, f (h c) =
+  (forall c, f (h c) ≈
              (g c >>= sum_rect (fun => DE (B + A))
                                ((DE # inl) \o Ret)
                                ((DE # inr) \o Ret \o h))) ->
@@ -135,7 +135,7 @@ move=> H c.
 rewrite /whileDE.
 apply: (uniformE _ _ _ (DEA \o f)) => c' /=.
 rewrite /DEA/= !fmapE (H c') !bindA.
-apply: eq_bind.
+apply: bindfwB.
 by move=> [x|[b''|c'']]; rewrite /= !bindretf /= fmapE !bindretf // fmapE bindretf.
 Qed.
 
