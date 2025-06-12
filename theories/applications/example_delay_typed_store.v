@@ -28,13 +28,28 @@ Variables (N : monad) (M : delayTypedStoreMonad N).
 Local Notation coq_type := hierarchy.coq_type.
 Local Open Scope do_notation.
 
-Let factdts_body (r : loc ml_int) n : M (unit + nat)%type :=
+Definition factdts_unit_body (r l : loc ml_int) n (_ : unit) : M(unit + unit)%type :=
+   do i <- cget l;
+         if i <= n
+         then do v <- cget r;
+              do _ <- cput r (i * v);
+              do _ <- cput l (i.+1);
+              Ret (inr tt)
+         else Ret (inl tt).
+Definition factdts_unit n :=
+  do r <- cnew ml_int 1;
+  do l <- cnew ml_int 1;
+  do _ <-
+  while (factdts_unit_body r l n) tt;
+  do v <- cget r; Ret v.
+
+Let factdts_nat_body (r : loc ml_int) n : M (unit + nat)%type :=
   do v <- cget r;
   if n is m.+1 then do _ <- cput r (n * v); Ret (inr m)
                else Ret (inl tt).
 
-Let while_factdtsE n r :
-  while (factdts_body r) n ≈ do s <- cget r; cput r (n`! * s).
+Let while_factdts_natE n r :
+  while (factdts_nat_body r) n ≈ do s <- cget r; cput r (n`! * s).
 Proof.
 elim: n => /= [|m IH].
   rewrite fixpointE/= !bindA.
@@ -47,15 +62,15 @@ setoid_rewrite IH.
 by under eq_bind do rewrite cputget cputput mulnA (mulnC m`! _).
 Qed.
 
-Definition factdts n :=
+Definition factdts_nat n :=
   do r <- cnew ml_int 1;
-  do _ <- while (factdts_body r) n ;
+  do _ <- while (factdts_nat_body r) n ;
   cget r.
 
-Lemma factdtsE n : factdts n ≈ cnew ml_int n`! >> Ret n`!.
+Lemma factdtsE n : factdts_nat n ≈ cnew ml_int n`! >> Ret n`!.
 Proof.
-rewrite /factdts.
-setoid_rewrite while_factdtsE.
+rewrite /factdts_nat.
+setoid_rewrite while_factdts_natE.
 under eq_bind do rewrite bindA.
 by rewrite cnewget cnewput muln1 cnewgetret.
 Qed.
