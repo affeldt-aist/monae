@@ -68,7 +68,7 @@ have [|x ->] := eq_bigmax (tnth (in_tuple l)).
 by rewrite mem_tnth.
 Qed.
 
-Lemma muloflistover10E (l : seq nat) (n : nat) :
+Lemma muloflistover10wB (l : seq nat) (n : nat) :
   muloflistover10d (l, n) ≈ Ret (n * (muloflistover10 l)).
 Proof.
 move Hlen: (size l) => len.
@@ -76,9 +76,9 @@ move: n.
 elim: len l Hlen.
   move => l /eqP/nilP Hl n.
   rewrite/muloflistover10/muloflistover10d/muloflistover10d_body Hl /=.
-  by rewrite fixpointE /= bindretf /= mulnS muln0 addn0.
+  by rewrite fixpointwB /= bindretf /= mulnS muln0 addn0.
 move=> m IH l' Hs n.
-rewrite/muloflistover10d/muloflistover10d_body fixpointE /=.
+rewrite/muloflistover10d/muloflistover10d_body fixpointwB /=.
 elim: l' Hs => //= [h l''] _ []Hs.
 have [/bigmax_leqP_seq Hm10|Hm10] := leqP (\max_(i <- h :: l'') i) 10.
   rewrite catchfailm bindretf /=.

@@ -33,17 +33,18 @@ Definition factds_body m : M (unit + nat)%type :=
 
 Definition factds := while factds_body.
 
-Lemma factE n : factds n ≈ do s <- get; do _ <- put (n`! * s); Ret tt.
+Lemma factdswB n : factds n ≈ do s <- get; do _ <- put (n`! * s); Ret tt.
 Proof.
 rewrite/factds/factds_body.
 elim: n => /= [|n' IH].
-rewrite fixpointE/= !bindA.
+rewrite fixpointwB/= !bindA.
 apply: bindfwB => a.
 by rewrite bindA bindretf/= mul1n.
-rewrite/factds/factds_body fixpointE/= bindA.
+rewrite/factds/factds_body fixpointwB/= bindA.
 under eq_bind do rewrite bindA bindretf/=.
 setoid_rewrite IH.
-by under eq_bind do rewrite -!bindA putget !bindA bindretf -bindA putput mulnA (mulnC n'`! _).
+by under eq_bind do rewrite -!bindA putget !bindA bindretf -bindA
+                            putput mulnA (mulnC n'`! _).
 Qed.
 
 End factorial.
@@ -77,9 +78,9 @@ Definition collatzs2_body nml : M ((nat * nat + nat * nat * nat))%type :=
 
 Definition collatzs2 n := while collatzs2_body (n, n, 0).
 
-Lemma collatzstepE n : collatzs1 n ≈ collatzs2 n.
+Lemma collatzs1wB n : collatzs1 n ≈ collatzs2 n.
 Proof.
-rewrite/collatzs1/collatzs2 -codiagonalE.
+rewrite /collatzs1 /collatzs2 -codiagonalwB.
 apply: whilewB => -[[n' m] l].
 rewrite /collatzs1_body /collatzs2_body.
 have [Hl|?] := eqVneq (l %% 4) 1 => /=.
