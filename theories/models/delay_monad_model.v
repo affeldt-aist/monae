@@ -151,9 +151,16 @@ rewrite [X in DLater X]DelayE [X in strongBisim _ X]DelayE /=.
 exact/sBLater/IH.
 Qed.
 
-Inductive Terminates A : M A -> A -> Prop :=
+Inductive Terminates (A : UU0) : M A -> A -> Prop :=
 | TDNow a : Terminates (DNow a) a
 | TDLater d a : Terminates d a -> Terminates (DLater d) a.
+
+Lemma DNow_Terminates (A : UU0) (a b : A) : Terminates (DNow a) b -> a = b.
+Proof. by inversion 1. Qed.
+
+Lemma DLater_Terminates (A : UU0) (a : M A) b :
+  Terminates (DLater a) b -> Terminates a b.
+Proof. by inversion 1. Qed.
 
 Lemma Terminates_steps A (d : M A) (a : A) :
   Terminates d a <-> (exists n, steps n d = DNow a).
@@ -238,6 +245,15 @@ CoInductive wBisim A : M A -> M A -> Prop :=
   | wBLater d1 d2 : wBisim d1 d2 -> wBisim (DLater d1) (DLater d2).
 Local Notation "a '≈' b" := (wBisim a b).
 
+Lemma DNow_wBisim {A : UU0} {a : A} b : DNow a ≈ b ->
+  exists2 c, Terminates (DNow a) c & Terminates b c.
+Proof. by inversion 1; exists a0. Qed.
+
+Lemma DLater_wBisim {A : UU0} {a : M A} b : DLater a ≈ b ->
+  (exists2 c, Terminates (DLater a) c & Terminates b c) \/
+  (exists2 c, b = DLater c & wBisim a c).
+Proof. by inversion 1; [left; exists a0 => //|right; exists d2]. Qed.
+
 CoFixpoint wBisim_refl A (d : M A) : d ≈ d.
 Proof.
 case: d => [a|d].
@@ -248,39 +264,25 @@ Qed.
 Lemma wBisim_sym A : forall (d1 d2 : M A), d1 ≈ d2 -> d2 ≈ d1.
 Proof.
 cofix CIH.
-move => d1 d2.
-case: d1.
-- case: d2.
-  + move => a b H12.
-    inversion H12.
-    exact: (wBTerminate H0 H).
-  + move => d a H12.
-    inversion H12.
-    exact: (wBTerminate H0 H).
-- case: d2.
-  + move => a d H12.
-    inversion H12.
-    exact: (wBTerminate H0 H).
-  + move => d1 d2 H12.
-    inversion H12.
-    * exact: (wBTerminate H0 H).
-    * exact: (wBLater (CIH d2 d1 H1)).
+move=> [a [b|b]|b [a|a]].
+- by move/DNow_wBisim => [c] /[swap]; exact: wBTerminate.
+- by move/DNow_wBisim => [c] /[swap]; exact: wBTerminate.
+- by move/DLater_wBisim => [[c]|[//]] /[swap]; exact: wBTerminate.
+- move/DLater_wBisim => [[c] /[swap]|[c -> /CIH cb]].
+  + exact: wBTerminate.
+  + exact: wBLater.
 Qed.
 
 Lemma Terminates_wBisim A (d1 d2 : M A) (a : A) :
   Terminates d1 a -> d1 ≈ d2 -> Terminates d2 a.
 Proof.
-move => Ha.
-elim: Ha d2 => [a' d2 Ho|d a' Ha IH d2 Ho].
-  inversion Ho.
-  inversion H.
-  by subst.
-inversion Ho.
-  inversion H.
-  subst.
-  by rewrite (Terminates_func Ha H4).
-apply: TDLater.
-exact: IH.
+move => d1a; elim: d1a d2 => [b d2|d a' Ha IH d2].
+  move/DNow_wBisim => [c] /[swap] d2c bc.
+  by rewrite (DNow_Terminates bc).
+move/DLater_wBisim => [[c dc]|[c ->{d2} dc]].
+  have {}dc := DLater_Terminates dc.
+  by rewrite (Terminates_func Ha dc).
+exact/TDLater/IH.
 Qed.
 
 Lemma Diverges_wBisim A (d1 d2 : M A) : Diverges d1 -> d1 ≈ d2 -> Diverges d2.
@@ -293,21 +295,14 @@ Qed.
 
 CoFixpoint wBisim_trans A (d1 d2 d3 : M A) : d1 ≈ d2 -> d2 ≈ d3 -> d1 ≈ d3.
 Proof.
-move=> Hd1 Hd2.
-case: d1 d2 /Hd1 Hd2 => d1 d2.
-  move => a Ht1 Ht2 Hd2.
-  apply: (wBTerminate Ht1).
-  exact: (Terminates_wBisim Ht2).
-move => Hd1 .
-inversion 1.
-  subst.
-  have Hda : Terminates (DLater d1) a.
-    apply TDLater.
-    inversion H; subst.
-    apply: (Terminates_wBisim  H2).
-    exact: wBisim_sym.
-  exact: (wBTerminate Hda).
-exact/wBLater/(wBisim_trans _ _ _ _ Hd1).
+case => [{}d1 {}d2 a d1a d2a d2d3|{}d1 {}d2 d1d2].
+  exact/(wBTerminate d1a)/(Terminates_wBisim d2a).
+move=> /DLater_wBisim[[c d2c] d3c|[c ->{d3} d2c]].
+  have {}d2c := DLater_Terminates d2c.
+  have d1c : Terminates (DLater d1) c.
+    exact/TDLater/(Terminates_wBisim d2c)/wBisim_sym.
+  exact: (wBTerminate d1c).
+exact/wBLater/(wBisim_trans _ _ _ _ d1d2).
 Qed.
 
 Add Parametric Relation A : (M A) (@wBisim A)
