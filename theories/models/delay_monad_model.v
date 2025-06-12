@@ -51,7 +51,7 @@ Lemma left_neutral : BindLaws.left_neutral bind ret.
 Proof. by move=> A B a f; rewrite [LHS]DelayE [RHS]DelayE. Qed.
 
 CoInductive strongBisim (A : UU0) : M A -> M A -> Prop :=
-| sBRefl (m : M A) : strongBisim m m
+| sBrefl (m : M A) : strongBisim m m
 | sBLater (m m' : M A) :
   strongBisim m m' -> strongBisim (Later m) (Later m').
 Arguments strongBisim [A].
@@ -64,7 +64,7 @@ CoFixpoint right_neutral_bisim A (m : M A) : strongBisim (m >>= @ret A) m.
 Proof.
 case: m=> [a|m].
   rewrite [X in strongBisim X]DelayE /=.
-  exact: sBRefl.
+  exact: sBrefl.
 rewrite [X in strongBisim X]DelayE /=.
 apply: sBLater.
 exact: right_neutral_bisim.
@@ -79,7 +79,7 @@ Proof.
 case: m=> [a|m].
   rewrite [X in strongBisim _ X]DelayE.
   rewrite [X in strongBisim X]DelayE /=.
-  exact: sBRefl.
+  exact: sBrefl.
 rewrite [X in strongBisim _ X]DelayE.
 rewrite [X in strongBisim X]DelayE.
 simpl.
