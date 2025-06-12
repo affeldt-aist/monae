@@ -159,19 +159,19 @@ rewrite [X in Later X]DelayE [X in strongBisim _ X]DelayE /=.
 exact/sBLater/IH.
 Qed.
 
-Inductive Terminate (A : UU0) : M A -> A -> Prop :=
-| Terminate_Now a : Terminate (Now a) a
-| Terminate_Later d a : Terminate d a -> Terminate (Later d) a.
+Inductive Stop (A : UU0) : M A -> A -> Prop :=
+| Stop_Now a : Stop (Now a) a
+| Stop_Later d a : Stop d a -> Stop (Later d) a.
 
-Lemma Now_Terminate (A : UU0) (a b : A) : Terminate (Now a) b -> a = b.
+Lemma Now_Stop (A : UU0) (a b : A) : Stop (Now a) b -> a = b.
 Proof. by inversion 1. Qed.
 
-Lemma Later_Terminate (A : UU0) (a : M A) b :
-  Terminate (Later a) b -> Terminate a b.
+Lemma Later_Stop (A : UU0) (a : M A) b :
+  Stop (Later a) b -> Stop a b.
 Proof. by inversion 1. Qed.
 
-Lemma Terminate_steps A (d : M A) a :
-  Terminate d a <-> exists n, steps n d = Now a.
+Lemma Stop_steps A (d : M A) a :
+  Stop d a <-> exists n, steps n d = Now a.
 Proof.
 split => [Ht|Hda].
   elim: Ht => [a'|d' a' IH1] /=.
@@ -182,12 +182,12 @@ case: (Hda) => m H.
 move: d Hda H.
 elim: m => [d Hda /= Hs|n IH d' Hs Hd].
   rewrite Hs.
-  exact: Terminate_Now.
+  exact: Stop_Now.
 case: d' Hs Hd => [a'|d'] Hs.
   rewrite steps_Now => ->.
-  exact: Terminate_Now.
+  exact: Stop_Now.
 move=> /= Hd.
-apply: Terminate_Later.
+apply: Stop_Later.
 case: Hs => m Hs.
 apply IH => //.
 case: m Hs => [|m] Hs //.
@@ -195,11 +195,11 @@ exists m.
 by rewrite -Hs.
 Qed.
 
-Lemma Terminate_fun A (d : M A) (a b : A) :
-  Terminate d a -> Terminate d b -> a = b.
+Lemma Stop_fun A (d : M A) (a b : A) :
+  Stop d a -> Stop d b -> a = b.
 Proof.
-case/Terminate_steps => n Ha.
-case/Terminate_steps => m Hb.
+case/Stop_steps => n Ha.
+case/Stop_steps => m Hb.
 wlog : n m a b Ha Hb/ n <= m.
   have /orP[nm H|nm H] := leqVgt n m.
     exact: (H _ _ _ _ Ha Hb).
@@ -210,61 +210,61 @@ move: Hb.
 by rewrite (monotonicity_steps Ha nm) => -[].
 Qed.
 
-Definition Diverge A (d : M A) : Prop := ~ exists a, Terminate d a.
+Definition Diverge A (d : M A) : Prop := ~ exists a, Stop d a.
 
-Lemma TerminateP A (d : M A) : decidable (exists a, Terminate d a).
+Lemma StopP A (d : M A) : decidable (exists a, Stop d a).
 Proof.
-case/boolP: `[< exists a, Terminate d a >].
+case/boolP: `[< exists a, Stop d a >].
   by move/asboolP; left.
 by move/asboolP; right.
 Qed.
 
-Lemma not_DivergeP A (d : M A) : ~ Diverge d <-> exists a, Terminate d a.
+Lemma not_DivergeP A (d : M A) : ~ Diverge d <-> exists a, Stop d a.
 Proof. by split => [| ? ? //]; rewrite notE. Qed.
 
 Lemma Diverge_spinP A (d : M A) : Diverge d <-> d = @spin A.
 Proof.
 split.
-  case: (TerminateP d) => //= HD _.
+  case: (StopP d) => //= HD _.
   apply strongBisim_eq.
   move: d HD.
   cofix CIH => d HD.
   case: d HD => [a|d'] HD.
     contradict HD.
     exists a.
-    exact: Terminate_Now.
+    exact: Stop_Now.
   rewrite -spinE.
   apply sBLater.
   apply: CIH => -[a Hd'].
   apply HD.
   exists a.
-  exact (Terminate_Later Hd').
+  exact (Stop_Later Hd').
 move => HD.
 rewrite /Diverge {}HD /not.
-move => [a /Terminate_steps [n Hs]].
+move => [a /Stop_steps [n Hs]].
 contradict Hs.
 elim: n => //=.
 by rewrite -spinE.
 Qed.
 
 CoInductive wBisim A : M A -> M A -> Prop :=
-  | wBTerminate d1 d2 a : Terminate d1 a -> Terminate d2 a -> d1 ≈ d2
+  | wBStop d1 d2 a : Stop d1 a -> Stop d2 a -> d1 ≈ d2
   | wBLater d1 d2 : d1 ≈ d2 -> Later d1 ≈ Later d2
 where "a '≈' b" := (wBisim a b).
 
 Lemma Now_wBisim {A : UU0} {a : A} b : Now a ≈ b ->
-  exists2 c, Terminate (Now a) c & Terminate b c.
+  exists2 c, Stop (Now a) c & Stop b c.
 Proof. by inversion 1; exists a0. Qed.
 
 Lemma Later_wBisim {A : UU0} {a : M A} b : Later a ≈ b ->
-  (exists2 c, Terminate (Later a) c & Terminate b c) \/
+  (exists2 c, Stop (Later a) c & Stop b c) \/
   (exists2 c, b = Later c & a ≈ c).
 Proof. by inversion 1; [left; exists a0 => //|right; exists d2]. Qed.
 
 CoFixpoint wBisim_refl A (d : M A) : d ≈ d.
 Proof.
 case: d => [a|d].
-  by apply: wBTerminate; exact: Terminate_Now.
+  by apply: wBStop; exact: Stop_Now.
 exact: wBLater.
 Qed.
 
@@ -272,24 +272,24 @@ Lemma wBisim_sym A : forall d1 d2 : M A, d1 ≈ d2 -> d2 ≈ d1.
 Proof.
 cofix CIH.
 move=> [a [b|b]|b [a|a]].
-- by move/Now_wBisim => [c] /[swap]; exact: wBTerminate.
-- by move/Now_wBisim => [c] /[swap]; exact: wBTerminate.
-- by move/Later_wBisim => [[c]|[//]] /[swap]; exact: wBTerminate.
+- by move/Now_wBisim => [c] /[swap]; exact: wBStop.
+- by move/Now_wBisim => [c] /[swap]; exact: wBStop.
+- by move/Later_wBisim => [[c]|[//]] /[swap]; exact: wBStop.
 - move/Later_wBisim => [[c] /[swap]|[c -> /CIH cb]].
-  + exact: wBTerminate.
+  + exact: wBStop.
   + exact: wBLater.
 Qed.
 
-Lemma Terminate_wBisim A (d1 d2 : M A) a :
-  Terminate d1 a -> d1 ≈ d2 -> Terminate d2 a.
+Lemma Stop_wBisim A (d1 d2 : M A) a :
+  Stop d1 a -> d1 ≈ d2 -> Stop d2 a.
 Proof.
 move=> d1a; elim: d1a d2 => [b d2|d a' Ha IH d2].
   move/Now_wBisim => [c] /[swap] d2c bc.
-  by rewrite (Now_Terminate bc).
+  by rewrite (Now_Stop bc).
 move/Later_wBisim => [[c dc]|[c ->{d2} dc]].
-  have {}dc := Later_Terminate dc.
-  by rewrite (Terminate_fun Ha dc).
-exact/Terminate_Later/IH.
+  have {}dc := Later_Stop dc.
+  by rewrite (Stop_fun Ha dc).
+exact/Stop_Later/IH.
 Qed.
 
 Lemma Diverge_wBisim A (d1 d2 : M A) : Diverge d1 -> d1 ≈ d2 -> Diverge d2.
@@ -297,18 +297,18 @@ Proof.
 move=> + /wBisim_sym Ho [a Ht].
 apply.
 exists a.
-exact: (Terminate_wBisim Ht Ho).
+exact: (Stop_wBisim Ht Ho).
 Qed.
 
 CoFixpoint wBisim_trans A (d1 d2 d3 : M A) : d1 ≈ d2 -> d2 ≈ d3 -> d1 ≈ d3.
 Proof.
 case => [{}d1 {}d2 a d1a d2a d2d3|{}d1 {}d2 d1d2].
-  exact/(wBTerminate d1a)/(Terminate_wBisim d2a).
+  exact/(wBStop d1a)/(Stop_wBisim d2a).
 move=> /Later_wBisim[[c d2c] d3c|[c ->{d3} d2c]].
-  have {}d2c := Later_Terminate d2c.
-  have d1c : Terminate (Later d1) c.
-    exact/Terminate_Later/(Terminate_wBisim d2c)/wBisim_sym.
-  exact: (wBTerminate d1c).
+  have {}d2c := Later_Stop d2c.
+  have d1c : Stop (Later d1) c.
+    exact/Stop_Later/(Stop_wBisim d2c)/wBisim_sym.
+  exact: (wBStop d1c).
 exact/wBLater/(wBisim_trans _ _ _ _ d1d2).
 Qed.
 
@@ -322,9 +322,9 @@ Hint Extern 0 (wBisim _ _) => setoid_reflexivity.
 CoFixpoint wBisim_Later A (d : M A) : Later d ≈ d.
 Proof.
 case: d => [a|d'].
-  apply: wBTerminate.
-    exact/Terminate_Later/Terminate_Now.
-  exact/Terminate_Now.
+  apply: wBStop.
+    exact/Stop_Later/Stop_Now.
+  exact/Stop_Now.
 exact/wBLater/wBisim_Later.
 Qed.
 
@@ -361,7 +361,7 @@ Hint Extern 0 (wBisims _ _) => setoid_reflexivity.
 
 Lemma wBisims_Later A (d : M A) : Later d ≈s d.
 Proof.
-have [[a /Terminate_steps [n Hs]]|/Diverge_spinP Hs] := TerminateP d.
+have [[a /Stop_steps [n Hs]]|/Diverge_spinP Hs] := StopP d.
   exists n.+1.
   by rewrite (monotonicity_steps Hs).
 by rewrite Hs spinE.
@@ -374,33 +374,33 @@ case: d IH => // d IH /=.
 by rewrite IH wBisims_Later.
 Qed.
 
-Lemma Terminate_wBisims A (d1 d2 : M A) (a : A) :
-  Terminate d1 a -> d1 ≈s d2 -> Terminate d2 a.
+Lemma Stop_wBisims A (d1 d2 : M A) (a : A) :
+  Stop d1 a -> d1 ≈s d2 -> Stop d2 a.
 Proof.
 elim => [b [n]|d b db ih].
   rewrite steps_Now => Hd.
-  apply Terminate_steps.
+  apply Stop_steps.
   by exists n.
 by rewrite wBisims_Later.
 Qed.
 
-Corollary Terminate_stepsP {A} (d : M A) n (a : A) :
-  Terminate d a <-> Terminate (steps n d) a.
+Corollary Stop_stepsP {A} (d : M A) n (a : A) :
+  Stop d a <-> Stop (steps n d) a.
 Proof.
 split => Ht.
-  exact: (Terminate_wBisims Ht (wBisims_sym (wBisims_steps d n))).
-exact: (Terminate_wBisims Ht (wBisims_steps d n)).
+  exact: (Stop_wBisims Ht (wBisims_sym (wBisims_steps d n))).
+exact: (Stop_wBisims Ht (wBisims_steps d n)).
 Qed.
 
-Lemma Terminate_wBisimsRet {A} (d : M A) (a : A) : Terminate d a <-> d ≈s Ret a.
+Lemma Stop_wBisimsRet {A} (d : M A) (a : A) : Stop d a <-> d ≈s Ret a.
 Proof.
 split.
   elim=> [//|d' a' _ H].
   by rewrite (wBisims_Later d') H.
 move=> [m H].
-apply/(Terminate_stepsP d m a).
+apply/(Stop_stepsP d m a).
 rewrite H steps_Now.
-exact: Terminate_Now.
+exact: Stop_Now.
 Qed.
 
 Corollary Diverge_stepsP {A} (d : M A) n : Diverge d <-> Diverge (steps n d).
@@ -408,10 +408,10 @@ Proof.
 apply iff_not2; split.
   move=> [a Ht].
   exists a.
-  by apply Terminate_stepsP.
+  by apply Stop_stepsP.
 move=> [a Ht].
 exists a.
-exact/(Terminate_stepsP _ n _).
+exact/(Stop_stepsP _ n _).
 Qed.
 
 Lemma Diverge_wBisim_spinP {A} (d : M A) : Diverge d <-> d ≈ @spin A.
@@ -422,7 +422,7 @@ move=> Ho [a Ht].
 have : Diverge (@spin A) by apply/Diverge_spinP.
 apply.
 exists a.
-exact: (Terminate_wBisim Ht Ho).
+exact: (Stop_wBisim Ht Ho).
 Qed.
 
 Lemma Diverge_wBisims_spinP {A} (d : M A) : Diverge d <-> d ≈s @spin A.
@@ -438,12 +438,12 @@ Qed.
 Theorem wBisims_wBisim A (d1 d2 : M A) : d1 ≈s d2 <-> d1 ≈ d2.
 Proof.
 split.
-  have [[a Ht] Hd|/Diverge_spinP ->] := TerminateP d1.
-    exact: (wBTerminate Ht (Terminate_wBisims Ht Hd)).
+  have [[a Ht] Hd|/Diverge_spinP ->] := StopP d1.
+    exact: (wBStop Ht (Stop_wBisims Ht Hd)).
   by move=> /wBisims_sym/Diverge_wBisims_spinP/Diverge_spinP ->.
-have [[a Ht]|/Diverge_spinP ->] := TerminateP d1.
-  move/(Terminate_wBisim Ht).
-  move: Ht => /Terminate_steps [n Ht1] /Terminate_steps [m Ht2].
+have [[a Ht]|/Diverge_spinP ->] := StopP d1.
+  move/(Stop_wBisim Ht).
+  move: Ht => /Stop_steps [n Ht1] /Stop_steps [m Ht2].
   by rewrite -(wBisims_steps d1 n) -(wBisims_steps d2 m) Ht1 Ht2.
 by move/wBisim_sym/Diverge_wBisim_spinP/Diverge_spinP => ->.
 Qed.
@@ -483,8 +483,8 @@ rewrite -spinE -(spinE B) bind_Later.
 exact: sBLater.
 Qed.
 
-Lemma Terminate_bindmf A B (d : M A) (a : A) (f : A -> M B) :
-  Terminate d a -> d >>= f ≈s f a.
+Lemma Stop_bindmf A B (d : M A) (a : A) (f : A -> M B) :
+  Stop d a -> d >>= f ≈s f a.
 Proof.
 elim => [a'|d' a' Ht Hd'].
   by rewrite bindretf.
@@ -494,8 +494,8 @@ Qed.
 Lemma bindmwBisims {A B} (f : A -> M B) (d1 d2 : M A) :
   d1 ≈s d2 -> d1 >>= f ≈s d2 >>= f.
 Proof.
-case: (TerminateP d1) => [[a d1a] /(Terminate_wBisims d1a) Ht2|/Diverge_spinP ->].
-  by rewrite (Terminate_bindmf f d1a) (Terminate_bindmf f Ht2).
+case: (StopP d1) => [[a d1a] /(Stop_wBisims d1a) Ht2|/Diverge_spinP ->].
+  by rewrite (Stop_bindmf f d1a) (Stop_bindmf f Ht2).
 by move=> /wBisims_sym/Diverge_wBisims_spinP/Diverge_spinP ->.
 Qed.
 
@@ -631,7 +631,7 @@ Lemma whilewBs {A B} (f g : A -> M (B + A)) (a : A) :
   while f a ≈s while g a.
 Proof.
 move => Hfg.
-have [[b /Terminate_wBisimsRet HT]|/Diverge_spinP HD] := TerminateP (while f a).
+have [[b /Stop_wBisimsRet HT]|/Diverge_spinP HD] := StopP (while f a).
   rewrite HT.
   setoid_symmetry.
   move: HT.
@@ -686,11 +686,11 @@ Proof.
 case: d => [[b|a]|d].
 - apply wBisims_wBisim.
   rewrite !bindretf /= fmapE bindA.
-  have [[c Ht]|/Diverge_spinP HD] := TerminateP (g b).
+  have [[c Ht]|/Diverge_spinP HD] := StopP (g b).
     set h := fun x => (Ret \o inl) x >>= _.
-    rewrite (Terminate_bindmf h Ht).
+    rewrite (Stop_bindmf h Ht).
     rewrite {}/h /= bindretf.
-    move: Ht => /Terminate_steps [n Ht].
+    move: Ht => /Stop_steps [n Ht].
     by rewrite -(wBisims_steps (g b) n) Ht.
   rewrite HD.
   setoid_symmetry.
@@ -794,29 +794,29 @@ Lemma uniformwB {A B C} (f : A -> M (B + A)) (g : C -> M (B + C)) (h : C -> A) :
   forall c, while f (h c) ≈ while g c.
 Proof.
 move => H c.
-case: (TerminateP (while g c)).
+case: (StopP (while g c)).
   case => b Tgb.
-  suff Tfb : Terminate (while f (h c)) b.
-    exact/wBTerminate/Tgb.
-  case/Terminate_steps: Tgb => n.
+  suff Tfb : Stop (while f (h c)) b.
+    exact/wBStop/Tgb.
+  case/Stop_steps: Tgb => n.
   elim/ltn_ind: n c b => n IH c b.
   rewrite whileE whileE.
   move=> Hsteps.
   have [a [n2] [Hg Ha]] := steps_bind Hsteps.
   move/wBisim_sym: (H c).
   set gch := g c >>= _.
-  have Tgch : Terminate gch
+  have Tgch : Stop gch
               (match a with inl b => inl b | inr a => inr (h a) end).
-    apply/Terminate_steps.
+    apply/Stop_steps.
     exists n2.
     rewrite /gch -(addn0 n2).
     apply: (steps_bindD Hg).
     by case a => a' /= ; rewrite fmapE bindretf.
-  move/(Terminate_wBisim Tgch).
+  move/(Stop_wBisim Tgch).
   clear gch Tgch.
-  case/Terminate_steps => n1 Tfhc.
+  case/Stop_steps => n1 Tfhc.
   destruct a as [b'|a].
-    apply/Terminate_steps.
+    apply/Stop_steps.
     exists (n1 + 0).
     apply: (steps_bindD Tfhc).
     by rewrite -Ha !steps_Now.
@@ -824,31 +824,31 @@ case: (TerminateP (while g c)).
   rewrite -(prednK Hnn2) /= in Ha.
   have Hn : (n - n2).-1 < n by rewrite prednK // leq_subr.
   have := IH _ Hn _ _ Ha.
-  case/Terminate_steps => n3 Hwf.
-  apply/Terminate_steps.
+  case/Stop_steps => n3 Hwf.
+  apply/Stop_steps.
   exists (n1 + n3.+1).
   exact: (steps_bindD Tfhc).
 move=> Twgc.
-case: (TerminateP (while f (h c))); last first.
+case: (StopP (while f (h c))); last first.
   move/Diverge_spinP ->.
   by move/Diverge_spinP: Twgc => ->.
 case=> b Twfh.
 elim: Twgc.
-case/Terminate_steps: Twfh => n.
+case/Stop_steps: Twfh => n.
 elim/ltn_ind: n c b => n IH c b.
 rewrite whileE whileE.
 move=> Hsteps.
 have [a [n2] [Hg Ha]] := steps_bind Hsteps.
-have Tfhc : Terminate (f (h c)) a.
-  apply/Terminate_steps.
+have Tfhc : Stop (f (h c)) a.
+  apply/Stop_steps.
   by exists n2.
 move: (H c).
-move/(Terminate_wBisim Tfhc).
-case/Terminate_steps => n1 Tgc.
+move/(Stop_wBisim Tfhc).
+case/Stop_steps => n1 Tgc.
 have [[b'|a'] [n3] [] /= Hgc] := steps_bind Tgc.
   rewrite fmapE bindretf /= steps_Now => -[] Hb'.
   exists b'.
-  apply/Terminate_steps.
+  apply/Stop_steps.
   exists (n3 + 0).
   exact: (steps_bindD Hgc).
 rewrite fmapE bindretf /= steps_Now => -[] Hha'.
@@ -857,9 +857,9 @@ have Hnn2 : n - n2 > 0 by case: (n - n2) Ha.
 rewrite -(prednK Hnn2) /= in Ha.
 have Hn : (n - n2).-1 < n by rewrite prednK // leq_subr.
 have [b'] := IH _ Hn _ _ Ha.
-case/Terminate_steps => n4 Hwg.
+case/Stop_steps => n4 Hwg.
 exists b'.
-apply/Terminate_steps.
+apply/Stop_steps.
 exists (n3 + n4.+1).
 exact: (steps_bindD Hgc).
 Qed.
