@@ -48,15 +48,15 @@ Let factdts_nat_body (r : loc ml_int) n : M (unit + nat)%type :=
   if n is m.+1 then do _ <- cput r (n * v); Ret (inr m)
                else Ret (inl tt).
 
-Let while_factdts_natE n r :
+Let while_factdts_natwB n r :
   while (factdts_nat_body r) n ≈ do s <- cget r; cput r (n`! * s).
 Proof.
 elim: n => /= [|m IH].
-  rewrite fixpointE/= !bindA.
+  rewrite fixpointwB/= !bindA.
   under [x in _ ≈ x]eq_bind => s do rewrite fact0 mul1n.
   rewrite cgetputskip.
   by under eq_bind do rewrite bindretf.
-rewrite fixpointE/= bindA.
+rewrite fixpointwB/= bindA.
 under eq_bind => s do rewrite bindA bindretf/=.
 setoid_rewrite IH.
 by under eq_bind do rewrite cputget cputput mulnA (mulnC m`! _).
@@ -67,10 +67,10 @@ Definition factdts_nat n :=
   do _ <- while (factdts_nat_body r) n ;
   cget r.
 
-Lemma factdtsE n : factdts_nat n ≈ cnew ml_int n`! >> Ret n`!.
+Lemma factdtswB n : factdts_nat n ≈ cnew ml_int n`! >> Ret n`!.
 Proof.
 rewrite /factdts_nat.
-setoid_rewrite while_factdts_natE.
+setoid_rewrite while_factdts_natwB.
 under eq_bind do rewrite bindA.
 by rewrite cnewget cnewput muln1 cnewgetret.
 Qed.

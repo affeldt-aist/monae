@@ -659,7 +659,7 @@ apply: wBisim_trans.
 Qed.
 
 (* the next four laws derived from Complete Elgot monads *)
-Lemma fixpointEs {A B} (f : A -> M (B + A)) (a : A) :
+Lemma fixpointwBs {A B} (f : A -> M (B + A)) (a : A) :
   while f a ≈s f a >>= sum_rect (fun => M B) (@ret M B) (while f).
 Proof.
 rewrite whileE.
@@ -667,11 +667,11 @@ apply: bindfwBisims => -[b'|a'] //=.
 exact: wBisims_Later.
 Qed.
 
-Lemma fixpointE {A B} (f : A -> M (B + A)) (a : A) :
+Lemma fixpointwB {A B} (f : A -> M (B + A)) (a : A) :
   while f a ≈ f a >>= sum_rect (fun => M B) (@ret M B ) (while f).
-Proof. by apply wBisims_wBisim; exact: fixpointEs. Qed.
+Proof. by apply wBisims_wBisim; exact: fixpointwBs. Qed.
 
-CoFixpoint naturalityE' {A B C} (f : A -> M (B + A)) (g : B -> M C) (d : M (B + A)) :
+CoFixpoint naturalitywB' {A B C} (f : A -> M (B + A)) (g : B -> M C) (d : M (B + A)) :
   (d >>= (fun ab : B + A => match ab with
                             | inl b => Now b
                             | inr a => Later (while f a)
@@ -698,22 +698,26 @@ case: d => [[b|a]|d].
 - rewrite! bindretf /= fmapE bindA bindretf /= bindretf /= bind_Later.
   apply wBLater.
   rewrite whileE whileE.
-  exact: naturalityE'.
+  exact: naturalitywB'.
 - rewrite !bind_Later.
   apply: wBLater.
-  exact: naturalityE'.
+  exact: naturalitywB'.
 Qed.
 
-Lemma naturalityE {A B C} (f : A -> M (B + A)) (g : B -> M C) (a : A) :
+Lemma naturalitywB {A B C} (f : A -> M (B + A)) (g : B -> M C) (a : A) :
   (while f a) >>= g ≈
-  while (fun y => f y >>= sum_rect (fun => M (C + A)) (M # inl \o g) (M # inr \o (@ret M A ))) a.
-Proof. by rewrite whileE whileE; apply naturalityE'. Qed.
+  while (fun y => f y >>= sum_rect (fun => M (C + A))
+                                   (M # inl \o g)
+                                   (M # inr \o (@ret M A ))) a.
+Proof. by rewrite whileE whileE; apply naturalitywB'. Qed.
 
-CoFixpoint codiagonalE' {A B} (f: A -> M ((B + A) + A))(d: M ((B + A) + A)) :
+CoFixpoint codiagonalwB' {A B} (f: A -> M ((B + A) + A))(d: M ((B + A) + A)) :
   ((d >>= (Ret \o sum_rect (fun=> (B + A)%type) idfun inr)) >>=
   (fun ab : B + A => match ab with
                      | inl b => Now b
-                     | inr a => Later (while (M # sum_rect (fun=> (B + A)%type) idfun inr \o f) a)
+                     | inr a => Later (while (M # sum_rect (fun=> (B + A)%type)
+                                                           idfun
+                                                           inr \o f) a)
                      end))
   ≈
   ((d >>= (fun ab : B + A + A => match ab with
@@ -728,28 +732,25 @@ Proof.
 case: d => [ [[b|a]|a]|d'].
 - by rewrite bindretf bindretf bindretf //= bindretf.
 - rewrite bindretf bindretf bindretf //= bindretf whileE whileE whileE //= fmapE.
-  exact/wBLater/codiagonalE'.
+  exact/wBLater/codiagonalwB'.
 - rewrite bindretf bindretf bindretf //= bind_Later whileE whileE //= fmapE.
-  exact/wBLater/codiagonalE'.
-- rewrite !bind_Later.
-  apply: wBLater.
-  exact: codiagonalE'.
+  exact/wBLater/codiagonalwB'.
+- by rewrite !bind_Later; exact/wBLater/codiagonalwB'.
 Qed.
 
-Lemma codiagonalE {A B} (f : A -> M ((B + A) + A)) (a : A) :
+Lemma codiagonalwB {A B} (f : A -> M ((B + A) + A)) a :
   while ((Delay # ((sum_rect (fun => (B + A)%type) idfun inr))) \o f) a
   ≈
   while (while f) a.
-Proof. by rewrite whileE whileE whileE //= fmapE; apply codiagonalE'. Qed.
+Proof. by rewrite whileE whileE whileE //= fmapE; exact: codiagonalwB'. Qed.
 
 Lemma whilewB {A B} (f g : A -> M (B + A)) (a : A) :
   (forall a, f a ≈ g a) -> while f a ≈ while g a.
 Proof.
 move=> H.
-apply wBisims_wBisim.
-apply whilewBs => a'.
-apply wBisims_wBisim.
-exact: H.
+apply/wBisims_wBisim.
+apply/whilewBs => a'.
+exact/wBisims_wBisim/H.
 Qed.
 
 Add Parametric Morphism A B : while with signature
@@ -786,7 +787,7 @@ move=> Ha Hb.
 by apply: IH.
 Qed.
 
-Lemma uniformE {A B C} (f : A -> M (B + A)) (g : C -> M (B + C)) (h : C -> A) :
+Lemma uniformwB {A B C} (f : A -> M (B + A)) (g : C -> M (B + C)) (h : C -> A) :
   (forall c, f (h c) ≈ g c >>= sum_rect (fun => M (B + A))
                                         ((M # inl) \o Ret)
                                         ((M # inr) \o Ret \o h)) ->
@@ -864,7 +865,7 @@ exact: (steps_bindD Hgc).
 Qed.
 
 HB.instance Definition _ := @isMonadDelay.Build M (@while)
- (@whilewB) (@fixpointE) (@naturalityE) (@codiagonalE) (@uniformE).
+ (@whilewB) (@fixpointwB) (@naturalitywB) (@codiagonalwB) (@uniformwB).
 
 End delayops.
 End DelayOps.

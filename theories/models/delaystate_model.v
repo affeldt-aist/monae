@@ -132,15 +132,15 @@ case: sa => a'' s'' /=.
 exact: bindmwB.
 Qed.
 
-Lemma fixpointDSE {A B} (f : A -> DS (B + A)%type) (a : A) :
+Lemma fixpointDSwB {A B} (f : A -> DS (B + A)%type) (a : A) :
   wBisimDS (whileDS f a) (f a >>= sum_rect (fun => DS B) Ret (whileDS f)).
 Proof.
 move=> s.
-rewrite /whileDS /curry /dist1/= MS_bindE /uncurry/= fixpointE/= fmapE !bindA.
+rewrite /whileDS /curry /dist1/= MS_bindE /uncurry/= fixpointwB/= fmapE !bindA.
 by apply: bindfwB=> -[[b'|a'] s'] /=; rewrite bindretf.
 Qed.
 
-Lemma naturalityDSE {A B C} (f : A -> DS (B + A)%type) (g : B -> DS C) (a : A) :
+Lemma naturalityDSwB {A B C} (f : A -> DS (B + A)%type) (g : B -> DS C) (a : A) :
   wBisimDS (bindS (whileDS f a) g)
            (whileDS (fun y => f y >>=
                               sum_rect (fun => DS (C + A))
@@ -148,7 +148,7 @@ Lemma naturalityDSE {A B C} (f : A -> DS (B + A)%type) (g : B -> DS C) (a : A) :
                                        (DS # inr \o (@ret DS A))) a).
 Proof.
 rewrite /bindS /whileDS /curry /uncurry => s //=.
-rewrite naturalityE /=.
+rewrite naturalitywB /=.
 apply: whilewB => -[] s' a' /=.
 rewrite fmapE fmapE /=MS_bindE !bindA.
 apply: bindfwB => sba //=.
@@ -164,7 +164,7 @@ case: sba => [[b''|a''] s''] /=.
   by case: cs.
 Qed.
 
-Lemma codiagonalDSE {A B} (f : A -> DS ((B + A) + A)) (a : A) :
+Lemma codiagonalDSwB {A B} (f : A -> DS ((B + A) + A)) (a : A) :
    wBisimDS (whileDS ((DS # ((sum_rect (fun => (B + A)%type) idfun inr))) \o f) a)
             (whileDS (whileDS f) a).
 Proof.
@@ -172,8 +172,8 @@ rewrite /whileDS /curry /wBisimDS => s.
 setoid_symmetry.
 apply: wBisim_trans.
   apply whilewB => -[] s' a' /=.
-  by rewrite /uncurry fmapE naturalityE.
-rewrite -codiagonalE DSmapE.
+  by rewrite /uncurry fmapE naturalitywB.
+rewrite -codiagonalwB DSmapE.
 apply: whilewB => -[] a'' s'' //=.
 rewrite //= !fmapE.
 have -> : ((homS S \o M) \o tensorS S) # sum_rect (fun=> (B + A)%type) idfun inr =
@@ -184,7 +184,7 @@ by apply: bindfwB=> -[[[bl|al']|al] sl]; rewrite !bindretf /= fmapE !bindretf.
 Qed.
 
 
-Lemma uniformEDS {A B C} (f : A -> DS (B + A)) (g : C -> DS (B + C)) (h : C -> A) :
+Lemma uniformDSwB {A B C} (f : A -> DS (B + A)) (g : C -> DS (B + C)) (h : C -> A) :
   (forall c, wBisimDS (f (h c))
                       (g c >>= sum_rect (fun => DS (B + A))
                                         ((DS # inl) \o Ret)
@@ -195,7 +195,7 @@ move=> H c s.
 rewrite /whileDS /curry /=.
 set h' := fun cs : C * S => let (c, s) := cs in (h c, s).
 have -> : (h c, s) = h' (c, s) by [].
-apply: (uniformE _ _ _ _ _ h') => -[c' s'].
+apply: (uniformwB _ _ _ _ _ h') => -[c' s'].
 rewrite {}/h' /= fmapE (H c') fmapE /= !bindA.
 by apply: bindfwB => -[[?|?] ?];
   rewrite /=bindretf fmapE !bindretf/= fmapE bindretf.
@@ -205,7 +205,7 @@ HB.instance Definition _ := @hasWBisim.Build DS (@wBisimDS)
   wBisimDS_refl wBisimDS_sym wBisimDS_trans (@bindmwBDS) (@bindfwBDS).
 
 HB.instance Definition _ := @isMonadDelay.Build DS (@whileDS)
-  (@whilewBDS) (@fixpointDSE) (@naturalityDSE) (@codiagonalDSE) (@uniformEDS).
+  (@whilewBDS) (@fixpointDSwB) (@naturalityDSwB) (@codiagonalDSwB) (@uniformDSwB).
 
 End stateTdelay.
 End StateTdelay.
