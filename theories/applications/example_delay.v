@@ -143,18 +143,20 @@ Let mc91_body nm : M (nat + nat * nat)%type :=
 
 Definition mc91 n m := while mc91_body (n.+1, m).
 
-Lemma mc91succE n m : 90 <= m < 101 -> mc91 n m ≈ mc91 n m.+1.
+Lemma wBisim_mc91S n m : 90 <= m < 101 -> mc91 n m ≈ mc91 n m.+1.
 Proof.
 move=> /andP[m89].
-rewrite /mc91 /mc91_body fixpointE /= ltnNge => m100.
+rewrite /mc91 /mc91_body fixpointE/= ltnNge => m100.
+rewrite -/mc91_body.
 rewrite (negbTE m100) bindretf/= fixpointE/=.
-rewrite -[100]/(89 + 11) ltn_add2r m89.
+rewrite /mc91_body/= -[100]/(89 + 11) ltn_add2r m89.
+rewrite -/mc91_body.
 rewrite bindretf fixpointE /= fixpointE.
 rewrite (_ : m + 11 - 10 = m.+1)//.
 by rewrite -addnBA// addn1.
 Qed.
 
-Lemma mc91E_aux m n : 90 <= m <= 101 -> mc91 n m ≈ mc91 n 101.
+Lemma wBisim_mc91_101 m n : 90 <= m <= 101 -> mc91 n m ≈ mc91 n 101.
 Proof.
 move=> /andP[m89 m101].
 have [/ltnW /subnKC|m100] := ltnP m 101; last first.
@@ -165,37 +167,37 @@ move: m m89 m101.
 elim: k => [m m89 m101|l IH m m89].
   by rewrite addn0 => ->.
 rewrite leq_eqVlt => /predU1P[->//| Hm].
-rewrite -addn1 (addnC l 1) addnA mc91succE ?m89// addn1.
+rewrite -addn1 (addnC l 1) addnA wBisim_mc91S ?m89// addn1.
 by apply: IH => //; exact: leq_trans.
 Qed.
 
-Lemma mc91_101E n : mc91 n 101 ≈ Ret 91.
+Lemma wBisim_mc91_91 n : mc91 n 101 ≈ Ret 91.
 Proof.
 elim: n => [|n IH]; rewrite /mc91 /mc91_body fixpointE bindretf/=.
   by rewrite fixpointE bindretf.
-by rewrite -/mc91_body // -/(mc91 n 91) mc91E_aux // IH.
+by rewrite -/mc91_body // -/(mc91 n 91) wBisim_mc91_101 // IH.
 Qed.
 
-Lemma mc91E n m : m <= 101 -> mc91 n m ≈ Ret 91.
+Lemma wBisim_mc91 n m : m <= 101 -> mc91 n m ≈ Ret 91.
 Proof.
 move=> m101.
 have [m89|] := leqP 90 m.
   move: (conj m89 m101) => /andP Hm.
-  by rewrite mc91E_aux// mc91_101E.
+  by rewrite wBisim_mc91_101// wBisim_mc91_91.
 move=> /ltnW /subnKC.
 set k := 90 - m.
 clearbody k.
 elim: k {-2}k (leqnn k) n m {m101} => k.
   rewrite leqn0 => /eqP -> n m.
   rewrite addn0 => ->.
-  by rewrite mc91E_aux// mc91_101E.
+  by rewrite wBisim_mc91_101// wBisim_mc91_91.
 move=> IH k' Hk n m Hm.
 have -> : m = 90 - k' by rewrite -Hm addnK.
 rewrite /mc91 /mc91_body fixpointE //=.
 rewrite ltn_subRL addnC/=.
 rewrite bindretf/= -/mc91_body -/(mc91 _ _).
 have [k'11|k'11] := leqP k' 11.
-  by rewrite mc91E_aux ?mc91_101E//; lia.
+  by rewrite wBisim_mc91_101 ?wBisim_mc91_91//; lia.
 by rewrite (IH (k' - 11))//; lia.
 Qed.
 
