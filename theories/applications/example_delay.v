@@ -26,10 +26,10 @@ Let fact_body a : M (nat + nat * nat)%type :=
 
 Definition factdelay := fun nm => while fact_body nm.
 
-Lemma eq_fact_factdelay n m : factdelay (n, m) ≈ Ret (m * n`!).
+Lemma factdelay_fact n m : factdelay (n, m) ≈ Ret (m * n`!).
 Proof.
 rewrite /factdelay.
-elim: n m => [m | n IH m]; rewrite fixpointE bindretf/=.
+elim: n m => [m | n IH m]; rewrite fixpointwB bindretf/=.
   by rewrite muln1.
 by rewrite mulnA.
 Qed.
@@ -47,7 +47,7 @@ Proof.
 rewrite /dividefac1 /dividefac2 /divide5_body.
 apply: whilewB => -[k l].
 case: ifPn => //= _.
-by rewrite eq_fact_factdelay !bindretf mul1n.
+by rewrite factdelay_fact !bindretf mul1n.
 Qed.
 
 End factorial.
@@ -65,7 +65,7 @@ Definition collatzm m := while (collatzm_body m).
 Lemma collatzmwB m n p :
   collatzm m n >>= (fun q => Ret (p * q)) ≈ collatzm (p * m) n.
 Proof.
-rewrite /collatzm naturalityE/=.
+rewrite /collatzm naturalitywB/=.
 apply: whilewB => q.
 have [->|q1] := eqVneq q 1.
   by rewrite bindretf/= fmapE bindretf.
@@ -94,7 +94,7 @@ Let minus2 := fun nm => while minus2_body nm.
 
 Lemma eq_minus nm : minus1 nm ≈ minus2 nm.
 Proof.
-rewrite /minus1 /minus2 -codiagonalE.
+rewrite /minus1 /minus2 -codiagonalwB.
 apply: whilewB => -[n m].
 case: n => [|n /=].
   by case: m => //= [|n]; rewrite fmapE bindretf.
@@ -115,16 +115,16 @@ Let fastexp_body nmk : M (nat + nat * nat * nat)%type :=
 
 Let fastexp n m k := while fastexp_body (n, m, k).
 
-Lemma fastexpE n : forall m k, fastexp n m k ≈ Ret (m * expn k n).
+Lemma fastexpwB n : forall m k, fastexp n m k ≈ Ret (m * expn k n).
 Proof.
 rewrite /fastexp /fastexp_body.
 elim: n {-2}n (leqnn n) => n.
   rewrite leqn0 => /eqP -> m k.
-  by rewrite fixpointE/= bindretf/= muln1.
-move=> IH [_|m' Hmn] m k; first by rewrite fixpointE/= bindretf/= muln1.
+  by rewrite fixpointwB/= bindretf/= muln1.
+move=> IH [_|m' Hmn] m k; first by rewrite fixpointwB/= bindretf/= muln1.
 have [/= Hm'|/= Hm'] := boolP (odd m'); last first.
-  by rewrite fixpointE/= Hm' bindretf/= IH//= expnSr mulnAC -mulnA.
-rewrite fixpointE/= Hm' bindretf/= IH.
+  by rewrite fixpointwB/= Hm' bindretf/= IH//= expnSr mulnAC -mulnA.
+rewrite fixpointwB/= Hm' bindretf/= IH.
   by rewrite uphalfE mulnn -expnM mul2n (@even_halfK m'.+1)//= negbK.
 rewrite leq_uphalf_double.
 move: Hmn; rewrite ltnS => /leq_trans; apply.
@@ -146,12 +146,12 @@ Definition mc91 n m := while mc91_body (n.+1, m).
 Lemma wBisim_mc91S n m : 90 <= m < 101 -> mc91 n m ≈ mc91 n m.+1.
 Proof.
 move=> /andP[m89].
-rewrite /mc91 /mc91_body fixpointE/= ltnNge => m100.
+rewrite /mc91 /mc91_body fixpointwB/= ltnNge => m100.
 rewrite -/mc91_body.
-rewrite (negbTE m100) bindretf/= fixpointE/=.
+rewrite (negbTE m100) bindretf/= fixpointwB/=.
 rewrite /mc91_body/= -[100]/(89 + 11) ltn_add2r m89.
 rewrite -/mc91_body.
-rewrite bindretf fixpointE /= fixpointE.
+rewrite bindretf fixpointwB /= fixpointwB.
 rewrite (_ : m + 11 - 10 = m.+1)//.
 by rewrite -addnBA// addn1.
 Qed.
@@ -173,8 +173,8 @@ Qed.
 
 Lemma wBisim_mc91_91 n : mc91 n 101 ≈ Ret 91.
 Proof.
-elim: n => [|n IH]; rewrite /mc91 /mc91_body fixpointE bindretf/=.
-  by rewrite fixpointE bindretf.
+elim: n => [|n IH]; rewrite /mc91 /mc91_body fixpointwB bindretf/=.
+  by rewrite fixpointwB bindretf.
 by rewrite -/mc91_body // -/(mc91 n 91) wBisim_mc91_101 // IH.
 Qed.
 
@@ -193,7 +193,7 @@ elim: k {-2}k (leqnn k) n m {m101} => k.
   by rewrite wBisim_mc91_101// wBisim_mc91_91.
 move=> IH k' Hk n m Hm.
 have -> : m = 90 - k' by rewrite -Hm addnK.
-rewrite /mc91 /mc91_body fixpointE //=.
+rewrite /mc91 /mc91_body fixpointwB //=.
 rewrite ltn_subRL addnC/=.
 rewrite bindretf/= -/mc91_body -/(mc91 _ _).
 have [k'11|k'11] := leqP k' 11.

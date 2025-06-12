@@ -905,23 +905,23 @@ HB.mixin Record isMonadDelay (M : UU0 -> UU0) of WBisim M := {
   while : forall {A B : UU0}, (A -> M(B + A)%type) -> A -> M B;
   whilewB : forall (A B : UU0) (f g : A -> M (B + A)%type) (a : A),
     (forall a, wBisim (f a) (g a)) -> wBisim (while f a) (while g a) ;
-  fixpointE : forall (A B : UU0) (f : A -> M (B + A)%type) (a : A),
+  fixpointwB : forall (A B : UU0) (f : A -> M (B + A)%type) (a : A),
     wBisim (while f a)
            (f a >>= sum_rect (fun => M B) (@ret M B) (while f));
-  naturalityE : forall (A B C : UU0) (f : A -> M (B + A)%type) (g : B -> M C) (a : A),
+  naturalitywB : forall (A B C : UU0) (f : A -> M (B + A)%type) (g : B -> M C) (a : A),
     wBisim (while f a >>= g)
            (while (fun y => f y >>= sum_rect (fun => M (C + A)%type)
                                              (M # inl \o g)
                                              (M # inr \o @ret M A)) a);
-  codiagonalE : forall (A B : UU0) (f : A -> M ((B + A) + A)%type) (a : A),
+  codiagonalwB : forall (A B : UU0) (f : A -> M ((B + A) + A)%type) (a : A),
     wBisim (while ((M # ((sum_rect (fun => (B + A)%type) idfun inr))) \o f) a)
            (while (while f) a);
-  uniformE : forall (A B C : UU0) (f : A -> M (B + A)%type)
+  uniformwB : forall (A B C : UU0) (f : A -> M (B + A)%type)
       (g : C -> M (B + C)%type) (h : C -> A),
     (forall c, wBisim (f (h c))
                       (g c >>= sum_rect (fun => M (B + A)%type)
-                                  ((M # inl) \o Ret)
-                                  ((M # inr) \o Ret \o h))) ->
+                                        ((M # inl) \o Ret)
+                                        ((M # inr) \o Ret \o h))) ->
     forall c, wBisim (while f (h c)) (while g c)
 }.
 

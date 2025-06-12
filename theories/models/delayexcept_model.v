@@ -69,21 +69,21 @@ subst f' g'.
 by case: a.
 Qed.
 
-Lemma fixpointDEE {A B} (f : A -> DE (B + A)) (a : A) :
+Lemma fixpointDEwB {A B} (f : A -> DE (B + A)) (a : A) :
   whileDE f a ≈ f a >>= sum_rect (fun => DE B ) (@ret DE B ) (whileDE f).
 Proof.
-rewrite /whileDE /DEA fixpointE /= fmapE /= bindA.
+rewrite /whileDE /DEA fixpointwB /= fmapE /= bindA.
 apply (bindfwB _ _ _ _ (f a)) => uba.
 by case: uba => [u|[b'|a']] /=; rewrite bindretf.
 Qed.
 
-Lemma naturalityDEE {A B C} (f : A -> DE (B + A)) (g : B -> DE C) (a : A) :
+Lemma naturalityDEwB {A B C} (f : A -> DE (B + A)) (g : B -> DE C) (a : A) :
   whileDE f a >>= g ≈
   whileDE (fun y => f y >>= sum_rect (fun => DE (C + A))
                                      (DE # inl \o g)
                                      (DE # inr \o (@ret DE A))) a.
 Proof.
-rewrite /whileDE /DEA bindXE naturalityE.
+rewrite /whileDE /DEA bindXE naturalitywB.
 apply: whilewB => a' /=.
 rewrite fmapE fmapE !bindA.
 apply: (bindfwB _ _ _ _ (f a')).
@@ -94,7 +94,7 @@ move=> [u|[b''|a'']] /=.
 - by rewrite bindretf /= !fmapE !bindretf.
 Qed.
 
-Lemma codiagonalDEE {A B} (f : A -> DE ((B + A) + A)) (a : A) :
+Lemma codiagonalDEwB {A B} (f : A -> DE ((B + A) + A)) (a : A) :
   whileDE ((DE # (sum_rect (fun => (B + A)%type) idfun inr)) \o f ) a
   ≈
   whileDE (whileDE f) a.
@@ -105,16 +105,16 @@ setoid_symmetry.
 apply: wBisim_trans.
   apply whilewB => a' /=.
   set m := {1}(while _ ).
-  by rewrite (fmapE g (m a')) naturalityE.
-rewrite -codiagonalE.
+  by rewrite (fmapE g (m a')) naturalitywB.
+rewrite -codiagonalwB.
 apply whilewB => a' /=.
 rewrite !fmapE !bindA.
 apply: bindfwB.
-by move=> [u|[[b|a1]|a2]] /= ; by rewrite  !bindretf /= fmapE bindretf /= bindretf.
+by move=> [u|[[b|a1]|a2]] /=; rewrite !bindretf /= fmapE bindretf /= bindretf.
 Qed.
 
-Lemma whilewBDE {A B} (f g : A -> DE (B + A)) (a : A) :
-  (forall a, (f a) ≈ (g a)) -> whileDE f a ≈ whileDE g a.
+Lemma whilewBDwB {A B} (f g : A -> DE (B + A)) (a : A) :
+  (forall a, f a ≈ g a) -> whileDE f a ≈ whileDE g a.
 Proof.
 move=> Hfg.
 rewrite /whileDE /DEA.
@@ -124,7 +124,7 @@ apply: bindmwB.
 exact: Hfg.
 Qed.
 
-Lemma uniformDEE {A B C} (f : A -> DE (B + A)) (g : C -> DE (B + C)) (h : C -> A) :
+Lemma uniformDEwB {A B C} (f : A -> DE (B + A)) (g : C -> DE (B + C)) (h : C -> A) :
   (forall c, f (h c) ≈
              (g c >>= sum_rect (fun => DE (B + A))
                                ((DE # inl) \o Ret)
@@ -133,7 +133,7 @@ Lemma uniformDEE {A B C} (f : A -> DE (B + A)) (g : C -> DE (B + C)) (h : C -> A
 Proof.
 move=> H c.
 rewrite /whileDE.
-apply: (uniformE _ _ _ (DEA \o f)) => c' /=.
+apply: (uniformwB _ _ _ (DEA \o f)) => c' /=.
 rewrite /DEA/= !fmapE (H c') !bindA.
 apply: bindfwB.
 by move=> [x|[b''|c'']]; rewrite /= !bindretf /= fmapE !bindretf // fmapE bindretf.
@@ -145,7 +145,7 @@ HB.instance Definition _ := @hasWBisim.Build DE (@wBisimDE)
   wBisimDE_refl wBisimDE_sym wBisimDE_trans (@bindmwBDE) (@bindfwBDE).
 
 HB.instance Definition _ := @isMonadDelay.Build DE (@whileDE)
-  (@whilewBDE) (@fixpointDEE) (@naturalityDEE) (@codiagonalDEE) (@uniformDEE).
+  (@whilewBDwB) (@fixpointDEwB) (@naturalityDEwB) (@codiagonalDEwB) (@uniformDEwB).
 
 Lemma catchmwBDE A (d1 d2 h : DE A) :
   d1 ≈ d2 -> catch d1 h ≈ catch d2 h.
