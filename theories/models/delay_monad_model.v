@@ -456,11 +456,11 @@ Lemma steps_monotonisity {A} (n : nat) (d : Delay A) : steps n d  ≈s d.
 Abort.
 *)
 
-CoFixpoint while {A B} (body : A -> M (B + A)) : A -> M B :=
-  fun a => body a >>= (fun ab => match ab with
-                                 | inr a => Later (while body a)
-                                 | inl b => Now b
-                       end).
+CoFixpoint while {A B} (body : A -> M (B + A)) (a : A) : M B :=
+  body a >>= (fun ab => match ab with
+                        | inr a => Later (while body a)
+                        | inl b => Now b
+                        end).
 
 Lemma whileE A B (f : A -> M (B + A)) (a : A) :
   while f a = f a >>= (fun ab => match ab with
