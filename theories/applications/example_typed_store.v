@@ -130,7 +130,6 @@ under eq_bind => r1.
     rewrite bindretf bindA bindretf.
     rewrite bindA cputget.
     rewrite bindretf.
-    rewrite -bindA.
     rewrite cputgetC //.
     over.
   rewrite cnewget.
@@ -147,7 +146,7 @@ rewrite /cycle bindA -[LHS]cnewchk.
 under eq_bind => r1.
   rewrite bindA; under eq_bind do rewrite !bindA.
   under cchknewE do
-    rewrite bindretf bindA bindretf bindA cputget bindretf -bindA cputgetC //.
+    rewrite bindretf bindA bindretf bindA cputget bindretf cputgetC //.
   rewrite cnewget; over.
 rewrite cnewchk.
 by under [RHS]eq_bind do (rewrite bindA; under eq_bind do rewrite bindretf).
@@ -197,7 +196,7 @@ Lemma cchkmkrlistC A T T1 l (r : loc T) r1 k :
   = cchk r >> (mkrlist T1 l r1 >>= k) :> M A.
 Proof.
 elim: l k => [|a l IH] k /=.
-  by rewrite !bindretf -bindA cchkget.
+  by rewrite !bindretf -bindA cchkdup.
 symmetry.
 rewrite bindA -IH.
 under eq_bind do under eq_bind do rewrite -cchknewC.
@@ -251,7 +250,7 @@ under cchknewE => r2 rr2.
   under [mkrlist _ _ _ >>= _]eq_bind do rewrite rdrop_add bindA.
   rewrite IH mkrlist_drop /=.
   under [mkrlist _ _ _ >>= _]eq_bind do
-    rewrite !bindA -[cput _ _ >> _]bindA cputgetC //.
+    rewrite !bindA cputgetC //.
   under eq_bind do under eq_bind do under eq_bind do rewrite !bindretf.
   over.
 rewrite cchknewC.
