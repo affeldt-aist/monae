@@ -22,6 +22,10 @@ theories/models/proba_monad_model.v
 theories/models/gcm_model.v
 theories/models/altprob_model.v
 theories/models/typed_store_model.v
+theories/models/delay_monad_model.v
+theories/models/delayexcept_model.v
+theories/models/delaystate_model.v
+theories/models/typed_store_transformer.v
 theories/applications/monad_composition.v
 theories/applications/example_spark.v
 theories/applications/example_nqueens.v
@@ -29,6 +33,12 @@ theories/applications/example_relabeling.v
 theories/applications/example_quicksort.v
 theories/applications/example_iquicksort.v
 theories/applications/example_monty.v
+theories/applications/example_delay.v
+theories/applications/example_delaystate.v
+theories/applications/example_delayassert.v
+theories/applications/example_delayexcept.v
+theories/applications/example_delay_typed_store.v
+theories/applications/typed_store_universe.v
 theories/applications/example_typed_store.v
 theories/applications/smallstep.v
 theories/applications/example_transformer.v
