@@ -2,7 +2,7 @@
 This file was generated from `meta.yml`, please do not edit manually.
 Follow the instructions on https://github.com/coq-community/templates to regenerate.
 --->
-# Monadic effects and equational reasoning in Coq
+# Monadic effects and equational reasoning in Rocq
 
 [![Docker CI][docker-action-shield]][docker-action-link]
 
@@ -49,7 +49,7 @@ in several examples of monadic equational reasoning.
 
 ## Building and installation instructions
 
-The easiest way to install the latest released version of Monadic effects and equational reasoning in Coq
+The easiest way to install the latest released version of Monadic effects and equational reasoning in Rocq
 is via [OPAM](https://opam.ocaml.org/doc/Install.html):
 
 ```shell
@@ -100,10 +100,11 @@ This library has been applied to other formalizations:
   + [hierarchy.v](./theories/core/hierarchy.v): hierarchy of monadic effects
   + [category.v](./theories/core/category.v): formalization of concrete categories (generalization of the bottom layers of `hierarchy.v`)
   + [monad_transformer.v](./theories/core/monad_transformer.v): monad transformers
-    * completed by `ifmt_lifting.v` and `iparametricty_codensity.v` in the directory `impredicative_set`
-      - the directory `impredicative_set` contains a lighter version of Monae where monads live in `Set` and that compiles with `impredicative-set`
+    * completed by `ifmt_lifting.v` and `iparametricity_codensity.v` in the directory `impredicative_set`
+      - the directory `impredicative_set` contains a lighter version of Monae where monads live in `Set` and that compiles with the `impredicative-set` option of Rocq
 - libraries for each monad theory:  
   + [monad_lib.v](./theories/lib/monad_lib.v): basic lemmas about monads
+  + [alt_lib.v](./theories/lib/alt_lib.v): lemmas about the nondeterminism monad
   + [fail_lib.v](./theories/lib/fail_lib.v): lemmas about the fail monad and related monads
   + [state_lib.v](./theories/lib/state_lib.v): lemmas about state-related monads
   + [array_lib.v](./theories/lib/array_lib.v): lemmas about the array monad
