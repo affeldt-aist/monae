@@ -75,6 +75,7 @@ rewrite -/(sum n) {}ih -bindA putget bindA bindretf putput.
 congr put.
 by rewrite add0n (addnC 1) iotaD /= sumn_cat /= add0n addn0 /= addnAC addnA.
 Qed.
+
 End stateloop_examples.
 
 Lemma getput_prepend (S : UU0) (M : nondetStateMonad S) A (m : M A) :
@@ -397,12 +398,6 @@ Qed.
 
 End properties_of_Symbols.
 
-Definition swap {S : UU0} {I : eqType} {M : arrayMonad S I} (i j : I) : M unit :=
-  (do x <- aget i ;
-   do y <- aget j ;
-   aput i y >>
-   aput j x)%Do.
-
 Section tick_fusion.
 Context {M : stateMonad nat}.
 
@@ -423,3 +418,9 @@ by rewrite /= addSnnS.
 Qed.
 
 End tick_fusion.
+
+Definition swap {S : UU0} {I : eqType} {M : arrayMonad S I} (i j : I) : M unit :=
+  (do x <- aget i ;
+   do y <- aget j ;
+   aput i y >>
+   aput j x)%Do.
