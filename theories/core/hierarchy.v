@@ -1151,7 +1151,7 @@ HB.mixin Record isMonadTypedStore (MLU : ML_universe) (N : monad)
     forall T1 T2 (r1 : loc locT T1) (r2 : loc locT T2) (s1 : coq_type N T1)
            (A : UU0) (k : coq_type N T2 -> M A),
       loc_id r1 != loc_id r2 ->
-    cput r1 s1 >> cget r2 >>= k =
+    cput r1 s1 >> (cget r2 >>= k) =
     cget r2 >>= (fun v => cput r1 s1 >> k v) ;
   cputnewC :
     forall T T' (r : loc locT T) (s : coq_type N T) (s' : coq_type N T') A
