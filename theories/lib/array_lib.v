@@ -27,6 +27,93 @@ Require Import hierarchy monad_lib alt_lib fail_lib.
 
 Local Open Scope monae_scope.
 
+Definition swap {S : eqType} {I : eqType} {M : arrayMonad S I} (i j : I) : M unit :=
+  (do x <- aget i ;
+   do y <- aget j ;
+   aput i y >>
+   aput j x)%Do.
+
+Section monadarray_example.
+Local Open Scope do_notation.
+Variable M : arrayMonad nat bool.
+
+Definition does_swap (m : M unit) :=
+  (do x <- aget false ;
+   do y <- aget true ;
+   m >>
+   do x' <- aget false ;
+   do y' <- aget true ;
+   Ret ((x == y') && (y == x'))).
+
+Lemma swapP (m : M unit) :
+  does_swap (swap false true) = swap false true >> Ret true.
+Proof.
+rewrite /swap /does_swap.
+transitivity (
+  do x <- aget false;
+  do y <- aget true;
+  do x0 <- aget false;
+  (do y0 <- aget true; aput false y0 >> aput true x0) >>
+  (do x' <- aget false; do y' <- aget true; Ret ((x == y') && (y == x'))) : M _).
+  by under eq_bind do under eq_bind do rewrite bindA.
+rewrite agetC.
+under eq_bind do rewrite agetget.
+transitivity (
+  do x <- aget true;
+  do s <- aget false;
+  do y0 <- aget true; (aput false y0 >> aput true s) >>
+  (do x' <- aget false; do y' <- aget true; Ret ((s == y') && (x == x'))) : M _).
+  by under eq_bind do under eq_bind do rewrite bindA.
+rewrite agetC.
+under eq_bind do rewrite agetget.
+transitivity (
+  do x <- aget false;
+  do s <- aget true;
+  (aput false s >> (aput true x >>
+  do y' <- aget true; do x' <- aget false; Ret ((x == y') && (s == x')))) : M _).
+  bind_ext => x. bind_ext => y. rewrite bindA. bind_ext; case.
+  by under eq_bind do rewrite agetC.
+transitivity (
+  do x <- aget false;
+  do s <- aget true;
+  (aput false s >> (aput true x >>
+  do x' <- aget false; Ret ((x == x) && (s == x')))) : M _).
+  bind_ext => x.
+  bind_ext => y.
+  bind_ext; case.
+  by rewrite -bindA aputget.
+transitivity (
+  do x <- aget false;
+  do s <- aget true;
+  (aput true x >> aput false s >> (do x' <- aget false; Ret ((x == x) && (s == x')))) : M _).
+  bind_ext => x.
+  bind_ext => y.
+  by rewrite -bindA aputC //=; left.
+transitivity (
+  do x <- aget false;
+  do s <- aget true;
+  (aput true x >> aput false s) >> Ret ((x == x) && (s == s)) : M _).
+  bind_ext => x.
+  bind_ext => y.
+  rewrite 2!bindA.
+  bind_ext; case.
+  by rewrite -bindA aputget.
+transitivity (
+  do x <- aget false;
+  do s <- aget true;
+  (aput true x >> aput false s) >> Ret true : M _).
+  bind_ext => x.
+  bind_ext => y.
+  by rewrite 2!eqxx.
+rewrite bindA.
+bind_ext => x.
+rewrite bindA.
+bind_ext => y.
+by rewrite aputC //; left.
+Qed.
+
+End monadarray_example.
+
 Section aswap.
 Context {S : Type} (I : eqType) {M : arrayMonad S I}.
 
