@@ -26,7 +26,7 @@ in several examples of monadic equational reasoning.
   - Celestine Sauvage
   - Kazunari Tanaka
 - License: [LGPL-2.1-or-later](LICENSE)
-- Compatible Coq versions: Coq 8.19-8.20
+- Compatible Coq versions: Coq 8.20-9.1
 - Additional dependencies:
   - [MathComp ssreflect](https://math-comp.github.io)
   - [MathComp fingroup](https://math-comp.github.io)
@@ -46,6 +46,7 @@ in several examples of monadic equational reasoning.
   - [Towards a practical library for monadic equational reasoning in Coq](https://staff.aist.go.jp/reynald.affeldt/documents/monae-mpc2022.pdf) doi:[10.1007/978-3-031-16912-0_6](https://doi.org/10.1007/978-3-031-16912-0_6)
   - [Environment-friendly monadic equational reasoning for OCaml](https://coq-workshop.gitlab.io/2023/abstracts/coq2023_monadic-reasoning.pdf) 
   - [A practical formalization of monadic equational reasoning in dependent-type theory](https://www.cambridge.org/core/services/aop-cambridge-core/content/view/B59B87DE000F48B9807F24AEDB11452E/S0956796824000157a.pdf/a-practical-formalization-of-monadic-equational-reasoning-in-dependent-type-theory.pdf) doi:[10.1017/S0956796824000157](https://doi.org/10.1017/S0956796824000157)
+  - [Monadic Equational Reasoning for while loop in Rocq](https://msp.cis.strath.ac.uk/types2025/abstracts/TYPES2025_paper28.pdf)
 
 ## Building and installation instructions
 

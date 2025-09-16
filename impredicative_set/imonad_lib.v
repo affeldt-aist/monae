@@ -760,8 +760,7 @@ Lemma rep1 mx : rep 1 mx = mx. Proof. by rewrite repS bindskipf. Qed.
 
 Lemma rep_addn m n mx : rep (m + n) mx = rep m mx >> rep n mx.
 Proof.
-elim: m n => [|m IH /=] n; by
-  [rewrite bindskipf add0n | rewrite -addnE IH bindA].
+by elim: m n => [|m IH /=] n; [rewrite bindskipf add0n | rewrite IH bindA].
 Qed.
 
 End rep.
