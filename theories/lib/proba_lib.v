@@ -1,5 +1,6 @@
 (* monae: Monadic equational reasoning in Coq                                 *)
 (* Copyright (C) 2025 monae authors, license: LGPL-2.1-or-later               *)
+From infotheo Require realType_ext.  (* Remove this line when requiring Rocq >= 9.2 *)
 From HB Require Import structures.
 From mathcomp Require Import all_ssreflect ssralg ssrnum lra ring.
 From mathcomp Require boolp.
