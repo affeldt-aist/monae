@@ -59,15 +59,6 @@ have [Hn|HnN] := ltnP 10 n.
 by rewrite -(IH Hkl')/= ltnNge HnN/=.
 Qed.
 
-Lemma maxinseq (l : seq nat) : ~~ nilp l -> \max_(i <- l) i \in l.
-Proof.
-move => Hn.
-rewrite -(in_tupleE l) big_tuple.
-have [|x ->] := eq_bigmax (tnth (in_tuple l)).
-  by rewrite cardT size_enum_ord lt0n.
-by rewrite mem_tnth.
-Qed.
-
 Lemma muloflistover10wB (l : seq nat) (n : nat) :
   muloflistover10d (l, n) ≈ Ret (n * (muloflistover10 l)).
 Proof.
