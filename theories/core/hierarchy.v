@@ -901,7 +901,7 @@ Arguments wBisim {s A}.
 Notation "a '≈' b" := (wBisim a b).
 Hint Extern 0 (wBisim _ _) => apply wBisim_refl : core.
 
-HB.mixin Record isMonadDelay (M : UU0 -> UU0) of WBisim M := {
+HB.mixin Record isMonadElgot (M : UU0 -> UU0) of WBisim M := {
   while : forall {A B : UU0}, (A -> M(B + A)%type) -> A -> M B;
   whilewB : forall (A B : UU0) (f g : A -> M (B + A)%type) (a : A),
     (forall a, wBisim (f a) (g a)) -> wBisim (while f a) (while g a) ;
@@ -925,12 +925,12 @@ HB.mixin Record isMonadDelay (M : UU0 -> UU0) of WBisim M := {
     forall c, wBisim (while f (h c)) (while g c)
 }.
 
-#[short(type=delayMonad)]
-HB.structure Definition MonadDelay := {M of isMonadDelay M & }.
+#[short(type=elgotMonad)]
+HB.structure Definition MonadElgot := {M of isMonadElgot M & }.
 Arguments while {s A B}.
 
-Section setoid_delayMonad.
-Variable M : delayMonad.
+Section setoid_elgotMonad.
+Variable M : elgotMonad.
 
 #[global] Add Parametric Relation A : (M A) (@wBisim M A)
   reflexivity proved by (@wBisim_refl M A)
@@ -940,7 +940,7 @@ Variable M : delayMonad.
 
 #[global] Add Parametric Morphism A B : bind with signature
   (@wBisim M A) ==> (pointwise_relation A (@wBisim M B)) ==> (@wBisim M B)
-  as bind_mor_delay.
+  as bind_mor_elgot.
 Proof.
 move => x y Hxy f g Hfg; apply: wBisim_trans.
 - exact: (bindmwB _ _ _ _ _ Hxy).
@@ -949,38 +949,38 @@ Qed.
 
 #[global] Add Parametric Morphism A B : while with signature
   (pointwise_relation A (@wBisim M (B + A))) ==> @eq A ==> (@wBisim M B)
-  as while_mor_delay.
+  as while_mor_elgot.
 Proof. by move=> f g + a; exact: whilewB. Qed.
 
-End setoid_delayMonad.
+End setoid_elgotMonad.
 
-HB.mixin Record isMonadDelayExcept (M : UU0 -> UU0)
-    of MonadDelay M & MonadExcept M := {
+HB.mixin Record isMonadElgotExcept (M : UU0 -> UU0)
+    of MonadElgot M & MonadExcept M := {
   catchmwB : forall (A : UU0) (d1 d2 h : M A),
     d1 ≈ d2 -> catch d1 h ≈ catch d2 h;
   catchhwB : forall (A : UU0) (d h1 h2 : M A),
     h1 ≈ h2 -> catch d h1 ≈ catch d h2
 }.
 
-#[short(type=delayExceptMonad)]
-HB.structure Definition MonadDelayExcept := { M of isMonadDelayExcept M }.
+#[short(type=elgotExceptMonad)]
+HB.structure Definition MonadElgotExcept := { M of isMonadElgotExcept M }.
 
-Section setoid_delayExceptMonad.
-Variable M : delayExceptMonad.
+Section setoid_elgotExceptMonad.
+Variable M : elgotExceptMonad.
 
 #[global] Add Parametric Morphism A : catch with signature
   (@wBisim M A) ==> (@wBisim M A) ==> (@wBisim M A)
-  as catch_mor_delayExcept.
+  as catch_mor_elgotExcept.
 Proof.
 move=> x y Hxy f g Hfg; apply: wBisim_trans.
 - exact: (catchmwB _ _ _ _ Hxy).
 - exact: (catchhwB _ _ _ _ Hfg).
 Qed.
 
-End setoid_delayExceptMonad.
+End setoid_elgotExceptMonad.
 
-HB.mixin Record isMonadDelayAssert (M : UU0 -> UU0)
-    of MonadDelayExcept M := {
+HB.mixin Record isMonadElgotAssert (M : UU0 -> UU0)
+    of MonadElgotExcept M := {
   pcorrect : forall (X : UU0) (x : X) (p : pred X) (f : X -> M (X + X)%type) ,
   assert p x ≈ @ret M _ x  ->
    (forall x, assert p x ≈ @ret M _ x ->
@@ -989,8 +989,8 @@ HB.mixin Record isMonadDelayAssert (M : UU0 -> UU0)
    bassert p (while f x) ≈ while f x
  }.
 
-#[short(type=delayAssertMonad)]
-HB.structure Definition MonadDelayAssert := { M of isMonadDelayAssert M &}.
+#[short(type=elgotAssertMonad)]
+HB.structure Definition MonadElgotAssert := { M of isMonadElgotAssert M &}.
 
 HB.mixin Record isMonadContinuation (M : UU0 -> UU0) of Monad M := {
 (* NB: interface is wip *)
@@ -1088,25 +1088,25 @@ HB.structure Definition MonadFailR0State (S : UU0) :=
 HB.structure Definition MonadNondetState (S : UU0) :=
   { M of MonadPrePlus M & MonadState S M }.
 
-(*HB.mixin Record isMonadDelayState (S: UU0) (M: monad) of MonadDelay M & MonadState S M := {}.*)
+(*HB.mixin Record isMonadElgotState (S: UU0) (M: monad) of MonadElgot M & MonadState S M := {}.*)
 
-#[short(type=delayStateMonad)]
-HB.structure Definition MonadDelayState (S : UU0) :=
-  { M of MonadDelay M & MonadState S M }.
+#[short(type=elgotStateMonad)]
+HB.structure Definition MonadElgotState (S : UU0) :=
+  { M of MonadElgot M & MonadState S M }.
 
-Section setoid_delayStateMonad.
-Variables (S : Type) (M : delayStateMonad S).
+Section setoid_elgotStateMonad.
+Variables (S : Type) (M : elgotStateMonad S).
 
 #[global] Add Parametric Morphism A B : bind with signature
   (@wBisim M A) ==> (pointwise_relation A (@wBisim M B)) ==> (@wBisim M B)
-  as bind_mor_delayState.
+  as bind_mor_elgotState.
 Proof.
 move => x y Hxy f g Hfg; apply: wBisim_trans.
 - exact: (bindmwB _ _ _ _ _ Hxy).
 - exact: (bindfwB _ _ _ _ y Hfg).
 Qed.
 
-End setoid_delayStateMonad.
+End setoid_elgotStateMonad.
 
 HB.mixin Record isMonadStateRun (S : UU0) (N : monad)
    (M : UU0 -> UU0) of MonadState S M := {
@@ -1291,28 +1291,28 @@ HB.structure Definition MonadTypedStore
     (ml_type : ML_universe) (N : monad) (locT : eqType) :=
   { M of isMonadTypedStore ml_type N locT M & }.
 
-#[short(type=delaytypedStoreMonad)]
-HB.structure Definition MonadDelayTypedStore
+#[short(type=elgottypedStoreMonad)]
+HB.structure Definition MonadElgotTypedStore
     (ml_type : ML_universe) (N : monad) (locT : eqType) :=
-  { M of MonadDelay M & isMonadTypedStore ml_type N locT M }.
+  { M of MonadElgot M & isMonadTypedStore ml_type N locT M }.
 
 Arguments cnew {ml_type N locT s}.
 Arguments cget {ml_type N locT s} [T].
 Arguments cput {ml_type N locT s} [T].
 
-Section setoid_delaytypedStoreMonad.
-Variables (T : ML_universe) (N : monad) (M : delaytypedStoreMonad T N nat).
+Section setoid_elgottypedStoreMonad.
+Variables (T : ML_universe) (N : monad) (M : elgottypedStoreMonad T N nat).
 
 #[global] Add Parametric Morphism A B : bind with signature
   (@wBisim M A) ==> (pointwise_relation A (@wBisim M B)) ==> (@wBisim M B)
-  as bindmor_delaytypedStore.
+  as bindmor_elgottypedStore.
 Proof.
 move => x y Hxy f g Hfg; apply: wBisim_trans.
 - exact: (bindmwB _ _ _ _ _ Hxy).
 - exact: (bindfwB _ _ _ _ y Hfg).
 Qed.
 
-End setoid_delaytypedStoreMonad.
+End setoid_elgottypedStoreMonad.
 
 HB.mixin Record isMonadTypedStoreRun (MLU : ML_universe) (N : monad) (locT : eqType)
     (M : UU0 -> UU0) of MonadTypedStore MLU N locT M := {

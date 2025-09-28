@@ -5,7 +5,7 @@ From mathcomp Require boolp.
 Require Import preamble hierarchy monad_lib Morphisms fail_lib state_lib.
 
 (**md**************************************************************************)
-(* # Example of use of the Delay-state monad                                  *)
+(* # Example of use of the Elgot-state monad                                  *)
 (*                                                                            *)
 (* ```                                                                        *)
 (*     factds == factorial                                                    *)
@@ -22,7 +22,7 @@ Local Open Scope monae_scope.
 Local Open Scope do_notation.
 
 Section factorial.
-Variable M : delayStateMonad nat.
+Variable M : elgotStateMonad nat.
 
 Definition factds_body m : M (unit + nat)%type :=
   do s <- get;
@@ -50,7 +50,7 @@ Qed.
 End factorial.
 
 Section collatz.
-Variable M : delayStateMonad (seq nat).
+Variable M : elgotStateMonad (seq nat).
 
 Definition collatzs1_body nml
     : M ((nat * nat + nat * nat * nat) + nat * nat * nat)%type :=

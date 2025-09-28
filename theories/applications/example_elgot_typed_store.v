@@ -7,7 +7,7 @@ Require Import preamble hierarchy monad_lib typed_store_lib.
 Require Import typed_store_universe.
 
 (**md**************************************************************************)
-(* # Application of the Delay-typedstore monad                                *)
+(* # Application of the Elgot-typedstore monad                                *)
 (******************************************************************************)
 
 Set Implicit Arguments.
@@ -19,11 +19,11 @@ Local Open Scope monae_scope.
 Module CoqTypeNat.
 Import MLTypes CoqTypeNat.
 
-Definition delayTypedStoreMonad (N : monad) :=
-  delaytypedStoreMonad ml_type N nat.
+Definition elgotTypedStoreMonad (N : monad) :=
+  elgottypedStoreMonad ml_type N nat.
 
 Section factorial.
-Variables (N : monad) (M : delayTypedStoreMonad N).
+Variables (N : monad) (M : elgotTypedStoreMonad N).
 
 Local Notation coq_type := hierarchy.coq_type.
 Local Open Scope do_notation.

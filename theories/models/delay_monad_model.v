@@ -864,7 +864,7 @@ exists (n3 + n4.+1).
 exact: (steps_bindD Hgc).
 Qed.
 
-HB.instance Definition _ := @isMonadDelay.Build M (@while)
+HB.instance Definition _ := @isMonadElgot.Build M (@while)
  (@whilewB) (@fixpointwB) (@naturalitywB) (@codiagonalwB) (@uniformwB).
 
 End delayops.

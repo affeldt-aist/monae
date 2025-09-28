@@ -5,14 +5,14 @@ From mathcomp Require Import boolp.
 Require Import preamble hierarchy monad_lib fail_lib state_lib.
 
 (**md**************************************************************************)
-(* # Applications of the Delay-exception monad                                *)
+(* # Applications of the Elgot-exception monad                                *)
 (*                                                                            *)
 (******************************************************************************)
 
 Local Open Scope monae_scope.
 
 Section select.
-Variable M : delayExceptMonad.
+Variable M : elgotExceptMonad.
 
 Definition select l := let max := \max_(i <- l) i in (max, rem max l).
 

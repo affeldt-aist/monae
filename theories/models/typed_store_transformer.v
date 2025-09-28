@@ -501,11 +501,11 @@ HB.instance Definition isMonadTypedStoreRunModel :=
 End mkbind.
 End ModelTypedStore.
 
-Section ModeldelayTypedStore.
-Variable (M : delayMonad) (N: monad) (MLU: ML_universe).
+Section ModelelgotTypedStore.
+Variable (M : elgotMonad) (N: monad) (MLU: ML_universe).
 Definition DTS := (acto MLU N M).
 HB.instance Definition _ := MonadTypedStore.on DTS.
-HB.instance Definition _ := MonadDelay.on DTS.
-HB.instance Definition _ := MonadDelayTypedStore.on DTS.
-End ModeldelayTypedStore.
+HB.instance Definition _ := MonadElgot.on DTS.
+HB.instance Definition _ := MonadElgotTypedStore.on DTS.
+End ModelelgotTypedStore.
 End ModelTypedStore.

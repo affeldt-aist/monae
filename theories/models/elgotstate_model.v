@@ -58,9 +58,9 @@ End homs.
 End HomS.
 HB.export HomS.
 
-Module StateTdelay.
-Section stateTdelay.
-Variables (S : UU0) (M : delayMonad).
+Module StateTelgot.
+Section stateTelgot.
+Variables (S : UU0) (M : elgotMonad).
 
 Hint Extern 0 (wBisim _ _) => setoid_reflexivity.
 
@@ -204,9 +204,9 @@ Qed.
 HB.instance Definition _ := @hasWBisim.Build DS (@wBisimDS)
   wBisimDS_refl wBisimDS_sym wBisimDS_trans (@bindmwBDS) (@bindfwBDS).
 
-HB.instance Definition _ := @isMonadDelay.Build DS (@whileDS)
+HB.instance Definition _ := @isMonadElgot.Build DS (@whileDS)
   (@whilewBDS) (@fixpointDSwB) (@naturalityDSwB) (@codiagonalDSwB) (@uniformDSwB).
 
-End stateTdelay.
-End StateTdelay.
-HB.export StateTdelay.
+End stateTelgot.
+End StateTelgot.
+HB.export StateTelgot.

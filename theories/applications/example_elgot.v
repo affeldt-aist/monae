@@ -6,10 +6,10 @@ From mathcomp Require boolp.
 Require Import hierarchy.
 
 (**md**************************************************************************)
-(* # Applications of the Delay monad                                          *)
+(* # Applications of the Elgot monad                                          *)
 (*                                                                            *)
 (* ```                                                                        *)
-(*   factdelay == factorial                                                   *)
+(*   factelgot == factorial                                                   *)
 (*    collatzm == Collatz sequence                                            *)
 (*     fastexp == fast exponential                                            *)
 (*        mc91 == McCarthy's 91 function                                      *)
@@ -19,16 +19,16 @@ Require Import hierarchy.
 Local Open Scope monae_scope.
 
 Section factorial.
-Variable M : delayMonad.
+Variable M : elgotMonad.
 
 Let fact_body a : M (nat + nat * nat)%type :=
   if a.1 is m.+1 then Ret (inr (m, a.2 * m.+1)) else Ret (inl a.2).
 
-Definition factdelay := fun nm => while fact_body nm.
+Definition factelgot := fun nm => while fact_body nm.
 
-Lemma factdelay_fact n m : factdelay (n, m) ≈ Ret (m * n`!).
+Lemma factelgot_fact n m : factelgot (n, m) ≈ Ret (m * n`!).
 Proof.
-rewrite /factdelay.
+rewrite /factelgot.
 elim: n m => [m | n IH m]; rewrite fixpointwB bindretf/=.
   by rewrite muln1.
 by rewrite mulnA.
@@ -38,7 +38,7 @@ Let divide5_body (f : nat -> M nat) nm : M (nat + nat * nat)%type :=
     if nm.2 %% 5 == 0 then Ret (inl nm.2)
     else f nm.1 >>= (fun x => Ret (inr (nm.1.+1, x))).
 
-Let dividefac1 n := while (divide5_body (fun n => factdelay (n, 1))) (n, 1).
+Let dividefac1 n := while (divide5_body (fun n => factelgot (n, 1))) (n, 1).
 
 Let dividefac2 n := while (divide5_body (fun n => Ret n`!)) (n, 1).
 
@@ -47,13 +47,13 @@ Proof.
 rewrite /dividefac1 /dividefac2 /divide5_body.
 apply: whilewB => -[k l].
 case: ifPn => //= _.
-by rewrite factdelay_fact !bindretf mul1n.
+by rewrite factelgot_fact !bindretf mul1n.
 Qed.
 
 End factorial.
 
 Section collatz.
-Variable M : delayMonad.
+Variable M : elgotMonad.
 
 Let collatzm_body m n : M (nat + nat)%type :=
   if n == 1 then Ret (inl m)
@@ -76,7 +76,7 @@ Qed.
 End collatz.
 
 Section minus.
-Variable M : delayMonad.
+Variable M : elgotMonad.
 
 Let minus1_body nm : M ((nat + nat * nat) + nat * nat)%type :=
   if nm.1 is n'.+1 then Ret (inr (n', nm.2))
@@ -104,7 +104,7 @@ Qed.
 End minus.
 
 Section fastexp.
-Variable M : delayMonad.
+Variable M : elgotMonad.
 
 Let fastexp_body nmk : M (nat + nat * nat * nat)%type :=
   match nmk with (n, m, k) =>
@@ -134,7 +134,7 @@ Qed.
 End fastexp.
 
 Section mc91.
-Variable M : delayMonad.
+Variable M : elgotMonad.
 
 Let mc91_body nm : M (nat + nat * nat)%type :=
   if nm.1 == 0 then Ret (inl nm.2)

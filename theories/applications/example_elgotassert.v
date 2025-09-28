@@ -4,7 +4,7 @@ From mathcomp Require Import all_ssreflect.
 Require Import hierarchy.
 
 (**md**************************************************************************)
-(* # Applications of the Delay-assert monad                                   *)
+(* # Applications of the Elgot-assert monad                                   *)
 (*                                                                            *)
 (* ```                                                                        *)
 (*   bubblesort == TODO                                                       *)
@@ -19,7 +19,7 @@ Local Open Scope monae_scope.
 Local Open Scope do_notation.
 
 Section bubblesort.
-Variable M : delayAssertMonad.
+Variable M : elgotAssertMonad.
 
 Fixpoint sortl (l : seq nat) :=
   if l is n :: tl then

@@ -23,8 +23,8 @@ theories/models/gcm_model.v
 theories/models/altprob_model.v
 theories/models/typed_store_model.v
 theories/models/delay_monad_model.v
-theories/models/delayexcept_model.v
-theories/models/delaystate_model.v
+theories/models/elgotexcept_model.v
+theories/models/elgotstate_model.v
 theories/models/typed_store_transformer.v
 theories/applications/monad_composition.v
 theories/applications/example_fastprod.v
@@ -34,11 +34,11 @@ theories/applications/example_relabeling.v
 theories/applications/example_quicksort.v
 theories/applications/example_iquicksort.v
 theories/applications/example_monty.v
-theories/applications/example_delay.v
-theories/applications/example_delaystate.v
-theories/applications/example_delayassert.v
-theories/applications/example_delayexcept.v
-theories/applications/example_delay_typed_store.v
+theories/applications/example_elgot.v
+theories/applications/example_elgotstate.v
+theories/applications/example_elgotassert.v
+theories/applications/example_elgotexcept.v
+theories/applications/example_elgot_typed_store.v
 theories/applications/typed_store_universe.v
 theories/applications/example_typed_store.v
 theories/applications/smallstep.v

@@ -6,7 +6,7 @@ From HB Require Import structures.
 Require Import monad_transformer hierarchy.
 
 (**md**************************************************************************)
-(* # Combination of the Delay monad with the exception monad transformer      *)
+(* # Combination of the Elgot monad with the exception monad transformer      *)
 (******************************************************************************)
 
 Set Implicit Arguments.
@@ -15,9 +15,9 @@ Unset Printing Implicit Defensive.
 
 Local Open Scope monae_scope.
 
-Module exceptTdelay.
-Section exceptTdelay.
-Variable M : delayMonad.
+Module exceptTelgot.
+Section exceptTelgot.
+Variable M : elgotMonad.
 Notation DE := (MX unit M).
 
 Definition DEA {A B} : DE (A + B) -> M ((unit + A) + B )%type :=
@@ -144,7 +144,7 @@ HB.instance Definition _ := MonadExcept.on DE.
 HB.instance Definition _ := @hasWBisim.Build DE (@wBisimDE)
   wBisimDE_refl wBisimDE_sym wBisimDE_trans (@bindmwBDE) (@bindfwBDE).
 
-HB.instance Definition _ := @isMonadDelay.Build DE (@whileDE)
+HB.instance Definition _ := @isMonadElgot.Build DE (@whileDE)
   (@whilewBDwB) (@fixpointDEwB) (@naturalityDEwB) (@codiagonalDEwB) (@uniformDEwB).
 
 Lemma catchmwBDE A (d1 d2 h : DE A) :
@@ -155,8 +155,8 @@ Lemma catchhwBDE A (d h1 h2 : DE A) :
   h1 ≈ h2 -> catch d h1 ≈ catch d h2.
 Proof. by move=> h12; apply/bindfwB => -[]. Qed.
 
-HB.instance Definition _ := @isMonadDelayExcept.Build DE catchmwBDE catchhwBDE.
+HB.instance Definition _ := @isMonadElgotExcept.Build DE catchmwBDE catchhwBDE.
 
-End exceptTdelay.
-End exceptTdelay.
-HB.export exceptTdelay.
+End exceptTelgot.
+End exceptTelgot.
+HB.export exceptTelgot.
