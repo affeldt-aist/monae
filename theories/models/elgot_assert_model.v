@@ -1,6 +1,6 @@
 From mathcomp Require Import all_ssreflect.
 From HB Require Import structures.
-Require Import monad_transformer hierarchy delay_monad_model delayexcept_model.
+Require Import monad_transformer hierarchy elgot_monad_model elgotexcept_model.
 
 Set Implicit Arguments.
 Unset Strict Implicit.
@@ -9,13 +9,13 @@ Unset Printing Implicit Defensive.
 Local Open Scope monae_scope.
 Local Open Scope do_notation.
 
-Notation M := (MX unit Delay).
+Notation M := (MX unit Elgot).
 Notation "a '≈e' b" := (wBisimDE a b) (at level 70).
 Hint Extern 0 (wBisimDE _ _) => setoid_reflexivity.
 
-(*Equality between hierarchy.while and delay_monad_model.while*)
+(*Equality between hierarchy.while and elgot_monad_model.while*)
 Lemma whileDEE A B (body : A -> M (B + A)) x :
-  whileDE body x = while (@DEA Delay _ _ \o body) x.
+  whileDE body x = while (@DEA Elgot _ _ \o body) x.
 Proof. by []. Qed.
 
 Lemma assertE X x (p : pred X) : @assert M _ p x ≈e Ret x <-> (p x) = true.
@@ -93,7 +93,7 @@ apply iff_Diverges_wBisimspin.
 by apply Diverges_bindspinf.
 Qed.
 
-HB.instance Definition _ := @isMonadDelayAssert.Build M (@pcorrect).
+HB.instance Definition _ := @isMonadElgotAssert.Build M (@pcorrect).
 
 Section bubblesort.
 Let testseq := 8::4::3::7::6::5::2::1::nil.

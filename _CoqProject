@@ -25,6 +25,7 @@ theories/models/typed_store_model.v
 theories/models/delay_monad_model.v
 theories/models/elgotexcept_model.v
 theories/models/elgotstate_model.v
+theories/models/elgot_assert_mdel.v
 theories/models/typed_store_transformer.v
 theories/applications/monad_composition.v
 theories/applications/example_fastprod.v
