@@ -57,7 +57,7 @@ CoInductive strongBisim (A : UU0) : M A -> M A -> Prop :=
 Arguments strongBisim [A].
 Arguments sBLater [A].
 
-#[deprecated(since="0.9.1", note = "non standard axiom for strong bisimilarity")]
+#[deprecated(since="0.9.2", note = "non standard axiom for strong bisimilarity")]
 Axiom strongBisim_eq : forall A (m m' : M A), strongBisim m m' -> m = m'.
 
 CoFixpoint right_neutral_bisim A (m : M A) : strongBisim (m >>= @ret A) m.
