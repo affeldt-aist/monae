@@ -3,8 +3,8 @@ From mathcomp Require Import all_ssreflect.
 From mathcomp Require boolp.
 Require Import preamble.
 From HB Require Import structures.
-Require Import hierarchy monad_lib fail_lib state_lib monad_transformer.
-Require Import delay_monad_model delaystate_model delayexcept_model.
+Require Import hierarchy monad_lib fail_lib state_lib monad_transformer typed_store_universe.
+Require Import delay_monad_model elgotstate_model elgotexcept_model.
 
 Set Implicit Arguments.
 Unset Strict Implicit.

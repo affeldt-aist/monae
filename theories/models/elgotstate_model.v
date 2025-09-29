@@ -8,7 +8,7 @@ Require Import hierarchy monad_lib fail_lib state_lib trace_lib.
 Require Import monad_transformer.
 
 (**md**************************************************************************)
-(* # Combination of the Delay monad with the state monad transformer          *)
+(* # Combination of the Elgot monad with the state monad transformer          *)
 (******************************************************************************)
 
 Set Implicit Arguments.
