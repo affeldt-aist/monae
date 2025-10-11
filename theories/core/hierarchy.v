@@ -1266,13 +1266,13 @@ HB.mixin Record isMonadConvex {R : realType} (M : UU0 -> UU0) of Monad M := {
     choice p _ a b = choice (p.~%:pr) _ b a ;
   choicemm : forall (T : UU0) p, idempotent (@choice p T) ;
   (* quasi associativity *)
-  choiceA : forall (T : UU0) (p q r s : {prob R}) (a b c : M T),
+  choiceA : forall (T : UU0) (p q : {prob R}) (a b c : M T),
     choice p _ a (choice q _ b c) = choice [s_of p, q] _ (choice [r_of p, q] _ a b) c }.
 
 #[short(type=convexMonad)]
 HB.structure Definition MonadConvex {R : realType} := {M of isMonadConvex R M & }.
 Notation "a <| p |> b" := (choice p _ a b) : proba_monad_scope.
-Arguments choiceA {_} {_} {_} _ _ _ _ {_} {_} {_}.
+Arguments choiceA {_} {_} {_} _ _ {_} {_} {_}.
 Arguments choiceC {_} {_} {_} _ _ _.
 Arguments choicemm {_} {_} {_} _.
 
@@ -1303,7 +1303,7 @@ move/(congr1 (@onem _)) : Hs; rewrite onemK => <-.
 rewrite Hp.
 by rewrite -GRing.mulrA GRing.divff// GRing.mulr1.
 Qed.
-Arguments choiceA {_} {_} {_} _ _ _ _ {_} {_} {_}.
+Arguments choiceA {_} {_} {_} _ _ {_} {_} {_}.
 
 HB.mixin Record isMonadProb {R : realType} (M : UU0 -> UU0) of MonadConvex R M := {
   (* composition distributes leftwards over [probabilistic] choice *)
@@ -1312,18 +1312,12 @@ HB.mixin Record isMonadProb {R : realType} (M : UU0 -> UU0) of MonadConvex R M :
 #[short(type=probMonad)]
 HB.structure Definition MonadProb {R : realType} := {M of isMonadProb R M & }.
 
-HB.mixin Record isMonadProbDr {R : realType} (M : UU0 -> UU0) of MonadProb R M := {
-  (* composition distributes rightwards over [probabilistic] choice *)
-  (* WARNING: this should not be asserted as an axiom in conjunction with
-     distributivity of <||> over [] *)
-  prob_bindDr : (* NB: not used *)
-    forall p, BindLaws.right_distributive (@bind [the monad of M]) (choice p) }.
-
-#[short(type=probDrMonad)]
-HB.structure Definition MonadProbDr {R : realType} := {M of isMonadProbDr R M & }.
+#[short(type=altCIProbNoDistrMonad)]
+HB.structure Definition MonadAltCIProbNoDistr {R : realType} :=
+  { M of isMonadAltCI M & isMonadProb R M }.
 
 HB.mixin Record isMonadAltProb {R : realType} (M : UU0 -> UU0)
-    of MonadAltCI M & MonadProb R M :=
+    of MonadAltCIProbNoDistr R M :=
   { choiceDr : forall T p, right_distributive
       (@choice R M p T) (fun a b => a [~] b) }.
 

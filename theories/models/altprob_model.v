@@ -131,7 +131,7 @@ Proof. by rewrite convC. Qed.
 Lemma choicemm A p : idempotent_op (@choice p A).
 Proof. by move=> m; rewrite /choice convmm. Qed.
 
-Let choiceA A (p q r s : {prob R}) (x y z : gcm R A) :
+Let choiceA A (p q : {prob R}) (x y z : gcm R A) :
   x <| p |> (y <| q |> z) = (x <| [r_of p, q] |> y) <| [s_of p, q] |> z.
 Proof. exact: convA. Qed.
 
