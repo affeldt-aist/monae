@@ -48,6 +48,15 @@ Reserved Notation "l \\ p" (at level 50).
 
 (* generic Haskell-like functions and notations *)
 
+(* NB: used in `example_fastprod.v` and `example_transformer.v` *)
+Definition product := foldr muln 1.
+
+Lemma product0 s : O \in s -> product s = O.
+Proof.
+elim: s => //= h t ih; rewrite inE => /orP[/eqP <-|/ih ->];
+  by rewrite ?muln0 ?mul0n.
+Qed.
+
 Notation "l \\ p" := ([seq x <- l | x \notin p]).
 
 Definition foldr1 (A : Type) (def : A) (f : A -> A -> A) (s : seq A) :=

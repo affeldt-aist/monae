@@ -70,8 +70,13 @@ Lemma if_bind (M : monad) (A B : UU0) (b : bool) (m n : M A) (f : A -> M B) :
   (if b then m else n) >>= f = (if b then m >>= f else n >>= f).
 Proof. by case: ifPn. Qed.
 
+Lemma fmap_ret (M : monad) (A B : UU0) (f : A -> B) a :
+  (M # f) (Ret a) = Ret (f a).
+Proof. by rewrite fmapE bindretf. Qed.
+
 Local Open Scope mprog.
-Lemma mfoldl_rev {M : monad} (T R : UU0) (f : R -> T -> R) (z : R) (s : seq T -> M (seq T)) :
+Lemma mfoldl_rev {M : monad} (T R : UU0) (f : R -> T -> R) (z : R)
+    (s : seq T -> M (seq T)) :
   foldl f z (o) (rev (o) s) = foldr (fun x => f^~ x) z (o) s.
 Proof.
 apply boolp.funext => x; rewrite !fcompE 3!fmapE !bindA.
