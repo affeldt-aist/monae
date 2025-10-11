@@ -72,9 +72,8 @@ Lemma if_bind (A B : UU0) (b : bool) (m n : M A) (f : A -> M B) :
   (if b then m else n) >>= f = (if b then m >>= f else n >>= f).
 Proof. by case: ifPn. Qed.
 
-Lemma fmap_ret (A B : UU0) (f : A -> B) a :
-  (M # f) (Ret a) = Ret (f a).
-Proof. by rewrite fmapE bindretf. Qed.
+Lemma fmap_ret (A B : UU0) (f : A -> B) a : (M # f) (Ret a) = Ret (f a).
+Proof. by rewrite -[RHS]/((Ret \o f) a) -natural. Qed.
 
 Local Open Scope mprog.
 Lemma fmap_if (A B : UU0) (f : A -> B) b (m : M A) a :
