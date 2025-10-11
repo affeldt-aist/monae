@@ -113,7 +113,7 @@ Proof. by []. Qed.
 End kappa.
 
 Definition naturality_MK (M : functor) (A : UU0) (m : MK M A) :=
-  naturality [the functor of exponential_F A \o M] M m.
+  naturality (exponentialF A \o M) M m.
 
 Section from.
 Variables (M : monad).

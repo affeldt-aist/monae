@@ -378,7 +378,7 @@ Coercion DistributiveLaw.f : DistributiveLaw.t >-> nattrans.
 (* TODO *)
 Definition beck (S T : monad) (f : DistributiveLaw.t S T) : monad.
 have @join : [the functor of (T \o S) \o (T \o S)] ~> [the functor of T \o S].
-  apply: (VComp ((@join T) \h (@join S)) _).
+  apply: (vcomp ((@join T) \h (@join S)) _).
   apply: VA.
   apply: AV.
   apply: HComp.

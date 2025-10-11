@@ -19,7 +19,7 @@ Require Import hierarchy.
 (*                              element and a new seed of generated using f   *)
 (*                    a +m b == addM a b                                      *)
 (*                    a *m b == mulM a b                                      *)
-(*      examples of functors : squaring, curry_F, uncurry_F, exponential_F    *)
+(*      examples of functors : squaring, curryF, uncurryF, exponentialF       *)
 (*         apply_pair_snd ab == f ab.2 >>= (fun c => Ret (ab.1, c))           *)
 (* apply_triple_snd abc == f abc.1.2 >>= (fun d => Ret (abc.1.1, d, abc.2))   *)
 (*                       NId == identity natural transformation               *)
@@ -96,7 +96,8 @@ Definition liftM2 {M : monad} (A B C : UU0) (h : A -> B -> C) m1 m2 : M C :=
   m1 >>= (fun a => m2 >>= (fun b => Ret (h a b))).
 
 Section liftM2_lemmas.
-Variables (M : monad) (A B C : UU0) (h : A -> B -> C).
+Context {M : monad}.
+Variables (A B C : UU0) (h : A -> B -> C).
 
 Lemma liftM2E m1 m2 D (f : C -> M D) : liftM2 h m1 m2 >>= f =
   m1 >>= (fun x => m2 >>= fun y => f (h x y)) :> M _.
@@ -165,55 +166,70 @@ Definition mulM (M : monad) (a b : M nat) : M nat :=
   a >>= (fun x => b >>= (fun y => Ret (x * y))).
 Notation "a *m b" := (mulM a b) (at level 50, format "a  *m  b").
 
-Definition Squaring (A : UU0) := (A * A)%type.
-Definition squaring_f (A B : UU0) (f : A -> B) : Squaring A -> Squaring B :=
+Definition squaring (A : UU0) := (A * A)%type.
+
+Definition squaring_actm (A B : UU0) (f : A -> B) : squaring A -> squaring B :=
   fun x => (f x.1, f x.2).
-Lemma squaring_f_id : FunctorLaws.id squaring_f.
+
+Section squaring_instance.
+
+Let squaring_id : FunctorLaws.id squaring_actm.
 Proof. by move=> A /=; apply boolp.funext => -[x1 x2]. Qed.
-Lemma squaring_f_comp : FunctorLaws.comp squaring_f.
+
+Let squaring_comp : FunctorLaws.comp squaring_actm.
 Proof. by move=> A B C g h /=; apply boolp.funext => -[x1 x2]. Qed.
+
 HB.instance Definition _ :=
-  isFunctor.Build Squaring squaring_f_id squaring_f_comp.
-Definition squaring : functor := [the functor of Squaring].
+  isFunctor.Build squaring squaring_id squaring_comp.
+
+End squaring_instance.
+
 Notation "f ^`2" := (squaring # f).
+
 Lemma squaringE (A B : UU0) (f : A -> B) x : (f ^`2) x = (f x.1, f x.2).
 Proof. by []. Qed.
 
+Definition curryF (X : UU0) : UU0 -> UU0 := fun B => (X * B)%type.
+
 Section curry_functor.
 Variable X : UU0.
-Definition curry_M : UU0 -> UU0 := fun B => (X * B)%type.
-Definition curry_f (A B : UU0) (f : A -> B) : curry_M A -> curry_M B :=
+
+Definition curry_actm (A B : UU0) (f : A -> B) : curryF X A -> curryF X B :=
   fun x : X * A => (x.1, f x.2).
-Lemma curry_f_id : FunctorLaws.id curry_f.
-Proof.
-by rewrite /FunctorLaws.id => A; rewrite /curry_f; apply boolp.funext => -[].
-Qed.
-Lemma curry_f_comp : FunctorLaws.comp curry_f.
-Proof.
-by rewrite /FunctorLaws.comp => A B C g h; rewrite /curry_f; apply boolp.funext => -[].
-Qed.
+
+Let curry_id : FunctorLaws.id curry_actm.
+Proof. by rewrite /FunctorLaws.id => A; apply boolp.funext => -[]. Qed.
+
+Let curry_comp : FunctorLaws.comp curry_actm.
+Proof. by rewrite /FunctorLaws.comp => A B C g h; apply boolp.funext => -[]. Qed.
+
 HB.instance Definition _ :=
-  @isFunctor.Build curry_M curry_f curry_f_id curry_f_comp.
-Definition curry_F : functor := [the functor of curry_M].
+  @isFunctor.Build (curryF X) curry_actm curry_id curry_comp.
+
 End curry_functor.
 
+Definition uncurryF (X : UU0) : UU0 -> UU0 := fun B => X -> B.
+
 Section uncurry_functor.
-Definition uncurry_M (X : UU0) : UU0 -> UU0 := fun B => X -> B.
-Definition uncurry_f (X A B : UU0) (f : A -> B) : uncurry_M X A -> uncurry_M X B :=
+
+Definition uncurry_actm (X A B : UU0) (f : A -> B) : uncurryF X A -> uncurryF X B :=
   fun g : X -> A => f \o g.
-Lemma uncurry_f_id X : FunctorLaws.id (@uncurry_f X).
+
+Let uncurry_id X : FunctorLaws.id (@uncurry_actm X).
 Proof.
-rewrite /FunctorLaws.id => A; rewrite /uncurry_f; apply boolp.funext => ?.
+rewrite /FunctorLaws.id => A; rewrite /uncurry_actm; apply boolp.funext => ?.
 by rewrite compidf.
 Qed.
-Lemma uncurry_f_comp X : FunctorLaws.comp (@uncurry_f X).
+
+Let uncurry_comp X : FunctorLaws.comp (@uncurry_actm X).
 Proof.
-rewrite /FunctorLaws.comp => A B C g h; rewrite /uncurry_f; apply boolp.funext => ?.
+rewrite /FunctorLaws.comp => A B C g h; rewrite /uncurry_actm; apply boolp.funext => ?.
 by rewrite compE compA.
 Qed.
+
 HB.instance Definition _ X :=
-  isFunctor.Build (@uncurry_M X) (uncurry_f_id X) (uncurry_f_comp X).
-Definition uncurry_F X : functor := [the functor of @uncurry_M X].
+  isFunctor.Build (@uncurryF X) (uncurry_id X) (uncurry_comp X).
+
 End uncurry_functor.
 
 Section bind_uncurry.
@@ -227,7 +243,7 @@ Proof. by rewrite bindA; under eq_bind do rewrite bindretf. Qed.
 Lemma bindA_uncurry (m : M A) (f : A -> M B) (g : A -> B -> M C) :
   (m >>= fun x => f x >>= fun y => Ret (x, y)) >>= (fun xy => g xy.1 xy.2) =
   (m >>= fun x => f x >>= g x).
-Proof. by rewrite bindA; by under eq_bind do rewrite bind_uncurry. Qed.
+Proof. by rewrite bindA; under eq_bind do rewrite bind_uncurry. Qed.
 
 End bind_uncurry.
 
@@ -263,48 +279,55 @@ Proof. by rewrite /apply_triple_snd /= kleisliE bindA. Qed.
 
 End apply_monad.
 
+Definition exponentialF (A X : UU0) := A -> X.
+
 Section exponential_functor.
 Variable A : UU0.
-Definition exponential_M (X : UU0) := A -> X.
-Definition exponential_f (X Y : UU0) (f : X -> Y) :
-  exponential_M X -> exponential_M Y := fun e => f \o e.
-Lemma exponential_f_id : FunctorLaws.id exponential_f. Proof. by []. Qed.
-Lemma exponential_f_comp : FunctorLaws.comp exponential_f.
+
+Definition exponential_actm (X Y : UU0) (f : X -> Y) :
+  exponentialF A X -> exponentialF A Y := fun e => f \o e.
+
+Let exponential_id : FunctorLaws.id exponential_actm. Proof. by []. Qed.
+
+Let exponential_comp : FunctorLaws.comp exponential_actm.
 Proof. by []. Qed.
-HB.instance Definition _ :=
-  @isFunctor.Build exponential_M exponential_f exponential_f_id exponential_f_comp.
-Definition exponential_F : functor := [the functor of exponential_M].
+
+HB.instance Definition _ := @isFunctor.Build (exponentialF A)
+  exponential_actm exponential_id exponential_comp.
+
 End exponential_functor.
 
 Lemma fmap_oE (M : functor) (A B C : UU0) (f : A -> B) (g : C -> A) (m : M C) :
   (M # (f \o g)) m = (M # f) ((M # g) m).
 Proof. by rewrite functor_o. Qed.
 
+Definition NId (C : functor) := fun A => @idfun (C A).
+
 Section id_natural_transformation.
 Variables C : functor.
 
-Definition NId := fun A => @idfun (C A).
-Let natural_id : naturality C C NId. Proof. by []. Qed.
+Let natural_id : naturality C C (@NId C). Proof. by []. Qed.
 
-HB.instance Definition _ := isNatural.Build C C NId natural_id.
+HB.instance Definition _ := isNatural.Build C C (@NId C) natural_id.
 
 End id_natural_transformation.
 
 Arguments NId C [A].
 
+Definition vcomp (C D E : functor) (g : D ~> E) (f : C ~> D) :=
+  fun A : UU0 => g A \o f A.
+
 Section vertical_composition.
 Variables (C D E : functor) (g : D ~> E) (f : C ~> D).
 
-Definition vcomp := locked (fun (A : UU0) => g A \o f A).
+Local Notation "g \v f" := (vcomp g f).
 
-Definition natural_vcomp : naturality _ _ vcomp.
+Let natural_vcomp : naturality _ _ (g \v f).
 Proof.
 by move=> A B h; rewrite /vcomp; unlock; rewrite compA natural -compA natural.
 Qed.
 
-HB.instance Definition _ := isNatural.Build C E vcomp natural_vcomp.
-
-Definition VComp : C ~> E := [the C ~> E of vcomp].
+HB.instance Definition _ := isNatural.Build C E (g \v f) natural_vcomp.
 
 End vertical_composition.
 
@@ -318,14 +341,14 @@ Lemma vassoc (F1 F2 G H : functor) (f : F1 ~> F2) (g : G ~> F1) (h : H ~> G) :
   f \v g \v h = f \v (g \v h).
 Proof. by apply/nattrans_ext => a /=; rewrite !vcompE. Qed.
 
+Definition hcomp (F G F' G' : functor) (s : F ~> G) (t : F' ~> G')
+    : F' \o F ~~> G' \o G :=
+  fun A : UU0 => @t (G A) \o F' # (@s A).
+
 Section horizontal_composition.
 Variables (F G F' G' : functor) (s : F ~> G) (t : F' ~> G').
 
-Definition hcomp : F' \o F ~~> G' \o G :=
-  fun (A : UU0) => @t (G A) \o F' # (@s A).
-
-Lemma natural_hcomp :
-  naturality [the functor of F' \o F] [the functor of G' \o G] hcomp.
+Lemma natural_hcomp : naturality (F' \o F) (G' \o G) (hcomp s t).
 Proof.
 move=> A B h.
 rewrite [LHS]compA (natural t) -[LHS]compA -[in RHS]compA.
@@ -333,33 +356,30 @@ by congr (_ \o _); rewrite FCompE -2!functor_o (natural s).
 Qed.
 
 HB.instance Definition _ := isNatural.Build
-  [the functor of F' \o F] [the functor of G' \o G] hcomp natural_hcomp.
+  (F' \o F) (G' \o G) (hcomp s t) natural_hcomp.
 
-Definition HComp : [the functor of F' \o F] ~> [the functor of G' \o G] :=
-  [the _ ~> _ of hcomp].
+Definition HComp : F' \o F ~> G' \o G := hcomp s t.
 
 End horizontal_composition.
 
-Notation "f \h g" := (HComp g f).
+Notation "f \h g" := (hcomp g f).
+
+Definition fun_app_nt (S F G : functor) (nt : F ~> G) : S \o F ~~> S \o G :=
+  fun (A : UU0) => S # (nt A).
 
 Section functor_natural_transformation.
 Variables (S F G : functor) (nt : F ~> G).
 
-Definition fun_app_nt : S \o F ~~> S \o G :=
-  fun (A : UU0) => S # (nt A).
-
-Lemma natural_fun_app_nt :
-  naturality [the functor of S \o F] [the functor of S \o G] fun_app_nt.
+Lemma natural_fun_app_nt : naturality (S \o F) (S \o G) (fun_app_nt nt).
 Proof.
 by move=> *; rewrite /fun_app_nt 2!FCompE -2!(@functor_o S) natural.
 Qed.
 
 HB.instance Definition _ := isNatural.Build
-  [the functor of S \o F] [the functor of S \o G] fun_app_nt natural_fun_app_nt.
+  (S \o F) (S \o G) (fun_app_nt nt) natural_fun_app_nt.
 
-Definition functor_app_natural :
-    [the functor of S \o F] ~> [the functor of S \o G] :=
-  [the _ ~> _ of fun_app_nt].
+Definition functor_app_natural : S \o F ~> S \o G := fun_app_nt nt.
+
 End functor_natural_transformation.
 
 Arguments functor_app_natural S {_} {_}.
@@ -373,14 +393,13 @@ Lemma functor_app_natural_hcomp (S F G : functor) (nt : F ~> G) :
   S ## nt = [the _ ~> _ of NId S] \h nt.
 Proof. by apply nattrans_ext => a; rewrite functor_app_naturalE. Qed.
 
+Definition fork : idfun ~~> squaring := fun (A : UU0) (a : A) => (a, a).
+
 Section natural_transformation_example.
-Definition fork' : idfun ~~> squaring := fun (A : UU0) (a : A) => (a, a).
 
-Lemma fork_natural : naturality _ _ fork'. Proof. by []. Qed.
+Let fork_natural : naturality _ _ fork. Proof. by []. Qed.
 
-HB.instance Definition _ := isNatural.Build idfun squaring fork' fork_natural.
-
-Definition fork : idfun ~> squaring := [the _ ~> _ of fork'].
+HB.instance Definition _ := isNatural.Build idfun squaring fork fork_natural.
 
 End natural_transformation_example.
 
@@ -416,32 +435,33 @@ Notation "F -| G" := (AdjointFunctor.t F G).
 
 Section adjoint_example.
 Variable (X : UU0).
-Definition curry_fun : curry_F X \o uncurry_F X ~~> idfun :=
+
+Definition curry_eps : curryF X \o uncurryF X ~~> idfun :=
   fun (A : UU0) (af : X * (X -> A)) => af.2 af.1.
-Lemma curry_naturality : naturality (curry_F X \o uncurry_F X) idfun curry_fun.
-Proof. by []. Qed.
-HB.instance Definition _ := isNatural.Build
-  (curry_F X \o uncurry_F X) idfun curry_fun curry_naturality.
-Definition curry_eps : eps_type (curry_F X) (uncurry_F X) :=
-  [the nattrans (curry_F X \o uncurry_F X) idfun of curry_fun].
 
-Definition curry_fun2 : idfun ~~> uncurry_F X \o curry_F X :=
+Let curry_eps_naturality : naturality (curryF X \o uncurryF X) idfun curry_eps.
+Proof. by []. Qed.
+
+HB.instance Definition _ := isNatural.Build
+  (curryF X \o uncurryF X) idfun curry_eps curry_eps_naturality.
+
+Definition curry_eta : idfun ~~> uncurryF X \o curryF X :=
   fun (A : UU0) (a : A) => pair^~ a.
-Lemma curry_naturality2 :
-  naturality _ [the functor of uncurry_F X \o curry_F X] curry_fun2.
-Proof. by []. Qed.
-HB.instance Definition _ := isNatural.Build
-   _ [the functor of uncurry_F X \o curry_F X] curry_fun2 curry_naturality2.
 
-Definition curry_eta : eta_type (curry_F X) (uncurry_F X) :=
-  [the nattrans _ _ of curry_fun2].
-Lemma adjoint_currry : curry_F X -| uncurry_F X.
+Let curry_eta_naturality : naturality _ (uncurryF X \o curryF X) curry_eta.
+Proof. by []. Qed.
+
+HB.instance Definition _ := isNatural.Build
+   _ (uncurryF X \o curryF X) curry_eta curry_eta_naturality.
+
+Lemma adjoint_currry : curryF X -| uncurryF X.
 Proof.
 apply: (@AdjointFunctor.mk _ _ curry_eta curry_eps).
 by move=> A; rewrite /TriangularLaws.left; apply boolp.funext => -[].
-move=> A; rewrite /TriangularLaws.right /uncurry_F /curry_eps /curry_eta /uncurry_M.
-by rewrite /= /uncurry_f /= /comp /=; apply boolp.funext => f; apply boolp.funext.
+move=> A; rewrite /TriangularLaws.right /uncurryF /curry_eps /curry_eta /uncurryF.
+by rewrite /= /uncurry_actm /= /comp /=; apply boolp.funext => f; apply boolp.funext.
 Qed.
+
 End adjoint_example.
 
 Module monad_of_adjoint.
@@ -526,11 +546,10 @@ Hypothesis H : F -| U.
 Let eta : eta_type F U := AdjointFunctor.eta H.
 Let eps : eps_type F U := AdjointFunctor.eps H.
 
-Definition uni_fun : idfun ~~> (U0 \o U) \o (F \o F0) :=
+Definition uni : idfun ~~> (U0 \o U) \o (F \o F0) :=
   fun A : UU0 => U0 # eta (F0 A) \o eta0 A.
 
-Lemma uni_naturality :
-  naturality [the functor of idfun] [the functor of (U0 \o U) \o (F \o F0)] uni_fun.
+Let uni_naturality : naturality idfun ((U0 \o U) \o (F \o F0)) uni.
 Proof.
 move=> A B h; rewrite FIdE.
 rewrite -[RHS]compA.
@@ -542,16 +561,13 @@ rewrite (FCompE U0 F0) -[in RHS](@functor_o U0) -[in LHS](@functor_o U0).
 congr (_ # _).
 by rewrite -(natural (AdjointFunctor.eta H)).
 Qed.
-HB.instance Definition _ := isNatural.Build _ _ uni_fun uni_naturality.
 
-Let uni : @eta_type [the functor of F \o F0] [the functor of U0 \o U] :=
-  [the nattrans _ [the functor of (U0 \o U) \o (F \o F0)] of uni_fun].
+HB.instance Definition _ := isNatural.Build _ _ uni uni_naturality.
 
-Definition couni_fun : ((F \o F0) \o (U0 \o U)) ~~> idfun :=
+Definition couni : (F \o F0) \o (U0 \o U) ~~> idfun :=
   fun A : UU0 => eps A \o F # eps0 (U A).
 
-Lemma couni_naturality :
-  naturality [the functor of (F \o F0) \o (U0 \o U)] _ couni_fun.
+Let couni_naturality : naturality ((F \o F0) \o (U0 \o U)) _ couni.
 Proof.
 move=> A B h.
 rewrite [LHS]compA.
@@ -561,19 +577,17 @@ rewrite -[RHS]compA; congr (_ \o _).
 rewrite [in LHS]FCompE -[in LHS](@functor_o F) [in LHS](natural (AdjointFunctor.eps H0)).
 by rewrite -[in RHS](@functor_o F).
 Qed.
-HB.instance Definition _ := isNatural.Build _ _ couni_fun couni_naturality.
 
-Let couni : @eps_type [the functor of F \o F0] [the functor of U0 \o U] :=
-  [the _ ~> _ of couni_fun].
+HB.instance Definition _ := isNatural.Build _ _ couni couni_naturality.
 
-Lemma composite_adjoint : [the functor of F \o F0] -| [the functor of U0 \o U].
+Lemma composite_adjoint : F \o F0 -| U0 \o U.
 Proof.
 apply: (@AdjointFunctor.mk _ _ uni couni).
   rewrite /TriangularLaws.left => A.
-  (*rewrite /couni /uni /=.*)
   rewrite FCompE -[LHS]compA.
   rewrite -(@functor_o F).
-  rewrite (_ : @eps0 _ \o F0 # _ = @eta (F0 A)); first exact: (AdjointFunctor.tri_left H).
+  rewrite (_ : @eps0 _ \o F0 # _ = @eta (F0 A)).
+    exact: (AdjointFunctor.tri_left H).
   rewrite functor_o [LHS]compA -FCompE.
   rewrite -(natural (AdjointFunctor.eps H0)) /= FIdE -compA.
   by rewrite (AdjointFunctor.tri_left H0) compfid.
@@ -781,6 +795,7 @@ Qed.
 End rep.
 
 (* example from Gibbons and Hinze, ICFP 2011 *)
+(* TODO: move? *)
 Section MonadCount.
 
 Variable M : monad.

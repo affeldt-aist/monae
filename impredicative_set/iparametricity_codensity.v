@@ -22,8 +22,8 @@ Local Open Scope monae_scope.
 
 Set Bullet Behavior "Strict Subproofs".
 
-Lemma Actm_exponenial_FE (M : monad) (X Y : UU0) (f : X -> Y) :
-  forall A eX, ([the functor of (exponential_F A \o M)] # f) eX = M # f \o eX.
+Lemma Actm_exponenialFE (M : monad) (X Y : UU0) (f : X -> Y) :
+  forall A eX, ((exponentialF A \o M) # f) eX = M # f \o eX.
 Proof. by []. Qed.
 
 (******************************************************************************)
@@ -49,7 +49,7 @@ Variable m : T.
 
 Axiom param : T_R m m.
 
-Lemma naturality : naturality [the functor of (exponential_F A \o M)] M m.
+Lemma naturality : naturality (exponentialF A \o M) M m.
 Proof.
 move=> X Y f; apply funext => eX.
 by apply (param X Y (fun x y => (M # f) x = y)) => a _ <-.
@@ -84,12 +84,12 @@ Variable m : T.
 
 Axiom param : T_R m m.
 
-Lemma naturality : naturality [the functor of (exponential_F A \o M)] M m.
+Lemma naturality : naturality (exponentialF A \o M) M m.
 Proof.
 move=> X Y f; apply funext => eX.
 set rhs := RHS.
 have : Me_R X Y (fun x y => f x = y) (m X eX) rhs.
-  apply: param => a _ <-; rewrite Actm_exponenial_FE compE.
+  apply: param => a _ <-; rewrite Actm_exponenialFE compE.
   by case: (eX a) => [e|x]; constructor.
 by rewrite compE; case=> [a _ <-|x _ <-].
 Qed.
@@ -110,7 +110,7 @@ Let M := [the monad of option_monad].
 
 Variable m : MK M A.
 
-Lemma naturality : naturality [the functor of (exponential_F A \o M)] M m.
+Lemma naturality : naturality (exponentialF A \o M) M m.
 Proof. exact: Exception.naturality. Qed.
 
 End option_naturality.
@@ -141,12 +141,12 @@ Variable m : T.
 
 Axiom param : T_R m m.
 
-Lemma naturality : naturality [the functor of (exponential_F A \o M)] M m.
+Lemma naturality : naturality (exponentialF A \o M) M m.
 Proof.
 move=> X Y f /=; apply funext => eX.
 set rhs := RHS.
 have : Ml_R X Y (fun x y => f x = y) (m X eX) rhs.
-  apply: param => a _ <-; rewrite Actm_exponenial_FE compE.
+  apply: param => a _ <-; rewrite Actm_exponenialFE compE.
   by elim: (eX a) => [|? ? ?]; constructor.
 by rewrite compE; elim => // x _ <- l _ _ <-.
 Qed.
@@ -180,7 +180,7 @@ Variable m : T.
 
 Axiom param : T_R m m.
 
-Lemma Actm_ModelMonadStateE' (X Y : UU0) (f : X -> Y) (eX : (exponential_F A \o M) X) a (s : S):
+Lemma Actm_ModelMonadStateE' (X Y : UU0) (f : X -> Y) (eX : (exponentialF A \o M) X) a (s : S):
   (M # f \o eX) a s = let (x, y) := eX a s in (f x, y).
 Proof. by []. Qed.
 
@@ -189,13 +189,13 @@ Lemma Actm_ModelMonadStateE (X Y : UU0) (f : X -> Y) (eX : A -> S -> (X * S)) (s
   (M # f \o mX) eX s = (let (x, y) := mX eX s in (f x, y)).
 Proof. by []. Qed.
 
-Lemma naturality : naturality [the functor of (exponential_F A \o M)] M m.
+Lemma naturality : naturality (exponentialF A \o M) M m.
 Proof.
 move=> X Y f; apply funext => eX.
 set rhs := RHS.
 have H : Ms_R X Y (fun x y => f x = y) (m X eX) rhs.
   apply param => // a _ <- s1 _ <-.
-  rewrite Actm_exponenial_FE Actm_ModelMonadStateE'.
+  rewrite Actm_exponenialFE Actm_ModelMonadStateE'.
   by case: (eX a) => x s2; exact: prod_R_pair_R.
 apply funext => s.
 have {}H : prod_R X Y (fun x y => f x = y) S S S_R (m X eX s) (rhs s) by exact: H.
