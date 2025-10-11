@@ -61,11 +61,11 @@ Proof. by move=> ? ?; exact: convC. Qed.
 Let choicemm : forall (T : Type) p, idempotent_op (@choice p T).
 Proof. by move=> ? ? ?; exact: convmm. Qed.
 
-Let choiceA : forall (T : Type) (p q r s : {prob R}) (a b c : acto T),
+Let choiceA : forall (T : Type) (p q : {prob R}) (a b c : acto T),
   choice p _ a (choice q _ b c) = choice [s_of p, q] _ (choice [r_of p, q] _ a b) c.
 Proof.
-move=> ? p q r s a b c.
-rewrite /choice -/(conv p a (conv q b c)) -/(conv s (conv r a b) c).
+move=> ? p q a b c.
+rewrite /choice -/(conv p a (conv q b c)).
 apply: convA0 => /=; first by rewrite -p_is_rs.
 by rewrite s_of_pqE onemK.
 Qed.
