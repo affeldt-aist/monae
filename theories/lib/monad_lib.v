@@ -62,20 +62,27 @@ Unset Printing Implicit Defensive.
 
 Local Open Scope monae_scope.
 
-Lemma bind_if (M : monad) (A B : UU0) (b : bool) (m : M A) (f g : A -> M B) :
+Section monad_lemmas.
+Context {M : monad}.
+
+Lemma bind_if (A B : UU0) (b : bool) (m : M A) (f g : A -> M B) :
   m >>= (fun x => if b then f x else g x) = if b then m >>= f else m >>= g.
 Proof. by case: ifPn. Qed.
 
-Lemma if_bind (M : monad) (A B : UU0) (b : bool) (m n : M A) (f : A -> M B) :
+Lemma if_bind (A B : UU0) (b : bool) (m n : M A) (f : A -> M B) :
   (if b then m else n) >>= f = (if b then m >>= f else n >>= f).
 Proof. by case: ifPn. Qed.
 
-Lemma fmap_ret (M : monad) (A B : UU0) (f : A -> B) a :
+Lemma fmap_ret (A B : UU0) (f : A -> B) a :
   (M # f) (Ret a) = Ret (f a).
 Proof. by rewrite fmapE bindretf. Qed.
 
 Local Open Scope mprog.
-Lemma mfoldl_rev {M : monad} (T R : UU0) (f : R -> T -> R) (z : R)
+Lemma fmap_if (A B : UU0) (f : A -> B) b (m : M A) a :
+  fmap f (if b then m else Ret a) = if b then fmap f m else Ret (f a).
+Proof. by rewrite [LHS]fun_if fmap_ret. Qed.
+
+Lemma mfoldl_rev (T R : UU0) (f : R -> T -> R) (z : R)
     (s : seq T -> M (seq T)) :
   foldl f z (o) (rev (o) s) = foldr (fun x => f^~ x) z (o) s.
 Proof.
@@ -83,6 +90,8 @@ apply boolp.funext => x; rewrite !fcompE 3!fmapE !bindA.
 bind_ext => ?; by rewrite bindretf /= -foldl_rev.
 Qed.
 Local Close Scope mprog.
+
+End monad_lemmas.
 
 Definition liftM2 {M : monad} (A B C : UU0) (h : A -> B -> C) m1 m2 : M C :=
   m1 >>= (fun a => m2 >>= (fun b => Ret (h a b))).

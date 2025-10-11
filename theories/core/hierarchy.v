@@ -644,10 +644,6 @@ Lemma bind_fmap (A B C : UU0) (f : A -> B) (m : M A) (g : B -> M C) :
   fmap f m >>= g = m >>= (g \o f).
 Proof. by rewrite fmapE bindA; under eq_bind do rewrite bindretf. Qed.
 
-Lemma fmap_if (A B : UU0) (f : A -> B) b (m : M A) a :
-  fmap f (if b then m else Ret a) = if b then fmap f m else Ret (f a).
-Proof. case: ifPn => Hb //; by rewrite fmapE bindretf. Qed.
-
 Lemma fmap_bind (A B C : UU0) (f : A -> B) m (g : C -> M A) :
   fmap f (m >>= g) = m >>= (f (o) g).
 Proof.
