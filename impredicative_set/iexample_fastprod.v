@@ -1,8 +1,7 @@
 (* monae: Monadic equational reasoning in Coq                                 *)
 (* Copyright (C) 2025 monae authors, license: LGPL-2.1-or-later               *)
 From mathcomp Require Import all_ssreflect ssralg ssrint.
-From mathcomp Require boolp.
-Require Import preamble hierarchy monad_lib alt_lib fail_lib.
+Require Import ipreamble ihierarchy imonad_lib ialt_lib ifail_lib.
 
 (**md**************************************************************************)
 (* # Fast product example                                                     *)
@@ -21,7 +20,7 @@ Definition work s : M nat := if O \in s then fail else Ret (product s).
 Definition next n (mx : M _) := if n == 0 then fail else fmap (muln n) mx.
 
 (* work refined to eliminate multiple traversals *)
-Lemma workE : work = foldr next (Ret 1).
+Lemma workE : work = foldr next (Ret 1%N).
 Proof.
 apply foldr_universal => // h tl; rewrite /next; case: ifPn => [/eqP -> //| h0].
 by rewrite /work inE eq_sym (negbTE h0) [_ || _]/= fmap_if fmap_fail.
@@ -51,7 +50,7 @@ Section fastprod.
 Variable M : exceptMonad.
 Local Open Scope mprog.
 
-Definition fastprod' s := catch (foldr (next M) (Ret 1) s) (Ret 0).
+Definition fastprod' s := catch (foldr (next M) (Ret 1%N) s) (Ret 0%N).
 Definition failprod s : M _ := if 0 \in s then fail else Ret (product s).
 
 Lemma fastprod'E s : fastprod' s = Ret (product s).

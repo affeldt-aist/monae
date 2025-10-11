@@ -23,6 +23,7 @@ theories/models/gcm_model.v
 theories/models/altprob_model.v
 theories/models/typed_store_model.v
 theories/applications/monad_composition.v
+theories/applications/example_fastprod.v
 theories/applications/example_spark.v
 theories/applications/example_nqueens.v
 theories/applications/example_relabeling.v

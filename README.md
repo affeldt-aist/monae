@@ -119,6 +119,7 @@ This library has been applied to other formalizations:
   + [altprob_model.v](./theories/models//altprob_model.v): model of a monad that mixes non-deterministic choice and probabilistic choice
   + [typed_store_model.v](./theories/models//typed_store_model.v): alternative model of the typed store monad
 - applications:
+  + [example_fastprod.v](./theories/applications/example_fastprod.v): fast product
   + [example_relabeling.v](./theories/applications/example_relabeling.v): tree relabeling
   + [example_monty.v](./theories/applications/example_monty.v): Monty Hall problem
   + [example_spark.v](./theories/applications/example_spark.v): Spark aggregation

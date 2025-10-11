@@ -623,54 +623,6 @@ Qed.
 
 End qperm_preserves_prePlusMonad.
 
-(* TODO: move this example *)
-Section fastproduct.
-
-Definition product := foldr muln 1.
-
-Lemma product0 s : O \in s -> product s = O.
-Proof.
-elim: s => //= h t ih; rewrite inE => /orP[/eqP <-|/ih ->];
-  by rewrite ?muln0 ?mul0n.
-Qed.
-
-Section work.
-Variable M : failMonad.
-Local Open Scope mprog.
-
-Definition work s : M nat :=
-  if O \in s then fail else Ret (product s).
-
-Let Work s := if O \in s then @fail M nat
-              else Ret (product s).
-
-(* work refined to eliminate multiple traversals *)
-Lemma workE :
-  let next := fun n (mx : M _) => if n == 0 then fail else fmap (muln n) mx in
-  work = foldr next (Ret 1).
-Proof.
-apply foldr_universal => // h t; case: ifPn => [/eqP -> //| h0].
-by rewrite /work inE eq_sym (negbTE h0) [_ || _]/= fmap_if fmap_fail.
-Qed.
-
-End work.
-Arguments work {M}.
-
-Variable M : exceptMonad.
-
-Definition fastprod s : M _ := catch (work s) (Ret O).
-
-Let Fastprod (s : seq nat) := @catch M nat (work s) (Ret O).
-
-(* fastprod is pure, never throwing an unhandled exception *)
-Lemma fastprodE s : fastprod s = Ret (product s).
-Proof.
-rewrite /fastprod /work fun_if if_arg catchfailm.
-by rewrite catchret; case: ifPn => // /product0 <-.
-Qed.
-
-End fastproduct.
-
 (* TODO: examples below are about control monads and should maybe be moved to a
 new file; reference: Wadler, P. Monads and composable continuations. LISP and
 Symbolic Computation 7, 39–55 (1994) *)
