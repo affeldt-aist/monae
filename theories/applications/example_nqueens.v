@@ -18,7 +18,7 @@ Local Open Scope ring_scope.
 Local Open Scope monae_scope.
 
 Section nqueens_gibbons2011icfp.
-Local Notation "A `2" := (Squaring A) (at level 2).
+Local Notation "A `2" := (squaring A) (at level 2).
 
 Definition place n {B} (rs : seq B) := zip (map Posz (iota 0 n)) rs.
 
