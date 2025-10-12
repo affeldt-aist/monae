@@ -13,6 +13,7 @@ Require Import preamble hierarchy monad_lib proba_lib.
 (******************************************************************************)
 
 Local Open Scope monae_scope.
+Local Open Scope reals_ext_scope.
 Local Open Scope proba_scope.
 
 (* NB: To appear in coq-infotheo 0.9.6 *)
@@ -43,6 +44,41 @@ End move_to_infotheo.
 
 Require monad_model.
 Notation choice_of_Type := monad_model.choice_of_Type.
+
+HB.factory Record isMonadConvex {R : realType} (M : UU0 -> UU0) of Monad M := {
+  choice : forall (p : {prob R}) (T : UU0), M T -> M T -> M T ;
+  (* identity axioms *)
+  choice1 : forall (T : UU0) (a b : M T), choice 1%:pr _ a b = a ;
+  (* skewed commutativity *)
+  choiceC : forall (T : UU0) p (a b : M T),
+    choice p _ a b = choice (p.~%:pr) _ b a ;
+  choicemm : forall (T : UU0) p, idempotent (@choice p T) ;
+  (* quasi associativity *)
+  choiceA : forall (T : UU0) (p q : {prob R}) (a b c : M T),
+    choice p _ a (choice q _ b c) = choice [s_of p, q] _ (choice [r_of p, q] _ a b) c }.
+
+HB.builders Context R M of isMonadConvex R M.
+
+Section class.
+Variable T : UU0.
+
+Let MT := choice_of_Type (M T).
+Let conv p (a b : MT) := choice p T a b.
+Let conv1 (a b : MT) : conv 1%:pr a b = a := choice1 T a b.
+Let convmm p : idempotent (conv p) := choicemm T p.
+Let convC p (a b : MT) : conv p a b = conv (p.~)%:pr b a := choiceC T p a b.
+Let convA p q (a b c : MT) :
+  conv p a (conv q b c) = conv [s_of p, q] (conv [r_of p, q] a b) c
+    := choiceA T p q a b c.
+Let mixin := isConvexSpace.Build R MT conv1 convmm convC convA.
+Let pack := HB.pack_for (convType R) MT mixin.
+Definition class : ConvexSpace.axioms_ R (M T) := ConvexSpace.class pack.
+
+End class.
+
+HB.instance Definition _ := isMonadConvex0.Build R M class.
+
+HB.end.
 
 Module MonadProbModel.
 Section monadprobmodel.
@@ -86,16 +122,16 @@ Proof. exact: convC. Qed.
 Let choicemm (T : Type) p : idempotent_op (@choice p T).
 Proof. by move=> ?; exact: convmm. Qed.
 
-Let choiceA (T : Type) (p q r s : {prob R}) (a b c : acto T) :
+Let choiceA (T : Type) (p q : {prob R}) (a b c : acto T) :
   choice p _ a (choice q _ b c) = choice [s_of p, q] _ (choice [r_of p, q] _ a b) c.
 Proof.
-rewrite /choice -/(conv p a (conv q b c)) -/(conv s (conv r a b) c).
+rewrite /choice -/(conv p a (conv q b c)).
 apply: convA0 => /=; first by rewrite -p_is_rs.
 by rewrite s_of_pqE onemK.
 Qed.
 
 HB.instance Definition _ := isMonadConvex.Build R
-  acto choice1 choiceC choicemm choiceA.
+  acto choice choice1 choiceC choicemm choiceA.
 
 Let prob_bindDl p :
   BindLaws.left_distributive (@hierarchy.bind acto) (choice p).
