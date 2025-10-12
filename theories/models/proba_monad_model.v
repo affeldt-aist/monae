@@ -15,6 +15,32 @@ Require Import preamble hierarchy monad_lib proba_lib.
 Local Open Scope monae_scope.
 Local Open Scope proba_scope.
 
+(* NB: To appear in coq-infotheo 0.9.6 *)
+Section move_to_infotheo.
+Local Open Scope convex_scope.
+Local Open Scope fdist_scope.
+
+Local Notation "m >>= f" := (fsdistbind m f).
+
+Import GRing.Theory.
+
+Lemma fsdist_conv_bind_right_distr {R : realType} (A B : choiceType) p
+    (m : R.-dist A) (a b : A -> R.-dist B):
+  m >>= (a <| p |> b) = (m >>= a) <| p |> (m >>= b).
+Proof.
+apply/fsdist_ext => b0 /=; rewrite fsdistbindE fsdist_convE.
+have [->|p0] := eqVneq p 0%:pr.
+  by rewrite 2!conv0 fsdistbindE.
+have [->|p1] := eqVneq p 1%:pr.
+  by rewrite 2!conv1 fsdistbindE.
+under eq_bigr do rewrite fsdist_convE avgRE mulrDr.
+under eq_bigr do rewrite mulrCA (mulrCA _ p.~).
+rewrite big_split/= -2!big_distrr /=.
+by rewrite -!fsdistbindEwiden // ?finsupp_conv_subl ?finsupp_conv_subr.
+Qed.
+
+End move_to_infotheo.
+
 Require monad_model.
 Notation choice_of_Type := monad_model.choice_of_Type.
 
@@ -44,27 +70,25 @@ HB.instance Definition _ := isMonad_ret_bind.Build
 
 Lemma BindE (A B : choiceType) m (f : A -> [the monad of acto] B) :
   (m >>= f) = (m >>= f)%fsdist.
-Proof.
-by rewrite /hierarchy.bind /= /bind.
-Qed.
+Proof. by []. Qed.
 
 Local Open Scope reals_ext_scope.
 
-Let choice := (fun p A => @fsdist_conv R (choice_of_Type A) p).
+Let choice := fun p A => @fsdist_conv R (choice_of_Type A) p.
 
-Let choice1 (T : UU0) : forall (a b : acto T), choice 1%R%:pr _ a b = a.
-Proof. by move=> ? ?; exact: conv1. Qed.
+Let choice1 (T : UU0) (a b : acto T) : choice 1%R%:pr _ a b = a.
+Proof. exact: conv1. Qed.
 
-Let choiceC (T : UU0) : forall p (a b : acto T), choice p _ a b = choice ((Prob.p p).~ %:pr) _ b a.
-Proof. by move=> ? ?; exact: convC. Qed.
+Let choiceC (T : UU0) p (a b : acto T) :
+  choice p _ a b = choice ((Prob.p p).~ %:pr) _ b a.
+Proof. exact: convC. Qed.
 
-Let choicemm : forall (T : Type) p, idempotent_op (@choice p T).
-Proof. by move=> ? ? ?; exact: convmm. Qed.
+Let choicemm (T : Type) p : idempotent_op (@choice p T).
+Proof. by move=> ?; exact: convmm. Qed.
 
-Let choiceA : forall (T : Type) (p q r s : {prob R}) (a b c : acto T),
+Let choiceA (T : Type) (p q r s : {prob R}) (a b c : acto T) :
   choice p _ a (choice q _ b c) = choice [s_of p, q] _ (choice [r_of p, q] _ a b) c.
 Proof.
-move=> ? p q r s a b c.
 rewrite /choice -/(conv p a (conv q b c)) -/(conv s (conv r a b) c).
 apply: convA0 => /=; first by rewrite -p_is_rs.
 by rewrite s_of_pqE onemK.
@@ -74,17 +98,26 @@ HB.instance Definition _ := isMonadConvex.Build R
   acto choice1 choiceC choicemm choiceA.
 
 Let prob_bindDl p :
-  BindLaws.left_distributive (@hierarchy.bind [the monad of acto]) (choice p).
+  BindLaws.left_distributive (@hierarchy.bind acto) (choice p).
 Proof.
 move=> A B m1 m2 k.
 rewrite !(@BindE (choice_of_Type A) (choice_of_Type B)).
 by rewrite fsdist_conv_bind_left_distr.
 Qed.
 
-HB.instance Definition mixin := isMonadProb.Build R
-   acto prob_bindDl.
+HB.instance Definition mixin := isMonadProb.Build R acto prob_bindDl.
 (* NB: we use Pack here for an application in gcm_model.v *)
 Definition t := MonadProb.Pack (MonadProb.Class mixin).
+
+Let prob_bindDr p :
+  BindLaws.right_distributive (@hierarchy.bind acto) (choice p).
+Proof.
+move=> A B m1 m2 k.
+rewrite !(@BindE (choice_of_Type A) (choice_of_Type B)).
+by rewrite fsdist_conv_bind_right_distr.
+Qed.
+
+HB.instance Definition _ := isMonadProbDr.Build R acto prob_bindDr.
 
 End monadprobmodel.
 End MonadProbModel.
