@@ -3,6 +3,7 @@
 From mathcomp Require Import all_ssreflect ssralg ssrnum.
 From mathcomp Require boolp.
 From mathcomp Require Import unstable mathcomp_extra reals.
+From mathcomp Require Import ring.
 From infotheo Require Import realType_ext ssr_ext fsdist.
 From infotheo Require Import convex.
 From HB Require Import structures.
@@ -28,15 +29,10 @@ Lemma fsdist_conv_bind_right_distr {R : realType} (A B : choiceType) p
     (m : R.-dist A) (a b : A -> R.-dist B):
   m >>= (a <| p |> b) = (m >>= a) <| p |> (m >>= b).
 Proof.
-apply/fsdist_ext => b0 /=; rewrite fsdistbindE fsdist_convE.
-have [->|p0] := eqVneq p 0%:pr.
-  by rewrite 2!conv0 fsdistbindE.
-have [->|p1] := eqVneq p 1%:pr.
-  by rewrite 2!conv1 fsdistbindE.
-under eq_bigr do rewrite fsdist_convE avgRE mulrDr.
-under eq_bigr do rewrite mulrCA (mulrCA _ p.~).
-rewrite big_split/= -2!big_distrr /=.
-by rewrite -!fsdistbindEwiden // ?finsupp_conv_subl ?finsupp_conv_subr.
+apply/fsdist_ext => b0.
+rewrite fsdist_convE 3!fsdistbindE avgRE 2!big_distrr -big_split/=.
+apply: eq_bigr=> a0 _; rewrite fsdist_convE avgRE/=.
+ring.
 Qed.
 
 End move_to_infotheo.
