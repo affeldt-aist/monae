@@ -1254,7 +1254,7 @@ Section convexMonad_interface.
 Context {R : realType} {s : convexMonad R}.
 
 (* this interface is useful for avoiding explicit casts
-   from substructures such as probMonad to convexMonad when using the convexity *)
+   from child structures such as probMonad to convexMonad when using the convexity *)
 Definition choice p T := @conv R (s T) p.
 Lemma choice1 T (a b : s T) : choice 1%:pr a b = a.
 Proof. exact: conv1. Qed.
@@ -1296,7 +1296,7 @@ End convexMonad_lemmas.
 
 HB.mixin Record isMonadProb {R : realType} (M : UU0 -> UU0) of MonadConvex R M := {
   (* composition distributes leftwards over [probabilistic] choice *)
-  (* the old interface choice is useful here; without that, (choice p) needs to be
+  (* choice is useful here; without that, (choice p) needs to be
      written like (fun T => @conv R ((M : convexMonad R) T) p) *)
   choice_bindDl : forall p, BindLaws.left_distributive (@bind M) (choice p) }.
 
