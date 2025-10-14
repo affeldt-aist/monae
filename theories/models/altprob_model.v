@@ -197,11 +197,12 @@ Local Open Scope proba_monad_scope.
 
 (* An example that probabilistic choice in this model is not trivial:
    we can distinguish different probabilities. *)
+
 Example gcmAP_choice_nontrivial (p q : {prob R}) :
   p <> q ->
   (* Ret = hierarchy.ret *)
   Ret true <|p|> Ret false <>
-  Ret true <|q|> Ret false :> (Monad_of_category_monad.acto (Mgcm R)) bool.
+  Ret true <|q|> Ret false :> (gcmAP R : convexMonad R) bool.
 Proof.
 apply contra_not.
 rewrite !gcm_retE /hierarchy.choice => /(congr1 (@NECSet.sort _ _)).
