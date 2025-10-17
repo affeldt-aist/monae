@@ -1,6 +1,6 @@
 From mathcomp Require Import all_ssreflect.
 From HB Require Import structures.
-Require Import monad_transformer hierarchy elgot_monad_model elgotexcept_model.
+Require Import monad_transformer hierarchy delay_monad_model elgotexcept_model.
 
 Set Implicit Arguments.
 Unset Strict Implicit.
