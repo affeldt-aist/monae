@@ -6,7 +6,8 @@ From infotheo Require Import classical_sets_ext realType_ext fdist proba.
 From infotheo Require Import fsdist convex necset.
 Require category.
 From HB Require Import structures.
-Require Import preamble hierarchy monad_lib proba_lib monad_model gcm_model.
+Require Import preamble hierarchy monad_lib proba_lib.
+Require Import monad_model proba_monad_model gcm_model.
 Require Import category.
 
 (**md**************************************************************************)
@@ -131,7 +132,7 @@ Proof. by rewrite convC. Qed.
 Lemma choicemm A p : idempotent_op (@choice p A).
 Proof. by move=> m; rewrite /choice convmm. Qed.
 
-Let choiceA A (p q r s : {prob R}) (x y z : gcm R A) :
+Let choiceA A (p q : {prob R}) (x y z : gcm R A) :
   x <| p |> (y <| q |> z) = (x <| [r_of p, q] |> y) <| [s_of p, q] |> z.
 Proof. exact: convA. Qed.
 
@@ -174,7 +175,7 @@ End bindchoiceDl.
 
 HB.instance Definition _ :=
   isMonadConvex.Build R (Monad_of_category_monad.acto (Mgcm R))
-    choice1 choiceC choicemm choiceA.
+    choice choice1 choiceC choicemm choiceA.
 
 HB.instance Definition _ :=
   isMonadProb.Build R (Monad_of_category_monad.acto (Mgcm R)) bindchoiceDl.
@@ -196,11 +197,12 @@ Local Open Scope proba_monad_scope.
 
 (* An example that probabilistic choice in this model is not trivial:
    we can distinguish different probabilities. *)
+
 Example gcmAP_choice_nontrivial (p q : {prob R}) :
   p <> q ->
   (* Ret = hierarchy.ret *)
   Ret true <|p|> Ret false <>
-  Ret true <|q|> Ret false :> (Monad_of_category_monad.acto (Mgcm R)) bool.
+  Ret true <|q|> Ret false :> (gcmAP R : convexMonad R) bool.
 Proof.
 apply contra_not.
 rewrite !gcm_retE /hierarchy.choice => /(congr1 (@NECSet.sort _ _)).
