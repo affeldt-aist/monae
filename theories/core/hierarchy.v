@@ -1320,7 +1320,7 @@ HB.structure Definition MonadProbDr {R : realType} :=
    needed to satisfy HB in counterexample_altconvexdr.v *)
 #[short(type=altCIConvex)]
 HB.structure Definition MonadAltCIConvex {R : realType} :=
-  { M of isMonadAltCI M & isMonadConvex R M }.
+  { M of isMonadAltCI M & isMonadConvex0 R M }.
 
 HB.mixin Record isMonadAltProb {R : realType} (M : UU0 -> UU0)
     of MonadAltCI M & MonadProb R M :=
