@@ -45,6 +45,8 @@ End move_to_infotheo.
 Require monad_model.
 Notation choice_of_Type := monad_model.choice_of_Type.
 
+(* This factory is placed here (instead of hierarchy.v)
+   because we need to use choice_of_Type *)
 HB.factory Record isMonadConvex {R : realType} (M : UU0 -> UU0) of Monad M := {
   choice : forall (p : {prob R}) (T : UU0), M T -> M T -> M T ;
   (* identity axioms *)
@@ -62,7 +64,9 @@ HB.builders Context R M of isMonadConvex R M.
 Section class.
 Variable T : UU0.
 
+(* ConvexSpace is a subclass of Choice *)
 Let MT := choice_of_Type (M T).
+
 Let conv p (a b : MT) := choice p T a b.
 Let conv1 (a b : MT) : conv 1%:pr a b = a := choice1 T a b.
 Let convmm p : idempotent (conv p) := choicemm T p.
@@ -71,6 +75,11 @@ Let convA p q (a b c : MT) :
   conv p a (conv q b c) = conv [s_of p, q] (conv [r_of p, q] a b) c
     := choiceA T p q a b c.
 Let mixin := isConvexSpace.Build R MT conv1 convmm convC convA.
+
+(* We want a class whose type is ConvexSpace.axioms_,
+   but, the factory isConvexSpace does not provide a mixin
+   that can be directly fed to the class constructor ConvexSpace.Class
+   So we first pack, then extract the class. *)
 Let pack := HB.pack_for (convType R) MT mixin.
 Definition class : ConvexSpace.axioms_ R (M T) := ConvexSpace.class pack.
 

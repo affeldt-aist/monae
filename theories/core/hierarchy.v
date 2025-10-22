@@ -93,7 +93,7 @@ From HB Require Import structures.
 (* ```                                                                        *)
 (*        convexMonad == probabilistic choice                                 *)
 (*          probMonad == convexMonad + bind left-distributes over choice      *)
-(*        probDrMonad == convexMonad + bind right-distributes over choice     *)
+(*        probDrMonad == probMonad + bind right-distributes over choice       *)
 (*       altProbMonad == combined (probabilistic and nondeterministic) choice *)
 (*    exceptProbMonad == exceptions + probabilistic choice                    *)
 (* ```                                                                        *)
@@ -1303,7 +1303,7 @@ HB.mixin Record isMonadProb {R : realType} (M : UU0 -> UU0) of MonadConvex R M :
 #[short(type=probMonad)]
 HB.structure Definition MonadProb {R : realType} := {M of isMonadProb R M & }.
 
-HB.mixin Record isMonadProbDr {R : realType} (M : UU0 -> UU0) of MonadConvex R M := {
+HB.mixin Record isMonadProbDr {R : realType} (M : UU0 -> UU0) of MonadProb R M := {
   (* composition distributes rightwards over [probabilistic] choice *)
   (* WARNING: this should not be asserted as an axiom in conjunction with altCI;
      see also example_altprobdr.v *)
@@ -1311,11 +1311,6 @@ HB.mixin Record isMonadProbDr {R : realType} (M : UU0 -> UU0) of MonadConvex R M
 
 #[short(type=probDrMonad)]
 HB.structure Definition MonadProbDr {R : realType} := {M of isMonadProbDr R M & }.
-
-(* not meant for a direct use; needed to satisfy HB in example_altprobdr.v *)
-#[short(type=altCIConvex)]
-HB.structure Definition MonadAltCIConvex {R : realType} :=
-  { M of MonadAltCI M & MonadConvex R M }.
 
 HB.mixin Record isMonadAltProb {R : realType} (M : UU0 -> UU0)
     of MonadAltCI M & MonadProb R M :=
