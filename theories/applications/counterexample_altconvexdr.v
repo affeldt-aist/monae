@@ -7,15 +7,25 @@ From infotheo Require Import fsdist convex.
 From HB Require Import structures.
 Require Import preamble hierarchy monad_lib proba_lib alt_lib.
 
-(* This file contains consequences of combining MonadAltCI and MonadProb *)
-(*   together with the other distributive law.                           *)
-(*                                                                       *)
-(* References:                                                           *)
-(* [Abou-Saleh]:                                                         *)
-(*  Abou-Saleh, F., Cheung, K.-H., and Gibbons, J. (2016).               *)
-(*  Reasoning about probability and nondeterminism.                      *)
-(*  In POPL workshop on Probabilistic Programming Semantics.             *)
-(*  https://www.cs.ox.ac.uk/jeremy.gibbons/publications/prob-nondet.pdf  *)
+(**md**************************************************************************)
+(* # collapse of the probabilistic choice in altConvexDrMonad                 *)
+(*                                                                            *)
+(* This file exhibits undesirable consequences of combining the probabilistic *)
+(* and nondeterministic choice operators together with the right-             *)
+(* distributivity of the bind operator over the probabilistic choice.         *)
+(*                                                                            *)
+(* ```                                                                        *)
+(*  altConvexDrMonad == altCIMonad (nondet. choice)                           *)
+(*                    + convexDrMonad (prob. choice and right-distr.)         *)
+(* ```                                                                        *)
+(*                                                                            *)
+(* References:                                                                *)
+(* - [Abou-Saleh, et al.]:                                                    *)
+(*   Abou-Saleh, F., Cheung, K.-H., and Gibbons, J. (2016).                   *)
+(*   Reasoning about probability and nondeterminism.                          *)
+(*   In POPL workshop on Probabilistic Programming Semantics.                 *)
+(*   https://www.cs.ox.ac.uk/jeremy.gibbons/publications/prob-nondet.pdf      *)
+(******************************************************************************)
 
 Set Implicit Arguments.
 Unset Strict Implicit.
@@ -36,7 +46,7 @@ HB.structure Definition MonadAltConvexDr {R : realType} :=
 Section choiceDalt.
 Variables (R : realType).
 
-(* technical equality from [Abou-Saleh] *)
+(* technical equality from [Abou-Saleh, et al.] *)
 Local Lemma altEbindarb (M : altMonad) (T : Type) (x y : M T) :
   x [~] y = arb >>= fun b => if b then x else y.
 Proof. by rewrite alt_bindDl !bindretf. Qed.

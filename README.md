@@ -128,7 +128,7 @@ This library has been applied to other formalizations:
   + [example_nqueens.v](./theories/applications/example_nqueens.v): the n-queens puzzle
   + [example_typed_store.v](./theories/applications/example_typed_store.v): ML programs with references
   + [example_transformer.v](./theories/applications/example_transformer.v): monad transformers
-  + [counterexample_altprobdr.v](./theories/applications/counterexample_altprobdr.v): collapse of probabilistic choice in altMonad + convexMonad + right distributivity
+  + [counterexample_altprobdr.v](./theories/applications/counterexample_altprobdr.v): collapse of the probabilistic choice in altCIMonad + convexMonad + right distributivity
   + [smallstep.v](./theories/applications/smallstep.v): semantics for an imperative language, with equivalence operational semantics/denotation and sample imperative programs
   + [monad_composition.v](./theories/applications/monad_composition.v): composing monads
   + [category_ext.v](./theories/applications/category_ext.v): experimental library about categories
