@@ -29,9 +29,9 @@ Local Open Scope proba_scope.
 Local Open Scope monae_scope.
 Local Open Scope proba_monad_scope.
 
-#[short(type=altProbDrMonad)]
-HB.structure Definition MonadAltProbDr {R : realType} :=
-  { M of isMonadAltCI M & isMonadProbDr R M }.
+#[short(type=altConvexDrMonad)]
+HB.structure Definition MonadAltConvexDr {R : realType} :=
+  { M of isMonadAltCI M & isMonadConvexDr R M }.
 
 Section choiceDalt.
 Variables (R : realType).
@@ -47,7 +47,7 @@ Local Lemma choiceDif (M : convexMonad R) (T : Type) (b : bool) (p : {prob R}) (
 Proof. by case: b. Qed.
 
 (* the right distr. of bind implies the distr. of nondeterminism over probability *)
-Fact choiceDalt (M : altProbDrMonad R) (T : Type) (p : {prob R}) :
+Fact choiceDalt (M : altConvexDrMonad R) (T : Type) (p : {prob R}) :
   right_distributive (fun x y : M T => x [~] y) (fun x y : M T => x <| p |> y).
 Proof.
 move=> x y z.

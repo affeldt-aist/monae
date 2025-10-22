@@ -44,7 +44,7 @@ in several examples of monadic equational reasoning.
   - [Extending Equational Monadic Reasoning with Monad Transformers](https://drops.dagstuhl.de/opus/volltexte/2021/13881/) doi:[10.4230/LIPIcs.TYPES.2020.2](https://doi.org/10.4230/LIPIcs.TYPES.2020.2)
   - [A Trustful Monad for Axiomatic Reasoning with Probability and Nondeterminism](https://arxiv.org/abs/2003.09993) doi:[10.1017/S0956796821000137](https://doi.org/10.1017/S0956796821000137)
   - [Towards a practical library for monadic equational reasoning in Coq](https://staff.aist.go.jp/reynald.affeldt/documents/monae-mpc2022.pdf) doi:[10.1007/978-3-031-16912-0_6](https://doi.org/10.1007/978-3-031-16912-0_6)
-  - [Environment-friendly monadic equational reasoning for OCaml](https://coq-workshop.gitlab.io/2023/abstracts/coq2023_monadic-reasoning.pdf) 
+  - [Environment-friendly monadic equational reasoning for OCaml](https://coq-workshop.gitlab.io/2023/abstracts/coq2023_monadic-reasoning.pdf)
   - [A practical formalization of monadic equational reasoning in dependent-type theory](https://www.cambridge.org/core/services/aop-cambridge-core/content/view/B59B87DE000F48B9807F24AEDB11452E/S0956796824000157a.pdf/a-practical-formalization-of-monadic-equational-reasoning-in-dependent-type-theory.pdf) doi:[10.1017/S0956796824000157](https://doi.org/10.1017/S0956796824000157)
   - [Monadic Equational Reasoning for while loop in Rocq](https://msp.cis.strath.ac.uk/types2025/abstracts/TYPES2025_paper28.pdf)
 
@@ -103,7 +103,7 @@ This library has been applied to other formalizations:
   + [monad_transformer.v](./theories/core/monad_transformer.v): monad transformers
     * completed by `ifmt_lifting.v` and `iparametricity_codensity.v` in the directory `impredicative_set`
       - the directory `impredicative_set` contains a lighter version of Monae where monads live in `Set` and that compiles with the `impredicative-set` option of Rocq
-- libraries for each monad theory:  
+- libraries for each monad theory:
   + [monad_lib.v](./theories/lib/monad_lib.v): basic lemmas about monads
   + [alt_lib.v](./theories/lib/alt_lib.v): lemmas about the nondeterminism monad
   + [fail_lib.v](./theories/lib/fail_lib.v): lemmas about the fail monad and related monads
@@ -128,7 +128,7 @@ This library has been applied to other formalizations:
   + [example_nqueens.v](./theories/applications/example_nqueens.v): the n-queens puzzle
   + [example_typed_store.v](./theories/applications/example_typed_store.v): ML programs with references
   + [example_transformer.v](./theories/applications/example_transformer.v): monad transformers
-  + [example_altprobdr.v](./theories/applications/example_altprobdr.v): "the other" distributive law
+  + [counterexample_altprobdr.v](./theories/applications/counterexample_altprobdr.v): collapse of probabilistic choice in altMonad + convexMonad + right distributivity
   + [smallstep.v](./theories/applications/smallstep.v): semantics for an imperative language, with equivalence operational semantics/denotation and sample imperative programs
   + [monad_composition.v](./theories/applications/monad_composition.v): composing monads
   + [category_ext.v](./theories/applications/category_ext.v): experimental library about categories
