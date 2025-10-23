@@ -162,7 +162,10 @@ rewrite !(@BindE (choice_of_Type A) (choice_of_Type B)).
 by rewrite fsdist_conv_bind_right_distr.
 Qed.
 
-HB.instance Definition _ := isMonadProbDr.Build R acto prob_bindDr.
+HB.instance Definition _ := isMonadConvexDr.Build R acto prob_bindDr.
+
+(* probDrMonad = probMonad + convexDrMonad *)
+Succeed Definition test := t : probDrMonad R.
 
 End monadprobmodel.
 End MonadProbModel.

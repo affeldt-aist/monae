@@ -93,7 +93,8 @@ From HB Require Import structures.
 (* ```                                                                        *)
 (*        convexMonad == probabilistic choice                                 *)
 (*          probMonad == convexMonad + bind left-distributes over choice      *)
-(*        probDrMonad == probMonad + bind right-distributes over choice       *)
+(*      convexDrMonad == convexMonad + bind right-distributes over choice     *)
+(*        probDrMonad == probMonad + convexDrMonad                            *)
 (*       altProbMonad == combined (probabilistic and nondeterministic) choice *)
 (*    exceptProbMonad == exceptions + probabilistic choice                    *)
 (* ```                                                                        *)
@@ -1303,14 +1304,24 @@ HB.mixin Record isMonadProb {R : realType} (M : UU0 -> UU0) of MonadConvex R M :
 #[short(type=probMonad)]
 HB.structure Definition MonadProb {R : realType} := {M of isMonadProb R M & }.
 
-HB.mixin Record isMonadProbDr {R : realType} (M : UU0 -> UU0) of MonadProb R M := {
+HB.mixin Record isMonadConvexDr {R : realType} (M : UU0 -> UU0) of MonadConvex R M := {
   (* composition distributes rightwards over [probabilistic] choice *)
   (* WARNING: this should not be asserted as an axiom in conjunction with altCI;
-     see also example_altprobdr.v *)
+     see also counterexample_altconvexdr.v *)
   choice_bindDr : forall p, BindLaws.right_distributive (@bind M) (choice p) }.
 
+#[short(type=convexDrMonad)]
+HB.structure Definition MonadConvexDr {R : realType} := {M of isMonadConvexDr R M & }.
+
 #[short(type=probDrMonad)]
-HB.structure Definition MonadProbDr {R : realType} := {M of isMonadProbDr R M & }.
+HB.structure Definition MonadProbDr {R : realType} :=
+  {M of MonadProb R M & MonadConvexDr R M }.
+
+(* not meant for a direct use;
+   needed to satisfy HB in counterexample_altconvexdr.v *)
+#[short(type=altCIConvex)]
+HB.structure Definition MonadAltCIConvex {R : realType} :=
+  { M of isMonadAltCI M & isMonadConvex0 R M }.
 
 HB.mixin Record isMonadAltProb {R : realType} (M : UU0 -> UU0)
     of MonadAltCI M & MonadProb R M :=
