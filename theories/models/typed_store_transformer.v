@@ -6,6 +6,14 @@ From HB Require Import structures.
 Require Import hierarchy monad_lib fail_lib state_lib monad_transformer typed_store_universe.
 Require Import delay_monad_model elgotstate_model elgotexcept_model.
 
+(**md**************************************************************************)
+(* # Model of the typed store monad built using transformers                  *)
+(*                                                                            *)
+(* Contrary to typed_store_model.v, this model does not allow for functions   *)
+(* in the store. But it is sound since it does not bypass positivity.         *)
+(******************************************************************************)
+
+
 Set Implicit Arguments.
 Unset Strict Implicit.
 Unset Printing Implicit Defensive.
