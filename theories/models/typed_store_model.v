@@ -24,6 +24,8 @@ Unset Printing Implicit Defensive.
 
 Local Open Scope monae_scope.
 
+Definition locT_nat : eqType := nat.
+
 Section ModelTypedStoreRun.
 Variable MLU : ML_universe.
 
