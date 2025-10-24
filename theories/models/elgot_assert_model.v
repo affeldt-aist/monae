@@ -2,6 +2,14 @@ From mathcomp Require Import all_ssreflect.
 From HB Require Import structures.
 Require Import monad_transformer hierarchy delay_monad_model elgotexcept_model.
 
+(**md**************************************************************************)
+(* # Model for elgotAssertMonad.                                              *)
+(*                                                                            *)
+(* This monad is an Elgot monad satisfying equalities to prove partial        *)
+(* correctness. It is the transformed Elgot monad using exception monad       *)
+(* transformer.                                                               *)
+(******************************************************************************)
+
 Set Implicit Arguments.
 Unset Strict Implicit.
 Unset Printing Implicit Defensive.
@@ -9,13 +17,13 @@ Unset Printing Implicit Defensive.
 Local Open Scope monae_scope.
 Local Open Scope do_notation.
 
-Notation M := (MX unit Elgot).
+Notation M := (MX unit Delay).
 Notation "a '≈e' b" := (wBisimDE a b) (at level 70).
 Hint Extern 0 (wBisimDE _ _) => setoid_reflexivity.
 
 (*Equality between hierarchy.while and elgot_monad_model.while*)
 Lemma whileDEE A B (body : A -> M (B + A)) x :
-  whileDE body x = while (@DEA Elgot _ _ \o body) x.
+  whileDE body x = while (@DEA Delay _ _ \o body) x.
 Proof. by []. Qed.
 
 Lemma assertE X x (p : pred X) : @assert M _ p x ≈e Ret x <-> (p x) = true.
@@ -24,8 +32,8 @@ split.
   rewrite/assert.
   case: (p x) => //.
   rewrite guardF bindfailf /wBisimDE.
-  move/iff_wBisims_wBisim.
-  move/iff_Terminates_wBret => contr.
+  move/wBisims_wBisim.
+  move/Stop_wBisimsRet => contr.
   inversion contr.
 rewrite/assert => ->.
 by rewrite guardT bindskipf.
@@ -38,11 +46,11 @@ Lemma pcorrect X A x (p : pred (A + X)) (f : X -> M (A + X)) :
    bassert p ((whileDE f x) >>= (Ret \o inl)) ≈e whileDE f x >>= (Ret \o inl).
 Proof.
 move => Hx HInv.
-case: (TerminatesP (whileDE f x)) =>
-  [[[u' /iff_Terminates_wBret/iff_wBisims_wBisim Hs
-    |x' /iff_Terminates_wBret [n Hs]]]|/iff_Diverges_wBisimspin Hs].
+case: (StopP (whileDE f x)) =>
+  [[[u' /Stop_wBisimsRet/wBisims_wBisim Hs
+    |x' /Stop_wBisimsRet [n Hs]]]|/Diverge_wBisim_spinP Hs].
 - by rewrite/bassert bindXE Hs !bindretf bindXE !bindretf.
-- rewrite steps_Dnow in Hs.
+- rewrite steps_Now in Hs.
   move: x x' Hx Hs.
   elim: n => [/=|n IH] x x' Hx;
              rewrite whileDEE whileE /DEA functions.compE fmapE.
@@ -54,12 +62,12 @@ case: (TerminatesP (whileDE f x)) =>
         move: (HInv x Hx).
         by rewrite Hb !bindretf/retX /=.
       - by rewrite /retX => contr.
-    by rewrite !bindDmf => contr.
+    by rewrite !bind_Later => contr.
   set d := f x.
   have : d ≈ f x by [].
   move: d.
   cofix CIH => d.
-  case Hb: d => [uxx|d'].
+  case Hb: d => [uxx|d'].yy
     case: uxx Hb => [u//|[y/= Hd|y/= Hd]] Hb;
                     rewrite bindretf/=bindretf.
       rewrite/bassert bindXE bindretf => _.
@@ -70,45 +78,27 @@ case: (TerminatesP (whileDE f x)) =>
     move => HH.
     move/IH => IH'.
     rewrite -!whileDEE.
-    rewrite /bassert !bindDmf.
-    rewrite wBisim_DLater -bindXE.
+    rewrite /bassert !bind_Later.
+    rewrite wBisim_Later -bindXE.
     rewrite -{2}IH' /bassert.
     by rewrite /retX.
-    move: HH.
+    move: HH.y
     by move/assertE.
-    rewrite/bassert !bindXE !bindA !bindDmf /= => Hd' Hs.
+    rewrite/bassert !bindXE !bindA !bind_Later /= => Hd' Hs.
     apply wBLater.
   rewrite -!bindA -bindXE -/(bassert p _).
   apply: CIH.
-  by rewrite -Hd' wBisim_DLater.
+  by rewrite -Hd' wBisim_Later.
   apply: monotonicity_steps'.
   by rewrite /= /bassert bindA Hs.
 rewrite !bindXE /bassert Hs.
 apply: wBisim_trans.
-apply iff_Diverges_wBisimspin.
+apply Diverge_wBisim_spinP.
   rewrite bindA.
-  by apply: Diverges_bindspinf.
+  by apply: Diverge_bindspinf.
 apply: wBisim_sym.
-apply iff_Diverges_wBisimspin.
-by apply Diverges_bindspinf.
+apply Diverge_wBisim_spinP.
+by apply Diverge_bindspinf.
 Qed.
 
 HB.instance Definition _ := @isMonadElgotAssert.Build M (@pcorrect).
-
-Section bubblesort.
-Let testseq := 8::4::3::7::6::5::2::1::nil.
-Fixpoint sortl (l : seq nat) :=
-  match l with
-  | nil => nil
-  | n :: tl => match tl with
-              | nil => l
-              | m :: tl' => if m < n then m :: n :: sortl tl'
-                                    else n :: sortl tl
-              end
-  end.
-Compute (sortl testseq).
-Definition bubblesort_body (l : seq nat) : M (seq nat + seq nat) :=
-  if l == sortl l then Ret (inl l) else Ret (inr (sortl l)).
-Definition bubblesort l := whileDE bubblesort_body l.
-Compute (steps 100 (bubblesort testseq)).
-End bubblesort.

@@ -58,7 +58,10 @@ rewrite -Hs [k :: tl]lock/= -lock -(IH (size tl)) //.
 by move: Hmn; rewrite -Hs/= ltnS; exact: ltnW.
 Qed.
 
-Definition sizelE (l : seq nat) : pred (seq nat) := fun l' => size l == size l'.
+Definition sizelE (l : seq nat) : pred (seq nat + seq nat) := fun ll => match ll with 
+                                                                  | inr l' => size l == size l'
+                                                                  | inl l' => size l == size l'
+                                                                  end.
 
 Theorem bubblesort_length l : bassert (sizelE l) (bubblesort l) ≈ bubblesort l.
 Proof.

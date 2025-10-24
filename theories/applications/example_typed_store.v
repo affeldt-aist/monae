@@ -331,7 +331,7 @@ End cyclic_run.
 
 Module eval_cyclic.
 Section eval.
-Import monad_model.ModelTypedStoreRun.
+Require Import typed_store_transformer.
                 
 Definition M := @acto ml_type idfun.
 
