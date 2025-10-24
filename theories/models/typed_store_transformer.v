@@ -402,12 +402,13 @@ have [u Hr1|T1' s'd Hr1 T1s'|Hr1] := ntherrorP e r1; last first.
       rewrite coerce_Some.
       by rewrite set_set_nth (negbTE Hr).
 Qed.
+
 Let cputgetC T1 T2 (r1 : loc T1) (r2 : loc T2) (s1 : coq_type T1)
     (A : UU0) (k : coq_type T2 -> M A) :
   loc_id r1 != loc_id r2 ->
-  cput r1 s1 >> cget r2 >>= k = cget r2 >>= (fun v => cput r1 s1 >> k v).
+  cput r1 s1 >> (cget r2 >>= k) = cget r2 >>= (fun v => cput r1 s1 >> k v).
 Proof.
-move=> Hr; apply/boolp.funext => e /=; rewrite !bindA.
+move=> Hr; apply/boolp.funext => e /=.
 have [u Hr1|T1' s1' Hr1 T1s'|Hr1] := ntherrorP e r1.
 - have [v Hr2|T' s' Hr2 T2s'|Hr2] := ntherrorP e r2.
   + rewrite (Some_cget _ _ _ _ Hr2).
@@ -497,6 +498,7 @@ by case Hm: (m _) => [|[]].
 Qed.
 *)
 HB.instance Definition _ := Monad.on M.
+
 HB.instance Definition isMonadTypedStoreModel :=
   isMonadTypedStore.Build ml_type N locT_nat M cnewget cnewput cgetput cgetputskip
     cgetget cputget cputput cgetC cgetnewD cgetnewE cgetputC cputC
@@ -511,9 +513,14 @@ End ModelTypedStore.
 
 Section ModelelgotTypedStore.
 Variable (M : elgotMonad) (N: monad) (MLU: ML_universe).
+
 Definition DTS := (acto MLU N M).
+
 HB.instance Definition _ := MonadTypedStore.on DTS.
 HB.instance Definition _ := MonadElgot.on DTS.
-HB.instance Definition _ := MonadElgotTypedStore.on DTS.
+
+(* elgottypedStoreMonad = typedStoreMonad + elgotMonad *)
+Succeed Definition test := DTS : elgottypedStoreMonad _ _ _.
+
 End ModelelgotTypedStore.
 End ModelTypedStore.
