@@ -63,21 +63,18 @@ Definition sizelE (l : seq nat) : pred (seq nat + seq nat) := fun ll => match ll
                                                                   | inl l' => size l == size l'
                                                                   end.
 
-Theorem bubblesort_length l : bassert (sizelE l) (bubblesort l) ≈ bubblesort l.
+Theorem bubblesort_length l : bassert (sizelE l) (bubblesort l >>= (Ret \o inl)) ≈ bubblesort l >>= (Ret \o inl).
 Proof.
 apply: pcorrect.
-  by rewrite assertE /sizelE eq_refl guardT bindskipf.
-move=> l' Inv.
+  by rewrite/sizelE.
+move=> l' /= Inv.
 rewrite /bubblesort_body.
 case: ifP => /eqP H.
-  by rewrite bindretf/= bindretf.
+  by rewrite bindretf/= bindretf/= assertE/= Inv guardT bindretf.
 move: Inv.
-rewrite !bindretf/= !assertE !/sizelE (sortl_length l').
-rewrite /guard; case: ifP => _.
+rewrite !bindretf/= !/sizelE (sortl_length l') /assert /guard.
+case: ifP => //=.
   by rewrite !bindskipf.
-rewrite !bindfailf => contr.
-pose f := fun (_ : seq nat) => @ret M _ (sortl l').
-by rewrite -(bindfailf _ _ f) contr bindretf.
 Qed.
 
 End bubblesort.
