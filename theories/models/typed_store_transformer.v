@@ -519,8 +519,8 @@ Definition DTS := (acto MLU N M).
 HB.instance Definition _ := MonadTypedStore.on DTS.
 HB.instance Definition _ := MonadElgot.on DTS.
 
-(* elgottypedStoreMonad = typedStoreMonad + elgotMonad *)
-Succeed Definition test := DTS : elgottypedStoreMonad _ _ _.
+(* elgotTypedStoreMonad = typedStoreMonad + elgotMonad *)
+Succeed Definition test := DTS : elgotTypedStoreMonad _ _ _.
 
 End ModelelgotTypedStore.
 End ModelTypedStore.

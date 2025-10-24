@@ -20,7 +20,7 @@ Module CoqTypeNat.
 Import MLTypes CoqTypeNat.
 
 Definition elgotTypedStoreMonad (N : monad) :=
-  elgottypedStoreMonad ml_type N nat.
+  elgotTypedStoreMonad ml_type N nat.
 
 Section factorial.
 Variables (N : monad) (M : elgotTypedStoreMonad N).
