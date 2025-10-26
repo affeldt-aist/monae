@@ -274,3 +274,16 @@ rewrite /coercible /coerce; case: eqPc; case: eqPc => //.
 Qed.
 
 End coerce.
+
+Section seqlemma.
+
+Lemma maxinseq (l : seq nat) : ~~ nilp l -> \max_(i <- l) i \in l.
+Proof.
+move => Hn.
+rewrite -(in_tupleE l) big_tuple.
+have [|x ->] := eq_bigmax (tnth (in_tuple l)).
+  by rewrite cardT size_enum_ord lt0n.
+by rewrite mem_tnth.
+Qed.
+
+End seqlemma.
