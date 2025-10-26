@@ -1291,7 +1291,7 @@ HB.structure Definition MonadTypedStore
     (ml_type : ML_universe) (N : monad) (locT : eqType) :=
   { M of isMonadTypedStore ml_type N locT M & }.
 
-#[short(type=elgottypedStoreMonad)]
+#[short(type=elgotTypedStoreMonad)]
 HB.structure Definition MonadElgotTypedStore
     (ml_type : ML_universe) (N : monad) (locT : eqType) :=
   { M of MonadElgot M & isMonadTypedStore ml_type N locT M }.
@@ -1300,8 +1300,8 @@ Arguments cnew {ml_type N locT s}.
 Arguments cget {ml_type N locT s} [T].
 Arguments cput {ml_type N locT s} [T].
 
-Section setoid_elgottypedStoreMonad.
-Variables (T : ML_universe) (N : monad) (M : elgottypedStoreMonad T N nat).
+Section setoid_elgotTypedStoreMonad.
+Variables (T : ML_universe) (N : monad) (M : elgotTypedStoreMonad T N nat).
 
 #[global] Add Parametric Morphism A B : bind with signature
   (@wBisim M A) ==> (pointwise_relation A (@wBisim M B)) ==> (@wBisim M B)
@@ -1312,7 +1312,7 @@ move => x y Hxy f g Hfg; apply: wBisim_trans.
 - exact: (bindfwB _ _ _ _ y Hfg).
 Qed.
 
-End setoid_elgottypedStoreMonad.
+End setoid_elgotTypedStoreMonad.
 
 HB.mixin Record isMonadTypedStoreRun (MLU : ML_universe) (N : monad) (locT : eqType)
     (M : UU0 -> UU0) of MonadTypedStore MLU N locT M := {

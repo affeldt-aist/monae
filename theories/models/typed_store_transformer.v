@@ -5,6 +5,7 @@ Require Import preamble.
 From HB Require Import structures.
 Require Import hierarchy monad_lib fail_lib state_lib monad_transformer typed_store_universe.
 Require Import delay_monad_model elgotstate_model elgotexcept_model.
+Require monad_model.
 
 (**md**************************************************************************)
 (* # Model of the typed store monad built using transformers                  *)
@@ -34,11 +35,10 @@ Local Notation ml_type := (MLU : Type).
 Record binding :=
   mkbind { bind_type : ml_type; bind_val : coq_type bind_type }.
 
-
 Definition acto : UU0 -> UU0 := MS (seq binding) (MX unit M0).
 Local Notation M := acto.
 
-Definition def : binding := mkbind (val_nonempty N).
+Local Definition def : binding := mkbind (val_nonempty N).
 
 Local Notation nth_error := List.nth_error.
 
@@ -69,7 +69,7 @@ Definition fresh_loc (T : ml_type) (e : Env) := mkloc T (size e).
 
 Section mkbind.
 
-Definition extend_env T (v : coq_type T) (e : Env) :=
+Local Definition extend_env T (v : coq_type T) (e : Env) :=
   rcons e (mkbind v).
 
 Variant nth_error_spec (T : ml_type) (e : Env) (r : loc T) : Type :=
@@ -80,7 +80,7 @@ Variant nth_error_spec (T : ml_type) (e : Env) (r : loc T) : Type :=
     nth_error_spec e r
   | NthError_None : nth_error e (loc_id r) = None -> nth_error_spec e r.
 
-Lemma ntherrorP (T : ml_type) (e : Env) (r : loc T) : nth_error_spec e r.
+Local Lemma ntherrorP (T : ml_type) (e : Env) (r : loc T) : nth_error_spec e r.
 Proof.
 case H : (nth_error e (loc_id r)) => [[T' s']|].
   have [Ts'|Ts'] := boolP (coercible T s').
@@ -90,12 +90,11 @@ case H : (nth_error e (loc_id r)) => [[T' s']|].
 exact: NthError_None.
 Qed.
 
-
-Lemma bind_cnew T (s : coq_type T) A (k : loc T -> M A) e :
+Local Lemma bind_cnew T (s : coq_type T) A (k : loc T -> M A) e :
   (cnew s >>= k) e = k (fresh_loc T e) (extend_env s e).
 Proof. by rewrite MS_bindE /cnew/= bindretf. Qed.
 
-Lemma Some_cget T (r : loc T) (s : coq_type T) e (A : UU0) (f : coq_type T -> M A) :
+Local Lemma Some_cget T (r : loc T) (s : coq_type T) e (A : UU0) (f : coq_type T -> M A) :
   nth_error e (loc_id r) = Some (mkbind s) ->
   (cget r >>= f) e = f s e.
 Proof. by move=> H; rewrite MS_bindE /cget H coerce_Some bindretf. Qed.
@@ -116,13 +115,13 @@ rewrite !bind_cnew.
 by rewrite /cput/= MS_bindE nth_error_rcons_size coerce_Some set_nth_rcons bindretf.
 Qed.
 
-Lemma nocoerce_cget T (r : loc T) T' (s' : coq_type T') e :
+Local Lemma nocoerce_cget T (r : loc T) T' (s' : coq_type T') e :
   nth_error e (loc_id r) = Some (mkbind s') ->
   ~~ coercible T s' ->
   cget r e = fail.
 Proof. by move=> H Ts'; rewrite /cget H not_coercible. Qed.
 
-Lemma nocoerce_cput T (r : loc T) (s : coq_type T) (T' : ml_type)
+Local Lemma nocoerce_cput T (r : loc T) (s : coq_type T) (T' : ml_type)
     (s' : coq_type T') e :
   nth_error e (loc_id r) = Some (mkbind s') ->
   ~~ coercible T s' ->
@@ -131,15 +130,15 @@ Proof.
 by move=> H Ts'; rewrite /cput H not_coercible// (coercible_sym _ s').
 Qed.
 
-Lemma None_cget T (r : loc T) e :
+Local Lemma None_cget T (r : loc T) e :
   nth_error e (loc_id r) = None -> cget r e = fail.
 Proof. by move=> H; rewrite /cget H. Qed.
 
-Lemma None_cput T (r : loc T) (s : coq_type T) e :
+Local Lemma None_cput T (r : loc T) (s : coq_type T) e :
   nth_error e (loc_id r) = None -> cput r s e = fail.
 Proof. by move=> H; rewrite /cput H. Qed.
 
-Definition cgetput T (r : loc T) (s : coq_type T) :
+Local Definition cgetput T (r : loc T) (s : coq_type T) :
   cget r >> cput r s = cput r s.
 Proof.
 apply/boolp.funext => e.
@@ -149,7 +148,7 @@ have [s' H|T' s' H Ts'|H] := ntherrorP e r.
 - by rewrite MS_bindE None_cget// None_cput // bindfailf.
 Qed.
 
-Lemma Some_cput T (r : loc T) (s : coq_type T) e :
+Local Lemma Some_cput T (r : loc T) (s : coq_type T) e :
   nth_error e (loc_id r) = Some (mkbind s) ->
   cput r s e = (@skip M) e.
 Proof. by move=> H; rewrite /cput/= H coerce_Some/= nth_error_set_nth_id. Qed.
@@ -174,12 +173,12 @@ have [s' H|T' s' H Ts'|H] := ntherrorP e r.
 - by rewrite !MS_bindE None_cget // !bindfailf.
 Qed.
 
-Lemma Some_cputE T (r : loc T) (s s' : coq_type T) e :
+Local Lemma Some_cputE T (r : loc T) (s s' : coq_type T) e :
   nth_error e (loc_id r) = Some (mkbind s') ->
   cput r s e = Ret (tt, set_nth def e (loc_id r) (mkbind s))(*inr (tt, set_nth def e (loc_id r) (mkbind s))*).
 Proof. by move=> H; rewrite /cput/= H coerce_Some. Qed.
 
-Lemma Some_cputget T (s' s : coq_type T) (r : loc T) A (k : coq_type T -> M A)
+Local Lemma Some_cputget T (s' s : coq_type T) (r : loc T) A (k : coq_type T -> M A)
   (e : Env) :
   nth_error e (loc_id r) = Some (mkbind s') ->
   (cput r s >> (cget r >>= k)) e = (cput r s >> k s) e.
@@ -201,7 +200,7 @@ have [s' H|T' s' H Ts'|H] := ntherrorP e r.
 - by rewrite 2!MS_bindE None_cput // !bindfailf.
 Qed.
 
-Lemma Some_cputput (T : ml_type) (r : loc T) (s s' : coq_type T)
+Local Lemma Some_cputput (T : ml_type) (r : loc T) (s s' : coq_type T)
   (e : Env) (s'' : coq_type T) :
   nth_error e (loc_id r) = Some (mkbind s'') ->
   (cput r s >> cput r s') e = cput r s' e.
@@ -402,6 +401,7 @@ have [u Hr1|T1' s'd Hr1 T1s'|Hr1] := ntherrorP e r1; last first.
       rewrite coerce_Some.
       by rewrite set_set_nth (negbTE Hr).
 Qed.
+
 Let cputgetC T1 T2 (r1 : loc T1) (r2 : loc T2) (s1 : coq_type T1)
     (A : UU0) (k : coq_type T2 -> M A) :
   loc_id r1 != loc_id r2 ->
@@ -450,39 +450,84 @@ have [u Hr|T1 s1' Hr T1s'|Hr] := ntherrorP e r.
 - by rewrite 2!MS_bindE None_cget// bindfailf None_cput // !bindfailf.
 Qed.
 
-(*
-Definition crunret (A B : UU0) (m : M A) (s : B) :
+HB.instance Definition _ := Monad.on M.
+
+HB.instance Definition isMonadTypedStoreModel :=
+  isMonadTypedStore.Build ml_type N locT_nat M cnewget cnewput cgetput cgetputskip
+    cgetget cputget cputput cgetC cgetnewD cgetnewE cgetputC cputC
+    cputgetC cputnewC.
+
+End mkbind.
+End ModelTypedStore.
+
+Section ModelelgotTypedStore.
+Variable (M : elgotMonad) (N: monad) (MLU: ML_universe).
+
+Definition DTS := (acto MLU N M).
+
+HB.instance Definition _ := MonadTypedStore.on DTS.
+HB.instance Definition _ := MonadElgot.on DTS.
+
+(* elgotTypedStoreMonad = typedStoreMonad + elgotMonad *)
+Succeed Definition test := DTS : elgotTypedStoreMonad _ _ _.
+
+End ModelelgotTypedStore.
+End ModelTypedStore.
+(*HB.export ModelTypedStore.*)
+
+Module ModelTypedStoreRun.
+Export ModelTypedStore.
+Import (canonicals)monad_model.
+
+Section ModelTypedStoreRun.
+Variables (MLU : ML_universe) (N : monad).
+
+Local Notation coq_type := (@coq_type MLU N).
+
+Local Notation ml_type := (MLU : Type).
+
+Definition acto := ModelTypedStore.acto ml_type N idfun.
+Local Notation M := acto.
+
+Local Notation loc := (@loc ml_type locT_nat).
+
+Local Notation nth_error := List.nth_error.
+
+Local Definition crun (A : UU0) (m : M A) : option A :=
+  match m nil with
+  | inl _ => None
+  | inr (a, _) => Some a
+  end.
+
+Local Definition crunret (A B : UU0) (m : M A) (s : B) :
   crun m -> crun (m >> Ret s) = Some s.
 Proof. by rewrite /crun /= MS_bindE/=; case: (m [::]) => //- []. Qed.
 
-Definition crunskip : crun skip = Some tt.
+Local Definition crunskip : crun skip = Some tt.
 Proof. by []. Qed.
 
-Definition crunnew (A : UU0) T (m : M A) (s : A -> coq_type T) :
-  crun m -> crun (m >>= fun x => cnew (s x)).
+Local Definition crunnew (A : UU0) (T : ml_type) (m : M A) (s : A -> coq_type T) :
+  crun m -> crun (m >>= fun x => cnew _ (s x)).
 Proof. by rewrite /crun /= MS_bindE; case: (m [::]) => // -[]. Qed.
 
-Definition crunnewgetC (A : UU0) T1 T2 (m : M A) (r : A -> loc T1)
+Local Definition crunnewgetC (A : UU0) T1 T2 (m : M A) (r : A -> loc T1)
   (s : A -> coq_type T2) :
   crun (m >>= fun x => cget (r x)) ->
-  crun (m >>= fun x => cnew (s x) >> cget (r x)).
+  crun (m >>= fun x => cnew _ (s x) >> cget (r x)).
 Proof.
-rewrite /crun /= !bindE /= /bindS !MS_mapE /= !fmapE /= !bindA /=.
+repeat rewrite /crun/= /bind/= /bindX/= /bindS/= /uncurry/= /cget/=.
 case Hm: (m [::]) => [|[a b]] //.
-rewrite !bindE /= !bindE /= /bindS MS_mapE /= fmapE /= bindA.
-rewrite !bindE /= !bindE /= /cget.
 case Hnth: nth_error => [[]|] //.
 rewrite (nth_error_rcons_some _ Hnth).
 by case Hcoe: coerce.
 Qed.
 
-Definition crungetput (A : UU0) T (m : M A) (r : A -> loc T) (s : A -> coq_type T) :
+Local Definition crungetput (A : UU0) T (m : M A) (r : A -> loc T) (s : A -> coq_type T) :
   crun (m >>= fun x => cget (r x)) ->
   crun (m >>= fun x => cput (r x) (s x)).
 Proof.
-rewrite /crun /= !bindE /= /bindS !MS_mapE /= !fmapE /= !bindA /=.
+repeat rewrite /crun/= /bind/= /bindX/= /bindS/= /uncurry/= /cget/= /cput/= /NId/= /retX/=.
 case Hm: (m _) => [|[a b]] //=.
-rewrite !bindE /= !bindE /= /cget /cput /=.
 case Hnth: nth_error => [[T' v]|] //.
 case: (eqVneq T' T) => T'T; last first.
   by rewrite coerce_None// 1?eq_sym// coerce_None.
@@ -490,30 +535,17 @@ subst T'.
 by rewrite !coerce_Some.
 Qed.
 
-Definition crunmskip (A : UU0) (m : M A) : crun (m >> skip) = crun m :> bool.
+Local Definition crunmskip (A : UU0) (m : M A) : crun (m >> skip) = crun m :> bool.
 Proof.
 rewrite /crun /= !bindE /= /bindS !MS_mapE /= !fmapE /= !bindA.
 by case Hm: (m _) => [|[]].
 Qed.
-*)
-HB.instance Definition _ := Monad.on M.
-HB.instance Definition isMonadTypedStoreModel :=
-  isMonadTypedStore.Build ml_type N locT_nat M cnewget cnewput cgetput cgetputskip
-    cgetget cputget cputput cgetC cgetnewD cgetnewE cgetputC cputC
-    cputgetC cputnewC.
-(*
+
+HB.instance Definition _ := MonadTypedStore.on M.
 HB.instance Definition isMonadTypedStoreRunModel :=
   isMonadTypedStoreRun.Build ml_type N locT_nat M
     crunret crunskip crunnew crunnewgetC crungetput crunmskip.
-*)
-End mkbind.
-End ModelTypedStore.
 
-Section ModelelgotTypedStore.
-Variable (M : elgotMonad) (N: monad) (MLU: ML_universe).
-Definition DTS := (acto MLU N M).
-HB.instance Definition _ := MonadTypedStore.on DTS.
-HB.instance Definition _ := MonadElgot.on DTS.
-HB.instance Definition _ := MonadElgotTypedStore.on DTS.
-End ModelelgotTypedStore.
-End ModelTypedStore.
+End ModelTypedStoreRun.
+End ModelTypedStoreRun.
+(*HB.export ModelTypedStoreRun.*)

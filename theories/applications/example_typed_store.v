@@ -331,9 +331,10 @@ End cyclic_run.
 
 Module eval_cyclic.
 Section eval.
-Import monad_model.ModelTypedStoreRun.
-                
-Definition M := @acto ml_type idfun.
+Require Import typed_store_transformer.
+Import ModelTypedStoreRun.
+
+Definition M := acto ml_type idfun.
 
 Definition Env := Env ml_type idfun.
 
@@ -351,7 +352,7 @@ Definition FromW [A] (r : W A) : M A :=
 Definition it0 : W unit := inr (tt, empty_env).
 
 Local Open Scope do_notation.
-Local Notation mkloc := (mkloc (locT:=monad_model.locT_nat)).
+Local Notation mkloc := (mkloc (locT:=locT_nat)).
 Local Notation coq_type := (coq_type _).
 
 Definition incr (l : loc ml_int) : M nat :=
@@ -685,7 +686,7 @@ Import MLTypes CoqTypeInt63.
 
 Section fact_for_int63.
 Variable N : monad.
-Variable M : typedStoreMonad ml_type N monad_model.locT_nat.
+Variable M : typedStoreMonad ml_type N locT_nat.
 Local Notation coq_type := (hierarchy.coq_type N).
 Local Open Scope do_notation.
 
@@ -775,7 +776,7 @@ End fact_for_int63.
 
 Section fact_for63_ok.
 Variable N : monad.
-Variable M : typedStoreRunMonad ml_type N monad_model.locT_nat.
+Variable M : typedStoreRunMonad ml_type N locT_nat.
 Local Notation coq_type := (hierarchy.coq_type N).
 Local Open Scope do_notation.
 
@@ -829,7 +830,7 @@ Definition empty_env := @typed_store_model.mkEnv ml_type nil.
 Definition it0 : W unit := inr (tt, empty_env).
 
 Local Open Scope do_notation.
-Local Notation mkloc := (mkloc (locT:=monad_model.locT_nat)).
+Local Notation mkloc := (mkloc (locT:=locT_nat)).
 Local Notation coq_type := (coq_type M).
 
 Definition incr (l : loc ml_int) : M int :=

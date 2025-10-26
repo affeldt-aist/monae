@@ -67,7 +67,7 @@ case: (StopP (whileDE f x)) =>
   have : d ≈ f x by [].
   move: d.
   cofix CIH => d.
-  case Hb: d => [uxx|d'].yy
+  case Hb: d => [uxx|d'].
     case: uxx Hb => [u//|[y/= Hd|y/= Hd]] Hb;
                     rewrite bindretf/=bindretf.
       rewrite/bassert bindXE bindretf => _.
@@ -82,7 +82,7 @@ case: (StopP (whileDE f x)) =>
     rewrite wBisim_Later -bindXE.
     rewrite -{2}IH' /bassert.
     by rewrite /retX.
-    move: HH.y
+    move: HH.
     by move/assertE.
     rewrite/bassert !bindXE !bindA !bind_Later /= => Hd' Hs.
     apply wBLater.
