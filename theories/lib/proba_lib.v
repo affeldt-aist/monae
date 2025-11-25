@@ -55,6 +55,11 @@ Lemma choiceACA q p :
   @interchange (M A) (fun a b => a <|p|> b) (fun a b => a <|q|> b).
 Proof. by move=> *; exact: convACA. Qed.
 
+Lemma choiceA' :
+  forall {R : realType} {M : convexMonad R} {T : UU0} (r s : {prob R}) {a b c : M T},
+    a <|[p_of r, s]|> (b <|[q_of r, s]|> c) = (a <|r|> b) <|s|> c.
+Proof. move=> *; exact: convA'. Qed.
+
 Lemma magnify_choice (p q r : {prob R}) (x y : M A) (pr : p%:num < r%:num)
   (pqr : p%:num <= q%:num <= r%:num) :
 (x <|p|> y) <|magnified_prob pr pqr|> (x <|r|> y) = x <|q|> y.
@@ -67,7 +72,7 @@ Variable R : realType.
 Local Open Scope ring_scope.
 
 (* NB: the parameter def is because Rocq functions are total *)
-Fixpoint uniform {M : probMonad R} {A : Type} (def : A) (s : seq A) : M A :=
+Fixpoint uniform {M : convexMonad R} {A : Type} (def : A) (s : seq A) : M A :=
   match s with
     | [::] => Ret def
     | [:: x] => Ret x
@@ -84,15 +89,15 @@ Fixpoint uniform {M : probMonad R} {A : Type} (def : A) (s : seq A) : M A :=
    (`(size (x :: xs))%:R^-1%:i01).
  *)
 
-Lemma uniform_nil (M : probMonad R) (A : Type) (def : A) :
+Lemma uniform_nil (M : convexMonad R) (A : Type) (def : A) :
   uniform def [::] = Ret def :> M A.
 Proof. by []. Qed.
 
-Lemma choice_ext (q p : {prob R}) (M : probMonad R) A (m1 m2 : M A) :
+Lemma choice_ext (q p : {prob R}) (M : convexMonad R) A (m1 m2 : M A) :
   p%:num = q%:num :> R -> m1 <| p |> m2 = m1 <| q |> m2.
 Proof. by move/val_inj => ->. Qed.
 
-Lemma uniform_cons (M : probMonad R) (A : Type) (def : A) h s :
+Lemma uniform_cons (M : convexMonad R) (A : Type) (def : A) h s :
   uniform def (h :: s) =
   Ret h <| probinvn (size s) |> uniform def s :> M A.
 Proof.
@@ -100,21 +105,21 @@ by case: s => //=; rewrite (@choice_ext 1%:i01) // ?choice1 //= invr1.
 Qed.
 (* TODO (fix inference):  probinvn (size s) was (size s).+1%:R^-1%:pr *)
 
-Lemma uniform_singl (M : probMonad R) (A : Type) (def : A) h : size h = 1%nat ->
+Lemma uniform_singl (M : convexMonad R) (A : Type) (def : A) h : size h = 1%nat ->
   uniform def h = Ret (head def h) :> M A.
 Proof.
 case: h => // h [|//] _.
 by rewrite uniform_cons uniform_nil (@choice_ext 1%:i01) ?choice1 //= invr1.
 Qed.
 
-Lemma uniform_nseq (M : probMonad R) (A : Type) (def : A) h n :
+Lemma uniform_nseq (M : convexMonad R) (A : Type) (def : A) h n :
   uniform def (nseq n.+1 h) = Ret h :> M A.
 Proof.
 elim: n => // n IH.
 by rewrite (_ : nseq _ _ = h :: nseq n.+1 h) // uniform_cons IH choicemm.
 Qed.
 
-Lemma uniform_cat (M : probMonad R) (A : Type) (a : A) s t :
+Lemma uniform_cat (M : convexMonad R) (A : Type) (a : A) s t :
   let m := size s in let n := size t in
   uniform a (s ++ t) = uniform a s <| (divrnnm R m n)%:pr |> uniform a t :> M _.
 Proof.
@@ -153,7 +158,7 @@ rewrite -!natrD [in RHS](mulrC n%:R).
 by rewrite mulrACA divff// mul1r mulrC.
 Qed.
 
-Lemma uniform2 (M : probMonad R) (A : Type) (def : A) a b :
+Lemma uniform2 (M : convexMonad R) (A : Type) (def : A) a b :
   uniform def [:: a; b] = uniform def [:: b; a] :> M _.
 Proof.
 rewrite uniform_cons uniform_singl // uniform_cons uniform_singl //.
@@ -269,7 +274,7 @@ Qed.
 
 End convexity_property.
 
-Definition bcoin {R : realType} {M : probMonad R} (p : {prob R}) : M bool :=
+Definition bcoin {R : realType} {M : convexMonad R} (p : {prob R}) : M bool :=
   Ret true <| p |> Ret false.
 Arguments bcoin : simpl never.
 
@@ -372,7 +377,7 @@ Notation "x <= y <= z :> T" := ((x <= y :> T)%R && (y <= z :> T)%R).
 Section for_example_monty.
 
 (* NB: notation for ltac:(split; fourier?)*)
-Lemma choiceA_compute {R : realType} {N : probMonad R} (T F : bool) (f : bool -> N bool) :
+Lemma choiceA_compute {R : realType} {N : convexMonad R} (T F : bool) (f : bool -> N bool) :
   f T <|9^-1%:i01|> (f F <|8^-1%:i01|> (f F <|7^-1%:i01|> (f F <|6^-1%:i01|>
  (f T <|5^-1%:i01|> (f F <|4^-1%:i01|> (f F <|3^-1%:i01|> (f F <|2^-1%:i01|>
   f T))))))) = f F <|3^-1%:i01|> (f F <|2^-1%:i01|> f T) :> N _.
@@ -411,10 +416,10 @@ rewrite [in LHS](choiceA_alt _ _ 3^-1%:i01 3^-1%:i01); last first.
 by rewrite choicemm choiceC.
 Qed.
 
-Definition uFFT {R : realType} {M : probMonad R} : M bool :=
+Definition uFFT {R : realType} {M : convexMonad R} : M bool :=
   uniform true [:: false; false; true].
 
-Lemma uFFTE {R : realType} (M : probMonad R) : uFFT = bcoin 3^-1%:i01 :> M _.
+Lemma uFFTE {R : realType} (M : convexMonad R) : uFFT = bcoin 3^-1%:i01 :> M _.
 Proof.
 rewrite /uFFT /bcoin uniform_cons.
 rewrite uniform_cons.
@@ -425,10 +430,10 @@ rewrite choicemm choiceC; congr (Ret true <| _ |> Ret false).
 by apply val_inj; rewrite /= onemK.
 Qed.
 
-Definition uTTF {R : realType} {M : probMonad R} : M bool :=
+Definition uTTF {R : realType} {M : convexMonad R} : M bool :=
   uniform true [:: true; true; false].
 
-Lemma uTTFE {R : realType} (M : probMonad R) : uTTF = bcoin (3^-1%:i01)%:num.~%:i01 :> M _.
+Lemma uTTFE {R : realType} (M : convexMonad R) : uTTF = bcoin (3^-1%:i01)%:num.~%:i01 :> M _.
 Proof.
 rewrite /uTTF /bcoin uniform_cons.
 rewrite uniform_cons.
@@ -461,7 +466,7 @@ End for_example_monty.
 
 Section choice_half.
 
-Lemma choice_halfC {R : realType} (M : probMonad R) A (a b : M A) :
+Lemma choice_halfC {R : realType} (M : convexMonad R) A (a b : M A) :
   a <| 2^-1%:i01 |> b = b <| 2^-1%:i01 |> a.
 Proof.
 rewrite choiceC/= [X in _ <| X |> _](_ : _ = 2^-1%:i01) //.
@@ -469,7 +474,7 @@ apply: val_inj; rewrite /= /onem.
 by field.
 Qed.
 
-Lemma choice_halfACA {R : realType} (M : probMonad R) A (a b c d : M A) :
+Lemma choice_halfACA {R : realType} (M : convexMonad R) A (a b c d : M A) :
   (a <| 2^-1%:i01 |> b) <| 2^-1%:i01 |> (c <| 2^-1%:i01 |> d) =
   (a <| 2^-1%:i01 |> c) <| 2^-1%:i01 |> (b <| 2^-1%:i01 |> d).
 Proof.
