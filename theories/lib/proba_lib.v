@@ -41,79 +41,65 @@ Import GRing.Theory Num.Theory Order.Theory.
 
 Section convex.
 Variable R : realType.
-Variable M : probMonad R.
+Variable M : convexMonad R.
 Variable A : Type.
 Local Open Scope proba_scope.
 
-Definition choiceA_real_realType (p q : {prob R}) (a b c : M A) :
-  let conv := (fun p (a b : M A) => choice p A a b) in
-  conv p a (conv q b c) = conv [s_of p, q] (conv [r_of p, q] a b) c.
-Proof. exact: (choiceA p q). Qed.
-
-Definition prob_convType := M A.
-
-HB.instance Definition _ := boolp.gen_eqMixin prob_convType.
-
-HB.instance Definition _ := boolp.gen_choiceMixin prob_convType.
-
-HB.instance Definition _ := @infotheo.probability.convex.isConvexSpace.Build R prob_convType
-  (fun p => choice p A)
-  (choice1 _)
-  choicemm
-  choiceC
-  choiceA_real_realType.
-
-Lemma choice_conv p (x y : prob_convType) : x <|p|> y = conv p x y.
+Lemma choice_conv p (x y : M A) : x <|p|> y = conv p x y.
 Proof. by []. Qed.
 
 End convex.
 
-Lemma choiceACA {R : realType} {M : probMonad R} T q p :
-  @interchange (prob_convType M T) (fun a b => a <|p|> b) (fun a b => a <|q|> b).
+Section misc.
+
+Lemma choiceACA {R : realType} {M : convexMonad R} T q p :
+  @interchange (M T) (fun a b => a <|p|> b) (fun a b => a <|q|> b).
 Proof. by move=> *; exact: convACA. Qed.
+
+End misc.
 
 Section uniform.
 Variable R : realType.
 Local Open Scope ring_scope.
 
 (* NB: the parameter def is because Coq functions are total *)
-Fixpoint uniform {M : probMonad R} {A : Type} (def : A) (s : seq A) : M A :=
+Fixpoint uniform {M : convexMonad R} {A : Type} (def : A) (s : seq A) : M A :=
   match s with
     | [::] => Ret def
     | [:: x] => Ret x
     | x :: xs => Ret x <| (((size (x :: xs))%:R)^-1)%:pr |> uniform def xs
   end.
 
-Lemma uniform_nil (M : probMonad R) (A : Type) (def : A) :
+Lemma uniform_nil (M : convexMonad R) (A : Type) (def : A) :
   uniform def [::] = Ret def :> M A.
 Proof. by []. Qed.
 
-Lemma choice_ext (q p : {prob R}) (M : probMonad R) A (m1 m2 : M A) :
+Lemma choice_ext (q p : {prob R}) (M : convexMonad R) A (m1 m2 : M A) :
   Prob.p p = Prob.p q :> R -> m1 <| p |> m2 = m1 <| q |> m2.
 Proof. by move/val_inj => ->. Qed.
 
-Lemma uniform_cons (M : probMonad R) (A : Type) (def : A) h s :
+Lemma uniform_cons (M : convexMonad R) (A : Type) (def : A) h s :
   uniform def (h :: s) =
   Ret h <| ((((size s).+1)%:R)^-1)%:pr |> uniform def s :> M A.
 Proof.
 by case: s => //=; rewrite (@choice_ext 1%:pr) // ?choice1 //= invr1.
 Qed.
 
-Lemma uniform_singl (M : probMonad R) (A : Type) (def : A) h : size h = 1%nat ->
+Lemma uniform_singl (M : convexMonad R) (A : Type) (def : A) h : size h = 1%nat ->
   uniform def h = Ret (head def h) :> M A.
 Proof.
 case: h => // h [|//] _.
 by rewrite uniform_cons uniform_nil (@choice_ext 1%:pr) ?choice1 //= invr1.
 Qed.
 
-Lemma uniform_nseq (M : probMonad R) (A : Type) (def : A) h n :
+Lemma uniform_nseq (M : convexMonad R) (A : Type) (def : A) h n :
   uniform def (nseq n.+1 h) = Ret h :> M A.
 Proof.
 elim: n => // n IH.
 by rewrite (_ : nseq _ _ = h :: nseq n.+1 h) // uniform_cons IH choicemm.
 Qed.
 
-Lemma uniform_cat (M : probMonad R) (A : Type) (a : A) s t :
+Lemma uniform_cat (M : convexMonad R) (A : Type) (a : A) s t :
   let m := size s in let n := size t in
   uniform a (s ++ t) = uniform a s <| (divrnnm R m n)%:pr |> uniform a t :> M _.
 Proof.
@@ -154,7 +140,7 @@ rewrite -!natrD [in RHS](mulrC n%:R).
 by rewrite mulrACA divff// mul1r mulrC.
 Qed.
 
-Lemma uniform2 (M : probMonad R) (A : Type) (def : A) a b :
+Lemma uniform2 (M : convexMonad R) (A : Type) (def : A) a b :
   uniform def [:: a; b] = uniform def [:: b; a] :> M _.
 Proof.
 rewrite uniform_cons uniform_singl // uniform_cons uniform_singl //.
@@ -240,25 +226,17 @@ Variable T : Type.
 
 Local Open Scope ring_scope.
 
-Definition altProb_semiLattConvType := M T.
+Definition altProb_semiLattConvType := (M : convexMonad R) T.
 
-Let axiom (p : {prob R}) (x y z : altProb_semiLattConvType) :
-  x <| p |> (y [~] z) = (x <| p |> y) [~] (x <| p |> z).
-Proof. by rewrite choiceDr. Qed.
-
-HB.instance Definition _ := boolp.gen_eqMixin altProb_semiLattConvType.
-HB.instance Definition _ := boolp.gen_choiceMixin altProb_semiLattConvType.
+HB.instance Definition _ := ConvexSpace.on altProb_semiLattConvType.
 
 HB.instance Definition _ := @isSemiLattice.Build altProb_semiLattConvType
   (fun x y => x [~] y)
   (@altC M T) (@altA M T) (@altmm M T).
 
-HB.instance Definition _ :=
-  @probability.convex.isConvexSpace.Build
-    R
-    altProb_semiLattConvType
-    (fun p : {prob R} => choice p T)
-    (choice1 _) choicemm choiceC (@choiceA_real_realType _ M T).
+Let axiom (p : {prob R}) (x y z : altProb_semiLattConvType) :
+  x <| p |> (y [~] z) = (x <| p |> y) [~] (x <| p |> z).
+Proof. by rewrite choiceDr. Qed.
 
 HB.instance Definition _ :=
   @isSemiLattConv.Build
@@ -286,7 +264,7 @@ Qed.
 
 End convexity_property.
 
-Definition bcoin {R : realType} {M : probMonad R} (p : {prob R}) : M bool :=
+Definition bcoin {R : realType} {M : convexMonad R} (p : {prob R}) : M bool :=
   Ret true <| p |> Ret false.
 Arguments bcoin : simpl never.
 
@@ -311,6 +289,143 @@ by rewrite ![in RHS](choice_bindDl,bindretf).
 Qed.
 End prob_only.
 
+(* magnified_{weight,prob}, probConvex, and magnify_conv
+   are merged in infotheo master *)
+Section magnified_weight.
+Local Open Scope ring_scope.
+Variables (R : fieldType) (p q r : R).
+
+Definition magnified_weight := (r - q) / (r - p).
+
+Lemma magnified_weight_eq1 : p != r -> q = p -> magnified_weight = 1.
+Proof. by move=> ? pq; rewrite /magnified_weight pq divff// subr_eq0 eq_sym. Qed.
+
+Lemma magnified_weight_eq0 : q = r -> magnified_weight = 0.
+Proof. by move=> qr; rewrite /magnified_weight qr subrr mul0r. Qed.
+
+End magnified_weight.
+
+Module probConvex.
+Section prob_convType.
+Local Open Scope ring_scope.
+Local Open Scope convex_scope.
+Variables (R : realType).
+
+Let avg_proof (p x y : {prob R}) :
+  0 <= Prob.p p * Prob.p x + p.~ * Prob.p y <= 1.
+Proof.
+rewrite addr_ge0 ?mulr_ge0//=.
+rewrite -[leRHS](@convmm _ R^o p) avgRE.
+by rewrite lerD// ler_wpM2l//.
+Qed.
+
+Let avg p x y := Eval hnf in Prob.mk_ (avg_proof p x y).
+
+Let avg1 x y : avg 1%:pr x y = x.
+Proof. by apply/val_inj => /=; rewrite -avgRE conv1. Qed.
+
+Let avgI p x : avg p x x = x.
+Proof. by apply/val_inj => /=; rewrite -avgRE convmm. Qed.
+
+Let avgC p x y : avg p x y = avg (Prob.p p).~%:pr y x.
+Proof. by apply/val_inj => /=; rewrite -avgRE convC. Qed.
+
+Let avgA p q d0 d1 d2 :
+  avg p d0 (avg q d1 d2) = avg [s_of p, q] (avg [r_of p, q] d0 d1) d2.
+Proof. by apply/val_inj => /=; rewrite -!avgRE convA. Qed.
+
+#[export]
+HB.instance Definition _ := isConvexSpace.Build R {prob R} avg1 avgI avgC avgA.
+
+Lemma avg_probE p (x y : {prob R}) :
+  x <|p|> y = Prob.p p * Prob.p x + p.~ * Prob.p y :> R.
+Proof. by []. Qed.
+
+End prob_convType.
+End probConvex.
+HB.export probConvex.
+
+Section magnified_prob.
+Local Open Scope ring_scope.
+Local Open Scope convex_scope.
+Variables (R : realType) (p q r : {prob R}).
+Variables (pr : Prob.p p < Prob.p r) (pqr : Prob.p p <= Prob.p q <= Prob.p r).
+
+Lemma magnified_prob_proof :
+  0 <= magnified_weight (Prob.p p) (Prob.p q) (Prob.p r) <= 1.
+Proof.
+have pr' := negbT (lt_eqF pr).
+have[|qnep]:= eqVneq q p.
+  by move/(congr1 \val) /magnified_weight_eq1 ->; first exact/andP.
+have[|qner]:= eqVneq q r.
+  by move/(congr1 \val) /magnified_weight_eq0 ->; exact/andP.
+case/andP: pqr => pq qr.
+have:= pr => /[dup] /gt_eqF /negbT rp; rewrite -subr_gt0 => rp'.
+have rq : 0 < Prob.p r - Prob.p q by rewrite subr_gt0 lt_def qr eq_sym qner.
+apply/andP; split; first by rewrite divr_ge0// subr_ge0// (le_trans pq).
+by rewrite -(ler_pM2r rp') -mulrA mulVf ?subr_eq0// mulr1 mul1r lerD2l lerN2.
+Qed.
+
+Definition magnified_prob : {prob R} :=
+  Eval hnf in Prob.mk_ magnified_prob_proof.
+
+Lemma magnified_prob_eq1 : q = p -> magnified_prob = 1%:pr.
+Proof.
+have ? := negbT (lt_eqF (pr)).
+move/(congr1 \val) => /= ?.
+exact/val_inj/magnified_weight_eq1.
+Qed.
+
+Lemma magnified_prob_eq0 : q = r -> magnified_prob = 0%:pr.
+Proof.
+have ? := negbT (lt_eqF (pr)).
+move/(congr1 \val) => /= ?.
+exact/val_inj/magnified_weight_eq0.
+Qed.
+
+Lemma prob_magnify_self : p <|magnified_prob|> r = q.
+Proof.
+apply/val_inj; rewrite /= /magnified_weight /onem/=.
+have:= pr; rewrite -subr_gt0 => /gt_eqF /negbT ?.
+by field.
+Qed.
+
+Lemma real_magnify_self : (Prob.p p : R^o) <|magnified_prob|> Prob.p r = Prob.p q.
+Proof. by rewrite -prob_magnify_self. Qed.
+
+End magnified_prob.
+
+Section magnify_conv.
+Local Open Scope ring_scope.
+Local Open Scope convex_scope.
+Variables (R : realType) (T : convType R) (p q r : {prob R}) (x y : T).
+Variables (pr : Prob.p p < Prob.p r) (pqr : Prob.p p <= Prob.p q <= Prob.p r).
+
+Local Notation m := (magnified_prob pr pqr).
+Local Notation "x +' y" := (addpt x y) (at level 50).
+Local Notation "a *' x" := (scalept a x) (at level 40).
+
+Lemma onem_affine : affine (fun (x : R^o) => (x.~ : R^o)).
+Proof. move=> ? ? ?; rewrite !avgRE /= /onem; ring. Qed.
+
+(* NB: should be simplifiable by a variant of convACA' *)
+Lemma magnify_conv : (x <|p|> y) <| m |> (x <|r|> y) = x <|q|> y.
+Proof.
+have[|qnep]:= eqVneq q p.
+  by move/[dup]/magnified_prob_eq1->; rewrite conv1 => ->.
+have[|qner]:= eqVneq q r.
+  by move/[dup]/magnified_prob_eq0->; rewrite conv0 => ->.
+case/andP: (pqr) => pq qr.
+apply: (S1_inj R); rewrite ![in LHS]affine_conv/= convptE.
+rewrite !scaleptDr !scaleptA // (addptC ((Prob.p m * Prob.p p) *' S1 x)) addptA.
+rewrite addptC !addptA -scaleptDl// -!addptA -scaleptDl//.
+rewrite addrC -!avgRE -onem_affine real_magnify_self.
+by rewrite addptC -convptE affine_conv.
+Qed.
+
+End magnify_conv.
+
+
 Section mixing_choices.
 Variables (R : realType) (M : altProbMonad R).
 
@@ -332,59 +447,18 @@ Section arbcoin_spec_convexity.
 Local Open Scope latt_scope.
 Local Open Scope convex_scope.
 
-(* TODO? : move magnified_weight to infotheo.convex *)
-Lemma magnified_weight_proof (p q r : {prob R}) :
-  Prob.p p < Prob.p q < Prob.p r -> (0 <= (Prob.p r - Prob.p q) / (Prob.p r - Prob.p p) <= 1)%R.
-Proof.
-case/andP => pq qr.
-have rp : (0 < Prob.p r - Prob.p p)%R by rewrite subr_gt0 (lt_trans pq).
-have rp' : (Prob.p r - Prob.p p != 0)%R by rewrite subr_eq0 gt_eqF// -subr_gt0.
-have rq : (0 < Prob.p r - Prob.p q)%R by rewrite subr_gt0.
-apply/andP; split; first by rewrite divr_ge0// ltW.
-by rewrite -(ler_pM2r rp) -mulrA mulVf// mulr1 mul1r lerD2l lerNl opprK ltW.
-Qed.
-
-Definition magnified_weight (p q r : {prob R})
-    (H : Prob.p p < Prob.p q < Prob.p r) : {prob R} :=
-  Eval hnf in Prob.mk_ (magnified_weight_proof H).
-
-Local Notation m := magnified_weight.
-Local Notation "x +' y" := (addpt x y) (at level 50).
-Local Notation "a *' x" := (scalept a x) (at level 40).
-
-Lemma magnify_conv (T : convType R)
-    (p q r : {prob R}) (x y : T) (H : Prob.p p < Prob.p q < Prob.p r) :
-  (x <|p|> y) <| magnified_weight H |> (x <|r|> y) = x <|q|> y.
-Proof.
-case/andP: (H) => pq qr.
-have rp : 0 < Prob.p r - Prob.p p by rewrite subr_gt0; apply (lt_trans pq).
-have rp' : Prob.p r - Prob.p p != 0 by apply/negbT/gt_eqF.
-apply: (S1_inj R); rewrite ![in LHS]affine_conv/= !convptE.
-rewrite !scaleptDr !scaleptA // (addptC ((Prob.p (m H) * Prob.p p) *' S1 x)) addptA.
-rewrite addptC !addptA -scaleptDl//.
-rewrite -!addptA -scaleptDl//.
-have -> : ((Prob.p (m H)).~ * (Prob.p r).~ + Prob.p (m H) * (Prob.p p).~ = (Prob.p (m H) * Prob.p p + (Prob.p (m H)).~ * Prob.p r).~).
-  rewrite /onem.
-  ring.
-pose tmp := (Prob.p (m H) * Prob.p p + (Prob.p (m H)).~ * Prob.p r).
-rewrite -[X in X.~ *' _ +' _]/tmp.
-rewrite -/tmp.
-suff -> : tmp = Prob.p q.
-  by rewrite affine_conv convptE addptC.
-rewrite /tmp /m /= /onem.
-by field.
-Qed.
-
 Lemma arbcoin_spec_convexity (p q : {prob R}) :
   Prob.p p < Prob.p q < (Prob.p p).~ ->
   arbcoin p = (bcoin p : M _) [~] bcoin (Prob.p p).~%:pr [~] bcoin q.
 Proof.
-move=> H.
+case/andP=> pq qp.
+have pp := lt_trans pq qp.
+have pqp : Prob.p p <= Prob.p q <= (Prob.p p).~.
+  by apply/andP; split; apply/ltW.
 rewrite arbcoin_spec !alt_lub.
-rewrite {1}(@lub_absorbs_conv _
-  [the semiLattConvType _ of altProb_semiLattConvType M bool](*NB: FIXME*) _ _
-  (magnified_weight H)).
-by rewrite magnify_conv.
+rewrite /(bcoin q)/= choice_conv -(magnify_conv _ _ pp pqp).
+exact: (@lub_absorbs_conv _ (altProb_semiLattConvType M bool)).
+(* FIXME: should be simply `exact: lub_absorbs_conv` *)
 Qed.
 End arbcoin_spec_convexity.
 
@@ -441,7 +515,7 @@ Notation "x <= y <= z :> T" := ((x <= y :> T)%R && (y <= z :> T)%R).
 Section for_example_monty.
 
 (* NB: notation for ltac:(split; fourier?)*)
-Lemma choiceA_compute {R : realType} {N : probMonad R} (T F : bool) (f : bool -> N bool) :
+Lemma choiceA_compute {R : realType} {N : convexMonad R} (T F : bool) (f : bool -> N bool) :
   f T <|9^-1%:pr|> (f F <|8^-1%:pr|> (f F <|7^-1%:pr|> (f F <|6^-1%:pr|>
  (f T <|5^-1%:pr|> (f F <|4^-1%:pr|> (f F <|3^-1%:pr|> (f F <|2^-1%:pr|>
   f T))))))) = f F <|3^-1%:pr|> (f F <|2^-1%:pr|> f T) :> N _.
@@ -479,10 +553,10 @@ rewrite [in LHS](choiceA_alt 9^-1%:pr (probcplt (4^-1).~%:pr) 3^-1%:pr 3^-1%:pr)
 by rewrite choicemm choiceC.
 Qed.
 
-Definition uFFT {R : realType} {M : probMonad R} : M bool :=
+Definition uFFT {R : realType} {M : convexMonad R} : M bool :=
   uniform true [:: false; false; true].
 
-Lemma uFFTE {R : realType} (M : probMonad R) : uFFT = bcoin 3^-1%:pr :> M _.
+Lemma uFFTE {R : realType} (M : convexMonad R) : uFFT = bcoin 3^-1%:pr :> M _.
 Proof.
 rewrite /uFFT /bcoin uniform_cons.
 rewrite (_ : _%:pr = 3^-1%:pr)%R; last exact/val_inj.
@@ -495,10 +569,10 @@ rewrite choicemm choiceC; congr (Ret true <| _ |> Ret false).
 by apply val_inj; rewrite /= onemK.
 Qed.
 
-Definition uTTF {R : realType} {M : probMonad R} : M bool :=
+Definition uTTF {R : realType} {M : convexMonad R} : M bool :=
   uniform true [:: true; true; false].
 
-Lemma uTTFE {R : realType} (M : probMonad R) : uTTF = bcoin (3^-1).~%:pr :> M _.
+Lemma uTTFE {R : realType} (M : convexMonad R) : uTTF = bcoin (3^-1).~%:pr :> M _.
 Proof.
 rewrite /uTTF /bcoin uniform_cons.
 rewrite (_ : _%:pr = 3^-1%:pr)%R; last exact/val_inj.
@@ -533,7 +607,7 @@ End for_example_monty.
 
 Section choice_half.
 
-Lemma choice_halfC {R : realType} (M : probMonad R) A (a b : M A) :
+Lemma choice_halfC {R : realType} (M : convexMonad R) A (a b : M A) :
   a <| 2^-1%:pr |> b = b <| 2^-1%:pr |> a.
 Proof.
 rewrite choiceC (_ : (_.~)%:pr = 2^-1%:pr) //.
@@ -541,7 +615,7 @@ apply: val_inj; rewrite /= /onem.
 lra.
 Qed.
 
-Lemma choice_halfACA {R : realType} (M : probMonad R) A (a b c d : M A) :
+Lemma choice_halfACA {R : realType} (M : convexMonad R) A (a b c d : M A) :
   (a <| 2^-1%:pr |> b) <| 2^-1%:pr |> (c <| 2^-1%:pr |> d) =
   (a <| 2^-1%:pr |> c) <| 2^-1%:pr |> (b <| 2^-1%:pr |> d).
 Proof.
@@ -573,3 +647,19 @@ by rewrite choicemm.
 Qed.
 
 End keimel_plotkin_instance.
+
+Section misc2.
+Local Open Scope ring_scope.
+
+Lemma choiceA' :
+  forall {R : realType} {M : convexMonad R} {T : UU0} (r s : {prob R}) {a b c : M T},
+    a <|[p_of r, s]|> (b <|[q_of r, s]|> c) = (a <|r|> b) <|s|> c.
+Proof. move=> *; exact: convA'. Qed.
+
+Lemma magnify_choice :
+  forall {R : realType} {M : convexMonad R} {T : UU0} [p q r : {prob R}] (x y : M T)
+         (pr : p < r) (pqr : p <= q <= r),
+    (x <|p|> y) <|magnified_prob pr pqr|> (x <|r|> y) = x <|q|> y.
+Proof. move=> *; exact: magnify_conv. Qed.
+
+End misc2.
