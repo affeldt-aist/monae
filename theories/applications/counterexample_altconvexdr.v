@@ -28,13 +28,18 @@ Require Import preamble hierarchy monad_lib proba_lib alt_lib.
 (*   Reasoning about probability and nondeterminism.                          *)
 (*   In POPL workshop on Probabilistic Programming Semantics.                 *)
 (*   https://www.cs.ox.ac.uk/jeremy.gibbons/publications/prob-nondet.pdf      *)
+(* - [Keimel, et al.]:                                                        *)
+(*   Keimel, K. and Plotkin, G. D. (2017).                                    *)
+(*   Mixed powerdomains for probability and nondeterminism.                   *)
+(*   Logical Methods in Computer Science, 13(1:2):1–84.                       *)
+(*   https://homepages.inf.ed.ac.uk/gdp/publications/mixed_powerdomains.pdf   *)
 (******************************************************************************)
 
 Set Implicit Arguments.
 Unset Strict Implicit.
 Unset Printing Implicit Defensive.
 
-Import GRing.Theory Order.Theory Num.Def Num.Theory.
+Import GRing.Theory Order.Theory Num.Theory.
 
 Local Open Scope ring_scope.
 Local Open Scope reals_ext_scope.
@@ -53,59 +58,26 @@ Lemma lt_val {R : realType} : {mono @Prob.p R : x y / (x < y)%O >-> (x < y)%O}.
 Proof. by try exact: lt_val. Qed.
 End to_be_removed.
 
+(* TODO: move the three sections below to infotheo *)
+
 Section move_to_realType_ext.
 Canonical magnified_prob.
 End move_to_realType_ext.
-
-Section ceiln.
-Context {R : archiNumDomainType}.
-
-Definition ceiln (x : R) := truncn (ceil x).
-
-Lemma ceiln0 : ceiln 0 = 0. Proof. by rewrite /ceiln ceil0 truncn0. Qed.
-
-Lemma ceiln1 : ceiln 1 = 1. Proof. by rewrite /ceiln ceil1 truncn1. Qed.
-
-Lemma le_ceiln : {homo ceiln : x y / x <= y >-> (x <= y)%N}.
-Proof. by move=> x y xy; exact/le_truncn/le_ceil_tmp. Qed.
-
-Lemma ceiln_gt0 x : (0 < ceiln x)%N = (0 < x).
-Proof. by rewrite truncn_gt0 -gtz0_ge1 ceil_gt0. Qed.
-
-End ceiln.
-
-Section ceiln_archiRealDomainTheory.
-Context {R : archiRealDomainType}.
-Implicit Type x : R.
-
-Lemma ceiln_eq0 x : (ceiln x == 0) = (x <= 0).
-Proof. by rewrite !eqn0Ngt truncn_gt0 -gtz0_ge1 ceil_gt0 -leNgt. Qed.
-
-Lemma ceiln_ge x : x <= (ceiln x)%:R.
-Proof.
-have[/[dup]x0|x0]:= (leP x 0); first by rewrite -ceiln_eq0 => /eqP ->.
-apply: (@le_trans _ _ (ceil x)%:~R); first exact: ceil_ge.
-rewrite pmulrn ler_int /ceiln.
-have/ZnatP[n ->]: 0 <= ceil x by rewrite ceil_ge0 (le_lt_trans _ x0).
-by rewrite /Order.le/= truncn_ge_nat// natz lexx.
-Qed.
-
-End ceiln_archiRealDomainTheory.
 
 Section prob_orderedConvType.
 Variable (R : realType).
 
 (* the OrderedConvexSpace interface should (have a subclass that) include this
    compabitility of conv with <= *)
-Lemma le_convl (p b : {prob R}) :
+Local Lemma le_convl (p b : {prob R}) :
   {homo (fun a => conv p a b) : a a'  / a <= a'}.
 Proof. by move=> ? ? ?; rewrite -le_val/= lerD2r ler_wpM2l. Qed.
 
-Lemma le_convr (p a : {prob R}) :
+Local Lemma le_convr (p a : {prob R}) :
   {homo conv p a : b b'  / b <= b'}.
 Proof. by move=> ? ? ?; rewrite 2!(convC _ a) le_convl. Qed.
 
-Lemma conv_itv (a b p : {prob R}) :
+Local Lemma conv_itv (a b p : {prob R}) :
   a <= b -> conv p a b \in `[a, b].
 Proof.
 move=> ab; rewrite in_itv/=.
@@ -113,8 +85,7 @@ rewrite -[X in X <= _ <= _](convmm p a) -[X in _ <= _ <= X](convmm p b).
 by rewrite le_convl// le_convr.
 Qed.
 
-(* TODO: better name *)
-Lemma conv_itv' (a b p : {prob R}) : a <= b -> a <= conv p a b <= b.
+Local Lemma conv_ge_le (a b p : {prob R}) : a <= b -> a <= conv p a b <= b.
 Proof. by move/(conv_itv p). Qed.
 
 End prob_orderedConvType.
@@ -125,8 +96,8 @@ Local Open Scope convex_scope.
 Variables (R : realType) (T : convType R) (p q r : {prob R}) (x y : T).
 
 (* TODO: better name *)
-Lemma conv_itv'K (pr : p < r) :
-  magnified_prob pr (conv_itv' q (ltW pr)) = q.
+Local Lemma conv_ge_leK (pr : p < r) :
+  magnified_prob pr (conv_ge_le q (ltW pr)) = q.
 Proof.
 apply/val_inj => /=.
 rewrite /magnified_weight /=.
@@ -140,30 +111,10 @@ Lemma conv_conv :
   p <= r -> x <| p <|q|> r|> y = (x <|p|> y) <|q|> (x <|r|> y).
 Proof.
 rewrite le_eqVlt => /orP[/eqP->|pr]; first by rewrite !convmm.
-by rewrite -(magnify_conv _ _ pr (conv_itv' q (ltW pr))) conv_itv'K.
+by rewrite -(magnify_conv _ _ pr (conv_ge_le q (ltW pr))) conv_ge_leK.
 Qed.
 
 End conv_conv.
-
-Section magnified_probK.
-Local Open Scope ring_scope.
-Local Open Scope convex_scope.
-Variables (R : realType) (p q r : {prob R}) (pr : p < r) (pqr : p <= q <= r).
-
-Let magnified_probK : p <|magnified_prob pr pqr|> r = q.
-Proof.
-exact: prob_magnify_self.
-(* this is a proof of prob_magnify_self that does not use the field tactic
-apply/val_inj => /=.
-set m := magnified_weight _ _ _.
-rewrite /onem mulrBl mul1r addrCA -opprB -mulrBr.
-rewrite -mulrA mulVf ?subr_eq0 ?gt_eqF//.
-by rewrite mulr1 subKr.
-*)
-Qed.
-
-End magnified_probK.
-
 
 #[short(type=altConvexDrMonad)]
 HB.structure Definition MonadAltConvexDr {R : realType} :=
@@ -177,7 +128,8 @@ Local Lemma altEbindarb (M : altMonad) (T : Type) (x y : M T) :
   x [~] y = arb >>= fun b => if b then x else y.
 Proof. by rewrite alt_bindDl !bindretf. Qed.
 
-Local Lemma choiceDif (M : convexMonad R) (T : Type) (b : bool) (p : {prob R}) (x y z w : M T) :
+Local Lemma choiceDif (M : convexMonad R) (T : Type)
+  (b : bool) (p : {prob R}) (x y z w : M T) :
   (if b then x <| p |> y else z <| p |> w) =
   (if b then x else z) <| p |> (if b then y else w).
 Proof. by case: b. Qed.
@@ -195,20 +147,17 @@ Qed.
 
 End choiceDalt.
 
-Section Keimel_A_2.
+Section collapse.
 Variables (R : realType) (M : altConvexDrMonad R) (T : Type).
 
 Local Definition magnify_choice p q r x y pq prq :=
   @magnify_choice R M T p q r x y pq prq.
 
 Local Lemma collapse_hull (x y : M T) (p r : {prob R}) :
-  p < r ->
-  x <|p|> y = x <|r|> y ->
+  p < r -> x <|p|> y = x <|r|> y ->
   forall q, p <= q <= r -> x <|q|> y = x <|p|> y.
 Proof.
-move=> pr xpry q pqr.
-rewrite -(magnify_choice x y pr pqr).
-by rewrite xpry choicemm.
+by move=> pr xpry q pqr; rewrite -(magnify_choice x y pr pqr) xpry choicemm.
 Qed.
 
 Section collapse_left.
@@ -216,8 +165,6 @@ Section collapse_left.
 Variables (x y : M T) (p q r : {prob R}).
 Variables (qpr : q < p < r) (q_gt0 : {%0} < q).
 
-Check ((PosNum q_gt0)%:num ^+ 3)%:pos.
-Check interval ssrint.int.
 Let q_pos := PosNum q_gt0.
 Canonical q_pos.
 
@@ -262,25 +209,15 @@ rewrite eq_sym -subr_eq [in LHS]mulrC.
 by rewrite -[X in (X == _) = _]mulr1 -eqr_div// ?pnatr_eq0// divr1.
 Qed.
 
-Local Lemma qk_geE a k :
-  0 < a -> (a <= q_ k) = ((ln a - ln q) / (ln r - ln p) <= k%:R).
+Local Lemma qk_leE a k :
+  0 < a -> (q_ k <= a) = (k%:R <= (ln a - ln q) / (ln r - ln p)).
 Proof.
 move=> a_gt0.
 rewrite -[in X in X = _]ler_ln ?posrE// qkE.
 rewrite lnM ?posrE// lnXn// ln_div ?posrE// -[in X in X = _]mulr_natr.
-rewrite -lerBlDl.
-rewrite ler_pdivrMr; first by rewrite mulrC.
-rewrite ltrBrDl addr0 ltr_ln ?posrE//.
-exact: (andP qpr).2.
+rewrite -lerBrDl ler_pdivlMr; first by rewrite mulrC.
+by rewrite ltrBrDl addr0 ltr_ln ?posrE//; exact: (andP qpr).2.
 Qed.
-
-Local Lemma qk_ltE a k :
-  0 < a -> (q_ k < a) = (k%:R < (ln a - ln q) / (ln r - ln p)).
-Proof. by move=> a_gt0; rewrite ltNge qk_geE// -ltNge. Qed.
-
-Local Lemma qk_leE a k :
-  0 < a -> (q_ k <= a) = (k%:R <= (ln a - ln q) / (ln r - ln p)).
-Proof. by move=> a_gt0; rewrite !le_eqVlt qk_eqE// qk_ltE// eq_sym. Qed.
 
 Local Lemma qk_gtE a k :
   0 < a -> (a < q_ k) = ((ln a - ln q) / (ln r - ln p) < k%:R).
@@ -292,9 +229,6 @@ Local Lemma Th_ge0 : 0 <= Th.
 Proof.
 by have/andP[??]:= qpr; apply: divr_ge0; rewrite subr_ge0 ler_ln// ltW.
 Qed.
-
-Local Lemma qk_eq_p k : Th = k%:R ->q_ k = Prob.p p.
-Proof. by move/eqP; rewrite -qk_eqE// => /eqP. Qed.
 
 Local Lemma qk_prob_proof k : k%:R <= Th -> 0 <= q_ k <= 1.
 Proof. by rewrite (ltW qk_gt0)/= /Th -qk_leE// => /le_trans; apply. Qed.
@@ -355,7 +289,7 @@ Proof. by rewrite conv_qS -conv_qk. Qed.
 Local Lemma collapse_left :  x <|q|> y = x <|p|> y.
 Proof.
 case/andP: qpr => qp pr.
-have:= Th_ge0; rewrite -truncn_le; set k := truncn Th.
+have:= Th_ge0; rewrite -truncn_le; set k := Num.truncn Th.
 move=> kTh; rewrite (conv_q_qS kTh).
 apply: (collapse_hull (andP qpr).2) => //.
 rewrite -!le_val/= qS_le_r// andbT ltW//.
@@ -383,17 +317,20 @@ Qed.
 End collapse_right.
 
 (* [Keimel et al.] A.2 *)
-Lemma collapse (x y : M T) (p r : {prob R}) :
+Lemma propagate_collapse (x y : M T) (p r : {prob R}) :
   p != r ->
   x <|p|> y = x <|r|> y ->
-  forall q : {oprob R}, x <|q|> y = x <|p|> y.
+  forall q1 q2 : {oprob R}, x <|q1|> y = x <|q2|> y.
 Proof.
-wlog: p r / p < r.
+wlog pr : p r / p < r.
   move=> + /[dup] pr.
   rewrite real_neqr_lt ?num_real//= => + /orP [] pq0'; first exact.
   move=> /(_ r p) /[swap] /[dup] -> /esym /[swap] /[apply]; apply => //.
   by rewrite eq_sym.
-move=> pr _ xpry q.
+move=> _ xpry.
+suff xqpr : forall q : {oprob R}, x <|q|> y = x <|p|> y.
+  by move=> q1 q2; rewrite [LHS]xqpr [RHS]xqpr.
+move=> q.
 have[qr|rq] := leP (q : {prob R}) r.
   have[pq|qp] := leP p q; first by apply/(collapse_hull pr xpry)/andP; split.
   apply: (@collapse_left x y p q r); [by rewrite qp pr| | by []].
@@ -403,60 +340,68 @@ apply: (@collapse_right x y p q r); [by rewrite pr rq| | by []].
 by rewrite -lt_val/= oprob_lt1.
 Qed.
 
-End Keimel_A_2.
+End collapse.
 
-Arguments collapse {R M T}.
+Arguments propagate_collapse {R M T}.
 
-Section Keimel_A_3.
+Section collapsed_choice.
 Variables (R : realType) (M : altConvexDrMonad R) (T : Type).
 
-Lemma Keimel_technical (p : {prob R}) (x y : M T) : (x <|p|> y) [~] x = x <|p|> (x [~] y).
+Local Lemma choice_nondetAR (p : {prob R}) (x y : M T) :
+  (x <|p|> y) [~] x = x <|p|> (x [~] y).
 Proof. by rewrite altC choiceDalt altmm. Qed.
-Lemma Keimel_technical' (p : {prob R}) (x y : M T) : (x <|p|> y) [~] y = (x [~] y) <|p|> y.
-Proof. by rewrite altC choiceDalt altmm altC. Qed.
-Lemma Keimel_technical'' (p : {prob R}) (x y : M T) :
-  x <|p|> y = (x <|p|> (x [~] y)) <|p|> ((x [~] y) <|p|> y).
-Proof. by rewrite -[LHS]altmm choiceDalt Keimel_technical Keimel_technical'. Qed.
 
-Lemma Keimel_technical''' (p : {prob R}) (x y : M T) :
-  x <|p|> (x [~] y) = x <|((p:R) * (p:R))%:pr|> (x [~] y).
+Local Lemma choice_nondetAL (p : {prob R}) (x y : M T) :
+  (x <|p|> y) [~] y = (x [~] y) <|p|> y.
+Proof. by rewrite altC choiceDalt altmm altC. Qed.
+
+Local Lemma expand_nondet (p : {prob R}) (x y : M T) :
+  x <|p|> y = (x <|p|> (x [~] y)) <|p|> ((x [~] y) <|p|> y).
+Proof. by rewrite -[LHS]altmm choiceDalt choice_nondetAR choice_nondetAL. Qed.
+
+Local Lemma witness_at_sqr (p : {prob R}) (x y : M T) :
+  x <|{%(p:R) ^+ 2}|> (x [~] y) = x <|p|> (x [~] y).
 Proof.
 have[->|pneq1]:= eqVneq p 1%:pr.
-  by congr (x <| _ |> (x [~] y)); apply/val_inj => /=; rewrite mulr1.
-rewrite [LHS]Keimel_technical'' altA altmm.
+  by congr (x <| _ |> (x [~] y)); apply/val_inj => /=; rewrite expr1n.
+rewrite [RHS]expand_nondet altA altmm.
 rewrite -choiceA' !choicemm.
 congr (x <| _ |> (x [~] y)).
 by apply/val_inj; rewrite /=p_of_rsE.
 Qed.
 
-Lemma Keimel_technical'''' (q p : {oprob R}) (x y : M T) :
-  x <|q|> (x [~] y) = x <|p|> (x [~] y).
+(* move to infotheo? *)
+Lemma oprob_neq_sqr (p : {oprob R}) : {%(p:R) ^+ 2} != p.
 Proof.
-have:= collapse x (x [~] y) p (oprobmulr p p).
-apply; last by rewrite -Keimel_technical'''.
-apply/eqP => /(congr1 \val) /=.
-rewrite -[in LHS](mulr1 (p:R)).
-move/mulfI; rewrite oprob_neq0 => /(_ erefl) /esym /eqP.
-exact/negP/oprob_neq1.
+rewrite -(inj_eq val_inj)/= -[eqbRHS]mulr1 -eqr_div ?divff ?oprob_neq0//.
+by rewrite divr1 oprob_neq1.
 Qed.
 
-(* [Keimel et al.] A.3 *)
-Theorem collapsed_choice (q p : {oprob R}) (x y : M T) :
+Local Lemma collapse_beside_nondetR (p q : {oprob R}) (x y : M T) :
+  x <|p|> (x [~] y) = x <|q|> (x [~] y).
+Proof.
+by apply: propagate_collapse; [exact: (oprob_neq_sqr p)|exact: witness_at_sqr].
+Qed.
+
+Local Lemma collapse_beside_nondetL (p q : {oprob R}) (x y : M T) :
+  (x [~] y) <|p|> y = (x [~] y) <|q|> y.
+Proof.
+rewrite [RHS]choiceC -choice_nondetAL choiceC choice_nondetAR [in RHS]altC.
+by have:= (collapse_beside_nondetR p.~%:opr q.~%:opr); exact.
+Qed.
+
+(* (the essential part of) [Keimel et al.] A.3 *)
+Theorem collapsed_choice_collapsed (p q : {oprob R}) (x y : M T) :
   x <|p|> y = x <|q|> y.
 Proof.
 set Y := RHS.
-rewrite Keimel_technical'' //.
-rewrite (Keimel_technical'''' p q).
-rewrite [X in _ <|p|> X = Y]choiceC {2}altC.
-rewrite (Keimel_technical'''' (p.~)%:opr (q.~)%:opr).
-rewrite -[X in _ <|p|> X = Y]choiceC.
-rewrite choiceACA altC.
-rewrite (Keimel_technical'''' p q).
-rewrite [X in _ <|q|> X = Y]choiceC {2}altC.
-rewrite (Keimel_technical'''' (p.~)%:opr (q.~)%:opr).
-rewrite -[X in _ <|q|> X = Y]choiceC.
-rewrite -[in X in _ <|q|> X = Y]altC.
-by rewrite -Keimel_technical''.
+rewrite expand_nondet.
+rewrite (collapse_beside_nondetL p q).
+rewrite (collapse_beside_nondetR p q).
+rewrite choiceACA.
+rewrite (collapse_beside_nondetL p q).
+rewrite (collapse_beside_nondetR p q).
+by rewrite -expand_nondet.
 Qed.
 
-End Keimel_A_3.
+End collapsed_choice.
