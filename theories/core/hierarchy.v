@@ -1409,7 +1409,7 @@ Context {R : realType} {s : convexMonad R}.
 Definition choice p T := @conv R (s T) p.
 Lemma choice1 T (a b : s T) : choice 1%:pr a b = a.
 Proof. exact: conv1. Qed.
-Lemma choiceC T p (a b : s T) : choice p a b = choice (p.~%:pr) b a.
+Lemma choiceC T p (a b : s T) : choice p a b = choice ((val p).~%:pr) b a.
 Proof. exact: convC. Qed.
 Lemma choicemm T p : idempotent (@choice p T).
 Proof. exact: convmm. Qed.
