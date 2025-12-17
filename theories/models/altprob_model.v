@@ -1,4 +1,4 @@
-(* monae: Monadic equational reasoning in Coq                                 *)
+(* monae: Monadic equational reasoning in Rocq                                *)
 (* Copyright (C) 2025 monae authors, license: LGPL-2.1-or-later               *)
 From mathcomp Require Import all_ssreflect ssralg ssrnum finmap.
 From mathcomp Require Import boolp classical_sets reals.
@@ -7,7 +7,7 @@ From infotheo Require Import fsdist convex necset.
 Require category.
 From HB Require Import structures.
 Require Import preamble hierarchy monad_lib proba_lib.
-Require Import monad_model proba_monad_model gcm_model.
+Require Import monad_model proba_model gcm_model.
 Require Import category.
 
 (**md**************************************************************************)

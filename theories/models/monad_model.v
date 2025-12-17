@@ -1,4 +1,4 @@
-(* monae: Monadic equational reasoning in Coq                                 *)
+(* monae: Monadic equational reasoning in Rocq                                *)
 (* Copyright (C) 2025 monae authors, license: LGPL-2.1-or-later               *)
 Require Import JMeq.
 From mathcomp Require Import all_ssreflect.
@@ -25,8 +25,9 @@ Require Import monad_transformer.
 (* SetMonad           == set monads using classical_sets                      *)
 (* ExceptMonad        == exception monad E + A                                *)
 (* option_monad       == alias for ExceptMonad.acto unit                      *)
+(* WriterFunctor      == writer functor X * S                                 *)
 (* OutputMonad        == output monad X * seq L                               *)
-(* EnvironmentMonad   == environment monad E -> A                             *)
+(* ReaderMonad        == reader/environment monad E -> A                      *)
 (* StateMonad         == state monad S -> A * S                               *)
 (* ContMonad          == continuation monad (A -> r) -> r                     *)
 (* ```                                                                        *)
@@ -238,6 +239,26 @@ Proof. by []. Qed.
 Definition option_monad := ExceptMonad.acto unit.
 HB.instance Definition _ := Monad.on option_monad.
 
+Module WriterFunctor.
+Section writer.
+Variable S : UU0.
+
+Definition acto := fun A : UU0 => (A * S)%type.
+Let actm (X Y : UU0) : (X -> Y) -> acto X -> acto Y :=
+  fun f : X -> Y => fun xs : X * S => match xs with (x, s) => (f x, s) end.
+
+Let writer_id : FunctorLaws.id actm.
+Proof. by move => B; apply: boolp.funext => -[]. Qed.
+
+Let writer_o : FunctorLaws.comp actm.
+Proof. by move=> X Y Z g h; apply: boolp.funext => -[]. Qed.
+
+HB.instance Definition _:= isFunctor.Build acto writer_id writer_o.
+
+End writer.
+End WriterFunctor.
+HB.export WriterFunctor.
+
 Module OutputMonad.
 Section output.
 Variable L : UU0.
@@ -266,8 +287,8 @@ Lemma output_bindE (L A B : UU0) (M := OutputMonad.acto L)
   m >>= f = let: (x, w) := m in let: (x', w') := f x in (x', w ++ w').
 Proof. by []. Qed.
 
-Module EnvironmentMonad.
-Section environment.
+Module ReaderMonad.
+Section reader.
 Variable E : UU0.
 Definition acto := fun A : UU0 => E -> A.
 Local Notation M := acto.
@@ -283,11 +304,11 @@ Let associative : BindLaws.associative bind.
 Proof. by []. Qed.
 HB.instance Definition _ :=
   isMonad_ret_bind.Build M left_neutral right_neutral associative.
-End environment.
-End EnvironmentMonad.
-HB.export EnvironmentMonad.
+End reader.
+End ReaderMonad.
+HB.export ReaderMonad.
 
-Lemma environment_bindE (E A B : UU0) (M := EnvironmentMonad.acto E)
+Lemma reader_bindE (E A B : UU0) (M := ReaderMonad.acto E)
     (m : M A) (f : A -> M B) :
   m >>= f = fun e => f (m e) e.
 Proof. by []. Qed.
@@ -358,20 +379,6 @@ End empty.
 End Empty.
 HB.export monae.theories.models.monad_model.Empty.
 
-Module Append.
-Section append.
-Definition acto (X : UU0) := (X * X)%type.
-Let actm (X Y : UU0) (f : X -> Y) (t : acto X) : acto Y :=
-  let: (x1, x2) := t in (f x1, f x2).
-Let func_id : FunctorLaws.id actm.
-Proof. by move=> A; apply boolp.funext => -[]. Qed.
-Let func_comp : FunctorLaws.comp actm.
-Proof. by move=> A B C f g; apply boolp.funext => -[]. Qed.
-HB.instance Definition _ := isFunctor.Build acto func_id func_comp.
-End append.
-End Append.
-HB.export Append.
-
 Section appendop.
 Local Notation M := [the monad of ListMonad.acto].
 
@@ -388,20 +395,21 @@ Definition empty_op : Empty.acto.-operation M := [the _ ~> _ of empty].
 Lemma algebraic_empty : algebraicity empty_op.
 Proof. by []. Qed.
 
-Definition append : Append.acto \o M ~~> M :=
+Definition append : squaring \o M ~~> M :=
   fun A x => let: (s1, s2) := x in (s1 ++ s2).
 
-Let naturality_append : naturality (Append.acto \o M) M append.
+Let naturality_append : naturality (squaring \o M) M append.
 Proof.
 move=> A B h; apply boolp.funext => -[s1 s2] /=.
-rewrite /actm /=.
-by rewrite map_cat flatten_cat.
+rewrite [LHS]fmapE [LHS]list_bindE.
+rewrite [in LHS]map_cat.
+by rewrite [in LHS]flatten_cat.
 Qed.
 
 HB.instance Definition _ :=
-  isNatural.Build (Append.acto \o M) M append naturality_append.
+  isNatural.Build (squaring \o M) M append naturality_append.
 
-Definition append_op : Append.acto.-operation M := [the _ ~> _ of append].
+Definition append_op : squaring.-operation M := [the _ ~> _ of append].
 
 Lemma algebraic_append : algebraicity append_op.
 Proof.
@@ -538,7 +546,7 @@ HB.export Local.
 
 Section environmentops.
 Variable E : UU0.
-Local Notation M := (EnvironmentMonad.acto E).
+Local Notation M := (ReaderMonad.acto E).
 
 Definition ask : (Ask.acto E \o M)(*E -> M A?*) ~~> M :=
   fun A f s => f s s. (* reading the environment *)
@@ -572,12 +580,12 @@ Definition local_op : (Local.acto E).-operation M :=
 Lemma algebraic_local : algebraicity local_op.
 Proof.
 move=> A B f t.
-rewrite environment_bindE.
+rewrite reader_bindE.
 rewrite /local_op /=.
 rewrite /local /=.
 rewrite /actm /=.
 case: t => /= ee m.
-rewrite environment_bindE.
+rewrite reader_bindE.
 apply boolp.funext=> x /=.
 Abort.
 
@@ -587,7 +595,7 @@ End environmentops.
 Module Environment.
 Section environment.
 Variable E : UU0.
-Local Notation M := (EnvironmentMonad.acto E).
+Local Notation M := (ReaderMonad.acto E).
 (* usual get operation *)
 Definition ask : M E := ask_op _ _ Ret.
 Lemma askE : ask = fun e => e. Proof. by []. Qed.
@@ -952,7 +960,7 @@ Module AltCI.
 
 Section set.
 Let M := [the altMonad of set].
-Let altmm (A : UU0) : idempotent (@alt M A).
+Let altmm (A : UU0) : idempotent_op (@alt M A).
 Proof. by move=> ?; exact: setUid. Qed.
 Let altC (A : UU0) : commutative (@alt M A).
 Proof. by move=> ?; exact: setUC. Qed.
@@ -1671,7 +1679,7 @@ move=> A m; apply boolp.funext => a/=; apply boolp.funext => -[x a1]/=.
 by rewrite /alt/= /aalt altmfail.
 Qed.
 HB.instance Definition _ := isMonadNondet.Build M altfailm altmfail.
-Let altmm (A : UU0) : idempotent (@alt [the altMonad of M] A).
+Let altmm (A : UU0) : idempotent_op (@alt [the altMonad of M] A).
 Proof.
 move=> m; apply boolp.funext => a/=; apply boolp.funext => -[x a1]/=.
 by rewrite /alt/= /aalt altmm.
@@ -1781,7 +1789,7 @@ HB.instance Definition _ := isMonadAlt.Build M altA alt_bindDl.
 Let altfailm : @BindLaws.left_id M fail aalt. Proof. by []. Qed.
 Let altmfail : @BindLaws.right_id M fail aalt. Proof. by []. Qed.
 HB.instance Definition _ := isMonadNondet.Build M altfailm altmfail.
-Let altmm (A : UU0) : idempotent (@aalt (M A)). Proof. by case. Qed.
+Let altmm (A : UU0) : idempotent_op (@aalt (M A)). Proof. by case. Qed.
 Let altC (A : UU0) : commutative (@aalt (M A)). Proof. by []. Qed.
 HB.instance Definition _ := @isMonadAltCI.Build M altmm altC.
 Let bindmfail : BindLaws.right_zero bind fail. Proof. by []. Qed.

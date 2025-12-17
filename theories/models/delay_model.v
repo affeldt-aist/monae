@@ -1,4 +1,4 @@
-(* monae: Monadic equational reasoning in Coq                                 *)
+(* monae: Monadic equational reasoning in Rocq                                *)
 (* Copyright (C) 2025 monae authors, license: LGPL-2.1-or-later               *)
 From mathcomp Require Import all_ssreflect.
 From mathcomp Require boolp.
@@ -11,7 +11,7 @@ Require Import hierarchy monad_lib Morphisms.
 (* Delay monad (Module `DelayMonad`):                                         *)
 (* ```                                                                        *)
 (*           Delay == action on objects                                       *)
-(*     strongBisim == relation between computations in the Delay monad         *)
+(*     strongBisim == relation between computations in the Delay monad        *)
 (*  strongBisim_eq == strongBisim implies equality (admitted)                 *)
 (* ```                                                                        *)
 (******************************************************************************)

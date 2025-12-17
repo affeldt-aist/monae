@@ -1,4 +1,4 @@
-(* monae: Monadic equational reasoning in Coq                                 *)
+(* monae: Monadic equational reasoning in Rocq                                *)
 (* Copyright (C) 2025 monae authors, license: LGPL-2.1-or-later               *)
 Ltac typeof X := type of X.
 
@@ -13,7 +13,7 @@ From HB Require Import structures.
 (**md**************************************************************************)
 (* # A formalization of monadic effects over the category Set                 *)
 (*                                                                            *)
-(* We consider the type Type of Coq as the category Set and define functors   *)
+(* We consider the type Type of Rocq as the category Set and define functors  *)
 (* and a hierarchy of monads on top of functors. These monads are used to     *)
 (* develop the basics of monadic equational reasoning. The file category.v    *)
 (* provides a more generic definition of functors and monads as well as a     *)
@@ -75,7 +75,7 @@ From HB Require Import structures.
 (*                                                                            *)
 (* ```                                                                        *)
 (*          ML_universe == a type with decidable equality to represent an     *)
-(*                         OCaml type together with its Coq representation    *)
+(*                         OCaml type together with its Rocq representation   *)
 (*                         in the type of a Tarski universe                   *)
 (*      typedStoreMonad == A monad for OCaml computations                     *)
 (*   typedStoreRunMonad == typedStoreMonad + crun                             *)
@@ -808,7 +808,7 @@ HB.structure Definition MonadAlt := {M of isMonadAlt M & }.
 Notation "a [~] b" := (@alt _ _ a b). (* infix notation *)
 
 HB.mixin Record isMonadAltCI (M : UU0 -> UU0) of MonadAlt M := {
-  altmm : forall A : UU0, idempotent (@alt M A) ;
+  altmm : forall A : UU0, idempotent_op (@alt M A) ;
   altC : forall A : UU0, commutative (@alt M A) }.
 
 #[short(type=altCIMonad)]
@@ -963,7 +963,8 @@ HB.mixin Record isMonadElgotExcept (M : UU0 -> UU0)
 }.
 
 #[short(type=elgotExceptMonad)]
-HB.structure Definition MonadElgotExcept := { M of isMonadElgotExcept M }.
+HB.structure Definition MonadElgotExcept :=
+  { M of isMonadElgotExcept M & MonadElgot M & MonadExcept M }.
 
 Section setoid_elgotExceptMonad.
 Variable M : elgotExceptMonad.
@@ -1389,7 +1390,7 @@ HB.structure Definition MonadStateTraceReify (S T : UU0) :=
 
 Local Open Scope reals_ext_scope.
 
-(* there is a handier factory, isMonadConvex, in proba_monad_model.v *)
+(* there is a handier factory, isMonadConvex, in proba_model.v *)
 HB.mixin Record isMonadConvex0 {R : realType} (M : UU0 -> UU0) of Monad M := {
   convexMonad_pointwise_ConvexSpace: forall T, ConvexSpace.axioms_ R (M T)
 }.
@@ -1405,13 +1406,14 @@ Section convexMonad_interface.
 Context {R : realType} {s : convexMonad R}.
 
 (* this interface is useful for avoiding explicit casts
-   from child structures such as probMonad to convexMonad when using the convexity *)
+   from child structures such as probMonad to convexMonad when using the
+   convexity *)
 Definition choice p T := @conv R (s T) p.
 Lemma choice1 T (a b : s T) : choice 1%:pr a b = a.
 Proof. exact: conv1. Qed.
 Lemma choiceC T p (a b : s T) : choice p a b = choice ((val p).~%:pr) b a.
 Proof. exact: convC. Qed.
-Lemma choicemm T p : idempotent (@choice p T).
+Lemma choicemm T p : idempotent_op (@choice p T).
 Proof. exact: convmm. Qed.
 Lemma choiceA T p q (a b c : s T) :
   choice p a (choice q b c) = choice [s_of p, q] (choice [r_of p, q] a b) c.

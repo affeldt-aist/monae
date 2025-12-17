@@ -1,10 +1,12 @@
+(* monae: Monadic equational reasoning in Rocq                                *)
+(* Copyright (C) 2025 monae authors, license: LGPL-2.1-or-later               *)
 Require Import JMeq.
 From mathcomp Require Import all_ssreflect.
 From mathcomp Require boolp.
 Require Import preamble.
 From HB Require Import structures.
-Require Import hierarchy monad_lib fail_lib state_lib monad_transformer typed_store_universe.
-Require Import delay_monad_model elgotstate_model elgotexcept_model.
+Require Import hierarchy monad_lib fail_lib state_lib monad_transformer.
+Require Import typed_store_universe delay_model elgot_model.
 Require monad_model.
 
 (**md**************************************************************************)
@@ -13,7 +15,6 @@ Require monad_model.
 (* Contrary to typed_store_model.v, this model does not allow for functions   *)
 (* in the store. But it is sound since it does not bypass positivity.         *)
 (******************************************************************************)
-
 
 Set Implicit Arguments.
 Unset Strict Implicit.
@@ -461,15 +462,18 @@ End mkbind.
 End ModelTypedStore.
 
 Section ModelelgotTypedStore.
-Variable (M : elgotMonad) (N: monad) (MLU: ML_universe).
+Variable (M : elgotMonad) (N : monad) (MLU : ML_universe).
 
-Definition DTS := (acto MLU N M).
+Definition elgotTS := (acto MLU N M).
 
-HB.instance Definition _ := MonadTypedStore.on DTS.
-HB.instance Definition _ := MonadElgot.on DTS.
+HB.instance Definition _ := MonadTypedStore.on elgotTS.
+
+HB.export ElgotS.
+
+HB.instance Definition _ := MonadElgot.on elgotTS.
 
 (* elgotTypedStoreMonad = typedStoreMonad + elgotMonad *)
-Succeed Definition test := DTS : elgotTypedStoreMonad _ _ _.
+Succeed Definition test := elgotTS : elgotTypedStoreMonad _ _ _.
 
 End ModelelgotTypedStore.
 End ModelTypedStore.

@@ -1,4 +1,4 @@
-(* monae: Monadic equational reasoning in Coq                                 *)
+(* monae: Monadic equational reasoning in Rocq                                *)
 (* Copyright (C) 2025 monae authors, license: LGPL-2.1-or-later               *)
 From mathcomp Require Import all_ssreflect.
 From mathcomp Require Import boolp classical_sets reals.
@@ -10,7 +10,7 @@ From HB Require Import structures.
 Require Import category.
 
 (**md**************************************************************************)
-(* # Construction of the geometrically convex monad                            *)
+(* # Construction of the geometrically convex monad                           *)
 (*                                                                            *)
 (* This file defines the functor P_delta and shows that it is a monad.        *)
 (* The proof uses the adjointness relations depicted as follows:              *)
@@ -754,13 +754,13 @@ Qed.
 End gcm_opsE.
 End P_delta_category_monad.
 
-Require proba_monad_model.
+Require proba_model.
 
 Section probMonad_out_of_F0U0.
 Variable R : realType.
 Import category.
 (* probability monad built directly *)
-Definition M := proba_monad_model.MonadProbModel.t.
+Definition M := proba_model.MonadProbModel.t.
 (* probability monad built using adjunctions *)
 Definition N := [the hierarchy.Monad.Exports.monad of
   Monad_of_category_monad.acto (Monad_of_adjoint_functors (Aprob R))].
@@ -780,14 +780,13 @@ rewrite epsCE.
 rewrite eps0_correct.
 rewrite /fsdistjoin /fsdistmap /= fsdistbindA /=.
 congr fsdistbind.
-by apply funext => x; rewrite fsdist1bind.
+by apply: funext => x; rewrite fsdist1bind.
 Qed.
 
 Lemma RetE T : (Ret : idfun T -> N T) = (Ret : FId T -> M R T).
 Proof.
-apply funext => t /=.
-rewrite /ret_.
-rewrite [in LHS]/=.
+apply: funext => t /=.
+rewrite /ret_ [in LHS]/=.
 by rewrite HCompId HIdComp [X in _ (X t)]/= eta0E etaCE.
 Qed.
 
