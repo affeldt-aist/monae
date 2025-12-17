@@ -46,11 +46,11 @@ Definition dist1 {S X Y} (s : writer S (Y + X)) : writer S Y + writer S X :=
 Definition dist2 {S X Y} (xy : writer S Y + writer S X) : writer S (Y + X) :=
   match xy with inl (y, s) => (inl y, s) | inr (x, s) => (inr x, s) end.
 
+Hint Extern 0 (wBisim _ _) => setoid_reflexivity : core.
+
 Module ElgotS.
 Section elgotS.
 Variables (S : UU0) (M : elgotMonad).
-
-Hint Extern 0 (wBisim _ _) => setoid_reflexivity : core.
 
 Local Notation elgotS := (MS S M).
 
@@ -74,14 +74,13 @@ Section elgotS_wB.
 Context {A : UU0}.
 Implicit Type d : elgotS A.
 
-Lemma refl d : d ≈ d.
-Proof. by move=> s; exact: wBisim_refl. Qed.
+Lemma refl d : d ≈ d. Proof. by move=> s; exact: wBisim_refl. Qed.
 
 Lemma sym d1 d2 : d1 ≈ d2 -> d2 ≈ d1.
-Proof. by move=> Hs s; exact: wBisim_sym. Qed.
+Proof. by move=> ? ?; exact: wBisim_sym. Qed.
 
 Lemma trans d1 d2 d3 : d1 ≈ d2 -> d2 ≈ d3 -> d1 ≈ d3.
-Proof. by move=> H1 H2 s; exact/wBisim_trans/H2. Qed.
+Proof. by move=> ? H ?; exact/wBisim_trans/H. Qed.
 
 End elgotS_wB.
 
@@ -103,7 +102,7 @@ Lemma whilel (f g : A -> elgotS (B + A)) (a : A) :
   (forall a, f a ≈ g a) -> while f a ≈ while g a.
 Proof.
 rewrite /wB /while /uncurry /curry => Hfg s.
-apply: whilewB => -[a'' s''] /=.
+apply: whilewB => -[a' s'] /=.
 rewrite !fmapE /=.
 exact: bindmwB.
 Qed.
@@ -158,14 +157,15 @@ have -> : ((reader S \o M) \o writer S) # sum_rect (fun=> (B + A)%type) idfun in
           reader S # (M # (writer S # sum_rect (fun=> (B + A)%type) idfun inr)).
   by rewrite -compA FCompE.
 rewrite reader_map /= fmapE !bindA.
-by apply: bindfwB=> -[[[bl|al']|al] sl]; rewrite !bindretf /= fmapE !bindretf.
+by apply: bindfwB => -[[[bl|al']|al] sl]; rewrite !bindretf /= fmapE !bindretf.
 Qed.
 
-Lemma uniform {A B C} (f : A -> elgotS (B + A)) (g : C -> elgotS (B + C)) (h : C -> A) :
-  (forall c, (f (h c)) ≈
-             (g c >>= sum_rect (fun => elgotS (B + A))
+Lemma uniform {A B C} (f : A -> elgotS (B + A)) (g : C -> elgotS (B + C))
+    (h : C -> A) :
+  (forall c, f (h c) ≈
+             g c >>= sum_rect (fun => elgotS (B + A))
                                        ((elgotS # inl) \o Ret)
-                                       ((elgotS # inr) \o Ret \o h))) ->
+                                       ((elgotS # inr) \o Ret \o h)) ->
   forall c, while f (h c) ≈ while g c.
 Proof.
 move=> H c s.
@@ -207,6 +207,7 @@ Definition while {A B} (body : A -> elgotX (B + A)) (x : A) : elgotX B :=
 
 Definition wB {A} (d1 d2 : elgotX A) := wBisim d1 d2.
 Local Notation "a '≈' b" := (wB a b).
+Hint Extern 0 (wB _ _) => setoid_reflexivity : core.
 
 Lemma refl A (a : elgotX A) : a ≈ a. Proof. exact: wBisim_refl. Qed.
 
@@ -216,7 +217,6 @@ Proof. exact: wBisim_sym. Qed.
 Lemma trans A (d1 d2 d3 : elgotX A) : d1 ≈ d2 -> d2 ≈ d3 -> d1 ≈ d3.
 Proof. exact: wBisim_trans. Qed.
 
-Hint Extern 0 (wB _ _) => setoid_reflexivity : core.
 
 Lemma bindXE {A B} (f : A -> elgotX B) (d : elgotX A) :
   d >>= f =
@@ -398,16 +398,14 @@ case: (StopP (ElgotX.while f x)) =>
         move: (HInv x Hx).
         by rewrite -Hb !bindretf /=.
       move: (HInv x Hx).
-      rewrite !bindXE -Hb !bindretf/=.
-      move => HH.
+      rewrite !bindXE -Hb !bindretf/= => HH.
       move/IH => IH'.
       rewrite -!ElgotXwhileE.
       rewrite /bassert !bind_Later.
       rewrite wBisim_Later -bindXE.
       rewrite -{2}IH' /bassert.
-        by rewrite /retX.
-      move: HH.
-      by move/assertE.
+        by [].
+      by move/assertE: HH.
     rewrite/bassert !bindXE !bindA !bind_Later /= => Hd' Hs.
     apply wBLater.
     rewrite -!bindA -bindXE -/(bassert p _).
