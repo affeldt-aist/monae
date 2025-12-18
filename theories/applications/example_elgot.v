@@ -96,15 +96,15 @@ End factorial.
 Section collatz.
 Variable M : elgotMonad.
 
-Let collatz_body m n : M (nat + nat)%type :=
+Let collatz_body (T : Type) m n : M (T + nat)%type :=
   if n == 1 then Ret (inl m)
   else if n %% 2 == 0 then Ret (inr n./2)
        else Ret (inr (3 * n).+1).
 
-Definition collatz m := while (collatz_body m).
+Definition collatz (T : Type) (m : T) := while (collatz_body T m).
 
-Lemma collatzwB m n p :
-  collatz m n >>= (fun q => Ret (p * q)) ≈ collatz (p * m) n.
+Lemma collatzwB (T U : Type) (f : T -> U) m n :
+  collatz T m n >>= (Ret \o f) ≈ collatz U (f m) n.
 Proof.
 rewrite /collatz naturalitywB/=.
 apply: whilewB => q.
@@ -426,7 +426,7 @@ Qed.
 
 End factorial.
 
-Section collatz.
+Section collatz_state.
 Variable M : elgotStateMonad (seq nat).
 
 Local Open Scope do_notation.
@@ -457,7 +457,7 @@ Definition collatz_state2_body nml : M ((nat * nat + nat * nat * nat))%type :=
 
 Definition collatz_state2 n := while collatz_state2_body (n, n, 0).
 
-Lemma collatz_states1wB n : collatz_state1 n ≈ collatz_state2 n.
+Lemma collatz_state1wB n : collatz_state1 n ≈ collatz_state2 n.
 Proof.
 rewrite /collatz_state1 /collatz_state2 -codiagonalwB.
 apply: whilewB => -[[n' m] l].
@@ -477,7 +477,7 @@ have [|] := eqVneq (n' %% 2) 0 => /=;
   by under eq_bind do rewrite bindA bindretf.
 Qed.
 
-End collatz.
+End collatz_state.
 
 Require Import typed_store_universe typed_store_lib.
 
