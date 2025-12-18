@@ -1,8 +1,8 @@
-(* monae: Monadic equational reasoning in Coq                                 *)
+(* monae: Monadic equational reasoning in Rocq                                *)
 (* Copyright (C) 2025 monae authors, license: LGPL-2.1-or-later               *)
 Ltac typeof X := type of X.
 
-Require Import ssrmatching JMeq.
+Require Import ssrmatching JMeq Morphisms.
 From mathcomp Require Import all_ssreflect ssralg ssrnum.
 From mathcomp Require boolp.
 From mathcomp Require Import unstable mathcomp_extra reals.
@@ -13,7 +13,7 @@ From HB Require Import structures.
 (**md**************************************************************************)
 (* # A formalization of monadic effects over the category Set                 *)
 (*                                                                            *)
-(* We consider the type Type of Coq as the category Set and define functors   *)
+(* We consider the type Type of Rocq as the category Set and define functors  *)
 (* and a hierarchy of monads on top of functors. These monads are used to     *)
 (* develop the basics of monadic equational reasoning. The file category.v    *)
 (* provides a more generic definition of functors and monads as well as a     *)
@@ -49,6 +49,10 @@ From HB Require Import structures.
 (*        nondetMonad == failMonad + altMonad                                 *)
 (*      nondetCIMonad == failMonad + altCIMonad                               *)
 (*        exceptMonad == failMonad + catch                                    *)
+(*             WBisim == bisimulation                                         *)
+(*         elgotMonad == Elgot monad                                          *)
+(*   elgotExceptMonad == elgotMonad + catch                                   *)
+(*   elgotAssertMonad == elgotExceptMonad + pcorrect,bassert                  *)
 (* ```                                                                        *)
 (*                                                                            *)
 (* Control monads (wip):                                                      *)
@@ -75,7 +79,7 @@ From HB Require Import structures.
 (*                                                                            *)
 (* ```                                                                        *)
 (*          ML_universe == a type with decidable equality to represent an     *)
-(*                         OCaml type together with its Coq representation    *)
+(*                         OCaml type together with its Rocq representation   *)
 (*                         in the type of a Tarski universe                   *)
 (*      typedStoreMonad == A monad for OCaml computations                     *)
 (*   typedStoreRunMonad == typedStoreMonad + crun                             *)
@@ -131,7 +135,8 @@ Reserved Notation "f (o) g" (at level 11).
 Reserved Notation "m >> f" (at level 49).
 Reserved Notation "'fmap' f" (at level 4).
 Reserved Notation "x '[~]' y" (at level 50).
-
+Reserved Notation "a '≈' b" (at level 70).
+Reserved Notation "f '≈1' g" (at level 70).
 Notation "f ~~> g" := (forall A, f A -> g A)
   (at level 51, only parsing) : monae_scope.
 
@@ -807,7 +812,7 @@ HB.structure Definition MonadAlt := {M of isMonadAlt M & }.
 Notation "a [~] b" := (@alt _ _ a b). (* infix notation *)
 
 HB.mixin Record isMonadAltCI (M : UU0 -> UU0) of MonadAlt M := {
-  altmm : forall A : UU0, idempotent (@alt M A) ;
+  altmm : forall A : UU0, idempotent_op (@alt M A) ;
   altC : forall A : UU0, commutative (@alt M A) }.
 
 #[short(type=altCIMonad)]
@@ -883,6 +888,114 @@ HB.mixin Record isMonadExcept (M : UU0 -> UU0) of MonadFail M := {
 HB.structure Definition MonadExcept := {M of isMonadExcept M & }.
 
 Arguments catch {_} {_}.
+
+HB.mixin Record hasWBisim (M : UU0 -> UU0) of Monad M := {
+  wBisim : forall {A : UU0}, M A -> M A -> Prop ;
+  wBisim_refl : forall A (a : M A), wBisim a a ;
+  wBisim_sym : forall A (a b : M A), wBisim a b -> wBisim b a ;
+  wBisim_trans : forall A (a b c : M A), wBisim a b -> wBisim b c -> wBisim a c ;
+  bindmwB : forall (A B : UU0) (f : A -> M B) (d1 d2 : M A),
+    wBisim d1 d2 -> wBisim (d1 >>= f) (d2 >>= f) ;
+  bindfwB : forall (A B : UU0) (f g : A -> M B) (d : M A),
+    (forall a, wBisim (f a) (g a)) -> wBisim (d >>= f) (d >>= g)
+}.
+
+HB.structure Definition WBisim := {M of hasWBisim M & }.
+Arguments wBisim {s A}.
+Notation "a '≈' b" := (wBisim a b).
+Hint Extern 0 (wBisim _ _) => apply wBisim_refl : core.
+
+HB.mixin Record isMonadElgot (M : UU0 -> UU0) of WBisim M := {
+  while : forall {A B : UU0}, (A -> M (B + A)%type) -> A -> M B;
+  whilewB : forall (A B : UU0) (f g : A -> M (B + A)%type) (a : A),
+    (forall a, f a ≈ g a) -> while f a ≈ while g a ;
+  fixpointwB : forall (A B : UU0) (f : A -> M (B + A)%type) (a : A),
+    while f a ≈
+    (f a >>= sum_rect (fun=> M B) Ret (while f));
+  naturalitywB : forall (A B C : UU0) (f : A -> M (B + A)%type) (g : B -> M C) (a : A),
+    (while f a >>= g) ≈
+    (while (fun y => f y >>= sum_rect (fun => M (C + A)%type)
+                                          (M # inl \o g)
+                                          (M # inr \o Ret)) a);
+  codiagonalwB : forall (A B : UU0) (f : A -> M ((B + A) + A)%type) (a : A),
+    while ((M # (sum_rect (fun=> (B + A)%type) idfun inr)) \o f) a
+    ≈ while (while f) a ;
+  uniformwB : forall (A B C : UU0) (f : A -> M (B + A)%type)
+      (g : C -> M (B + C)%type) (h : C -> A),
+    (forall c, f (h c) ≈
+               (g c >>= sum_rect (fun => M (B + A)%type)
+                                      ((M # inl) \o Ret)
+                                      ((M # inr) \o Ret \o h))) ->
+    forall c, while f (h c) ≈ while g c
+}.
+
+#[short(type=elgotMonad)]
+HB.structure Definition MonadElgot := {M of isMonadElgot M & }.
+Arguments while {s A B}.
+
+Section setoid_elgotMonad.
+Variable M : elgotMonad.
+
+#[global] Add Parametric Relation A : (M A) (@wBisim M A)
+  reflexivity proved by (@wBisim_refl M A)
+  symmetry proved by (@wBisim_sym M A)
+  transitivity proved by (@wBisim_trans M A)
+  as wBisim_rel.
+
+#[global] Add Parametric Morphism A B : bind with signature
+  (@wBisim M A) ==> (pointwise_relation A (@wBisim M B)) ==> (@wBisim M B)
+  as bind_mor_elgot.
+Proof.
+move => x y Hxy f g Hfg; apply: wBisim_trans.
+- exact: (bindmwB _ _ _ _ _ Hxy).
+- exact: (bindfwB _ _ _ _ y Hfg).
+Qed.
+
+#[global] Add Parametric Morphism A B : while with signature
+  (pointwise_relation A (@wBisim M (B + A))) ==> @eq A ==> (@wBisim M B)
+  as while_mor_elgot.
+Proof. by move=> f g + a; exact: whilewB. Qed.
+
+End setoid_elgotMonad.
+
+HB.mixin Record isMonadElgotExcept (M : UU0 -> UU0)
+    of MonadElgot M & MonadExcept M := {
+  catchmwB : forall (A : UU0) (d1 d2 h : M A),
+    d1 ≈ d2 -> catch d1 h ≈ catch d2 h;
+  catchhwB : forall (A : UU0) (d h1 h2 : M A),
+    h1 ≈ h2 -> catch d h1 ≈ catch d h2
+}.
+
+#[short(type=elgotExceptMonad)]
+HB.structure Definition MonadElgotExcept :=
+  { M of isMonadElgotExcept M & MonadElgot M & MonadExcept M }.
+
+Section setoid_elgotExceptMonad.
+Variable M : elgotExceptMonad.
+
+#[global] Add Parametric Morphism A : catch with signature
+  (@wBisim M A) ==> (@wBisim M A) ==> (@wBisim M A)
+  as catch_mor_elgotExcept.
+Proof.
+move=> x y Hxy f g Hfg; apply: wBisim_trans.
+- exact: (catchmwB _ _ _ _ Hxy).
+- exact: (catchhwB _ _ _ _ Hfg).
+Qed.
+
+End setoid_elgotExceptMonad.
+
+HB.mixin Record isMonadElgotAssert (M : UU0 -> UU0)
+    of MonadElgotExcept M := {
+  pcorrect : forall (X A : UU0) (x : X) (p : pred (A + X)) (f : X -> M (A + X)%type),
+  p (inr x)  ->
+   (forall x, p (inr x) ->
+    f x >>= sum_rect (fun => M (A + X)%type) ((assert p) \o inl) ((assert p) \o inr) ≈
+    f x >>= sum_rect (fun => M (A + X)%type) (Ret \o inl) (Ret \o inr)) ->
+   bassert p ((while f x) >>= (Ret \o inl)) ≈ while f x >>= (Ret \o inl)
+ }.
+
+#[short(type=elgotAssertMonad)]
+HB.structure Definition MonadElgotAssert := { M of isMonadElgotAssert M &}.
 
 HB.mixin Record isMonadContinuation (M : UU0 -> UU0) of Monad M := {
 (* NB: interface is wip *)
@@ -980,6 +1093,26 @@ HB.structure Definition MonadFailR0State (S : UU0) :=
 HB.structure Definition MonadNondetState (S : UU0) :=
   { M of MonadPrePlus M & MonadState S M }.
 
+(*HB.mixin Record isMonadElgotState (S: UU0) (M: monad) of MonadElgot M & MonadState S M := {}.*)
+
+#[short(type=elgotStateMonad)]
+HB.structure Definition MonadElgotState (S : UU0) :=
+  { M of MonadElgot M & MonadState S M }.
+
+Section setoid_elgotStateMonad.
+Variables (S : Type) (M : elgotStateMonad S).
+
+#[global] Add Parametric Morphism A B : bind with signature
+  (@wBisim M A) ==> (pointwise_relation A (@wBisim M B)) ==> (@wBisim M B)
+  as bind_mor_elgotState.
+Proof.
+move => x y Hxy f g Hfg; apply: wBisim_trans.
+- exact: (bindmwB _ _ _ _ _ Hxy).
+- exact: (bindfwB _ _ _ _ y Hfg).
+Qed.
+
+End setoid_elgotStateMonad.
+
 HB.mixin Record isMonadStateRun (S : UU0) (N : monad)
    (M : UU0 -> UU0) of MonadState S M := {
   runStateT : forall A : UU0, M A -> S -> N (A * S)%type ;
@@ -1009,6 +1142,7 @@ HB.mixin Record isMonadExceptStateRun
 #[short(type=exceptStateRunMonad)]
 HB.structure Definition MonadExceptStateRun (S : UU0) (N : exceptMonad) :=
   {M of isMonadExceptStateRun S N M & }.
+
 
 HB.mixin Record isMonadReify (S : UU0) (M : UU0 -> UU0) of Monad M := {
   reify : forall A : UU0, M A -> S -> option (A * S)%type ;
@@ -1050,18 +1184,17 @@ HB.structure Definition MonadFailFailR0Reify (S : UU0) :=
 HB.structure Definition MonadFailStateReify (S : UU0) :=
   {M of MonadStateReify S M & MonadFailFailR0Reify S M}.
 
-(* NB: this is experimental, may disappear, see rather foreach in
-   monad_transformer because it is more general *)
-HB.mixin Record isMonadStateLoop (S : UU0) (M : UU0 -> UU0)
+(* NB: this was an experience, may disappear now that we have the Elgot monad *)
+HB.mixin Record isMonadStateForLoop (S : UU0) (M : UU0 -> UU0)
     of MonadState S M := {
-  foreach : nat -> nat -> (nat -> M unit) -> M unit ;
-  loop0 : forall m body, foreach m m body = Ret tt ;
-  loop1 : forall m n body,
-    foreach (m.+1 + n) m body = (body (m + n)) >> foreach (m + n) m body }.
+  forloop : nat -> nat -> (nat -> M unit) -> M unit ;
+  forloop0 : forall m body, forloop m m body = Ret tt ;
+  forloop1 : forall m n body,
+    forloop (m.+1 + n) m body = body (m + n) >> forloop (m + n) m body }.
 
-#[short(type=loopStateMonad)]
-HB.structure Definition MonadStateLoop (S : UU0) :=
-  {M of isMonadStateLoop S M & }.
+#[short(type=forloopStateMonad)]
+HB.structure Definition MonadStateForLoop (S : UU0) :=
+  {M of isMonadStateForLoop S M & }.
 
 HB.mixin Record isMonadArray (S : UU0) (I : eqType) (M : UU0 -> UU0)
     of Monad M := {
@@ -1158,12 +1291,32 @@ HB.mixin Record isMonadTypedStore (MLU : ML_universe) (N : monad)
 }.
 
 #[short(type=typedStoreMonad)]
-HB.structure Definition MonadTypedStore (ml_type : ML_universe) (N : monad) (locT : eqType) :=
+HB.structure Definition MonadTypedStore
+    (ml_type : ML_universe) (N : monad) (locT : eqType) :=
   { M of isMonadTypedStore ml_type N locT M & }.
+
+#[short(type=elgotTypedStoreMonad)]
+HB.structure Definition MonadElgotTypedStore
+    (ml_type : ML_universe) (N : monad) (locT : eqType) :=
+  { M of MonadElgot M & isMonadTypedStore ml_type N locT M }.
 
 Arguments cnew {ml_type N locT s}.
 Arguments cget {ml_type N locT s} [T].
 Arguments cput {ml_type N locT s} [T].
+
+Section setoid_elgotTypedStoreMonad.
+Variables (T : ML_universe) (N : monad) (M : elgotTypedStoreMonad T N nat).
+
+#[global] Add Parametric Morphism A B : bind with signature
+  (@wBisim M A) ==> (pointwise_relation A (@wBisim M B)) ==> (@wBisim M B)
+  as bindmor_elgottypedStore.
+Proof.
+move => x y Hxy f g Hfg; apply: wBisim_trans.
+- exact: (bindmwB _ _ _ _ _ Hxy).
+- exact: (bindfwB _ _ _ _ y Hfg).
+Qed.
+
+End setoid_elgotTypedStoreMonad.
 
 HB.mixin Record isMonadTypedStoreRun (MLU : ML_universe) (N : monad) (locT : eqType)
     (M : UU0 -> UU0) of MonadTypedStore MLU N locT M := {
@@ -1187,7 +1340,8 @@ HB.mixin Record isMonadTypedStoreRun (MLU : ML_universe) (N : monad) (locT : eqT
 }.
 
 #[short(type=typedStoreRunMonad)]
-HB.structure Definition MonadTypedStoreRun (ml_type : ML_universe) (N : monad) (locT : eqType) :=
+HB.structure Definition MonadTypedStoreRun
+    (ml_type : ML_universe) (N : monad) (locT : eqType) :=
   { M of isMonadTypedStoreRun ml_type N locT M & }.
 
 Arguments crun {ml_type N locT s} [A].
@@ -1239,7 +1393,7 @@ HB.structure Definition MonadStateTraceReify (S T : UU0) :=
 
 Local Open Scope reals_ext_scope.
 
-(* there is a handier factory, isMonadConvex, in proba_monad_model.v *)
+(* there is a handier factory, isMonadConvex, in proba_model.v *)
 HB.mixin Record isMonadConvex0 {R : realType} (M : UU0 -> UU0) of Monad M := {
   convexMonad_pointwise_ConvexSpace: forall T, ConvexSpace.axioms_ R (M T)
 }.
@@ -1255,13 +1409,14 @@ Section convexMonad_interface.
 Context {R : realType} {s : convexMonad R}.
 
 (* this interface is useful for avoiding explicit casts
-   from child structures such as probMonad to convexMonad when using the convexity *)
+   from child structures such as probMonad to convexMonad when using the
+   convexity *)
 Definition choice p T := @conv R (s T) p.
 Lemma choice1 T (a b : s T) : choice 1%:pr a b = a.
 Proof. exact: conv1. Qed.
-Lemma choiceC T p (a b : s T) : choice p a b = choice (p.~%:pr) b a.
+Lemma choiceC T p (a b : s T) : choice p a b = choice ((val p).~%:pr) b a.
 Proof. exact: convC. Qed.
-Lemma choicemm T p : idempotent (@choice p T).
+Lemma choicemm T p : idempotent_op (@choice p T).
 Proof. exact: convmm. Qed.
 Lemma choiceA T p q (a b c : s T) :
   choice p a (choice q b c) = choice [s_of p, q] (choice [r_of p, q] a b) c.

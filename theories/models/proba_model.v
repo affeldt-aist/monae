@@ -1,4 +1,4 @@
-(* monae: Monadic equational reasoning in Coq                                 *)
+(* monae: Monadic equational reasoning in Rocq                                *)
 (* Copyright (C) 2025 monae authors, license: LGPL-2.1-or-later               *)
 From mathcomp Require Import all_ssreflect ssralg ssrnum.
 From mathcomp Require boolp.
@@ -35,7 +35,7 @@ have [->|p0] := eqVneq p 0%:pr.
 have [->|p1] := eqVneq p 1%:pr.
   by rewrite 2!conv1 fsdistbindE.
 under eq_bigr do rewrite fsdist_convE avgRE mulrDr.
-under eq_bigr do rewrite mulrCA (mulrCA _ p.~).
+under eq_bigr do rewrite mulrCA (mulrCA _ (val p).~).
 rewrite big_split/= -2!big_distrr /=.
 by rewrite -!fsdistbindEwiden // ?finsupp_conv_subl ?finsupp_conv_subr.
 Qed.
@@ -53,7 +53,7 @@ HB.factory Record isMonadConvex {R : realType} (M : UU0 -> UU0) of Monad M := {
   choice1 : forall (T : UU0) (a b : M T), choice 1%:pr _ a b = a ;
   (* skewed commutativity *)
   choiceC : forall (T : UU0) p (a b : M T),
-    choice p _ a b = choice (p.~%:pr) _ b a ;
+    choice p _ a b = choice ((val p).~%:pr) _ b a ;
   choicemm : forall (T : UU0) p, idempotent (@choice p T) ;
   (* quasi associativity *)
   choiceA : forall (T : UU0) (p q : {prob R}) (a b c : M T),
@@ -70,7 +70,7 @@ Let MT := choice_of_Type (M T).
 Let conv p (a b : MT) := choice p T a b.
 Let conv1 (a b : MT) : conv 1%:pr a b = a := choice1 T a b.
 Let convmm p : idempotent (conv p) := choicemm T p.
-Let convC p (a b : MT) : conv p a b = conv (p.~)%:pr b a := choiceC T p a b.
+Let convC p (a b : MT) : conv p a b = conv ((val p).~)%:pr b a := choiceC T p a b.
 Let convA p q (a b c : MT) :
   conv p a (conv q b c) = conv [s_of p, q] (conv [r_of p, q] a b) c
     := choiceA T p q a b c.

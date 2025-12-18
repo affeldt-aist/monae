@@ -9,7 +9,7 @@ Require Export proba_lib.
 Require Export typed_store_lib.
 Require Export monad_composition.
 Require Export monad_model.
-Require Export proba_monad_model.
+Require Export proba_model.
 Require Export category.
 Require Export gcm_model.
 Require Export altprob_model.

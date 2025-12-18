@@ -1,4 +1,4 @@
-(* monae: Monadic equational reasoning in Coq                                 *)
+(* monae: Monadic equational reasoning in Rocq                                *)
 (* Copyright (C) 2025 monae authors, license: LGPL-2.1-or-later               *)
 Ltac typeof X := type of X.
 Require Import ssrmatching.
@@ -823,19 +823,39 @@ Lemma iter_bind {M : monad} (T : UU0) n (f : T -> M T) (m1 : M unit) m2 :
   m1 >> iter n (fun (m : M T) => m >>= f) m2.
 Proof. by elim: n m2 => // n IH m2; rewrite iterS IH !bindA. Qed.
 
-Section forloop.
+(* NB: use to give a model to forloopStateMonad, which was an experience *)
+Section forloopM.
 Variable M : monad.
 
-Definition forloop (n_1 n_2 : nat) (b : nat -> M unit) : M unit :=
+Fixpoint forloopM (it min : nat) (body : nat -> M unit) : M unit :=
+  if it <= min then Ret tt
+  else if it is it'.+1 then
+      body it' >>= (fun=> forloopM it' min body)
+      else Ret tt.
+
+Lemma forloopM0 m body : forloopM m m body = Ret tt.
+Proof. by case: m => //= n; rewrite ltnS leqnn. Qed.
+
+Lemma forloopM1 m n body : forloopM (m.+1 + n) m body =
+  body (m + n) >> forloopM (m + n) m body :> M unit.
+Proof. by rewrite /forloopM /=; case: ifPn => //; rewrite ltnNge leq_addr. Qed.
+
+End forloopM.
+Arguments forloopM {M}.
+
+Section forloop_iteri.
+Variable M : monad.
+
+Definition forloop_iteri (n_1 n_2 : nat) (b : nat -> M unit) : M unit :=
   if n_2 < n_1 then Ret tt else
   iteri (n_2.+1 - n_1)
        (fun i (m : M unit) => m >> b (n_1 + i))
        skip.
 
-Lemma forloopS m n (f : nat -> M unit) :
-  m <= n -> forloop m n f = f m >> forloop m.+1 n f.
+Lemma forloop_iteriS m n (f : nat -> M unit) :
+  m <= n -> forloop_iteri m n f = f m >> forloop_iteri m.+1 n f.
 Proof.
-rewrite /forloop => mn.
+rewrite /forloop_iteri => mn.
 rewrite ltnNge mn /= subSS subSn // iteriSr bindskipf.
 rewrite -[f _]bindmskip iteri_bind addn0 ltnS -subn_eq0.
 case: (n-m) => //= k.
@@ -843,9 +863,8 @@ rewrite addSnnS; apply eq_bind => _; congr bind.
 apply eq_iteri => i x; by rewrite addSnnS.
 Qed.
 
-Lemma forloop0 m n (f : nat -> M unit) :
-  m > n -> forloop m n f = skip.
-Proof. by rewrite /forloop => ->. Qed.
+Lemma forloop_iteri0 m n (f : nat -> M unit) :
+  m > n -> forloop_iteri m n f = skip.
+Proof. by rewrite /forloop_iteri => ->. Qed.
 
-End forloop.
-Arguments forloop {M}.
+End forloop_iteri.

@@ -1,4 +1,4 @@
-(* monae: Monadic equational reasoning in Coq                                 *)
+(* monae: Monadic equational reasoning in Rocq                                *)
 (* Copyright (C) 2025 monae authors, license: LGPL-2.1-or-later               *)
 From infotheo Require realType_ext.  (* Remove this line when requiring Rocq >= 9.2 *)
 From HB Require Import structures.
@@ -56,7 +56,8 @@ HB.instance Definition _ := boolp.gen_eqMixin prob_convType.
 
 HB.instance Definition _ := boolp.gen_choiceMixin prob_convType.
 
-HB.instance Definition _ := @infotheo.probability.convex.isConvexSpace.Build R prob_convType
+HB.instance Definition _ := @infotheo.probability.convex.isConvexSpace.Build R
+  prob_convType
   (fun p => choice p A)
   (choice1 _)
   choicemm
@@ -76,7 +77,7 @@ Section uniform.
 Variable R : realType.
 Local Open Scope ring_scope.
 
-(* NB: the parameter def is because Coq functions are total *)
+(* NB: the parameter def is because Rocq functions are total *)
 Fixpoint uniform {M : probMonad R} {A : Type} (def : A) (s : seq A) : M A :=
   match s with
     | [::] => Ret def

@@ -1,4 +1,4 @@
-(* monae: Monadic equational reasoning in Coq                                 *)
+(* monae: Monadic equational reasoning in Rocq                                *)
 (* Copyright (C) 2025 monae authors, license: LGPL-2.1-or-later               *)
 Require Import JMeq.
 From mathcomp Require Import all_ssreflect finmap.
@@ -23,6 +23,8 @@ Unset Strict Implicit.
 Unset Printing Implicit Defensive.
 
 Local Open Scope monae_scope.
+
+Definition locT_nat : eqType := nat.
 
 Section ModelTypedStoreRun.
 Variable MLU : ML_universe.

@@ -18,10 +18,13 @@ theories/lib/trace_lib.v
 theories/lib/proba_lib.v
 theories/lib/typed_store_lib.v
 theories/models/monad_model.v
-theories/models/proba_monad_model.v
+theories/models/proba_model.v
 theories/models/gcm_model.v
 theories/models/altprob_model.v
 theories/models/typed_store_model.v
+theories/models/delay_model.v
+theories/models/elgot_model.v
+theories/models/typed_store_transformer.v
 theories/applications/monad_composition.v
 theories/applications/example_fastprod.v
 theories/applications/example_spark.v
@@ -30,6 +33,8 @@ theories/applications/example_relabeling.v
 theories/applications/example_quicksort.v
 theories/applications/example_iquicksort.v
 theories/applications/example_monty.v
+theories/applications/example_elgot.v
+theories/applications/typed_store_universe.v
 theories/applications/example_typed_store.v
 theories/applications/smallstep.v
 theories/applications/example_transformer.v
