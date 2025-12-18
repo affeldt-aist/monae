@@ -1,4 +1,4 @@
-(* monae: Monadic equational reasoning in Coq                                 *)
+(* monae: Monadic equational reasoning in Rocq                                *)
 (* Copyright (C) 2025 monae authors, license: LGPL-2.1-or-later               *)
 Ltac typeof X := type of X.
 
@@ -10,7 +10,7 @@ From HB Require Import structures.
 (**md**************************************************************************)
 (* # A formalization of monadic effects over the category Set                 *)
 (*                                                                            *)
-(* We consider the type Type of Coq as the category Set and define functors   *)
+(* We consider the type Type of Rocq as the category Set and define functors  *)
 (* and a hierarchy of monads on top of functors. These monads are used to     *)
 (* develop the basics of monadic equational reasoning. The file category.v    *)
 (* provides a more generic definition of functors and monads as well as a     *)
@@ -304,7 +304,7 @@ HB.mixin Record isMonad (F : UU0 -> UU0) of Functor F := {
 HB.structure Definition Monad := {F of isMonad F &}.
 
 (* we introduce Ret as a way to make the second arguments of ret implicit,
-   o.w. Coq won't let us *)
+   o.w. Rocq won't let us *)
 Notation Ret := (@ret _ _).
 Notation Join := (@join _ _).
 Arguments bind {s A B} : simpl never.

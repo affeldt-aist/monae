@@ -335,7 +335,7 @@ HB.mixin Record isMonad (F : UU0 -> UU0) of Functor F := {
 HB.structure Definition Monad := {F of isMonad F &}.
 
 (* we introduce Ret as a way to make the second arguments of ret implicit,
-   o.w. Coq won't let us *)
+   o.w. Rocq won't let us *)
 Notation Ret := (@ret _ _).
 Notation Join := (@join _ _).
 Arguments bind {s A B} : simpl never.

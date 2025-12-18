@@ -12,7 +12,7 @@ Follow the instructions on https://github.com/coq-community/templates to regener
 
 
 
-This Coq library contains a hierarchy of monads with their laws used
+This Rocq library contains a hierarchy of monads with their laws used
 in several examples of monadic equational reasoning.
 
 ## Meta
@@ -25,8 +25,9 @@ in several examples of monadic equational reasoning.
   - Ayumu Saito
   - Celestine Sauvage
   - Kazunari Tanaka
+  - Ryuji Kawakami
 - License: [LGPL-2.1-or-later](LICENSE)
-- Compatible Coq versions: Coq 8.20-9.1
+- Compatible Rocq versions: Rocq 9.0--9.1
 - Additional dependencies:
   - [MathComp ssreflect](https://math-comp.github.io)
   - [MathComp fingroup](https://math-comp.github.io)
@@ -40,13 +41,13 @@ in several examples of monadic equational reasoning.
   - [Coq-Equations](https://github.com/mattam82/Coq-Equations)
 - Coq namespace: `monae`
 - Related publication(s):
-  - [A hierarchy of monadic effects for program verification using equational reasoning](https://staff.aist.go.jp/reynald.affeldt/documents/monae.pdf) doi:[10.1007/978-3-030-33636-3_9](https://doi.org/10.1007/978-3-030-33636-3_9)
-  - [Extending Equational Monadic Reasoning with Monad Transformers](https://drops.dagstuhl.de/opus/volltexte/2021/13881/) doi:[10.4230/LIPIcs.TYPES.2020.2](https://doi.org/10.4230/LIPIcs.TYPES.2020.2)
-  - [A Trustful Monad for Axiomatic Reasoning with Probability and Nondeterminism](https://arxiv.org/abs/2003.09993) doi:[10.1017/S0956796821000137](https://doi.org/10.1017/S0956796821000137)
-  - [Towards a practical library for monadic equational reasoning in Coq](https://staff.aist.go.jp/reynald.affeldt/documents/monae-mpc2022.pdf) doi:[10.1007/978-3-031-16912-0_6](https://doi.org/10.1007/978-3-031-16912-0_6)
-  - [Environment-friendly monadic equational reasoning for OCaml](https://coq-workshop.gitlab.io/2023/abstracts/coq2023_monadic-reasoning.pdf)
-  - [A practical formalization of monadic equational reasoning in dependent-type theory](https://www.cambridge.org/core/services/aop-cambridge-core/content/view/B59B87DE000F48B9807F24AEDB11452E/S0956796824000157a.pdf/a-practical-formalization-of-monadic-equational-reasoning-in-dependent-type-theory.pdf) doi:[10.1017/S0956796824000157](https://doi.org/10.1017/S0956796824000157)
-  - [Monadic Equational Reasoning for while loop in Rocq](https://msp.cis.strath.ac.uk/types2025/abstracts/TYPES2025_paper28.pdf)
+  - [A hierarchy of monadic effects for program verification using equational reasoning](https://staff.aist.go.jp/reynald.affeldt/documents/monae.pdf) doi:[10.1007/978-3-030-33636-3_9](https://doi.org/10.1007/978-3-030-33636-3_9) (2019)
+  - [Extending Equational Monadic Reasoning with Monad Transformers](https://drops.dagstuhl.de/opus/volltexte/2021/13881/) doi:[10.4230/LIPIcs.TYPES.2020.2](https://doi.org/10.4230/LIPIcs.TYPES.2020.2) (2020)
+  - [A Trustful Monad for Axiomatic Reasoning with Probability and Nondeterminism](https://arxiv.org/abs/2003.09993) doi:[10.1017/S0956796821000137](https://doi.org/10.1017/S0956796821000137) (2021)
+  - [Towards a practical library for monadic equational reasoning in Coq](https://staff.aist.go.jp/reynald.affeldt/documents/monae-mpc2022.pdf) doi:[10.1007/978-3-031-16912-0_6](https://doi.org/10.1007/978-3-031-16912-0_6) (2022)
+  - [Environment-friendly monadic equational reasoning for OCaml](https://coq-workshop.gitlab.io/2023/abstracts/coq2023_monadic-reasoning.pdf) (2023)
+  - [A practical formalization of monadic equational reasoning in dependent-type theory](https://www.cambridge.org/core/services/aop-cambridge-core/content/view/B59B87DE000F48B9807F24AEDB11452E/S0956796824000157a.pdf/a-practical-formalization-of-monadic-equational-reasoning-in-dependent-type-theory.pdf) doi:[10.1017/S0956796824000157](https://doi.org/10.1017/S0956796824000157) (2025)
+  - [Monadic Equational Reasoning for while loop in Rocq](https://msp.cis.strath.ac.uk/types2025/abstracts/TYPES2025_paper28.pdf) (2025)
 
 ## Building and installation instructions
 
@@ -84,13 +85,13 @@ example the formalization of the following papers:
 - [Mu and Chiang, Deriving Monadic Quicksort (Declarative Pearl), 2020]
 
 This library has been applied to other formalizations:
-- application to program semantics (see file `smallstep.v`)
 - formalization of monad composition [Jones and Duponcheel, Composing Monads, Yale RR 1993] (Sections 2 and 3)
 - formalization of monad transformers [Jaskelioff, Modular Monad Transformers, ESOP 2009] (up to Sect. 4)
   + completed with details from [Jaskelioff, Lifting of Operations in Modular Monadic Semantics, PhD 2009]
   + see directory `impredicative_set` for the formalization of [Jaskelioff, Modular Monad Transformers, ESOP 2009] (from Sect. 5)
 - formalization of the geometrically convex monad (main reference:
   [Cheung, Distributive Interaction of Algebraic Effects, PhD Thesis, U. Oxford, 2017])
+- see `theories/applications/` for more examples
 
 ![Available monads](./hier.png "Available Monads")
 
@@ -114,10 +115,13 @@ This library has been applied to other formalizations:
   + [typed_store_lib.v](./theories/lib/typed_store_lib.v): derived definitions and lemmas about about the typed store monad
 - models of monads:
   + [monad_model.v](./theories/models/monad_model.v): concrete models of monads
-  + [proba_monad_model.v](./theories/models//proba_monad_model.v): model of the probability monad
-  + [gcm_model.v](./theories/models//gcm_model.v): model of the geometrically convex monad
-  + [altprob_model.v](./theories/models//altprob_model.v): model of a monad that mixes non-deterministic choice and probabilistic choice
-  + [typed_store_model.v](./theories/models//typed_store_model.v): alternative model of the typed store monad
+  + [proba_model.v](./theories/models/proba_model.v): model of the probability monad
+  + [gcm_model.v](./theories/models/gcm_model.v): model of the geometrically convex monad
+  + [altprob_model.v](./theories/models/altprob_model.v): model of a monad that mixes non-deterministic choice and probabilistic choice
+  + [typed_store_model.v](./theories/models/typed_store_model.v): alternative model of the typed store monad
+  + [typed_store_transformer.v](./theories/models/typed_store_transformer.v): model of the types store monad using monad transformers
+  + [delay_model.v](./theories/models/delay_model.v): model of the delay monad
+  + [elgot_model.v](./theories/models/elgot_model.v): model of the Elgot monad
 - applications:
   + [example_fastprod.v](./theories/applications/example_fastprod.v): fast product
   + [example_relabeling.v](./theories/applications/example_relabeling.v): tree relabeling
@@ -127,11 +131,13 @@ This library has been applied to other formalizations:
   + [example_quicksort.v](./theories/applications/example_quicksort.v): functional quicksort
   + [example_nqueens.v](./theories/applications/example_nqueens.v): the n-queens puzzle
   + [example_typed_store.v](./theories/applications/example_typed_store.v): ML programs with references
+  + [typed_store_universe.v](./theories/applications/typed_store_universe.v): file for `example_typed_store.v` and `example_elgot.v`
   + [example_transformer.v](./theories/applications/example_transformer.v): monad transformers
   + [counterexample_altprobdr.v](./theories/applications/counterexample_altprobdr.v): collapse of the probabilistic choice in altCIMonad + convexMonad + right distributivity
   + [smallstep.v](./theories/applications/smallstep.v): semantics for an imperative language, with equivalence operational semantics/denotation and sample imperative programs
   + [monad_composition.v](./theories/applications/monad_composition.v): composing monads
   + [category_ext.v](./theories/applications/category_ext.v): experimental library about categories
+  + [example_elgot.v](./theories/applications/example_elgot.v): applications of the Elgot monad
 
 ## About Installation with Windows 11
 

@@ -1,6 +1,7 @@
 Require Export preamble.
 Require Export hierarchy.
 Require Export monad_lib.
+Require Export alt_lib.
 Require Export fail_lib.
 Require Export state_lib.
 Require Export array_lib.
@@ -15,4 +16,7 @@ Require Export gcm_model.
 Require Export altprob_model.
 Require Export monad_transformer.
 Require Export typed_store_model.
+Require Export typed_store_transformer.
+Require Export delay_model.
+Require Export elgot_model.
 Require Export category_ext.
