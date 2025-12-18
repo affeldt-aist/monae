@@ -49,8 +49,13 @@ From HB Require Import structures.
 (*        nondetMonad == failMonad + altMonad                                 *)
 (*      nondetCIMonad == failMonad + altCIMonad                               *)
 (*        exceptMonad == failMonad + catch                                    *)
-(*             WBisim == bisimulation                                         *)
-(*         elgotMonad == Elgot monad                                          *)
+(* ```                                                                        *)
+(*                                                                            *)
+(* Simulation and bisimulation monads:                                        *)
+(* ```                                                                        *)
+(*           simMonad == monad with simulation relation                       *)
+(*        wBisimMonad == simMonad + symmetry                                  *)
+(*         elgotMonad == wBisimMonad + while + uniformity                     *)
 (*   elgotExceptMonad == elgotMonad + catch                                   *)
 (*   elgotAssertMonad == elgotExceptMonad + pcorrect,bassert                  *)
 (* ```                                                                        *)
@@ -74,7 +79,7 @@ From HB Require Import structures.
 (*  failStateReifyMonad == stateReify + fail                                  *)
 (*     nondetStateMonad == backtrackable state                                *)
 (*           arrayMonad == array monad                                        *)
-(*      plusArrayMonad  == plus monad + array monad                           *)
+(*       plusArrayMonad == plus monad + array monad                           *)
 (* ```                                                                        *)
 (*                                                                            *)
 (* ```                                                                        *)
@@ -135,6 +140,7 @@ Reserved Notation "f (o) g" (at level 11).
 Reserved Notation "m >> f" (at level 49).
 Reserved Notation "'fmap' f" (at level 4).
 Reserved Notation "x '[~]' y" (at level 50).
+Reserved Notation "a '≈>' b" (at level 70).
 Reserved Notation "a '≈' b" (at level 70).
 Reserved Notation "f '≈1' g" (at level 70).
 Notation "f ~~> g" := (forall A, f A -> g A)
@@ -889,23 +895,52 @@ HB.structure Definition MonadExcept := {M of isMonadExcept M & }.
 
 Arguments catch {_} {_}.
 
-HB.mixin Record hasWBisim (M : UU0 -> UU0) of Monad M := {
-  wBisim : forall {A : UU0}, M A -> M A -> Prop ;
-  wBisim_refl : forall A (a : M A), wBisim a a ;
-  wBisim_sym : forall A (a b : M A), wBisim a b -> wBisim b a ;
-  wBisim_trans : forall A (a b c : M A), wBisim a b -> wBisim b c -> wBisim a c ;
-  bindmwB : forall (A B : UU0) (f : A -> M B) (d1 d2 : M A),
-    wBisim d1 d2 -> wBisim (d1 >>= f) (d2 >>= f) ;
-  bindfwB : forall (A B : UU0) (f g : A -> M B) (d : M A),
-    (forall a, wBisim (f a) (g a)) -> wBisim (d >>= f) (d >>= g)
+HB.mixin Record hasSim (M : UU0 -> UU0) of Monad M := {
+  sim : forall {A : UU0}, M A -> M A -> Prop ;
+  sim_refl : forall A (a : M A), sim a a ;
+  sim_trans : forall A (a b c : M A), sim a b -> sim b c -> sim a c ;
+  bindmsim : forall (A B : UU0) (f : A -> M B) (d1 d2 : M A),
+    sim d1 d2 -> sim (d1 >>= f) (d2 >>= f) ;
+  bindfsim : forall (A B : UU0) (f g : A -> M B) (d : M A),
+    (forall a, sim (f a) (g a)) -> sim (d >>= f) (d >>= g)
 }.
 
-HB.structure Definition WBisim := {M of hasWBisim M & }.
+#[short(type=simMonad)]
+HB.structure Definition MonadSim := {M of hasSim M & }.
+Arguments sim {s A}.
+Notation "a '≈>' b" := (sim a b).
+Hint Extern 0 (sim _ _) => apply sim_refl : core.
+
+HB.mixin Record hasWBisim (M : UU0 -> UU0) of MonadSim M := {
+  sim_sym : forall A (a b : M A), sim a b -> sim b a ;
+}.
+
+#[short(type=wBisimMonad)]
+HB.structure Definition MonadWBisim := {M of hasWBisim M & }.
+
+Section wBisim_interface.
+Context {s : wBisimMonad}.
+Definition wBisim := @sim s.
+Definition wBisim_refl :
+  forall A (a : s A), wBisim a a := @sim_refl s.
+Definition wBisim_sym :
+  forall A (a b : s A), wBisim a b -> wBisim b a := @sim_sym s.
+Definition wBisim_trans :
+  forall A (a b c : s A), wBisim a b -> wBisim b c -> wBisim a c := @sim_trans s.
+Definition bindmwB :
+  forall (A B : UU0) (f : A -> s B) (d1 d2 : s A),
+    wBisim d1 d2 -> wBisim (d1 >>= f) (d2 >>= f) := @bindmsim s.
+Definition bindfwB :
+  forall (A B : UU0) (f g : A -> s B) (d : s A),
+    (forall a, wBisim (f a) (g a)) -> wBisim (d >>= f) (d >>= g) := @bindfsim s.
+End wBisim_interface.
 Arguments wBisim {s A}.
+Arguments bindmwB {s}.
+Arguments bindfwB {s}.
 Notation "a '≈' b" := (wBisim a b).
 Hint Extern 0 (wBisim _ _) => apply wBisim_refl : core.
 
-HB.mixin Record isMonadElgot (M : UU0 -> UU0) of WBisim M := {
+HB.mixin Record isMonadElgot (M : UU0 -> UU0) of MonadWBisim M := {
   while : forall {A B : UU0}, (A -> M (B + A)%type) -> A -> M B;
   whilewB : forall (A B : UU0) (f g : A -> M (B + A)%type) (a : A),
     (forall a, f a ≈ g a) -> while f a ≈ while g a ;

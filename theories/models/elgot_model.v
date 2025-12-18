@@ -185,8 +185,10 @@ by apply: bindfwB => -[[?|?] ?];
   rewrite /=bindretf fmapE !bindretf/= fmapE bindretf.
 Qed.
 
-HB.instance Definition _ := @hasWBisim.Build elgotS wB
-  (@refl) (@sym) (@trans) (@bindl) (@bindr).
+HB.instance Definition _ := @hasSim.Build elgotS wB
+  (@refl) (@trans) (@bindl) (@bindr).
+
+HB.instance Definition _ := @hasWBisim.Build elgotS (@sym).
 
 HB.instance Definition _ := @isMonadElgot.Build elgotS (@while)
   (@whilel) (@fixpoint) (@naturality) (@codiagonal) (@uniform).
@@ -320,8 +322,10 @@ Qed.
 
 HB.instance Definition _ := MonadExcept.on elgotX.
 
-HB.instance Definition _ := @hasWBisim.Build elgotX (@wB)
-  refl sym trans (@bindl) (@bindr).
+HB.instance Definition _ := @hasSim.Build elgotX (@wB)
+  refl trans (@bindl) (@bindr).
+
+HB.instance Definition _ := @hasWBisim.Build elgotX sym.
 
 HB.instance Definition _ := @isMonadElgot.Build elgotX (@while)
   (@whilel) (@fixpoint) (@naturality) (@codiagonal) (@uniform).
