@@ -49,6 +49,10 @@ From HB Require Import structures.
 (*        nondetMonad == failMonad + altMonad                                 *)
 (*      nondetCIMonad == failMonad + altCIMonad                               *)
 (*        exceptMonad == failMonad + catch                                    *)
+(*             WBisim == bisimulation                                         *)
+(*         elgotMonad == Elgot monad                                          *)
+(*   elgotExceptMonad == elgotMonad + catch                                   *)
+(*   elgotAssertMonad == elgotExceptMonad + pcorrect,bassert                  *)
 (* ```                                                                        *)
 (*                                                                            *)
 (* Control monads (wip):                                                      *)
@@ -902,27 +906,27 @@ Notation "a '≈' b" := (wBisim a b).
 Hint Extern 0 (wBisim _ _) => apply wBisim_refl : core.
 
 HB.mixin Record isMonadElgot (M : UU0 -> UU0) of WBisim M := {
-  while : forall {A B : UU0}, (A -> M(B + A)%type) -> A -> M B;
+  while : forall {A B : UU0}, (A -> M (B + A)%type) -> A -> M B;
   whilewB : forall (A B : UU0) (f g : A -> M (B + A)%type) (a : A),
-    (forall a, wBisim (f a) (g a)) -> wBisim (while f a) (while g a) ;
+    (forall a, f a ≈ g a) -> while f a ≈ while g a ;
   fixpointwB : forall (A B : UU0) (f : A -> M (B + A)%type) (a : A),
-    wBisim (while f a)
-           (f a >>= sum_rect (fun => M B) (@ret M B) (while f));
+    while f a ≈
+    (f a >>= sum_rect (fun=> M B) Ret (while f));
   naturalitywB : forall (A B C : UU0) (f : A -> M (B + A)%type) (g : B -> M C) (a : A),
-    wBisim (while f a >>= g)
-           (while (fun y => f y >>= sum_rect (fun => M (C + A)%type)
-                                             (M # inl \o g)
-                                             (M # inr \o @ret M A)) a);
+    (while f a >>= g) ≈
+    (while (fun y => f y >>= sum_rect (fun => M (C + A)%type)
+                                          (M # inl \o g)
+                                          (M # inr \o Ret)) a);
   codiagonalwB : forall (A B : UU0) (f : A -> M ((B + A) + A)%type) (a : A),
-    wBisim (while ((M # ((sum_rect (fun => (B + A)%type) idfun inr))) \o f) a)
-           (while (while f) a);
+    while ((M # (sum_rect (fun=> (B + A)%type) idfun inr)) \o f) a
+    ≈ while (while f) a ;
   uniformwB : forall (A B C : UU0) (f : A -> M (B + A)%type)
       (g : C -> M (B + C)%type) (h : C -> A),
-    (forall c, wBisim (f (h c))
-                      (g c >>= sum_rect (fun => M (B + A)%type)
-                                        ((M # inl) \o Ret)
-                                        ((M # inr) \o Ret \o h))) ->
-    forall c, wBisim (while f (h c)) (while g c)
+    (forall c, f (h c) ≈
+               (g c >>= sum_rect (fun => M (B + A)%type)
+                                      ((M # inl) \o Ret)
+                                      ((M # inr) \o Ret \o h))) ->
+    forall c, while f (h c) ≈ while g c
 }.
 
 #[short(type=elgotMonad)]
@@ -982,11 +986,11 @@ End setoid_elgotExceptMonad.
 
 HB.mixin Record isMonadElgotAssert (M : UU0 -> UU0)
     of MonadElgotExcept M := {
-  pcorrect : forall (X A : UU0) (x : X) (p : pred (A + X)) (f : X -> M (A + X)%type) ,
+  pcorrect : forall (X A : UU0) (x : X) (p : pred (A + X)) (f : X -> M (A + X)%type),
   p (inr x)  ->
    (forall x, p (inr x) ->
     f x >>= sum_rect (fun => M (A + X)%type) ((assert p) \o inl) ((assert p) \o inr) ≈
-    f x >>= sum_rect (fun => M (A + X)%type) (Ret \o inl) ((Ret \o inr))) ->
+    f x >>= sum_rect (fun => M (A + X)%type) (Ret \o inl) (Ret \o inr)) ->
    bassert p ((while f x) >>= (Ret \o inl)) ≈ while f x >>= (Ret \o inl)
  }.
 
@@ -1180,18 +1184,17 @@ HB.structure Definition MonadFailFailR0Reify (S : UU0) :=
 HB.structure Definition MonadFailStateReify (S : UU0) :=
   {M of MonadStateReify S M & MonadFailFailR0Reify S M}.
 
-(* NB: this is experimental, may disappear, see rather foreach in
-   monad_transformer because it is more general *)
-HB.mixin Record isMonadStateLoop (S : UU0) (M : UU0 -> UU0)
+(* NB: this was an experience, may disappear now that we have the Elgot monad *)
+HB.mixin Record isMonadStateForLoop (S : UU0) (M : UU0 -> UU0)
     of MonadState S M := {
-  foreach : nat -> nat -> (nat -> M unit) -> M unit ;
-  loop0 : forall m body, foreach m m body = Ret tt ;
-  loop1 : forall m n body,
-    foreach (m.+1 + n) m body = (body (m + n)) >> foreach (m + n) m body }.
+  forloop : nat -> nat -> (nat -> M unit) -> M unit ;
+  forloop0 : forall m body, forloop m m body = Ret tt ;
+  forloop1 : forall m n body,
+    forloop (m.+1 + n) m body = body (m + n) >> forloop (m + n) m body }.
 
-#[short(type=loopStateMonad)]
-HB.structure Definition MonadStateLoop (S : UU0) :=
-  {M of isMonadStateLoop S M & }.
+#[short(type=forloopStateMonad)]
+HB.structure Definition MonadStateForLoop (S : UU0) :=
+  {M of isMonadStateForLoop S M & }.
 
 HB.mixin Record isMonadArray (S : UU0) (I : eqType) (M : UU0 -> UU0)
     of Monad M := {

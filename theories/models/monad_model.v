@@ -1221,25 +1221,21 @@ Proof. by rewrite /mulM bindretf; apply boolp.funext. Abort.
 
 End shiftreset_examples.
 
-(* wip *)
-Module ModelStateLoop.
-Section modelstateloop.
+Module ModelStateForLoop.
+Section modelstateforloop.
 Variable S : UU0.
 Local Notation M := (StateMonad.acto S).
-Fixpoint mforeach (it min : nat) (body : nat -> M unit) : M unit :=
-  if it <= min then Ret tt
-  else if it is it'.+1 then
-      (body it') >>= (fun _ => mforeach it' min body)
-      else Ret tt.
-Let loop0 m body : mforeach m m body = Ret tt.
-Proof. by case: m => //= n; rewrite ltnS leqnn. Qed.
-Let loop1 m n body : mforeach (m.+1 + n) m body =
-     (body (m + n)) >> mforeach (m + n) m body :> M unit.
-Proof. by rewrite /mforeach /=; case: ifPn => //; rewrite ltnNge leq_addr. Qed.
-HB.instance Definition _ := isMonadStateLoop.Build S M loop0 loop1.
-End modelstateloop.
-End ModelStateLoop.
-HB.export ModelStateLoop.
+Definition forloop (it min : nat) (body : nat -> M unit) : M unit :=
+  forloopM it min body.
+Let forloop0 m body : forloop m m body = Ret tt.
+Proof. exact: forloopM0. Qed.
+Let forloop1 m n body : forloop (m.+1 + n) m body =
+  body (m + n) >> forloop (m + n) m body :> M unit.
+Proof. exact: forloopM1. Qed.
+HB.instance Definition _ := isMonadStateForLoop.Build S M forloop0 forloop1.
+End modelstateforloop.
+End ModelStateForLoop.
+HB.export ModelStateForLoop.
 
 Module ModelReify.
 Section modelreify.

@@ -55,10 +55,10 @@ Example test_nonce0 (M : stateMonad nat) : M nat :=
 (*Reset test_nonce0.
 Fail Check test_nonce0.*)
 
-Section stateloop_examples.
-Variable (M : loopStateMonad nat).
-Let example min max : M unit := foreach max min (fun i : nat => get >> Ret tt).
-Let sum n : M unit := foreach n O
+Section forloopstate_example.
+Variable (M : forloopStateMonad nat).
+Let example min max : M unit := forloop max min (fun i : nat => get >> Ret tt).
+Let sum n : M unit := hierarchy.forloop n O
   (fun i : nat => get >>= (fun z => put (z + i))).
 
 Lemma sum_test n :
@@ -66,7 +66,7 @@ Lemma sum_test n :
 Proof.
 elim: n => [|n ih].
   rewrite /sum.
-  rewrite loop0.
+  rewrite forloop0.
   rewrite (_ : sumn (iota 0 0) = 0) //.
   rewrite -[LHS]bindskipf.
   rewrite -getput.
@@ -76,13 +76,13 @@ elim: n => [|n ih].
   rewrite -[RHS]bindmret.
   bind_ext.
   by case.
-rewrite {1}/sum -add1n loop1 bindA; bind_ext => m.
+rewrite {1}/sum -add1n forloop1 bindA; bind_ext => m.
 rewrite -/(sum n) {}ih -bindA putget bindA bindretf putput.
 congr put.
 by rewrite add0n (addnC 1) iotaD /= sumn_cat /= add0n addn0 /= addnAC addnA.
 Qed.
 
-End stateloop_examples.
+End forloopstate_example.
 
 Lemma getput_prepend (S : UU0) (M : nondetStateMonad S) A (m : M A) :
   m = get >>= (fun x => put x >> m).

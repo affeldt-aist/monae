@@ -54,6 +54,7 @@ Require Import hierarchy.
 (*                                                                            *)
 (* ```                                                                        *)
 (*   fact_elgot_typed_store == was factdts_nat in [1]                         *)
+(*   fact_elgot_typed_store_unit == was factdts_unit in [1]                   *)
 (* ```                                                                        *)
 (******************************************************************************)
 
@@ -96,13 +97,16 @@ End factorial.
 Section collatz.
 Variable M : elgotMonad.
 
+(* was collatzm_body in [1] *)
 Let collatz_body (T : Type) m n : M (T + nat)%type :=
   if n == 1 then Ret (inl m)
   else if n %% 2 == 0 then Ret (inr n./2)
        else Ret (inr (3 * n).+1).
 
+(* was collatzm in [1] *)
 Definition collatz (T : Type) (m : T) := while (collatz_body T m).
 
+(* was collatzmwB in [1] *)
 Lemma collatzwB (T U : Type) (f : T -> U) m n :
   collatz T m n >>= (Ret \o f) ≈ collatz U (f m) n.
 Proof.
@@ -184,6 +188,7 @@ Let mc91_body nm : M (nat + nat * nat)%type :=
 
 Definition mc91 n m := while mc91_body (n.+1, m).
 
+(* was wBisim_mc91S in [1] *)
 Lemma mc91wBS n m : 90 <= m < 101 -> mc91 n m ≈ mc91 n m.+1.
 Proof.
 move=> /andP[m89].
@@ -243,64 +248,6 @@ by rewrite (IH (k' - 11))//; lia.
 Qed.
 
 End mc91.
-
-Section bubblesort.
-Variable M : elgotAssertMonad.
-
-Fixpoint sortl (l : seq nat) :=
-  if l is n :: tl then
-    (if tl is m :: tl' then
-       (if m < n then
-          m :: n :: sortl tl'
-        else n :: sortl tl)
-     else l)
-  else nil.
-
-Lemma sortl_length l : size l = size (sortl l).
-Proof.
-move Hlen: (size l) => n.
-elim: n {-2}n (leqnn n) l Hlen => n.
-  rewrite leqn0 => /eqP -> l.
-  by move/size0nil => ->.
-move=> IH m Hmn.
-move=> [|h] //=.
-move=> [|k tl] // Hs.
-have [hk|kh] := leqP h k.
-  rewrite [k :: tl]lock/= -lock -Hs.
-  congr S.
-  rewrite -(IH (size (k :: tl))) //.
-  by rewrite -(leq_add2r 1 _ _) !addn1 Hs.
-rewrite -Hs [k :: tl]lock/= -lock -(IH (size tl)) //.
-by move: Hmn; rewrite -Hs/= ltnS; exact: ltnW.
-Qed.
-
-Definition bubblesort_body (l : seq nat) : M (seq nat + seq nat)%type :=
-  if l == sortl l then Ret (inl l) else Ret (inr (sortl l)).
-
-Definition bubblesort l := while bubblesort_body l.
-
-Definition sizelE (l : seq nat) : pred (seq nat + seq nat) :=
-  fun ll => match ll with
-            | inr l' => size l == size l'
-            | inl l' => size l == size l'
-            end.
-
-Lemma bubblesort_size l :
-  bassert (sizelE l) (bubblesort l >>= (Ret \o inl)) ≈ bubblesort l >>= (Ret \o inl).
-Proof.
-apply: pcorrect.
-  by rewrite/sizelE.
-move=> l' /= Inv.
-rewrite /bubblesort_body.
-case: ifP => /eqP H.
-  by rewrite bindretf/= bindretf/= assertE/= Inv guardT bindretf.
-move: Inv.
-rewrite !bindretf/= !/sizelE (sortl_length l') /assert /guard.
-case: ifP => //=.
-by rewrite !bindskipf.
-Qed.
-
-End bubblesort.
 
 Section select.
 Variable M : elgotExceptMonad.
@@ -394,6 +341,64 @@ by rewrite in_cons eq_sym (negPf Hf).
 Qed.
 
 End select.
+
+Section bubblesort.
+Variable M : elgotAssertMonad.
+
+Fixpoint sortl (l : seq nat) :=
+  if l is n :: tl then
+    (if tl is m :: tl' then
+       (if m < n then
+          m :: n :: sortl tl'
+        else n :: sortl tl)
+     else l)
+  else nil.
+
+Lemma sortl_length l : size l = size (sortl l).
+Proof.
+move Hlen: (size l) => n.
+elim: n {-2}n (leqnn n) l Hlen => n.
+  rewrite leqn0 => /eqP -> l.
+  by move/size0nil => ->.
+move=> IH m Hmn.
+move=> [|h] //=.
+move=> [|k tl] // Hs.
+have [hk|kh] := leqP h k.
+  rewrite [k :: tl]lock/= -lock -Hs.
+  congr S.
+  rewrite -(IH (size (k :: tl))) //.
+  by rewrite -(leq_add2r 1 _ _) !addn1 Hs.
+rewrite -Hs [k :: tl]lock/= -lock -(IH (size tl)) //.
+by move: Hmn; rewrite -Hs/= ltnS; exact: ltnW.
+Qed.
+
+Definition bubblesort_body (l : seq nat) : M (seq nat + seq nat)%type :=
+  if l == sortl l then Ret (inl l) else Ret (inr (sortl l)).
+
+Definition bubblesort l := while bubblesort_body l.
+
+Definition sizelE (l : seq nat) : pred (seq nat + seq nat) :=
+  fun ll => match ll with
+            | inr l' => size l == size l'
+            | inl l' => size l == size l'
+            end.
+
+Lemma bubblesort_size l :
+  bassert (sizelE l) (bubblesort l >>= (Ret \o inl)) ≈ bubblesort l >>= (Ret \o inl).
+Proof.
+apply: pcorrect.
+  by rewrite/sizelE.
+move=> l' /= Inv.
+rewrite /bubblesort_body.
+case: ifP => /eqP H.
+  by rewrite bindretf/= bindretf/= assertE/= Inv guardT bindretf.
+move: Inv.
+rewrite !bindretf/= !/sizelE (sortl_length l') /assert /guard.
+case: ifP => //=.
+by rewrite !bindskipf.
+Qed.
+
+End bubblesort.
 
 Section factorial.
 Variable M : elgotStateMonad nat.
@@ -510,11 +515,13 @@ Definition fact_elgot_typed_store_unit n :=
   while (fact_elgot_typed_store_unit_body r l n) tt;
   do v <- cget r; Ret v.
 
+(* was factdts_nat_body in [1] *)
 Let fact_elgot_typed_store_body (r : loc ml_int) n : M (unit + nat)%type :=
   do v <- cget r;
   if n is m.+1 then do _ <- cput r (n * v); Ret (inr m)
                else Ret (inl tt).
 
+(* was while_factdts_natE in [1] *)
 Let while_fact_elgot_typed_storewB n r :
   while (fact_elgot_typed_store_body r) n ≈ do s <- cget r; cput r (n`! * s).
 Proof.
@@ -529,11 +536,13 @@ setoid_rewrite IH.
 by under eq_bind do rewrite cputget cputput mulnA (mulnC m`! _).
 Qed.
 
+(* was factdts_nat in [1] *)
 Definition fact_elgot_typed_store n :=
   do r <- cnew ml_int 1;
   do _ <- while (fact_elgot_typed_store_body r) n ;
   cget r.
 
+(* was factn in [1] *)
 Lemma fact_elgot_typed_storewB n :
   fact_elgot_typed_store n ≈ cnew ml_int n`! >> Ret n`!.
 Proof.

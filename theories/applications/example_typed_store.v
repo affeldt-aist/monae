@@ -1,4 +1,4 @@
-(* monae: Monadic equational reasoning in Coq                                 *)
+(* monae: Monadic equational reasoning in Rocq                                *)
 (* Copyright (C) 2023 monae authors, license: LGPL-2.1-or-later               *)
 Require Import ZArith.
 From mathcomp Require Import all_ssreflect.
@@ -426,7 +426,7 @@ Definition fact_for (n : coq_type ml_int) : M (coq_type ml_int) :=
   do _ <-
   (do u <- Ret 1;
    do v_1 <- Ret n;
-   forloop u v_1
+   forloop_iteri u v_1
      (fun i =>
         do v_1 <- (do v_1 <- cget v; Ret (v_1 * i));
         cput v v_1));
@@ -453,10 +453,10 @@ have -> : 0 = n - m by rewrite subnn.
 have : m <= n by [].
 elim: m => [|m IH] mn.
   rewrite subn0.
-  under eq_bind do rewrite forloop0 ?leqnn // bindretf -cgetret.
+  under eq_bind do rewrite forloop_iteri0 ?leqnn // bindretf -cgetret.
   by rewrite cnewget.
 rewrite subnSK //.
-under eq_bind do (rewrite forloopS; last by apply leq_subr).
+under eq_bind do (rewrite forloop_iteriS; last by apply leq_subr).
 under eq_bind do rewrite !bindA.
 rewrite cnewget.
 under eq_bind do rewrite bindretf.

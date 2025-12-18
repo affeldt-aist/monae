@@ -9,6 +9,10 @@ Require Import monad_transformer monad_model.
 (**md**************************************************************************)
 (* # Models of the Elgot monad                                                *)
 (*                                                                            *)
+(* The content of this file are also documented in the following paper:       *)
+(* [1] Ryuji Kawakami, Jacques Garrigue, Takafumi Saikawa, Reynald Affeldt.   *)
+(*     Monadic equational reasoning for while loops. Computer Software, 2026  *)
+(*                                                                            *)
 (* ## Combination of the Elgot monad with the state monad transformer         *)
 (*                                                                            *)
 (* ## Combination of the Elgot monad with the exception monad transformer     *)
@@ -52,6 +56,7 @@ Module ElgotS.
 Section elgotS.
 Variables (S : UU0) (M : elgotMonad).
 
+(* was DS in [1] *)
 Local Notation elgotS := (MS S M).
 
 Lemma elgotSE {X} : elgotS X = (reader S \o M \o writer S) X.
@@ -67,6 +72,7 @@ congr bind.
 by apply: boolp.funext => -[].
 Qed.
 
+(* was wBisimDS in [1] (now it is ElgotS.wB) *)
 Definition wB A (a b : elgotS A) := forall s, a s ≈ b s.
 Local Notation "a '≈' b" := (wB a b).
 
@@ -95,6 +101,7 @@ Lemma bindr (f g : A -> elgotS B) d :
   (forall a, f a ≈ g a) -> (d >>= f) ≈ (d >>= g).
 Proof. by move=> Hfg s /=; rewrite !MS_bindE /=; apply: bindfwB => -[]. Qed.
 
+(* was whileDS in [1] (now it is ElgotS.while) *)
 Definition while (body : A -> elgotS (B + A)) :=
   curry (while (M # dist1 \o uncurry body)).
 
@@ -191,8 +198,11 @@ End ElgotS.
 Module ElgotX.
 Section elgotX.
 Variable M : elgotMonad.
+
+(* was DE in [1] *)
 Notation elgotX := (MX unit M).
 
+(* was DEA in [1] *)
 Definition elgotXA {A B} : elgotX (A + B) -> M ((unit + A) + B )%type :=
   M # (fun uab => match uab with
                  | inl u => inl (inl u)
@@ -202,6 +212,7 @@ Definition elgotXA {A B} : elgotX (A + B) -> M ((unit + A) + B )%type :=
                             end
                  end).
 
+(* was whileDE in [1] (now it is ElgotX.while) *)
 Definition while {A B} (body : A -> elgotX (B + A)) (x : A) : elgotX B :=
   while (elgotXA \o body) x.
 
@@ -216,7 +227,6 @@ Proof. exact: wBisim_sym. Qed.
 
 Lemma trans A (d1 d2 d3 : elgotX A) : d1 ≈ d2 -> d2 ≈ d3 -> d1 ≈ d3.
 Proof. exact: wBisim_trans. Qed.
-
 
 Lemma bindXE {A B} (f : A -> elgotX B) (d : elgotX A) :
   d >>= f =
