@@ -649,10 +649,10 @@ have [[b /Stop_wBisimsRet HT]|/Diverge_spinP HD] := StopP (while f a).
   exact: (whilewBs1 Hfg (Hfg a)).
 Qed.
 
-HB.instance Definition _ := @hasSim.Build M wBisim
+HB.instance Definition _ := @hasPreorder.Build M wBisim
   wBisim_refl wBisim_trans (@bindmwBisim) (@bindfwB).
 
-HB.instance Definition _ := @hasWBisim.Build M wBisim_sym.
+HB.instance Definition _ := @hasEquivalence.Build M wBisim_sym.
 
 Add Parametric Morphism A B : bind with signature
   (@wBisim A) ==> (pointwise_relation A (@wBisim B)) ==> (@wBisim B)

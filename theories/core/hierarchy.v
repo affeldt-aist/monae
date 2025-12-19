@@ -51,11 +51,11 @@ From HB Require Import structures.
 (*        exceptMonad == failMonad + catch                                    *)
 (* ```                                                                        *)
 (*                                                                            *)
-(* Simulation and bisimulation monads:                                        *)
+(* Preordered and bisimulation monads:                                        *)
 (* ```                                                                        *)
-(*           simMonad == monad with simulation relation                       *)
-(*        wBisimMonad == simMonad + symmetry                                  *)
-(*         elgotMonad == wBisimMonad + while + uniformity                     *)
+(*    preorderedMonad == monad with compatible preorder relation              *)
+(*         equivMonad == preorderedMonad + symmetry (= equivalence)           *)
+(*         elgotMonad == equivMonad + while + uniformity                      *)
 (*   elgotExceptMonad == elgotMonad + catch                                   *)
 (*   elgotAssertMonad == elgotExceptMonad + pcorrect,bassert                  *)
 (* ```                                                                        *)
@@ -140,7 +140,6 @@ Reserved Notation "f (o) g" (at level 11).
 Reserved Notation "m >> f" (at level 49).
 Reserved Notation "'fmap' f" (at level 4).
 Reserved Notation "x '[~]' y" (at level 50).
-Reserved Notation "a '≈>' b" (at level 70).
 Reserved Notation "a '≈' b" (at level 70).
 Reserved Notation "f '≈1' g" (at level 70).
 Notation "f ~~> g" := (forall A, f A -> g A)
@@ -895,78 +894,128 @@ HB.structure Definition MonadExcept := {M of isMonadExcept M & }.
 
 Arguments catch {_} {_}.
 
-HB.mixin Record hasSim (M : UU0 -> UU0) of Monad M := {
-  sim : forall {A : UU0}, M A -> M A -> Prop ;
-  sim_refl : forall A (a : M A), sim a a ;
-  sim_trans : forall A (a b c : M A), sim a b -> sim b c -> sim a c ;
-  bindmsim : forall (A B : UU0) (f : A -> M B) (d1 d2 : M A),
-    sim d1 d2 -> sim (d1 >>= f) (d2 >>= f) ;
-  bindfsim : forall (A B : UU0) (f g : A -> M B) (d : M A),
-    (forall a, sim (f a) (g a)) -> sim (d >>= f) (d >>= g)
+HB.mixin Record hasPreorder (M : UU0 -> UU0) of Monad M := {
+  leM : forall {A : UU0}, M A -> M A -> Prop ;
+  leM_refl : forall A (a : M A), leM a a ;
+  leM_trans : forall A (a b c : M A), leM a b -> leM b c -> leM a c ;
+  bindmle : forall (A B : UU0) (f : A -> M B) (d1 d2 : M A),
+    leM d1 d2 -> leM (d1 >>= f) (d2 >>= f) ;
+  bindfle : forall (A B : UU0) (f g : A -> M B) (d : M A),
+    (forall a, leM (f a) (g a)) -> leM (d >>= f) (d >>= g)
+}.
+(* bindmle and bindfle are called "substitutive" and "congruent" resp.
+   in [Katsumata-Sato, 2013] *)
+(* NB: the condition (forall a, leM (f a) (g a)) can be shortened simply as f <= g
+   once we switch to using preorder.v from mathcomp master *)
+
+#[short(type=preorderedMonad)]
+HB.structure Definition MonadPreordered := {M of hasPreorder M & }.
+Arguments leM {s A}.
+Hint Extern 0 (leM _ _) => apply leM_refl : core.
+
+HB.mixin Record hasEquivalence (M : UU0 -> UU0) of MonadPreordered M := {
+  leM_sym : forall A (a b : M A), leM a b -> leM b a ;
 }.
 
-#[short(type=simMonad)]
-HB.structure Definition MonadSim := {M of hasSim M & }.
-Arguments sim {s A}.
-Notation "a '≈>' b" := (sim a b).
-Hint Extern 0 (sim _ _) => apply sim_refl : core.
+#[short(type=equivMonad)]
+HB.structure Definition MonadEquiv := {M of hasEquivalence M & }.
 
-HB.mixin Record hasWBisim (M : UU0 -> UU0) of MonadSim M := {
-  sim_sym : forall A (a b : M A), sim a b -> sim b a ;
-}.
-
-#[short(type=wBisimMonad)]
-HB.structure Definition MonadWBisim := {M of hasWBisim M & }.
-
-Section wBisim_interface.
-Context {s : wBisimMonad}.
-Definition wBisim := @sim s.
-Definition wBisim_refl :
-  forall A (a : s A), wBisim a a := @sim_refl s.
-Definition wBisim_sym :
-  forall A (a b : s A), wBisim a b -> wBisim b a := @sim_sym s.
-Definition wBisim_trans :
-  forall A (a b c : s A), wBisim a b -> wBisim b c -> wBisim a c := @sim_trans s.
-Definition bindmwB :
+Section equivMonad_interface.
+Context {s : equivMonad}.
+Definition eqvM := @leM s.
+Definition eqvM_refl :
+  forall A (a : s A), eqvM a a := @leM_refl s.
+Definition eqvM_sym :
+  forall A (a b : s A), eqvM a b -> eqvM b a := @leM_sym s.
+Definition eqvM_trans :
+  forall A (a b c : s A), eqvM a b -> eqvM b c -> eqvM a c := @leM_trans s.
+Definition bindmeqv :
   forall (A B : UU0) (f : A -> s B) (d1 d2 : s A),
-    wBisim d1 d2 -> wBisim (d1 >>= f) (d2 >>= f) := @bindmsim s.
-Definition bindfwB :
+    eqvM d1 d2 -> eqvM (d1 >>= f) (d2 >>= f) := @bindmle s.
+Definition bindfeqv :
   forall (A B : UU0) (f g : A -> s B) (d : s A),
-    (forall a, wBisim (f a) (g a)) -> wBisim (d >>= f) (d >>= g) := @bindfsim s.
-End wBisim_interface.
-Arguments wBisim {s A}.
-Arguments bindmwB {s}.
-Arguments bindfwB {s}.
-Notation "a '≈' b" := (wBisim a b).
-Hint Extern 0 (wBisim _ _) => apply wBisim_refl : core.
+    (forall a, eqvM (f a) (g a)) -> eqvM (d >>= f) (d >>= g) := @bindfle s.
+End equivMonad_interface.
+Arguments eqvM {s A}.
+Arguments bindmeqv {s}.
+Arguments bindfeqv {s}.
+Hint Extern 0 (eqvM _ _) => apply eqvM_refl : core.
 
-HB.mixin Record isMonadElgot (M : UU0 -> UU0) of MonadWBisim M := {
+HB.mixin Record isMonadElgot (M : UU0 -> UU0) of MonadEquiv M := {
   while : forall {A B : UU0}, (A -> M (B + A)%type) -> A -> M B;
-  whilewB : forall (A B : UU0) (f g : A -> M (B + A)%type) (a : A),
-    (forall a, f a ≈ g a) -> while f a ≈ while g a ;
-  fixpointwB : forall (A B : UU0) (f : A -> M (B + A)%type) (a : A),
-    while f a ≈
-    (f a >>= sum_rect (fun=> M B) Ret (while f));
-  naturalitywB : forall (A B C : UU0) (f : A -> M (B + A)%type) (g : B -> M C) (a : A),
-    (while f a >>= g) ≈
-    (while (fun y => f y >>= sum_rect (fun => M (C + A)%type)
-                                          (M # inl \o g)
-                                          (M # inr \o Ret)) a);
-  codiagonalwB : forall (A B : UU0) (f : A -> M ((B + A) + A)%type) (a : A),
-    while ((M # (sum_rect (fun=> (B + A)%type) idfun inr)) \o f) a
-    ≈ while (while f) a ;
-  uniformwB : forall (A B C : UU0) (f : A -> M (B + A)%type)
+  while_eqvM : forall (A B : UU0) (f g : A -> M (B + A)%type) (a : A),
+    (forall a, eqvM (f a) (g a)) -> eqvM (while f a) (while g a) ;
+  fixpoint_eqvM : forall (A B : UU0) (f : A -> M (B + A)%type) (a : A),
+    eqvM (while f a) (f a >>= sum_rect (fun=> M B) Ret (while f));
+  naturality_eqvM :
+    forall (A B C : UU0) (f : A -> M (B + A)%type) (g : B -> M C) (a : A),
+    eqvM (while f a >>= g)
+         (while (fun y => f y >>= sum_rect (fun => M (C + A)%type)
+                                           (M # inl \o g)
+                                           (M # inr \o Ret)) a);
+  codiagonal_eqvM : forall (A B : UU0) (f : A -> M ((B + A) + A)%type) (a : A),
+    eqvM (while ((M # (sum_rect (fun=> (B + A)%type) idfun inr)) \o f) a)
+         (while (while f) a) ;
+  uniform_eqvM : forall (A B C : UU0) (f : A -> M (B + A)%type)
       (g : C -> M (B + C)%type) (h : C -> A),
-    (forall c, f (h c) ≈
-               (g c >>= sum_rect (fun => M (B + A)%type)
+    (forall c, eqvM (f (h c))
+                    (g c >>= sum_rect (fun => M (B + A)%type)
                                       ((M # inl) \o Ret)
                                       ((M # inr) \o Ret \o h))) ->
-    forall c, while f (h c) ≈ while g c
+    forall c, eqvM (while f (h c)) (while g c)
 }.
 
 #[short(type=elgotMonad)]
 HB.structure Definition MonadElgot := {M of isMonadElgot M & }.
 Arguments while {s A B}.
+
+Section elgotMonad_interface.
+Context {s : elgotMonad}.
+Definition wBisim := @eqvM s.
+Local Notation "a '≈' b" := (wBisim a b).
+Definition wBisim_refl :
+  forall A (a : s A), a ≈ a := @eqvM_refl s.
+Definition wBisim_sym :
+  forall A (a b : s A), a ≈ b -> b ≈ a := @eqvM_sym s.
+Definition wBisim_trans :
+  forall A (a b c : s A), a ≈ b -> b ≈ c -> a ≈ c := @eqvM_trans s.
+Definition bindmwB :
+  forall (A B : UU0) (f : A -> s B) (d1 d2 : s A),
+    d1 ≈ d2 -> (d1 >>= f) ≈ (d2 >>= f) := @bindmeqv s.
+Definition bindfwB :
+  forall (A B : UU0) (f g : A -> s B) (d : s A),
+    (forall a, f a ≈ g a) -> (d >>= f) ≈ (d >>= g) := @bindfeqv s.
+Definition whilewB :
+  forall (A B : UU0) (f g : A -> s (B + A)%type) (a : A),
+    (forall a, f a ≈ g a) -> while f a ≈ while g a := while_eqvM.
+Definition fixpointwB :
+  forall (A B : UU0) (f : A -> s (B + A)%type) (a : A),
+    while f a ≈ (f a >>= sum_rect (fun=> s B) Ret (while f)) := fixpoint_eqvM.
+Definition naturalitywB :
+  forall (A B C : UU0) (f : A -> s (B + A)%type) (g : B -> s C) (a : A),
+    (while f a >>= g) ≈
+    (while (fun y => f y >>= sum_rect (fun => s (C + A)%type)
+                                      (s # inl \o g)
+                                      (s # inr \o Ret)) a) := naturality_eqvM.
+Definition codiagonalwB :
+  forall (A B : UU0) (f : A -> s ((B + A) + A)%type) (a : A),
+    while ((s # (sum_rect (fun=> (B + A)%type) idfun inr)) \o f) a ≈
+    while (while f) a := codiagonal_eqvM.
+Definition uniformwB :
+  forall (A B C : UU0) (f : A -> s (B + A)%type)
+         (g : C -> s (B + C)%type) (h : C -> A),
+    (forall c, f (h c) ≈
+               (g c >>= sum_rect (fun => s (B + A)%type)
+                                 ((s # inl) \o Ret)
+                                 ((s # inr) \o Ret \o h))) ->
+    forall c, while f (h c) ≈ while g c := uniform_eqvM.
+End elgotMonad_interface.
+Arguments wBisim {s A}.
+Arguments bindmwB {s}.
+Arguments bindfwB {s}.
+Arguments uniformwB {s}.
+Notation "a '≈' b" := (wBisim a b).
+Hint Extern 0 (wBisim _ _) => apply wBisim_refl : core.
 
 Section setoid_elgotMonad.
 Variable M : elgotMonad.
