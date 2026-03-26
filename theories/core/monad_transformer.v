@@ -431,11 +431,33 @@ bind_ext => s1'.
 by rewrite -foldL_nil bindmret.
 Qed.
 
+Let fail (A : UU0) : ML A := Ret [::].
+Let bindfailf : BindLaws.left_zero bindL fail.
+Proof. by move=> A B g; rewrite /bindL bindretf /=. Qed.
+Let altfailm : @BindLaws.left_id ML fail alt.
+Proof.
+move=> A m; rewrite /alt bindretf.
+under eq_bind do rewrite cat0s.
+by rewrite bindmret.
+Qed.
+Let altmfail : @BindLaws.right_id ML fail alt.
+Proof.
+move=> A m; rewrite /alt.
+under eq_bind do rewrite bindretf cats0.
+by rewrite bindmret.
+Qed.
+
 HB.instance Definition _ :=
  isMonad_ret_bind.Build ML bindLretf bindLmret bindLA.
 
 HB.instance Definition _ :=
  @isMonadAlt.Build ML alt altA alt_bindDl.
+
+HB.instance Definition _ :=
+ @isMonadFail.Build ML fail bindfailf.
+
+HB.instance Definition _ :=
+ @isMonadNondet.Build ML altfailm altmfail.
 
 Lemma ML_mapE (A B : UU0) (f : A -> B) (m : ML A) :
   ([the functor of ML] # f) m = (M # (map f)) m.
