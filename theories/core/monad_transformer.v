@@ -22,6 +22,7 @@ Require Import hierarchy monad_lib fail_lib state_lib.
 (*                       instances:                                           *)
 (*                       - stateT: the state monad transformer                *)
 (*                       - exceptT: the exception monad transformer           *)
+(*                       - listT: the list monad transformer                  *)
 (*                       - envT: environment                                  *)
 (*                       - outputT                                            *)
 (*                       - contT: continuation                                *)
@@ -329,6 +330,146 @@ HB.instance Definition _ := @isMonadExcept.Build
   (MX unit M) Catch Catchmfail Catchfailm CatchA Catchret.
 
 End exceptMonad_of_exceptT.
+
+Section list_monad_transformer.
+Local Obligation Tactic := idtac.
+Variable M : monad.
+(* The list monad transformer can only be used with commutative monads. *)
+Hypothesis bindmC :
+  forall X Y (mx : M X) (my : M Y) Z (f : X -> Y -> M Z), commute mx my f.
+
+(* action on objects of the transformed monad *)
+Definition ML := fun X : UU0 => M (seq X)%type.
+
+(* unit and bind operator of the transformed monad *)
+Definition retL : idfun ~~> ML := fun X x => Ret [:: x].
+
+Fixpoint foldL X Y (f : X -> ML Y) (ys : seq Y) (l : seq X) : ML Y :=
+  if l is x :: l' then
+    f x >>= fun y => foldL f (ys ++ y) l'
+  else Ret ys.
+
+Lemma foldL_retL X (r : seq X) (l : seq X) :
+  foldL (@retL _) r l = Ret (r ++ l).
+Proof.
+elim: l r => /= [|x l IH] r; first by rewrite cats0.
+by rewrite !bindretf IH -catA.
+Qed.
+
+Definition bindL X Y (t : ML X) (f : X -> ML Y) : ML Y :=
+  t >>= foldL f [::].
+
+Let bindLretf : BindLaws.left_neutral bindL retL.
+Proof. by move=> A B a f; rewrite /bindL bindretf /= bindmret. Qed.
+
+Let bindLmret : BindLaws.right_neutral bindL retL.
+Proof.
+move=> A m; rewrite /bindL -[in RHS](bindmret m); bind_ext => l.
+by rewrite foldL_retL.
+Qed.
+
+Lemma foldL_nil X Y Z (f : X -> ML Y) ys l (h : seq Y -> ML Z) :
+    (foldL f ys l >>= h) = foldL f [::] l >>= fun ys' => h (ys ++ ys').
+Proof.
+elim: l ys h => [|x l IH] ys h /=.
+  by rewrite !bindretf cats0.
+rewrite !bindA; bind_ext => ys0.
+rewrite IH [RHS]IH.
+by bind_ext => ys'; rewrite catA.
+Qed.
+
+Lemma foldL_cat Y Z (g : Y -> ML Z) ys ys' zs :
+  foldL g zs (ys ++ ys') = foldL g zs ys >>= fun r => foldL g r ys'.
+Proof.
+elim: ys zs => /= [|y ys IHy] zs.
+  by rewrite bindretf.
+by rewrite bindA; bind_ext => zs'; rewrite IHy.
+Qed.
+
+Let bindLA : BindLaws.associative bindL.
+Proof.
+move=> A B C m f g; rewrite /bindL bindA; bind_ext => /= xs.
+set zs := ([::] : seq C).
+rewrite {2}/zs.
+elim: xs zs => [|x l IH] zs /=.
+  by rewrite bindretf.
+rewrite !bindA.
+bind_ext => ys.
+rewrite foldL_nil.
+under eq_bind do rewrite foldL_cat.
+rewrite bindmC foldL_nil.
+bind_ext => zs' /=.
+by rewrite IH.
+Qed.
+
+Let alt (T : UU0) (m1 m2 : ML T) : ML T :=
+  m1 >>= fun s1 => m2 >>= fun s2 => Ret (s1 ++ s2).
+
+Let altA (T : UU0) : associative (@alt T).
+Proof.
+rewrite /alt => m1 m2 m3.
+rewrite bindA.
+bind_ext => s1.
+rewrite !bindA.
+bind_ext => s2.
+rewrite bindretf bindA.
+bind_ext => s3.
+by rewrite bindretf catA.
+Qed.
+
+Let alt_bindDl : BindLaws.left_distributive bindL alt.
+Proof.
+move=> A B m1 m2 k.
+rewrite /alt /bindL !bindA.
+bind_ext => s1.
+rewrite bindA.
+under eq_bind => s2 do rewrite bindretf.
+rewrite bindmC bindA.
+bind_ext => s2.
+rewrite foldL_cat bindmC.
+bind_ext => s1'.
+by rewrite -foldL_nil bindmret.
+Qed.
+
+HB.instance Definition _ :=
+ isMonad_ret_bind.Build ML bindLretf bindLmret bindLA.
+
+HB.instance Definition _ :=
+ @isMonadAlt.Build ML alt altA alt_bindDl.
+
+Lemma ML_mapE (A B : UU0) (f : A -> B) (m : ML A) :
+  ([the functor of ML] # f) m = (M # (map f)) m.
+Proof.
+rewrite /= !fmapE {1}/bind /= /bindL /retL /= /comp.
+congr (@bind M).
+apply: boolp.funext => s.
+rewrite -(cat0s (map f s)).
+elim: s {2 3}nil => [|a s IH] s0 /=.
+  by rewrite cats0.
+by rewrite bindretf IH -catA.
+Qed.
+
+Definition liftL (A : UU0) (m : M A) : ML A :=
+  m >>= (fun x => Ret [:: x]).
+
+Let retliftL : MonadMLaws.ret liftL.
+Proof.
+move=> A; rewrite /liftL; apply: boolp.funext => a /=.
+by rewrite bindretf.
+Qed.
+
+Let bindliftL : MonadMLaws.bind liftL.
+Proof.
+move=> A B m f; rewrite /liftL bindA [RHS]bindA.
+bind_ext => a.
+by rewrite bindretf /= bindmret.
+Qed.
+
+HB.instance Definition _ := isMonadM_ret_bind.Build
+  M ML liftL retliftL bindliftL.
+
+(* Cannot definine monadT, as this does not work on all monads *)
+End list_monad_transformer.
 
 Section environment_monad_transformer.
 Local Obligation Tactic := idtac.
