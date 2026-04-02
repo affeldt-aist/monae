@@ -1,6 +1,6 @@
 (* monae: Monadic equational reasoning in Rocq                                *)
 (* Copyright (C) 2025 monae authors, license: LGPL-2.1-or-later               *)
-From mathcomp Require Import all_ssreflect ssralg ssrnum ring.
+From mathcomp Require Import all_ssreflect ssralg ssrnum ring interval_inference.
 From mathcomp Require Import unstable mathcomp_extra reals lra.
 From infotheo Require Import realType_ext proba.
 Require Import preamble hierarchy monad_lib alt_lib fail_lib proba_lib.
@@ -30,6 +30,7 @@ Unset Printing Implicit Defensive.
 
 Local Open Scope monae_scope.
 Local Open Scope reals_ext_scope.
+Local Open Scope ring_scope.
 
 Module Set3.
 Section set3.
@@ -177,7 +178,7 @@ rewrite /= !inE eqxx /= eq_sym a_neq_b eq_sym a_neq_c another_sym another_ac; by
 rewrite /= !inE a_neq_b eqxx /= eq_sym b_neq_c another_sym another_bc; by right.
 Qed.
 
-Lemma size_filter2 d d' : 0 < size (enum X \\ [:: d; d']).
+Lemma size_filter2 d d' : (0 < size (enum X \\ [:: d; d']))%N.
 Proof.
 rewrite size_filter -has_count; apply/hasP.
 by exists (another d d'); [rewrite another_in | exact: another_notin].
@@ -204,7 +205,7 @@ Local Open Scope mprog.
 
 Lemma uniform_unfold {M : probMonad R} (P : rel X) def d :
   uniform def (enum X) >>= (fun p => Ret (P d p)) =
-    Ret (P d a) <|3^-1%:pr|> (Ret (P d b) <|2^-1%:pr|> Ret (P d c)) :> M _.
+    Ret (P d a) <|3^-1%:i01|> (Ret (P d b) <|2^-1%:i01|> Ret (P d c)) :> M _.
 Proof.
 rewrite [LHS](_ : _ = fmap (fun p => P d p) (uniform def (enum X))); last first.
   by rewrite fmapE; bind_ext; case.
@@ -213,9 +214,9 @@ Qed.
 
 Lemma uniform_unfold_pair {M : probMonad R} def (P : rel X) :
   uniform (def, def) (cp (enum X) (enum X)) >>= (fun hp => Ret (P hp.1 hp.2)) =
-  Ret (P a a) <|9^-1%:pr|> (Ret (P a b) <|8^-1%:pr|> (Ret (P a c) <|7^-1%:pr|>
- (Ret (P b a) <|6^-1%:pr|> (Ret (P b b) <|5^-1%:pr|> (Ret (P b c) <|4^-1%:pr|>
- (Ret (P c a) <|3^-1%:pr|> (Ret (P c b) <|2^-1%:pr|> Ret (P c c)))))))) :> M _.
+  Ret (P a a) <|9^-1%:i01|> (Ret (P a b) <|8^-1%:i01|> (Ret (P a c) <|7^-1%:i01|>
+ (Ret (P b a) <|6^-1%:i01|> (Ret (P b b) <|5^-1%:i01|> (Ret (P b c) <|4^-1%:i01|>
+ (Ret (P c a) <|3^-1%:i01|> (Ret (P c b) <|2^-1%:i01|> Ret (P c c)))))))) :> M _.
 Proof.
 rewrite [LHS](_ : _ = fmap (uncurry P) (uniform (def, def) (cp (enum X) (enum X)))); last first.
   rewrite fmapE; bind_ext; by case.
@@ -226,7 +227,7 @@ Qed.
    will match one third of the time *)
 Lemma bcoin13E_pair {M : probMonad R} def (f : bool -> M bool) :
   uniform (def, def) (cp (enum X) (enum X)) >>= (fun hp => f (hp.1 == hp.2)) =
-  bcoin 3^-1%:pr >>= f.
+  bcoin 3^-1%:i01 >>= f.
 Proof.
 transitivity (uniform (def, def) (cp (enum X) (enum X)) >>= (fun hp => Ret (hp.1 == hp.2) >>= f)).
   bind_ext => -[h p] /=; by rewrite bindretf.
@@ -241,7 +242,7 @@ Qed.
 
 Lemma bcoin23E_pair {M : probMonad R} def :
   uniform (def, def) (cp (enum X) (enum X)) >>= (fun hp => Ret (hp.1 != hp.2)) =
-  bcoin (3^-1).~%:pr :> M _.
+  bcoin (3^-1%:i01)%:num.~%:i01 :> M _.
 Proof.
 pose P := fun a b : X => a != b.
 transitivity (uniform (def, def) (cp (enum X) (enum X)) >>=
@@ -252,8 +253,9 @@ rewrite (negbTE a_neq_c).
 rewrite (eq_sym b) (negbTE a_neq_b).
 rewrite (negbTE b_neq_c).
 rewrite 2!(eq_sym c) (negbTE a_neq_c).
-rewrite (negbTE b_neq_c).
-by rewrite choiceA_compute /= -uTTFE.
+rewrite (negbTE b_neq_c)/=.
+rewrite choiceA_compute /=.
+by rewrite -uTTFE.
 Qed.
 
 Local Close Scope mprog.
@@ -325,7 +327,7 @@ transitivity (mpair (hide, pick) >>= (fun hp => f hp.1 hp.2)).
 by rewrite mpair_uniform // /doors Set3.enumE.
 Qed.
 
-Lemma play_stick : play stick = bcoin 3^-1%:pr.
+Lemma play_stick : play stick = bcoin 3^-1%:i01.
 Proof.
 rewrite {1}/play {1}/monty hide_pickE.
 transitivity (do hp <- uniform (def, def) (cp doors doors);
@@ -342,7 +344,7 @@ transitivity (uniform (def, def) (cp doors doors) >>= (fun hp =>
 by rewrite Set3.bcoin13E_pair // bindmret.
 Qed.
 
-Lemma play_switch : play switch = bcoin (3^-1).~%:pr.
+Lemma play_switch : play switch = bcoin (3^-1%:i01)%:num.~%:i01.
 Proof.
 rewrite {1}/play {1}/monty hide_pickE.
 transitivity (do hp <- uniform (def, def) (cp doors doors);
@@ -412,7 +414,7 @@ Proof.
 rewrite fmapE /try bindA.
 under eq_bind do rewrite bindretf.
 rewrite /pick /monty.pick.
-transitivity ((Ret A <| 3^-1%:pr |> (Ret B <| 2^-1%:pr |> Ret C)) >>= (fun p => Ret (d == p)) : M _).
+transitivity ((Ret A <| 3^-1%:i01 |> (Ret B <| 2^-1%:i01 |> Ret C)) >>= (fun p => Ret (d == p)) : M _).
   congr bind; by rewrite /doors Set3.enumE 2!uniform_cons.
 rewrite 2!choice_bindDl 3!bindretf.
 rewrite /uFFT 2!uniform_cons.
@@ -441,7 +443,7 @@ rewrite monty_choice_your_choice_combine -!/(try _).
 by rewrite 2!alt_fmapDr !try_uFFT 2!altmm.
 Qed.
 
-Lemma monty_stick : play_n stick = bcoin 3^-1%:pr.
+Lemma monty_stick : play_n stick = bcoin 3^-1%:i01.
 Proof.
 rewrite /play_n /monty /stick.
 transitivity (hide_n >>= (fun h => (pick def : M _) >>=
@@ -456,7 +458,7 @@ Qed.
 
 Lemma bcoin23E :
   arbitrary def doors >>= (fun h => uniform def doors >>= (fun p => Ret (h != p))) =
-  bcoin (3^-1).~%:pr :> M _.
+  bcoin (3^-1%:i01)%:num.~%:i01 :> M _.
 Proof.
 transitivity (arbitrary def doors >>= (fun h => uniform def doors >>=
     (fun p => Ret (h, p) >>= (fun x => Ret (x.1 != x.2) : M _)))).
@@ -473,16 +475,16 @@ have K : forall D, (uniform def doors >>= (fun p : door => Ret (D, p))) >>=
 rewrite 3!K !(@Set3.uniform_unfold _ _ _ _ (fun a b => a != b)) !eqxx /=.
 rewrite Set3.a_neq_b Set3.b_neq_c Set3.a_neq_c eq_sym Set3.a_neq_b eq_sym.
 rewrite Set3.a_neq_c eq_sym Set3.b_neq_c choicemm.
-rewrite (@choiceC _ _ _ 2^-1%:pr).
-rewrite (@choiceA_alternative _ _ _ _ _ 2^-1%:pr (3^-1).~%:pr); last first.
-  by rewrite /onem /=; split; field.
+rewrite (@choiceC _ _ _ 2^-1%:i01).
+rewrite (@choiceA_alternative _ _ _ _ _ 2^-1%:i01 (3^-1%:i01)%:num.~%:i01); last first.
+  by rewrite /= /onem; split; field.
 rewrite choicemm.
-rewrite (@choiceA_alternative _ _ _ _ _ 2^-1%:pr (3^-1).~%:pr); last first.
-  by rewrite /onem /=; split; field.
+rewrite (@choiceA_alternative _ _ _ _ _ 2^-1%:i01 (3^-1%:i01)%:num.~%:i01); last first.
+  by rewrite /= /onem; split; field.
 by rewrite choicemm choiceC /= 2!altmm.
 Qed.
 
-Lemma monty_switch : play_n (switch def) = bcoin (3^-1).~%:pr.
+Lemma monty_switch : play_n (switch def) = bcoin (3^-1%:i01)%:num.~%:i01.
 Proof.
 rewrite {1}/play_n {1}/monty /switch.
 transitivity (hide_n >>= (fun h => pick def >>= (fun p => tease_n h p
@@ -525,7 +527,7 @@ Definition play_f (strategy : door -> door -> M door) :=
 
 Lemma tease_fE (h p : door) : let d := head def (doors \\ [:: h; p]) in
   tease_f h p = if h == p then uniform def (doors \\ [:: h])
-                          else fail <| 2^-1%:pr |> Ret d : M _.
+                          else fail <| 2^-1%:i01 |> Ret d : M _.
 Proof.
 move=> d.
 case: ifPn => [/eqP <-|hp].
@@ -544,27 +546,26 @@ transitivity (uniform def [:: h; d] >>= (fun t => if t == h then fail else Ret t
     by rewrite mem_head.
   move: (Set3.filter1_another card_door hp); rewrite -/doors -Hd => -[] -> //.
   by rewrite uniform2.
-rewrite uniform_cons (_ : _%:pr = 2^-1%:pr)%R; last first.
-  by apply: val_inj => /=; field.
+rewrite uniform_cons.
 rewrite uniform_singl // [head _ _]/= choice_bindDl 2!bindretf eqxx ifF //.
 by apply/negbTE/(Set3.head_filter card_door); rewrite inE eqxx.
 Qed.
 
 Lemma monty_f_stick :
   play_f (@stick _) =
-    Ret true <| 3^-1%:pr |> (fail <| 2^-1%:pr |> (Ret false : M _)).
+    Ret true <| 3^-1%:i01 |> (fail <| 2^-1%:i01 |> (Ret false : M _)).
 Proof.
 rewrite /play_f /monty hide_pickE.
 rewrite /stick.
 under eq_bind do rewrite bindretf tease_fE fun_if if_arg uniform_inde.
 Open (X in _ >>= X).
   transitivity (if x.1 == x.2 then Ret true
-    else fail <| 2^-1%:pr |> ret _ (head def (doors \\ [:: x.1; x.2])) >> Ret false : M _).
+    else fail <| 2^-1%:i01 |> ret _ (head def (doors \\ [:: x.1; x.2])) >> Ret false : M _).
     case: ifPn => [/eqP <-|hp]; first by rewrite eqxx.
     by rewrite eq_sym (negbTE hp).
   reflexivity.
 under eq_bind do rewrite choice_bindDl bindfailf bindretf.
-rewrite (Set3.bcoin13E_pair _ def (fun b => if b then Ret true else fail <| 2^-1%:pr |> Ret false : M _)) //.
+rewrite (Set3.bcoin13E_pair _ def (fun b => if b then Ret true else fail <| 2^-1%:i01 |> Ret false : M _)) //.
 rewrite /bcoin.
 by rewrite choice_bindDl 2!bindretf.
 (* TODO: flattening choices *)
@@ -572,7 +573,7 @@ Qed.
 
 Lemma monty_f_switch :
   play_f (@switch def _) =
-    Ret false <| 3^-1%:pr |> (fail <| 2^-1%:pr |> (Ret true : M _)).
+    Ret false <| 3^-1%:i01 |> (fail <| 2^-1%:i01 |> (Ret true : M _)).
 Proof.
 rewrite /play_f /monty hide_pickE /switch.
 Open (X in _ >>= X).
@@ -582,7 +583,7 @@ under eq_bind do rewrite tease_fE fun_if if_arg.
 Open (X in _ >>= X).
 transitivity (if x.1 == x.2 then uniform def (doors \\ [:: x.1]) >> Ret false
   else
-   fail <| 2^-1%:pr |> ret _ (head def (doors \\ [:: x.1; x.2])) >>= (fun x0 =>
+   fail <| 2^-1%:i01 |> ret _ (head def (doors \\ [:: x.1; x.2])) >>= (fun x0 =>
    Ret (head def (doors \\ [:: x.2; x0]) == x.1)) : M _).
   case: x => h p; rewrite [_.1]/= [_.2]/=; case: ifPn => // /eqP <-.
   transitivity (uniform def (doors \\ [:: h]) >>= (fun x0 =>
@@ -593,7 +594,7 @@ transitivity (if x.1 == x.2 then uniform def (doors \\ [:: x.1]) >> Ret false
   move=> x; rewrite mem_filter inE=> _; by rewrite Set3.head_filter // inE eqxx.
   reflexivity.
 transitivity (uniform (def, def) (cp doors doors) >>= (fun x =>
-  if x.1 == x.2 then Ret false else fail <| 2^-1%:pr |>
+  if x.1 == x.2 then Ret false else fail <| 2^-1%:i01 |>
    Ret (head def (doors \\ [:: x.2; head def (doors \\ [:: x.1; x.2])]) == x.1)) : M _).
   bind_ext => -[h p]; rewrite [_.1]/= [_.2]/=.
   case: ifPn => [?| hp]; first by rewrite uniform_inde.
@@ -602,14 +603,14 @@ transitivity (
   uniform (def, def) (cp doors doors) >>= (fun x =>
   if x.1 == x.2
   then Ret false
-  else (fail : M _) <| 2^-1%:pr |> (Ret true : M _))).
+  else (fail : M _) <| 2^-1%:i01 |> (Ret true : M _))).
   bind_ext => -[h p]; rewrite [_.1]/= [_.2]/=.
   case: ifPn => // hp; congr (_ <| _ |> Ret _).
   apply/eqP.
   rewrite (_ : _ \\ _ = [:: h]) //.
   rewrite Set3.filter_another; last by rewrite eq_sym Set3.head_filter // !inE eqxx orbT.
   by rewrite Set3.filter_another //= Set3.another_another.
-rewrite (Set3.bcoin13E_pair _ def (fun b => if b then Ret false else fail <| 2^-1%:pr |> Ret true)) //.
+rewrite (Set3.bcoin13E_pair _ def (fun b => if b then Ret false else fail <| 2^-1%:i01 |> Ret true)) //.
 by rewrite choice_bindDl 2!bindretf.
 (* TODO: flattening choices *)
 Qed.

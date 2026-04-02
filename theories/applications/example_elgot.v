@@ -504,7 +504,7 @@ Definition fact_elgot_typed_store_unit_body
         if i <= n
         then do v <- cget r;
              do _ <- cput r (i * v);
-             do _ <- cput l (i.+1);
+             do _ <- cput l i.+1;
              Ret (inr tt)
         else Ret (inl tt).
 

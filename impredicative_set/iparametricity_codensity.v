@@ -1,10 +1,9 @@
 (* monae: Monadic equational reasoning in Rocq                                *)
 (* Copyright (C) 2025 monae authors, license: LGPL-2.1-or-later               *)
-From Param Require Import Param.
-
 From mathcomp Require Import all_ssreflect.
 From HB Require Import structures.
 Require Import ipreamble ihierarchy imonad_lib ifmt_lifting imonad_model.
+From elpi Require Import derive param2.
 
 (**md**************************************************************************)
 (* Instantiations of uniform lifting (Theorem 27 of [Mauro Jaskelioff,        *)
@@ -30,9 +29,11 @@ Proof. by []. Qed.
 
 Module Identity.
 Section identity_naturality.
-Variable A : UU0.
+(*Variable A : UU0.*)
+(*Let A : UU0 := nat.*)
 
-Realizer A as A_R := (@eq A).
+(*Realizer A as A_R := (@eq A).*)
+Elpi derive.param2 eq.
 
 Let M := [the monad of idfun].
 
@@ -41,18 +42,21 @@ Definition Mi (X : UU0) : UU0 := ltac:(
   let t := eval cbn in t in
   exact t).
 
-Definition T : UU0 := MK Mi A.
+Definition T (A : UU0) : UU0 := MK Mi A.
 
-Parametricity T arity 2.
+(*Parametricity T arity 2.*)
 
-Variable m : T.
+#[recursive]derive T.
 
-Axiom param : T_R m m.
+Variable A : UU0.
+Variable m : T A.
+
+Axiom param : T_R A A (@eq A) m m.
 
 Lemma naturality : naturality (exponentialF A \o M) M m.
 Proof.
 move=> X Y f; apply funext => eX.
-by apply (param X Y (fun x y => (M # f) x = y)) => a _ <-.
+by apply: (param X Y (fun x y => (M # f) x = y)) => a a' ->/=.
 Qed.
 
 End identity_naturality.
@@ -64,25 +68,36 @@ Check uniform_sigma_lifting (M := [the monad of idfun]) _ _ Identity.naturality.
 
 Module Exception.
 Section exception_naturality.
-Variables Z A : UU0.
+(*Variables Z A : UU0.
 
 Realizer Z as Z_R := (@eq Z).
-Realizer A as A_R := (@eq A).
+Realizer A as A_R := (@eq A).*)
 
-Let M := [the monad of ExceptMonad.acto Z].
+Elpi derive.param2 eq.
 
-Definition Me (X : UU0) : UU0 := ltac:(
-  let t := constr:(M X) in
+Let M (Z : UU0) : monad := ExceptMonad.acto Z.
+
+#[verbose] derive ExceptMonad.acto.
+#[verbose] derive M.
+
+Definition Me (Z : UU0) (X : UU0) : UU0 := ltac:(
+  let t := constr:(M Z X) in
   let t := eval cbn in t in
   exact t).
 
-Definition T : UU0 := MK Me A.
+derive Me.
 
-Parametricity Recursive T arity 2.
+Definition T (Z A : UU0) : UU0 := MK (Me Z) A.
 
-Variable m : T.
+(*Parametricity Recursive T arity 2.*)
 
-Axiom param : T_R m m.
+#[recursive] derive MK.
+#[verbose] derive T.
+
+Variables Z A : UU0.
+Variable m : T Z A.
+
+Axiom param : T_R _ _ (@eq Z) m m.
 
 Lemma naturality : naturality (exponentialF A \o M) M m.
 Proof.

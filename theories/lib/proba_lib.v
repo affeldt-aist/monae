@@ -48,27 +48,6 @@ Local Open Scope proba_scope.
 Local Open Scope ring_scope.
 Local Open Scope proba_monad_scope.
 
-(*
-Definition choiceA_real_realType (p q : {prob R}) (a b c : M A) :
-  let conv := (fun p (a b : M A) => choice p A a b) in
-  conv p a (conv q b c) = conv [s_of p, q] (conv [r_of p, q] a b) c.
-Proof. exact: (choiceA p q). Qed.
-
-Definition prob_convType := M A.
-
-HB.instance Definition _ := boolp.gen_eqMixin prob_convType.
-
-HB.instance Definition _ := boolp.gen_choiceMixin prob_convType.
-
-HB.instance Definition _ := @infotheo.probability.convex.isConvexSpace.Build R
-  prob_convType
-  (fun p => choice p A)
-  (choice1 _)
-  choicemm
-  choiceC
-  choiceA_real_realType.
-*)
-
 Lemma choice_conv p (x y : M A) : x <|p|> y = conv p x y.
 Proof. by []. Qed.
 
@@ -102,7 +81,7 @@ Fixpoint uniform {M : probMonad R} {A : Type} (def : A) (s : seq A) : M A :=
    alrealy existent instance for GRing.inv (Instance.inv_inum in interval_inference).
    Instance.inv_inum is not clever enough to derive that "1/(1+n) <= 1".
    We will need to augment inv_inum to recover the original code
-   (`(size (x :: xs))%:R^-1%:i01`).
+   (`(size (x :: xs))%:R^-1%:i01).
  *)
 
 Lemma uniform_nil (M : probMonad R) (A : Type) (def : A) :
@@ -405,11 +384,14 @@ Qed.
 
 End mixing_choices.
 
-XXXX
+Local Open Scope ring_scope.
+
+(* FIXME! (kludge) *)
+Notation "x '^-1%:i01'" := (Itv01 (andP (prob_invn x.-1)).1 (andP (prob_invn x.-1)).2).
 
 (* not used anywhere? *)
 Definition coins23 {R : realType} {M : exceptProbMonad R} : M bool :=
-  Ret true <| 2^-1%:pr |> (Ret false <| 2^-1%:pr |> fail).
+  Ret true <| 2^-1%:i01 |> (Ret false <| 2^-1%:i01 |> fail).
 
 (* TODO: check if we PRed this notation to mathcomp *)
 Reserved Notation "x <= y <= z :> T" (at level 70, y, z at next level).
@@ -419,54 +401,53 @@ Section for_example_monty.
 
 (* NB: notation for ltac:(split; fourier?)*)
 Lemma choiceA_compute {R : realType} {N : probMonad R} (T F : bool) (f : bool -> N bool) :
-  f T <|9^-1%:pr|> (f F <|8^-1%:pr|> (f F <|7^-1%:pr|> (f F <|6^-1%:pr|>
- (f T <|5^-1%:pr|> (f F <|4^-1%:pr|> (f F <|3^-1%:pr|> (f F <|2^-1%:pr|>
-  f T))))))) = f F <|3^-1%:pr|> (f F <|2^-1%:pr|> f T) :> N _.
+  f T <|9^-1%:i01|> (f F <|8^-1%:i01|> (f F <|7^-1%:i01|> (f F <|6^-1%:i01|>
+ (f T <|5^-1%:i01|> (f F <|4^-1%:i01|> (f F <|3^-1%:i01|> (f F <|2^-1%:i01|>
+  f T))))))) = f F <|3^-1%:i01|> (f F <|2^-1%:i01|> f T) :> N _.
 Proof.
 have H27 : 0 <= 2/7 <= 1 :> R by lra.
 have H721 : 0 <= 7/21 <= 1 :> R by lra.
 have H2156 : 0 <= 21/56 <= 1 :> R by lra.
 have H25 : 0 <= 2/5 <= 1 :> R by lra.
 pose choiceA_alt := @choiceA_alternative R N bool.
-rewrite [in RHS](choiceA_alt _ _ 2^-1%:pr (3^-1).~%:pr); last first.
-  by rewrite 3!probpK /= /onem; split; field.
+Locate "%:i01".
+rewrite [in RHS](choiceA_alt _ _ 2^-1%:i01 (3^-1%:i01)%:num.~%:i01); last first.
+  by rewrite /= /onem; split; field.
 rewrite choicemm.
-rewrite [in LHS](choiceA_alt 3^-1%:pr 2^-1%:pr 2^-1%:pr (3^-1).~%:pr); last first.
-  by rewrite 3!probpK /= /onem; split; field.
+rewrite [in LHS](choiceA_alt 3^-1%:i01 2^-1%:i01 2^-1%:i01 (3^-1%:i01)%:num.~%:i01); last first.
+  by rewrite /= /onem; split; field.
 rewrite choicemm.
-rewrite [in LHS](choiceA_alt 4^-1%:pr (3^-1).~%:pr 3^-1%:pr (4^-1).~%:pr); last first.
-  by rewrite 4!probpK /= /onem; split; field.
+rewrite [in LHS](choiceA_alt 4^-1%:i01 (3^-1%:i01)%:num.~%:i01 3^-1%:i01 (4^-1%:i01)%:num.~%:i01); last first.
+  by rewrite /= /onem; split; field.
 rewrite choicemm.
-rewrite [in LHS](choiceA_alt 7^-1%:pr 6^-1%:pr 2^-1%:pr (Prob.mk H27)); last first.
-  by rewrite 4!probpK /= /onem; split; field.
+rewrite [in LHS](choiceA_alt 7^-1%:i01 6^-1%:i01 2^-1%:i01 (Prob.mk H27)); last first.
+  by rewrite /= /onem; split; field.
 rewrite choicemm.
-rewrite [in LHS](choiceA_alt 8^-1%:pr (Prob.mk H27) (Prob.mk H721) (Prob.mk H2156)); last first.
-  by rewrite probpK /= /onem; split; field.
-rewrite (choiceC (4^-1).~%:pr).
-rewrite [in LHS](choiceA_alt 5^-1%:pr (probcplt (4^-1).~%:pr) 2^-1%:pr (Prob.mk H25)); last first.
-  by rewrite 3!probpK /= /onem; split; field.
+rewrite [in LHS](choiceA_alt 8^-1%:i01 (Prob.mk H27) (Prob.mk H721) (Prob.mk H2156)); last first.
+  by rewrite /= /onem; split; field.
+rewrite (choiceC (4^-1%:i01)%:num.~%:i01).
+rewrite [X in _ <| _ |> (_ <| _ |> X)](choiceA_alt _ _ 2^-1%:i01 (Prob.mk H25)); last first.
+  by rewrite /= /onem; split; field.
 rewrite 2!choicemm.
 rewrite (choiceC (Prob.mk H25)).
-rewrite [in LHS](choiceA_alt (Prob.mk H2156) (probcplt (Prob.mk H25)) 2^-1%:pr (4^-1).~%:pr); last first.
-  by rewrite 3!probpK /= /onem; split; field.
+rewrite [in X in _ <| _ |> X](choiceA_alt _ _ 2^-1%:i01 (4^-1%:i01)%:num.~%:i01); last first.
+  by rewrite /= /onem/=; split; field.
 rewrite choicemm.
-rewrite (choiceC (4^-1).~%:pr).
-rewrite [in LHS](choiceA_alt 9^-1%:pr (probcplt (4^-1).~%:pr) 3^-1%:pr 3^-1%:pr); last first.
-  by rewrite 3!probpK /= /onem; split; field.
+rewrite (choiceC (4^-1%:i01)%:num.~%:i01).
+rewrite [in LHS](choiceA_alt _ _ 3^-1%:i01 3^-1%:i01); last first.
+  by rewrite /= /onem; split; field.
 by rewrite choicemm choiceC.
 Qed.
 
 Definition uFFT {R : realType} {M : probMonad R} : M bool :=
   uniform true [:: false; false; true].
 
-Lemma uFFTE {R : realType} (M : probMonad R) : uFFT = bcoin 3^-1%:pr :> M _.
+Lemma uFFTE {R : realType} (M : probMonad R) : uFFT = bcoin 3^-1%:i01 :> M _.
 Proof.
 rewrite /uFFT /bcoin uniform_cons.
-rewrite (_ : _%:pr = 3^-1%:pr)%R; last exact/val_inj.
 rewrite uniform_cons.
-rewrite [in X in _ <| _ |> X](_ : _%:pr = 2^-1%:pr)%R; last exact/val_inj.
 rewrite uniform_singl //=.
-rewrite (@choiceA_alternative _ _ _ _ _ 2^-1%:pr (3^-1).~%:pr); last first.
+rewrite (@choiceA_alternative _ _ _ _ _ 2^-1%:i01 (3^-1%:i01)%:num.~%:pr); last first.
   by rewrite /= /onem; split; field.
 rewrite choicemm choiceC; congr (Ret true <| _ |> Ret false).
 by apply val_inj; rewrite /= onemK.
@@ -475,14 +456,12 @@ Qed.
 Definition uTTF {R : realType} {M : probMonad R} : M bool :=
   uniform true [:: true; true; false].
 
-Lemma uTTFE {R : realType} (M : probMonad R) : uTTF = bcoin (3^-1).~%:pr :> M _.
+Lemma uTTFE {R : realType} (M : probMonad R) : uTTF = bcoin (3^-1%:i01)%:num.~%:i01 :> M _.
 Proof.
 rewrite /uTTF /bcoin uniform_cons.
-rewrite (_ : _%:pr = 3^-1%:pr)%R; last exact/val_inj.
 rewrite uniform_cons.
-rewrite [in X in _ <| _ |> X](_ : _%:pr = 2^-1%:pr)%R; last exact/val_inj.
 rewrite uniform_singl //=.
-rewrite (@choiceA_alternative _ _ _ _ _ 2^-1%:pr (3^-1).~%:pr) ?choicemm //.
+rewrite (@choiceA_alternative _ _ _ _ _ 2^-1%:i01 (3^-1%:i01)%:num.~%:i01) ?choicemm //.
 by rewrite /= /onem; split; field.
 Qed.
 
@@ -497,7 +476,7 @@ elim: s => [//|h t IH _ H].
 rewrite uniform_cons.
 case/boolP : (t == [::]) => [/eqP -> {IH}|t0].
   rewrite uniform_nil.
-  rewrite (_ : _%:pr = 1%:pr); last first.
+  rewrite [X in _ <| X |> _](_ : _ = 1%:i01); last first.
     by apply: val_inj; rewrite /= addn0 invr1.
   rewrite choice1.
   rewrite 2!bindretf ifF //; apply/negbTE/H; by rewrite mem_head.
@@ -511,16 +490,16 @@ End for_example_monty.
 Section choice_half.
 
 Lemma choice_halfC {R : realType} (M : probMonad R) A (a b : M A) :
-  a <| 2^-1%:pr |> b = b <| 2^-1%:pr |> a.
+  a <| 2^-1%:i01 |> b = b <| 2^-1%:i01 |> a.
 Proof.
-rewrite choiceC (_ : (_.~)%:pr = 2^-1%:pr) //.
+rewrite choiceC/= [X in _ <| X |> _](_ : _ = 2^-1%:i01) //.
 apply: val_inj; rewrite /= /onem.
-lra.
+by field.
 Qed.
 
 Lemma choice_halfACA {R : realType} (M : probMonad R) A (a b c d : M A) :
-  (a <| 2^-1%:pr |> b) <| 2^-1%:pr |> (c <| 2^-1%:pr |> d) =
-  (a <| 2^-1%:pr |> c) <| 2^-1%:pr |> (b <| 2^-1%:pr |> d).
+  (a <| 2^-1%:i01 |> b) <| 2^-1%:i01 |> (c <| 2^-1%:i01 |> d) =
+  (a <| 2^-1%:i01 |> c) <| 2^-1%:i01 |> (b <| 2^-1%:i01 |> d).
 Proof.
 rewrite choice_conv.
 rewrite -convex.convACA.
@@ -533,15 +512,16 @@ Section keimel_plotkin_instance.
 Variables (R : realType) (M : altProbMonad R) (A : Type).
 Variables (p q : M A).
 
+(* TODO: merge https://github.com/affeldt-aist/monae/pull/55 to generalize this *)
 Lemma keimel_plotkin_instance :
   (forall T p, right_distributive (fun a b : M T => a [~] b) (fun a b => a <| p |> b)) ->
-  p <| 2^-1%:pr |> q = (p <| 2^-1%:pr |> q) <| 2^-1%:pr |> (p [~] q).
+  p <| 2^-1%:i01 |> q = (p <| 2^-1%:i01 |> q) <| 2^-1%:i01 |> (p [~] q).
 Proof.
 move=> altDr.
 have altDl T r : left_distributive (fun a b : M T => a [~] b) (fun a b => a <| r |> b).
   by move=> a b c; rewrite altC altDr (altC a) (altC b).
-rewrite -[LHS](altmm (p <| 2^-1%:pr |> q)).
-transitivity (((p [~] p) <| 2^-1%:pr|> (q [~] p)) <| 2^-1%:pr |> ((p [~] q) <| 2^-1%:pr |> (q [~] q))).
+rewrite -[LHS](altmm (p <| 2^-1%:i01 |> q)).
+transitivity (((p [~] p) <| 2^-1%:i01|> (q [~] p)) <| 2^-1%:i01 |> ((p [~] q) <| 2^-1%:i01 |> (q [~] q))).
   by rewrite altDr altDl altDl.
 rewrite 2!altmm (altC q).
 rewrite (choice_halfC (p [~] q)).

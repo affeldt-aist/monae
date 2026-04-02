@@ -1,6 +1,7 @@
 (* monae: Monadic equational reasoning in Rocq                                *)
 (* Copyright (C) 2025 monae authors, license: LGPL-2.1-or-later               *)
 From mathcomp Require Import all_ssreflect ssralg ssrnum finmap.
+From mathcomp Require Import interval_inference.
 From mathcomp Require Import boolp classical_sets reals.
 From infotheo Require Import classical_sets_ext realType_ext fdist proba.
 From infotheo Require Import fsdist convex necset.
@@ -125,9 +126,9 @@ HB.instance Definition _ :=
 
 Definition gcmACI := [the altCIMonad of gcm R].
 
-Lemma choice1 A (x y : gcm R A) : x <| 1%:pr |> y = x.
+Lemma choice1 A (x y : gcm R A) : x <| 1%:i01 |> y = x.
 Proof. by rewrite conv1. Qed.
-Lemma choiceC A p (x y : gcm R A) : x <|p|> y = y <|(Prob.p p).~%:pr|> x.
+Lemma choiceC A p (x y : gcm R A) : x <|p|> y = y <|p%:num.~%:i01|> x.
 Proof. by rewrite convC. Qed.
 Lemma choicemm A p : idempotent_op (@choice p A).
 Proof. by move=> m; rewrite /choice convmm. Qed.
