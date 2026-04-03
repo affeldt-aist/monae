@@ -6,6 +6,9 @@
 -arg -w -arg -elpi.add-const-for-axiom-or-sectionvar
 -arg -impredicative-set
 
+param1.v
+param2.v
+
 ipreamble.v
 ihierarchy.v
 imonad_lib.v

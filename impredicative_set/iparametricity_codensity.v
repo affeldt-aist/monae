@@ -3,7 +3,11 @@
 From mathcomp Require Import all_ssreflect.
 From HB Require Import structures.
 Require Import ipreamble ihierarchy imonad_lib ifmt_lifting imonad_model.
-From elpi Require Import derive param2.
+From elpi Require Import derive (*param2*).
+Require Import param1 param2.
+(*From elpi Require Import derive.std.*)
+(*From elpi Require Import derive.legacy.*)
+(*From elpi Require Import derive.experimental.*)
 
 (**md**************************************************************************)
 (* Instantiations of uniform lifting (Theorem 27 of [Mauro Jaskelioff,        *)
@@ -73,12 +77,52 @@ Section exception_naturality.
 Realizer Z as Z_R := (@eq Z).
 Realizer A as A_R := (@eq A).*)
 
-Elpi derive.param2 eq.
+(*
+This typechecks:
 
-Let M (Z : UU0) : monad := ExceptMonad.acto Z.
+Inductive
+sum_R (A1 A2 : UU0) (A_R : A1 -> A2 -> UU0) (B1 B2 : UU0) (B_R : B1 -> B2 -> UU0)
+  : A1 + B1 -> A2 + B2 -> UU0 :=
+    inl_R : forall (_1 : A1) (_2 : A2), A_R _1 _2 -> sum_R (*A1 A2 A_R B1 B2 B_R*) (inl _1) (inl _2)
+  | inr_R : forall (_1 : B1) (_2 : B2), B_R _1 _2 -> sum_R (*A1 A2 A_R B1 B2 B_R*) (inr _1) (inr _2).
+*)
+
+#[verbose] derive sum.
+Print sum_R.
+(*
+coq-elpi creates sum_R at UU1, not UU0.
+Inductive
+sum_R (A1 A2 : UU1) (A_R : A1 -> A2 -> UU1) (B1 B2 : UU1) (B_R : B1 -> B2 -> UU1)
+  : A1 + B1 -> A2 + B2 -> UU1 :=
+    inl_R : forall (_1 : A1) (_2 : A2), A_R _1 _2 -> sum_R A1 A2 A_R B1 B2 B_R (inl _1) (inl _2)
+  | inr_R : forall (_1 : B1) (_2 : B2), B_R _1 _2 -> sum_R A1 A2 A_R B1 B2 B_R (inr _1) (inr _2).
+*)
 
 #[verbose] derive ExceptMonad.acto.
-#[verbose] derive M.
+Fail Elpi derive.param2 ExceptMonad.acto.
+
+(*
+sum_R at UU1 causes a universe inconsistency:
+
+Error:
+param2: constant does not have the right type: Unable to unify
+ "forall E1 E2 : UU0,
+  (E1 -> E2 -> UU0) ->
+  forall A1 A2 : UU0, (A1 -> A2 -> UU0) -> E1 + A1 -> E2 + A2 -> UU1"
+with
+ "forall E1 E2 : UU0,
+  (E1 -> E2 -> UU0) ->
+  forall A1 A2 : UU0,
+  (A1 -> A2 -> UU0) -> ExceptMonad.acto E1 A1 -> ExceptMonad.acto E2 A2 -> UU0"
+(universe inconsistency: Cannot enforce sum_R.u0 <= Set).
+*)
+
+derive eq.
+
+Definition M (Z : UU0) := ExceptMonad.acto Z.
+(*Definition M (Z : UU0) : monad := ExceptMonad.acto Z.*)
+
+derive M.
 
 Definition Me (Z : UU0) (X : UU0) : UU0 := ltac:(
   let t := constr:(M Z X) in
@@ -91,8 +135,8 @@ Definition T (Z A : UU0) : UU0 := MK (Me Z) A.
 
 (*Parametricity Recursive T arity 2.*)
 
-#[recursive] derive MK.
-#[verbose] derive T.
+#[verbose] derive MK.
+#[recursive] derive T.
 
 Variables Z A : UU0.
 Variable m : T Z A.
