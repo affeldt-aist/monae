@@ -36,7 +36,7 @@ in several examples of monadic equational reasoning.
   - [MathComp field](https://math-comp.github.io)
   - [MathComp analysis](https://github.com/math-comp/analysis)
   - [Infotheo](https://github.com/affeldt-aist/infotheo)
-  - [Paramcoq](https://github.com/coq-community/paramcoq)
+  - [Rocq-Elpi](https://github.com/LPCIC/coq-elpi)
   - [Hierarchy Builder](https://github.com/math-comp/hierarchy-builder)
   - [Coq-Equations](https://github.com/mattam82/Coq-Equations)
 - Coq namespace: `monae`
