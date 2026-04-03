@@ -129,7 +129,7 @@ Proof. by move=> A m; rewrite /bind flatten_seq1. Qed.
 Let associative : BindLaws.associative bind.
 Proof.
 move=> A B C; elim => // h t; rewrite /bind => ih f g.
-by rewrite /= map_cat flatten_cat /= ih.
+by rewrite map_cat flatten_cat ih.
 Qed.
 HB.instance Definition _ :=
   isMonad_ret_bind.Build M left_neutral right_neutral associative.
@@ -141,10 +141,73 @@ Lemma list_bindE (A B : UU0) (M := ListMonad.acto) (m : M A) (f : A -> M B) :
   m >>= f = flatten (map f m).
 Proof. by []. Qed.
 
+Module IListMonad.
+
+(* We redefine seq it to make it reside in Set *)
+Inductive seq (A : UU0) : UU0 := nil : seq A | cons : A -> seq A -> seq A.
+Arguments nil {A}.
+Arguments cons {A}.
+Notation "[ :: ]" := nil : seq_scope.
+Notation "x :: y" := (cons x y) : seq_scope.
+Notation "[ :: x1 ]" := (cons x1 nil) : seq_scope.
+Notation "[ :: x1 ; x2 ; .. ; xn ]" := (cons x1 (cons x2 .. (cons xn nil) ..)) : seq_scope.
+Notation "[ :: x1 , x2 , .. , xn & s ]" := (cons x1 (cons x2 .. (cons xn s) ..)) : seq_scope.
+Notation "[ :: x & s ]" := (cons x s) (only parsing) : seq_scope .
+
+Fixpoint cat {T : UU0} (s1 s2 : seq T) :=
+  if s1 is x :: s1' then x :: s1' ++ s2 else s2
+where "s1 ++ s2" := (cat s1 s2) : seq_scope.
+Fixpoint map {T1 T2 : UU0} (f : T1 -> T2) s :=
+  if s is x :: s' then f x :: map f s' else [::].
+Notation "[ 'seq' E | i <- s ]" := (map (fun i => E) s) : seq_scope.
+Fixpoint foldr {T R : UU0} (f : T -> R -> R) z s :=
+  if s is x :: s' then f x (foldr f z s') else z.
+Definition flatten {T : UU0} := foldr cat (@nil T).
+Lemma map_cat [T1 T2 : UU0] (f : T1 -> T2) (s1 s2 : seq T1) :
+  map f (s1 ++ s2) = map f s1 ++ map f s2.
+Proof. by elim: s1 => [|x s1 IHs] //=; rewrite IHs. Qed.
+Lemma cats0 [T : UU0] (s : seq T) : s ++ [::] = s.
+Proof. by elim: s => //= x s ->. Qed.
+Lemma catA [T : UU0] (s1 s2 s3 : seq T) : s1 ++ s2 ++ s3 = (s1 ++ s2) ++ s3.
+Proof. by elim: s1 => //= x s1 ->. Qed.
+Lemma flatten_cat [T : UU0] (ss1 ss2 : seq (seq T)) :
+  flatten (ss1 ++ ss2) = flatten ss1 ++ flatten ss2.
+Proof. by elim: ss1 => //= s ss1; rewrite /flatten/= => ->; rewrite catA. Qed.
+Lemma flatten_seq1 [T : UU0] (s : seq T) : flatten [seq [:: x] | x <- s] = s.
+Proof. by elim: s => //= s0 s; rewrite /flatten/= => ->. Qed.
+
+Section listmonad.
+Definition acto := fun A : UU0 => seq A.
+Local Notation M := acto.
+Let ret : idfun ~~> M := fun (A : UU0) x => (@cons A) x [::].
+Let bind := fun A B (m : M A) (f : A -> M B) => flatten (map f m).
+Let left_neutral : BindLaws.left_neutral bind ret.
+Proof. by move=> A B m f; rewrite /bind /ret /flatten/= cats0. Qed.
+Let right_neutral : BindLaws.right_neutral bind ret.
+Proof. by move=> A m; rewrite /bind flatten_seq1. Qed.
+Let associative : BindLaws.associative bind.
+Proof.
+move=> A B C; elim => // h t; rewrite /bind => ih f g.
+by rewrite map_cat flatten_cat ih.
+Qed.
+HB.instance Definition _ :=
+  isMonad_ret_bind.Build M left_neutral right_neutral associative.
+End listmonad.
+End IListMonad.
+
 Module ExceptMonad.
+
+(* We redefine sum it to make it reside in Set *)
+Inductive sum (A B : UU0) : UU0 :=  inl : A -> sum A B | inr : B -> sum A B.
+Arguments inl {A B}.
+Arguments inr {A B}.
+Notation "x + y" := (sum x y) : type_scope.
+
 Section exceptmonad.
 Variable E : UU0.
+
 Definition acto := fun A : UU0 => (E + A)%type.
+
 Local Notation M := acto.
 Let ret : idfun ~~> M := @inr E.
 Let bind := fun A B (m : M A) (f : A -> M B) =>
@@ -246,6 +309,39 @@ HB.instance Definition _ :=
 End state.
 End StateMonad.
 HB.export StateMonad.
+
+Module IStateMonad.
+
+(* We redefine prod it to make it reside in Set *)
+Inductive prod (A B : UU0) : UU0 :=  pair : A -> B -> prod A B.
+Arguments pair {A B}.
+Notation "x * y" := (prod x y) : type_scope.
+Notation "( x , y , .. , z )" := (pair .. (pair x y) .. z) : core_scope.
+
+Definition uncurry {A B C : UU0} (f : A -> B -> C) (p : A * B) :=
+  let (x, y) := p in f x y.
+
+Section state.
+Variable S : UU0. (* type of states *)
+Definition acto := fun A : UU0 => S -> A * S.
+Local Notation M := acto.
+Let ret : idfun ~~> M := fun A a => fun s => (a, s).
+Let bind := fun (A B : UU0) (m : M A) (f : A -> M B) => uncurry f \o m.
+Let left_neutral : BindLaws.left_neutral bind ret.
+Proof. by move=> A B a f; apply funext. Qed.
+Let right_neutral : BindLaws.right_neutral bind ret.
+Proof.
+by move=> A f; apply funext => s; rewrite /bind /=; case: (f s).
+Qed.
+Let associative : BindLaws.associative bind.
+Proof.
+move=> A B C a b c; rewrite /bind compA; congr (_ \o _).
+by apply funext => -[].
+Qed.
+HB.instance Definition _ :=
+  isMonad_ret_bind.Build M left_neutral right_neutral associative.
+End state.
+End IStateMonad.
 
 Lemma state_bindE (S A B : UU0) (M := StateMonad.acto S)
   (m : M A) (f : A -> M B) : m >>= f = uncurry f \o m.
