@@ -249,34 +249,6 @@ Proof. by rewrite choiceDr. Qed.
 HB.instance Definition _ :=
   @isSemiLattConv.Build R((M : convexMonad _) T) axiom.
 
-(*
-Definition altProb_semiLattConvType := M T.
-
-Let axiom (p : {prob R}) (x y z : altProb_semiLattConvType) :
-  x <| p |> (y [~] z) = (x <| p |> y) [~] (x <| p |> z).
-Proof. by rewrite choiceDr. Qed.
-
-HB.instance Definition _ := boolp.gen_eqMixin altProb_semiLattConvType.
-HB.instance Definition _ := boolp.gen_choiceMixin altProb_semiLattConvType.
-
-HB.instance Definition _ := @isSemiLattice.Build altProb_semiLattConvType
-  (fun x y => x [~] y)
-  (@altC M T) (@altA M T) (@altmm M T).
-
-HB.instance Definition _ :=
-  @probability.convex.isConvexSpace.Build
-    R
-    altProb_semiLattConvType
-    (fun p : {prob R} => choice p T)
-    (choice1 _) choicemm choiceC (@choiceA_real_realType _ M T).
-
-HB.instance Definition _ :=
-  @isSemiLattConv.Build
-    R
-    altProb_semiLattConvType
-    axiom.
-*)
-
 End altprob_semilattconvtype.
 
 (* TODO(rei): incipit of section 5 of gibbonsUTP2012 on the model of MonadAltProb *)
