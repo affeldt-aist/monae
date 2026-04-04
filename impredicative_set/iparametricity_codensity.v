@@ -29,13 +29,9 @@ Proof. by []. Qed.
 
 Module Identity.
 Section identity_naturality.
-(*Variable A : UU0.*)
-(*Let A : UU0 := nat.*)
-
-(*Realizer A as A_R := (@eq A).*)
 Elpi derive.param2 eq.
 
-Let M := [the monad of idfun].
+Let M : monad := idfun.
 
 Definition Mi (X : UU0) : UU0 := ltac:(
   let t := constr:(M X) in
@@ -43,8 +39,6 @@ Definition Mi (X : UU0) : UU0 := ltac:(
   exact t).
 
 Definition T (A : UU0) : UU0 := MK Mi A.
-
-(*Parametricity T arity 2.*)
 
 #[recursive]derive T.
 
@@ -62,22 +56,14 @@ Qed.
 End identity_naturality.
 End Identity.
 
-Check uniform_sigma_lifting (M := [the monad of idfun]) _ _ Identity.naturality.
+Check uniform_sigma_lifting (M := idfun) _ _ Identity.naturality.
 
 (******************************************************************************)
 
 Module Exception.
 Section exception_naturality.
 
-Let M (Z : UU0) := ExceptMonad.acto Z.
-(* Bad: `Definition M (Z : UU0) : monad := ExceptMonad.acto Z.`
-   Annotating `M Z` to be of type `monad` inserts a reverse coercion,
-   which blocks
-   `derive M` and hence `#[recursive] derive T`.
-   More precisely, reverse coercions contain a constant `ReverseCoercionSource`
-   that is both universe polymorphic and global, which cannot be handled by
-   `coq-elpi`.
- *)
+Let M (Z : UU0) : monad := ExceptMonad.acto Z.
 
 Definition Me (Z : UU0) (X : UU0) : UU0 := ltac:(
   let t := constr:(M Z X) in
@@ -124,7 +110,7 @@ End exception_naturality.
 End Exception.
 
 Check fun Z => uniform_sigma_lifting
-  (M := [the monad of ExceptMonad.acto Z]) _ _ (Exception.naturality Z).
+  (M := ExceptMonad.acto Z) _ _ (Exception.naturality Z).
 
 (******************************************************************************)
 
@@ -132,7 +118,7 @@ Module Option.
 Section option_naturality.
 Variable A : UU0.
 
-Let M := [the monad of option_monad].
+Let M : monad := option_monad.
 
 Variable m : MK M A.
 
@@ -142,7 +128,7 @@ Proof. exact: Exception.naturality. Qed.
 End option_naturality.
 End Option.
 
-Check uniform_sigma_lifting (M := [the monad of option_monad]) _ _ Option.naturality.
+Check uniform_sigma_lifting (M := option_monad) _ _ Option.naturality.
 
 (******************************************************************************)
 
@@ -150,9 +136,7 @@ Module List.
 Import IListMonad.
 Section list_naturality.
 
-Let M : UU0 -> UU0 := seq.
-Let MM := [the monad of IListMonad.acto].
-Lemma MME : MM = M :> (_ -> _). Proof. by []. Qed.
+Let M : monad := IListMonad.acto.
 
 Definition Ml (X : UU0) : UU0 := ltac:(
   let t := constr:(M X) in
@@ -167,7 +151,7 @@ Variable A : UU0.
 Variable m : T A.
 Axiom param : T_R A A (@eq A) m m.
 
-Lemma naturality : naturality (exponentialF A \o MM) MM m.
+Lemma naturality : naturality (exponentialF A \o M) M m.
 Proof.
 move=> X Y f /=; apply funext => eX.
 set rhs := RHS.
@@ -179,7 +163,7 @@ Qed.
 
 End list_naturality.
 
-Check uniform_sigma_lifting (M := [the monad of IListMonad.acto]) _ _ List.naturality.
+Check uniform_sigma_lifting (M := IListMonad.acto) _ _ List.naturality.
 
 End List.
 
@@ -189,9 +173,7 @@ Module State.
 Import IStateMonad.
 Section state_naturality.
 
-Let M (S : UU0) := IStateMonad.acto S.
-Let MM (S : UU0) := [the monad of IStateMonad.acto S].
-Lemma MME : MM = M :> (_ -> _). Proof. by []. Qed.
+Let M (S : UU0) : monad := IStateMonad.acto S.
 
 Definition Ms (S X : UU0) := ltac:(
   let t := constr:(M S X) in
@@ -207,16 +189,16 @@ Variable m : T S A.
 
 Axiom param : T_R S S (@eq S) A A (@eq A) m m.
 
-Lemma Actm_ModelMonadStateE' (X Y : UU0) (f : X -> Y) (eX : (exponentialF A \o MM S) X) a (s : S):
-  (MM S # f \o eX) a s = let (x, y) := eX a s in (f x, y).
+Lemma Actm_ModelMonadStateE' (X Y : UU0) (f : X -> Y) (eX : (exponentialF A \o M S) X) a (s : S):
+  (M S # f \o eX) a s = let (x, y) := eX a s in (f x, y).
 Proof. by []. Qed.
 
 Lemma Actm_ModelMonadStateE (X Y : UU0) (f : X -> Y) (eX : A -> S -> (X * S)) (s : S)
   (mX : (A -> Ms S X) -> Ms S X) :
-  (MM S # f \o mX) eX s = (let (x, y) := mX eX s in (f x, y)).
+  (M S # f \o mX) eX s = (let (x, y) := mX eX s in (f x, y)).
 Proof. by []. Qed.
 
-Lemma naturality : naturality (exponentialF A \o MM S) (MM S) m.
+Lemma naturality : naturality (exponentialF A \o M S) (M S) m.
 Proof.
 move=> X Y f; apply funext => eX.
 set rhs := RHS.
@@ -232,6 +214,6 @@ Qed.
 End state_naturality.
 
 Check fun S => uniform_sigma_lifting
-  (M := [the monad of IStateMonad.acto S]) _ _ (State.naturality S).
+  (M := IStateMonad.acto S) _ _ (State.naturality S).
 
 End State.

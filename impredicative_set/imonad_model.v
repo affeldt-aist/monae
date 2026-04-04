@@ -18,12 +18,18 @@ Require PropExtensionality.
 (* ```                                                                        *)
 (* IdentityMonad      == identity monad idfun                                 *)
 (* ListMonad          == list monad seq                                       *)
-(* ExceptMonad        == exception monad E + A                                *)
 (* option_monad       == alias for ExceptMonad.acto unit                      *)
 (* OutputMonad        == output monad X * seq L                               *)
 (* EnvironmentMonad   == environment monad E -> A                             *)
 (* StateMonad         == state monad S -> A * S                               *)
 (* ContMonad          == continuation monad (A -> r) -> r                     *)
+(* ```                                                                        *)
+(*                                                                            *)
+(* Monomorphically impredicative instances of monads (Modules):               *)
+(* ```                                                                        *)
+(* IListMonad         == list monad on impredicative seq                      *)
+(* ExceptMonad        == exception monad E + A with impredicative sum         *)
+(* IStateMonad        == state monad S -> A * S with impredicative prod       *)
 (* ```                                                                        *)
 (*                                                                            *)
 (* Sigma-operations (with algebraicity proofs):                               *)
@@ -142,8 +148,7 @@ Lemma list_bindE (A B : UU0) (M := ListMonad.acto) (m : M A) (f : A -> M B) :
 Proof. by []. Qed.
 
 Module IListMonad.
-
-(* We redefine seq it to make it reside in Set *)
+(* universe-monomorphic seq that syntactically reside in Set *)
 Inductive seq (A : UU0) : UU0 := nil : seq A | cons : A -> seq A -> seq A.
 Arguments nil {A}.
 Arguments cons {A}.
@@ -196,8 +201,7 @@ End listmonad.
 End IListMonad.
 
 Module ExceptMonad.
-
-(* We redefine sum it to make it reside in Set *)
+(* universe-monomorphic sum that syntactically reside in Set *)
 Inductive sum (A B : UU0) : UU0 :=  inl : A -> sum A B | inr : B -> sum A B.
 Arguments inl {A B}.
 Arguments inr {A B}.
@@ -311,8 +315,7 @@ End StateMonad.
 HB.export StateMonad.
 
 Module IStateMonad.
-
-(* We redefine prod it to make it reside in Set *)
+(* universe-monomorphic prod that syntactically reside in Set *)
 Inductive prod (A B : UU0) : UU0 :=  pair : A -> B -> prod A B.
 Arguments pair {A B}.
 Notation "x * y" := (prod x y) : type_scope.
