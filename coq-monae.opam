@@ -10,24 +10,24 @@ dev-repo: "git+https://github.com/affeldt-aist/monae.git"
 bug-reports: "https://github.com/affeldt-aist/monae/issues"
 license: "LGPL-2.1-or-later"
 
-synopsis: "Monads and equational reasoning in Coq"
+synopsis: "Monads and equational reasoning in Rocq"
 description: """
-This Coq library contains a hierarchy of monads with their laws used
+This Rocq library contains a hierarchy of monads with their laws used
 in several examples of monadic equational reasoning."""
 
 build: [make "-j%{jobs}%"]
 install: [make "install_full"]
 depends: [
   "coq" { (>= "9.0" & < "9.1~") }
-  "coq-mathcomp-ssreflect" { (>= "2.4.0") }
-  "coq-mathcomp-fingroup" { (>= "2.4.0") }
-  "coq-mathcomp-algebra" { (>= "2.4.0") }
-  "coq-mathcomp-solvable" { (>= "2.4.0") }
-  "coq-mathcomp-field" { (>= "2.4.0") }
-  "coq-mathcomp-analysis" { (>= "1.12.0")}
-  "coq-infotheo" { >= "0.9.5"}
+  "coq-mathcomp-ssreflect" { >= "2.4.0" }
+  "coq-mathcomp-fingroup" { >= "2.4.0" }
+  "coq-mathcomp-algebra" { >= "2.4.0" }
+  "coq-mathcomp-solvable" { >= "2.4.0" }
+  "coq-mathcomp-field" { >= "2.4.0" }
+  "coq-mathcomp-analysis" { >= "1.12.0" }
+  "coq-infotheo" { >= "0.9.7" }
   "coq-elpi" { >= "3.2.0" }
-  "coq-hierarchy-builder" { (>= "1.9.1") }
+  "coq-hierarchy-builder" { >= "1.9.1" }
   "coq-equations" { >= "1.3" & < "1.4~" }
 ]
 

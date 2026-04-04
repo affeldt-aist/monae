@@ -1,4 +1,4 @@
-fullname: Monadic effects and equational reasoning in Coq
+fullname: Monadic effects and equational reasoning in Rocq
 shortname: monae
 organization: affeldt-aist
 opam_name: coq-monae
@@ -7,9 +7,9 @@ action: true
 coqdoc: false
 
 synopsis: >-
-  Monads and equational reasoning in Coq
+  Monads and equational reasoning in Rocq
 description: |-
-  This Coq library contains a hierarchy of monads with their laws used
+  This Rocq library contains a hierarchy of monads with their laws used
   in several examples of monadic equational reasoning.
 authors:
 - name: Reynald Affeldt
@@ -35,61 +35,59 @@ license:
   file: LICENSE
 
 supported_coq_versions:
-  text: Coq 8.19-8.20
-  opam: '{ (>= "8.19" & < "8.21~") | (= "dev") }'
+  text: Rocq 9.0
+  opam: '{ >= "9.0" & < "9.1~" }'
 
-tested_coq_opam_versions:
-- version: '2.3.0-coq-8.19'
+tested_rocq_opam_versions:
+- version: '2.4.0-rocq-prover-9.0'
   repo: 'mathcomp/mathcomp'
-- version: '2.3.0-coq-8.20'
-  repo: 'mathcomp/mathcomp'
-- version: '2.4.0-coq-8.20'
+- version: '2.5.0-rocq-prover-9.0'
   repo: 'mathcomp/mathcomp'
 
 dependencies:
 - opam:
     name: coq-mathcomp-ssreflect
-    version: '{ (>= "2.3.0") | (= "dev")  }'
+    version: '{ >= "2.4.0" }'
   description: |-
     [MathComp ssreflect](https://math-comp.github.io)
 - opam:
     name: coq-mathcomp-fingroup
-    version: '{ (>= "2.3.0") | (= "dev")  }'
+    version: '{ >= "2.4.0" }'
   description: |-
     [MathComp fingroup](https://math-comp.github.io)
 - opam:
     name: coq-mathcomp-algebra
-    version: '{ (>= "2.3.0") | (= "dev")  }'
+    version: '{ >= "2.4.0" }'
   description: |-
     [MathComp algebra](https://math-comp.github.io)
 - opam:
     name: coq-mathcomp-solvable
-    version: '{ (>= "2.3.0") | (= "dev")  }'
+    version: '{ >= "2.4.0" }'
   description: |-
     [MathComp solvable](https://math-comp.github.io)
 - opam:
     name: coq-mathcomp-field
-    version: '{ (>= "2.3.0") | (= "dev")  }'
+    version: '{ >= "2.4.0" }'
   description: |-
     [MathComp field](https://math-comp.github.io)
 - opam:
     name: coq-mathcomp-analysis
-    version: '{ (>= "1.11.0")}'
+    version: '{ >= "1.12.0" }'
   description: |-
     [MathComp analysis](https://github.com/math-comp/analysis)
 - opam:
     name: coq-infotheo
-    version: '{ >= "0.9.3"}'
+    version: '{ >= "0.9.7" }'
   description: |-
     [Infotheo](https://github.com/affeldt-aist/infotheo)
 - opam:
-    name: coq-paramcoq
-    version: '{ >= "1.1.3" & < "1.2~" }'
+    name: coq-elpi
+    version: '{ >= "3.2.0" }'
   description: |-
-    [Paramcoq](https://github.com/coq-community/paramcoq)
+    [Rocq-Elpi](https://github.com/LPCIC/coq-elpi)
 - opam:
     name: coq-hierarchy-builder
-    version: '{ (>= "1.7.0") & (< "1.9"~) }'
+    version: '{ >= "1.9.1" }'
   description: |-
     [Hierarchy Builder](https://github.com/math-comp/hierarchy-builder)
 - opam:
@@ -127,6 +125,10 @@ publications:
 - pub_url: https://www.cambridge.org/core/services/aop-cambridge-core/content/view/B59B87DE000F48B9807F24AEDB11452E/S0956796824000157a.pdf/a-practical-formalization-of-monadic-equational-reasoning-in-dependent-type-theory.pdf
   pub_title: A practical formalization of monadic equational reasoning in dependent-type theory
   pub_doi: 10.1017/S0956796824000157
+- pub_url: https://msp.cis.strath.ac.uk/types2025/abstracts/TYPES2025_paper28.pdf
+  pub_title: Monadic Equational Reasoning for while loop in Rocq
+
+
 
 #make_target: [
 #  [make "-j%{jobs}%"]
@@ -140,9 +142,9 @@ build: |-
 
   The easiest way to install the latest released version of Monadic effects and equational reasoning in Coq
   is via [OPAM](https://opam.ocaml.org/doc/Install.html):
-  
+
   ```shell
-  opam repo add coq-released https://coq.inria.fr/opam/released
+  opam repo add rocq-released https://rocq-prover.org/opam/released
   opam install coq-monae
   ```
 
@@ -173,13 +175,14 @@ documentation: |-
   - [Mu and Chiang, Deriving Monadic Quicksort (Declarative Pearl), 2020]
 
   This library has been applied to other formalizations:
-  - application to program semantics (see file `smallstep.v`)
   - formalization of monad composition [Jones and Duponcheel, Composing Monads, Yale RR 1993] (Sections 2 and 3)
   - formalization of monad transformers [Jaskelioff, Modular Monad Transformers, ESOP 2009] (up to Sect. 4)
     + completed with details from [Jaskelioff, Lifting of Operations in Modular Monadic Semantics, PhD 2009]
     + see directory `impredicative_set` for the formalization of [Jaskelioff, Modular Monad Transformers, ESOP 2009] (from Sect. 5)
   - formalization of the geometrically convex monad (main reference:
     [Cheung, Distributive Interaction of Algebraic Effects, PhD Thesis, U. Oxford, 2017])
+
+  See `theories/applications/` for more examples
 
   ![Available monads](./hier.png "Available Monads")
 
@@ -191,9 +194,10 @@ documentation: |-
     + [category.v](./theories/core/category.v): formalization of concrete categories (generalization of the bottom layers of `hierarchy.v`)
     + [monad_transformer.v](./theories/core/monad_transformer.v): monad transformers
       * completed by `ifmt_lifting.v` and `iparametricty_codensity.v` in the directory `impredicative_set`
-        - the directory `impredicative_set` contains a lighter version of Monae where monads live in `Set` and that compiles with `impredicative-set`
-  - libraries for each monad theory:  
+        - the directory `impredicative_set` contains a lighter version of Monae where monads live in `Set` and that compiles with the `impredicative-set` option of Rocq
+  - libraries for each monad theory:
     + [monad_lib.v](./theories/lib/monad_lib.v): basic lemmas about monads
+    + [alt_lib.v](./theories/lib/alt_lib.v): lemmas about the nondeterminism monad
     + [fail_lib.v](./theories/lib/fail_lib.v): lemmas about the fail monad and related monads
     + [state_lib.v](./theories/lib/state_lib.v): lemmas about state-related monads
     + [array_lib.v](./theories/lib/array_lib.v): lemmas about the array monad
@@ -202,11 +206,15 @@ documentation: |-
     + [typed_store_lib.v](./theories/lib/typed_store_lib.v): derived definitions and lemmas about about the typed store monad
   - models of monads:
     + [monad_model.v](./theories/models/monad_model.v): concrete models of monads
-    + [proba_monad_model.v](./theories/models//proba_monad_model.v): model of the probability monad
-    + [gcm_model.v](./theories/models//gcm_model.v): model of the geometrically convex monad
-    + [altprob_model.v](./theories/models//altprob_model.v): model of a monad that mixes non-deterministic choice and probabilistic choice
-    + [typed_store_model.v](./theories/models//typed_store_model.v): alternative model of the typed store monad
+    + [proba_model.v](./theories/models/proba_model.v): model of the probability monad
+    + [gcm_model.v](./theories/models/gcm_model.v): model of the geometrically convex monad
+    + [altprob_model.v](./theories/models/altprob_model.v): model of a monad that mixes non-deterministic choice and probabilistic choice
+    + [typed_store_model.v](./theories/models/typed_store_model.v): alternative model of the typed store monad
+    + [typed_store_transformer.v](./theories/models/typed_store_transformer.v): model of the types store monad using monad transformers
+    + [delay_model.v](./theories/models/delay_model.v): model of the delay monad
+    + [elgot_model.v](./theories/models/elgot_model.v): model of the Elgot monad
   - applications:
+    + [example_fastprod.v](./theories/applications/example_fastprod.v): fast product
     + [example_relabeling.v](./theories/applications/example_relabeling.v): tree relabeling
     + [example_monty.v](./theories/applications/example_monty.v): Monty Hall problem
     + [example_spark.v](./theories/applications/example_spark.v): Spark aggregation
@@ -214,13 +222,16 @@ documentation: |-
     + [example_quicksort.v](./theories/applications/example_quicksort.v): functional quicksort
     + [example_nqueens.v](./theories/applications/example_nqueens.v): the n-queens puzzle
     + [example_typed_store.v](./theories/applications/example_typed_store.v): ML programs with references
+    + [typed_store_universe.v](./theories/applications/typed_store_universe.v): file for `example_typed_store.v` and `example_elgot.v`
     + [example_transformer.v](./theories/applications/example_transformer.v): monad transformers
+    + [counterexample_altprobdr.v](./theories/applications/counterexample_altprobdr.v): collapse of the probabilistic choice in altCIMonad + convexMonad + right distributivity
     + [smallstep.v](./theories/applications/smallstep.v): semantics for an imperative language, with equivalence operational semantics/denotation and sample imperative programs
     + [monad_composition.v](./theories/applications/monad_composition.v): composing monads
     + [category_ext.v](./theories/applications/category_ext.v): experimental library about categories
+    + [example_elgot.v](./theories/applications/example_elgot.v): applications of the Elgot monad
 
   ## About Installation with Windows 11
- 
+
   Installation of monae on Windows is less simple.
   First install infotheo following the [instructions for Windows 11](https://github.com/affeldt-aist/infotheo).
   Once infotheo is installed (with opam), do:
