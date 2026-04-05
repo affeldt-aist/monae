@@ -439,7 +439,7 @@ iqsort n.+1 i := aget i >>= (fun p =>
   aswap i (i + ny%:Z) >>
   iqsort ny i >> iqsort nz (i + ny%:Z + 1)%Z)). *)
 
-Program Fixpoint iqsort' ni
+Program Definition iqsort' ni
     (f : forall mj, (mj.2 < ni.2)%coq_nat -> M unit) : M unit :=
   match ni.2 with
   | 0 => Ret tt
