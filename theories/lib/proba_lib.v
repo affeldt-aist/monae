@@ -3,6 +3,7 @@
 From infotheo Require realType_ext.  (* Remove this line when requiring Rocq >= 9.2 *)
 From HB Require Import structures.
 From mathcomp Require Import all_ssreflect ssralg ssrnum lra ring.
+From mathcomp Require Import interval_inference.
 From mathcomp Require boolp.
 From mathcomp Require Import reals unstable mathcomp_extra.
 From infotheo Require Import realType_ext.
@@ -41,37 +42,25 @@ Import GRing.Theory Num.Theory Order.Theory.
 
 Section convex.
 Variable R : realType.
-Variable M : probMonad R.
+Variable M : convexMonad R.
 Variable A : Type.
 Local Open Scope proba_scope.
+Local Open Scope ring_scope.
+Local Open Scope proba_monad_scope.
 
-Definition choiceA_real_realType (p q : {prob R}) (a b c : M A) :
-  let conv := (fun p (a b : M A) => choice p A a b) in
-  conv p a (conv q b c) = conv [s_of p, q] (conv [r_of p, q] a b) c.
-Proof. exact: (choiceA p q). Qed.
-
-Definition prob_convType := M A.
-
-HB.instance Definition _ := boolp.gen_eqMixin prob_convType.
-
-HB.instance Definition _ := boolp.gen_choiceMixin prob_convType.
-
-HB.instance Definition _ := @infotheo.probability.convex.isConvexSpace.Build R
-  prob_convType
-  (fun p => choice p A)
-  (choice1 _)
-  choicemm
-  choiceC
-  choiceA_real_realType.
-
-Lemma choice_conv p (x y : prob_convType) : x <|p|> y = conv p x y.
+Lemma choice_conv p (x y : M A) : x <|p|> y = conv p x y.
 Proof. by []. Qed.
 
-End convex.
-
-Lemma choiceACA {R : realType} {M : probMonad R} T q p :
-  @interchange (prob_convType M T) (fun a b => a <|p|> b) (fun a b => a <|q|> b).
+Lemma choiceACA q p :
+  @interchange (M A) (fun a b => a <|p|> b) (fun a b => a <|q|> b).
 Proof. by move=> *; exact: convACA. Qed.
+
+Lemma magnify_choice (p q r : {prob R}) (x y : M A) (pr : p%:num < r%:num)
+  (pqr : p%:num <= q%:num <= r%:num) :
+(x <|p|> y) <|magnified_prob pr pqr|> (x <|r|> y) = x <|q|> y.
+Proof. exact: magnify_conv. Qed.
+
+End convex.
 
 Section uniform.
 Variable R : realType.
@@ -82,29 +71,40 @@ Fixpoint uniform {M : probMonad R} {A : Type} (def : A) (s : seq A) : M A :=
   match s with
     | [::] => Ret def
     | [:: x] => Ret x
-    | x :: xs => Ret x <| (((size (x :: xs))%:R)^-1)%:pr |> uniform def xs
+    | x :: xs => Ret x <| probinvn (size xs) |> uniform def xs
   end.
+(* FIXTHEM:
+   `probinvn (size xs)` was `(size (x :: xs))%:R^-1%:pr`.
+   The latter worked before infotheo 0.9.7, and now it fails even if we change %:pr to %:i01.
+   As of 0.9.7, {prob R} is an alias to {i01 R}, and
+   the canonical declaration for probinvn in realType_ext is silently failing due to the
+   alrealy existent instance for GRing.inv (Instance.inv_inum in interval_inference).
+   Instance.inv_inum is not clever enough to derive that "1/(1+n) <= 1".
+   We will need to augment inv_inum to recover the original code
+   (`(size (x :: xs))%:R^-1%:i01).
+ *)
 
 Lemma uniform_nil (M : probMonad R) (A : Type) (def : A) :
   uniform def [::] = Ret def :> M A.
 Proof. by []. Qed.
 
 Lemma choice_ext (q p : {prob R}) (M : probMonad R) A (m1 m2 : M A) :
-  Prob.p p = Prob.p q :> R -> m1 <| p |> m2 = m1 <| q |> m2.
+  p%:num = q%:num :> R -> m1 <| p |> m2 = m1 <| q |> m2.
 Proof. by move/val_inj => ->. Qed.
 
 Lemma uniform_cons (M : probMonad R) (A : Type) (def : A) h s :
   uniform def (h :: s) =
-  Ret h <| ((((size s).+1)%:R)^-1)%:pr |> uniform def s :> M A.
+  Ret h <| probinvn (size s) |> uniform def s :> M A.
 Proof.
-by case: s => //=; rewrite (@choice_ext 1%:pr) // ?choice1 //= invr1.
+by case: s => //=; rewrite (@choice_ext 1%:i01) // ?choice1 //= invr1.
 Qed.
+(* TODO (fix inference):  probinvn (size s) was (size s).+1%:R^-1%:pr *)
 
 Lemma uniform_singl (M : probMonad R) (A : Type) (def : A) h : size h = 1%nat ->
   uniform def h = Ret (head def h) :> M A.
 Proof.
 case: h => // h [|//] _.
-by rewrite uniform_cons uniform_nil (@choice_ext 1%:pr) ?choice1 //= invr1.
+by rewrite uniform_cons uniform_nil (@choice_ext 1%:i01) ?choice1 //= invr1.
 Qed.
 
 Lemma uniform_nseq (M : probMonad R) (A : Type) (def : A) h n :
@@ -119,29 +119,27 @@ Lemma uniform_cat (M : probMonad R) (A : Type) (a : A) s t :
   uniform a (s ++ t) = uniform a s <| (divrnnm R m n)%:pr |> uniform a t :> M _.
 Proof.
 elim: s t => [t m n|s1 s2 IH t m n].
-  rewrite cat0s uniform_nil /= [X in _ <| X |> _](_ : _ = 0%:pr) ?choice0 //.
+  rewrite cat0s uniform_nil /= [X in _ <| X |> _](_ : _ = 0%:i01) ?choice0 //.
   by apply val_inj; rewrite /= /divrnnm mul0r.
 case/boolP : (m.-1 + n == 0)%nat => [{IH}|] m1n0.
   have s20 : s2 = [::] by move: m1n0; rewrite {}/m /=; case: s2.
   have t0 : t = [::] by move: m1n0; rewrite {}/n /= addnC; case: t.
   subst s2 t.
-  rewrite cats0 (_ : Prob.mk _ = 1%:pr) ?choice1 //.
+  rewrite cats0 (_ : Prob.mk _ = 1%:i01) ?choice1 //.
   by apply val_inj; rewrite /= /divrnnm mul1r invr1.
 rewrite cat_cons.
 rewrite uniform_cons.
 rewrite uniform_cons.
-set pv := _^-1.
-set v : {prob R} := @Prob.mk _ pv _.
-set u := @Prob.mk_ _ ((size s2)%:R / (size s2 + size t)%:R) (prob_divrnnm_subproof R _ _).
+set v : {prob R} := probinvn _.
+(*set u := @Prob.mk _ ((size s2)%:R / (size s2 + size t)%:R) (prob_divrnnm_subproof R _ _).*)
+set u : {prob R} := (divrnnm R (size s2) (size t))%:pr.
 rewrite -[RHS](@choiceA_alternative _ _ _ v u).
   by rewrite IH.
 split.
-  rewrite 2!probpK.
-  rewrite mulrA mulVf//; last by rewrite (eqr_nat _ _ 0).
-  by rewrite mul1r /m /= addSn -size_cat.
-rewrite 3!probpK.
+  rewrite mulrA mulVf//=.
+  by rewrite mul1r add1n /m /= addSn size_cat.
 transitivity ( (1 - 1 / (m + n)%:R) * (1 - m.-1%:R / (m.-1 + n)%:R : R)); last first.
-  by congr (_ .~ * _); rewrite /v /pv/= mul1r size_cat.
+  by congr (_ .~ * _); rewrite /v mul1r size_cat.
 rewrite /onem.
 have mn0: (m + n)%:R != 0 :> R by rewrite (eqr_nat _ _ 0).
 rewrite -[X in X - _](divff mn0).
@@ -159,9 +157,9 @@ Lemma uniform2 (M : probMonad R) (A : Type) (def : A) a b :
   uniform def [:: a; b] = uniform def [:: b; a] :> M _.
 Proof.
 rewrite uniform_cons uniform_singl // uniform_cons uniform_singl //.
-set pa := Prob.mk _.
+set pa := probinvn _.
 rewrite choiceC /= (@choice_ext pa) //=.
-by rewrite /onem; lra.
+by rewrite /onem/= !natrD natr1; lra.
 Qed.
 
 Lemma uniform_inde (M : probMonad R) (A : Type) a (x : seq A) {B} (m : M B) :
@@ -181,7 +179,7 @@ rewrite compE [in RHS]compE.
 rewrite [x' :: xs]lock [in LHS]uniform_cons -/(map _ _) [in LHS]/= -lock.
 rewrite [x' :: xs]lock [in RHS]uniform_cons -/(map _ _) [in RHS]/= -lock.
 set p := (X in _ <| X |> _ = _).
-rewrite (_ : @Prob.mk _ (_^-1) _ = p); last first.
+rewrite (_ : probinvn _ = p); last first.
   by apply val_inj; rewrite /= size_map.
 move: IH; rewrite 2!compE => ->.
 by rewrite [in RHS]fmapE choice_bindDl bindretf fmapE.
@@ -237,35 +235,19 @@ Section altprob_semilattconvtype.
 Variable R : realType.
 Variable M : altProbMonad R.
 Variable T : Type.
-(*Import convex necset SemiLattice.*)
 
 Local Open Scope ring_scope.
 
-Definition altProb_semiLattConvType := M T.
-
-Let axiom (p : {prob R}) (x y z : altProb_semiLattConvType) :
-  x <| p |> (y [~] z) = (x <| p |> y) [~] (x <| p |> z).
-Proof. by rewrite choiceDr. Qed.
-
-HB.instance Definition _ := boolp.gen_eqMixin altProb_semiLattConvType.
-HB.instance Definition _ := boolp.gen_choiceMixin altProb_semiLattConvType.
-
-HB.instance Definition _ := @isSemiLattice.Build altProb_semiLattConvType
+HB.instance Definition _ := @isSemiLattice.Build ((M : convexMonad _) T)
   (fun x y => x [~] y)
   (@altC M T) (@altA M T) (@altmm M T).
 
-HB.instance Definition _ :=
-  @probability.convex.isConvexSpace.Build
-    R
-    altProb_semiLattConvType
-    (fun p : {prob R} => choice p T)
-    (choice1 _) choicemm choiceC (@choiceA_real_realType _ M T).
+Let axiom (p : {prob R}) (x y z : M T) :
+  x <| p |> (y [~] z) = (x <| p |> y) [~] (x <| p |> z).
+Proof. by rewrite choiceDr. Qed.
 
 HB.instance Definition _ :=
-  @isSemiLattConv.Build
-    R
-    altProb_semiLattConvType
-    axiom.
+  @isSemiLattConv.Build R((M : convexMonad _) T) axiom.
 
 End altprob_semilattconvtype.
 
@@ -278,7 +260,7 @@ Local Open Scope ring_scope.
 Lemma convexity w : p [~] q =
   (p <| w |> p) [~] (q <| w |> p) [~] (p <| w |> q) [~] (q <| w |> q).
 Proof.
-rewrite -[LHS](choicemm (probcplt w)).
+rewrite -[LHS](choicemm w%:num.~%:i01).
 rewrite choiceDr.
 rewrite -[in RHS]altA altACA.
 rewrite -2![in RHS]choiceDr.
@@ -323,71 +305,28 @@ Definition coinarb p : M bool :=
   (do c <- bcoin p ; (do a <- arb; Ret (a == c) : M _))%Do.
 
 Lemma arbcoin_spec p :
-  arbcoin p = (bcoin p : M _) [~] bcoin (Prob.p p).~%:pr.
+  arbcoin p = (bcoin p : M _) [~] bcoin p%:num.~%:i01.
 Proof.
 rewrite /arbcoin /arb alt_bindDl 2!bindretf bindmret; congr (_ [~] _).
-by rewrite /bcoin choiceC choice_bindDl 2!bindretf eqxx.
+by rewrite /bcoin choiceC choice_bindDl 2!bindretf eqxx/=.
 Qed.
 
-Section arbcoin_spec_convexity.
-Local Open Scope latt_scope.
-Local Open Scope convex_scope.
-
-(* TODO? : move magnified_weight to infotheo.convex *)
-Lemma magnified_weight_proof (p q r : {prob R}) :
-  Prob.p p < Prob.p q < Prob.p r -> (0 <= (Prob.p r - Prob.p q) / (Prob.p r - Prob.p p) <= 1)%R.
-Proof.
-case/andP => pq qr.
-have rp : (0 < Prob.p r - Prob.p p)%R by rewrite subr_gt0 (lt_trans pq).
-have rp' : (Prob.p r - Prob.p p != 0)%R by rewrite subr_eq0 gt_eqF// -subr_gt0.
-have rq : (0 < Prob.p r - Prob.p q)%R by rewrite subr_gt0.
-apply/andP; split; first by rewrite divr_ge0// ltW.
-by rewrite -(ler_pM2r rp) -mulrA mulVf// mulr1 mul1r lerD2l lerNl opprK ltW.
-Qed.
-
-Definition magnified_weight (p q r : {prob R})
-    (H : Prob.p p < Prob.p q < Prob.p r) : {prob R} :=
-  Eval hnf in Prob.mk_ (magnified_weight_proof H).
-
-Local Notation m := magnified_weight.
-Local Notation "x +' y" := (addpt x y) (at level 50).
-Local Notation "a *' x" := (scalept a x) (at level 40).
-
-Lemma magnify_conv (T : convType R)
-    (p q r : {prob R}) (x y : T) (H : Prob.p p < Prob.p q < Prob.p r) :
-  (x <|p|> y) <| magnified_weight H |> (x <|r|> y) = x <|q|> y.
-Proof.
-case/andP: (H) => pq qr.
-have rp : 0 < Prob.p r - Prob.p p by rewrite subr_gt0; apply (lt_trans pq).
-have rp' : Prob.p r - Prob.p p != 0 by apply/negbT/gt_eqF.
-apply: (S1_inj R); rewrite ![in LHS]affine_conv/= !convptE.
-rewrite !scaleptDr !scaleptA // (addptC ((Prob.p (m H) * Prob.p p) *' S1 x)) addptA.
-rewrite addptC !addptA -scaleptDl//.
-rewrite -!addptA -scaleptDl//.
-have -> : ((Prob.p (m H)).~ * (Prob.p r).~ + Prob.p (m H) * (Prob.p p).~ = (Prob.p (m H) * Prob.p p + (Prob.p (m H)).~ * Prob.p r).~).
-  rewrite /onem.
-  ring.
-pose tmp := (Prob.p (m H) * Prob.p p + (Prob.p (m H)).~ * Prob.p r).
-rewrite -[X in X.~ *' _ +' _]/tmp.
-rewrite -/tmp.
-suff -> : tmp = Prob.p q.
-  by rewrite affine_conv convptE addptC.
-rewrite /tmp /m /= /onem.
-by field.
-Qed.
+Lemma alt_absorbs_choice T (p : {prob R}) (x y : M T) :
+  x [~] y = (x [~] y) [~] (x <|p|> y).
+Proof. exact: (@lub_absorbs_conv _ ((M : convexMonad _) T)). Qed.
 
 Lemma arbcoin_spec_convexity (p q : {prob R}) :
-  Prob.p p < Prob.p q < (Prob.p p).~ ->
-  arbcoin p = (bcoin p : M _) [~] bcoin (Prob.p p).~%:pr [~] bcoin q.
+  p%:num < q%:num < p%:num.~ ->
+  arbcoin p = bcoin p [~] bcoin p%:num.~%:i01 [~] bcoin q :> M bool.
 Proof.
-move=> H.
-rewrite arbcoin_spec !alt_lub.
-rewrite {1}(@lub_absorbs_conv _
-  [the semiLattConvType _ of altProb_semiLattConvType M bool](*NB: FIXME*) _ _
-  (magnified_weight H)).
-by rewrite magnify_conv.
+case/andP => pq q1p.
+have p1p := lt_trans pq q1p.
+have pq1p : p%:num <= q%:num <= p%:num.~ by apply/andP; split; apply/ltW.
+rewrite arbcoin_spec [LHS](alt_absorbs_choice (magnified_prob p1p pq1p)).
+congr alt; rewrite /bcoin -[RHS](magnify_choice _ _  p1p pq1p).
+congr choice; congr (choice _ bool).
+exact/val_inj.
 Qed.
-End arbcoin_spec_convexity.
 
 Lemma coinarb_spec p : coinarb p = arb.
 Proof.
@@ -396,21 +335,6 @@ rewrite choice_bindDl.
 rewrite !bindretf.
 rewrite /arb !alt_bindDl !bindretf eqxx.
 by rewrite eq_sym altC choicemm.
-Qed.
-
-Lemma alt_absorbs_choice T (x y : M T) p : x [~] y = x [~] y [~] x <|p|> y.
-Proof.
-have H : x [~] y = (x [~] y [~] x <|p|> y) [~] y <|p|> x.
-  rewrite -[in LHS](choicemm p (x [~] y)) choiceDl 2!choiceDr 2!choicemm altCA.
-  by rewrite altC (altAC x).
-rewrite {1}H.
-have {2}<- : x [~] y [~] (x [~] y [~] x <|p|> y) = x [~] y [~] x <|p|> y
-  by rewrite altA altmm.
-rewrite [in RHS]altC.
-have <- : x [~] y [~] x <|p|> y [~] (x [~] y [~] x <|p|> y [~] y <|p|> x) =
-          (x [~] y [~] x <|p|> y [~] y <|p|> x)
-  by rewrite altA altmm.
-by rewrite -H.
 Qed.
 
 Corollary arb_spec_convexity p : arb = (arb : M _) [~] bcoin p.
@@ -426,14 +350,20 @@ Proof.
 rewrite coinarb_spec [in LHS]/arb [in LHS](convexity _ _ w) 2!choicemm.
 rewrite -/(bcoin w) -altA altCA -!altA; congr (_ [~] _).
 rewrite altA altC; congr (_ [~] (_ [~] _)).
-by rewrite choiceC.
+rewrite choiceC; congr (choice _ bool).
+exact/val_inj.
 Qed.
 
 End mixing_choices.
 
+Local Open Scope ring_scope.
+
+(* FIXME! (kludge) *)
+Notation "x '^-1%:i01'" := (Itv01 (andP (prob_invn x.-1)).1 (andP (prob_invn x.-1)).2).
+
 (* not used anywhere? *)
 Definition coins23 {R : realType} {M : exceptProbMonad R} : M bool :=
-  Ret true <| 2^-1%:pr |> (Ret false <| 2^-1%:pr |> fail).
+  Ret true <| 2^-1%:i01 |> (Ret false <| 2^-1%:i01 |> fail).
 
 (* TODO: check if we PRed this notation to mathcomp *)
 Reserved Notation "x <= y <= z :> T" (at level 70, y, z at next level).
@@ -443,54 +373,53 @@ Section for_example_monty.
 
 (* NB: notation for ltac:(split; fourier?)*)
 Lemma choiceA_compute {R : realType} {N : probMonad R} (T F : bool) (f : bool -> N bool) :
-  f T <|9^-1%:pr|> (f F <|8^-1%:pr|> (f F <|7^-1%:pr|> (f F <|6^-1%:pr|>
- (f T <|5^-1%:pr|> (f F <|4^-1%:pr|> (f F <|3^-1%:pr|> (f F <|2^-1%:pr|>
-  f T))))))) = f F <|3^-1%:pr|> (f F <|2^-1%:pr|> f T) :> N _.
+  f T <|9^-1%:i01|> (f F <|8^-1%:i01|> (f F <|7^-1%:i01|> (f F <|6^-1%:i01|>
+ (f T <|5^-1%:i01|> (f F <|4^-1%:i01|> (f F <|3^-1%:i01|> (f F <|2^-1%:i01|>
+  f T))))))) = f F <|3^-1%:i01|> (f F <|2^-1%:i01|> f T) :> N _.
 Proof.
 have H27 : 0 <= 2/7 <= 1 :> R by lra.
 have H721 : 0 <= 7/21 <= 1 :> R by lra.
 have H2156 : 0 <= 21/56 <= 1 :> R by lra.
 have H25 : 0 <= 2/5 <= 1 :> R by lra.
 pose choiceA_alt := @choiceA_alternative R N bool.
-rewrite [in RHS](choiceA_alt _ _ 2^-1%:pr (3^-1).~%:pr); last first.
-  by rewrite 3!probpK /= /onem; split; field.
+Locate "%:i01".
+rewrite [in RHS](choiceA_alt _ _ 2^-1%:i01 (3^-1%:i01)%:num.~%:i01); last first.
+  by rewrite /= /onem; split; field.
 rewrite choicemm.
-rewrite [in LHS](choiceA_alt 3^-1%:pr 2^-1%:pr 2^-1%:pr (3^-1).~%:pr); last first.
-  by rewrite 3!probpK /= /onem; split; field.
+rewrite [in LHS](choiceA_alt 3^-1%:i01 2^-1%:i01 2^-1%:i01 (3^-1%:i01)%:num.~%:i01); last first.
+  by rewrite /= /onem; split; field.
 rewrite choicemm.
-rewrite [in LHS](choiceA_alt 4^-1%:pr (3^-1).~%:pr 3^-1%:pr (4^-1).~%:pr); last first.
-  by rewrite 4!probpK /= /onem; split; field.
+rewrite [in LHS](choiceA_alt 4^-1%:i01 (3^-1%:i01)%:num.~%:i01 3^-1%:i01 (4^-1%:i01)%:num.~%:i01); last first.
+  by rewrite /= /onem; split; field.
 rewrite choicemm.
-rewrite [in LHS](choiceA_alt 7^-1%:pr 6^-1%:pr 2^-1%:pr (Prob.mk H27)); last first.
-  by rewrite 4!probpK /= /onem; split; field.
+rewrite [in LHS](choiceA_alt 7^-1%:i01 6^-1%:i01 2^-1%:i01 (Prob.mk H27)); last first.
+  by rewrite /= /onem; split; field.
 rewrite choicemm.
-rewrite [in LHS](choiceA_alt 8^-1%:pr (Prob.mk H27) (Prob.mk H721) (Prob.mk H2156)); last first.
-  by rewrite probpK /= /onem; split; field.
-rewrite (choiceC (4^-1).~%:pr).
-rewrite [in LHS](choiceA_alt 5^-1%:pr (probcplt (4^-1).~%:pr) 2^-1%:pr (Prob.mk H25)); last first.
-  by rewrite 3!probpK /= /onem; split; field.
+rewrite [in LHS](choiceA_alt 8^-1%:i01 (Prob.mk H27) (Prob.mk H721) (Prob.mk H2156)); last first.
+  by rewrite /= /onem; split; field.
+rewrite (choiceC (4^-1%:i01)%:num.~%:i01).
+rewrite [X in _ <| _ |> (_ <| _ |> X)](choiceA_alt _ _ 2^-1%:i01 (Prob.mk H25)); last first.
+  by rewrite /= /onem; split; field.
 rewrite 2!choicemm.
 rewrite (choiceC (Prob.mk H25)).
-rewrite [in LHS](choiceA_alt (Prob.mk H2156) (probcplt (Prob.mk H25)) 2^-1%:pr (4^-1).~%:pr); last first.
-  by rewrite 3!probpK /= /onem; split; field.
+rewrite [in X in _ <| _ |> X](choiceA_alt _ _ 2^-1%:i01 (4^-1%:i01)%:num.~%:i01); last first.
+  by rewrite /= /onem/=; split; field.
 rewrite choicemm.
-rewrite (choiceC (4^-1).~%:pr).
-rewrite [in LHS](choiceA_alt 9^-1%:pr (probcplt (4^-1).~%:pr) 3^-1%:pr 3^-1%:pr); last first.
-  by rewrite 3!probpK /= /onem; split; field.
+rewrite (choiceC (4^-1%:i01)%:num.~%:i01).
+rewrite [in LHS](choiceA_alt _ _ 3^-1%:i01 3^-1%:i01); last first.
+  by rewrite /= /onem; split; field.
 by rewrite choicemm choiceC.
 Qed.
 
 Definition uFFT {R : realType} {M : probMonad R} : M bool :=
   uniform true [:: false; false; true].
 
-Lemma uFFTE {R : realType} (M : probMonad R) : uFFT = bcoin 3^-1%:pr :> M _.
+Lemma uFFTE {R : realType} (M : probMonad R) : uFFT = bcoin 3^-1%:i01 :> M _.
 Proof.
 rewrite /uFFT /bcoin uniform_cons.
-rewrite (_ : _%:pr = 3^-1%:pr)%R; last exact/val_inj.
 rewrite uniform_cons.
-rewrite [in X in _ <| _ |> X](_ : _%:pr = 2^-1%:pr)%R; last exact/val_inj.
 rewrite uniform_singl //=.
-rewrite (@choiceA_alternative _ _ _ _ _ 2^-1%:pr (3^-1).~%:pr); last first.
+rewrite (@choiceA_alternative _ _ _ _ _ 2^-1%:i01 (3^-1%:i01)%:num.~%:pr); last first.
   by rewrite /= /onem; split; field.
 rewrite choicemm choiceC; congr (Ret true <| _ |> Ret false).
 by apply val_inj; rewrite /= onemK.
@@ -499,14 +428,12 @@ Qed.
 Definition uTTF {R : realType} {M : probMonad R} : M bool :=
   uniform true [:: true; true; false].
 
-Lemma uTTFE {R : realType} (M : probMonad R) : uTTF = bcoin (3^-1).~%:pr :> M _.
+Lemma uTTFE {R : realType} (M : probMonad R) : uTTF = bcoin (3^-1%:i01)%:num.~%:i01 :> M _.
 Proof.
 rewrite /uTTF /bcoin uniform_cons.
-rewrite (_ : _%:pr = 3^-1%:pr)%R; last exact/val_inj.
 rewrite uniform_cons.
-rewrite [in X in _ <| _ |> X](_ : _%:pr = 2^-1%:pr)%R; last exact/val_inj.
 rewrite uniform_singl //=.
-rewrite (@choiceA_alternative _ _ _ _ _ 2^-1%:pr (3^-1).~%:pr) ?choicemm //.
+rewrite (@choiceA_alternative _ _ _ _ _ 2^-1%:i01 (3^-1%:i01)%:num.~%:i01) ?choicemm //.
 by rewrite /= /onem; split; field.
 Qed.
 
@@ -521,7 +448,7 @@ elim: s => [//|h t IH _ H].
 rewrite uniform_cons.
 case/boolP : (t == [::]) => [/eqP -> {IH}|t0].
   rewrite uniform_nil.
-  rewrite (_ : _%:pr = 1%:pr); last first.
+  rewrite [X in _ <| X |> _](_ : _ = 1%:i01); last first.
     by apply: val_inj; rewrite /= addn0 invr1.
   rewrite choice1.
   rewrite 2!bindretf ifF //; apply/negbTE/H; by rewrite mem_head.
@@ -535,16 +462,16 @@ End for_example_monty.
 Section choice_half.
 
 Lemma choice_halfC {R : realType} (M : probMonad R) A (a b : M A) :
-  a <| 2^-1%:pr |> b = b <| 2^-1%:pr |> a.
+  a <| 2^-1%:i01 |> b = b <| 2^-1%:i01 |> a.
 Proof.
-rewrite choiceC (_ : (_.~)%:pr = 2^-1%:pr) //.
+rewrite choiceC/= [X in _ <| X |> _](_ : _ = 2^-1%:i01) //.
 apply: val_inj; rewrite /= /onem.
-lra.
+by field.
 Qed.
 
 Lemma choice_halfACA {R : realType} (M : probMonad R) A (a b c d : M A) :
-  (a <| 2^-1%:pr |> b) <| 2^-1%:pr |> (c <| 2^-1%:pr |> d) =
-  (a <| 2^-1%:pr |> c) <| 2^-1%:pr |> (b <| 2^-1%:pr |> d).
+  (a <| 2^-1%:i01 |> b) <| 2^-1%:i01 |> (c <| 2^-1%:i01 |> d) =
+  (a <| 2^-1%:i01 |> c) <| 2^-1%:i01 |> (b <| 2^-1%:i01 |> d).
 Proof.
 rewrite choice_conv.
 rewrite -convex.convACA.
@@ -557,15 +484,16 @@ Section keimel_plotkin_instance.
 Variables (R : realType) (M : altProbMonad R) (A : Type).
 Variables (p q : M A).
 
+(* TODO: merge https://github.com/affeldt-aist/monae/pull/55 to generalize this *)
 Lemma keimel_plotkin_instance :
   (forall T p, right_distributive (fun a b : M T => a [~] b) (fun a b => a <| p |> b)) ->
-  p <| 2^-1%:pr |> q = (p <| 2^-1%:pr |> q) <| 2^-1%:pr |> (p [~] q).
+  p <| 2^-1%:i01 |> q = (p <| 2^-1%:i01 |> q) <| 2^-1%:i01 |> (p [~] q).
 Proof.
 move=> altDr.
 have altDl T r : left_distributive (fun a b : M T => a [~] b) (fun a b => a <| r |> b).
   by move=> a b c; rewrite altC altDr (altC a) (altC b).
-rewrite -[LHS](altmm (p <| 2^-1%:pr |> q)).
-transitivity (((p [~] p) <| 2^-1%:pr|> (q [~] p)) <| 2^-1%:pr |> ((p [~] q) <| 2^-1%:pr |> (q [~] q))).
+rewrite -[LHS](altmm (p <| 2^-1%:i01 |> q)).
+transitivity (((p [~] p) <| 2^-1%:i01|> (q [~] p)) <| 2^-1%:i01 |> ((p [~] q) <| 2^-1%:i01 |> (q [~] q))).
   by rewrite altDr altDl altDl.
 rewrite 2!altmm (altC q).
 rewrite (choice_halfC (p [~] q)).

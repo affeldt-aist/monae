@@ -27,7 +27,7 @@ in several examples of monadic equational reasoning.
   - Kazunari Tanaka
   - Ryuji Kawakami
 - License: [LGPL-2.1-or-later](LICENSE)
-- Compatible Rocq versions: Rocq 9.0--9.1
+- Compatible Rocq versions: Rocq 9.0
 - Additional dependencies:
   - [MathComp ssreflect](https://math-comp.github.io)
   - [MathComp fingroup](https://math-comp.github.io)
@@ -36,10 +36,10 @@ in several examples of monadic equational reasoning.
   - [MathComp field](https://math-comp.github.io)
   - [MathComp analysis](https://github.com/math-comp/analysis)
   - [Infotheo](https://github.com/affeldt-aist/infotheo)
-  - [Paramcoq](https://github.com/coq-community/paramcoq)
+  - [Rocq-Elpi](https://github.com/LPCIC/coq-elpi)
   - [Hierarchy Builder](https://github.com/math-comp/hierarchy-builder)
   - [Coq-Equations](https://github.com/mattam82/Coq-Equations)
-- Coq namespace: `monae`
+- Rocq namespace: `monae`
 - Related publication(s):
   - [A hierarchy of monadic effects for program verification using equational reasoning](https://staff.aist.go.jp/reynald.affeldt/documents/monae.pdf) doi:[10.1007/978-3-030-33636-3_9](https://doi.org/10.1007/978-3-030-33636-3_9) (2019)
   - [Extending Equational Monadic Reasoning with Monad Transformers](https://drops.dagstuhl.de/opus/volltexte/2021/13881/) doi:[10.4230/LIPIcs.TYPES.2020.2](https://doi.org/10.4230/LIPIcs.TYPES.2020.2) (2020)
@@ -55,7 +55,7 @@ The easiest way to install the latest released version of Monadic effects and eq
 is via [OPAM](https://opam.ocaml.org/doc/Install.html):
 
 ```shell
-opam repo add coq-released https://coq.inria.fr/opam/released
+opam repo add rocq-released https://rocq-prover.org/opam/released
 opam install coq-monae
 ```
 
@@ -91,7 +91,8 @@ This library has been applied to other formalizations:
   + see directory `impredicative_set` for the formalization of [Jaskelioff, Modular Monad Transformers, ESOP 2009] (from Sect. 5)
 - formalization of the geometrically convex monad (main reference:
   [Cheung, Distributive Interaction of Algebraic Effects, PhD Thesis, U. Oxford, 2017])
-- see `theories/applications/` for more examples
+
+See `theories/applications/` for more examples
 
 ![Available monads](./hier.png "Available Monads")
 

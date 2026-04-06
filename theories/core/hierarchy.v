@@ -3,7 +3,7 @@
 Ltac typeof X := type of X.
 
 Require Import ssrmatching JMeq Morphisms.
-From mathcomp Require Import all_ssreflect ssralg ssrnum.
+From mathcomp Require Import all_ssreflect ssralg ssrnum interval_inference.
 From mathcomp Require boolp.
 From mathcomp Require Import unstable mathcomp_extra reals.
 From infotheo Require Import realType_ext convex.
@@ -1406,15 +1406,16 @@ HB.instance Definition _ {R : realType} (M : convexMonad R) (T : UU0) :=
   @convexMonad_pointwise_ConvexSpace R M T.
 
 Section convexMonad_interface.
+Local Open Scope ring_scope.
 Context {R : realType} {s : convexMonad R}.
 
 (* this interface is useful for avoiding explicit casts
    from child structures such as probMonad to convexMonad when using the
    convexity *)
 Definition choice p T := @conv R (s T) p.
-Lemma choice1 T (a b : s T) : choice 1%:pr a b = a.
+Lemma choice1 T (a b : s T) : choice 1%:i01 a b = a.
 Proof. exact: conv1. Qed.
-Lemma choiceC T p (a b : s T) : choice p a b = choice ((val p).~%:pr) b a.
+Lemma choiceC T p (a b : s T) : choice p a b = choice (p%:num.~%:i01) b a.
 Proof. exact: convC. Qed.
 Lemma choicemm T p : idempotent_op (@choice p T).
 Proof. exact: convmm. Qed.
@@ -1435,14 +1436,15 @@ Notation "a <| p |> b" := (choice p _ a b) : proba_monad_scope.
 Local Open Scope proba_monad_scope.
 
 Section convexMonad_lemmas.
+Local Open Scope ring_scope.
 
 Lemma choice0 {R : realType} (M : convexMonad R) (T : UU0) (a b : M T) :
-  a <| 0%:pr |> b = b.
+  a <| 0%:i01 |> b = b.
 Proof. exact: conv0. Qed.
 
 Lemma choiceA_alternative {R : realType} (M : convexMonad R) :
-  forall (T : UU0) (p q r s : {prob R}) (a b c : M T),
-    (p = (r : R) * (s : R) :> R /\ (Prob.p s).~ = (Prob.p p).~ * (Prob.p q).~)%R ->
+  forall (T : UU0) (p q r s : {i01 R}) (a b c : M T),
+    (p%:num = r%:num * s%:num /\ s%:num.~ = p%:num.~ * q%:num.~)%R ->
     let bc := b <|q|> c in
     let ab := a <|r|> b in
     a <|p|> bc = ab <|s|> c.
