@@ -17,7 +17,6 @@ Require Import hierarchy.
 (* ```                                                                        *)
 (*         fact_elgot == factorial                                            *)
 (*            collatz == Collatz sequence                                     *)
-(*                       (was collatzm in [1])                                *)
 (*         minus{1,2} == TODO                                                 *)
 (*            fastexp == fast exponential                                     *)
 (*               mc91 == McCarthy's 91 function                               *)
@@ -46,15 +45,14 @@ Require Import hierarchy.
 (*                                                                            *)
 (* ```                                                                        *)
 (*         fact_elgot_state == factorial                                      *)
-(*                             (was factds in [1]                             *)
 (*       collatz_state{1,2} == Collatz sequence using the Elgot state monad   *)
 (* ```                                                                        *)
 (*                                                                            *)
 (* ## Application of the Elgot-typedstore monad                               *)
 (*                                                                            *)
 (* ```                                                                        *)
-(*   fact_elgot_typed_store == was factdts_nat in [1]                         *)
-(*   fact_elgot_typed_store_unit == was factdts_unit in [1]                   *)
+(*   fact_elgot_typed_store                                                   *)
+(*   fact_elgot_typed_store_unit                                              *)
 (* ```                                                                        *)
 (******************************************************************************)
 
@@ -97,16 +95,13 @@ End factorial.
 Section collatz.
 Variable M : elgotMonad.
 
-(* was collatzm_body in [1] *)
 Let collatz_body (T : Type) m n : M (T + nat)%type :=
   if n == 1 then Ret (inl m)
   else if n %% 2 == 0 then Ret (inr n./2)
        else Ret (inr (3 * n).+1).
 
-(* was collatzm in [1] *)
 Definition collatz (T : Type) (m : T) := while (collatz_body T m).
 
-(* was collatzmwB in [1] *)
 Lemma collatzwB (T U : Type) (f : T -> U) m n :
   collatz T m n >>= (Ret \o f) ≈ collatz U (f m) n.
 Proof.
@@ -188,18 +183,18 @@ Let mc91_body nm : M (nat + nat * nat)%type :=
 
 Definition mc91 n m := while mc91_body (n.+1, m).
 
-(* was wBisim_mc91S in [1] *)
 Lemma mc91wBS n m : 90 <= m < 101 -> mc91 n m ≈ mc91 n m.+1.
 Proof.
 move=> /andP[m89].
-rewrite /mc91 /mc91_body fixpointwB/= ltnNge => m100.
-rewrite -/mc91_body.
-rewrite (negbTE m100) bindretf/= fixpointwB/=.
-rewrite /mc91_body/= -[100]/(89 + 11) ltn_add2r m89.
-rewrite -/mc91_body.
-rewrite bindretf fixpointwB /= fixpointwB.
-rewrite (_ : m + 11 - 10 = m.+1)//.
-by rewrite -addnBA// addn1.
+rewrite ltnNge => m100.
+(* Fig.2 start *)
+rewrite [X in X ≈ _]fixpointwB/=.
+rewrite /mc91_body (negbTE m100) -/mc91_body bindretf/= fixpointwB/=.
+rewrite {1}/mc91_body/= -[100]/(89+11) ltn_add2r m89.
+rewrite bindretf/= fixpointwB/=.
+rewrite -addnBA// subnE/= addn1.
+(* Fig.2 end *)
+by rewrite -fixpointwB.
 Qed.
 
 Lemma mc91wB101 m n : 90 <= m <= 101 -> mc91 n m ≈ mc91 n 101.
@@ -515,13 +510,11 @@ Definition fact_elgot_typed_store_unit n :=
   while (fact_elgot_typed_store_unit_body r l n) tt;
   do v <- cget r; Ret v.
 
-(* was factdts_nat_body in [1] *)
 Let fact_elgot_typed_store_body (r : loc ml_int) n : M (unit + nat)%type :=
   do v <- cget r;
   if n is m.+1 then do _ <- cput r (n * v); Ret (inr m)
                else Ret (inl tt).
 
-(* was while_factdts_natE in [1] *)
 Let while_fact_elgot_typed_storewB n r :
   while (fact_elgot_typed_store_body r) n ≈ do s <- cget r; cput r (n`! * s).
 Proof.
@@ -536,13 +529,11 @@ setoid_rewrite IH.
 by under eq_bind do rewrite cputget cputput mulnA (mulnC m`! _).
 Qed.
 
-(* was factdts_nat in [1] *)
 Definition fact_elgot_typed_store n :=
   do r <- cnew ml_int 1;
   do _ <- while (fact_elgot_typed_store_body r) n ;
   cget r.
 
-(* was factn in [1] *)
 Lemma fact_elgot_typed_storewB n :
   fact_elgot_typed_store n ≈ cnew ml_int n`! >> Ret n`!.
 Proof.
