@@ -333,10 +333,8 @@ End exceptMonad_of_exceptT.
 
 Section list_monad_transformer.
 Local Obligation Tactic := idtac.
-Variable M : monad.
 (* The list monad transformer can only be used with commutative monads. *)
-Hypothesis bindmC :
-  forall X Y (mx : M X) (my : M Y) Z (f : X -> Y -> M Z), commute mx my f.
+Variable M : commutativeMonad.
 
 (* action on objects of the transformed monad *)
 Definition ML := fun X : UU0 => M (seq X)%type.
@@ -344,20 +342,20 @@ Definition ML := fun X : UU0 => M (seq X)%type.
 (* unit and bind operator of the transformed monad *)
 Definition retL : idfun ~~> ML := fun X x => Ret [:: x].
 
-Fixpoint foldL X Y (f : X -> ML Y) (ys : seq Y) (l : seq X) : ML Y :=
+Fixpoint foldML X Y (f : X -> ML Y) (ys : seq Y) (l : seq X) : ML Y :=
   if l is x :: l' then
-    f x >>= fun y => foldL f (ys ++ y) l'
+    f x >>= fun y => foldML f (ys ++ y) l'
   else Ret ys.
 
-Lemma foldL_retL X (r : seq X) (l : seq X) :
-  foldL (@retL _) r l = Ret (r ++ l).
+Lemma foldML_retL X (r : seq X) (l : seq X) :
+  foldML (@retL _) r l = Ret (r ++ l).
 Proof.
 elim: l r => /= [|x l IH] r; first by rewrite cats0.
 by rewrite !bindretf IH -catA.
 Qed.
 
 Definition bindL X Y (t : ML X) (f : X -> ML Y) : ML Y :=
-  t >>= foldL f [::].
+  t >>= foldML f [::].
 
 Let bindLretf : BindLaws.left_neutral bindL retL.
 Proof. by move=> A B a f; rewrite /bindL bindretf /= bindmret. Qed.
@@ -365,11 +363,11 @@ Proof. by move=> A B a f; rewrite /bindL bindretf /= bindmret. Qed.
 Let bindLmret : BindLaws.right_neutral bindL retL.
 Proof.
 move=> A m; rewrite /bindL -[in RHS](bindmret m); bind_ext => l.
-by rewrite foldL_retL.
+by rewrite foldML_retL.
 Qed.
 
-Lemma foldL_nil X Y Z (f : X -> ML Y) ys l (h : seq Y -> ML Z) :
-    (foldL f ys l >>= h) = foldL f [::] l >>= fun ys' => h (ys ++ ys').
+Lemma foldML_nil X Y Z (f : X -> ML Y) ys l (h : seq Y -> ML Z) :
+    (foldML f ys l >>= h) = foldML f [::] l >>= fun ys' => h (ys ++ ys').
 Proof.
 elim: l ys h => [|x l IH] ys h /=.
   by rewrite !bindretf cats0.
@@ -378,8 +376,8 @@ rewrite IH [RHS]IH.
 by bind_ext => ys'; rewrite catA.
 Qed.
 
-Lemma foldL_cat Y Z (g : Y -> ML Z) ys ys' zs :
-  foldL g zs (ys ++ ys') = foldL g zs ys >>= fun r => foldL g r ys'.
+Lemma foldML_cat Y Z (g : Y -> ML Z) ys ys' zs :
+  foldML g zs (ys ++ ys') = foldML g zs ys >>= fun r => foldML g r ys'.
 Proof.
 elim: ys zs => /= [|y ys IHy] zs.
   by rewrite bindretf.
@@ -395,9 +393,9 @@ elim: xs zs => [|x l IH] zs /=.
   by rewrite bindretf.
 rewrite !bindA.
 bind_ext => ys.
-rewrite foldL_nil.
-under eq_bind do rewrite foldL_cat.
-rewrite bindmC foldL_nil.
+rewrite foldML_nil.
+under eq_bind do rewrite foldML_cat.
+rewrite bindC [LHS]foldML_nil.
 bind_ext => zs' /=.
 by rewrite IH.
 Qed.
@@ -424,11 +422,11 @@ rewrite /alt /bindL !bindA.
 bind_ext => s1.
 rewrite bindA.
 under eq_bind => s2 do rewrite bindretf.
-rewrite bindmC bindA.
+rewrite bindC bindA.
 bind_ext => s2.
-rewrite foldL_cat bindmC.
+rewrite foldML_cat bindC.
 bind_ext => s1'.
-by rewrite -foldL_nil bindmret.
+by rewrite -foldML_nil bindmret.
 Qed.
 
 Let fail (A : UU0) : ML A := Ret [::].
@@ -490,7 +488,7 @@ Qed.
 HB.instance Definition _ := isMonadM_ret_bind.Build
   M ML liftL retliftL bindliftL.
 
-(* Cannot definine monadT, as this does not work on all monads *)
+(* Cannot define monadT, as this does not work on all monads *)
 End list_monad_transformer.
 
 Section environment_monad_transformer.
