@@ -41,8 +41,7 @@ Local Open Scope proba_monad_scope.
 
 #[short(type=altConvexDrMonad)]
 HB.structure Definition MonadAltConvexDr {R : realType} :=
-  { M of isMonadAltCI M & isMonadConvexDr R M & isFunctor M &
-    Functor_isMonad M & isMonadAlt M & isMonadConvex0 R M }.
+  { M of isMonadAltCI M & isMonadConvexDr R M }.
 
 Section choiceDalt.
 Variables (R : realType).

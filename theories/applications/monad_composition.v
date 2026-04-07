@@ -18,19 +18,33 @@ Unset Printing Implicit Defensive.
 
 Local Open Scope monae_scope.
 
+(*
 Section comp.
-Variables (M N : monad).
-Definition ret_comp : FId ~~> M \o N := (@ret M) \h (@ret N).
+Variables (M N : applicative).
+Let ret_comp : FId ~~> M \o N := (@ret M) \h (@ret N).
 Lemma naturality_ret : naturality (FId \o FId) (M \o N) ret_comp.
 Proof. by move=> A B h; rewrite natural. Qed.
-HB.instance Definition _ := isNatural.Build
-  FId (M \o N) ret_comp naturality_ret.
+Let ret_comp_mixin := isNatural.Build FId (M \o N) ret_comp naturality_ret.
+Definition CRet : FId ~> M \o N :=
+  HB.pack_for (FId ~> M \o N) ret_comp ret_comp_mixin.
 End comp.
-Definition CRet (M N : monad) : FId ~> M \o N := ret_comp M N.
+*)
+
+Section comp.
+Variables (M N : applicative).
+Definition CRet : FId ~~> M \o N := (@ret M) \h (@ret N).
+Lemma naturality_CRet : naturality (FId \o FId) (M \o N) CRet.
+Proof. by move=> A B h; rewrite natural. Qed.
+HB.instance Definition _ :=
+  isNatural.Build FId (M \o N) CRet naturality_CRet.
+End comp.
+Arguments CRet : clear implicits.
 
 Module Prod.
 Section prod.
-Variables M N(* NB: actually, premonad is enough for N*) : monad.
+Variable M : monad.
+Variable N : applicative.
+(*Variables M N(* NB: actually, premonad is enough for N*) : monad.*)
 Variable prod : N \o (M \o N) ~~> M \o N.
 Arguments prod {_}.
 
@@ -38,7 +52,8 @@ Definition JOIN : (M \o N) \o (M \o N) ~~> M \o N := fun _ => Join \o M # prod.
 Arguments JOIN {_}.
 
 Definition prod1 := forall (A B : UU0) (f : A -> B), prod \o N # ((M \o N) # f) = (M \o N) # f \o prod.
-Definition prod2 := forall A, prod \o Ret = id :> (_ -> (M \o N) A).
+(*Definition prod2 := forall A, prod \o Ret = id :> ((M \o N) A -> (M \o N) A).*)
+Definition prod2 := forall A, prod \o (@ret N ((M \o N) A)) = id :> (_ -> (M \o N) A).
 Definition prod3 := forall A, prod \o N # CRet M N _ = Ret :> (_ -> (M \o N) A).
 Definition prod4 := forall A, prod \o N # JOIN = JOIN \o prod :> (_ -> (M \o N) A).
 Hypothesis Hprod1 : prod1.
@@ -69,7 +84,7 @@ move=> A; rewrite /JOIN'.
 rewrite /=.
 rewrite /CRet.
 rewrite (up_compA JOIN).
-rewrite -(up_compA Join (M # prod) Ret) (natural ret).
+rewrite -(up_compA Join (M # prod) Ret) (natural ret _ _ prod).
 by rewrite [LHS]up_compA (up_compA Join) joinretM up_compidf Hprod2.
 Qed.
 
@@ -105,7 +120,9 @@ End Prod.
 
 Module Dorp.
 Section dorp.
-Variables M  (* actually, premonad is enough for M *) N : monad.
+Variable M : applicative.
+Variable N : monad.
+(*Variables M  (* actually, premonad is enough for M *) N : monad.*)
 Variable dorp : M \o (N \o M) ~~> M \o N.
 Arguments dorp {_}.
 
@@ -203,9 +220,10 @@ Proof. by rewrite JOINE. Qed.
 
 Fact JOIN_dorp A : @JOIN A = M # Join \o dorp.
 Proof. by rewrite /dorp. Qed.
-
+Print Canonical Projections.
 Definition swap1 := forall (A B : UU0) (f : A -> B), swap \o N # (M # f) = M # (N # f) \o swap .
-Definition swap2 := forall A, @swap A \o Ret = M # Ret :> (M A -> (M \o N) A).
+Definition swap2 := forall A, @swap A \o (@ret N (M A)) = M # Ret :> (M A -> (M \o N) A).
+(*Definition swap2 := forall A, @swap A \o Ret = M # Ret :> (M A -> (M \o N) A).*)
 Definition swap3 := forall A, @swap A \o N # Ret = Ret :> (N A -> (M \o N) A).
 Definition swap4 := forall A, (@prod A) \o N # (@dorp _) = (@dorp _) \o (@prod _).
 Hypothesis Hswap1 : swap1.
@@ -254,7 +272,7 @@ move=> A; rewrite /dorp /CRet.
 rewrite /=.
 rewrite (up_compA (Join \o M # swap)).
 rewrite -(up_compA Join (M # swap)).
-rewrite (natural ret).
+rewrite (natural ret _ _ swap).
 by rewrite (up_compA Join) joinretM up_compidf Hswap2.
 Qed.
 
