@@ -304,6 +304,35 @@ subst t'.
 congr Natural.Pack; exact/proof_irr.
 Qed.*)
 
+Module ApplicativeLaws.
+Section applicative_laws.
+Context {F : UU0 -> UU0}.
+Variable pure : forall {A}, A -> F A.
+Variable apply : forall {A B}, F (A -> B) -> F A -> F B.
+
+Definition identity :=
+  forall A (v : F A), apply (pure idfun) v = v.
+Definition composition :=
+  forall A B C (u : F (B -> C)) (v : F (A -> B)) (w : F A),
+    apply (apply (apply (pure comp) u) v) w = apply u (apply v w).
+Definition homomorphism :=
+  forall A B (f : A -> B) (x : A),
+    apply (pure f) (pure x) = pure (f x).
+Definition interchange :=
+  forall A B (u : F (A -> B)) (y : A),
+    apply u (pure y) = apply (pure (fun f => f y)) u.
+End applicative_laws.
+End ApplicativeLaws.
+
+HB.mixin Record isApplicative (F : UU0 -> UU0) := {
+  pure : forall A, A -> F A ;
+  apply : forall A B, F (A -> B) -> F A -> F B ;
+  identity : ApplicativeLaws.identity pure apply ;
+  composition : ApplicativeLaws.composition pure apply ;
+  homomorphism : ApplicativeLaws.homomorphism pure apply ;
+  interchange : ApplicativeLaws.interchange pure apply ;
+}.
+
 Module JoinLaws.
 Section join_laws.
 Context {F : functor}.
