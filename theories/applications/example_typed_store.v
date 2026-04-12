@@ -857,7 +857,9 @@ Definition omega (T : ml_type) (n : coq_type T) : M (coq_type T) :=
   do _ <- cput r_1 delta; delta n.
 
 Definition it_omega := Restart it3 (omega ml_unit tt).
+(* NB: the following command is suspected to cause a time out on the opam server:
 Fail Timeout 1 Eval vm_compute in it_omega.
+*)
 
 End eval.
 
