@@ -391,6 +391,10 @@ Definition left_id (r : forall A, F A) (op : forall B, F B -> F B -> F B) :=
 Definition right_id (r : forall A, F A) (op : forall B, F B -> F B -> F B) :=
   forall A (m : F A), op _ m (r _) = m.
 
+Definition commutative :=
+  forall A B (m : F A) (n : F B) C (f : A -> B -> F C),
+    m >>= (fun x => n >>= (fun y => f x y)) =
+    n >>= (fun y => m >>= (fun x => f x y)).
 End bindlaws.
 End BindLaws.
 
@@ -722,6 +726,13 @@ Qed.
 End kleisli.
 Notation "m <=< n" := (kleisli m n) : monae_scope.
 Notation "m >=> n" := (kleisli n m) : monae_scope.
+
+HB.mixin Record isMonadCommute (M : UU0 -> UU0) of Monad M := {
+  bindC : BindLaws.commutative (@bind M);
+}.
+
+#[short(type=commutativeMonad)]
+HB.structure Definition MonadCommute := {M of isMonadCommute M & }.
 
 HB.mixin Record isMonadFail (M : UU0 -> UU0) of Monad M := {
   fail : forall A : UU0, M A ;
