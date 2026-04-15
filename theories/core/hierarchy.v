@@ -164,7 +164,7 @@ HB.mixin Record isFunctor (F : UU0 -> UU0) := {
 #[short(type=functor)]
 HB.structure Definition Functor := {F of isFunctor F}.
 
-Notation "F # g" := (@actm F _ _ g) : monae_scope.
+Notation "F # g" := ( @actm F _ _ g) : monae_scope.
 Notation "'fmap' f" := (_ # f) : mprog.
 
 Section functorid.
@@ -1539,3 +1539,22 @@ HB.mixin Record isMonadFailFresh (S : eqType) (M : UU0 -> UU0)
 HB.structure Definition MonadFailFresh (S : eqType) :=
   { M of isMonadFailFresh S M & isFunctor M & isMonad M & isMonadFresh S M &
          isMonadFail M }.
+
+HB.mixin Record isFreerMonad (F : UU0 -> UU0) (M : UU0 -> UU0) of Monad M := {
+    trigger : F ~~> M ;  
+    denote {cm : monad} (denote_effect : F ~~> cm) : M ~~> cm;
+    denote_ret : forall (cm : monad) (denote_effect : F ~~> cm) X (x : X),
+        denote denote_effect X (ret X x) = @ret cm X x;
+    denote_bind : forall (cm : monad) (denote_effect : F ~~> cm) X Y m (f : X -> M Y), 
+        denote denote_effect Y (m >>= f) = (denote denote_effect X m) >>= (fun x => denote denote_effect Y (f x)) ;
+    denote_trigger : forall (cm : monad) (denote_effect : F ~~> cm) X (fx : F X), 
+        denote denote_effect X (trigger X fx) = denote_effect X fx;
+    denote_unique : forall (cm : monad) (denote_effect : F ~~> cm) (denote' : M ~~> cm),
+            (forall X (x : X), denote' X (ret X x) = @ret cm X x) ->
+            (forall X Y (m : M X) (f : X -> M Y), denote' Y (m >>= f) = (denote' X m) >>= (fun x => denote' Y (f x))) ->
+            (forall X (fx : F X), (denote' X (trigger X fx)) = denote_effect X fx) ->
+        forall X (m : M X), denote' X m = denote denote_effect X m
+}.
+
+#[short(type=freerMonad)]
+HB.structure Definition FreerMonad (F : UU0 -> UU0) := {M of isFreerMonad F M & }.
