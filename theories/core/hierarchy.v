@@ -368,6 +368,21 @@ HB.instance Definition _ :=
     afmapE identity composition homomorphism interchange.
 HB.end.
 
+Section applicative_properties.
+Variable F : applicative.
+
+Lemma pure_naturality : naturality idfun F (@pure _).
+move=> A B h.
+rewrite afmapE.
+rewrite FIdE.
+apply: boolp.funext => x /=.
+by rewrite afhomomorphism.
+Qed.
+
+HB.instance Definition _ := 
+  isNatural.Build idfun F (@pure _ : idfun ~~> F) pure_naturality.
+End applicative_properties.
+
 Section applicative_composition.
 Variables F G : applicative.
 
@@ -391,6 +406,8 @@ move=> A B C u v.
 rewrite /comp_apply /comp_pure !afmapE /=.
 rewrite afhomomorphism.
 rewrite -afcomposition.
+congr apply.
+Disable Notation "_ = _".
 Abort.
 
 Let _homomorphism : ApplicativeLaws.homomorphism comp_pure comp_apply.
