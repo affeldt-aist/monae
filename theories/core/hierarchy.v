@@ -3,12 +3,12 @@
 Ltac typeof X := type of X.
 
 Require Import ssrmatching JMeq Morphisms.
+From HB Require Import structures.
 From mathcomp Require Import all_ssreflect ssralg ssrnum.
 From mathcomp Require boolp.
 From mathcomp Require Import unstable mathcomp_extra reals.
 From infotheo Require Import realType_ext convex.
 Require Import preamble.
-From HB Require Import structures.
 
 (**md**************************************************************************)
 (* # A formalization of monadic effects over the category Set                 *)
@@ -142,8 +142,7 @@ Notation "f ~~> g" := (forall A, f A -> g A)
 
 Local Open Scope monae_scope.
 
-Notation UU1 := Type.
-Notation UU0 := Type.
+Notation UU0 := Type@{UU_hierarchy}.
 
 (* NB: not putting M in Set -> Set because of expressions like:
   M (A * (size s).-1.-tuple A)%type *)
@@ -311,9 +310,9 @@ Variables (ret : idfun ~~> F) (join : F \o F ~~> F).
 Arguments ret {_}.
 Arguments join {A}.
 
-Definition left_unit := forall A, join \o ret = id :> (F A -> F A).
+Definition left_unit := forall A, join \o ret = idfun :> (F A -> F A).
 
-Definition right_unit := forall A, join \o F # ret = id :> (F A -> F A).
+Definition right_unit := forall A, join \o F # ret = idfun :> (F A -> F A).
 
 Definition associativity := forall A,
   join \o F # join = join \o join :> (F (F (F A)) -> F A).

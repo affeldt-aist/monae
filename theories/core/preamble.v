@@ -5,13 +5,6 @@ From mathcomp Require Import all_ssreflect.
 From mathcomp Require boolp.
 Require ProofIrrelevance.
 
-Definition proof_irr := boolp.Prop_irrelevance.
-
-Definition eq_rect_eq :=
-  @ProofIrrelevance.ProofIrrelevanceTheory.Eq_rect_eq.eq_rect_eq.
-
-Definition funext_dep := boolp.functional_extensionality_dep.
-
 (**md**************************************************************************)
 (* # Shared notations and easy definitions/lemmas of general interest         *)
 (*                                                                            *)
@@ -28,6 +21,25 @@ Definition funext_dep := boolp.functional_extensionality_dep.
 Set Implicit Arguments.
 Unset Strict Implicit.
 Unset Printing Implicit Defensive.
+
+Universes UU_hierarchy UU_category.
+Constraint UU_category <= UU_hierarchy.
+
+(* We use a universe-polymorphic version of idfun (in place of ssrfun.idfun)
+   so that we can avoid universe inconsistencies. *)
+Polymorphic Definition idfun (T : Type) (x : T) := x.
+Arguments idfun {T}.
+
+Section shorthands_for_classical_axioms.
+
+Definition proof_irr := boolp.Prop_irrelevance.
+
+Definition eq_rect_eq :=
+  @ProofIrrelevance.ProofIrrelevanceTheory.Eq_rect_eq.eq_rect_eq.
+
+Definition funext_dep := boolp.functional_extensionality_dep.
+
+End shorthands_for_classical_axioms.
 
 (* notations common to hierarchy.v and category.v *)
 
