@@ -307,31 +307,107 @@ Qed.*)
 Module ApplicativeLaws.
 Section applicative_laws.
 Context {F : UU0 -> UU0}.
-Variable pure : forall {A}, A -> F A.
-Variable apply : forall {A B}, F (A -> B) -> F A -> F B.
+Variable pure : forall {A : UU0}, A -> F A.
+Variable apply : forall {A B : UU0}, F (A -> B) -> F A -> F B.
 
 Definition identity :=
-  forall A (v : F A), apply (pure idfun) v = v.
+  forall A, apply (pure id) = id :> (F A -> F A).
 Definition composition :=
-  forall A B C (u : F (B -> C)) (v : F (A -> B)) (w : F A),
-    apply (apply (apply (pure comp) u) v) w = apply u (apply v w).
+  forall A B C (u : F (B -> C)) (v : F (A -> B)),
+    apply (apply (apply (pure comp) u) v) = (apply u) \o (apply v).
 Definition homomorphism :=
-  forall A B (f : A -> B) (x : A),
-    apply (pure f) (pure x) = pure (f x).
+  forall A B (f : A -> B) (y : A),
+    apply (pure f) (pure y) = pure (f y).
 Definition interchange :=
   forall A B (u : F (A -> B)) (y : A),
-    apply u (pure y) = apply (pure (fun f => f y)) u.
+    apply u (pure y) = apply (pure (@^~ y)) u.
 End applicative_laws.
 End ApplicativeLaws.
 
-HB.mixin Record isApplicative (F : UU0 -> UU0) := {
-  pure : forall A, A -> F A ;
-  apply : forall A B, F (A -> B) -> F A -> F B ;
+HB.mixin Record Functor_isApplicative (F : UU0 -> UU0) of Functor F := {
+  pure : forall [A], A -> F A ;
+  apply : forall [A B], F (A -> B) -> F A -> F B ;
+  afmapE : forall A B (f : A -> B), F # f = apply (pure f) ;
+  afidentity : ApplicativeLaws.identity pure apply ;
+  afcomposition : ApplicativeLaws.composition pure apply ;
+  afhomomorphism : ApplicativeLaws.homomorphism pure apply ;
+  afinterchange : ApplicativeLaws.interchange pure apply ;
+}.
+
+#[short(type=applicative)]
+HB.structure Definition ApplicativeFunctor := {F of Functor_isApplicative F &}.
+
+Arguments pure {s A}.
+Arguments apply {s A B}.
+
+HB.factory Record isApplicative (F : UU0 -> UU0) := {
+  pure : forall A : UU0, A -> F A ;
+  apply : forall A B : UU0, F (A -> B) -> F A -> F B ;
   identity : ApplicativeLaws.identity pure apply ;
   composition : ApplicativeLaws.composition pure apply ;
   homomorphism : ApplicativeLaws.homomorphism pure apply ;
   interchange : ApplicativeLaws.interchange pure apply ;
 }.
+
+HB.builders Context F of isApplicative F.
+Let actm (A B : UU0) (f : A -> B) := apply (pure f).
+Let functor_id : FunctorLaws.id actm := identity.
+Let functor_o : FunctorLaws.comp actm.
+Proof.
+move=> A B C f g.
+by rewrite /actm -composition !homomorphism.
+Qed.
+
+HB.instance Definition _ := isFunctor.Build F functor_id functor_o.
+
+Let afmapE A B (f : A -> B) : F # f = apply (pure f).
+Proof. by []. Qed.
+
+HB.instance Definition _ :=
+  Functor_isApplicative.Build F
+    afmapE identity composition homomorphism interchange.
+HB.end.
+
+Section applicative_composition.
+Variables F G : applicative.
+
+Let comp_pure (A : UU0) : A -> (F \o G) A := pure \o pure.
+
+Let comp_apply (A B : UU0) (f : (F \o G) (A -> B)) : (F \o G) A -> (F \o G) B :=
+  apply ((F # apply) f).
+Let comp_apply_eq A B f :
+  @comp_apply A B f = apply (apply (pure apply) f).
+Proof. by rewrite -afmapE. Qed.
+
+Let _identity : ApplicativeLaws.identity comp_pure comp_apply.
+Proof.
+move=> A. 
+by rewrite /comp_apply /comp_pure /= afmapE afhomomorphism !afidentity.
+Qed.
+
+Let _composition : ApplicativeLaws.composition comp_pure comp_apply.
+Proof.
+move=> A B C u v.
+rewrite /comp_apply /comp_pure !afmapE /=.
+rewrite afhomomorphism.
+rewrite -afcomposition.
+Abort.
+
+Let _homomorphism : ApplicativeLaws.homomorphism comp_pure comp_apply.
+Proof.
+by move=> A B f y; rewrite /comp_apply /comp_pure afmapE /= !afhomomorphism.
+Qed.
+
+Let _interchange : ApplicativeLaws.interchange comp_pure comp_apply.
+Proof.
+move=> A B f y; rewrite /comp_apply /comp_pure !afmapE /= !afhomomorphism.
+rewrite !afinterchange.
+Abort.
+
+(*
+HB.instance Definition _ := isApplicative.Build (F \o G) comp_id comp_comp.
+*)
+End applicative_composition.
 
 Module JoinLaws.
 Section join_laws.
@@ -732,7 +808,8 @@ Local Open Scope mprog.
 Lemma fcomp_kleisli A B C D (f : A -> B) (g : C -> M A) (h : D -> M C) :
   f (o) (g <=< h) = (f (o) g) <=< h.
 Proof.
-rewrite /kleisli 2!fcomp_def 2!(compA (fmap f)) natural [in RHS]functor_o.
+rewrite /kleisli 2!fcomp_def 2!(compA (fmap f)).
+rewrite (natural join) [in RHS]functor_o.
 by rewrite -compA.
 Qed.
 
@@ -807,7 +884,8 @@ Definition bassert {A : UU0} (p : pred A) (m : M A) : M A := m >>= assert p.
 Lemma commutativity_of_assertions A q :
   Join \o (M # (bassert q)) = bassert q \o Join :> (_ -> M A).
 Proof.
-by apply boolp.funext => x; rewrite !compE join_fmap /bassert joinE bindA.
+apply boolp.funext => x; rewrite !compE join_fmap /bassert joinE.
+by rewrite -/(_ >>= _) bindA.
 Qed.
 
 (* guards commute with anything *)

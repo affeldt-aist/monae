@@ -29,6 +29,17 @@ Set Implicit Arguments.
 Unset Strict Implicit.
 Unset Printing Implicit Defensive.
 
+(* We use a universe-polymorphic version of idfun and comp
+   (in place of ssrfun.idfun and ssrfun.comp)
+   so that we can avoid universe inconsistencies. *)
+Polymorphic Definition idfun (T : Type) (x : T) := x.
+Arguments idfun {T}.
+
+Polymorphic Definition comp (A B C : Type) (f : B -> A) (g : C -> B) :=
+  fun x => f (g x).
+Arguments comp {A B C} f g x /.
+Notation "f1 \o f2" := (comp f1 f2) : function_scope.
+
 (* notations common to hierarchy.v and category.v *)
 
 Reserved Notation "m >>= f" (at level 49).
