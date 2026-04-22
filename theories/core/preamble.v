@@ -40,6 +40,14 @@ Polymorphic Definition comp (A B C : Type) (f : B -> A) (g : C -> B) :=
 Arguments comp {A B C} f g x /.
 Notation "f1 \o f2" := (comp f1 f2) : function_scope.
 
+(* We also restate ssrfun.compA for our comp
+   (also with a slight modification in the order of type arguments).
+   There are more lemmas for ssrfun.comp left in ssrfun, such as
+   bij_comp, inj_comp, etc.  They should be added once in need *)
+Lemma compA {A B C D} (f : C -> D) (g : B -> C) (h : A -> B) :
+  f \o (g \o h) = (f \o g) \o h.
+Proof. by []. Qed.
+
 (* notations common to hierarchy.v and category.v *)
 
 Reserved Notation "m >>= f" (at level 49).
@@ -153,10 +161,6 @@ Lemma uaddnE n m : uaddn (n, m) = n + m. Proof. by rewrite /uaddn uncurryE. Qed.
 Definition const A B (b : B) := fun _ : A => b.
 
 Definition wrap {A} (a : A) := [:: a].
-
-Lemma compA {A B C D} (f : C -> D) (g : B -> C) (h : A -> B) :
-  f \o (g \o h) = (f \o g) \o h.
-Proof. by []. Qed.
 
 Lemma compfid A B (f : A -> B) : f \o id = f. Proof. by []. Qed.
 
