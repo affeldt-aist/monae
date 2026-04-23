@@ -304,6 +304,18 @@ subst t'.
 congr Natural.Pack; exact/proof_irr.
 Qed.*)
 
+(* an equivalent of ssrfun.catcomp *)
+Polymorphic Definition revcomp (A B C : Type) (g : C -> B) := (@comp A B C)^~ g.
+Arguments revcomp {A B C} g f x / : rename.
+
+Polymorphic Definition revapply (T : Type) (U : T -> Type) (x : T) :=
+  @^~ x : forall f : forall x : T, U x, U x.
+Arguments revapply {T U} x f /.
+
+Lemma revapply_revcomp A B C :
+  revapply revcomp id  = revcomp :> ((C -> B) -> (B -> A) -> C -> A).
+Proof. by []. Qed.
+
 Module ApplicativeLaws.
 Section applicative_laws.
 Context {F : UU0 -> UU0}.
@@ -320,7 +332,8 @@ Definition homomorphism :=
     apply (pure f) (pure y) = pure (f y).
 Definition interchange :=
   forall A B (u : F (A -> B)) (y : A),
-    apply u (pure y) = apply (pure (@^~ y)) u.
+    apply u (pure y) = apply (pure (revapply y)) u.
+
 End applicative_laws.
 End ApplicativeLaws.
 
@@ -381,6 +394,101 @@ Qed.
 
 HB.instance Definition _ := 
   isNatural.Build idfun F (@pure _ : idfun ~~> F) pure_naturality.
+
+(* https://ncatlab.org/nlab/show/closed+functor
+   apply: F(X -> Y) -> (F(X) -> F(Y)) is natural in Y; i.e.,
+
+                    apply
+        F(X -> Y1) -------> (F(X) -> F(Y1))
+             |                     |
+   F(X -> h) |                     | (F(X) -> F(h))
+             ↓                     ↓
+        F(X -> Y2) -------> (F(X) -> F(Y2))
+                    apply
+
+  where h : Y1 -> Y2,
+        (X -> h) : (X -> Y1) -> (X -> Y2),
+        (X -> h) := fun (f : X -> Y1) => h \o f,
+        F(X -> h) := F # (fun f => h \o f),
+        F(h) = F # h : F(Y1) -> F(Y2), and
+        (F(X) -> F(h)) : fun (g : F(X) -> F(Y1)) => (F # h) \o g.
+ *)
+Lemma apply_naturality2 X Y1 Y2 (h : Y1 -> Y2) :
+  apply \o F # (fun (f : X -> Y1) => h \o f) =
+  (fun (g : F X -> F Y1) => F # h \o g) \o apply.
+Proof.
+apply/boolp.funext => k/=.
+rewrite !afmapE.
+rewrite -afcomposition.
+congr apply.
+by rewrite afhomomorphism.
+Qed.
+
+(* https://ncatlab.org/nlab/show/closed+functor
+   apply: F(X -> Y) -> (F(X) -> F(Y)) is natural in X; i.e.,
+
+                    apply
+        F(X2 -> Y) -------> (F(X2) -> F(Y))
+             |                     |
+   F(h -> Y) |                     | (F(h) -> F(Y))
+             ↓                     ↓
+        F(X1 -> Y) -------> (F(X1) -> F(Y))
+                    apply
+
+  where h : X1 -> X2,
+        (h -> Y) : (X2 -> Y) -> (X1 -> Y),
+        (h -> Y) := fun (f : X2 -> Y) => f \o h,
+        F(h -> Y) := F # (fun f => f \o h),
+        F(h) = F # h : F(X1) -> F(X2), and
+        (F(h) -> F(Y)) : fun (g : F(X2) -> F(Y)) => g \o (F # h).
+ *)
+
+Polymorphic Definition ap {T : UU0} {U : T -> UU0} (f : forall x0 : T, U x0) (x : T) := f x.
+Arguments ap {T U} f x /.
+
+(* trivial because ap is an instance of id *)
+Lemma revcomp_ap_revcomp A B C :
+  revcomp ap revcomp = revcomp :> ((C -> B) -> (B -> A) -> C -> A).
+Proof. by []. Qed.
+
+Lemma comp_revcomp_ap A B C :
+  comp revcomp ap = revcomp :> ((C -> B) -> (B -> A) -> C -> A).
+Proof. by []. Qed.
+
+Lemma identity_ap T (U : T -> Type) :
+  apply (pure ap) = id :> (F (forall x : T, U x) -> F (forall x : T, U x)).
+Proof. exact: afidentity. Qed.
+
+Lemma afrevcompE A B C (u : F (B -> A)) (v : F (C -> B)) :
+  apply (apply (apply (pure revcomp) v) u) = apply (apply (apply (pure comp) u) v).
+Proof.
+rewrite afcomposition.
+rewrite -comp_revcomp_ap.
+rewrite -afhomomorphism.
+
+rewrite -!afmapE.
+rewrite -/((apply \o _) (pure ap)).
+rewrite apply_naturality2/=.
+rewrite afmapE.
+rewrite identity_ap.
+Abort.
+
+Lemma afrevcomposition A B C (u : F (B -> C)) (v : F (A -> B)) :
+  apply (apply (apply (pure revcomp) v) u) = (apply u) \o (apply v).
+Proof.
+(* should be trivial with afrevcompE *)
+Abort.
+
+Lemma apply_naturality1 X1 X2 Y (h : X1 -> X2) :
+  apply \o F # (fun (f : X2 -> Y) => f \o h) =
+  (fun (g : F X2 -> F Y) => g \o F # h) \o apply.
+Proof.
+apply/boolp.funext => k/=.
+rewrite !afmapE.
+rewrite -/(revcomp _).
+(*by rewrite afrevcomposition.*)
+Abort.
+
 End applicative_properties.
 
 Section applicative_composition.
@@ -396,18 +504,87 @@ Proof. by rewrite -afmapE. Qed.
 
 Let _identity : ApplicativeLaws.identity comp_pure comp_apply.
 Proof.
-move=> A. 
+move=> A.
 by rewrite /comp_apply /comp_pure /= afmapE afhomomorphism !afidentity.
 Qed.
+
+Definition prefix_C A B C (f : A -> B) := @comp _ _ C f.
+Definition remove_C A B C (g : (C -> A) -> (C -> B)) (c : C) (a : A) :=
+  g (fun=> a) c.
+Lemma prefixK A B C (f : A -> B) (c : C) : remove_C (prefix_C f) c = f.
+Proof. by []. Qed.
 
 Let _composition : ApplicativeLaws.composition comp_pure comp_apply.
 Proof.
 move=> A B C u v.
+
 rewrite /comp_apply /comp_pure !afmapE /=.
 rewrite afhomomorphism.
 rewrite -afcomposition.
+
+rewrite -!afmapE.
+rewrite -!/((_ \o _) u).
+rewrite -!functor_o.
 congr apply.
-Disable Notation "_ = _".
+
+Check (apply \o F # (comp \o apply)) _ _.
+
+Check ((apply \o F # (apply \o G # comp)) u v).
+Check ((F # apply) v).
+Check comp _.
+Check apply \o F # (comp \o apply).
+
+
+Check apply \o F # (apply \o G # comp).
+(*
+apply \o F # (apply \o G # comp)
+     : F (G (?B -> ?A)) -> F (G (?C -> ?B)) -> F (G (?C -> ?A))
+*)
+Check (F # apply) ((apply \o F # _) _ _).
+(*
+(F # apply) ((apply \o F # ?s0) ?x ?s1)
+     : F (?s ?A -> ?s ?B)
+*)
+Check (F # apply) (apply _ _).
+(*
+(F # apply) (apply ?s0 ?s1)
+     : F (?s ?A -> ?s ?B)
+*)
+Check F # apply.
+(*
+F # apply
+     : F (?s (?A -> ?B)) -> F (?s ?A -> ?s ?B)
+*)
+Check apply \o F # _.
+(*
+apply \o F # ?y
+     : F ?A0 -> F ?A -> F ?B
+*)
+Check apply \o G # comp.
+(*
+apply \o
+  G # comp
+     : G (?B -> ?A) -> G (?C -> ?B) -> G (?C -> ?A)
+*)
+Check comp \o apply.
+(*
+comp \o
+  apply
+     : ?s (?A -> ?B) -> (?C -> ?s ?A) -> ?C -> ?s ?B
+*)
+Check (F # apply) _.
+(*
+(F # apply) ?s0
+     : F (?s ?A -> ?s ?B)
+*)
+Check _ ((F # apply) _).
+(*
+?y ((F # apply) ?s0)
+     : ?T@{x:=(F # apply) ?s0}
+*)
+
+(*Disable Notation "_ = _".*)
+
 Abort.
 
 Let _homomorphism : ApplicativeLaws.homomorphism comp_pure comp_apply.
