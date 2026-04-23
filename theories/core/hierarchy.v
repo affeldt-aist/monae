@@ -308,8 +308,10 @@ Qed.*)
 Polymorphic Definition revcomp (A B C : Type) (g : C -> B) := (@comp A B C)^~ g.
 Arguments revcomp {A B C} g f x / : rename.
 
-Polymorphic Definition revapply (T : Type) (U : T -> Type) (x : T) :=
-  @^~ x : forall f : forall x : T, U x, U x.
+(*Polymorphic Definition revapply (T : Type) (U : T -> Type) (x : T) :=
+  @^~ x : forall f : forall x : T, U x, U x.*)
+Polymorphic Definition revapply (T : Type) (U : Type) (x : T) :=
+  @^~ x : (T -> U) -> U.
 Arguments revapply {T U} x f /.
 
 Lemma revapply_revcomp A B C :
@@ -459,10 +461,12 @@ Lemma identity_ap T (U : T -> Type) :
   apply (pure ap) = id :> (F (forall x : T, U x) -> F (forall x : T, U x)).
 Proof. exact: afidentity. Qed.
 
-Lemma afrevcompE A B C (u : F (B -> A)) (v : F (C -> B)) :
-  apply (apply (apply (pure revcomp) v) u) = apply (apply (apply (pure comp) u) v).
+Lemma afrevcompE A B C (u : F (B -> A)) (v : C -> B) :
+  apply (apply (apply (pure revcomp) (pure v)) u) = apply (apply (apply (pure comp) u) (pure v)).
 Proof.
 rewrite afcomposition.
+have := revapply comp.
+
 rewrite -comp_revcomp_ap.
 rewrite -afhomomorphism.
 
@@ -486,8 +490,12 @@ Proof.
 apply/boolp.funext => k/=.
 rewrite !afmapE.
 rewrite -/(revcomp _).
-(*by rewrite afrevcomposition.*)
-Abort.
+rewrite -afcomposition.
+rewrite afinterchange.
+rewrite -[X in _ = apply X]compE.
+rewrite -afcomposition.
+by rewrite !afhomomorphism.
+Qed.
 
 End applicative_properties.
 
@@ -526,65 +534,6 @@ rewrite -!afmapE.
 rewrite -!/((_ \o _) u).
 rewrite -!functor_o.
 congr apply.
-
-Check (apply \o F # (comp \o apply)) _ _.
-
-Check ((apply \o F # (apply \o G # comp)) u v).
-Check ((F # apply) v).
-Check comp _.
-Check apply \o F # (comp \o apply).
-
-
-Check apply \o F # (apply \o G # comp).
-(*
-apply \o F # (apply \o G # comp)
-     : F (G (?B -> ?A)) -> F (G (?C -> ?B)) -> F (G (?C -> ?A))
-*)
-Check (F # apply) ((apply \o F # _) _ _).
-(*
-(F # apply) ((apply \o F # ?s0) ?x ?s1)
-     : F (?s ?A -> ?s ?B)
-*)
-Check (F # apply) (apply _ _).
-(*
-(F # apply) (apply ?s0 ?s1)
-     : F (?s ?A -> ?s ?B)
-*)
-Check F # apply.
-(*
-F # apply
-     : F (?s (?A -> ?B)) -> F (?s ?A -> ?s ?B)
-*)
-Check apply \o F # _.
-(*
-apply \o F # ?y
-     : F ?A0 -> F ?A -> F ?B
-*)
-Check apply \o G # comp.
-(*
-apply \o
-  G # comp
-     : G (?B -> ?A) -> G (?C -> ?B) -> G (?C -> ?A)
-*)
-Check comp \o apply.
-(*
-comp \o
-  apply
-     : ?s (?A -> ?B) -> (?C -> ?s ?A) -> ?C -> ?s ?B
-*)
-Check (F # apply) _.
-(*
-(F # apply) ?s0
-     : F (?s ?A -> ?s ?B)
-*)
-Check _ ((F # apply) _).
-(*
-?y ((F # apply) ?s0)
-     : ?T@{x:=(F # apply) ?s0}
-*)
-
-(*Disable Notation "_ = _".*)
-
 Abort.
 
 Let _homomorphism : ApplicativeLaws.homomorphism comp_pure comp_apply.
