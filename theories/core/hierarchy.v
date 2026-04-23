@@ -422,11 +422,16 @@ Proof. by rewrite afrevcompE -afcomposition. Qed.
         F(h -> Y) := F # (fun f => f \o h),
         F(h) = F # h : F(X1) -> F(X2), and
         (F(h) -> F(Y)) : fun (g : F(X2) -> F(Y)) => g \o (F # h).
+
+  The Rocq statement (in a verbose style) is:
+  Lemma apply_naturality1 X1 X2 Y (h : X1 -> X2) :
+    apply \o F # (fun (f : X2 -> Y) => f \o h) =
+    (fun (g : F X2 -> F Y) => g \o F # h) \o apply.
  *)
 Lemma apply_naturality1 X1 X2 Y (h : X1 -> X2) :
-  apply \o F # (fun (f : X2 -> Y) => f \o h) =
-  (fun (g : F X2 -> F Y) => g \o F # h) \o apply.
-Proof. by apply/boolp.funext => k/=; rewrite !afmapE; exact: afrevcomposition. Qed.
+  apply \o F # (revcomp h) = (revcomp (F # h)) \o apply
+    :> (F (X2 -> Y) -> F X1 -> F Y).
+Proof. by apply/boolp.funext => k/=; rewrite !afmapE afrevcomposition. Qed.
 
 (* https://ncatlab.org/nlab/show/closed+functor
    apply: F(X -> Y) -> (F(X) -> F(Y)) is natural in Y; i.e.,
@@ -445,16 +450,17 @@ Proof. by apply/boolp.funext => k/=; rewrite !afmapE; exact: afrevcomposition. Q
         F(X -> h) := F # (fun f => h \o f),
         F(h) = F # h : F(Y1) -> F(Y2), and
         (F(X) -> F(h)) : fun (g : F(X) -> F(Y1)) => (F # h) \o g.
+
+  The Rocq statement (in a verbose style) is:
+  Lemma apply_naturality2 X Y1 Y2 (h : Y1 -> Y2) :
+    apply \o F # (fun (f : X -> Y1) => h \o f) =
+    (fun (g : F X -> F Y1) => F # h \o g) \o apply.
  *)
 Lemma apply_naturality2 X Y1 Y2 (h : Y1 -> Y2) :
-  apply \o F # (fun (f : X -> Y1) => h \o f) =
-  (fun (g : F X -> F Y1) => F # h \o g) \o apply.
+  apply \o F # (comp h) = (comp (F # h)) \o apply
+    :> (F (X -> Y1) -> F X -> F Y2).
 Proof.
-apply/boolp.funext => k/=.
-rewrite !afmapE.
-rewrite -afcomposition.
-congr apply.
-by rewrite afhomomorphism.
+by apply/boolp.funext => k/=; rewrite !afmapE -afhomomorphism afcomposition.
 Qed.
 
 End applicative_properties.
