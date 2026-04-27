@@ -33,7 +33,7 @@ Unset Printing Implicit Defensive.
    (in place of ssrfun.idfun and ssrfun.comp)
    so that we can avoid universe inconsistencies. *)
 Polymorphic Definition idfun (T : Type) (x : T) := x.
-Arguments idfun {T}.
+Arguments idfun {T} x /.
 
 Polymorphic Definition comp (A B C : Type) (f : B -> A) (g : C -> B) :=
   fun x => f (g x).

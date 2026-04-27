@@ -308,6 +308,8 @@ Qed.*)
 Polymorphic Definition revcomp (A B C : Type) (g : C -> B) := (@comp A B C)^~ g.
 Arguments revcomp {A B C} g f x / : rename.
 
+Locate "@^~".
+
 (*Polymorphic Definition revapply (T : Type) (U : T -> Type) (x : T) :=
   @^~ x : forall f : forall x : T, U x, U x.*)
 Polymorphic Definition revapply (T : Type) (U : Type) (x : T) :=
@@ -385,8 +387,7 @@ Variable F : applicative.
 Lemma pure_naturality : naturality idfun F (@pure _).
 Proof.
 move=> A B h.
-rewrite afmapE.
-rewrite FIdE.
+rewrite afmapE FIdE.
 apply: boolp.funext => x /=.
 by rewrite afhomomorphism.
 Qed.
@@ -397,8 +398,7 @@ HB.instance Definition _ :=
 Lemma afrevcompE A B C (u : F (B -> A)) (v : C -> B) :
   apply (pure (revcomp v)) u = apply (apply (pure comp) u) (pure v).
 Proof.
-set lhs := LHS.
-by rewrite afinterchange -!afmapE -[in RHS]compE -functor_o afmapE.
+by symmetry; rewrite afinterchange -!afmapE -[LHS]compE -functor_o afmapE.
 Qed.
 
 Lemma afrevcomposition A B C (u : F (B -> C)) (v : A -> B) :
@@ -471,51 +471,43 @@ Variables F G : applicative.
 Let comp_pure (A : UU0) : A -> (F \o G) A := pure \o pure.
 
 Let comp_apply (A B : UU0) (f : (F \o G) (A -> B)) : (F \o G) A -> (F \o G) B :=
-  apply ((F # apply) f).
-Let comp_apply_eq A B f :
-  @comp_apply A B f = apply (apply (pure apply) f).
-Proof. by rewrite -afmapE. Qed.
+  apply (apply (pure apply) f).
+Let comp_apply_eq A B f : @comp_apply A B f = apply ((F # apply) f).
+Proof. by rewrite afmapE. Qed.
 
-Let _identity : ApplicativeLaws.identity comp_pure comp_apply.
-Proof.
-move=> A.
-by rewrite /comp_apply /comp_pure /= afmapE afhomomorphism !afidentity.
-Qed.
+Let identity : ApplicativeLaws.identity comp_pure comp_apply.
+Proof. by move=> A; rewrite /comp_apply /= afhomomorphism !afidentity. Qed.
 
-Definition prefix_C A B C (f : A -> B) := @comp _ _ C f.
-Definition remove_C A B C (g : (C -> A) -> (C -> B)) (c : C) (a : A) :=
-  g (fun=> a) c.
-Lemma prefixK A B C (f : A -> B) (c : C) : remove_C (prefix_C f) c = f.
-Proof. by []. Qed.
+Let afcomposition1 {s} A B C u v := esym (@afcomposition s A B C u v).
+Let afcomposition2 {s} A B C u v w : apply u (apply v w) = _ :=
+  f_equal (fun f => f w) (@afcomposition1 s A B C u v).
+Let applicativeE := (@afcomposition2,@afcomposition1,@afinterchange).
+Ltac simpl_applicative := do! rewrite ?afhomomorphism 1?applicativeE.
 
-Let _composition : ApplicativeLaws.composition comp_pure comp_apply.
+Let composition : ApplicativeLaws.composition comp_pure comp_apply.
 Proof.
 move=> A B C u v.
-
-rewrite /comp_apply /comp_pure !afmapE /=.
-rewrite afhomomorphism.
-rewrite -afcomposition.
-
-rewrite -!afmapE.
-rewrite -!/((_ \o _) u).
-rewrite -!functor_o.
-congr apply.
-Abort.
-
-Let _homomorphism : ApplicativeLaws.homomorphism comp_pure comp_apply.
-Proof.
-by move=> A B f y; rewrite /comp_apply /comp_pure afmapE /= !afhomomorphism.
+rewrite /comp_apply.
+simpl_applicative.
+congr (apply (apply (apply (pure _) u) v)).
+do 2! apply: boolp.funext => ? /=.
+by simpl_applicative.
 Qed.
 
-Let _interchange : ApplicativeLaws.interchange comp_pure comp_apply.
-Proof.
-move=> A B f y; rewrite /comp_apply /comp_pure !afmapE /= !afhomomorphism.
-rewrite !afinterchange.
-Abort.
+Let homomorphism : ApplicativeLaws.homomorphism comp_pure comp_apply.
+Proof. by move=> A B f y; rewrite /comp_apply /= !afhomomorphism. Qed.
 
-(*
-HB.instance Definition _ := isApplicative.Build (F \o G) comp_id comp_comp.
-*)
+Let interchange : ApplicativeLaws.interchange comp_pure comp_apply.
+Proof.
+move=> A B f y; rewrite /comp_apply /= !afhomomorphism.
+simpl_applicative.
+congr (apply (pure _) _).
+apply: boolp.funext => w /=.
+by simpl_applicative.
+Qed.
+
+HB.instance Definition _ :=
+  isApplicative.Build (F \o G) identity composition homomorphism interchange.
 End applicative_composition.
 
 Module JoinLaws.
