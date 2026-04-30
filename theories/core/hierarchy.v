@@ -304,6 +304,210 @@ subst t'.
 congr Natural.Pack; exact/proof_irr.
 Qed.*)
 
+(* an equivalent of ssrfun.catcomp *)
+Polymorphic Definition revcomp (A B C : Type) (g : C -> B) := (@comp A B C)^~ g.
+Arguments revcomp {A B C} g f x / : rename.
+
+Locate "@^~".
+
+(*Polymorphic Definition revapply (T : Type) (U : T -> Type) (x : T) :=
+  @^~ x : forall f : forall x : T, U x, U x.*)
+Polymorphic Definition revapply (T : Type) (U : Type) (x : T) :=
+  @^~ x : (T -> U) -> U.
+Arguments revapply {T U} x f /.
+
+Module ApplicativeLaws.
+Section applicative_laws.
+Context {F : UU0 -> UU0}.
+Variable pure : forall {A : UU0}, A -> F A.
+Variable apply : forall {A B : UU0}, F (A -> B) -> F A -> F B.
+
+Definition identity :=
+  forall A, apply (pure id) = id :> (F A -> F A).
+Definition composition :=
+  forall A B C (u : F (B -> C)) (v : F (A -> B)),
+    apply (apply (apply (pure comp) u) v) = (apply u) \o (apply v).
+Definition homomorphism :=
+  forall A B (f : A -> B) (y : A),
+    apply (pure f) (pure y) = pure (f y).
+Definition interchange :=
+  forall A B (u : F (A -> B)) (y : A),
+    apply u (pure y) = apply (pure (revapply y)) u.
+
+End applicative_laws.
+End ApplicativeLaws.
+
+HB.mixin Record Functor_isApplicative (F : UU0 -> UU0) of Functor F := {
+  pure : forall [A], A -> F A ;
+  apply : forall [A B], F (A -> B) -> F A -> F B ;
+  afmapE : forall A B (f : A -> B), F # f = apply (pure f) ;
+  afidentity : ApplicativeLaws.identity pure apply ;
+  afcomposition : ApplicativeLaws.composition pure apply ;
+  afhomomorphism : ApplicativeLaws.homomorphism pure apply ;
+  afinterchange : ApplicativeLaws.interchange pure apply ;
+}.
+
+#[short(type=applicative)]
+HB.structure Definition ApplicativeFunctor := {F of Functor_isApplicative F &}.
+
+Arguments pure {s A}.
+Arguments apply {s A B}.
+
+HB.factory Record isApplicative (F : UU0 -> UU0) := {
+  pure : forall A : UU0, A -> F A ;
+  apply : forall A B : UU0, F (A -> B) -> F A -> F B ;
+  identity : ApplicativeLaws.identity pure apply ;
+  composition : ApplicativeLaws.composition pure apply ;
+  homomorphism : ApplicativeLaws.homomorphism pure apply ;
+  interchange : ApplicativeLaws.interchange pure apply ;
+}.
+
+HB.builders Context F of isApplicative F.
+Let actm (A B : UU0) (f : A -> B) := apply (pure f).
+Let functor_id : FunctorLaws.id actm := identity.
+Let functor_o : FunctorLaws.comp actm.
+Proof.
+move=> A B C f g.
+by rewrite /actm -composition !homomorphism.
+Qed.
+
+HB.instance Definition _ := isFunctor.Build F functor_id functor_o.
+
+Let afmapE A B (f : A -> B) : F # f = apply (pure f).
+Proof. by []. Qed.
+
+HB.instance Definition _ :=
+  Functor_isApplicative.Build F
+    afmapE identity composition homomorphism interchange.
+HB.end.
+
+Section applicative_properties.
+Variable F : applicative.
+
+Lemma pure_naturality : naturality idfun F (@pure _).
+Proof.
+move=> A B h.
+rewrite afmapE FIdE.
+apply: boolp.funext => x /=.
+by rewrite afhomomorphism.
+Qed.
+
+HB.instance Definition _ := 
+  isNatural.Build idfun F (@pure _ : idfun ~~> F) pure_naturality.
+
+Lemma afrevcompE A B C (u : F (B -> A)) (v : C -> B) :
+  apply (pure (revcomp v)) u = apply (apply (pure comp) u) (pure v).
+Proof.
+by symmetry; rewrite afinterchange -!afmapE -[LHS]compE -functor_o afmapE.
+Qed.
+
+Lemma afrevcomposition A B C (u : F (B -> C)) (v : A -> B) :
+  apply (apply (pure (revcomp v)) u) = (apply u) \o (apply (pure v)).
+Proof. by rewrite afrevcompE -afcomposition. Qed.
+
+(* https://ncatlab.org/nlab/show/closed+functor
+   apply: F(X -> Y) -> (F(X) -> F(Y)) is natural in X; i.e.,
+
+                    apply
+        F(X2 -> Y) -------> (F(X2) -> F(Y))
+             |                     |
+   F(h -> Y) |                     | (F(h) -> F(Y))
+             ↓                     ↓
+        F(X1 -> Y) -------> (F(X1) -> F(Y))
+                    apply
+
+  where h : X1 -> X2,
+        (h -> Y) : (X2 -> Y) -> (X1 -> Y),
+        (h -> Y) := fun (f : X2 -> Y) => f \o h,
+        F(h -> Y) := F # (fun f => f \o h),
+        F(h) = F # h : F(X1) -> F(X2), and
+        (F(h) -> F(Y)) : fun (g : F(X2) -> F(Y)) => g \o (F # h).
+
+  The Rocq statement (in a verbose style) is:
+  Lemma apply_naturality1 X1 X2 Y (h : X1 -> X2) :
+    apply \o F # (fun (f : X2 -> Y) => f \o h) =
+    (fun (g : F X2 -> F Y) => g \o F # h) \o apply.
+ *)
+Lemma apply_naturality1 X1 X2 Y (h : X1 -> X2) :
+  apply \o F # (revcomp h) = (revcomp (F # h)) \o apply
+    :> (F (X2 -> Y) -> F X1 -> F Y).
+Proof. by apply/boolp.funext => k/=; rewrite !afmapE afrevcomposition. Qed.
+
+(* https://ncatlab.org/nlab/show/closed+functor
+   apply: F(X -> Y) -> (F(X) -> F(Y)) is natural in Y; i.e.,
+
+                    apply
+        F(X -> Y1) -------> (F(X) -> F(Y1))
+             |                     |
+   F(X -> h) |                     | (F(X) -> F(h))
+             ↓                     ↓
+        F(X -> Y2) -------> (F(X) -> F(Y2))
+                    apply
+
+  where h : Y1 -> Y2,
+        (X -> h) : (X -> Y1) -> (X -> Y2),
+        (X -> h) := fun (f : X -> Y1) => h \o f,
+        F(X -> h) := F # (fun f => h \o f),
+        F(h) = F # h : F(Y1) -> F(Y2), and
+        (F(X) -> F(h)) : fun (g : F(X) -> F(Y1)) => (F # h) \o g.
+
+  The Rocq statement (in a verbose style) is:
+  Lemma apply_naturality2 X Y1 Y2 (h : Y1 -> Y2) :
+    apply \o F # (fun (f : X -> Y1) => h \o f) =
+    (fun (g : F X -> F Y1) => F # h \o g) \o apply.
+ *)
+Lemma apply_naturality2 X Y1 Y2 (h : Y1 -> Y2) :
+  apply \o F # (comp h) = (comp (F # h)) \o apply
+    :> (F (X -> Y1) -> F X -> F Y2).
+Proof.
+by apply/boolp.funext => k/=; rewrite !afmapE -afhomomorphism afcomposition.
+Qed.
+
+Let afcomposition1 A B C u v := esym (@afcomposition F A B C u v).
+Let afcomposition2 A B C u v w : apply u (apply v w) = _ :=
+  f_equal (fun f => f w) (@afcomposition1 A B C u v).
+Definition applicativeE := (afcomposition1,afcomposition2,@afinterchange F).
+End applicative_properties.
+
+Ltac simpl_applicative := do! rewrite /= ?afhomomorphism 1?applicativeE.
+
+Section applicative_composition.
+Variables F G : applicative.
+
+Let comp_pure (A : UU0) : A -> (F \o G) A := pure \o pure.
+
+Let comp_apply (A B : UU0) (f : (F \o G) (A -> B)) : (F \o G) A -> (F \o G) B :=
+  apply (apply (pure apply) f).
+Let comp_apply_eq A B f : @comp_apply A B f = apply ((F # apply) f).
+Proof. by rewrite afmapE. Qed.
+
+Let identity : ApplicativeLaws.identity comp_pure comp_apply.
+Proof. by move=> A; rewrite /comp_apply /= afhomomorphism !afidentity. Qed.
+
+Let composition : ApplicativeLaws.composition comp_pure comp_apply.
+Proof.
+move=> A B C u v.
+rewrite /comp_apply.
+simpl_applicative.
+congr (apply (apply (apply (pure _) u) v)).
+apply/boolp.funeq2P => ?? /=.
+by simpl_applicative.
+Qed.
+
+Let homomorphism : ApplicativeLaws.homomorphism comp_pure comp_apply.
+Proof. by move=> A B f y; rewrite /comp_apply /= !afhomomorphism. Qed.
+
+Let interchange : ApplicativeLaws.interchange comp_pure comp_apply.
+Proof.
+move=> A B f y; rewrite /comp_apply /= !afhomomorphism.
+simpl_applicative.
+by under [_ \o _]boolp.funext do simpl_applicative.
+Qed.
+
+HB.instance Definition _ :=
+  isApplicative.Build (F \o G) identity composition homomorphism interchange.
+End applicative_composition.
+
 Module JoinLaws.
 Section join_laws.
 Context {F : functor}.
@@ -703,7 +907,8 @@ Local Open Scope mprog.
 Lemma fcomp_kleisli A B C D (f : A -> B) (g : C -> M A) (h : D -> M C) :
   f (o) (g <=< h) = (f (o) g) <=< h.
 Proof.
-rewrite /kleisli 2!fcomp_def 2!(compA (fmap f)) natural [in RHS]functor_o.
+rewrite /kleisli 2!fcomp_def 2!(compA (fmap f)).
+rewrite (natural join) [in RHS]functor_o.
 by rewrite -compA.
 Qed.
 
@@ -778,7 +983,8 @@ Definition bassert {A : UU0} (p : pred A) (m : M A) : M A := m >>= assert p.
 Lemma commutativity_of_assertions A q :
   Join \o (M # (bassert q)) = bassert q \o Join :> (_ -> M A).
 Proof.
-by apply boolp.funext => x; rewrite !compE join_fmap /bassert joinE bindA.
+apply boolp.funext => x; rewrite !compE join_fmap /bassert joinE.
+by rewrite -/(_ >>= _) bindA.
 Qed.
 
 (* guards commute with anything *)
