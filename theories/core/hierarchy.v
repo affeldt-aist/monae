@@ -463,7 +463,13 @@ Proof.
 by apply/boolp.funext => k/=; rewrite !afmapE -afhomomorphism afcomposition.
 Qed.
 
+Let afcomposition1 A B C u v := esym (@afcomposition F A B C u v).
+Let afcomposition2 A B C u v w : apply u (apply v w) = _ :=
+  f_equal (fun f => f w) (@afcomposition1 A B C u v).
+Definition applicativeE := (afcomposition1,afcomposition2,@afinterchange F).
 End applicative_properties.
+
+Ltac simpl_applicative := do! rewrite /= ?afhomomorphism 1?applicativeE.
 
 Section applicative_composition.
 Variables F G : applicative.
@@ -478,19 +484,13 @@ Proof. by rewrite afmapE. Qed.
 Let identity : ApplicativeLaws.identity comp_pure comp_apply.
 Proof. by move=> A; rewrite /comp_apply /= afhomomorphism !afidentity. Qed.
 
-Let afcomposition1 {s} A B C u v := esym (@afcomposition s A B C u v).
-Let afcomposition2 {s} A B C u v w : apply u (apply v w) = _ :=
-  f_equal (fun f => f w) (@afcomposition1 s A B C u v).
-Let applicativeE := (@afcomposition2,@afcomposition1,@afinterchange).
-Ltac simpl_applicative := do! rewrite ?afhomomorphism 1?applicativeE.
-
 Let composition : ApplicativeLaws.composition comp_pure comp_apply.
 Proof.
 move=> A B C u v.
 rewrite /comp_apply.
 simpl_applicative.
 congr (apply (apply (apply (pure _) u) v)).
-do 2! apply: boolp.funext => ? /=.
+apply/boolp.funeq2P => ?? /=.
 by simpl_applicative.
 Qed.
 
@@ -501,9 +501,7 @@ Let interchange : ApplicativeLaws.interchange comp_pure comp_apply.
 Proof.
 move=> A B f y; rewrite /comp_apply /= !afhomomorphism.
 simpl_applicative.
-congr (apply (pure _) _).
-apply: boolp.funext => w /=.
-by simpl_applicative.
+by under [_ \o _]boolp.funext do simpl_applicative.
 Qed.
 
 HB.instance Definition _ :=
