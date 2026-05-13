@@ -337,7 +337,7 @@ Definition interchange :=
 End applicative_laws.
 End ApplicativeLaws.
 
-HB.mixin Record Functor_isApplicative (F : UU0 -> UU0) of Functor F := {
+HB.mixin Record isApplicative (F : UU0 -> UU0) of Functor F := {
   ret : idfun ~~> F ;
   apply : forall [A B], F (A -> B) -> F A -> F B ;
   afmapE : forall A B (f : A -> B), F # f = apply (ret _ f) ;
@@ -348,13 +348,13 @@ HB.mixin Record Functor_isApplicative (F : UU0 -> UU0) of Functor F := {
 }.
 
 #[short(type=applicative)]
-HB.structure Definition ApplicativeFunctor := {F of Functor_isApplicative F &}.
+HB.structure Definition ApplicativeFunctor := {F of isApplicative F &}.
 
 Arguments ret {s}.
 Notation Ret := (@ret _ _).
 Arguments apply {s A B}.
 
-HB.factory Record isApplicative (F : UU0 -> UU0) := {
+HB.factory Record isApplicativeFunctor (F : UU0 -> UU0) := {
   pure : forall A : UU0, A -> F A ;
   apply : forall A B : UU0, F (A -> B) -> F A -> F B ;
   identity : ApplicativeLaws.identity pure apply ;
@@ -363,7 +363,7 @@ HB.factory Record isApplicative (F : UU0 -> UU0) := {
   interchange : ApplicativeLaws.interchange pure apply ;
 }.
 
-HB.builders Context F of isApplicative F.
+HB.builders Context F of isApplicativeFunctor F.
 Let actm (A B : UU0) (f : A -> B) := apply (pure f).
 Let functor_id : FunctorLaws.id actm := identity.
 Let functor_o : FunctorLaws.comp actm.
@@ -378,8 +378,7 @@ Let afmapE A B (f : A -> B) : F # f = apply (pure f).
 Proof. by []. Qed.
 
 HB.instance Definition _ :=
-  Functor_isApplicative.Build F
-    afmapE identity composition homomorphism interchange.
+  isApplicative.Build F afmapE identity composition homomorphism interchange.
 HB.end.
 
 Section applicative_properties.
@@ -480,6 +479,11 @@ Let comp_ret (A : UU0) : A -> (F \o G) A := Ret \o Ret.
 Let comp_apply (A B : UU0) (f : (F \o G) (A -> B)) : (F \o G) A -> (F \o G) B :=
   apply (apply (Ret apply) f).
 
+Let afmapE A B (f : A -> B) : (F \o G) # f = comp_apply (comp_ret f).
+Proof.
+by rewrite /comp_apply /comp_ret; simpl_applicative; rewrite -!afmapE.
+Qed.
+
 Let identity : ApplicativeLaws.identity comp_ret comp_apply.
 Proof. by move=> A; rewrite /comp_apply /= afhomomorphism !afidentity. Qed.
 
@@ -503,7 +507,8 @@ by under [_ \o _]boolp.funext do simpl_applicative.
 Qed.
 
 HB.instance Definition _ :=
-  isApplicative.Build (F \o G) identity composition homomorphism interchange.
+  isApplicative.Build (F \o G)
+    afmapE identity composition homomorphism interchange.
 End applicative_composition.
 
 Module JoinLaws.
@@ -523,7 +528,7 @@ Definition associativity := forall A,
 End join_laws.
 End JoinLaws.
 
-HB.mixin Record isMonad (F : UU0 -> UU0) of isApplicative F := {
+HB.mixin Record isMonad (F : UU0 -> UU0) of ApplicativeFunctor F := {
   join : F \o F ~> F ;
   bind : forall (A B : UU0), F A -> (A -> F B) -> F B ;
   bindE : forall (A B : UU0) (f : A -> F B) (m : F A),
@@ -651,6 +656,12 @@ Let bindE (A B : UU0) (f : A -> M B) (m : M A) :
   bind m f = join B ((F # f) m).
 Proof. by []. Qed.
 
+Let afmapE A B (f : A -> B) : F # f = apply (ret _ f).
+Proof.
+apply: boolp.funext => ma.
+rewrite /apply/bind bindretf_derived //; exact: joinretM.
+Qed.
+
 Let identity : ApplicativeLaws.identity ret apply.
 Proof.
 move=> A; apply: boolp.funext => a.
@@ -680,8 +691,9 @@ Let interchange : ApplicativeLaws.interchange ret apply.
 Admitted.
 
 HB.instance Definition _ :=
-  isApplicative.Build M identity composition homomorphism interchange.
-HB.instance Definition _ := isMonad.Build M bindE joinretM joinMret joinA.
+  isApplicative.Build M afmapE identity composition homomorphism interchange.
+HB.instance Definition _ :=
+  isMonad.Build M (join:=join) (bind:=bind) bindE joinretM joinMret joinA.
 HB.end.
 
 HB.factory Record isMonad_ret_bind (F : UU0 -> UU0) := {
