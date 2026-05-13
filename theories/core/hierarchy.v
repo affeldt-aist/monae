@@ -338,19 +338,20 @@ End applicative_laws.
 End ApplicativeLaws.
 
 HB.mixin Record Functor_isApplicative (F : UU0 -> UU0) of Functor F := {
-  pure : forall [A], A -> F A ;
+  ret : idfun ~~> F ;
   apply : forall [A B], F (A -> B) -> F A -> F B ;
-  afmapE : forall A B (f : A -> B), F # f = apply (pure f) ;
-  afidentity : ApplicativeLaws.identity pure apply ;
-  afcomposition : ApplicativeLaws.composition pure apply ;
-  afhomomorphism : ApplicativeLaws.homomorphism pure apply ;
-  afinterchange : ApplicativeLaws.interchange pure apply ;
+  afmapE : forall A B (f : A -> B), F # f = apply (ret _ f) ;
+  afidentity : ApplicativeLaws.identity ret apply ;
+  afcomposition : ApplicativeLaws.composition ret apply ;
+  afhomomorphism : ApplicativeLaws.homomorphism ret apply ;
+  afinterchange : ApplicativeLaws.interchange ret apply ;
 }.
 
 #[short(type=applicative)]
 HB.structure Definition ApplicativeFunctor := {F of Functor_isApplicative F &}.
 
-Arguments pure {s A}.
+Arguments ret {s}.
+Notation Ret := (@ret _ _).
 Arguments apply {s A B}.
 
 HB.factory Record isApplicative (F : UU0 -> UU0) := {
@@ -384,7 +385,7 @@ HB.end.
 Section applicative_properties.
 Variable F : applicative.
 
-Lemma pure_naturality : naturality idfun F (@pure _).
+Lemma pure_naturality : naturality idfun F (@ret _).
 Proof.
 move=> A B h.
 rewrite afmapE FIdE.
@@ -393,16 +394,16 @@ by rewrite afhomomorphism.
 Qed.
 
 HB.instance Definition _ := 
-  isNatural.Build idfun F (@pure _ : idfun ~~> F) pure_naturality.
+  isNatural.Build idfun F (@ret _) pure_naturality.
 
 Lemma afrevcompE A B C (u : F (B -> A)) (v : C -> B) :
-  apply (pure (revcomp v)) u = apply (apply (pure comp) u) (pure v).
+  apply (Ret (revcomp v)) u = apply (apply (Ret comp) u) (Ret v).
 Proof.
 by symmetry; rewrite afinterchange -!afmapE -[LHS]compE -functor_o afmapE.
 Qed.
 
 Lemma afrevcomposition A B C (u : F (B -> C)) (v : A -> B) :
-  apply (apply (pure (revcomp v)) u) = (apply u) \o (apply (pure v)).
+  apply (apply (Ret (revcomp v)) u) = (apply u) \o (apply (Ret v)).
 Proof. by rewrite afrevcompE -afcomposition. Qed.
 
 (* https://ncatlab.org/nlab/show/closed+functor
@@ -474,32 +475,29 @@ Ltac simpl_applicative := do! rewrite /= ?afhomomorphism 1?applicativeE.
 Section applicative_composition.
 Variables F G : applicative.
 
-Let comp_pure (A : UU0) : A -> (F \o G) A := pure \o pure.
+Let comp_ret (A : UU0) : A -> (F \o G) A := Ret \o Ret.
 
 Let comp_apply (A B : UU0) (f : (F \o G) (A -> B)) : (F \o G) A -> (F \o G) B :=
-  apply (apply (pure apply) f).
-Let comp_apply_eq A B f : @comp_apply A B f = apply ((F # apply) f).
-Proof. by rewrite afmapE. Qed.
+  apply (apply (Ret apply) f).
 
-Let identity : ApplicativeLaws.identity comp_pure comp_apply.
+Let identity : ApplicativeLaws.identity comp_ret comp_apply.
 Proof. by move=> A; rewrite /comp_apply /= afhomomorphism !afidentity. Qed.
 
-Let composition : ApplicativeLaws.composition comp_pure comp_apply.
+Let composition : ApplicativeLaws.composition comp_ret comp_apply.
 Proof.
-move=> A B C u v.
-rewrite /comp_apply.
+rewrite /comp_apply => A B C u v.
 simpl_applicative.
-congr (apply (apply (apply (pure _) u) v)).
+congr (apply (apply (apply (Ret _) u) v)).
 apply/boolp.funeq2P => ?? /=.
 by simpl_applicative.
 Qed.
 
-Let homomorphism : ApplicativeLaws.homomorphism comp_pure comp_apply.
-Proof. by move=> A B f y; rewrite /comp_apply /= !afhomomorphism. Qed.
+Let homomorphism : ApplicativeLaws.homomorphism comp_ret comp_apply.
+Proof. by move=> *; rewrite /comp_apply /= !afhomomorphism. Qed.
 
-Let interchange : ApplicativeLaws.interchange comp_pure comp_apply.
+Let interchange : ApplicativeLaws.interchange comp_ret comp_apply.
 Proof.
-move=> A B f y; rewrite /comp_apply /= !afhomomorphism.
+rewrite /comp_apply => A B f y.
 simpl_applicative.
 by under [_ \o _]boolp.funext do simpl_applicative.
 Qed.
@@ -525,14 +523,13 @@ Definition associativity := forall A,
 End join_laws.
 End JoinLaws.
 
-HB.mixin Record isMonad (F : UU0 -> UU0) of Functor F := {
-  ret : idfun ~> F ;
+HB.mixin Record isMonad (F : UU0 -> UU0) of isApplicative F := {
   join : F \o F ~> F ;
   bind : forall (A B : UU0), F A -> (A -> F B) -> F B ;
   bindE : forall (A B : UU0) (f : A -> F B) (m : F A),
     bind A B m f = join B ((F # f) m) ;
-  joinretM : JoinLaws.left_unit ret join ;
-  joinMret : JoinLaws.right_unit ret join ;
+  joinretM : JoinLaws.left_unit (@ret F) join ;
+  joinMret : JoinLaws.right_unit (@ret F) join ;
   joinA : JoinLaws.associativity join }.
 
 #[short(type=monad)]
@@ -540,7 +537,7 @@ HB.structure Definition Monad := {F of isMonad F &}.
 
 (* we introduce Ret as a way to make the second arguments of ret implicit,
    o.w. Rocq won't let us *)
-Notation Ret := (@ret _ _).
+(*Notation Ret := (@ret _ _).*)
 Notation Join := (@join _ _).
 Arguments bind {s A B} : simpl never.
 Notation "m >>= f" := (bind m f) : monae_scope.
@@ -647,10 +644,43 @@ Let F := [the functor of M].
 Let bind (A B : UU0) (m : F A) (f : A -> F B) : F B :=
   bind_of_join join m f.
 
+Let apply (A B : UU0) (f : F (A -> B)) (m : F A) : F B :=
+  bind f (fun f => (F # f) m).
+
 Let bindE (A B : UU0) (f : A -> M B) (m : M A) :
   bind m f = join B ((F # f) m).
 Proof. by []. Qed.
 
+Let identity : ApplicativeLaws.identity ret apply.
+Proof.
+move=> A; apply: boolp.funext => a.
+rewrite /apply /bind bindretf_derived ?functor_id //.
+exact: joinretM.
+Qed.
+
+Let composition : ApplicativeLaws.composition ret apply.
+Proof.
+rewrite /apply /bind => A B C u v.
+apply: boolp.funext => m /=.
+rewrite bindretf_derived.
+rewrite bindA_derived.
+rewrite {1}[bind_of_join _ _ _]bindE.
+rewrite -(compE _ _ u) -functor_o /=.
+rewrite {1}[bind_of_join _ _ _]bindE.
+congr (join C ((F # _) u)).
+apply: boolp.funext => u' /=.
+rewrite {1}[bind_of_join _ _ _]bindE.
+rewrite -(compE _ _ v) -functor_o.
+Admitted.
+
+Let homomorphism : ApplicativeLaws.homomorphism ret apply.
+Admitted.
+
+Let interchange : ApplicativeLaws.interchange ret apply.
+Admitted.
+
+HB.instance Definition _ :=
+  isApplicative.Build M identity composition homomorphism interchange.
 HB.instance Definition _ := isMonad.Build M bindE joinretM joinMret joinA.
 HB.end.
 
