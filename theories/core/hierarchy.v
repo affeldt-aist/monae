@@ -384,7 +384,7 @@ HB.end.
 Section applicative_properties.
 Variable F : applicative.
 
-Lemma pure_naturality : naturality idfun F (@ret _).
+Lemma ret_naturality : naturality idfun F (@ret _).
 Proof.
 move=> A B h.
 rewrite afmapE FIdE.
@@ -393,7 +393,7 @@ by rewrite afhomomorphism.
 Qed.
 
 HB.instance Definition _ := 
-  isNatural.Build idfun F (@ret _) pure_naturality.
+  isNatural.Build idfun F (@ret _) ret_naturality.
 
 Lemma afrevcompE A B C (u : F (B -> A)) (v : C -> B) :
   apply (Ret (revcomp v)) u = apply (apply (Ret comp) u) (Ret v).
@@ -692,8 +692,7 @@ Admitted.
 
 HB.instance Definition _ :=
   isApplicative.Build M afmapE identity composition homomorphism interchange.
-HB.instance Definition _ :=
-  isMonad.Build M (join:=join) (bind:=bind) bindE joinretM joinMret joinA.
+HB.instance Definition _ := isMonad.Build M bindE joinretM joinMret joinA.
 HB.end.
 
 HB.factory Record isMonad_ret_bind (F : UU0 -> UU0) := {
@@ -707,24 +706,27 @@ HB.builders Context M of isMonad_ret_bind M.
 
 Let actm (a b : UU0) (f : a -> b) m := bind m (@ret _ \o f).
 
-Let actm_id : FunctorLaws.id actm.
+Let apply (A B : UU0) (f : M (A -> B)) (m : M A) : M B :=
+  bind f (fun f => actm f m).
+
+Let identity : ApplicativeLaws.identity ret apply.
 Proof.
-move=> a.
-rewrite /actm; apply: boolp.funext => m /=.
-by rewrite bindmret.
+move=> A; apply: boolp.funext => a.
+by rewrite /apply /actm bindretf compfid bindmret.
 Qed.
 
-Let actm_comp : FunctorLaws.comp actm.
-Proof.
-move=> a b c g h.
-rewrite /actm; apply: boolp.funext => m /=.
-rewrite bindA.
-congr bind.
-apply: boolp.funext => u /=.
-by rewrite bindretf.
-Qed.
+Let composition : ApplicativeLaws.composition ret apply.
+Admitted.
 
-HB.instance Definition _ := isFunctor.Build M actm_id actm_comp.
+Let homomorphism : ApplicativeLaws.homomorphism ret apply.
+Admitted.
+
+Let interchange : ApplicativeLaws.interchange ret apply.
+Admitted.
+
+HB.instance Definition _ :=
+  isApplicativeFunctor.Build M identity composition homomorphism interchange.
+
 Let F := [the functor of M].
 Local Notation FF := [the functor of F \o F].
 
@@ -732,7 +734,7 @@ Let ret_naturality : naturality idfun F ret.
 Proof.
 move=> a b h.
 rewrite FIdE /hierarchy.actm /= /actm; apply: boolp.funext => m /=.
-by rewrite bindretf.
+by rewrite /apply /actm !bindretf.
 Qed.
 
 HB.instance Definition _ :=
@@ -749,10 +751,10 @@ Proof.
 move=> a b h.
 rewrite /join' /=; apply: boolp.funext => mm /=.
 rewrite /hierarchy.actm /= /isFunctor.actm /=.
-rewrite actm_bind bindA /=.
+rewrite /apply bindretf bindA /= bindretf actm_bind bindA /=.
 congr bind.
 apply: boolp.funext => m /=.
-by rewrite bindretf /=.
+by rewrite bindretf /= /hierarchy.actm /= [apply _ _]bindretf.
 Qed.
 
 HB.instance Definition _ := isNatural.Build _ _ _ join'_naturality.
@@ -761,7 +763,7 @@ Let join := [the FF ~> F of join'].
 Let bind_map (A B C : UU0) (f : A -> B) (m : M A) (g : B -> M C) :
   bind ((F # f) m) g = bind m (g \o f).
 Proof.
-rewrite bindA; congr bind.
+rewrite bindA bindretf bindA; congr bind.
 by apply: boolp.funext => ?; rewrite bindretf.
 Qed.
 
@@ -783,7 +785,7 @@ Proof.
 move=> a; apply: boolp.funext => m.
 rewrite /join /= /join'.
 rewrite /hierarchy.actm /= /actm /=.
-rewrite bindA /=.
+rewrite bindA /= !bindretf bindA.
 rewrite [X in bind m X](_ : _ = fun x => ret x) ?bindmret //=; apply: boolp.funext => ?.
 by rewrite bindretf.
 Qed.
@@ -793,7 +795,7 @@ Proof.
 move => a; apply: boolp.funext => m.
 rewrite /join /= /join'.
 rewrite /hierarchy.actm /= /actm.
-rewrite !bindA.
+rewrite !bindA bindretf bindA.
 congr bind.
 apply: boolp.funext => u /=.
 by rewrite bindretf.
