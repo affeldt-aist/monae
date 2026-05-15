@@ -304,11 +304,18 @@ subst t'.
 congr Natural.Pack; exact/proof_irr.
 Qed.*)
 
+HB.mixin Record isRetFunctor (F : UU0 -> UU0) of Functor F := {
+  ret : idfun ~> F ;
+}.
+#[short(type=retfunctor)]
+HB.structure Definition RetFunctor := {F of isRetFunctor F &}.
+
+Arguments ret {s}.
+Notation Ret := (@ret _ _).
+
 (* an equivalent of ssrfun.catcomp *)
 Polymorphic Definition revcomp (A B C : Type) (g : C -> B) := (@comp A B C)^~ g.
 Arguments revcomp {A B C} g f x / : rename.
-
-Locate "@^~".
 
 (*Polymorphic Definition revapply (T : Type) (U : T -> Type) (x : T) :=
   @^~ x : forall f : forall x : T, U x, U x.*)
@@ -337,8 +344,7 @@ Definition interchange :=
 End applicative_laws.
 End ApplicativeLaws.
 
-HB.mixin Record isApplicative (F : UU0 -> UU0) of Functor F := {
-  ret : idfun ~~> F ;
+HB.mixin Record isApplicative (F : UU0 -> UU0) of RetFunctor F := {
   apply : forall [A B], F (A -> B) -> F A -> F B ;
   afmapE : forall A B (f : A -> B), F # f = apply (ret _ f) ;
   afidentity : ApplicativeLaws.identity ret apply ;
@@ -350,8 +356,6 @@ HB.mixin Record isApplicative (F : UU0 -> UU0) of Functor F := {
 #[short(type=applicative)]
 HB.structure Definition ApplicativeFunctor := {F of isApplicative F &}.
 
-Arguments ret {s}.
-Notation Ret := (@ret _ _).
 Arguments apply {s A B}.
 
 HB.factory Record isApplicativeFunctor (F : UU0 -> UU0) := {
@@ -377,23 +381,23 @@ HB.instance Definition _ := isFunctor.Build F functor_id functor_o.
 Let afmapE A B (f : A -> B) : F # f = apply (pure f).
 Proof. by []. Qed.
 
+Lemma pure_naturality : naturality idfun F pure.
+Proof.
+move=> A B h.
+rewrite afmapE FIdE.
+apply: boolp.funext => x /=.
+by rewrite homomorphism.
+Qed.
+
+HB.instance Definition _ :=
+  isNatural.Build idfun F (pure : idfun ~~> F) pure_naturality.
+HB.instance Definition _ := isRetFunctor.Build F pure.
 HB.instance Definition _ :=
   isApplicative.Build F afmapE identity composition homomorphism interchange.
 HB.end.
 
 Section applicative_properties.
 Variable F : applicative.
-
-Lemma ret_naturality : naturality idfun F (@ret _).
-Proof.
-move=> A B h.
-rewrite afmapE FIdE.
-apply: boolp.funext => x /=.
-by rewrite afhomomorphism.
-Qed.
-
-HB.instance Definition _ := 
-  isNatural.Build idfun F (@ret _) ret_naturality.
 
 Lemma afrevcompE A B C (u : F (B -> A)) (v : C -> B) :
   apply (Ret (revcomp v)) u = apply (apply (Ret comp) u) (Ret v).
@@ -506,6 +510,17 @@ simpl_applicative.
 by under [_ \o _]boolp.funext do simpl_applicative.
 Qed.
 
+Let ret_naturality : naturality idfun (F \o G) comp_ret.
+Proof.
+move=> A B h.
+rewrite afmapE FIdE.
+apply: boolp.funext => x /=.
+by rewrite homomorphism.
+Qed.
+
+HB.instance Definition _ :=
+  isNatural.Build idfun (F \o G) (comp_ret : idfun ~~> F \o G) ret_naturality.
+HB.instance Definition _ := isRetFunctor.Build (F \o G) comp_ret.
 HB.instance Definition _ :=
   isApplicative.Build (F \o G)
     afmapE identity composition homomorphism interchange.
@@ -528,7 +543,7 @@ Definition associativity := forall A,
 End join_laws.
 End JoinLaws.
 
-HB.mixin Record isMonad (F : UU0 -> UU0) of ApplicativeFunctor F := {
+HB.mixin Record isMonad (F : UU0 -> UU0) of RetFunctor F := {
   join : F \o F ~> F ;
   bind : forall (A B : UU0), F A -> (A -> F B) -> F B ;
   bindE : forall (A B : UU0) (f : A -> F B) (m : F A),
@@ -537,8 +552,11 @@ HB.mixin Record isMonad (F : UU0 -> UU0) of ApplicativeFunctor F := {
   joinMret : JoinLaws.right_unit (@ret F) join ;
   joinA : JoinLaws.associativity join }.
 
+#[short(type=retmonad)]
+HB.structure Definition RetMonad := {F of isMonad F &}.
+
 #[short(type=monad)]
-HB.structure Definition Monad := {F of isMonad F &}.
+HB.structure Definition Monad := {F of RetMonad F & ApplicativeFunctor F}.
 
 (* we introduce Ret as a way to make the second arguments of ret implicit,
    o.w. Rocq won't let us *)
@@ -552,7 +570,7 @@ Lemma eq_bind (M : monad) (A B : UU0) (m : M A) (f1 f2 : A -> M B) :
 Proof. by move=> f12; congr bind; apply boolp.funext. Qed.
 
 Section monad_lemmas.
-Variable M : monad.
+Variable M : retmonad.
 
 Lemma fmapE (A B : UU0) (f : A -> B) (m : M A) :
  (M # f) m = m >>= (ret B \o f).
@@ -635,6 +653,38 @@ Qed.
 
 End from_join_laws_to_bind_laws.
 
+Section monad_lemmas.
+Variable M : retmonad.
+
+Lemma bindretf : BindLaws.left_neutral (@bind M) ret.
+Proof.
+move: (@bindretf_derived M ret join joinretM).
+rewrite (_ : bind_of_join _ = @bind M) //.
+apply funext_dep => A; apply funext_dep => B.
+apply funext_dep => m; apply funext_dep => f.
+by rewrite bindE.
+Qed.
+
+Lemma bindmret : BindLaws.right_neutral (@bind M) ret.
+Proof.
+move: (@bindmret_derived M ret join joinMret).
+rewrite (_ : bind_of_join _ = @bind M) //.
+apply funext_dep => A; apply funext_dep => B.
+apply funext_dep => m; apply funext_dep => f.
+by rewrite bindE.
+Qed.
+
+Lemma bindA : BindLaws.associative (@bind M).
+Proof.
+move: (@bindA_derived M join joinA).
+rewrite (_ : bind_of_join _ = @bind M) //.
+apply funext_dep => A; apply funext_dep => B.
+apply funext_dep => m; apply funext_dep => f.
+by rewrite bindE.
+Qed.
+
+End monad_lemmas.
+
 HB.factory Record isMonad_ret_join (F : UU0 -> UU0) of isFunctor F := {
   ret : idfun ~> F ;
   join : F \o F ~> F ;
@@ -649,50 +699,37 @@ Let F := [the functor of M].
 Let bind (A B : UU0) (m : F A) (f : A -> F B) : F B :=
   bind_of_join join m f.
 
-Let apply (A B : UU0) (f : F (A -> B)) (m : F A) : F B :=
-  bind f (fun f => (F # f) m).
-
 Let bindE (A B : UU0) (f : A -> M B) (m : M A) :
   bind m f = join B ((F # f) m).
 Proof. by []. Qed.
 
-Let afmapE A B (f : A -> B) : F # f = apply (ret _ f).
-Proof.
-apply: boolp.funext => ma.
-rewrite /apply/bind bindretf_derived //; exact: joinretM.
-Qed.
+HB.instance Definition _ := isRetFunctor.Build M ret.
+HB.instance Definition _ := isMonad.Build M bindE joinretM joinMret joinA.
 
-Let identity : ApplicativeLaws.identity ret apply.
-Proof.
-move=> A; apply: boolp.funext => a.
-rewrite /apply /bind bindretf_derived ?functor_id //.
-exact: joinretM.
-Qed.
+Let apply (A B : UU0) (f : F (A -> B)) (m : F A) : F B :=
+  f >>= (fun f => (F # f) m).
+
+Ltac jdeq :=
+  do! (move=> ? || apply: boolp.funext => ? || congr (bind _) ||
+       rewrite /apply !(fmapE,bindretf,bindA)).
+
+Let afmapE A B (f : A -> B) : F # f = apply (Ret f).
+Proof. by jdeq. Qed.
+
+Let identity : ApplicativeLaws.identity hierarchy.ret apply.
+Proof. by jdeq; rewrite compfid bindmret. Qed.
 
 Let composition : ApplicativeLaws.composition ret apply.
-Proof.
-rewrite /apply /bind => A B C u v.
-apply: boolp.funext => m /=.
-rewrite bindretf_derived.
-rewrite bindA_derived.
-rewrite {1}[bind_of_join _ _ _]bindE.
-rewrite -(compE _ _ u) -functor_o /=.
-rewrite {1}[bind_of_join _ _ _]bindE.
-congr (join C ((F # _) u)).
-apply: boolp.funext => u' /=.
-rewrite {1}[bind_of_join _ _ _]bindE.
-rewrite -(compE _ _ v) -functor_o.
-Admitted.
+Proof. by jdeq. Qed.
 
 Let homomorphism : ApplicativeLaws.homomorphism ret apply.
-Admitted.
+Proof. by jdeq. Qed.
 
 Let interchange : ApplicativeLaws.interchange ret apply.
-Admitted.
+Proof. by jdeq. Qed.
 
 HB.instance Definition _ :=
   isApplicative.Build M afmapE identity composition homomorphism interchange.
-HB.instance Definition _ := isMonad.Build M bindE joinretM joinMret joinA.
 HB.end.
 
 HB.factory Record isMonad_ret_bind (F : UU0 -> UU0) := {
@@ -709,36 +746,27 @@ Let actm (a b : UU0) (f : a -> b) m := bind m (@ret _ \o f).
 Let apply (A B : UU0) (f : M (A -> B)) (m : M A) : M B :=
   bind f (fun f => actm f m).
 
+Ltac jdeq :=
+  do! (move=> ? || apply: boolp.funext => ? || congr (bind _) ||
+       rewrite /apply /actm !(fmapE,bindretf,bindA)).
+
 Let identity : ApplicativeLaws.identity ret apply.
-Proof.
-move=> A; apply: boolp.funext => a.
-by rewrite /apply /actm bindretf compfid bindmret.
-Qed.
+Proof. by jdeq; rewrite compfid bindmret. Qed.
 
 Let composition : ApplicativeLaws.composition ret apply.
-Admitted.
+Proof. by jdeq. Qed.
 
 Let homomorphism : ApplicativeLaws.homomorphism ret apply.
-Admitted.
+Proof. by jdeq. Qed.
 
 Let interchange : ApplicativeLaws.interchange ret apply.
-Admitted.
+Proof. by jdeq. Qed.
 
 HB.instance Definition _ :=
   isApplicativeFunctor.Build M identity composition homomorphism interchange.
 
 Let F := [the functor of M].
 Local Notation FF := [the functor of F \o F].
-
-Let ret_naturality : naturality idfun F ret.
-Proof.
-move=> a b h.
-rewrite FIdE /hierarchy.actm /= /actm; apply: boolp.funext => m /=.
-by rewrite /apply /actm !bindretf.
-Qed.
-
-HB.instance Definition _ :=
-  isNatural.Build idfun F (ret : idfun ~~> F) ret_naturality.
 
 Let join' : FF ~~> F := fun _ m => bind m idfun.
 
@@ -803,38 +831,6 @@ Qed.
 
 HB.instance Definition _ := isMonad.Build M bindE joinretM joinMret joinA.
 HB.end.
-
-Section monad_lemmas.
-Variable M : monad.
-
-Lemma bindretf : BindLaws.left_neutral (@bind M) ret.
-Proof.
-move: (@bindretf_derived M ret join joinretM).
-rewrite (_ : bind_of_join _ = @bind M) //.
-apply funext_dep => A; apply funext_dep => B.
-apply funext_dep => m; apply funext_dep => f.
-by rewrite bindE.
-Qed.
-
-Lemma bindmret : BindLaws.right_neutral (@bind M) ret.
-Proof.
-move: (@bindmret_derived M ret join joinMret).
-rewrite (_ : bind_of_join _ = @bind M) //.
-apply funext_dep => A; apply funext_dep => B.
-apply funext_dep => m; apply funext_dep => f.
-by rewrite bindE.
-Qed.
-
-Lemma bindA : BindLaws.associative (@bind M).
-Proof.
-move: (@bindA_derived M join joinA).
-rewrite (_ : bind_of_join _ = @bind M) //.
-apply funext_dep => A; apply funext_dep => B.
-apply funext_dep => m; apply funext_dep => f.
-by rewrite bindE.
-Qed.
-
-End monad_lemmas.
 
 Notation "'do' x <- m ; e" := (bind m (fun x => e)) (only parsing) : do_notation.
 Notation "'do' x : T <- m ; e" :=
@@ -1331,13 +1327,12 @@ HB.structure Definition MonadState (S : UU0) := { M of isMonadState S M & }.
 (*NB: explicit join newly added*)
 #[short(type=failStateMonad)]
 HB.structure Definition MonadFailState (S : UU0) :=
-  { M of isMonadFail M & isMonadState S M & isMonad M & isFunctor M }.
+  { M of MonadFail M & MonadState S M }.
 
 (*NB: explicit join newly added*)
 #[short(type=failR0StateMonad)]
 HB.structure Definition MonadFailR0State (S : UU0) :=
-  { M of isMonadFailR0 M & isMonadState S M & isMonadFail M & isMonad M &
-         isFunctor M }.
+  { M of MonadFailR0 M & MonadState S M }.
 
 #[short(type=nondetStateMonad)]
 HB.structure Definition MonadNondetState (S : UU0) :=
@@ -1622,7 +1617,7 @@ HB.mixin Record isMonadStateTrace (S T : UU0) (M : UU0 -> UU0) of Monad M := {
 
 #[short(type=stateTraceMonad)]
 HB.structure Definition MonadStateTrace (S T : UU0) :=
-  { M of isMonadStateTrace S T M & isMonad M & isFunctor M }.
+  { M of isMonadStateTrace S T M & }.
 
 HB.mixin Record isMonadStateTraceReify (S T : UU0) (M : UU0 -> UU0)
     of MonadReify (S * seq T)%type M & MonadStateTrace S T M := {
@@ -1638,8 +1633,7 @@ HB.mixin Record isMonadStateTraceReify (S T : UU0) (M : UU0 -> UU0)
 
 #[short(type=stateTraceReifyMonad)]
 HB.structure Definition MonadStateTraceReify (S T : UU0) :=
-  { M of isMonadStateTraceReify S T M & isFunctor M & isMonad M &
-         isMonadReify S M & isMonadStateTrace S T M }.
+  { M of isMonadStateTraceReify S T M & }.
 
 Local Open Scope reals_ext_scope.
 
@@ -1650,8 +1644,9 @@ HB.mixin Record isMonadConvex0 {R : realType} (M : UU0 -> UU0) of Monad M := {
 
 #[short(type=convexMonad)]
 HB.structure Definition MonadConvex {R : realType} :=
-  {M of isMonadConvex0 R M}.
+  {M of isMonadConvex0 R M &}.
 
+(* XX Non forgetful inheritance *)
 HB.instance Definition _ {R : realType} (M : convexMonad R) (T : UU0) :=
   @convexMonad_pointwise_ConvexSpace R M T.
 
@@ -1728,7 +1723,7 @@ HB.structure Definition MonadProbDr {R : realType} :=
    needed to satisfy HB in counterexample_altconvexdr.v *)
 #[short(type=altCIConvex)]
 HB.structure Definition MonadAltCIConvex {R : realType} :=
-  { M of isMonadAltCI M & isMonadConvex0 R M }.
+  { M of MonadAltCI M & isMonadConvex0 R M }.
 
 HB.mixin Record isMonadAltProb {R : realType} (M : UU0 -> UU0)
     of MonadAltCI M & MonadProb R M :=
@@ -1787,5 +1782,4 @@ HB.mixin Record isMonadFailFresh (S : eqType) (M : UU0 -> UU0)
 
 #[short(type=failFreshMonad)]
 HB.structure Definition MonadFailFresh (S : eqType) :=
-  { M of isMonadFailFresh S M & isFunctor M & isMonad M & isMonadFresh S M &
-         isMonadFail M }.
+  { M of isMonadFailFresh S M & }.
