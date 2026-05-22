@@ -353,9 +353,11 @@ HB.mixin Record Functor_isApplicative (F : UU0 -> UU0) & Functor F := {
 HB.structure Definition ApplicativeFunctor := {F of Functor_isApplicative F &}.
 
 Arguments ret {s}.
-Notation Ret := (@ret _ _).
-
 Arguments apply {s A B}.
+
+(* we introduce Ret as a way to make the second arguments of ret implicit,
+   o.w. Rocq won't let us *)
+Notation Ret := (@ret _ _).
 
 HB.factory Record isApplicative (F : UU0 -> UU0) := {
   pure : forall A : UU0, A -> F A ;
@@ -583,6 +585,9 @@ End BindLaws.
 HB.mixin Record ApplicativeFunctor_isMonad (F : UU0 -> UU0) & ApplicativeFunctor F := {
   join : F \o F ~> F ;
   bind : forall (A B : UU0), F A -> (A -> F B) -> F B ;
+  applyE (A B : UU0) (m1 : F (A -> B)) (m2 : F A) :
+    apply m1 m2 =
+    bind (A -> B) B m1 (fun x1 => bind A B m2 (fun x2 => Ret (x1 x2))) ;
   bindE : forall (A B : UU0) (f : A -> F B) (m : F A),
     bind A B m f = join B ((F # f) m) ;
   joinretM : JoinLaws.left_unit ret join ;
@@ -596,9 +601,6 @@ HB.mixin Record ApplicativeFunctor_isMonad (F : UU0 -> UU0) & ApplicativeFunctor
 #[short(type=monad)]
 HB.structure Definition Monad := {F of ApplicativeFunctor_isMonad F &}.
 
-(* we introduce Ret as a way to make the second arguments of ret implicit,
-   o.w. Rocq won't let us *)
-(*Notation Ret := (@ret _ _).*)
 Notation Join := (@join _ _).
 Arguments bind {s A B} : simpl never.
 Notation "m >>= f" := (bind m f) : monae_scope.
@@ -619,6 +621,10 @@ Lemma fmapE (A B : UU0) (f : A -> B) (m : M A) :
 Proof.
 by rewrite bindE [in RHS]functor_o -[in RHS]up_compE up_compA joinMret.
 Qed.
+
+Lemma apply_bind_apply (A B : UU0) (m1 : M (A -> B)) (m2 : M A) :
+  apply m1 m2 = m1 >>= (fun x1 : A -> B => apply (Ret x1) m2).
+Proof. by rewrite applyE; under [RHS]eq_bind do rewrite -afmapE fmapE. Qed.
 
 End monad_lemmas.
 
@@ -678,6 +684,11 @@ Qed.
 Let apply (A B : UU0) (f : M (A -> B)) (m : M A) : M B :=
   f >>= (fun f => (M # f) m).
 
+Lemma applyE (A B : UU0) (m1 : M (A -> B)) (m2 : M A) :
+  apply m1 m2 =
+  m1 >>= (fun x1 => m2 >>= (fun x2 => Ret (x1 x2))).
+Proof. by congr bind; apply/boolp.funext => f/=; rewrite fmapE. Qed.
+
 Ltac jdeq :=
   do! (move=> ? || apply: funext => ? || congr (bind _) ||
        rewrite /apply !(up_compE,fmapE,bindretf,bindA)).
@@ -702,7 +713,7 @@ HB.instance Definition _ :=
 
 HB.instance Definition _ :=
   ApplicativeFunctor_isMonad.Build M
-    bindE joinretM joinMret joinA bindretf bindmret bindA.
+    applyE bindE joinretM joinMret joinA bindretf bindmret bindA.
 
 HB.end.
 

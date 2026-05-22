@@ -18,18 +18,6 @@ Unset Printing Implicit Defensive.
 
 Local Open Scope monae_scope.
 
-(*
-Section comp.
-Variables (M N : applicative).
-Let ret_comp : FId ~~> M \o N := (@ret M) \h (@ret N).
-Lemma naturality_ret : naturality (FId \o FId) (M \o N) ret_comp.
-Proof. by move=> A B h; rewrite natural. Qed.
-Let ret_comp_mixin := isNatural.Build FId (M \o N) ret_comp naturality_ret.
-Definition CRet : FId ~> M \o N :=
-  HB.pack_for (FId ~> M \o N) ret_comp ret_comp_mixin.
-End comp.
-*)
-
 Section comp.
 Variables (M N : applicative).
 Definition CRet : FId ~~> M \o N := (@ret M) \h (@ret N).
