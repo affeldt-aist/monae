@@ -10,6 +10,8 @@ Require Import hierarchy.
 
 Set Implicit Arguments.
 
+Local Open Scope monae_scope.
+
 Module Function.
 Section function.
 Variable I : UU0.
@@ -151,7 +153,6 @@ by rewrite tnth_mktuple tnth_nseq.
 Qed.
 End join_first.
 
-Local Open Scope monae_scope.
 Section join_diag.
 Let join' : F \o F ~~> F :=
   fun A (t : F (F A)) => [tuple tnth (tnth t i) i | i < n].
@@ -248,6 +249,46 @@ by rewrite /apply /pure Monoid.mul1m Monoid.mulm1.
 Qed.
 
 HB.instance Definition _ :=
-  isApplicative.Build (Const op) afidentity afcomposition afhomomorphism afinterchange.
+  isApplicativeFunctor.Build
+    (Const op) afidentity afcomposition afhomomorphism afinterchange.
+
+Section join.
+Let F := Const op.
+
+Let join' : F \o F ~~> F :=
+  fun A t => t.
+
+Let join_naturality : naturality (F \o F) F join'.
+Proof. by []. Qed.
+
+Let ret_naturality : naturality idfun F ret.
+Proof.
+move=> a b h.
+apply: boolp.funext => t /=.
+by rewrite /actm /= /pure /apply Monoid.mul1m.
+Qed.
+
+HB.instance Definition _ := isNatural.Build _ _ _ join_naturality.
+HB.instance Definition _ := isNatural.Build _ _ _ ret_naturality.
+
+Let join : F \o F ~> F := join'.
+
+Let joinretM : JoinLaws.left_unit ret join.
+Proof.
+move=> A; apply: boolp.funext => /= t /=.
+rewrite /pure.
+Abort.
+(* Seems impossible, for any definition of join: how can one recover t ? *)
+
+Let joinMret : JoinLaws.right_unit ret join.
+Proof.
+move=> A; apply: boolp.funext => /= t /=.
+by rewrite /join /actm /= /join' /pure /apply Monoid.mul1m.
+Qed.
+
+Let joinA : JoinLaws.associativity join.
+Proof. by []. Qed.
+End join.
+
 End const.
 End Const.
