@@ -558,7 +558,7 @@ rewrite [LHS]compA.
 rewrite [RHS]compA.
 congr (_ \o _).
 rewrite (FCompE U0 F0) -[in RHS](@functor_o U0) -[in LHS](@functor_o U0).
-congr (_ # _).
+congr (U0 # _).
 by rewrite -(natural (AdjointFunctor.eta H)).
 Qed.
 
@@ -594,7 +594,7 @@ apply: (@AdjointFunctor.mk _ _ uni couni).
 rewrite /TriangularLaws.right => A.
 rewrite /couni /uni /=.
 rewrite compA -[RHS](AdjointFunctor.tri_right H0 (U A)); congr (_ \o _).
-rewrite FCompE -functor_o; congr (_ # _).
+rewrite FCompE -functor_o; congr (U0 # _).
 rewrite functor_o -compA -FCompE.
 rewrite (natural (AdjointFunctor.eta H)) FIdE.
 by rewrite compA (AdjointFunctor.tri_right H) compidf.

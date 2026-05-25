@@ -142,6 +142,18 @@ Notation "f ~~> g" := (forall A, f A -> g A)
 
 Local Open Scope monae_scope.
 
+Section move_to_preamble.
+(* an equivalent of ssrfun.catcomp *)
+Polymorphic Definition revcomp (A B C : Type) (g : C -> B) := (@comp A B C)^~ g.
+
+(*Polymorphic Definition revapply (T : Type) (U : T -> Type) (x : T) :=
+  @^~ x : forall f : forall x : T, U x, U x.*)
+Polymorphic Definition revapply (T : Type) (U : Type) (x : T) :=
+  @^~ x : (T -> U) -> U.
+End move_to_preamble.
+Arguments revcomp {A B C} g f x / : rename.
+Arguments revapply {T U} x f /.
+
 Notation UU1 := Type.
 Notation UU0 := Type.
 
@@ -156,6 +168,53 @@ Definition comp := forall (A B C : UU0) (g : B -> C) (h : A -> B),
 End def.
 End FunctorLaws.
 
+(*
+HB.mixin Record hasFhom (F : UU0 -> UU0) := {
+  actm : forall A B : UU0, (A -> B) -> F A -> F B ;
+}.
+
+#[short(type=prefunctor)]
+HB.structure Definition PreFunctor := {F of hasFhom F}.
+
+Notation "F # g" := (@actm F _ _ g) : monae_scope.
+Notation "'fmap' f" := (_ # f) : mprog.
+
+HB.mixin Record PreFunctor_isFunctor (F : UU0 -> UU0) & PreFunctor F := {
+  functor_id : FunctorLaws.id (@actm F) ;
+  functor_o : FunctorLaws.comp (@actm F) }.
+
+#[short(type=functor)]
+HB.structure Definition Functor := {F of PreFunctor_isFunctor F}.
+
+HB.factory Record isFunctor (F : UU0 -> UU0) := {
+  actm : forall A B : UU0, (A -> B) -> F A -> F B ;
+  functor_id : FunctorLaws.id actm ;
+  functor_o : FunctorLaws.comp actm }.
+
+HB.builders Context F of isFunctor F.
+HB.instance Definition _ := hasFhom.Build F actm.
+HB.instance Definition _ := PreFunctor_isFunctor.Build F functor_id functor_o.
+HB.end.
+
+Lemma functor_ext (F G : functor) :
+  forall (H : Functor.sort F = Functor.sort G),
+  @actm G =
+  eq_rect _ (fun m : UU0 -> UU0 => forall A B : UU0, (A -> B) -> m A -> m B)
+            (@actm F) _ H  ->
+  G = F.
+Proof.
+move: F G => [F [[] FhomF [] FhomFid FhomFcomp]] [G [[] FhomG [] FhomGid FhomGcomp]] /= H.
+move: FhomG FhomGid FhomGcomp.
+refine (match H with erefl => _ end) => FhomG FhomGid FhomGcomp Hhom.
+have Hhom' : FhomF = FhomG by move: Hhom; rewrite /actm/=.
+move: FhomFid FhomFcomp FhomGid FhomGcomp {Hhom}.
+rewrite /actm/= Hhom' => *.
+congr Functor.Pack.
+congr Functor.Class.
+congr PreFunctor_isFunctor.Axioms_; exact/proof_irr.
+Defined.
+*)
+
 HB.mixin Record isFunctor (F : UU0 -> UU0) := {
   actm : forall A B : UU0, (A -> B) -> F A -> F B ;
   functor_id : FunctorLaws.id actm ;
@@ -166,6 +225,26 @@ HB.structure Definition Functor := {F of isFunctor F}.
 
 Notation "F # g" := (@actm F _ _ g) : monae_scope.
 Notation "'fmap' f" := (_ # f) : mprog.
+
+Lemma functor_ext (F G : functor) :
+  forall (H : Functor.sort F = Functor.sort G),
+  @actm G =
+  eq_rect _ (fun m : UU0 -> UU0 => forall A B : UU0, (A -> B) -> m A -> m B)
+            (@actm F) _ H  ->
+  G = F.
+Proof.
+move: F G => [F [[HF1 HF2 HF3]]] [G [[HG1 HG2 HG3]]] /= H.
+subst F => /= H.
+congr (Functor.Pack (Functor.Class _)).
+have ? : HG1 = HF1.
+  rewrite /actm /= in H.
+  apply funext_dep => x.
+  apply funext_dep => y.
+  apply funext_dep => z.
+  by move/(congr1 (fun i => i x y z)) : H.
+subst HG1.
+congr (isFunctor.Axioms_ _); exact/proof_irr.
+Defined.
 
 Section functorid.
 Let id_actm (A B : UU0) (f : A -> B) : idfun A -> idfun B := f.
@@ -185,10 +264,12 @@ Let comp_actm (A B : UU0) (h : A -> B) : (F \o G) A -> (F \o G) B :=
 Let comp_id : FunctorLaws.id comp_actm.
 Proof. by rewrite /FunctorLaws.id => A; rewrite /comp_actm 2!functor_id. Qed.
 
+(* TODO(bug): `rewrite !functor_o` leads to an infinite loop
+   (due to expansions of the form `f` = `f \o id`) *)
 Let comp_comp : FunctorLaws.comp comp_actm.
 Proof.
 rewrite /FunctorLaws.comp => A B C g' h; rewrite /comp_actm.
-by apply boolp.funext => m; rewrite [in RHS]compE 2!functor_o.
+by rewrite (@functor_o G) (@functor_o F)/=.
 Qed.
 
 HB.instance Definition _ := isFunctor.Build (F \o G) comp_id comp_comp.
@@ -224,26 +305,6 @@ Proof. by rewrite 3!fcomp_def functor_o compA. Qed.
 End fcomp.
 Notation "f (o) g" := (fcomp f g) : mprog.
 Arguments fcomp : simpl never.
-
-Lemma functor_ext (F G : functor) :
-  forall (H : Functor.sort F = Functor.sort G),
-  @actm G =
-  eq_rect _ (fun m : UU0 -> UU0 => forall A B : UU0, (A -> B) -> m A -> m B)
-            (@actm F) _ H  ->
-  G = F.
-Proof.
-move: F G => [F [[HF1 HF2 HF3]]] [G [[HG1 HG2 HG3]]] /= H.
-subst F => /= H.
-congr (Functor.Pack (Functor.Class _)).
-have ? : HG1 = HF1.
-  rewrite /actm /= in H.
-  apply funext_dep => x.
-  apply funext_dep => y.
-  apply funext_dep => z.
-  by move/(congr1 (fun i => i x y z)) : H.
-subst HG1.
-congr (isFunctor.Axioms_ _); exact/proof_irr.
-Defined.
 
 Definition naturality (F G : functor) (f : F ~~> G) :=
   forall (A B : UU0) (h : A -> B), (G # h) \o f A = f B \o (F # h).
@@ -304,24 +365,41 @@ subst t'.
 congr Natural.Pack; exact/proof_irr.
 Qed.*)
 
-HB.mixin Record isRetFunctor (F : UU0 -> UU0) of Functor F := {
-  ret : idfun ~> F ;
-}.
+HB.mixin Record hasRet (F : UU0 -> UU0) of Functor F :=
+  { ret : idfun ~> F }.
+
 #[short(type=retfunctor)]
-HB.structure Definition RetFunctor := {F of isRetFunctor F &}.
+HB.structure Definition RetFunctor := {F of hasRet F &}.
 
-Arguments ret {s}.
+(*
+HB.mixin Record hasBind (F : UU0 -> UU0) :=
+  { bind : forall (A B : UU0), F A -> (A -> F B) -> F B }.
+
+HB.mixin Record hasJoin (F : UU0 -> UU0) of Functor F :=
+  { join : F \o F ~> F }.
+
+#[short(type=retjoinfunctor)]
+HB.structure Definition RetJoinFunctor := {F of hasRet F & hasJoin F & Functor F}.
+*)
+
+(*
+HB.mixin Record hasUnnaturalRet (F : UU0 -> UU0) :=
+  { unnatural_ret : forall (A : UU0), A -> F A }.
+
+#[short(type=retbindnofunctor)]
+  HB.structure Definition RetBindNoFunctor := {F of hasUnnaturalRet F & hasBind F}.
+*)
+
+(*
+#[short(type=premonad)]
+HB.structure Definition PreMonad :=
+  {F of hasRet F & hasBind F & hasJoin F & Functor F}.
+*)
+
+
+(* we introduce Ret as a way to make the second arguments of ret implicit,
+   o.w. Rocq won't let us *)
 Notation Ret := (@ret _ _).
-
-(* an equivalent of ssrfun.catcomp *)
-Polymorphic Definition revcomp (A B C : Type) (g : C -> B) := (@comp A B C)^~ g.
-Arguments revcomp {A B C} g f x / : rename.
-
-(*Polymorphic Definition revapply (T : Type) (U : T -> Type) (x : T) :=
-  @^~ x : forall f : forall x : T, U x, U x.*)
-Polymorphic Definition revapply (T : Type) (U : Type) (x : T) :=
-  @^~ x : (T -> U) -> U.
-Arguments revapply {T U} x f /.
 
 Module ApplicativeLaws.
 Section applicative_laws.
@@ -391,7 +469,7 @@ Qed.
 
 HB.instance Definition _ :=
   isNatural.Build idfun F (pure : idfun ~~> F) pure_naturality.
-HB.instance Definition _ := isRetFunctor.Build F pure.
+HB.instance Definition _ := hasRet.Build F pure.
 HB.instance Definition _ :=
   isApplicative.Build F afmapE identity composition homomorphism interchange.
 HB.end.
@@ -520,7 +598,7 @@ Qed.
 
 HB.instance Definition _ :=
   isNatural.Build idfun (F \o G) (comp_ret : idfun ~~> F \o G) ret_naturality.
-HB.instance Definition _ := isRetFunctor.Build (F \o G) comp_ret.
+HB.instance Definition _ := hasRet.Build (F \o G) comp_ret.
 HB.instance Definition _ :=
   isApplicative.Build (F \o G)
     afmapE identity composition homomorphism interchange.
@@ -542,43 +620,6 @@ Definition associativity := forall A,
 
 End join_laws.
 End JoinLaws.
-
-HB.mixin Record isMonad (F : UU0 -> UU0) of RetFunctor F := {
-  join : F \o F ~> F ;
-  bind : forall (A B : UU0), F A -> (A -> F B) -> F B ;
-  bindE : forall (A B : UU0) (f : A -> F B) (m : F A),
-    bind A B m f = join B ((F # f) m) ;
-  joinretM : JoinLaws.left_unit ret join ;
-  joinMret : JoinLaws.right_unit ret join ;
-  joinA : JoinLaws.associativity join }.
-
-#[short(type=retmonad)]
-HB.structure Definition RetMonad := {F of isMonad F &}.
-
-#[short(type=monad)]
-HB.structure Definition Monad := {F of RetMonad F & ApplicativeFunctor F}.
-
-(* we introduce Ret as a way to make the second arguments of ret implicit,
-   o.w. Rocq won't let us *)
-(*Notation Ret := (@ret _ _).*)
-Notation Join := (@join _ _).
-Arguments bind {s A B} : simpl never.
-Notation "m >>= f" := (bind m f) : monae_scope.
-
-Lemma eq_bind (M : monad) (A B : UU0) (m : M A) (f1 f2 : A -> M B) :
-  f1 =1 f2 -> m >>= f1 = m >>= f2.
-Proof. by move=> f12; congr bind; apply boolp.funext. Qed.
-
-Section monad_lemmas.
-Variable M : retmonad.
-
-Lemma fmapE (A B : UU0) (f : A -> B) (m : M A) :
- (M # f) m = m >>= (ret B \o f).
-Proof.
-by rewrite bindE [in RHS]functor_o -[in RHS]compE compA joinMret.
-Qed.
-
-End monad_lemmas.
 
 Module BindLaws.
 Section bindlaws.
@@ -618,6 +659,127 @@ Definition right_id (r : forall A, F A) (op : forall B, F B -> F B -> F B) :=
 End bindlaws.
 End BindLaws.
 
+HB.mixin Record ApplicativeFunctor_isMonad (F : UU0 -> UU0) of ApplicativeFunctor F := {
+  join : F \o F ~> F ;
+  bind : forall (A B : UU0), F A -> (A -> F B) -> F B ;
+  applyE (A B : UU0) (m1 : F (A -> B)) (m2 : F A) :
+    apply m1 m2 =
+    bind (A -> B) B m1 (fun x1 => bind A B m2 (fun x2 => Ret (x1 x2))) ;
+  bindE : forall (A B : UU0) (f : A -> F B) (m : F A),
+    bind A B m f = join B ((F # f) m) ;
+  joinretM : JoinLaws.left_unit ret join ;
+  joinMret : JoinLaws.right_unit ret join ;
+  joinA : JoinLaws.associativity join ;
+  bindretf : BindLaws.left_neutral bind ret ;
+  bindmret : BindLaws.right_neutral bind ret ;
+  bindA : BindLaws.associative bind ;
+}.
+
+#[short(type=monad)]
+HB.structure Definition Monad := {F of ApplicativeFunctor_isMonad F &}.
+
+Notation Join := (@join _ _).
+Arguments bind {s A B} : simpl never.
+Notation "m >>= f" := (bind m f) : monae_scope.
+
+HB.factory Record isMonad (F : UU0 -> UU0) of Functor F := {
+  ret : idfun ~> F ;
+  join : F \o F ~> F ;
+  bind : forall (A B : UU0), F A -> (A -> F B) -> F B ;
+  bindE : forall (A B : UU0) (f : A -> F B) (m : F A),
+    bind A B m f = join B ((F # f) m) ;
+  joinretM : JoinLaws.left_unit ret join ;
+  joinMret : JoinLaws.right_unit ret join ;
+  joinA : JoinLaws.associativity join }.
+
+HB.builders Context M of isMonad M.
+
+Local Notation "m >>= f" := (bind m f).
+Notation Ret := (ret _).
+
+Lemma bindE_ext :
+  bind = fun (A B : UU0) (m : M A) (f : A -> M B) => join B ((M # f) m).
+Proof.
+do ! apply/funext_dep => ?.
+by rewrite bindE.
+Qed.
+
+Lemma fmapE (A B : UU0) (f : A -> B) (m : M A) :
+ (M # f) m = m >>= (ret B \o f).
+Proof. by rewrite bindE [in RHS]functor_o -[in RHS]compE compA joinMret. Qed.
+
+Definition apply (A B : UU0) (f : M (A -> B)) (m : M A) : M B :=
+  f >>= (fun f => (M # f) m).
+
+Lemma applyE (A B : UU0) (m1 : M (A -> B)) (m2 : M A) :
+  apply m1 m2 =
+  m1 >>= (fun x1 => m2 >>= (fun x2 => Ret (x1 x2))).
+Proof. by congr bind; apply/boolp.funext => f/=; rewrite fmapE. Qed.
+
+Lemma bindretf : BindLaws.left_neutral bind ret.
+Proof.
+move=> A B a f.
+rewrite bindE -(compE (join _)) -(compE _ (ret _)).
+by rewrite -compA (natural ret) compA joinretM compidf.
+Qed.
+
+Lemma bindmret : BindLaws.right_neutral bind ret.
+Proof. by move=> A m; rewrite bindE -(compE (join _)) joinMret. Qed.
+
+Lemma bindA : BindLaws.associative bind.
+Proof.
+move=> A B C m f g; rewrite !bindE_ext.
+rewrite [LHS](_ : _ = ((join _ \o (M # g \o join _) \o M # f) m)) //.
+rewrite (natural join) (compA (join C)) -joinA -(compE (join _)).
+transitivity ((join _ \o M # (join _ \o (M # g \o f))) m) => //.
+by rewrite -2!compA functor_o FCompE -[in LHS](@functor_o M).
+Qed.
+
+Ltac jdeq :=
+  do! (move=> ? || apply: boolp.funext => ? || congr (bind _) ||
+       rewrite /apply !(fmapE,bindretf,bindA)).
+
+Lemma afmapE A B (f : A -> B) : M # f = apply (Ret f).
+Proof. by jdeq. Qed.
+
+Lemma identity : ApplicativeLaws.identity ret apply.
+Proof. by jdeq; rewrite compfid bindmret. Qed.
+
+Lemma composition : ApplicativeLaws.composition ret apply.
+Proof. by jdeq. Qed.
+
+Lemma homomorphism : ApplicativeLaws.homomorphism ret apply.
+Proof. by jdeq. Qed.
+
+Lemma interchange : ApplicativeLaws.interchange ret apply.
+Proof. by jdeq. Qed.
+
+HB.instance Definition _ := hasRet.Build M ret.
+HB.instance Definition _ :=
+  isApplicative.Build M afmapE identity composition homomorphism interchange.
+HB.instance Definition _ :=
+  ApplicativeFunctor_isMonad.Build M
+    applyE bindE joinretM joinMret joinA bindretf bindmret bindA.
+
+HB.end.
+
+Lemma eq_bind (M : monad) (A B : UU0) (m : M A) (f1 f2 : A -> M B) :
+  f1 =1 f2 -> m >>= f1 = m >>= f2.
+Proof. by move=> f12; congr bind; apply boolp.funext. Qed.
+
+Section monad_lemmas.
+Variable M : monad.
+
+Lemma fmapE (A B : UU0) (f : A -> B) (m : M A) :
+ (M # f) m = m >>= (ret B \o f).
+Proof. by rewrite bindE [in RHS]functor_o -[in RHS]compE compA joinMret. Qed.
+
+Lemma apply_bind_apply (A B : UU0) (m1 : M (A -> B)) (m2 : M A) :
+  apply m1 m2 = m1 >>= (fun x1 : A -> B => apply (Ret x1) m2).
+Proof. by rewrite applyE; under [RHS]eq_bind do rewrite -afmapE fmapE. Qed.
+
+End monad_lemmas.
+
 Definition join_of_bind (F : functor)
     (b : forall (A B : UU0), F A -> (A -> F B) -> F B) : F \o F ~~> F :=
   fun A : UU0 => (b _ A)^~ id.
@@ -626,6 +788,7 @@ Definition bind_of_join (F : functor) (j : F \o F ~~> F)
     (A B : UU0) (m : F A) (f : A -> F B) : F B :=
   j B ((F # f) m).
 
+(*
 Section from_join_laws_to_bind_laws.
 Variable (F : functor) (ret : idfun ~> F) (join : F \o F ~> F).
 
@@ -654,11 +817,11 @@ Qed.
 End from_join_laws_to_bind_laws.
 
 Section monad_lemmas.
-Variable M : retmonad.
+Variable M : monad.
 
 Lemma bindretf : BindLaws.left_neutral (@bind M) ret.
 Proof.
-move: (@bindretf_derived M ret join joinretM).
+move: (@bindretf_derived M joinretM).
 rewrite (_ : bind_of_join _ = @bind M) //.
 apply funext_dep => A; apply funext_dep => B.
 apply funext_dep => m; apply funext_dep => f.
@@ -667,7 +830,7 @@ Qed.
 
 Lemma bindmret : BindLaws.right_neutral (@bind M) ret.
 Proof.
-move: (@bindmret_derived M ret join joinMret).
+move: (@bindmret_derived M joinMret).
 rewrite (_ : bind_of_join _ = @bind M) //.
 apply funext_dep => A; apply funext_dep => B.
 apply funext_dep => m; apply funext_dep => f.
@@ -676,7 +839,7 @@ Qed.
 
 Lemma bindA : BindLaws.associative (@bind M).
 Proof.
-move: (@bindA_derived M join joinA).
+move: (@bindA_derived M joinA).
 rewrite (_ : bind_of_join _ = @bind M) //.
 apply funext_dep => A; apply funext_dep => B.
 apply funext_dep => m; apply funext_dep => f.
@@ -684,6 +847,7 @@ by rewrite bindE.
 Qed.
 
 End monad_lemmas.
+*)
 
 HB.factory Record isMonad_ret_join (F : UU0 -> UU0) of isFunctor F := {
   ret : idfun ~> F ;
@@ -703,33 +867,7 @@ Let bindE (A B : UU0) (f : A -> M B) (m : M A) :
   bind m f = join B ((F # f) m).
 Proof. by []. Qed.
 
-HB.instance Definition _ := isRetFunctor.Build M ret.
 HB.instance Definition _ := isMonad.Build M bindE joinretM joinMret joinA.
-
-Let apply (A B : UU0) (f : F (A -> B)) (m : F A) : F B :=
-  f >>= (fun f => (F # f) m).
-
-Ltac jdeq :=
-  do! (move=> ? || apply: boolp.funext => ? || congr (bind _) ||
-       rewrite /apply !(fmapE,bindretf,bindA)).
-
-Let afmapE A B (f : A -> B) : F # f = apply (Ret f).
-Proof. by jdeq. Qed.
-
-Let identity : ApplicativeLaws.identity ret apply.
-Proof. by jdeq; rewrite compfid bindmret. Qed.
-
-Let composition : ApplicativeLaws.composition ret apply.
-Proof. by jdeq. Qed.
-
-Let homomorphism : ApplicativeLaws.homomorphism ret apply.
-Proof. by jdeq. Qed.
-
-Let interchange : ApplicativeLaws.interchange ret apply.
-Proof. by jdeq. Qed.
-
-HB.instance Definition _ :=
-  isApplicative.Build M afmapE identity composition homomorphism interchange.
 HB.end.
 
 HB.factory Record isMonad_ret_bind (F : UU0 -> UU0) := {
@@ -743,30 +881,36 @@ HB.builders Context M of isMonad_ret_bind M.
 
 Let actm (a b : UU0) (f : a -> b) m := bind m (@ret _ \o f).
 
-Let apply (A B : UU0) (f : M (A -> B)) (m : M A) : M B :=
-  bind f (fun f => actm f m).
+Let actm_id : FunctorLaws.id actm.
+Proof.
+move=> a.
+rewrite /actm; apply: boolp.funext => m /=.
+by rewrite bindmret.
+Qed.
 
-Ltac jdeq :=
-  do! (move=> ? || apply: boolp.funext => ? || congr (bind _) ||
-       rewrite /apply /actm !(bindretf,bindA)).
+Let actm_comp : FunctorLaws.comp actm.
+Proof.
+move=> a b c g h.
+rewrite /actm; apply: boolp.funext => m /=.
+rewrite bindA.
+congr bind.
+apply: boolp.funext => u /=.
+by rewrite bindretf.
+Qed.
 
-Let identity : ApplicativeLaws.identity ret apply.
-Proof. by jdeq; rewrite compfid bindmret. Qed.
-
-Let composition : ApplicativeLaws.composition ret apply.
-Proof. by jdeq. Qed.
-
-Let homomorphism : ApplicativeLaws.homomorphism ret apply.
-Proof. by jdeq. Qed.
-
-Let interchange : ApplicativeLaws.interchange ret apply.
-Proof. by jdeq. Qed.
-
-HB.instance Definition _ :=
-  isApplicativeFunctor.Build M identity composition homomorphism interchange.
-
+HB.instance Definition _ := isFunctor.Build M actm_id actm_comp.
 Let F := [the functor of M].
 Local Notation FF := [the functor of F \o F].
+
+Let ret_naturality : naturality idfun F ret.
+Proof.
+move=> a b h.
+rewrite FIdE /hierarchy.actm /= /actm; apply: boolp.funext => m /=.
+by rewrite bindretf.
+Qed.
+
+HB.instance Definition _ :=
+  isNatural.Build idfun F (ret : idfun ~~> F) ret_naturality.
 
 Let join' : FF ~~> F := fun _ m => bind m idfun.
 
@@ -779,10 +923,10 @@ Proof.
 move=> a b h.
 rewrite /join' /=; apply: boolp.funext => mm /=.
 rewrite /hierarchy.actm /= /isFunctor.actm /=.
-rewrite /apply bindretf bindA /= bindretf actm_bind bindA /=.
+rewrite actm_bind bindA /=.
 congr bind.
 apply: boolp.funext => m /=.
-by rewrite bindretf /= /hierarchy.actm /= [apply _ _]bindretf.
+by rewrite bindretf /=.
 Qed.
 
 HB.instance Definition _ := isNatural.Build _ _ _ join'_naturality.
@@ -790,7 +934,10 @@ Let join := [the FF ~> F of join'].
 
 Let bind_map (A B C : UU0) (f : A -> B) (m : M A) (g : B -> M C) :
   bind ((F # f) m) g = bind m (g \o f).
-Proof. by jdeq. Qed.
+Proof.
+rewrite bindA; congr bind.
+by apply: boolp.funext => ?; rewrite bindretf.
+Qed.
 
 Let bindE (a b : UU0) (f : a -> M b) (m : M a) :
   bind m f = join b ((F # f) m).
@@ -801,9 +948,12 @@ Proof. jdeq; exact: bindretf. Qed.
 
 Let joinMret : JoinLaws.right_unit ret join.
 Proof.
-jdeq; rewrite [LHS]bindA bindretf bindA /=.
-under [X in bind _ X]boolp.funext do rewrite bindretf /=.
-by rewrite bindmret.
+move=> a; apply: boolp.funext => m.
+rewrite /join /= /join'.
+rewrite /hierarchy.actm /= /actm /=.
+rewrite bindA /=.
+rewrite [X in bind m X](_ : _ = fun x => ret x) ?bindmret //=; apply: boolp.funext => ?.
+by rewrite bindretf.
 Qed.
 
 Let joinA : JoinLaws.associativity join.
@@ -811,7 +961,7 @@ Proof.
 move => a; apply: boolp.funext => m.
 rewrite /join /= /join'.
 rewrite /hierarchy.actm /= /actm.
-rewrite !bindA bindretf bindA.
+rewrite !bindA.
 congr bind.
 apply: boolp.funext => u /=.
 by rewrite bindretf.
