@@ -548,8 +548,8 @@ HB.mixin Record isMonad (F : UU0 -> UU0) of RetFunctor F := {
   bind : forall (A B : UU0), F A -> (A -> F B) -> F B ;
   bindE : forall (A B : UU0) (f : A -> F B) (m : F A),
     bind A B m f = join B ((F # f) m) ;
-  joinretM : JoinLaws.left_unit (@ret F) join ;
-  joinMret : JoinLaws.right_unit (@ret F) join ;
+  joinretM : JoinLaws.left_unit ret join ;
+  joinMret : JoinLaws.right_unit ret join ;
   joinA : JoinLaws.associativity join }.
 
 #[short(type=retmonad)]
@@ -716,7 +716,7 @@ Ltac jdeq :=
 Let afmapE A B (f : A -> B) : F # f = apply (Ret f).
 Proof. by jdeq. Qed.
 
-Let identity : ApplicativeLaws.identity hierarchy.ret apply.
+Let identity : ApplicativeLaws.identity ret apply.
 Proof. by jdeq; rewrite compfid bindmret. Qed.
 
 Let composition : ApplicativeLaws.composition ret apply.
@@ -790,32 +790,20 @@ Let join := [the FF ~> F of join'].
 
 Let bind_map (A B C : UU0) (f : A -> B) (m : M A) (g : B -> M C) :
   bind ((F # f) m) g = bind m (g \o f).
-Proof.
-rewrite bindA bindretf bindA; congr bind.
-by apply: boolp.funext => ?; rewrite bindretf.
-Qed.
+Proof. by jdeq. Qed.
 
 Let bindE (a b : UU0) (f : a -> M b) (m : M a) :
   bind m f = join b ((F # f) m).
-Proof.
-rewrite /join /= /hierarchy.actm /= /join' /=.
-by rewrite bind_map.
-Qed.
+Proof. by rewrite [RHS]bind_map. Qed.
 
 Let joinretM : JoinLaws.left_unit ret join.
-Proof.
-move=> a; apply: boolp.funext => m.
-by rewrite /join /= /join' /= bindretf.
-Qed.
+Proof. jdeq; exact: bindretf. Qed.
 
 Let joinMret : JoinLaws.right_unit ret join.
 Proof.
-move=> a; apply: boolp.funext => m.
-rewrite /join /= /join'.
-rewrite /hierarchy.actm /= /actm /=.
-rewrite bindA /= !bindretf bindA.
-rewrite [X in bind m X](_ : _ = fun x => ret x) ?bindmret //=; apply: boolp.funext => ?.
-by rewrite bindretf.
+jdeq; rewrite [LHS]bindA bindretf bindA /=.
+under [X in bind _ X]boolp.funext do rewrite bindretf /=.
+by rewrite bindmret.
 Qed.
 
 Let joinA : JoinLaws.associativity join.
