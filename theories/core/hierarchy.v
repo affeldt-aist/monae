@@ -679,8 +679,13 @@ HB.mixin Record ApplicativeFunctor_isMonad (F : UU0 -> UU0) of ApplicativeFuncto
 HB.structure Definition Monad := {F of ApplicativeFunctor_isMonad F &}.
 
 Notation Join := (@join _ _).
+
 Arguments bind {s A B} : simpl never.
 Notation "m >>= f" := (bind m f) : monae_scope.
+
+Arguments bindretf {s} [A B].
+Arguments bindmret {s} [A].
+Arguments bindA {s} [A B C].
 
 HB.factory Record isMonad (F : UU0 -> UU0) of Functor F := {
   ret : idfun ~> F ;

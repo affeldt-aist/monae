@@ -3,7 +3,7 @@
 From mathcomp Require Import all_ssreflect.
 From mathcomp Require boolp.
 From HB Require Import structures.
-Require Import hierarchy monad_lib fail_lib state_lib trace_lib.
+Require Import preamble hierarchy monad_lib fail_lib state_lib trace_lib.
 Require Import monad_transformer monad_model.
 
 (**md**************************************************************************)
@@ -387,7 +387,7 @@ case: (StopP (ElgotX.while f x)) =>
 - rewrite steps_Now in Hs.
   move: x x' Hx Hs.
   elim: n => [/=|n IH] x x' Hx;
-             rewrite ElgotXwhileE whileE /ElgotX.elgotXA functions.compE fmapE.
+             rewrite ElgotXwhileE whileE /ElgotX.elgotXA compE fmapE.
   + case Hb: (f x) => [uxx|d].
     * case: uxx Hb => [u//|[y/=|y/=]] Hb;
                       rewrite bindretf/=bindretf.
