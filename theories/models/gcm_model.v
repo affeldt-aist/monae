@@ -128,7 +128,7 @@ End free_choiceType_functor.
 
 Section forget_choiceType_functor.
 
-Let m : CC -> CT := idfun.
+Let m : CC -> CT := up_idfun.
 
 Let h (a b : CC) (f : {hom a -> b}) : {hom[CT] m a -> m b} :=
   Hom.Pack (Hom.Class (isHom.Axioms_ (a : CT) (b : _) (FId # f) I)).
@@ -152,7 +152,7 @@ Local Notation FC := free_choiceType.
 Local Notation UC := forget_choiceType.
 
 Let epsC' : FC \O UC ~~> FId := fun A : CC => Hom.Pack (Hom.Class
-  (isHom.Axioms_ ((FC \O UC) A) (FId A) idfun I)).
+  (isHom.Axioms_ ((FC \O UC) A) (FId A) up_idfun I)).
 
 Lemma epsC'_natural : naturality _ _ epsC'. Proof. by []. Qed.
 
@@ -160,11 +160,11 @@ HB.instance Definition _ := isNatural.Build _ _ _ _ _ epsC'_natural.
 
 Definition epsC := locked [the _ ~> _ of epsC'].
 
-Lemma epsCE (T : choiceType) : epsC T = idfun :> (_ -> _).
+Lemma epsCE (T : choiceType) : epsC T = up_idfun :> (_ -> _).
 Proof. by rewrite /epsC; unlock. Qed.
 
 Let etaC' : FId ~~> UC \O FC :=
-      fun (_ : CT) => Hom.Pack (Hom.Class (isHom.Axioms_ (FId _) ((UC \O FC) _) idfun I)).
+      fun (_ : CT) => Hom.Pack (Hom.Class (isHom.Axioms_ (FId _) ((UC \O FC) _) up_idfun I)).
 
 Lemma etaC'_natural : naturality _ _ etaC'.
 Proof. by []. Qed.
@@ -173,7 +173,7 @@ HB.instance Definition _ := isNatural.Build _ _ _ _ _ etaC'_natural.
 
 Definition etaC := locked [the _ ~> _ of etaC'].
 
-Lemma etaCE (T : Type) : etaC T = idfun :> (_ -> _).
+Lemma etaCE (T : Type) : etaC T = up_idfun :> (_ -> _).
 Proof. by rewrite /etaC; unlock. Qed.
 
 Import comps_notation.
@@ -191,7 +191,7 @@ Local Obligation Tactic := idtac.
 
 Variable R : realType.
 
-Let affine_idfun' (U : convType R) : affine (@idfun U). Proof. by []. Qed.
+Let affine_idfun' (U : convType R) : affine (@up_idfun U). Proof. by []. Qed.
 
 Let affine_comp' (a b c : convType R) (f : a -> b) (g : b -> c) :
   affine f -> affine g -> affine (g \o f).
@@ -264,7 +264,7 @@ End free_convType_functor.
 Section forget_convType_functor.
 Variable R : realType.
 
-Let m1 : CV R -> CC := idfun.
+Let m1 : CV R -> CC := up_idfun.
 
 Let h1 := fun (a b : CV R) (f : {hom[CV R] a -> b}) =>
   Hom.Pack (Hom.Class (isHom.Axioms_ (m1 a) (m1 b) f I)).
@@ -373,8 +373,12 @@ by move=> ? ? /=; rewrite af ag.
 Qed.
 
 Let idfun_is_biglub_affine (a : semiCompSemiLattConvType R) :
-  biglub_affine (@idfun a).
-Proof. by split => //; exact: biglub_morph. Qed.
+  biglub_affine (@up_idfun a).
+Proof.
+(* rewrite idfun -> ssrfun.idfun is necessary here because BiglubMorph is
+   instantiated only for ssrfun.idfun, not for polymorphic up_idfun *)
+by split => //; rewrite (_ : up_idfun = ssrfun.idfun)//; exact: biglub_morph.
+Qed.
 
 HB.instance Definition _ := isCategory.Build (semiCompSemiLattConvType R)
   (fun U : semiCompSemiLattConvType R => U) biglub_affine idfun_is_biglub_affine
@@ -517,7 +521,7 @@ End free_semiCompSemiLattConvType_functor.
 Section forget_semiCompSemiLattConvType_functor.
 Variable R : realType.
 
-Let m2 : CS R -> CV R := idfun.
+Let m2 : CS R -> CV R := up_idfun.
 
 Let h2 := fun (a b : CS R) (f : {hom[CS R] a -> b}) => Hom.Pack (Hom.Class
   (isHom.Axioms_ (m2 a) (m2 b) f (scsl_hom_is_affine f))).
@@ -737,7 +741,7 @@ apply/necset_ext.
 rewrite /= /join_ /= /Monad_of_category_monad.join /= !HCompId !HIdComp eps1E.
 rewrite functor_o NEqE functor_id compfid.
 rewrite 2!VCompE_nat HCompId HIdComp.
-set E := epsC _; have->: E = [hom idfun] by apply/hom_ext; rewrite epsCE.
+set E := epsC _; have->: E = [hom up_idfun] by apply/hom_ext; rewrite epsCE.
 rewrite functor_id_hom.
 rewrite !functor_o functor_id !compfid.
 set F1J := F1 # _.
@@ -783,7 +787,7 @@ congr fsdistbind.
 by apply: funext => x; rewrite fsdist1bind.
 Qed.
 
-Lemma RetE T : (Ret : idfun T -> N T) = (Ret : FId T -> M R T).
+Lemma RetE T : (Ret : up_idfun T -> N T) = (Ret : FId T -> M R T).
 Proof.
 apply: funext => t /=.
 rewrite /ret_ [in LHS]/=.

@@ -334,9 +334,9 @@ Section eval.
 Require Import typed_store_transformer.
 Import ModelTypedStoreRun.
 
-Definition M := acto ml_type idfun.
+Definition M := acto ml_type up_idfun.
 
-Definition Env := Env ml_type idfun.
+Definition Env := Env ml_type up_idfun.
 
 Definition empty_env : Env := [::].
 
@@ -367,9 +367,9 @@ Eval vm_compute in it1.
 Definition it2 := Restart it1 (do l <- FromW l; incr l).
 Eval vm_compute in it2.
 
-Local Notation cycle := (cycle idfun M).
-Local Notation rhd := (rhd idfun M).
-Local Notation rtl := (rtl idfun M).
+Local Notation cycle := (cycle up_idfun M).
+Local Notation rhd := (rhd up_idfun M).
+Local Notation rtl := (rtl up_idfun M).
 
 Definition it3 := Restart it2 (cycle ml_bool true false).
 Eval vm_compute in crun (FromW it3).

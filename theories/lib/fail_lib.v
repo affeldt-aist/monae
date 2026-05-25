@@ -181,11 +181,11 @@ rewrite 2![in RHS]insertE.
 rewrite [in LHS]alt_fmapDr ![in LHS]altA [in LHS](altC (Ret [:: a, b, h & t])).
 rewrite -!altA; congr (_ [~] _); first by rewrite fmapE bindretf.
 rewrite alt_fmapDr -!altA; congr (_ [~] _); first by rewrite fmapE bindretf.
-rewrite [in LHS]altC bind_fmap /= [in LHS]/comp /=.
+rewrite [in LHS]altC bind_fmap /= [in LHS]/(_ \o _) /=.
 under eq_bind do rewrite insertE.
 rewrite alt_bindDr.
 under [in X in (_ [~] X) [~] _]eq_bind do rewrite fmapE.
-rewrite -bindA [in LHS]ih // [in RHS]altC bind_fmap /= [in RHS]/comp /=.
+rewrite -bindA [in LHS]ih // [in RHS]altC bind_fmap /= [in RHS]/(_ \o _) /=.
 under [in RHS]eq_bind do rewrite insertE.
 rewrite alt_bindDr [in RHS]altC -!altA; congr (_ [~] _).
   rewrite !fmapE !bindA.
@@ -287,7 +287,7 @@ move=> [/= _ x y|h t].
   by rewrite !bindA !bindretf /= bindA bindretf [in RHS]insertE bindretf.
 rewrite ltnS /= => tn x y.
 rewrite bindA iperm_rcons /= !bindA [in RHS]insertE alt_bindDl bindretf /=.
-rewrite bindA iperm_rcons /= bindA bind_fmap /comp /= -[in X in _ [~]X]bindA.
+rewrite bindA iperm_rcons /= bindA bind_fmap /(_ \o _) /= -[in X in _ [~]X]bindA.
 rewrite -ih// bindA iperm_rcons /= !bindA -alt_bindDr; bind_ext => s'.
 rewrite -alt_bindDr; bind_ext => t'.
 by rewrite insertC altmm.
@@ -309,7 +309,7 @@ elim: s => [|h t ih]; first by rewrite /= bindretf.
 rewrite /= -[in RHS]ih !bindA; bind_ext.
 elim/last_ind => [|s x _].
   by rewrite insertE /= !bindretf insertE /= bindretf insertE.
-rewrite iperm_insertC insert_rcons alt_bindDl bind_fmap /= /comp /=.
+rewrite iperm_insertC insert_rcons alt_bindDl bind_fmap /= /(_ \o _) /=.
 under [in RHS]eq_bind do rewrite iperm_rcons_bind.
 rewrite bindretf (@perm_eq_iperm _ _ (h :: rcons s x)); last first.
   by rewrite -cats1 -cat1s catA perm_catC.
@@ -704,7 +704,7 @@ Lemma liftM2_isNondet A B C (f : A -> B -> C) (ma : M A) (mb : M B) :
 Proof.
 move=> [s1 s1_ma] [s2 s2_mb].
 exists (ndBind s1 (fun a => ndBind s2 (fun b => ndRet (f a b)))).
-by rewrite /= s1_ma /comp /= s2_mb.
+by rewrite /= s1_ma /(_ \o _) /= s2_mb.
 Qed.
 
 Lemma guard_isNondet (b : bool) : plus_isNondet (guard b : M _).

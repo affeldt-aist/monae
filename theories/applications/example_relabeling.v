@@ -122,9 +122,7 @@ Proof.
 rewrite boolp.funeqE => -[x1 x2].
 rewrite 3!compE.
 rewrite joinE.
-rewrite fmapE.
-rewrite 2![in RHS]compE.
-rewrite [in RHS]/mpair.
+rewrite fmapE/=.
 rewrite [in LHS]/mpair.
 move H : (fmap dlabels) => h.
 rewrite /=.

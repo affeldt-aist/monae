@@ -3,7 +3,7 @@
 From mathcomp Require Import all_ssreflect.
 From mathcomp Require boolp.
 From HB Require Import structures.
-Require Import hierarchy monad_lib fail_lib state_lib trace_lib.
+Require Import preamble hierarchy monad_lib fail_lib state_lib trace_lib.
 Require Import monad_transformer monad_model.
 
 (**md**************************************************************************)
@@ -148,7 +148,7 @@ case: sba => [[b''|a''] s''] /=.
 Qed.
 
 Lemma codiagonal {A B} (f : A -> elgotS ((B + A) + A)) (a : A) :
-  while ((elgotS # ((sum_rect (fun => (B + A)%type) idfun inr))) \o f) a
+  while ((elgotS # ((sum_rect (fun => (B + A)%type) up_idfun inr))) \o f) a
   ≈
   while (while f) a.
 Proof.
@@ -160,8 +160,8 @@ apply: wBisim_trans.
 rewrite -codiagonalwB elgotS_map.
 apply: whilewB => -[] a'' s'' //=.
 rewrite //= !fmapE.
-have -> : ((reader S \o M) \o writer S) # sum_rect (fun=> (B + A)%type) idfun inr =
-          reader S # (M # (writer S # sum_rect (fun=> (B + A)%type) idfun inr)).
+have -> : ((reader S \o M) \o writer S) # sum_rect (fun=> (B + A)%type) up_idfun inr =
+          reader S # (M # (writer S # sum_rect (fun=> (B + A)%type) up_idfun inr)).
   by rewrite -compA FCompE.
 rewrite reader_map /= fmapE !bindA.
 by apply: bindfwB => -[[[bl|al']|al] sl]; rewrite !bindretf /= fmapE !bindretf.
@@ -275,7 +275,7 @@ move=> [u|[b''|a'']] /=.
 Qed.
 
 Lemma codiagonal {A B} (f : A -> elgotX ((B + A) + A)) (a : A) :
-  while ((elgotX # (sum_rect (fun => (B + A)%type) idfun inr)) \o f ) a
+  while ((elgotX # (sum_rect (fun => (B + A)%type) up_idfun inr)) \o f ) a
   ≈
   while (while f) a.
 Proof.
@@ -387,7 +387,7 @@ case: (StopP (ElgotX.while f x)) =>
 - rewrite steps_Now in Hs.
   move: x x' Hx Hs.
   elim: n => [/=|n IH] x x' Hx;
-             rewrite ElgotXwhileE whileE /ElgotX.elgotXA functions.compE fmapE.
+             rewrite ElgotXwhileE whileE /ElgotX.elgotXA compE fmapE.
   + case Hb: (f x) => [uxx|d].
     * case: uxx Hb => [u//|[y/=|y/=]] Hb;
                       rewrite bindretf/=bindretf.

@@ -79,7 +79,7 @@ Hint Resolve frefl_transparent : core.
 HB.mixin Record isCategory (obj : Type) := {
   el : obj -> Type ;
   inhom : forall a b, (el a -> el b) -> Prop ;
-  idfun_inhom : forall a, @inhom a a idfun ;
+  idfun_inhom : forall a, @inhom a a up_idfun ;
   funcomp_inhom : forall a b c (f : el a -> el b) (g : el b -> el c),
       inhom _ _ f -> inhom _ _ g -> inhom _ _ (g \o f)
 }.
@@ -118,7 +118,7 @@ Section hom_interface.
 Variable C : category.
 Implicit Types a b c : C.
 
-HB.instance Definition _ c := isHom.Build _ _ _ (@idfun (el c)) (idfun_inhom c).
+HB.instance Definition _ c := isHom.Build _ _ _ (@up_idfun (el c)) (idfun_inhom c).
 
 HB.instance Definition _ (a b c : C) (f : {hom b -> c}) (g : {hom a -> b}):=
   isHom.Build _ _ _ (f \o g) (funcomp_inhom (isHom_inhom g) (isHom_inhom f)).
@@ -190,7 +190,7 @@ Definition transport_hom (a a' b b' : C) (pa : a = a') (pb : b = b')
           (eq_rect a (fun x => {hom x -> b}) f a' pa)
           b' pb.
 Definition hom_of_eq (a b : C) (p : a = b) : {hom a -> b} :=
-  transport_codom p [hom idfun].
+  transport_codom p [hom up_idfun].
 (* (* this works too; not sure which is better *)
 Definition hom_of_eq (a b : C) (p : a = b) : {hom a -> b} :=
   transport_codom p [hom idfun].
@@ -227,7 +227,7 @@ Module FunctorLaws.
 Section def.
 Variable (C D : category).
 Variable (F : C -> D) (f : forall a b, {hom a -> b} -> {hom F a -> F b}).
-Definition id := forall a, f [hom idfun] = [hom idfun] :> {hom F a -> F a}.
+Definition id := forall a, f [hom up_idfun] = [hom up_idfun] :> {hom F a -> F a}.
 Definition comp := forall a b c (g : {hom b -> c}) (h : {hom a -> b}),
   f [hom g \o h] = [hom f g \o f h].
 End def.
@@ -250,7 +250,7 @@ Notation "{ 'functor' fCD }" := (functor_phant (Phant fCD))
 Section functor_lemmas.
 Variables (C D : category) (F : {functor C -> D}).
 
-Lemma functor_id a : F # [hom idfun] = idfun :> (el (F a) -> el (F a)).
+Lemma functor_id a : F # [hom up_idfun] = up_idfun :> (el (F a) -> el (F a)).
 Proof. by rewrite functor_id_hom. Qed.
 
 Lemma functor_o a b c (g : {hom b -> c}) (h : {hom a -> b}) :
@@ -297,8 +297,8 @@ Variables C : category.
 Definition id_f (A B : C) (f : {hom A -> B}) := f.
 Lemma id_id : FunctorLaws.id id_f. Proof. by []. Qed.
 Lemma id_comp : FunctorLaws.comp id_f. Proof. by []. Qed.
-HB.instance Definition _ := isFunctor.Build _ _ idfun id_id id_comp.
-Definition FId : {functor C -> C} := [the {functor _ -> _} of idfun].
+HB.instance Definition _ := isFunctor.Build _ _ up_idfun id_id id_comp.
+Definition FId : {functor C -> C} := [the {functor _ -> _} of up_idfun].
 Lemma FIdf (A B : C) (f : {hom A -> B}) : FId # f = f.
 Proof. by []. Qed.
 End functorid.
@@ -368,20 +368,20 @@ Proof.
 split=> [ -> // |]; move: f g => [f [[Hf]]] [g [[Hg]]] /= fg''.
 have fg' : forall a, f a = g a :> {hom _ -> _} by move=> a; rewrite hom_ext fg''.
 move: (functional_extensionality_dep fg') => fg.
-by move: Hf Hg; rewrite fg=> Hf Hg; rewrite (proof_irr _ Hf Hg).
+by move: Hf Hg; rewrite fg => Hf Hg; rewrite (proof_irr Hf Hg).
 Qed.
 End natural_transformation_lemmas.
 Arguments natural_head [C D F G].
 
 Section id_natural_transformation.
 Variables (C D : category) (F : {functor C -> D}).
-Definition unnattrans_id := fun (a : C) => [hom (@idfun (el (F a)))].
+Definition unnattrans_id := fun (a : C) => [hom (@up_idfun (el (F a)))].
 Definition natural_id : naturality _ _ unnattrans_id.
 Proof. by []. Qed.
 
 HB.instance Definition _ := isNatural.Build C D F F unnattrans_id natural_id.
 Definition NId : F ~> F := [the _ ~> _ of unnattrans_id].
-Lemma NIdE : NId  = (fun a => [hom idfun]) :> (_ ~~> _).
+Lemma NIdE : NId  = (fun a => [hom up_idfun]) :> (_ ~~> _).
 Proof. by []. Qed.
 End id_natural_transformation.
 
@@ -393,7 +393,7 @@ Variable (Iobj : forall c, F c = G c).
 Local Notation tc := (transport_codom (Iobj _)).
 Local Notation td := (transport_dom (esym (Iobj _))).
 Variable (Imor : forall a b (f : {hom a -> b}), tc (F # f) = td (G # f)).
-Definition f : F ~~> G := fun (c : C) => tc [hom idfun].
+Definition f : F ~~> G := fun (c : C) => tc [hom up_idfun].
 Lemma natural : naturality F G f.
 Proof.
 move=> a b h.
@@ -410,7 +410,7 @@ Module Exports.
 Arguments n [C D] : simpl never.
 Notation NEq := n.
 Lemma NEqE C D F G Iobj Imor : @NEq C D F G Iobj Imor =
-  (fun a => transport_codom (Iobj _) [hom idfun]) :> (_ ~~> _).
+  (fun a => transport_codom (Iobj _) [hom up_idfun]) :> (_ ~~> _).
 Proof. by []. Qed.
 End Exports.
 End NEq.
@@ -520,7 +520,7 @@ Proof.
 by apply nattrans_ext=> a; rewrite VCompE HCompE HIdComp HCompId -natural.
 Qed.
 
-Lemma NIdFId c : NId (@FId C) c = [hom idfun].
+Lemma NIdFId c : NId (@FId C) c = [hom up_idfun].
 Proof. by []. Qed.
 
 Lemma NIdFComp : NId (F' \O F) = NId F' \h NId F.
@@ -544,8 +544,8 @@ Module TriangularLaws.
 Section triangularlaws.
 Variables (C D : category) (F : {functor C -> D}) (G : {functor D -> C}).
 Variables (eta : FId ~> G \O F) (eps : F \O G ~> FId).
-Definition left := forall c, eps (F c) \o F # (eta c) = idfun.
-Definition right := forall d, G # (eps d) \o eta (G d) = idfun.
+Definition left := forall c, eps (F c) \o F # (eta c) = up_idfun.
+Definition right := forall d, G # (eps d) \o eta (G d) = up_idfun.
 End triangularlaws.
 End TriangularLaws.
 
@@ -588,9 +588,9 @@ Proof. exact: can_inj (@hom_isoK c d). Qed.
 Lemma hom_inv_inj (c : C) (d : D) : injective (@hom_inv c d).
 Proof. exact: can_inj (@hom_invK c d). Qed.
 
-Lemma eta_hom_iso (c : C) : eta A c = hom_iso [hom idfun].
+Lemma eta_hom_iso (c : C) : eta A c = hom_iso [hom up_idfun].
 Proof. by apply hom_ext; rewrite /hom_iso /= functor_id. Qed.
-Lemma eps_hom_inv (d : D) : eps A d = hom_inv [hom idfun].
+Lemma eps_hom_inv (d : D) : eps A d = hom_inv [hom up_idfun].
 Proof. by apply hom_ext; rewrite /hom_inv /= functor_id compfid. Qed.
 
 Lemma ext (B : F -| G) : eta A = eta B -> eps A = eps B -> A = B.
@@ -700,9 +700,9 @@ Section join_laws.
 Variables (C : category) (M : {functor C -> C}) .
 Variables (ret : FId ~~> M) (join : M \O M ~~> M).
 Definition left_unit :=
-  forall a, join a \o ret (M a) = idfun :> (el (M a) -> el (M a)).
+  forall a, join a \o ret (M a) = up_idfun :> (el (M a) -> el (M a)).
 Definition right_unit :=
-  forall a, join a \o M # ret a = idfun :> (el (M a) -> el (M a)).
+  forall a, join a \o M # ret a = up_idfun :> (el (M a) -> el (M a)).
 Definition associativity :=
   forall a, join a \o M # join a = join a \o join (M a) :> (el (M (M (M a))) -> el (M a)).
 End join_laws.
@@ -843,7 +843,7 @@ Proof. by apply/bind_left_neutral_hom_fun/bindretf. Qed.
 Let fmap_id : FunctorLaws.id fmap.
 Proof.
 move=> A; apply/hom_ext/funext=>m. rewrite /fmap.
-rewrite/idfun/=.
+rewrite/up_idfun/=.
 rewrite -[in RHS](bindmret m).
 congr (fun f => bind f m).
 by rewrite hom_ext.
@@ -862,7 +862,7 @@ Proof. by move=> A B h; rewrite FIdf bindretf_fun. Qed.
 HB.instance Definition _ := isNatural.Build _ _ FId F
   (ret' : FId ~~> M)(*NB: fails without this type constraint*) ret'_naturality.
 Definition ret := [the FId ~> F of ret'].
-Let join' : F \O F ~~> F := fun _ => bind [hom idfun].
+Let join' : F \O F ~~> F := fun _ => bind [hom up_idfun].
 Let fmap_bind a b c (f : {hom a ->b}) m (g : {hom c ->F a}) :
   (fmap f) (bind g m) = bind [hom fmap f \o g] m.
 Proof. by rewrite /fmap bindA. Qed.
@@ -889,7 +889,7 @@ Lemma bindE (a b : C) (f : {hom a -> F b}) (m : el (F a)) :
   bind f m = join b (([the {functor C -> C} of F] # f) m).
 Proof.
 rewrite /join /=.
-rewrite /=bind_fmap/idfun/=.
+rewrite /=bind_fmap/up_idfun/=.
 congr (fun f => bind f m).
 by rewrite hom_ext.
 Qed.
@@ -1002,7 +1002,7 @@ Let F := [the functor of acto].
 Lemma actmE (a b : CT) (h : {hom a -> b}) : (F # h)%monae = (M # h)%category.
 Proof. by congr (category.actm M); apply hom_ext. Qed.
 
-Definition ret_ : forall A, idfun A -> F A :=
+Definition ret_ : forall A, up_idfun A -> F A :=
   fun A (a : A) => @category.ret _ M A a.
 
 Definition join_ : forall A, [the functor of F \o F] A -> F A :=
