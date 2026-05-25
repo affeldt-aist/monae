@@ -126,9 +126,9 @@ Lemma arbitrary_naturality (T U : UU0) (a : T) (b : U) (f : T -> U) :
   forall x, 0 < size x -> (M # f \o arbitrary a) x = (arbitrary b \o map f) x.
 Proof.
 elim=> // x [_ _ | x' xs /(_ isT)].
-  by rewrite [in LHS]compE fmapE bindretf.
+  by rewrite /= fmapE bindretf.
 rewrite [in X in X -> _]/= fmapE => ih _.
-rewrite [in RHS]compE [in RHS]/= [in RHS](arbitrary_cons b) // [in LHS]compE.
+rewrite [in RHS]/= [in RHS](arbitrary_cons b) //=.
 by rewrite [in LHS]arbitrary_cons // fmapE /= alt_bindDl bindretf /= ih.
 Qed.
 
@@ -138,7 +138,7 @@ Lemma mpair_arbitrary_base_case (T : UU0) a x (y : seq T) :
 Proof.
 move=> y0; rewrite cp1.
 transitivity (arbitrary a y >>= (fun y' => Ret (x, y')) : M _).
-  by rewrite -(compE (arbitrary _)) -(arbitrary_naturality a) // compE fmapE.
+  by rewrite -(compE (arbitrary _)) -(arbitrary_naturality a) //= fmapE.
 transitivity (do z <- Ret x; do y' <- arbitrary a y; Ret (z, y') : M _)%Do.
   by rewrite bindretf.
 by [].
@@ -311,7 +311,7 @@ Lemma insert_map (A B : UU0) (f : A -> B) (a : A) :
   insert (f a) \o map f = map f (o) insert a :> (_ -> M _).
 Proof.
 apply boolp.funext; elim => [|y xs IH].
-  by rewrite fcompE insertE -(compE (fmap (map f))) (natural ret) compE insertE.
+  by rewrite fcompE insertE -(compE (fmap (map f))) (natural ret) /= insertE.
 apply/esym.
 rewrite fcompE insertE alt_fmapDr.
 (* first branch *)
