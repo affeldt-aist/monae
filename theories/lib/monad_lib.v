@@ -698,10 +698,9 @@ Proof. by []. Qed.
 Lemma naturality_mpair (M : monad) (A B : UU0) (f : A -> B) (g : A -> M A):
   (M # f^`2) \o (mpair \o g^`2) = mpair \o ((M # f) \o g)^`2.
 Proof.
-apply boolp.funext => -[a0 a1].
-rewrite compE fmap_bind.
-rewrite compE mpairE compE bind_fmap; bind_ext => a2.
-rewrite fcompE fmap_bind 2!compE bind_fmap; bind_ext => a3.
+apply/boolp.funext => -[a0 a1]/=.
+rewrite fmap_bind bind_fmap; bind_ext => a2/=.
+rewrite fcompE fmap_bind bind_fmap; bind_ext => a3/=.
 by rewrite fcompE -(compE (M # f^`2)) (natural ret) FIdE.
 Qed.
 
