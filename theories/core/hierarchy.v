@@ -944,7 +944,10 @@ Let bindE (a b : UU0) (f : a -> M b) (m : M a) :
 Proof. by rewrite [RHS]bind_map. Qed.
 
 Let joinretM : JoinLaws.left_unit ret join.
-Proof. jdeq; exact: bindretf. Qed.
+Proof.
+move=> a; apply: boolp.funext => m.
+by rewrite /join /= /join' /= bindretf.
+Qed.
 
 Let joinMret : JoinLaws.right_unit ret join.
 Proof.
