@@ -17,6 +17,7 @@ theories/lib/array_lib.v
 theories/lib/trace_lib.v
 theories/lib/proba_lib.v
 theories/lib/typed_store_lib.v
+theories/models/applicative_model.v
 theories/models/monad_model.v
 theories/models/proba_model.v
 theories/models/gcm_model.v
