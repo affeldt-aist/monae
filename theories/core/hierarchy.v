@@ -748,7 +748,7 @@ Let apply (A B : UU0) (f : M (A -> B)) (m : M A) : M B :=
 
 Ltac jdeq :=
   do! (move=> ? || apply: boolp.funext => ? || congr (bind _) ||
-       rewrite /apply /actm !(fmapE,bindretf,bindA)).
+       rewrite /apply /actm !(bindretf,bindA)).
 
 Let identity : ApplicativeLaws.identity ret apply.
 Proof. by jdeq; rewrite compfid bindmret. Qed.

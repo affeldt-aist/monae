@@ -28,7 +28,7 @@ Proof. by []. Qed.
 Let afinterchange : ApplicativeLaws.interchange pure apply.
 Proof. by []. Qed.
 HB.instance Definition _ :=
-  isApplicative.Build FuncList afidentity afcomposition afhomomorphism afinterchange.
+  isApplicativeFunctor.Build FuncList afidentity afcomposition afhomomorphism afinterchange.
 End function.
 End Function.
 
@@ -86,7 +86,130 @@ by rewrite /apply /pure !tnth_mktuple !tnth_nseq.
 Qed.
 
 HB.instance Definition _ :=
-  isApplicative.Build (n.-tuple) afidentity afcomposition afhomomorphism afinterchange.
+  isApplicativeFunctor.Build (n.-tuple) afidentity afcomposition afhomomorphism afinterchange.
+
+Let F := n.-tuple.
+
+Section join_first.
+Let join A :=
+  match n as m return m.-tuple (m.-tuple A) -> m.-tuple A with
+  | 0 => fun=> [tuple of [::]]
+  | m.+1 => fun t => tnth t ord0
+  end.
+
+Let join_naturality : naturality (F \o F) F join.
+Proof.
+move=> a b h.
+subst F join.
+rewrite /actm /= /apply /pure /=.
+rewrite /actm /=.
+apply: boolp.funext.
+case: n => [|m] x /=.
+- by rewrite tuple0.
+- apply: eq_from_tnth => j.
+  rewrite tnth_mktuple.
+  by rewrite /apply /pure !tnth_mktuple.
+Qed.
+
+Let ret_naturality : naturality idfun F ret.
+Proof.
+move=> a b h.
+rewrite /actm /= /pure /apply.
+apply: boolp.funext => t /=.
+apply: eq_from_tnth => j.
+by rewrite tnth_mktuple !tnth_nseq.
+Qed.
+
+Let joinretM : JoinLaws.left_unit ret join.
+Proof.
+move=> A; apply: boolp.funext.
+subst join => /=.
+rewrite /pure.
+case: n => [|m] t /=.
+  by rewrite (tuple0 t).
+by rewrite tnth_nseq.
+Qed.
+
+Let joinMret : JoinLaws.right_unit ret join.
+Proof.
+move=> A; apply: boolp.funext.
+subst join => /=.
+rewrite /actm /= /apply /pure.
+case: n => [|m] t /=.
+  by rewrite (tuple0 t).
+rewrite tnth_mktuple tnth_nseq.
+Abort.
+(* Cannot be a monad *)
+
+Lemma joinA : JoinLaws.associativity join.
+Proof.
+move=> A; apply: boolp.funext.
+subst join => /=.
+rewrite /actm /= /apply /pure.
+case: n => [|m] t //=.
+by rewrite tnth_mktuple tnth_nseq.
+Qed.
+End join_first.
+
+Local Open Scope monae_scope.
+Section join_diag.
+Let join' : F \o F ~~> F :=
+  fun A (t : F (F A)) => [tuple tnth (tnth t i) i | i < n].
+
+Let join_naturality : naturality (F \o F) F join'.
+Proof.
+move=> a b h; apply: boolp.funext => t /=.
+subst F join'.
+apply: eq_from_tnth => j.
+rewrite /actm /= /apply.
+by rewrite !tnth_mktuple /= /actm /= /apply /pure !(tnth_nseq,tnth_mktuple).
+Qed.
+
+Let ret_naturality : naturality idfun F (pure n).
+Proof.
+move=> a b h.
+rewrite /actm /= /pure /apply.
+apply: boolp.funext => t /=.
+apply: eq_from_tnth => j.
+by rewrite tnth_mktuple !tnth_nseq.
+Qed.
+
+HB.instance Definition _ := isNatural.Build _ _ _ join_naturality.
+HB.instance Definition _ := isNatural.Build _ _ _ ret_naturality.
+
+Let join : F \o F ~> F := join'.
+
+Let joinretM : JoinLaws.left_unit ret join.
+Proof.
+move=> A; apply: boolp.funext => t.
+subst join => /=.
+rewrite /pure.
+apply: eq_from_tnth => j.
+by rewrite tnth_mktuple !tnth_nseq.
+Qed.
+
+Let joinMret : JoinLaws.right_unit ret join.
+Proof.
+move=> A; apply: boolp.funext => t.
+subst join => /=.
+rewrite /pure.
+apply: eq_from_tnth => j.
+by rewrite tnth_mktuple /actm /= /apply /pure tnth_mktuple !tnth_nseq.
+Qed.
+
+Let joinA : JoinLaws.associativity join.
+Proof.
+move=> A; apply: boolp.funext.
+subst join => /= t.
+rewrite /actm /= /apply /pure.
+apply: eq_from_tnth => j.
+by rewrite !(tnth_mktuple,tnth_nseq).
+Qed.
+
+HB.instance Definition _ :=
+  isMonad_ret_join.Build (n.-tuple) joinretM joinMret joinA.
+End join_diag.
+
 End tuple.
 End Tuple.
 
