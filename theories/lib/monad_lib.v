@@ -304,7 +304,7 @@ Proof. by rewrite functor_o. Qed.
 Section id_natural_transformation.
 Variables C : functor.
 
-Let nid : C ~~> C := fun A => @idfun (C A).
+Let nid : C ~~> C := fun A => @up_idfun (C A).
 
 Let natural_nid : naturality C C nid. Proof. by []. Qed.
 
@@ -459,7 +459,7 @@ Proof.
 apply: (@AdjointFunctor.mk _ _ curry_eta curry_eps).
 by move=> A; rewrite /TriangularLaws.left; apply funext => -[].
 move=> A; rewrite /TriangularLaws.right /uncurryF /curry_eps /curry_eta /uncurryF.
-by rewrite /= /uncurry_actm /= /comp /=; apply funext => f; apply funext.
+by apply funext => f; apply funext.
 Qed.
 
 End adjoint_example.
@@ -558,7 +558,7 @@ rewrite [LHS]up_compA.
 rewrite [RHS]up_compA.
 congr (_ \o _).
 rewrite (FCompE U0 F0) -[in RHS](@functor_o U0) -[in LHS](@functor_o U0).
-congr (_ # _).
+congr (U0 # _).
 by rewrite -(natural (AdjointFunctor.eta H)).
 Qed.
 
@@ -698,10 +698,9 @@ Proof. by []. Qed.
 Lemma naturality_mpair (M : monad) (A B : UU0) (f : A -> B) (g : A -> M A):
   (M # f^`2) \o (mpair \o g^`2) = mpair \o ((M # f) \o g)^`2.
 Proof.
-apply funext => -[a0 a1].
-rewrite up_compE fmap_bind.
-rewrite up_compE mpairE up_compE bind_fmap; bind_ext => a2.
-rewrite fcompE fmap_bind 2!up_compE bind_fmap; bind_ext => a3.
+apply/funext => -[a0 a1]/=.
+rewrite !up_compE fmap_bind/= bind_fmap; bind_ext => a2/=.
+rewrite fcompE fmap_bind 2!up_compE bind_fmap; bind_ext => a3/=.
 by rewrite fcompE -(up_compE (M # f^`2)) (natural ret) FIdE.
 Qed.
 

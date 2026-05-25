@@ -148,7 +148,7 @@ case: sba => [[b''|a''] s''] /=.
 Qed.
 
 Lemma codiagonal {A B} (f : A -> elgotS ((B + A) + A)) (a : A) :
-  while ((elgotS # ((sum_rect (fun => (B + A)%type) idfun inr))) \o f) a
+  while ((elgotS # ((sum_rect (fun => (B + A)%type) up_idfun inr))) \o f) a
   ≈
   while (while f) a.
 Proof.
@@ -160,8 +160,8 @@ apply: wBisim_trans.
 rewrite -codiagonalwB elgotS_map.
 apply: whilewB => -[] a'' s'' //=.
 rewrite !up_compE //= !fmapE.
-have -> : ((reader S \o M) \o writer S) # sum_rect (fun=> (B + A)%type) idfun inr =
-          reader S # (M # (writer S # sum_rect (fun=> (B + A)%type) idfun inr)).
+have -> : ((reader S \o M) \o writer S) # sum_rect (fun=> (B + A)%type) up_idfun inr =
+          reader S # (M # (writer S # sum_rect (fun=> (B + A)%type) up_idfun inr)).
   by rewrite -up_compA FCompE.
 rewrite up_compE reader_map up_compE/= fmapE !bindA.
 by apply: bindfwB => -[[[bl|al']|al] sl]; rewrite !bindretf/= !up_compE/= fmapE !bindretf.
@@ -275,7 +275,7 @@ move=> [u|[b''|a'']] /=.
 Qed.
 
 Lemma codiagonal {A B} (f : A -> elgotX ((B + A) + A)) (a : A) :
-  while ((elgotX # (sum_rect (fun => (B + A)%type) idfun inr)) \o f ) a
+  while ((elgotX # (sum_rect (fun => (B + A)%type) up_idfun inr)) \o f ) a
   ≈
   while (while f) a.
 Proof.
