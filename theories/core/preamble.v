@@ -40,6 +40,16 @@ Polymorphic Definition comp (A B C : Type) (f : B -> A) (g : C -> B) :=
 Arguments comp {A B C} f g x /.
 Notation "f1 \o f2" := (comp f1 f2) : function_scope.
 
+(* an equivalent of ssrfun.catcomp *)
+Polymorphic Definition revcomp (A B C : Type) (g : C -> B) := (@comp A B C)^~ g.
+Arguments revcomp {A B C} g f x / : rename.
+
+(*Polymorphic Definition revapply (T : Type) (U : T -> Type) (x : T) :=
+  @^~ x : forall f : forall x : T, U x, U x.*)
+Polymorphic Definition revapply (T : Type) (U : Type) (x : T) :=
+  @^~ x : (T -> U) -> U.
+Arguments revapply {T U} x f /.
+
 (* We also restate ssrfun.compA for our comp
    (also with a slight modification in the order of type arguments).
    There are more lemmas for ssrfun.comp left in ssrfun, such as

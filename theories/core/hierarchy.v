@@ -142,18 +142,6 @@ Notation "f ~~> g" := (forall A, f A -> g A)
 
 Local Open Scope monae_scope.
 
-Section move_to_preamble.
-(* an equivalent of ssrfun.catcomp *)
-Polymorphic Definition revcomp (A B C : Type) (g : C -> B) := (@comp A B C)^~ g.
-
-(*Polymorphic Definition revapply (T : Type) (U : T -> Type) (x : T) :=
-  @^~ x : forall f : forall x : T, U x, U x.*)
-Polymorphic Definition revapply (T : Type) (U : Type) (x : T) :=
-  @^~ x : (T -> U) -> U.
-End move_to_preamble.
-Arguments revcomp {A B C} g f x / : rename.
-Arguments revapply {T U} x f /.
-
 Notation UU1 := Type.
 Notation UU0 := Type.
 
@@ -606,7 +594,6 @@ HB.mixin Record ApplicativeFunctor_isMonad (F : UU0 -> UU0) of ApplicativeFuncto
 HB.structure Definition Monad := {F of ApplicativeFunctor_isMonad F &}.
 
 Notation Join := (@join _ _).
-
 Arguments bind {s A B} : simpl never.
 Notation "m >>= f" := (bind m f) : monae_scope.
 
