@@ -17,13 +17,13 @@ Section function.
 Variable I : UU0.
 Implicit Types A B C : UU0.
 
-Definition FuncList A := I -> A.
-Definition pure A (a : A) : FuncList A := fun i => a.
+Definition Func A := I -> A.
+Definition pure A (a : A) : Func A := fun i => a.
 Definition zipMap {A B C}
-  (f : FuncList (A -> B -> C)) (a : FuncList A) (b : FuncList B) :
-  FuncList C := fun i => f i (a i) (b i).
-Definition apply A B (f : FuncList (A -> B)) (a : FuncList A) :
-  FuncList B := fun i => f i (a i).
+  (f : Func (A -> B -> C)) (a : Func A) (b : Func B) :
+  Func C := fun i => f i (a i) (b i).
+Definition apply A B (f : Func (A -> B)) (a : Func A) :
+  Func B := fun i => f i (a i).
 Let afidentity : ApplicativeLaws.identity pure apply.
 Proof. by []. Qed.
 Let afcomposition : ApplicativeLaws.composition pure apply.
@@ -33,8 +33,48 @@ Proof. by []. Qed.
 Let afinterchange : ApplicativeLaws.interchange pure apply.
 Proof. by []. Qed.
 HB.instance Definition _ :=
-  isApplicativeFunctor.Build FuncList
+  isApplicativeFunctor.Build Func
     afidentity afcomposition afhomomorphism afinterchange.
+
+Section func_diag.
+
+Definition F := Func.
+
+Let join' : F \o F ~~> F := 
+  fun A t i => t i i.
+    
+Let join_naturality : naturality (F \o F) F join'.
+Proof.
+by move=> a b h; apply: boolp.funext => t; apply: boolp.funext => i.
+Qed.
+
+Let ret_naturality : naturality idfun F pure.
+Proof.
+by move=> a b h; apply: boolp.funext => t; apply: boolp.funext => i.
+Qed.
+
+HB.instance Definition _ := isNatural.Build _ _ _ join_naturality.
+HB.instance Definition _ := isNatural.Build _ _ _ ret_naturality.
+
+Let join : F \o F ~> F := join'.
+
+Let joinretM : JoinLaws.left_unit ret join.
+Proof.
+by move=> A; apply: boolp.funext => t; apply: boolp.funext => i.
+Qed.
+
+Let joinMret : JoinLaws.right_unit ret join.
+Proof.
+by move=> A; apply: boolp.funext => t; apply: boolp.funext => i.
+Qed.
+
+Let joinA : JoinLaws.associativity join.
+Proof.
+by move=> A; apply: boolp.funext => t; apply: boolp.funext => i.
+Qed.
+HB.instance Definition _ :=
+  isMonad_ret_join.Build Func joinretM joinMret joinA.
+End func_diag.
 End function.
 End Function.
 
