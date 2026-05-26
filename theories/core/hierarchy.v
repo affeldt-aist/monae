@@ -168,53 +168,6 @@ Definition comp := forall (A B C : UU0) (g : B -> C) (h : A -> B),
 End def.
 End FunctorLaws.
 
-(*
-HB.mixin Record hasFhom (F : UU0 -> UU0) := {
-  actm : forall A B : UU0, (A -> B) -> F A -> F B ;
-}.
-
-#[short(type=prefunctor)]
-HB.structure Definition PreFunctor := {F of hasFhom F}.
-
-Notation "F # g" := (@actm F _ _ g) : monae_scope.
-Notation "'fmap' f" := (_ # f) : mprog.
-
-HB.mixin Record PreFunctor_isFunctor (F : UU0 -> UU0) & PreFunctor F := {
-  functor_id : FunctorLaws.id (@actm F) ;
-  functor_o : FunctorLaws.comp (@actm F) }.
-
-#[short(type=functor)]
-HB.structure Definition Functor := {F of PreFunctor_isFunctor F}.
-
-HB.factory Record isFunctor (F : UU0 -> UU0) := {
-  actm : forall A B : UU0, (A -> B) -> F A -> F B ;
-  functor_id : FunctorLaws.id actm ;
-  functor_o : FunctorLaws.comp actm }.
-
-HB.builders Context F of isFunctor F.
-HB.instance Definition _ := hasFhom.Build F actm.
-HB.instance Definition _ := PreFunctor_isFunctor.Build F functor_id functor_o.
-HB.end.
-
-Lemma functor_ext (F G : functor) :
-  forall (H : Functor.sort F = Functor.sort G),
-  @actm G =
-  eq_rect _ (fun m : UU0 -> UU0 => forall A B : UU0, (A -> B) -> m A -> m B)
-            (@actm F) _ H  ->
-  G = F.
-Proof.
-move: F G => [F [[] FhomF [] FhomFid FhomFcomp]] [G [[] FhomG [] FhomGid FhomGcomp]] /= H.
-move: FhomG FhomGid FhomGcomp.
-refine (match H with erefl => _ end) => FhomG FhomGid FhomGcomp Hhom.
-have Hhom' : FhomF = FhomG by move: Hhom; rewrite /actm/=.
-move: FhomFid FhomFcomp FhomGid FhomGcomp {Hhom}.
-rewrite /actm/= Hhom' => *.
-congr Functor.Pack.
-congr Functor.Class.
-congr PreFunctor_isFunctor.Axioms_; exact/proof_irr.
-Defined.
-*)
-
 HB.mixin Record isFunctor (F : UU0 -> UU0) := {
   actm : forall A B : UU0, (A -> B) -> F A -> F B ;
   functor_id : FunctorLaws.id actm ;
@@ -370,32 +323,6 @@ HB.mixin Record hasRet (F : UU0 -> UU0) of Functor F :=
 
 #[short(type=retfunctor)]
 HB.structure Definition RetFunctor := {F of hasRet F &}.
-
-(*
-HB.mixin Record hasBind (F : UU0 -> UU0) :=
-  { bind : forall (A B : UU0), F A -> (A -> F B) -> F B }.
-
-HB.mixin Record hasJoin (F : UU0 -> UU0) of Functor F :=
-  { join : F \o F ~> F }.
-
-#[short(type=retjoinfunctor)]
-HB.structure Definition RetJoinFunctor := {F of hasRet F & hasJoin F & Functor F}.
-*)
-
-(*
-HB.mixin Record hasUnnaturalRet (F : UU0 -> UU0) :=
-  { unnatural_ret : forall (A : UU0), A -> F A }.
-
-#[short(type=retbindnofunctor)]
-  HB.structure Definition RetBindNoFunctor := {F of hasUnnaturalRet F & hasBind F}.
-*)
-
-(*
-#[short(type=premonad)]
-HB.structure Definition PreMonad :=
-  {F of hasRet F & hasBind F & hasJoin F & Functor F}.
-*)
-
 
 (* we introduce Ret as a way to make the second arguments of ret implicit,
    o.w. Rocq won't let us *)
@@ -792,67 +719,6 @@ Definition join_of_bind (F : functor)
 Definition bind_of_join (F : functor) (j : F \o F ~~> F)
     (A B : UU0) (m : F A) (f : A -> F B) : F B :=
   j B ((F # f) m).
-
-(*
-Section from_join_laws_to_bind_laws.
-Variable (F : functor) (ret : idfun ~> F) (join : F \o F ~> F).
-
-Hypothesis joinretM : JoinLaws.left_unit ret join.
-Hypothesis joinMret : JoinLaws.right_unit ret join.
-Hypothesis joinA : JoinLaws.associativity join.
-
-Lemma bindretf_derived : BindLaws.left_neutral (bind_of_join join) ret.
-Proof.
-move=> A B a f; rewrite /bind_of_join -(compE (@join _)) -(compE _ (@ret _)).
-by rewrite -compA (natural ret) compA joinretM compidf.
-Qed.
-
-Lemma bindmret_derived : BindLaws.right_neutral (bind_of_join join) ret.
-Proof. by move=> A m; rewrite /bind_of_join -(compE (@join _)) joinMret. Qed.
-
-Lemma bindA_derived : BindLaws.associative (bind_of_join join).
-Proof.
-move=> A B C m f g; rewrite /bind_of_join.
-rewrite [LHS](_ : _ = ((@join _ \o (F # g \o @join _) \o F # f) m)) //.
-rewrite (natural join) (compA (@join C)) -joinA -(compE (@join _)).
-transitivity ((@join _ \o F # (@join _ \o (F # g \o f))) m) => //.
-by rewrite -2!compA functor_o FCompE -[in LHS](@functor_o F).
-Qed.
-
-End from_join_laws_to_bind_laws.
-
-Section monad_lemmas.
-Variable M : monad.
-
-Lemma bindretf : BindLaws.left_neutral (@bind M) ret.
-Proof.
-move: (@bindretf_derived M joinretM).
-rewrite (_ : bind_of_join _ = @bind M) //.
-apply funext_dep => A; apply funext_dep => B.
-apply funext_dep => m; apply funext_dep => f.
-by rewrite bindE.
-Qed.
-
-Lemma bindmret : BindLaws.right_neutral (@bind M) ret.
-Proof.
-move: (@bindmret_derived M joinMret).
-rewrite (_ : bind_of_join _ = @bind M) //.
-apply funext_dep => A; apply funext_dep => B.
-apply funext_dep => m; apply funext_dep => f.
-by rewrite bindE.
-Qed.
-
-Lemma bindA : BindLaws.associative (@bind M).
-Proof.
-move: (@bindA_derived M joinA).
-rewrite (_ : bind_of_join _ = @bind M) //.
-apply funext_dep => A; apply funext_dep => B.
-apply funext_dep => m; apply funext_dep => f.
-by rewrite bindE.
-Qed.
-
-End monad_lemmas.
-*)
 
 HB.factory Record isMonad_ret_join (F : UU0 -> UU0) of isFunctor F := {
   ret : idfun ~> F ;
