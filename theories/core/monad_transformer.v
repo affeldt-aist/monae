@@ -644,11 +644,11 @@ Variables (E : functor) (M : monad).
 
 Definition psi' (n : E ~~> M) : E \o M ~~> M := fun X => Join \o n (M X).
 
-Lemma natural_psi' (n : E ~> M) : naturality [the functor of E \o M] M (psi' n).
+Lemma natural_psi' (n : E ~> M) : naturality (E \o M) M (psi' n).
 Proof.
 move=> A B h; rewrite /psi'.
-rewrite -/(Join \o n (M A)) [LHS]compA natural.
-by rewrite -compA (natural n).
+rewrite -/(Join \o n (M A)) [LHS]compA (natural join).
+by rewrite /= -compA (natural n).
 Qed.
 
 HB.instance Definition _ (n : E ~> M) := isNatural.Build

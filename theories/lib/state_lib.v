@@ -446,8 +446,8 @@ Lemma promote_assert_sufficient_condition (M : failMonad) (A : UU0) :
 Proof.
 move=> right_z p q promotable_pq.
 rewrite /promote_assert; apply: boolp.funext => -[x1 x2].
-rewrite 3![in RHS]compE [in RHS]fmapE.
-rewrite 2![in LHS]compE {1}/bassert [in LHS]bind_fmap !bindA.
+rewrite /= [in RHS]fmapE.
+rewrite /= {1}/bassert [in LHS]bind_fmap !bindA.
 bind_ext => s.
 rewrite bindA; under eq_bind do rewrite bindretf.
 case: assertPn => ps; last first.
@@ -566,16 +566,16 @@ Proof.
 apply: boolp.funext => -[n1 n2].
 elim: n1 => [|n1 IH].
   rewrite [in LHS]compE uaddnE add0n.
-  rewrite compE [in X in _ = _ X]/= squaringE symbols0.
-  rewrite compE [in RHS]fmapE bindA bindretf.
+  rewrite -[RHS]/(fmap _ _) squaringE symbols0.
+  rewrite [in RHS]fmapE bindA bindretf.
   rewrite -fmapE fmap_bind.
   Open (X in _ >>= X).
     rewrite fcompE fmapE bindretf /=; reflexivity.
   by rewrite bindmret.
-rewrite compE uaddnE addSn symbolsS -uaddnE -(compE symbols) {}IH.
-rewrite [in RHS]compE [in X in _ = _ X]/= squaringE symbolsS.
-rewrite [in RHS]compE -/(fmap _ _) fmap_bind bindA; bind_ext => a.
-rewrite 2![in LHS]compE [in LHS]fmap_bind [in LHS]bindA [in RHS]bindA.
+rewrite [in LHS]compE uaddnE addSn symbolsS -uaddnE -(compE symbols) {}IH.
+rewrite -[RHS]/(fmap _ _) squaringE symbolsS.
+rewrite -/(fmap _ _) fmap_bind bindA; bind_ext => a.
+rewrite /= [in LHS]fmap_bind [in LHS]bindA [in RHS]bindA.
 bind_ext => s.
 rewrite [in RHS]bindretf [in RHS]fcompE [in RHS]fmap_bind.
 rewrite [in LHS]fcompE [in LHS]bind_fmap [in LHS]bindA.

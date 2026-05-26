@@ -558,7 +558,7 @@ rewrite [LHS]compA.
 rewrite [RHS]compA.
 congr (_ \o _).
 rewrite (FCompE U0 F0) -[in RHS](@functor_o U0) -[in LHS](@functor_o U0).
-congr (_ # _).
+congr (U0 # _).
 by rewrite -(natural (AdjointFunctor.eta H)).
 Qed.
 
@@ -594,7 +594,7 @@ apply: (@AdjointFunctor.mk _ _ uni couni).
 rewrite /TriangularLaws.right => A.
 rewrite /couni /uni /=.
 rewrite compA -[RHS](AdjointFunctor.tri_right H0 (U A)); congr (_ \o _).
-rewrite FCompE -functor_o; congr (_ # _).
+rewrite FCompE -functor_o; congr (U0 # _).
 rewrite functor_o -compA -FCompE.
 rewrite (natural (AdjointFunctor.eta H)) FIdE.
 by rewrite compA (AdjointFunctor.tri_right H) compidf.
@@ -698,10 +698,9 @@ Proof. by []. Qed.
 Lemma naturality_mpair (M : monad) (A B : UU0) (f : A -> B) (g : A -> M A):
   (M # f^`2) \o (mpair \o g^`2) = mpair \o ((M # f) \o g)^`2.
 Proof.
-apply boolp.funext => -[a0 a1].
-rewrite compE fmap_bind.
-rewrite compE mpairE compE bind_fmap; bind_ext => a2.
-rewrite fcompE fmap_bind 2!compE bind_fmap; bind_ext => a3.
+apply/boolp.funext => -[a0 a1]/=.
+rewrite fmap_bind bind_fmap; bind_ext => a2/=.
+rewrite fcompE fmap_bind bind_fmap; bind_ext => a3/=.
 by rewrite fcompE -(compE (M # f^`2)) (natural ret) FIdE.
 Qed.
 

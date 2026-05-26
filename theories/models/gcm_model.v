@@ -374,7 +374,11 @@ Qed.
 
 Let idfun_is_biglub_affine (a : semiCompSemiLattConvType R) :
   biglub_affine (@idfun a).
-Proof. by split => //; exact: biglub_morph. Qed.
+Proof.
+(* rewrite idfun -> ssrfun.idfun is necessary here because BiglubMorph is
+   instantiated only for ssrfun.idfun, not for polymorphic preamble.idfun *)
+by split => //; rewrite (_ : idfun = ssrfun.idfun)//; exact: biglub_morph.
+Qed.
 
 HB.instance Definition _ := isCategory.Build (semiCompSemiLattConvType R)
   (fun U : semiCompSemiLattConvType R => U) biglub_affine idfun_is_biglub_affine

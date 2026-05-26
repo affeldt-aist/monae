@@ -18,6 +18,8 @@ Unset Printing Implicit Defensive.
 
 Local Open Scope monae_scope.
 
+(* TODO: remove `the functor of` *)
+
 Section comp.
 Variables (M N : monad).
 Definition ret_comp : idfun ~~> M \o N := (@ret M) \h (@ret N).
@@ -38,7 +40,7 @@ Definition JOIN : (M \o N) \o (M \o N) ~~> M \o N := fun _ => Join \o M # prod.
 Arguments JOIN {_}.
 
 Definition prod1 := forall (A B : UU0) (f : A -> B), prod \o N # ([the functor of M \o N] # f) = [the functor of M \o N] # f \o prod.
-Definition prod2 := forall A, prod \o Ret = id :> (_ -> (M \o N) A).
+Definition prod2 := forall A, prod \o (@ret N ((M \o N) _)) = id :> (_ -> (M \o N) A).
 Definition prod3 := forall A, prod \o N # CRet M N _ = Ret :> (_ -> (M \o N) A).
 Definition prod4 := forall A, prod \o N # JOIN = JOIN \o prod :> (_ -> (M \o N) A).
 Hypothesis Hprod1 : prod1.
@@ -70,7 +72,7 @@ move=> A; rewrite /JOIN'.
 rewrite /=.
 rewrite /CRet.
 rewrite compA.
-rewrite -(compA Join (M # prod) Ret) (natural ret).
+rewrite -(compA Join (M # prod) Ret) (natural (@ret M)).
 by rewrite [LHS]compA (compA Join) joinretM compidf Hprod2.
 Qed.
 
@@ -127,7 +129,7 @@ move=> A B g; apply/esym; rewrite {1}/JOIN -compA Hdorp1.
 rewrite [LHS]compA.
 rewrite (FCompE M N (N # g)).
 rewrite -(@functor_o M).
-rewrite -natural.
+rewrite -(natural join).
 by rewrite functor_o.
 Qed.
 
@@ -206,7 +208,7 @@ Fact JOIN_dorp A : @JOIN A = M # Join \o dorp.
 Proof. by rewrite /dorp. Qed.
 
 Definition swap1 := forall (A B : UU0) (f : A -> B), swap \o N # (M # f) = M # (N # f) \o swap .
-Definition swap2 := forall A, @swap A \o Ret = M # Ret :> (M A -> (M \o N) A).
+Definition swap2 := forall A, @swap A \o (@ret N (M _)) = M # Ret :> (M A -> (M \o N) A).
 Definition swap3 := forall A, @swap A \o N # Ret = Ret :> (N A -> (M \o N) A).
 Definition swap4 := forall A, (@prod A) \o N # (@dorp _) = (@dorp _) \o (@prod _).
 Hypothesis Hswap1 : swap1.
@@ -218,7 +220,7 @@ Lemma prod1 : Prod.prod1 (@prod).
 Proof.
 move=> A B f; rewrite {1}/prod.
 rewrite -[LHS]compA Hswap1 (compA (M # Join)) -functor_o.
-by rewrite -natural functor_o -compA.
+by rewrite -(natural join)/= functor_o -compA.
 Qed.
 
 Lemma prod2 : Prod.prod2 (@prod).
@@ -252,7 +254,7 @@ Qed.
 Lemma dorp2 : Dorp.dorp2 (@dorp).
 Proof.
 move=> A; rewrite /dorp /CRet (compA (Join \o M # swap)) -(compA Join).
-by rewrite (natural ret) (compA Join) joinretM compidf Hswap2.
+by rewrite (natural (@ret M)) (compA Join) joinretM compidf Hswap2.
 Qed.
 
 Lemma dorp3 : Dorp.dorp3 (@dorp).
@@ -388,7 +390,5 @@ have @join : [the functor of (T \o S) \o (T \o S)] ~> [the functor of T \o S].
   apply: HComp.
     exact: f.
   exact: NId.
-apply: (Monad.Pack (Monad.Class (isMonad.Axioms_ (CRet T S) join _ _ _ _ _))).
-move=> A.
-rewrite /join.
+(* construct monad using (CRet T S) and join... *)
 Abort.
