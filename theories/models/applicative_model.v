@@ -339,3 +339,57 @@ End join.
 
 End theory.
 End Const.
+
+Module Validation.
+
+Section validation.
+Inductive Validation (E : UU0) (op : SemiGroup.law E) (T : UU0) : UU0 :=
+  | Fail of E 
+  | Succ of T.
+
+Variable (E : UU0) (op : SemiGroup.law E).
+Definition pure A (a : A) : Validation op A := Succ _ a. 
+Definition apply A B (f : Validation op (A -> B)) (a : Validation op A) : 
+  Validation op B := 
+  match f, a with 
+  | Fail fe, Fail ae => Fail _ _ (op fe ae)
+  | Fail fe, Succ a' => Fail _ _ fe
+  | Succ f', Fail ae => Fail _ _ ae 
+  | Succ f', Succ a' => Succ _ (f' a')
+  end.
+
+Let afidentity : ApplicativeLaws.identity pure apply.
+Proof.
+move=> A.
+apply: boolp.funext => x.
+rewrite /apply /pure.
+by case: x; move => i //.
+Qed.
+
+Let afcomposition : ApplicativeLaws.composition pure apply.
+Proof.
+move=> A B C u v.
+apply: boolp.funext => x.
+rewrite /apply /pure.
+case: u; move => ?; case: v; move => ?; case: x; move => ? // /=.
+by rewrite SemiGroup.mulmA.
+Qed.
+
+Let afhomomorphism : ApplicativeLaws.homomorphism pure apply.
+Proof.
+move=> A B f x.
+by rewrite /apply /pure //.
+Qed.
+
+Let afinterchange : ApplicativeLaws.interchange pure apply.
+Proof.
+move=> A B f x.
+by rewrite /apply /pure.
+Qed.
+
+HB.instance Definition _ :=
+  isApplicativeFunctor.Build
+    (Validation op) afidentity afcomposition afhomomorphism afinterchange.
+
+End validation.
+End Validation.
