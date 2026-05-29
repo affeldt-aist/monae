@@ -257,6 +257,8 @@ End join_diag.
 End theory.
 End Tuple.
 
+
+(* ----------------------------------------------------------------- *)
 Module Const.
 
 Section def.
@@ -323,21 +325,59 @@ Let join : F \o F ~> F := join'.
 Let joinretM : JoinLaws.left_unit ret join.
 Proof.
 move=> A; apply: boolp.funext => /= t /=.
-rewrite /pure.
 Abort.
 (* Seems impossible, for any definition of join: how can one recover t ? *)
 
-Let joinMret : JoinLaws.right_unit ret join.
+Section non_monad.
+(*
+Definition.
+  Const T is monad iff. exists join, monad laws hold for (pure, join)
+
+There are two ways to say Const T is not a monad.
+H1 : forall T : monoid, Const T is monad -> False 
+H2 : (forall T : monoid, Const T is monad) -> False
+
+H1 is not true, because we can choose T to be a single point monoid {e}
+H2 can be proved, without using LEM, by 
+H2' : exists T : monoid, forall join, monad laws -> False
+Thus we are free to choose a monoid.
+*)
+
+(*Suppose there exists a monoid T, such that, at least two elements in it *)
+Variable e' : T.
+Variable e'ne : ~ e' = e.
+
+(* For any join, with law,*)
+Variable join'' : F \o F ~> F.
+Variable lu : JoinLaws.left_unit ret join''.
+
+Lemma lu_expand : forall A (x : F A), join'' A (Ret x) = x.
 Proof.
-move=> A; apply: boolp.funext => /= t /=.
-by rewrite /join /actm /= /join' /pure /apply Monoid.mul1m.
+move => A x.
+have H : forall (A B : UU0) (f : B -> A) (g : A -> B) (x : A), (f \o g) x = id x -> f (g x) = x.
+- by [].
+apply H.
+by rewrite lu //.
 Qed.
 
-Let joinA : JoinLaws.associativity join.
-Proof. by []. Qed.
-End join.
+Lemma contradiction : False.
+Proof.
+have lu' := @lu_expand unit.
+apply: e'ne.
+by rewrite -(lu' e') -(lu' e).
+Qed.
 
+End non_monad.
+End join.
 End theory.
+
+Theorem constNonMonad : 
+  (forall (T : UU0) (e : T) (op : Monoid.law e), ApplicativeFunctor_isMonad (Const op)) -> False.
+move => H.
+have H' := @H nat 0 addn.
+have neq : 1 <> 0. done.
+by exact (contradiction neq (ApplicativeFunctor_isMonad.join H') (ApplicativeFunctor_isMonad.joinretM H')).
+Qed.
 End Const.
 
 Module Validation.
