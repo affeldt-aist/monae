@@ -853,7 +853,7 @@ HB.mixin Record isMonadNondet (M : UU0 -> UU0) of MonadFail M & MonadAlt M := {
 HB.structure Definition MonadNondet := {M of isMonadNondet M & }.
 
 #[short(type=nondetCIMonad)]
-HB.structure Definition MonadCINondet := {M of MonadAltCI M & MonadNondet M }.
+HB.structure Definition MonadCINondet := {M of MonadAltCI M & MonadNondet M}.
 
 Section nondet_big.
 Variables (M : nondetMonad) (A : UU0).
@@ -1152,7 +1152,6 @@ HB.mixin Record isMonadExceptStateRun
 #[short(type=exceptStateRunMonad)]
 HB.structure Definition MonadExceptStateRun (S : UU0) (N : exceptMonad) :=
   {M of isMonadExceptStateRun S N M & }.
-
 
 HB.mixin Record isMonadReify (S : UU0) (M : UU0 -> UU0) of Monad M := {
   reify : forall A : UU0, M A -> S -> option (A * S)%type ;
