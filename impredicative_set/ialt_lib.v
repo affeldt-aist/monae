@@ -1,7 +1,6 @@
 (* monae: Monadic equational reasoning in Rocq                                *)
 (* Copyright (C) 2025 monae authors, license: LGPL-2.1-or-later               *)
 From mathcomp Require Import all_ssreflect.
-From mathcomp Require boolp.
 Require Import ipreamble.
 From HB Require Import structures.
 Require Import ihierarchy imonad_lib.
@@ -88,9 +87,9 @@ Lemma arbitrary_cons (T : UU0) (def : T) h t : 0 < size t ->
 Proof.
 move: def h; elim: t => // a [//|b [|c t]] ih def h _.
 - by rewrite arbitrary2.
-- by rewrite /arbitrary /= altA altC (altC (Ret b)).
-- move: (ih a h erefl); rewrite /arbitrary /= => ->.
-  move: (ih h a erefl); rewrite /arbitrary /= => ->.
+- by rewrite /arbitrary !compE /= altA altC (altC (Ret b)).
+- move: (ih a h erefl); rewrite /arbitrary !compE /= => ->.
+  move: (ih h a erefl); rewrite /arbitrary !compE /= => ->.
   by rewrite altCA.
 Qed.
 
@@ -101,7 +100,7 @@ Lemma arbitrary_naturality (T U : UU0) (a : T) (b : U) (f : T -> U) :
 Proof.
 elim=> // x [_ _ | x' xs /(_ isT)].
   by rewrite [in LHS]compE fmapE bindretf.
-rewrite [in X in X -> _]/= fmapE => ih _.
+rewrite [in X in X -> _]/= compE fmapE => ih _.
 rewrite [in RHS]compE [in RHS]/= [in RHS](arbitrary_cons b) // [in LHS]compE.
 by rewrite [in LHS]arbitrary_cons // fmapE /= alt_bindDl bindretf /= ih.
 Qed.
@@ -256,7 +255,7 @@ Local Open Scope mprog.
 Lemma insert_map (A B : UU0) (f : A -> B) (a : A) :
   insert (f a) \o map f = map f (o) insert a :> (_ -> M _).
 Proof.
-apply boolp.funext; elim => [|y xs IH].
+apply funext; elim => [|y xs IH].
   by rewrite fcompE insertE -(compE (fmap (map f))) (natural ret) compE insertE.
 apply/esym.
 rewrite fcompE insertE alt_fmapDr.
@@ -264,7 +263,7 @@ rewrite fcompE insertE alt_fmapDr.
 rewrite -(compE (fmap (map f))) (natural ret) FIdE [in X in X [~] _ ]/=.
 (* second branch *)
 rewrite -fmap_oE (_ : map f \o cons y = cons (f y) \o map f) //.
-by rewrite fmap_oE -(fcompE (map f)) -IH [RHS]/= insertE.
+by rewrite fmap_oE -(fcompE (map f)) -IH [RHS]compE insertE.
 Qed.
 
 Hypothesis Mmm : forall A, idempotent_op (@alt _ A : M A -> M A -> M A).
@@ -275,39 +274,42 @@ Lemma filter_insertN a : ~~ p a ->
   forall s, (filter p (o) insert a) s = Ret (filter p s) :> M _.
 Proof.
 move=> pa; elim => [|h t IH].
-  by rewrite fcompE insertE -(compE (fmap _)) (natural ret) FIdE /= (negbTE pa).
+  rewrite fcompE insertE -(compE (fmap _)) (natural ret) FIdE.
+  by rewrite compE/= (negbTE pa).
 rewrite fcompE insertE alt_fmapDr.
-rewrite -(compE (fmap _)) (natural ret) FIdE [in X in X [~] _]/= (negbTE pa).
+rewrite -(compE (fmap _)) (natural ret) FIdE.
+rewrite [in X in X [~] _]compE/= (negbTE pa).
 case: ifPn => ph.
 - rewrite -fmap_oE (_ : filter p \o cons h = cons h \o filter p); last first.
-    by apply boolp.funext => x /=; rewrite ph.
+    by apply funext => x /=; rewrite !compE/= ph.
   rewrite fmap_oE.
   move: (IH); rewrite fcompE => ->.
-  by rewrite fmapE /= ph bindretf /= Mmm.
+  by rewrite fmapE bindretf compE Mmm.
 - rewrite -fmap_oE (_ : filter p \o cons h = filter p); last first.
-    by apply boolp.funext => x /=; rewrite (negbTE ph).
-  by move: (IH); rewrite fcompE => -> /=; rewrite (negbTE ph) Mmm.
+    by apply funext => x /=; rewrite compE/= (negbTE ph).
+  by move: (IH); rewrite fcompE => ->; rewrite Mmm.
 Qed.
 
 Lemma filter_insertT a : p a ->
   filter p (o) insert a = insert a \o filter p :> (_ -> M _).
 Proof.
-move=> pa; apply boolp.funext; elim => [|h t IH].
-  by rewrite fcompE !insertE fmapE bindretf /= pa.
-rewrite fcompE [in RHS]/=; case: ifPn => ph.
+move=> pa; apply funext; elim => [|h t IH].
+  by rewrite fcompE !insertE fmapE bindretf compE/= pa.
+rewrite fcompE compE [in RHS]/=; case: ifPn => ph.
 - rewrite [in RHS]insertE.
-  move: (IH); rewrite [in X in X -> _]/= => <-.
+  move: (IH); rewrite compE [in X in X -> _]/= => <-.
   rewrite [in LHS]insertE alt_fmapDr; congr (_ [~] _).
-    by rewrite fmapE bindretf /= pa ph.
+    by rewrite fmapE bindretf compE/= pa ph.
   rewrite !fmapE /= fcompE bind_fmap bindA.
-  under [LHS]eq_bind do rewrite bindretf.
+  under [LHS]eq_bind do rewrite bindretf compE.
   by rewrite /= ph.
 - rewrite [in LHS]insertE alt_fmapDr.
   rewrite -[in X in _ [~] X = _]fmap_oE.
   rewrite (_ : (filter p \o cons h) = filter p); last first.
-    by apply boolp.funext => x /=; rewrite (negbTE ph).
+    by apply funext => x /=; rewrite compE/= (negbTE ph).
   move: (IH); rewrite fcompE => ->.
-  rewrite fmapE bindretf /= pa (negbTE ph) [in RHS]insertE; case: (filter _ _) => [|h' t'].
+  rewrite fmapE bindretf !compE/= pa (negbTE ph) [in RHS]insertE.
+  case: (filter _ _) => [|h' t'].
     by rewrite insertE Mmm.
   by rewrite !insertE altA Mmm.
 Qed.
@@ -334,13 +336,14 @@ Qed.
 
 Lemma rev_insert : rev (o) insert a = insert a \o rev :> (_ -> M _).
 Proof.
-apply boolp.funext; elim => [|h t ih].
+apply funext; elim => [|h t ih].
   by rewrite fcompE insertE fmapE bindretf.
 rewrite fcompE insertE compE alt_fmapDr fmapE bindretf compE [in RHS]rev_cons.
 rewrite insert_rcons rev_cons -cats1 rev_cons -cats1 -catA; congr (_ [~] _).
-move: ih; rewrite fcompE [X in X -> _]/= => <-.
-rewrite -!fmap_oE. congr (fmap _ (insert a t)).
-by apply boolp.funext => s; rewrite /= -rev_cons.
+move: ih; rewrite fcompE compE [X in X -> _]/= => <-.
+rewrite -!fmap_oE.
+congr (fmap _ (insert a t)).
+by apply funext => s; rewrite !compE/= -rev_cons.
 Qed.
 
 End insert_altCIMonad.
@@ -356,7 +359,7 @@ Local Open Scope mprog.
 Lemma iperm_o_map (A B : UU0) (f : A -> B) :
   iperm \o map f = map f (o) iperm :> (_ -> M _).
 Proof.
-apply boolp.funext; elim => [/=|x xs IH].
+apply funext; elim => [/=|x xs IH].
   by rewrite fcompE [iperm _]/= -[in RHS]compE (natural ret).
 by rewrite fcompE [in iperm _]/= fmap_bind -insert_map -bind_fmap -fcompE -IH.
 Qed.
@@ -368,7 +371,7 @@ Variables (A : UU0) (p : pred A).
 (* netys2017 *)
 Lemma iperm_filter : iperm \o filter p = filter p (o) iperm :> (_ -> M _).
 Proof.
-apply boolp.funext; elim => [|h t /= IH].
+apply funext; elim => [|h t /[!compE] /= IH].
   by rewrite fcompE fmapE bindretf.
 case: ifPn => ph.
   rewrite [in LHS]/= IH [in LHS]fcomp_def compE [in LHS]bind_fmap.
@@ -460,7 +463,7 @@ Lemma lrefin_trans A B (b a c : A -> M B) : a `<.=` b -> b `<.=` c -> a `<.=` c.
 Proof. by move => ? ? ?; exact: refin_trans. Qed.
 
 Lemma lrefin_antisym A B (a b : A -> M B) : a `<.=` b -> b `<.=` a -> a = b.
-Proof. move => ? ?; apply boolp.funext => ?; exact: refin_antisym. Qed.
+Proof. move => ? ?; apply funext => ?; exact: refin_antisym. Qed.
 End lrefin_lemmas_altCIMonad.
 
 Lemma refin_ret_insert (M : altCIMonad) (A : UU0) h (t : seq A) :

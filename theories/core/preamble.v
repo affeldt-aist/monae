@@ -22,7 +22,7 @@ Arguments ssrfun.comp {A B C} : simpl never.
 (*         curry/uncurry == currying for pairs                                *)
 (*       curry3/uncurry3 == currying for triples                              *)
 (*        comparePc/eqPc == computable version of equality axioms             *)
-(*  coerce T1 (v : f T1) == some (f T2) if T1 = T2 and None o.w.              *)
+(*  coerce T1 (v : f T1) == Some (f T2) if T1 = T2 and None o.w.              *)
 (* ```                                                                        *)
 (*                                                                            *)
 (******************************************************************************)
