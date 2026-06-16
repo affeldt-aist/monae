@@ -69,7 +69,7 @@ Proof.
 move=> A; rewrite /JOIN'.
 rewrite /=.
 rewrite /CRet.
-rewrite compA.
+rewrite (compA JOIN).
 rewrite -(compA Join (M # prod) Ret) (natural ret).
 by rewrite [LHS]compA (compA Join) joinretM compidf Hprod2.
 Qed.
@@ -78,7 +78,8 @@ Lemma JOIN_fmap_ret : JoinLaws.right_unit (@CRet M N) (@JOIN').
 Proof.
 move=> A.
 rewrite /JOIN' /=.
-rewrite -compA.
+rewrite -(compA Join).
+rewrite -[LHS]compA.
 rewrite FCompE.
 rewrite -(@functor_o M).
 by rewrite Hprod3 joinMret.
@@ -87,14 +88,14 @@ Qed.
 Lemma JOIN_fmap_JOIN : JoinLaws.associativity (@JOIN').
 Proof.
 move=> A; rewrite {1 2}/JOIN' -[LHS]compA /=.
-rewrite -functor_o.
+rewrite -(@functor_o M).
 rewrite Hprod4.
 rewrite {1}/JOIN.
 rewrite -(compA Join (M # prod) prod).
 rewrite functor_o.
 rewrite [LHS]compA.
 rewrite joinA.
-rewrite -compA.
+rewrite -(compA Join).
 rewrite functor_o.
 rewrite (compA Join (M # (M # prod)) (M # prod)).
 by rewrite -(natural _).

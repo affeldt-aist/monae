@@ -86,7 +86,7 @@ Lemma mfoldl_rev (T R : UU0) (f : R -> T -> R) (z : R)
   foldl f z (o) (rev (o) s) = foldr (fun x => f^~ x) z (o) s.
 Proof.
 apply boolp.funext => x; rewrite !fcompE 3!fmapE !bindA.
-bind_ext => ?; by rewrite bindretf /= -foldl_rev.
+by bind_ext => ?; rewrite bindretf compE foldl_rev.
 Qed.
 Local Close Scope mprog.
 
@@ -589,15 +589,15 @@ apply: (@AdjointFunctor.mk _ _ uni couni).
   rewrite (_ : @eps0 _ \o F0 # _ = @eta (F0 A)).
     exact: (AdjointFunctor.tri_left H).
   rewrite functor_o [LHS]compA -FCompE.
-  rewrite -(natural (AdjointFunctor.eps H0)) /= FIdE -compA.
+  rewrite -(natural (AdjointFunctor.eps H0)) /= FIdE -[LHS]compA.
   by rewrite (AdjointFunctor.tri_left H0) compfid.
 rewrite /TriangularLaws.right => A.
 rewrite /couni /uni /=.
-rewrite compA -[RHS](AdjointFunctor.tri_right H0 (U A)); congr (_ \o _).
-rewrite FCompE -functor_o; congr (_ # _).
-rewrite functor_o -compA -FCompE.
+rewrite [LHS]compA -[RHS](AdjointFunctor.tri_right H0 (U A)); congr (_ \o _).
+rewrite FCompE -(@functor_o U0); congr (_ # _).
+rewrite functor_o -compA.
 rewrite (natural (AdjointFunctor.eta H)) FIdE.
-by rewrite compA (AdjointFunctor.tri_right H) compidf.
+by rewrite [LHS]compA (AdjointFunctor.tri_right H) compidf.
 Qed.
 
 End composite_adjoint.

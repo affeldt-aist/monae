@@ -119,7 +119,7 @@ apply: (@refin_trans _ _ (splits xs >>=
   rewrite bindretf; exact: refin_refl.
 under eq_bind do rewrite -bindA -assertE.
 rewrite -bindA; apply: (refin_trans _ (refin_bindr _ (ih _))).
-rewrite bindretf; case: ifPn => ?; exact: refin_refl.
+rewrite !compE/= bindretf; case: ifPn => ?; exact: refin_refl.
 Qed.
 
 End partition.
@@ -182,7 +182,7 @@ exists (ndBind syn (fun a => ndBind
   (if sorted a then ndRet tt else ndFail unit)
   (fun _ : unit => ndRet a))).
 rewrite /= syn_qperm; bind_ext => s' /=.
-case: ifPn => sorteds'.
+rewrite !compE/=; case: ifPn => sorteds'.
   by rewrite /= bindretf assertE sorteds' guardT bindskipf.
 by rewrite /= assertE (negbTE sorteds') guardF bindfailf.
 Qed.
@@ -294,6 +294,7 @@ Qed.
 Lemma qsort_spec : Ret \o qsort `<.=` (@slowsort M _ _).
 Proof.
 move=> s /=.
+rewrite !compE/=.
 apply qsort_elim => [|h t ihys ihzs].
   rewrite slowsort_nil; exact: refin_refl.
 apply: (refin_trans _ (partition_slowsort_spec _)).

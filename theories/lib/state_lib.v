@@ -241,7 +241,7 @@ rewrite [in LHS]/=.
 rewrite Hx size_f /bassert !bindA.
 bind_ext => -[x1 x2].
 case: assertPn; rewrite ltnS => b1b2; last by rewrite !bindfailf.
-rewrite !bindretf /g/=.
+rewrite !bindretf /g compE/=.
 case: Bool.bool_dec => // x2t.
 by case: (IH x2) => // x0 <-; rewrite fmapE.
 Qed.
@@ -454,7 +454,7 @@ case: assertPn => ps; last first.
   rewrite bindfailf.
   With (idtac) Open (X in _ >>= X).
     rewrite /assert; unlock => /=.
-    rewrite (negbTE (segment_closed_suffix ps x)) guardF bindfailf.
+    rewrite compE (negbTE (segment_closed_suffix ps x)) guardF bindfailf.
     reflexivity.
   by rewrite right_z.
 rewrite bindretf bindA /=.
@@ -462,9 +462,9 @@ under [RHS]eq_bind do rewrite bindretf.
 rewrite bindA.
 bind_ext => t.
 case: (assertPn _ _ t) => pt; last first.
-  rewrite bindfailf assertE (negbTE (segment_closed_prefix pt s)) guardF.
+  rewrite bindfailf compE assertE (negbTE (segment_closed_prefix pt s)) guardF.
   by rewrite bindfailf.
-by rewrite bindretf /=  2!assertE promotable_pq //= bindA bindretf.
+by rewrite bindretf compE/= 2!assertE promotable_pq //= bindA bindretf.
 Qed.
 
 Section examples_promotable_segment_closed.
@@ -601,7 +601,7 @@ rewrite putget.
 rewrite bindA.
 rewrite bindretf.
 rewrite putput.
-by rewrite /= addSnnS.
+by rewrite compE/= addSnnS.
 Qed.
 
 End tick_fusion.

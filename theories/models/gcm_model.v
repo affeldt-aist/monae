@@ -195,7 +195,7 @@ Let affine_idfun' (U : convType R) : affine (@idfun U). Proof. by []. Qed.
 
 Let affine_comp' (a b c : convType R) (f : a -> b) (g : b -> c) :
   affine f -> affine g -> affine (g \o f).
-Proof. by move=> hf hg ? ? ? /=; rewrite hf hg. Qed.
+Proof. by move=> hf hg ? ? ? /=; rewrite compE hf hg. Qed.
 
 HB.instance Definition _ := isCategory.Build (convType R) (fun A : convType R => A)
   _ affine_idfun' affine_comp'.
@@ -302,7 +302,7 @@ Let eps0' : F0 \O U0 ~~> FId := fun a =>
 Let eps0'_natural : naturality _ _ eps0'.
 Proof.
 move=> C D f; rewrite FCompE /= /id_f; apply funext => d /=.
-by rewrite Convn_of_fsdistmap.
+by rewrite compE Convn_of_fsdistmap.
 Qed.
 
 HB.instance Definition _ := isNatural.Build _ _ _ _ _ eps0'_natural.
@@ -316,7 +316,7 @@ Let eta0' : FId ~~> U0 \O F0 := fun T =>
 
 Lemma eta0'_natural : naturality _ _ eta0'.
 Proof.
-by move=> a b h; rewrite funeqE=> x; rewrite FIdf /eta0' /= fsdistmap1.
+by move=> a b h; rewrite funeqE=> x; rewrite FIdf /eta0' compE/= fsdistmap1.
 Qed.
 
 HB.instance Definition _ := isNatural.Build _ _ _ _ _ eta0'_natural.
@@ -331,12 +331,12 @@ Local Open Scope ring_scope.
 
 Lemma triL0 : TriangularLaws.left eta0 eps0.
 Proof.
-by move=> c; apply funext=> x /=; rewrite eps0E eta0E triangular_laws_left0.
+by move=> c; apply funext=> x /=; rewrite eps0E eta0E compE triangular_laws_left0.
 Qed.
 
 Lemma triR0 : TriangularLaws.right eta0 eps0.
 Proof.
-by move=> c; rewrite eps0E eta0E funeqE => a /=; rewrite Convn_of_fsdist1.
+by move=> c; rewrite eps0E eta0E funeqE => a /=; rewrite compE Convn_of_fsdist1.
 Qed.
 
 End eps0_eta0.
@@ -367,9 +367,9 @@ Let comp_is_biglub_affine (a b c : semiCompSemiLattConvType R)
   biglub_affine f -> biglub_affine g -> biglub_affine (g \o f).
 Proof.
 move=> [bf af] [bg ag]; split => x/=.
-  rewrite bf bg/=;congr (biglub _).
+  rewrite compE bf bg/=; congr (biglub _).
   by apply/neset_ext => /=; rewrite image_comp.
-by move=> ? ? /=; rewrite af ag.
+by move=> ? ? /=; rewrite compE af ag.
 Qed.
 
 Let idfun_is_biglub_affine (a : semiCompSemiLattConvType R) :
@@ -577,7 +577,7 @@ Let eps1' : F1 \O U1 ~~> FId := fun L => Hom.Pack (Hom.Class (isHom.Axioms_
 Lemma eps1'_natural : naturality _ _ eps1'.
 Proof.
 move=> K L f /=; rewrite funeqE => X /=.
-rewrite biglub_morph; congr (|_| _).
+rewrite compE biglub_morph; congr (|_| _).
 by rewrite free_semiCompSemiLattConvType_morE.
 Qed.
 
@@ -626,7 +626,7 @@ rewrite eqEsubset eta1E; split=> a.
 Qed.
 
 Lemma triR1 : TriangularLaws.right eta1 eps1.
-Proof. by move=> c; apply funext=> /= x; rewrite eps1E eta1E /= biglub1. Qed.
+Proof. by move=> c; apply funext=> /= x; rewrite eps1E eta1E compE biglub1. Qed.
 
 End eps1_eta1.
 
@@ -738,7 +738,7 @@ rewrite /= /join_ /= /Monad_of_category_monad.join /= !HCompId !HIdComp eps1E.
 rewrite functor_o NEqE functor_id compfid.
 rewrite 2!VCompE_nat HCompId HIdComp.
 set E := epsC _; have->: E = [hom idfun] by apply/hom_ext; rewrite epsCE.
-rewrite functor_id_hom.
+rewrite functor_id_hom/=.
 rewrite !functor_o functor_id !compfid.
 set F1J := F1 # _.
 have-> : F1J = @necset_join.F1join0 _ _ :> (_ -> _).
@@ -772,11 +772,15 @@ Local Open Scope monae_scope.
 
 Lemma JoinE T : (Join : (N \o N) T -> N T) = (Join : (M R \o M R) T -> M R T).
 Proof.
-apply funext => t /=.
+apply: funext => t /=.
 rewrite /join_.
 rewrite [in LHS]/= HCompId HIdComp [X in _ (X t)]/=.
 rewrite /actm [in LHS]/=.
 rewrite epsCE.
+(* NB: the equation here involves `comp` in its type, therefore naive rewriting with
+   `compE` first matches its type part and leads to a dependent-type error.
+   To avoid that, the pattern specifier `in LHS` is necessary. *)
+rewrite ![in LHS]compE.
 rewrite eps0_correct.
 rewrite /fsdistjoin /fsdistmap /= fsdistbindA /=.
 congr fsdistbind.

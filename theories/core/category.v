@@ -499,7 +499,7 @@ Proof.
 apply nattrans_ext => c /=.
 rewrite compidf compfid [in LHS]HCompE [in RHS]HCompE.
 rewrite [in LHS]HCompE hom_compA -functor_o; congr [\o _, _].
-by congr (_ # _); apply hom_ext; rewrite HCompE.
+by congr (F'' # _); apply hom_ext; rewrite HCompE.
 Qed.
 Lemma HCompA c : ((u \h t) \h s) c = (u \h (t \h s)) c.
 Proof. by rewrite hom_ext HCompA_def. Qed.
@@ -532,7 +532,8 @@ Variables (s' : G ~> H) (t' : G' ~> H').
 Lemma HCompACA : (t' \h s') \v (t \h s) = (t' \v t) \h (s' \v s).
 Proof.
 apply nattrans_ext => c /=.
-rewrite !HCompE !VCompE -compA -[in RHS]compA; congr (_ \o _).
+rewrite 3!HCompE VCompE VCompE_nat functor_o.
+rewrite -[in LHS]compA -[in RHS]compA; congr (_ \o _).
 by rewrite natural_head -functor_o.
 Qed.
 End hcomp_lemmas.
@@ -851,7 +852,7 @@ Qed.
 Let fmap_o : FunctorLaws.comp fmap.
 Proof.
 move=> a b c g h; apply/hom_ext/funext=>m; rewrite /fmap/=.
-rewrite bindA/=.
+rewrite compE bindA/=.
 congr (fun f => bind f m); rewrite hom_ext/=.
 by rewrite -[in RHS]hom_compA bindretf_fun.
 Qed.
@@ -870,7 +871,7 @@ Let join'_naturality : naturality (F \O F) F join'.
 Proof.
 move => A B h.
 rewrite /join /= funeqE => m /=.
-rewrite fmap_bind bindA /=.
+rewrite compE fmap_bind compE bindA /=.
 congr (fun f => bind f m).
 rewrite hom_ext/=.
 rewrite -[in RHS]hom_compA.
@@ -908,8 +909,9 @@ Qed.
 Lemma joinA : JoinLaws.associativity join.
 Proof.
 move => A; rewrite funeqE => mmma.
-rewrite /join.
-rewrite bind_fmap_fun/= bindA/=.
+rewrite /join/=/join'/=.
+rewrite [X in X _ = _]bind_fmap_fun.
+rewrite [in RHS]compE bindA.
 congr (fun f => bind f mmma).
 by rewrite hom_ext.
 Qed.
@@ -953,9 +955,9 @@ Proof. by move=> a; rewrite joinE triR. Qed.
 Lemma join_right_unit : JoinLaws.right_unit ret join.
 Proof.
 move=> a; rewrite joinE. rewrite /M FCompE.
-rewrite /= -functor_o -[in RHS]functor_id.
+rewrite -(functor_o G) -[in RHS]functor_id.
 congr (G # _).
-by rewrite hom_ext/= triL.
+by rewrite hom_ext/= triL functor_id.
 Qed.
 (*TODO: make this go through
 HB.instance Definition _ :=

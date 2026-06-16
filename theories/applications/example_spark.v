@@ -57,7 +57,7 @@ rewrite insert_rcons.
 rewrite alt_fmapDr fmapE bindretf.
 rewrite -fmap_oE.
 have H : forall w, foldl op b \o rcons^~ w = op^~ w \o foldl op b.
-  by move=> w; rewrite boolp.funeqE => ws /=; rewrite -cats1 foldl_cat.
+  by move=> w; rewrite boolp.funeqE => ws /=; rewrite compE -cats1 foldl_cat.
 rewrite (H y).
 rewrite fmap_oE.
 rewrite fcompE in IH.
@@ -68,7 +68,7 @@ rewrite -{1}compA.
 rewrite fmapE bindretf.
 rewrite (H a).
 rewrite [in X in _ [~] X]/=.
-rewrite opP.
+rewrite !compE opP.
 rewrite /= -!cats1 -catA /=.
 rewrite foldl_cat /=.
 by rewrite altmm.
@@ -95,7 +95,7 @@ rewrite -IH.
 rewrite [in RHS]fcompE.
 rewrite fmapE.
 bind_ext => ys.
-rewrite /= -cats1 foldl_cat /=.
+rewrite !compE/= -cats1 foldl_cat /=.
 congr (Ret _ : M _).
 elim: ys b opP' => // y ys ih /= b opP'.
 rewrite ih //=.
