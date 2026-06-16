@@ -20,13 +20,13 @@ Local Open Scope monae_scope.
 
 Section comp.
 Variables (M N : monad).
-Definition ret_comp : idfun ~~> M \o N := (@ret M) \h (@ret N).
-Lemma naturality_ret : naturality idfun [the functor of M \o N] ret_comp.
+Definition ret_comp : up_idfun ~~> M \o N := (@ret M) \h (@ret N).
+Lemma naturality_ret : naturality up_idfun [the functor of M \o N] ret_comp.
 Proof. by move=> A B h; rewrite -(natural ((@ret M) \h (@ret N))). Qed.
 HB.instance Definition _ := isNatural.Build
-  idfun [the functor of (M \o N)] ret_comp naturality_ret.
+  up_idfun [the functor of (M \o N)] ret_comp naturality_ret.
 End comp.
-Definition CRet (M N : monad) := [the idfun ~> [the functor of M \o N] of ret_comp M N].
+Definition CRet (M N : monad) := [the up_idfun ~> [the functor of M \o N] of ret_comp M N].
 
 Module Prod.
 Section prod.
@@ -127,7 +127,7 @@ move=> A B g; apply/esym; rewrite {1}/JOIN -compA Hdorp1.
 rewrite [LHS]compA.
 rewrite (FCompE M N (N # g)).
 rewrite -(@functor_o M).
-rewrite -natural.
+rewrite -(natural join).
 by rewrite functor_o.
 Qed.
 
@@ -218,7 +218,7 @@ Lemma prod1 : Prod.prod1 (@prod).
 Proof.
 move=> A B f; rewrite {1}/prod.
 rewrite -[LHS]compA Hswap1 (compA (M # Join)) -functor_o.
-by rewrite -natural functor_o -compA.
+by rewrite -(natural join)/= functor_o -compA.
 Qed.
 
 Lemma prod2 : Prod.prod2 (@prod).
@@ -312,13 +312,13 @@ End Swap.
 
 Section nattrans_cast_lemmas.
 Variables (F G : functor).
-Lemma IV : [the functor of idfun \o G] ~> F -> G ~> F.
+Lemma IV : [the functor of up_idfun \o G] ~> F -> G ~> F.
 Proof.
 move=> [s [] [GFs]].
 apply: (@Nattrans.Pack [the functor of G] F _ (Nattrans.Class (isNatural.Axioms_ _ _ _))).
 exact: GFs.
 Qed.
-Lemma VI : [the functor of G \o idfun] ~> F -> G ~> F.
+Lemma VI : [the functor of G \o up_idfun] ~> F -> G ~> F.
 Proof.
 move=> [s [] [GFs]].
 apply: (@Nattrans.Pack [the functor of G] F _ (Nattrans.Class (isNatural.Axioms_ _ _ _))).

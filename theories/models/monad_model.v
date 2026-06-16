@@ -149,12 +149,12 @@ End assoc.
 Module IdentityMonad.
 Section identitymonad.
 Let bind := fun A B (a : A) (f : A -> B) => f a.
-Let left_neutral : BindLaws.left_neutral bind (NId idfun).
+Let left_neutral : BindLaws.left_neutral bind (NId up_idfun).
 Proof. by []. Qed.
-Let right_neutral : BindLaws.right_neutral bind (NId idfun).
+Let right_neutral : BindLaws.right_neutral bind (NId up_idfun).
 Proof. by []. Qed.
 Let associative : BindLaws.associative bind. Proof. by []. Qed.
-Let acto := (@idfun UU0).
+Let acto := (@up_idfun UU0).
 HB.instance Definition _ := isMonad_ret_bind.Build
   acto left_neutral right_neutral associative.
 End identitymonad.
@@ -165,7 +165,7 @@ Module ListMonad.
 Section listmonad.
 Definition acto := fun A : UU0 => seq A.
 Local Notation M := acto.
-Let ret : idfun ~~> M := fun (A : UU0) x => (@cons A) x [::].
+Let ret : up_idfun ~~> M := fun (A : UU0) x => (@cons A) x [::].
 Let bind := fun A B (m : M A) (f : A -> M B) => flatten (map f m).
 Let left_neutral : BindLaws.left_neutral bind ret.
 Proof. by move=> A B m f; rewrite /bind /ret /= cats0. Qed.
@@ -191,7 +191,7 @@ Section setmonad.
 Local Open Scope classical_set_scope.
 Definition acto := set.
 Local Notation M := acto.
-Let ret : idfun ~~> M := @set1.
+Let ret : up_idfun ~~> M := @set1.
 Let bind := fun A B => @bigcup B A.
 Let left_neutral : BindLaws.left_neutral bind ret.
 Proof. move=> ? ? ? ?; exact: bigcup_set1. Qed.
@@ -216,7 +216,7 @@ Section exceptmonad.
 Variable E : UU0.
 Definition acto := fun A : UU0 => (E + A)%type.
 Local Notation M := acto.
-Let ret : idfun ~~> M := @inr E.
+Let ret : up_idfun ~~> M := @inr E.
 Let bind := fun A B (m : M A) (f : A -> M B) =>
   match m with inl z => inl z | inr b => f b end.
 Let left_neutral : BindLaws.left_neutral bind ret.
@@ -264,7 +264,7 @@ Section output.
 Variable L : UU0.
 Definition acto := fun X : UU0 => (X * seq L)%type.
 Local Notation M := acto.
-Let ret : idfun ~~> M := fun A a => (a, [::]).
+Let ret : up_idfun ~~> M := fun A a => (a, [::]).
 Let bind := fun (A B : UU0) (m : M A) (f : A -> M B) =>
   let: (x, w) := m in let: (x', w') := f x in (x', w ++ w').
 Let left_neutral : BindLaws.left_neutral bind ret.
@@ -292,7 +292,7 @@ Section reader.
 Variable E : UU0.
 Definition acto := fun A : UU0 => E -> A.
 Local Notation M := acto.
-Definition ret : idfun ~~> M := fun A x => fun e => x.
+Definition ret : up_idfun ~~> M := fun A x => fun e => x.
 (* computation that ignores the environment *)
 Let bind := fun (A B : UU0) (m : M A) (f : A -> M B) => fun e => f (m e) e.
 (* binds m f applied the same environment to m and to the result of f *)
@@ -318,7 +318,7 @@ Section state.
 Variable S : UU0. (* type of states *)
 Definition acto := fun A : UU0 => S -> A * S.
 Local Notation M := acto.
-Let ret : idfun ~~> M := fun A a => fun s => (a, s).
+Let ret : up_idfun ~~> M := fun A a => fun s => (a, s).
 Let bind := fun (A B : UU0) (m : M A) (f : A -> M B) => uncurry f \o m.
 Let left_neutral : BindLaws.left_neutral bind ret.
 Proof. by move=> A B a f; apply boolp.funext. Qed.
@@ -348,7 +348,7 @@ Section cont.
 Variable r : UU0. (* the type of answers *)
 Definition acto := fun A : UU0 => (A -> r) -> r.
 Local Notation M := acto.
-Let ret : idfun ~~> M := fun A a => fun k => k a.
+Let ret : up_idfun ~~> M := fun A a => fun k => k a.
 Let bind := fun (A B : UU0) (m : M A) (f : A -> M B) => fun k => m (fun a => f a k).
 Let left_neutral : BindLaws.left_neutral bind ret.
 Proof. by move=> A B a f; apply boolp.funext => Br. Qed.
@@ -1135,7 +1135,7 @@ Proof. by rewrite /addM bindretf; apply boolp.funext. Abort.
 Fixpoint list_iter (M : monad) A (f : A -> M unit) (s : seq A) : M unit :=
   if s is h :: t then f h >> list_iter f t else Ret tt.
 
-Compute (@list_iter [the monad of idfun] nat (fun a => Ret tt) [:: O; 1; 2]).
+Compute (@list_iter [the monad of up_idfun] nat (fun a => Ret tt) [:: O; 1; 2]).
 
 Definition list_find (M : contMonad) (A : UU0) (p : pred A) (s : seq A) : M _ :=
   callcc (fun k => list_iter (fun x => if p x then (*Throw*) k (Some x) else Ret tt) s >> Ret None).
@@ -1251,7 +1251,7 @@ Proof.
 move=> A B m0 f s.
 rewrite state_bindE.
 rewrite /uncurry /=.
-rewrite /comp /= /reify /=.
+rewrite /(_ \o _) /= /reify /=.
 by case (m0 s).
 Qed.
 HB.instance Definition _ := isMonadReify.Build state_trace (StateMonad.acto state_trace)
@@ -1291,7 +1291,7 @@ Definition acto : Type -> Type :=
   fun A => S -> {fset (choice_of_Type A * choice_of_Type S)}.
 Local Notation M := acto.
 
-Let ret : idfun ~~> M := fun A (a : A) s =>
+Let ret : up_idfun ~~> M := fun A (a : A) s =>
   [fset (a : choice_of_Type A, s : choice_of_Type S)].
 
 Let bind := fun A B (m : acto A)
@@ -1572,7 +1572,7 @@ Variable (S : UU0) (I : eqType).
 Implicit Types i j : I.
 Definition acto (A : UU0) := (I -> S) -> SetMonad.acto (A * (I -> S))%type.
 Local Notation M := acto.
-Let ret : idfun ~~> M := fun A a => fun s => [set (a, s)].
+Let ret : up_idfun ~~> M := fun A a => fun s => [set (a, s)].
 Let bind := fun A B (m : M A) (f : A -> M B) => fun s => m s >>= uncurry f.
 Let left_neutral : BindLaws.left_neutral bind ret.
 Proof.
@@ -1740,7 +1740,7 @@ Variable (S : UU0) (I : eqType).
 Implicit Types i j : I.
 Definition acto (A : UU0) := unit.
 Local Notation M := acto.
-Let ret : idfun ~~> M := fun A a => tt.
+Let ret : up_idfun ~~> M := fun A a => tt.
 Let bind := fun A B (m : M A) (f : A -> M B) => tt : M B.
 Let left_neutral : BindLaws.left_neutral bind ret.
 Proof. by move=> ? ? x f; case: (f x). Qed.
@@ -1883,7 +1883,7 @@ End eq_rect_bind.
 (*Section instantiations_with_the_identity_monad.
 
 Lemma stateT_id_ModelState S :
-  stateT S [the monad of idfun] = [the monad of StateMonad.acto S].
+  stateT S [the monad of up_idfun] = [the monad of StateMonad.acto S].
 Proof.
 rewrite /= /stateTmonadM /=.
 have FG : MS_functor S ModelMonad.identity = ModelMonad.State.functor S.
@@ -1924,7 +1924,7 @@ End instantiations_with_the_identity_monad.*)
 
 Section monad_transformer_calcul.
 
-Let contTi T := MC T [the monad of idfun].
+Let contTi T := MC T [the monad of up_idfun].
 
 Definition break_if_none (m : monad) (break : _) (acc : nat) (x : option nat) : m nat :=
   if x is Some x then Ret (x + acc) else break acc.

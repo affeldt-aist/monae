@@ -173,15 +173,15 @@ Lemma uniform_naturality (M : probMonad R) (A B : Type) (a : A) (b : B) (f : A -
   forall x, (0 < size x)%nat ->
   ((@uniform M _ b) \o map f) x = ((M # f) \o uniform a) x.
 Proof.
-elim=> // x [_ _|x' xs]; first by rewrite [in RHS]compE fmapE bindretf.
+elim=> // x [_ _|x' xs]; first by rewrite /= fmapE bindretf.
 move/(_ isT) => IH _.
-rewrite compE [in RHS]compE.
+rewrite (compE (uniform b)) (compE _ (uniform a)).
 rewrite [x' :: xs]lock [in LHS]uniform_cons -/(map _ _) [in LHS]/= -lock.
 rewrite [x' :: xs]lock [in RHS]uniform_cons -/(map _ _) [in RHS]/= -lock.
 set p := (X in _ <| X |> _ = _).
 rewrite (_ : probinvn _ = p); last first.
   by apply val_inj; rewrite /= size_map.
-move: IH; rewrite 2!compE => ->.
+move: IH => /= ->.
 by rewrite [in RHS]fmapE choice_bindDl bindretf fmapE.
 Qed.
 Arguments uniform_naturality {M A B}.
@@ -192,7 +192,7 @@ Lemma mpair_uniform_base_case (M : probMonad R) (A : Type) a x (y : seq A) :
 Proof.
 move=> y0; rewrite cp1.
 transitivity (@uniform M _ a y >>= (fun y' => Ret (x, y'))).
-  by rewrite -(compE (uniform _)) (uniform_naturality a) // compE fmapE.
+  by rewrite -(compE (uniform _)) (uniform_naturality a) //= fmapE.
 transitivity (do z <- Ret x; do y' <- uniform a y; Ret (z, y') : M _)%Do.
   by rewrite bindretf.
 by [].

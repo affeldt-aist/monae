@@ -168,13 +168,13 @@ Notation "F # g" := (@actm F _ _ g) : monae_scope.
 Notation "'fmap' f" := (_ # f) : mprog.
 
 Section functorid.
-Let id_actm (A B : UU0) (f : A -> B) : idfun A -> idfun B := f.
+Let id_actm (A B : UU0) (f : A -> B) : up_idfun A -> up_idfun B := f.
 Let id_id : FunctorLaws.id id_actm. Proof. by []. Qed.
 Let id_comp : FunctorLaws.comp id_actm. Proof. by []. Qed.
-HB.instance Definition _ := isFunctor.Build idfun id_id id_comp.
+HB.instance Definition _ := isFunctor.Build up_idfun id_id id_comp.
 End functorid.
 
-Lemma FIdE (A B : UU0) (f : A -> B) : idfun # f = f. Proof. by []. Qed.
+Lemma FIdE (A B : UU0) (f : A -> B) : up_idfun # f = f. Proof. by []. Qed.
 
 Section functor_composition.
 Variables F G : functor.
@@ -307,7 +307,7 @@ Qed.*)
 Module JoinLaws.
 Section join_laws.
 Context {F : functor}.
-Variables (ret : idfun ~~> F) (join : F \o F ~~> F).
+Variables (ret : up_idfun ~~> F) (join : F \o F ~~> F).
 Arguments ret {_}.
 Arguments join {A}.
 
@@ -322,7 +322,7 @@ End join_laws.
 End JoinLaws.
 
 HB.mixin Record isMonad (F : UU0 -> UU0) of Functor F := {
-  ret : idfun ~> F ;
+  ret : up_idfun ~> F ;
   join : F \o F ~> F ;
   bind : forall (A B : UU0), F A -> (A -> F B) -> F B ;
   bindE : forall (A B : UU0) (f : A -> F B) (m : F A),
@@ -403,7 +403,7 @@ Definition bind_of_join (F : functor) (j : F \o F ~~> F)
   j B ((F # f) m).
 
 Section from_join_laws_to_bind_laws.
-Variable (F : functor) (ret : idfun ~> F) (join : F \o F ~> F).
+Variable (F : functor) (ret : up_idfun ~> F) (join : F \o F ~> F).
 
 Hypothesis joinretM : JoinLaws.left_unit ret join.
 Hypothesis joinMret : JoinLaws.right_unit ret join.
@@ -430,7 +430,7 @@ Qed.
 End from_join_laws_to_bind_laws.
 
 HB.factory Record isMonad_ret_join (F : UU0 -> UU0) of isFunctor F := {
-  ret : idfun ~> F ;
+  ret : up_idfun ~> F ;
   join : F \o F ~> F ;
   joinretM : JoinLaws.left_unit ret join ;
   joinMret : JoinLaws.right_unit ret join ;
@@ -482,7 +482,7 @@ HB.instance Definition _ := isFunctor.Build M actm_id actm_comp.
 Let F := [the functor of M].
 Local Notation FF := [the functor of F \o F].
 
-Let ret_naturality : naturality idfun F ret.
+Let ret_naturality : naturality up_idfun F ret.
 Proof.
 move=> a b h.
 rewrite FIdE /hierarchy.actm /= /actm; apply: boolp.funext => m /=.
@@ -490,9 +490,9 @@ by rewrite bindretf.
 Qed.
 
 HB.instance Definition _ :=
-  isNatural.Build idfun F (ret : idfun ~~> F) ret_naturality.
+  isNatural.Build up_idfun F (ret : up_idfun ~~> F) ret_naturality.
 
-Let join' : FF ~~> F := fun _ m => bind m idfun.
+Let join' : FF ~~> F := fun _ m => bind m up_idfun.
 
 Let actm_bind (a b c : UU0) (f : a -> b) m (g : c -> F a) :
   (actm f) (bind m g) = bind m (actm f \o g).
@@ -703,7 +703,8 @@ Local Open Scope mprog.
 Lemma fcomp_kleisli A B C D (f : A -> B) (g : C -> M A) (h : D -> M C) :
   f (o) (g <=< h) = (f (o) g) <=< h.
 Proof.
-rewrite /kleisli 2!fcomp_def 2!(compA (fmap f)) natural [in RHS]functor_o.
+rewrite /kleisli 2!fcomp_def 2!(compA (fmap f)).
+rewrite (natural join) [in RHS]functor_o.
 by rewrite -compA.
 Qed.
 
@@ -778,7 +779,8 @@ Definition bassert {A : UU0} (p : pred A) (m : M A) : M A := m >>= assert p.
 Lemma commutativity_of_assertions A q :
   Join \o (M # (bassert q)) = bassert q \o Join :> (_ -> M A).
 Proof.
-by apply boolp.funext => x; rewrite !compE join_fmap /bassert joinE bindA.
+apply boolp.funext => x; rewrite !compE join_fmap /bassert joinE.
+by rewrite -/(_ >>= _) bindA.
 Qed.
 
 (* guards commute with anything *)
@@ -918,7 +920,7 @@ HB.mixin Record isMonadElgot (M : UU0 -> UU0) of WBisim M := {
                                           (M # inl \o g)
                                           (M # inr \o Ret)) a);
   codiagonalwB : forall (A B : UU0) (f : A -> M ((B + A) + A)%type) (a : A),
-    while ((M # (sum_rect (fun=> (B + A)%type) idfun inr)) \o f) a
+    while ((M # (sum_rect (fun=> (B + A)%type) up_idfun inr)) \o f) a
     ≈ while (while f) a ;
   uniformwB : forall (A B C : UU0) (f : A -> M (B + A)%type)
       (g : C -> M (B + C)%type) (h : C -> A),

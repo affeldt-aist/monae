@@ -301,7 +301,7 @@ Lemma fmap_oE (M : functor) (A B C : UU0) (f : A -> B) (g : C -> A) (m : M C) :
   (M # (f \o g)) m = (M # f) ((M # g) m).
 Proof. by rewrite functor_o. Qed.
 
-Definition NId (C : functor) := fun A => @idfun (C A).
+Definition NId (C : functor) := fun A => @up_idfun (C A).
 
 Section id_natural_transformation.
 Variables C : functor.
@@ -393,18 +393,18 @@ Lemma functor_app_natural_hcomp (S F G : functor) (nt : F ~> G) :
   S ## nt = [the _ ~> _ of NId S] \h nt.
 Proof. by apply nattrans_ext => a; rewrite functor_app_naturalE. Qed.
 
-Definition fork : idfun ~~> squaring := fun (A : UU0) (a : A) => (a, a).
+Definition fork : up_idfun ~~> squaring := fun (A : UU0) (a : A) => (a, a).
 
 Section natural_transformation_example.
 
 Let fork_natural : naturality _ _ fork. Proof. by []. Qed.
 
-HB.instance Definition _ := isNatural.Build idfun squaring fork fork_natural.
+HB.instance Definition _ := isNatural.Build up_idfun squaring fork fork_natural.
 
 End natural_transformation_example.
 
-Definition eta_type (f g : functor) := idfun ~> g \o f.
-Definition eps_type (f g : functor) := f \o g ~> idfun.
+Definition eta_type (f g : functor) := up_idfun ~> g \o f.
+Definition eps_type (f g : functor) := f \o g ~> up_idfun.
 
 Module TriangularLaws.
 Section triangularlaws.
@@ -436,16 +436,16 @@ Notation "F -| G" := (AdjointFunctor.t F G).
 Section adjoint_example.
 Variable (X : UU0).
 
-Definition curry_eps : curryF X \o uncurryF X ~~> idfun :=
+Definition curry_eps : curryF X \o uncurryF X ~~> up_idfun :=
   fun (A : UU0) (af : X * (X -> A)) => af.2 af.1.
 
-Let curry_eps_naturality : naturality (curryF X \o uncurryF X) idfun curry_eps.
+Let curry_eps_naturality : naturality (curryF X \o uncurryF X) up_idfun curry_eps.
 Proof. by []. Qed.
 
 HB.instance Definition _ := isNatural.Build
-  (curryF X \o uncurryF X) idfun curry_eps curry_eps_naturality.
+  (curryF X \o uncurryF X) up_idfun curry_eps curry_eps_naturality.
 
-Definition curry_eta : idfun ~~> uncurryF X \o curryF X :=
+Definition curry_eta : up_idfun ~~> uncurryF X \o curryF X :=
   fun (A : UU0) (a : A) => pair^~ a.
 
 Let curry_eta_naturality : naturality _ (uncurryF X \o curryF X) curry_eta.
@@ -459,7 +459,7 @@ Proof.
 apply: (@AdjointFunctor.mk _ _ curry_eta curry_eps).
 by move=> A; rewrite /TriangularLaws.left; apply boolp.funext => -[].
 move=> A; rewrite /TriangularLaws.right /uncurryF /curry_eps /curry_eta /uncurryF.
-by rewrite /= /uncurry_actm /= /comp /=; apply boolp.funext => f; apply boolp.funext.
+by rewrite /= /uncurry_actm /= ; apply boolp.funext => f; apply boolp.funext.
 Qed.
 
 End adjoint_example.
@@ -546,10 +546,10 @@ Hypothesis H : F -| U.
 Let eta : eta_type F U := AdjointFunctor.eta H.
 Let eps : eps_type F U := AdjointFunctor.eps H.
 
-Definition uni : idfun ~~> (U0 \o U) \o (F \o F0) :=
+Definition uni : up_idfun ~~> (U0 \o U) \o (F \o F0) :=
   fun A : UU0 => U0 # eta (F0 A) \o eta0 A.
 
-Let uni_naturality : naturality idfun ((U0 \o U) \o (F \o F0)) uni.
+Let uni_naturality : naturality up_idfun ((U0 \o U) \o (F \o F0)) uni.
 Proof.
 move=> A B h; rewrite FIdE.
 rewrite -[RHS]compA.
@@ -558,13 +558,13 @@ rewrite [LHS]compA.
 rewrite [RHS]compA.
 congr (_ \o _).
 rewrite (FCompE U0 F0) -[in RHS](@functor_o U0) -[in LHS](@functor_o U0).
-congr (_ # _).
+congr (U0 # _).
 by rewrite -(natural (AdjointFunctor.eta H)).
 Qed.
 
 HB.instance Definition _ := isNatural.Build _ _ uni uni_naturality.
 
-Definition couni : (F \o F0) \o (U0 \o U) ~~> idfun :=
+Definition couni : (F \o F0) \o (U0 \o U) ~~> up_idfun :=
   fun A : UU0 => eps A \o F # eps0 (U A).
 
 Let couni_naturality : naturality ((F \o F0) \o (U0 \o U)) _ couni.
@@ -594,7 +594,7 @@ apply: (@AdjointFunctor.mk _ _ uni couni).
 rewrite /TriangularLaws.right => A.
 rewrite /couni /uni /=.
 rewrite compA -[RHS](AdjointFunctor.tri_right H0 (U A)); congr (_ \o _).
-rewrite FCompE -functor_o; congr (_ # _).
+rewrite FCompE -functor_o; congr (U0 # _).
 rewrite functor_o -compA -FCompE.
 rewrite (natural (AdjointFunctor.eta H)) FIdE.
 by rewrite compA (AdjointFunctor.tri_right H) compidf.
@@ -640,11 +640,11 @@ Qed.
 
 End algebraic_operation_interface.
 
-(*Lemma monad_of_ret_bind_ext (F G : functor) (RET1 : idfun ~> F) (RET2 : idfun ~> G)
+(*Lemma monad_of_ret_bind_ext (F G : functor) (RET1 : up_idfun ~> F) (RET2 : up_idfun ~> G)
   (bind1 : forall A B : UU0, F A -> (A -> F B) -> F B)
   (bind2 : forall A B : UU0, G A -> (A -> G B) -> G B) :
   forall (FG : F = G),
-  RET1 = eq_rect _ (fun m : functor => idfun ~> m) RET2 _ ((*beuh*) (esym FG)) ->
+  RET1 = eq_rect _ (fun m : functor => up_idfun ~> m) RET2 _ ((*beuh*) (esym FG)) ->
   bind1 = eq_rect _ (fun m : functor => forall A B : UU0, m A -> (A -> m B) -> m B) bind2 _ (esym FG) ->
   forall H1 K1 H2 K2 H3 K3,
   Monad_of_ret_bind F RET1 bind1 H1 H2 H3 =
@@ -698,10 +698,9 @@ Proof. by []. Qed.
 Lemma naturality_mpair (M : monad) (A B : UU0) (f : A -> B) (g : A -> M A):
   (M # f^`2) \o (mpair \o g^`2) = mpair \o ((M # f) \o g)^`2.
 Proof.
-apply boolp.funext => -[a0 a1].
-rewrite compE fmap_bind.
-rewrite compE mpairE compE bind_fmap; bind_ext => a2.
-rewrite fcompE fmap_bind 2!compE bind_fmap; bind_ext => a3.
+apply/boolp.funext => -[a0 a1]/=.
+rewrite fmap_bind bind_fmap; bind_ext => a2/=.
+rewrite fcompE fmap_bind bind_fmap; bind_ext => a3/=.
 by rewrite fcompE -(compE (M # f^`2)) (natural ret) FIdE.
 Qed.
 

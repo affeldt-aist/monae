@@ -490,7 +490,7 @@ Local Notation coq_type := (@coq_type MLU N).
 
 Local Notation ml_type := (MLU : Type).
 
-Definition acto := ModelTypedStore.acto ml_type N idfun.
+Definition acto := ModelTypedStore.acto ml_type N up_idfun.
 Local Notation M := acto.
 
 Local Notation loc := (@loc ml_type locT_nat).

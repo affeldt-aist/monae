@@ -41,7 +41,7 @@ Definition slice_category_inhom' (b c : slice) :
 Definition slice_category_inhom := Eval hnf in slice_category_inhom'.
 Local Notation el := slice_category_obj.
 Local Notation inhom := slice_category_inhom.
-Lemma slice_category_id : forall a : slice, inhom (@idfun (el a)).
+Lemma slice_category_id : forall a : slice, inhom (@up_idfun (el a)).
 Proof. by case. Qed.
 Lemma slice_category_comp :
   forall (aa ba ca : slice) (f : el aa -> el ba) (g : el ba -> el ca),
@@ -94,7 +94,7 @@ by case: (cid (Hf2 x)) => y ->.
 Qed.
 Definition inhom (A B : obj) (f : ele A -> ele B) : Prop :=
   exists H : separated f, inhom _ _ (sepfst H) /\ inhom _ _ (sepsnd H).
-Lemma idfun_separated (X : obj) : @separated X X idfun.
+Lemma idfun_separated (X : obj) : @separated X X up_idfun.
 Proof. by split; move=> x; exists x. Qed.
 Lemma comp_separated (X Y Z : obj) (f : ele X -> ele Y) (g : ele Y -> ele Z) :
   separated f -> separated g -> separated (g \o f).
@@ -104,13 +104,13 @@ move: X Y Z => [X1 X2] [Y1 Y2] [Z1 Z2] f g [/= Hf1 Hf2] [/= Hg1 Hg2]; split=> x.
 - by case/cid: (Hf1 x)=> y /= ->; case/cid: (Hg1 y)=> z /= ->; exists z.
 - by case/cid: (Hf2 x)=> y /= ->; case/cid: (Hg2 y)=> z /= ->; exists z.
 Qed.
-Lemma sepfst_idfun X : sepfst (idfun_separated X) = idfun.
+Lemma sepfst_idfun X : sepfst (idfun_separated X) = up_idfun.
 Proof.
 apply funext=> x /=.
 suff: inl (B:=el X.2) (sepfst (idfun_separated X) x) = inl x by move=> [=].
 by rewrite sepfstK.
 Qed.
-Lemma sepsnd_idfun X : sepsnd (idfun_separated X) = idfun.
+Lemma sepsnd_idfun X : sepsnd (idfun_separated X) = up_idfun.
 Proof.
 apply funext=> x /=.
 suff: inr (A:=el X.1) (sepsnd (idfun_separated X) x) = inr x by move=> [=].
@@ -134,7 +134,7 @@ suff: inr (A := el Z.1) (sepsnd (comp_separated Hf Hg) x) =
       inr (sepsnd Hg (sepsnd Hf x)) by case.
 by rewrite 3!sepsndK.
 Qed.
-Lemma idfun_inhom (X : obj) : @inhom X X idfun.
+Lemma idfun_inhom (X : obj) : @inhom X X up_idfun.
 Proof.
 exists (idfun_separated X); rewrite sepfst_idfun sepsnd_idfun;
   split; exact: idfun_inhom.
@@ -170,14 +170,14 @@ exact: Hom.Pack.
 Defined.
 Definition homsnd := Eval hnf in _homsnd.
 End homfstsnd.
-Lemma homfst_idfun x : homfst (x:=x) [hom idfun] = [hom idfun].
+Lemma homfst_idfun x : homfst (x:=x) [hom up_idfun] = [hom up_idfun].
 Proof.
 apply/hom_ext; rewrite boolp.funeqE => x1 /=.
 case: cid => i [i1 i2] /=.
 rewrite (_ : i = ProductCategory.idfun_separated _)//.
 by rewrite ProductCategory.sepfst_idfun.
 Qed.
-Lemma homsnd_idfun x : homsnd (x:=x) [hom idfun] = [hom idfun].
+Lemma homsnd_idfun x : homsnd (x:=x) [hom up_idfun] = [hom up_idfun].
 Proof.
 apply/hom_ext; rewrite boolp.funeqE => x1 /=.
 case: cid => i [i1 i2] /=.
@@ -259,7 +259,7 @@ End prodCat_pairhom.
 
 Section pairhom_idfun.
 Variables (A B : category) (a : A) (b : B).
-Lemma pairhom_idfun : pairhom (a1:=a) (b1:=b) [hom idfun] [hom idfun] = [hom idfun].
+Lemma pairhom_idfun : pairhom (a1:=a) (b1:=b) [hom up_idfun] [hom up_idfun] = [hom up_idfun].
 Proof. by apply/hom_ext/funext=> -[] x /=. Qed.
 End pairhom_idfun.
 
@@ -311,18 +311,18 @@ Section def.
 Variables (A B C : category) (F : {functor A * B -> C}) (a : A).
 Definition acto : B -> C := fun b => F (a, b).
 Definition actm (b1 b2 : B) (f : {hom b1 -> b2}) : {hom acto b1 -> acto b2} :=
-  F # pairhom [hom idfun] f.
+  F # pairhom [hom up_idfun] f.
 Let actm_id : FunctorLaws.id actm.
 Proof.
 move=> D; rewrite /actm; set h := pairhom _ _.
-rewrite (_ : h = [hom idfun]) ?functor_id_hom //.
+rewrite (_ : h = [hom up_idfun]) ?functor_id_hom //.
 by apply/hom_ext => /=; rewrite boolp.funeqE; case.
 Qed.
 Let actm_comp : FunctorLaws.comp actm.
 Proof.
 move=> b b0 b1 g h; rewrite /actm; set i := pairhom _ _.
-rewrite (_ : i = [hom (pairhom [hom idfun] g) \o
-                      (pairhom [hom idfun] h)]) ?functor_o_hom //.
+rewrite (_ : i = [hom (pairhom [hom up_idfun] g) \o
+                      (pairhom [hom up_idfun] h)]) ?functor_o_hom //.
 by apply/hom_ext => /=; rewrite boolp.funeqE; case.
 Qed.
 HB.instance Definition _ := isFunctor.Build _ _ _ actm_id actm_comp.
@@ -334,18 +334,18 @@ Section def.
 Variables (A B C : category) (F : {functor A * B -> C}) (b : B).
 Definition acto : A -> C := fun a => F (a, b).
 Definition actm (a1 a2 : A) (f : {hom a1 -> a2}) : {hom acto a1 -> acto a2} :=
-  F # pairhom f [hom idfun].
+  F # pairhom f [hom up_idfun].
 Let actm_id : FunctorLaws.id actm.
 Proof.
 move=> D; rewrite /actm; set h := pairhom _ _.
-rewrite (_ : h = [hom idfun]) ?functor_id_hom //.
+rewrite (_ : h = [hom up_idfun]) ?functor_id_hom //.
 by apply/hom_ext => /=; rewrite boolp.funeqE; case.
 Qed.
 Let actm_comp : FunctorLaws.comp actm.
 Proof.
 move=> a a0 a1 g h; rewrite /actm; set i := pairhom _ _.
-rewrite (_ : i = [hom (pairhom g [hom idfun]) \o
-                      (pairhom h [hom idfun])]) ?functor_o_hom //.
+rewrite (_ : i = [hom (pairhom g [hom up_idfun]) \o
+                      (pairhom h [hom up_idfun])]) ?functor_o_hom //.
 by apply/hom_ext => /=; rewrite boolp.funeqE; case.
 Qed.
 HB.instance Definition _ := isFunctor.Build _ _ _ actm_id actm_comp.
@@ -387,18 +387,18 @@ Variable F : {functor [the category of ((A * B) * C)%type] -> D}.
 Variables (a : A) (b : B).
 Definition acto : C -> D := papply_left.acto F (a, b).
 Definition actm (c1 c2 : C) (f : {hom c1 -> c2}) : {hom acto c1 -> acto c2} :=
-  F # pairhom [hom idfun] f.
+  F # pairhom [hom up_idfun] f.
 Let actm_id : FunctorLaws.id actm.
 Proof.
 move=> c0; rewrite /actm; set h := pairhom _ _.
-rewrite (_ : h = [hom idfun]) ?functor_id_hom //.
+rewrite (_ : h = [hom up_idfun]) ?functor_id_hom //.
 by apply/hom_ext => /=; rewrite boolp.funeqE; case.
 Qed.
 Let actm_comp : FunctorLaws.comp actm.
 Proof.
 move=> c c0 c1 g h; rewrite /actm; set i := pairhom _ _.
-rewrite (_ : i = [hom (pairhom [hom idfun] g) \o
-                      (pairhom [hom idfun] h)]) ?functor_o_hom //.
+rewrite (_ : i = [hom (pairhom [hom up_idfun] g) \o
+                      (pairhom [hom up_idfun] h)]) ?functor_o_hom //.
 by apply/hom_ext => /=; rewrite boolp.funeqE; case.
 Qed.
 HB.instance Definition _ := isFunctor.Build _ _ _ actm_id actm_comp.
