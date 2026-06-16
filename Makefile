@@ -9,7 +9,7 @@ clean: Makefile.coq
 	$(MAKE) -C $(SUB) clean
 
 Makefile.coq: _CoqProject
-	coq_makefile -f _CoqProject -o Makefile.coq
+	rocq makefile -f _CoqProject -o Makefile.coq
 
 _CoqProject Makefile: ;
 
