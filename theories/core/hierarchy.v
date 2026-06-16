@@ -33,7 +33,7 @@ From HB Require Import structures.
 (*    Functor_isMonad == mixin of monad; has both ret, join and bind laws     *)
 (*            isMonad == compat. factory; = Functor_isMonad - bind laws       *)
 (*   isMonad_ret_join == factory on ret and join                              *)
-(*   isMonad_ret_bind == factory on ret and bind; no need of functoriarity    *)
+(*   isMonad_ret_bind == factory on ret and bind; no need for functoriarity   *)
 (*                       (i.e., the extension system)                         *)
 (*                >>= == notation for the standard bind operator              *)
 (*             m >> f := m >>= (fun _ => f)                                   *)
