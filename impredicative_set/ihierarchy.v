@@ -32,7 +32,7 @@ From HB Require Import structures.
 (*            isMonad == compatibility factory that requires all operators    *)
 (*                       and only join laws (no bind laws)                    *)
 (*   isMonad_ret_join == factory on ret and join                              *)
-(*   isMonad_ret_bind == factory on ret and bind; no need for functoriarity   *)
+(*   isMonad_ret_bind == factory on ret and bind; no need for functoriality   *)
 (*                       (i.e., the extension system)                         *)
 (*                >>= == notation for the standard bind operator              *)
 (*             m >> f := m >>= (fun _ => f)                                   *)
