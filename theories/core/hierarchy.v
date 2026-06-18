@@ -211,10 +211,6 @@ Let comp_actm (A B : UU0) (h : A -> B) : (F \o G) A -> (F \o G) B :=
 Let comp_id : FunctorLaws.id comp_actm.
 Proof. by rewrite /FunctorLaws.id => A; rewrite /comp_actm 2!functor_id. Qed.
 
-(* TODO: fix functor_o: unbounded number of multiple rewriting with `functor_o`
-   (`rewrite !functor_o`) leads to an infinite loop, due to expansions of the
-   form `f` = `f \o id`. I.e., in the following script, one cannot remove `2` in
-   `2!functor_o`. *)
 Let comp_comp : FunctorLaws.comp comp_actm.
 Proof.
 rewrite /FunctorLaws.comp => A B C g' h; rewrite /comp_actm.
