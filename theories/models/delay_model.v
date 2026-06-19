@@ -3,7 +3,7 @@
 From mathcomp Require Import all_ssreflect.
 From mathcomp Require boolp.
 From HB Require Import structures.
-Require Import hierarchy monad_lib Morphisms.
+Require Import preamble hierarchy monad_lib Morphisms.
 
 (**md**************************************************************************)
 (* # Model of the Delay monad                                                 *)
@@ -689,7 +689,7 @@ CoFixpoint naturalitywB' {A B C} (f : A -> M (B + A)) (g : B -> M C) (d : M (B +
 Proof.
 case: d => [[b|a]|d].
 - apply wBisims_wBisim.
-  rewrite !bindretf /= fmapE bindA.
+  rewrite !bindretf/= compE fmapE bindA.
   have [[c Ht]|/Diverge_spinP HD] := StopP (g b).
     set h := fun x => (Ret \o inl) x >>= _.
     rewrite (Stop_bindmf h Ht).
@@ -699,7 +699,7 @@ case: d => [[b|a]|d].
   rewrite HD.
   setoid_symmetry.
   exact/Diverge_wBisims_spinP/Diverge_bindspinf.
-- rewrite! bindretf /= fmapE bindA bindretf /= bindretf /= bind_Later.
+- rewrite! bindretf /= compE fmapE bindA bindretf /= bindretf /= bind_Later.
   apply wBLater.
   rewrite whileE whileE.
   exact: naturalitywB'.
@@ -735,9 +735,11 @@ CoFixpoint codiagonalwB' {A B} (f: A -> M ((B + A) + A))(d: M ((B + A) + A)) :
 Proof.
 case: d => [ [[b|a]|a]|d'].
 - by rewrite bindretf bindretf bindretf //= bindretf.
-- rewrite bindretf bindretf bindretf //= bindretf whileE whileE whileE //= fmapE.
+- rewrite bindretf bindretf bindretf //= bindretf whileE whileE whileE //=.
+  rewrite compE fmapE.
   exact/wBLater/codiagonalwB'.
-- rewrite bindretf bindretf bindretf //= bind_Later whileE whileE //= fmapE.
+- rewrite bindretf bindretf bindretf //= bind_Later whileE whileE //=.
+  rewrite compE fmapE.
   exact/wBLater/codiagonalwB'.
 - by rewrite !bind_Later; exact/wBLater/codiagonalwB'.
 Qed.
@@ -746,7 +748,9 @@ Lemma codiagonalwB {A B} (f : A -> M ((B + A) + A)) a :
   while ((Delay # ((sum_rect (fun => (B + A)%type) idfun inr))) \o f) a
   ≈
   while (while f) a.
-Proof. by rewrite whileE whileE whileE //= fmapE; exact: codiagonalwB'. Qed.
+Proof.
+by rewrite whileE whileE whileE //= compE fmapE; exact: codiagonalwB'.
+Qed.
 
 Lemma whilewB {A B} (f g : A -> M (B + A)) (a : A) :
   (forall a, f a ≈ g a) -> while f a ≈ while g a.
@@ -815,7 +819,7 @@ case: (StopP (while g c)).
     exists n2.
     rewrite /gch -(addn0 n2).
     apply: (steps_bindD Hg).
-    by case a => a' /= ; rewrite fmapE bindretf.
+    by case: a Hg Ha => a' Hg Ha /=; rewrite !compE fmapE bindretf.
   move/(Stop_wBisim Tgch).
   clear gch Tgch.
   case/Stop_steps => n1 Tfhc.
@@ -850,12 +854,12 @@ move: (H c).
 move/(Stop_wBisim Tfhc).
 case/Stop_steps => n1 Tgc.
 have [[b'|a'] [n3] [] /= Hgc] := steps_bind Tgc.
-  rewrite fmapE bindretf /= steps_Now => -[] Hb'.
+  rewrite compE fmapE bindretf /= steps_Now => -[] Hb'.
   exists b'.
   apply/Stop_steps.
   exists (n3 + 0).
   exact: (steps_bindD Hgc).
-rewrite fmapE bindretf /= steps_Now => -[] Hha'.
+rewrite !compE fmapE bindretf /= steps_Now => -[] Hha'.
 rewrite -Hha' in Ha.
 have Hnn2 : n - n2 > 0 by case: (n - n2) Ha.
 rewrite -(prednK Hnn2) /= in Ha.

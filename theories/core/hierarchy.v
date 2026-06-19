@@ -510,7 +510,7 @@ Let actm_comp : FunctorLaws.comp actm.
 Proof.
 move=> a b c g h.
 rewrite /actm; apply: boolp.funext => m /=.
-rewrite bindA.
+rewrite compE bindA.
 congr bind.
 apply: boolp.funext => u /=.
 by rewrite bindretf.
@@ -524,7 +524,7 @@ Let ret_naturality : naturality idfun F ret.
 Proof.
 move=> a b h.
 rewrite FIdE /hierarchy.actm /= /actm; apply: boolp.funext => m /=.
-by rewrite bindretf.
+by rewrite compE bindretf.
 Qed.
 
 HB.instance Definition _ :=
@@ -541,7 +541,7 @@ Proof.
 move=> a b h.
 rewrite /join' /=; apply: boolp.funext => mm /=.
 rewrite /hierarchy.actm /= /isFunctor.actm /=.
-rewrite actm_bind bindA /=.
+rewrite !compE actm_bind bindA.
 congr bind.
 apply: boolp.funext => m /=.
 by rewrite bindretf /=.
@@ -567,7 +567,7 @@ Qed.
 Let joinretM : JoinLaws.left_unit ret join.
 Proof.
 move=> a; apply: boolp.funext => m.
-by rewrite /join /= /join' /= bindretf.
+by rewrite /join /= /join' /= compE bindretf.
 Qed.
 
 Let joinMret : JoinLaws.right_unit ret join.
@@ -575,7 +575,7 @@ Proof.
 move=> a; apply: boolp.funext => m.
 rewrite /join /= /join'.
 rewrite /hierarchy.actm /= /actm /=.
-rewrite bindA /=.
+rewrite compE bindA /=.
 rewrite [X in bind m X](_ : _ = fun x => ret x) ?bindmret //=; apply: boolp.funext => ?.
 by rewrite bindretf.
 Qed.
@@ -585,7 +585,7 @@ Proof.
 move => a; apply: boolp.funext => m.
 rewrite /join /= /join'.
 rewrite /hierarchy.actm /= /actm.
-rewrite !bindA.
+rewrite compE [in RHS]compE !bindA.
 congr bind.
 apply: boolp.funext => u /=.
 by rewrite bindretf.
@@ -696,7 +696,7 @@ Proof. by []. Qed.
 
 Lemma kleisliE A B C (g : B -> M C) (f : A -> M B) (a : A) :
   (f >=> g) a = (f a) >>= g.
-Proof. by rewrite /kleisli /= join_fmap. Qed.
+Proof. by rewrite /kleisli !compE join_fmap. Qed.
 
 Lemma bind_kleisli A B C m (f : A -> M B) (g : B -> M C) :
   m >>= (f >=> g) = (m >>= f) >>= g.

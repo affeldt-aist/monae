@@ -109,10 +109,10 @@ elim: s p a b => [p a b|h t ih p a b /=]; first by exists (ndRet (a, b)).
 case: ifPn => hp.
   have [syn synE] := @qperm_isNondet M _ b.
   exists (ndBind syn (fun zs' => sval (ih p (rcons a h) zs'))) => /=.
-  by rewrite synE /=; bind_ext =>  ? /=; case: ih.
+  by rewrite synE /=; bind_ext =>  ? /=; rewrite compE; case: ih.
 have [syn synE] := @qperm_isNondet M _ (rcons b h).
 exists (ndBind syn (fun zs' => sval (ih p a zs'))) => /=.
-by rewrite synE /=; bind_ext => ? /=; case: ih.
+by rewrite synE /=; bind_ext => ? /=; rewrite compE; case: ih.
 Qed.
 
 Lemma qperm_partl_cons (p x : E) (ys zs xs : seq E) :

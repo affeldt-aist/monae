@@ -13,6 +13,8 @@ Definition funext := @FunctionalExtensionality.functional_extensionality.
 
 Definition funext_dep := @FunctionalExtensionality.functional_extensionality_dep.
 
+Arguments ssrfun.comp {A B C} : simpl never.
+
 (**md**************************************************************************)
 (* # Shared notations and easy definitions/lemmas of general interest         *)
 (*                                                                            *)
@@ -27,6 +29,9 @@ Definition funext_dep := @FunctionalExtensionality.functional_extensionality_dep
 Set Implicit Arguments.
 Unset Strict Implicit.
 Unset Printing Implicit Defensive.
+
+Lemma compE A B C (g : B -> C) (f : A -> B) a : (g \o f) a = g (f a).
+Proof. by []. Qed.
 
 (* notations common to hierarchy.v and category.v *)
 
@@ -91,7 +96,7 @@ Variables (U : Type) (h : U -> R) (w : U) (g : T -> U -> U).
 Hypothesis H1 : h w = r.
 Hypothesis H2 : forall x y, h (g x y) = f x (h y).
 Lemma foldr_fusion : h \o foldr g w = foldr f r.
-Proof. by apply funext; elim => // a b /= ih; rewrite H2 ih. Qed.
+Proof. by apply funext; elim => // a b /= <-; rewrite compE H2. Qed.
 Lemma foldr_fusion_ext x : (h \o foldr g w) x = foldr f r x.
 Proof. by rewrite -foldr_fusion. Qed.
 End fusion_law.
@@ -149,9 +154,6 @@ Proof. by []. Qed.
 Lemma compfid A B (f : A -> B) : f \o id = f. Proof. by []. Qed.
 
 Lemma compidf A B (f : A -> B) : id \o f = f. Proof. by []. Qed.
-
-Lemma compE A B C (g : B -> C) (f : A -> B) a : (g \o f) a = g (f a).
-Proof. by []. Qed.
 
 Lemma if_pair A B b (x : A) y (u : A) (v : B) :
   (if b then (x, y) else (u, v)) = (if b then x else u, if b then y else v).

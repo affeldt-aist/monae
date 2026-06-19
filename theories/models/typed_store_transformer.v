@@ -306,10 +306,11 @@ have [u r1u|T1' v1 Hr1 T1v1|Hr1] := ntherrorP e r1.
     have [?|T1'T1] := eqVneq T1' T1.
     * subst T1'; rewrite coerce_Some.
       rewrite [in LHS]bindE/= !MX_mapE !fmapE bindretf /= /bindX !bindretf (Some_cputE _ r2v) [in RHS]bindE/=.
+      rewrite /cput.
       have [Hr|Hr] := eqVneq (loc_id r1) (loc_id r2).
         move: r2v; rewrite -Hr Hr1 => -[?] _; subst T2.
         by rewrite !MX_mapE !fmapE bindretf /= /bindX !bindretf /= /cget nth_error_set_nth coerce_Some bindretf /=.
-      by rewrite MX_mapE fmapE bindretf /= /bindX bindretf /=/cget (nth_error_set_nth_other _ _ Hr Hr1) coerce_Some bindretf /=.
+      by rewrite MX_mapE fmapE bindretf compE/= /bindX bindretf/= /cget (nth_error_set_nth_other _ _ Hr Hr1) r2v !coerce_Some bindretf /=.
     * rewrite coerce_None//= bindfailf (Some_cputE _ r2v) [in RHS]bindE/=.
       have [r12|r12] := eqVneq (loc_id r1) (loc_id r2).
         move: r2v; rewrite -r12 Hr1 => -[?] _; subst T1'.
@@ -541,7 +542,7 @@ Qed.
 
 Local Definition crunmskip (A : UU0) (m : M A) : crun (m >> skip) = crun m :> bool.
 Proof.
-rewrite /crun /= !bindE /= /bindS !MS_mapE /= !fmapE /= !bindA.
+rewrite /crun /= !bindE /= /bindS !MS_mapE /= !compE !fmapE /= !bindA.
 by case Hm: (m _) => [|[]].
 Qed.
 

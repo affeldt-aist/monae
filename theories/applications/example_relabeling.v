@@ -131,7 +131,7 @@ rewrite /=.
 rewrite 2![in RHS]joinE.
 rewrite 3!bindA.
 rewrite -H.
-rewrite !fmapE.
+rewrite !compE !fmapE.
 rewrite 3!bindA.
 bind_ext => {}x1.
 rewrite 2!bindretf 2!bindA.

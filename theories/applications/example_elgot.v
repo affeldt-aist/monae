@@ -3,7 +3,7 @@
 Require Import Lia.
 From mathcomp Require Import all_ssreflect.
 From mathcomp Require boolp.
-Require Import hierarchy.
+Require Import preamble hierarchy.
 
 (**md**************************************************************************)
 (* # Applications of the Elgot monad                                          *)
@@ -108,9 +108,9 @@ Proof.
 rewrite /collatz naturalitywB/=.
 apply: whilewB => q.
 have [->|q1] := eqVneq q 1.
-  by rewrite bindretf/= fmapE bindretf.
+  by rewrite bindretf/= compE fmapE bindretf.
 rewrite /collatz_body (negbTE q1).
-by case: ifPn; rewrite bindretf/= fmapE bindretf.
+by case: ifPn; rewrite bindretf/= compE fmapE bindretf.
 Qed.
 
 End collatz.
@@ -137,8 +137,8 @@ Proof.
 rewrite /minus1 /minus2 -codiagonalwB.
 apply: whilewB => -[n m].
 case: n => [|n /=].
-  by case: m => //= [|n]; rewrite fmapE bindretf.
-by rewrite fmapE bindretf.
+  by case: m => //= [|n]; rewrite compE fmapE bindretf.
+by rewrite compE fmapE bindretf.
 Qed.
 
 End minus.
@@ -386,9 +386,9 @@ apply: pcorrect.
 move=> l' /= Inv.
 rewrite /bubblesort_body.
 case: ifP => /eqP H.
-  by rewrite bindretf/= bindretf/= assertE/= Inv guardT bindretf.
+  by rewrite bindretf/= bindretf/= compE assertE/= Inv guardT bindretf.
 move: Inv.
-rewrite !bindretf/= !/sizelE (sortl_length l') /assert /guard.
+rewrite !bindretf/= !/sizelE (sortl_length l') /assert /guard compE.
 case: ifP => //=.
 by rewrite !bindskipf.
 Qed.
@@ -461,16 +461,16 @@ Lemma collatz_state1wB n : collatz_state1 n ≈ collatz_state2 n.
 Proof.
 rewrite /collatz_state1 /collatz_state2 -codiagonalwB.
 apply: whilewB => -[[n' m] l].
-rewrite /collatz_state1_body /collatz_state2_body.
+rewrite /collatz_state1_body /collatz_state2_body compE.
 have [Hl|?] := eqVneq (l %% 4) 1 => /=.
   have [?|] := eqVneq n' 1 => /=.
-    rewrite Hl fmapE bindA.
+    rewrite fmapE bindA/=.
     by under eq_bind do rewrite bindA bindretf.
   have [|] := eqVneq (n' %% 2) 0 => /=;
   rewrite fmapE/= bindA bindfwB//= => a;
   by rewrite bindA bindretf.
 have [Hn'|_] := eqVneq n' 1 => /=.
-  rewrite Hn' ifN //= fmapE bindA.
+  rewrite Hn' fmapE bindA.
   by under eq_bind do rewrite bindA bindA bindretf.
 have [|] := eqVneq (n' %% 2) 0 => /=;
   rewrite fmapE/= bindA;

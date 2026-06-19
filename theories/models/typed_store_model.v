@@ -516,10 +516,9 @@ Let crunnewgetC (A : UU0) T1 T2 (m : M A) (r : A -> loc T1)
   crun (m >>= fun x => cget (r x)) ->
   crun (m >>= fun x => cnew (s x) >> cget (r x)).
 Proof.
-rewrite /crun /= !bindE /= /bindS !MS_mapE /= !fmapE /= !bindA /=.
+rewrite /crun /= !bindE /= /bindS !MS_mapE compE/= !fmapE /= !bindA /=.
 case Hm: (m _) => [|[a b]] //.
-rewrite !bindE /= !bindE /= /bindS MS_mapE /= fmapE /= bindA.
-rewrite !bindE /= !bindE /= /cget.
+rewrite !bindE /= !bindE /= bind_cnew /cget.
 case Hnth: nth_error => [[]|] //.
 rewrite (nth_error_rcons_some _ Hnth).
 by case Hcoe: coerce.
@@ -529,7 +528,7 @@ Let crungetput (A : UU0) T (m : M A) (r : A -> loc T) (s : A -> coq_type T) :
   crun (m >>= fun x => cget (r x)) ->
   crun (m >>= fun x => cput (r x) (s x)).
 Proof.
-rewrite /crun /= !bindE /= /bindS !MS_mapE /= !fmapE /= !bindA /=.
+rewrite /crun /= !bindE /= /bindS !MS_mapE compE/= !fmapE /= !bindA /=.
 case Hm: (m _) => [|[a [b]]] //=.
 rewrite !bindE /= !bindE /= /cget /cput /=.
 case Hnth: nth_error => [[T' v]|] //.
@@ -541,7 +540,7 @@ Qed.
 
 Let crunmskip (A : UU0) (m : M A) : crun (m >> skip) = crun m :> bool.
 Proof.
-rewrite /crun /= !bindE /= /bindS !MS_mapE /= !fmapE /= !bindA.
+rewrite /crun /= !bindE /= /bindS !MS_mapE compE/= !fmapE /= !bindA.
 by case Hm: (m _) => [|[]].
 Qed.
 

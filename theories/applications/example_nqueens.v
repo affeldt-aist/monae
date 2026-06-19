@@ -351,10 +351,10 @@ Proof.
 move=> s; elim: s i a b => // h t IH i a b.
 rewrite /safeAcc_scanl /=.
 move: (IH i.+1 ((Posz i + h) :: a) ((Posz i - h) :: b))%Z.
-rewrite (_ : Posz i.+1 = (Posz i) + 1)%Z; last by rewrite -addn1.  
-rewrite /safeAcc_scanl => /= <-.
+rewrite (_ : Posz i.+1 = (Posz i) + 1)%Z; last by rewrite -addn1.
+rewrite /safeAcc_scanl !compE => /= <-.
 rewrite /safeAcc /= !andbA /zipWith /=.
-set A := uniq _. set B := uniq _. set sa := map _ _. set sb := map _ _.
+set A := uniq _; set B := uniq _; set sa := map _ _; set sb := map _ _.
 rewrite -![in LHS]andbA [in LHS]andbC.
 do 2 rewrite -![in RHS]andbA [in RHS]andbC.
 rewrite -!andbA; congr andb.
@@ -436,7 +436,7 @@ Lemma base_case y : p y -> (unfoldM p select >=> foldr op (Ret [::])) y = Ret [:
 Proof.
 move=> py.
 transitivity (Ret [::] >>= foldr op (Ret [::])).
-  rewrite /kleisli bindretf /= join_fmap unfoldME; last exact: decr_size_select.
+  rewrite /kleisli bindretf !compE/= join_fmap unfoldME; last exact: decr_size_select.
   by rewrite py bindretf.
 by rewrite bindretf.
 Qed.
@@ -449,12 +449,12 @@ apply: (well_founded_induction (@well_founded_size _)) => y IH.
 rewrite hyloME; last exact: decr_size_select.
 case/boolP : (p y) => py.
   by rewrite base_case.
-rewrite /kleisli /= join_fmap.
+rewrite /kleisli !compE/= join_fmap.
 rewrite unfoldME; last exact: decr_size_select.
 rewrite (negbTE py) bindA.
 rewrite(@decr_size_select _ _) /bassert !bindA; bind_ext => -[b a] /=.
 case: assertPn => ay; last by rewrite !bindfailf.
-rewrite !bindretf /= -IH // bind_fmap /kleisli /= join_fmap.
+rewrite !bindretf /= -IH // bind_fmap /kleisli !compE/= join_fmap.
 suff : do x <- unfoldM p select a; op b (foldr op (Ret [::]) x) =
   op b (do x <- unfoldM p select a; foldr op (Ret [::]) x) by [].
 rewrite {ay}.
@@ -527,7 +527,7 @@ Lemma queensBodyE : queensBody M =
 Proof.
 rewrite /queensBody boolp.funeqE => -[|h t].
 - rewrite /= permsE /= hyloME ?bindretf //; exact: decr_size_select.
-- by rewrite [h :: t]lock -theorem51 /kleisli /= join_fmap perms_uperm.
+- by rewrite [h :: t]lock -theorem51 /kleisli !compE/= join_fmap perms_uperm.
 Qed.
 
 Local Open Scope mprog.

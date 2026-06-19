@@ -3,7 +3,7 @@
 From mathcomp Require Import all_ssreflect.
 From mathcomp Require boolp.
 From HB Require Import structures.
-Require Import hierarchy monad_lib fail_lib state_lib trace_lib.
+Require Import preamble hierarchy monad_lib fail_lib state_lib trace_lib.
 Require Import monad_transformer monad_model.
 
 (**md**************************************************************************)
@@ -67,7 +67,7 @@ Proof.
 apply: boolp.funext => x.
 rewrite -compA FCompE FCompE//= reader_map.
 apply: boolp.funext => s //=.
-rewrite !fmapE//=.
+rewrite compE !fmapE//=.
 congr bind.
 by apply: boolp.funext => -[].
 Qed.
@@ -110,7 +110,7 @@ Lemma whilel (f g : A -> elgotS (B + A)) (a : A) :
 Proof.
 rewrite /wB /while /uncurry /curry => Hfg s.
 apply: whilewB => -[a' s'] /=.
-rewrite !fmapE /=.
+rewrite !compE !fmapE /=.
 exact: bindmwB.
 Qed.
 
@@ -118,7 +118,7 @@ Lemma fixpoint (f : A -> elgotS (B + A)) (a : A) :
   while f a ≈ (f a >>= sum_rect (fun=> elgotS B) Ret (while f)).
 Proof.
 move=> s.
-rewrite /while /curry /dist1/= MS_bindE /uncurry/= fixpointwB/= fmapE !bindA.
+rewrite /while /curry /dist1/= MS_bindE /uncurry/= fixpointwB compE/= fmapE !bindA.
 by apply: bindfwB=> -[[b'|a'] s'] /=; rewrite bindretf.
 Qed.
 
@@ -133,15 +133,15 @@ Proof.
 rewrite /bindS /while /curry /uncurry => s //=.
 rewrite naturalitywB /=.
 apply: whilewB => -[] s' a' /=.
-rewrite fmapE fmapE /=MS_bindE !bindA.
+rewrite !compE 2!fmapE /=MS_bindE !bindA.
 apply: bindfwB => sba //=.
 rewrite /dist1 /uncurry bindretf.
 case: sba => [[b''|a''] s''] /=.
-- rewrite elgotS_map -compA FCompE FCompE reader_map/= fmapE fmapE bindA.
+- rewrite elgotS_map -compA !FCompE !compE/= reader_map/= compE fmapE fmapE bindA.
   apply: bindfwB => cs /=.
   rewrite bindretf /= writer_map /=.
   by case: cs.
-- rewrite elgotS_map -compA FCompE FCompE reader_map/= fmapE fmapE bindA.
+- rewrite elgotS_map -compA !FCompE !compE/= reader_map/= compE fmapE fmapE bindA.
   apply: bindfwB => cs/=.
   rewrite bindretf /= writer_map /=.
   by case: cs.
@@ -156,15 +156,15 @@ rewrite /while /curry /wB => s.
 setoid_symmetry.
 apply: wBisim_trans.
   apply whilewB => -[] s' a' /=.
-  by rewrite /uncurry fmapE naturalitywB.
+  by rewrite /uncurry compE fmapE naturalitywB.
 rewrite -codiagonalwB elgotS_map.
 apply: whilewB => -[] a'' s'' //=.
-rewrite //= !fmapE.
+rewrite !compE //= !fmapE.
 have -> : ((reader S \o M) \o writer S) # sum_rect (fun=> (B + A)%type) idfun inr =
           reader S # (M # (writer S # sum_rect (fun=> (B + A)%type) idfun inr)).
   by rewrite -compA FCompE.
-rewrite reader_map /= fmapE !bindA.
-by apply: bindfwB => -[[[bl|al']|al] sl]; rewrite !bindretf /= fmapE !bindretf.
+rewrite compE reader_map compE/= fmapE !bindA.
+by apply: bindfwB => -[[[bl|al']|al] sl]; rewrite !bindretf/= !compE/= fmapE !bindretf.
 Qed.
 
 Lemma uniform {A B C} (f : A -> elgotS (B + A)) (g : C -> elgotS (B + C))
@@ -180,9 +180,9 @@ rewrite /while /curry /=.
 set h' := fun cs : C * S => let (c, s) := cs in (h c, s).
 have -> : (h c, s) = h' (c, s) by [].
 apply: (uniformwB _ _ _ _ _ h') => -[c' s'].
-rewrite {}/h' /= fmapE (H c') fmapE /= !bindA.
+rewrite {}/h' /= compE/= fmapE (H c') compE fmapE /= !bindA.
 by apply: bindfwB => -[[?|?] ?];
-  rewrite /=bindretf fmapE !bindretf/= fmapE bindretf.
+  rewrite /=bindretf !compE/= fmapE !bindretf/= !compE/= fmapE bindretf.
 Qed.
 
 HB.instance Definition _ := @hasWBisim.Build elgotS wB
@@ -252,7 +252,7 @@ Qed.
 Lemma fixpoint {A B} (f : A -> elgotX (B + A)) (a : A) :
   while f a ≈ f a >>= sum_rect (fun => elgotX B ) Ret (while f).
 Proof.
-rewrite /while /elgotXA fixpointwB /= fmapE /= bindA.
+rewrite /while /elgotXA fixpointwB /= !compE/= fmapE /= bindA.
 apply (bindfwB _ _ _ _ (f a)) => uba.
 by case: uba => [u|[b'|a']] /=; rewrite bindretf.
 Qed.
@@ -265,13 +265,13 @@ Lemma naturality {A B C} (f : A -> elgotX (B + A)) (g : B -> elgotX C) (a : A) :
 Proof.
 rewrite /while /elgotXA bindXE naturalitywB.
 apply: whilewB => a' /=.
-rewrite fmapE fmapE !bindA.
+rewrite !compE/= 2!fmapE !bindA.
 apply: (bindfwB _ _ _ _ (f a')).
 move=> [u|[b''|a'']] /=.
-- by rewrite !bindretf /= fmapE bindretf.
-- rewrite !bindretf /= fmapE /= fmapE bindA.
+- by rewrite !bindretf/= compE/= fmapE bindretf.
+- rewrite !bindretf/= !compE/= fmapE /= fmapE bindA.
   by apply: bindfwB => -[u|c]; rewrite bindretf.
-- by rewrite bindretf /= !fmapE !bindretf.
+- by rewrite bindretf/= !compE/= !fmapE !bindretf.
 Qed.
 
 Lemma codiagonal {A B} (f : A -> elgotX ((B + A) + A)) (a : A) :
@@ -285,12 +285,12 @@ setoid_symmetry.
 apply: wBisim_trans.
   apply whilewB => a' /=.
   set m := {1}(hierarchy.while _ ).
-  by rewrite (fmapE g (m a')) naturalitywB.
+  by rewrite !compE/= (fmapE g (m a')) naturalitywB.
 rewrite -codiagonalwB.
 apply whilewB => a' /=.
-rewrite !fmapE !bindA.
+rewrite !compE/= !fmapE !bindA.
 apply: bindfwB.
-by move=> [u|[[b|a1]|a2]] /=; rewrite !bindretf /= fmapE bindretf /= bindretf.
+by move=> [u|[[b|a1]|a2]] /=; rewrite !bindretf/= !compE/= fmapE bindretf /= bindretf.
 Qed.
 
 Lemma whilel {A B} (f g : A -> elgotX (B + A)) (a : A) :
@@ -299,7 +299,7 @@ Proof.
 move=> Hfg.
 rewrite /while /elgotXA.
 apply: whilewB => a' /=.
-rewrite !fmapE.
+rewrite !compE !fmapE.
 apply: bindmwB.
 exact: Hfg.
 Qed.
@@ -313,9 +313,9 @@ Proof.
 move=> H c.
 rewrite /while.
 apply: (uniformwB _ _ _ (elgotXA \o f)) => c' /=.
-rewrite /elgotXA/= !fmapE (H c') !bindA.
+rewrite /elgotXA/= !compE !fmapE (H c') !bindA.
 apply: bindfwB.
-by move=> [x|[b''|c'']]; rewrite /= !bindretf /= fmapE !bindretf // fmapE bindretf.
+by move=> [x|[b''|c'']]; rewrite /= !bindretf /= !compE fmapE !bindretf // fmapE bindretf.
 Qed.
 
 HB.instance Definition _ := MonadExcept.on elgotX.

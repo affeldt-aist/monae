@@ -189,7 +189,7 @@ Lemma bindLmfail (M := [the monad of option_monad]) S T U (m : stateT S M U)
 Proof.
 rewrite /= /liftS; apply: boolp.funext => s.
 rewrite except_bindE.
-rewrite {1}bindE /= MS_mapE {1}/bindS /=.
+rewrite {1}bindE /= MS_mapE {1}/bindS compE/=.
 by case (m s) => // -[].
 Qed.
 

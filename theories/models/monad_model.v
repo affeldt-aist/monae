@@ -324,7 +324,7 @@ Let left_neutral : BindLaws.left_neutral bind ret.
 Proof. by move=> A B a f; apply boolp.funext. Qed.
 Let right_neutral : BindLaws.right_neutral bind ret.
 Proof.
-by move=> A f; apply boolp.funext => s; rewrite /bind /=; case: (f s).
+by move=> A f; apply boolp.funext => s; rewrite /bind compE/=; case: (f s).
 Qed.
 Let associative : BindLaws.associative bind.
 Proof.
@@ -457,7 +457,7 @@ Let naturality_output :
 Proof.
 move=> A B h.
 apply boolp.funext => -[w [x w']].
-by rewrite /output /= catA.
+by rewrite /output !compE/= catA.
 Qed.
 
 HB.instance Definition _ := isNatural.Build
@@ -1527,17 +1527,17 @@ Definition aput i s : M unit := fun a => (tt, insert i s a).
 Let aputput i s s' : aput i s >> aput i s' = aput i s'.
 Proof.
 rewrite state_bindE; apply boolp.funext => a/=.
-by rewrite /aput insert_insert.
+by rewrite /aput compE/= insert_insert.
 Qed.
 Let aputget i s A (k : S -> M A) : aput i s >> aget i >>= k = aput i s >> k s.
 Proof.
 rewrite state_bindE; apply boolp.funext => a/=.
-by rewrite /aput insert_same.
+by rewrite /aput compE/= insert_same.
 Qed.
 Let agetput i : aget i >>= aput i = skip.
 Proof.
 rewrite state_bindE; apply boolp.funext => a/=.
-by rewrite /aput insert_same2.
+by rewrite /aput compE/= insert_same2.
 Qed.
 Let agetget i A (k : S -> S -> M A) :
   aget i >>= (fun s => aget i >>= k s) = aget i >>= fun s => k s s.
@@ -1550,13 +1550,13 @@ Let aputC i j u v : (i != j) \/ (u = v) ->
   aput i u >> aput j v = aput j v >> aput i u.
 Proof.
 by move=> [ij|->{u}]; rewrite !state_bindE /aput; apply/boolp.funext => a/=;
-  [rewrite insertC|rewrite insertC2].
+  [rewrite compE/= insertC|rewrite compE/= insertC2].
 Qed.
 Let aputgetC i j u A (k : S -> M A) : i != j ->
   aput i u >> aget j >>= k = aget j >>= (fun v => aput i u >> k v).
 Proof.
 move=> ij; rewrite /aput !state_bindE; apply boolp.funext => a/=.
-by rewrite state_bindE/= {1}/insert (negbTE ij).
+by rewrite !compE/= state_bindE/= {1}/insert (negbTE ij).
 Qed.
 HB.instance Definition _ := Monad.on M.
 HB.instance Definition _ := isMonadArray.Build
@@ -2007,7 +2007,7 @@ Let runStateTbind : forall (A B : UU0) (m : M A) (f : A -> M B) (s : S),
 Proof.
 move=> A M m f s /=.
 rewrite /= /runStateT bindE /= /join_of_bind /bindS /=.
-rewrite MS_mapE /actm /=.
+rewrite MS_mapE /actm !compE/=.
 by case: (m s).
 Qed.
 Let runStateTget : forall s : S, runStateT get s = Ret (s, s) :> N _.
