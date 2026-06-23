@@ -5,6 +5,8 @@ From mathcomp Require Import boolp.
 Require Import preamble.
 From HB Require Import structures.
 
+Local Notation comp := (nat : nat).
+
 (**md**************************************************************************)
 (* # Formalization of basic category theory                                   *)
 (*                                                                            *)
@@ -368,7 +370,7 @@ Proof.
 split=> [ -> // |]; move: f g => [f [[Hf]]] [g [[Hg]]] /= fg''.
 have fg' : forall a, f a = g a :> {hom _ -> _} by move=> a; rewrite hom_ext fg''.
 move: (functional_extensionality_dep fg') => fg.
-by move: Hf Hg; rewrite fg=> Hf Hg; rewrite (proof_irr _ Hf Hg).
+by move: Hf Hg; rewrite fg=> Hf Hg; rewrite (proof_irr Hf Hg).
 Qed.
 End natural_transformation_lemmas.
 Arguments natural_head [C D F G].

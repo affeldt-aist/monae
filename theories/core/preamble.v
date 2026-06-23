@@ -5,24 +5,17 @@ From mathcomp Require Import all_ssreflect.
 From mathcomp Require boolp.
 Require ProofIrrelevance.
 
-Definition proof_irr := boolp.Prop_irrelevance.
-
-Definition eq_rect_eq :=
-  @ProofIrrelevance.ProofIrrelevanceTheory.Eq_rect_eq.eq_rect_eq.
-
-Definition funext_dep := boolp.functional_extensionality_dep.
-
-Arguments ssrfun.comp {A B C} : simpl never.
-
 (**md**************************************************************************)
 (* # Shared notations and easy definitions/lemmas of general interest         *)
 (*                                                                            *)
 (* ```                                                                        *)
-(*                foldr1                                                      *)
-(*         curry/uncurry == currying for pairs                                *)
+(*     up_idfun, up_comp == universe-polymorphic equivalents of               *)
+(*                          ssrfun.idfun and ssrfun.comp                      *)
+(*                foldr1 == right-recursive application of a binary operation *)
+(*                          on a list                                         *)
 (*       curry3/uncurry3 == currying for triples                              *)
 (*        comparePc/eqPc == computable version of equality axioms             *)
-(*  coerce T1 (v : f T1) == Some (f T2) if T1 = T2 and None o.w.              *)
+(*  coerce T1 (v : f T1) == some (f T2) if T1 = T2 and None o.w.              *)
 (* ```                                                                        *)
 (*                                                                            *)
 (******************************************************************************)
@@ -31,8 +24,42 @@ Set Implicit Arguments.
 Unset Strict Implicit.
 Unset Printing Implicit Defensive.
 
-Lemma compE A B C (g : B -> C) (f : A -> B) a : (g \o f) a = g (f a).
+(* We use a universe-polymorphic version of comp
+  (in place of ssrfun.comp)
+   so that we can avoid universe inconsistencies. *)
+Polymorphic Definition up_comp (A B C : Type) (f : B -> A) (g : C -> B) :=
+  fun x => f (g x).
+Arguments up_comp {A B C} : simpl never.
+Notation "f1 \o f2" := (up_comp f1 f2) : function_scope.
+
+Section comp_lemmas.
+
+Polymorphic Lemma compE A B C (g : B -> C) (f : A -> B) a : (g \o f) a = g (f a).
 Proof. by []. Qed.
+
+(* This compA is equivalent of ssrfun.compA for up_comp.
+   There are more lemmas for ssrfun.comp, such as
+   bij_comp, inj_comp, etc.  They should be added once in need *)
+Polymorphic Lemma compA {A B C D} (f : C -> D) (g : B -> C) (h : A -> B) :
+  f \o (g \o h) = (f \o g) \o h.
+Proof. by []. Qed.
+
+Polymorphic Lemma compfid A B (f : A -> B) : f \o id = f. Proof. by []. Qed.
+
+Polymorphic Lemma compidf A B (f : A -> B) : id \o f = f. Proof. by []. Qed.
+
+End comp_lemmas.
+
+Section shorthands_for_classical_axioms.
+
+Definition proof_irr := boolp.Prop_irrelevance.
+
+Definition eq_rect_eq :=
+  @ProofIrrelevance.ProofIrrelevanceTheory.Eq_rect_eq.eq_rect_eq.
+
+Definition funext_dep := boolp.functional_extensionality_dep.
+
+End shorthands_for_classical_axioms.
 
 (* notations common to hierarchy.v and category.v *)
 
@@ -97,7 +124,9 @@ Variables (U : Type) (h : U -> R) (w : U) (g : T -> U -> U).
 Hypothesis H1 : h w = r.
 Hypothesis H2 : forall x y, h (g x y) = f x (h y).
 Lemma foldr_fusion : h \o foldr g w = foldr f r.
-Proof. by apply boolp.funext; elim => // a b /= <-; rewrite compE H2. Qed.
+Proof.
+by apply: boolp.funext; elim => // a b /= <-; rewrite compE H2.
+Qed.
 Lemma foldr_fusion_ext x : (h \o foldr g w) x = foldr f r x.
 Proof. by rewrite -foldr_fusion. Qed.
 End fusion_law.
@@ -147,14 +176,6 @@ Lemma uaddnE n m : uaddn (n, m) = n + m. Proof. by rewrite /uaddn uncurryE. Qed.
 Definition const A B (b : B) := fun _ : A => b.
 
 Definition wrap {A} (a : A) := [:: a].
-
-Lemma compA {A B C D} (f : C -> D) (g : B -> C) (h : A -> B) :
-  f \o (g \o h) = (f \o g) \o h.
-Proof. by []. Qed.
-
-Lemma compfid A B (f : A -> B) : f \o id = f. Proof. by []. Qed.
-
-Lemma compidf A B (f : A -> B) : id \o f = f. Proof. by []. Qed.
 
 Lemma if_pair A B b (x : A) y (u : A) (v : B) :
   (if b then (x, y) else (u, v)) = (if b then x else u, if b then y else v).

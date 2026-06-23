@@ -497,7 +497,8 @@ HB.factory Record isMonad_ret_bind (F : UU0 -> UU0) := {
 
 HB.builders Context M of isMonad_ret_bind M.
 
-Let actm (a b : UU0) (f : a -> b) m := bind m (@ret _ \o f).
+Definition actm (a b : UU0) (f : a -> b) m := bind m (@ret _ \o f).
+Arguments actm : simpl never.
 
 Let actm_id : FunctorLaws.id actm.
 Proof.
@@ -546,6 +547,32 @@ congr bind.
 apply: boolp.funext => m /=.
 by rewrite bindretf /=.
 Qed.
+(* In the above proof, it is crucial for `compE` to be universe polymorphic.
+On the line it is used, the goal before rewriting is:
+```
+  ([eta actm h] \o (bind (B:=a))^~ idfun) mm = ((bind (B:=b))^~ idfun \o [eta F # (F # h)]) mm
+```
+and `rewrite !compE` turns it into:
+```
+  actm h (bind mm idfun) = bind ((F # (F # h)) mm) idfun
+```
+(`compE` is used twice).
+If we instead use a monomorphic variant of compE:
+```
+Monomorphic Lemma mono_compE A B C (g : B -> C) (f : A -> B) a : (g \o f) a = g (f a).
+```
+then `rewrite !mono_compE` results in
+```
+  bind (bind mm idfun) (ret (A:=b) \o h) = ((bind (B:=b))^~ idfun \o [eta F # (F # h)]) mm
+```
+that is, `actm` is expanded by rewriting leading to a failure when rewriting by `actm_bind`.
+Setting the debug flag for unification (```Set Debug "unification"```) tells a bit more.
+In both the polymorhic and monomorphic cases, the unifier correctly spots the
+LHS of the equation, and in the former, it immediately completes rewriting.
+But in the monomorphic case, the unifier digs the expression further
+and expands actm, possibly to determine universe levels.
+The expanded expression is not folded back after rewriting.
+ *)
 
 HB.instance Definition _ := isNatural.Build _ _ _ join'_naturality.
 Let join := [the FF ~> F of join'].
@@ -705,11 +732,33 @@ Proof. by rewrite bindA; bind_ext => a; rewrite /kleisli !compE join_fmap. Qed.
 Lemma ret_kleisli A B (k : A -> M B) : Ret >=> k = k.
 Proof. by rewrite /kleisli -compA (natural ret) FIdE compA joinretM. Qed.
 
+(**)
+Polymorphic Lemma up_natural : forall {F G : functor} (s : F ~> G), naturality F G s.
+Proof.
+move=> ? ? ?.
+apply: natural.
+Qed.
+
 Local Open Scope mprog.
 Lemma fcomp_kleisli A B C D (f : A -> B) (g : C -> M A) (h : D -> M C) :
   f (o) (g <=< h) = (f (o) g) <=< h.
 Proof.
-rewrite /kleisli 2!fcomp_def 2!(compA (fmap f)) natural [in RHS]functor_o.
+rewrite /kleisli 2!fcomp_def 2!(compA (fmap f)).
+rewrite (natural join).
+(* Before moving to universe polymorphic up_comp,
+   writing just `rewrite natural` was sufficient.
+   We perhaps need to polymorphize the definition of natural transformation too,
+   but that is impossible with the current HB.
+
+   We can polymorphize the underlying definition `naturality`,
+   but it does not make the lemma `natural` polymorphic,
+   because `natural` is inside the mixin for natural transformations.
+
+   We can also prove the following statement:
+   `Polymorphic Lemma up_natural : forall {F G : functor} (s : F ~> G), naturality F G s.`
+   but the resulting `up_natural` actually has no polymorphism in its arguments.
+ *)
+rewrite [in RHS]functor_o.
 by rewrite -compA.
 Qed.
 
