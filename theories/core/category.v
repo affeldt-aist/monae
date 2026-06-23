@@ -5,8 +5,6 @@ From mathcomp Require Import boolp.
 Require Import preamble.
 From HB Require Import structures.
 
-Local Notation comp := (nat : nat).
-
 (**md**************************************************************************)
 (* # Formalization of basic category theory                                   *)
 (*                                                                            *)
