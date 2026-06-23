@@ -124,9 +124,7 @@ Variables (U : Type) (h : U -> R) (w : U) (g : T -> U -> U).
 Hypothesis H1 : h w = r.
 Hypothesis H2 : forall x y, h (g x y) = f x (h y).
 Lemma foldr_fusion : h \o foldr g w = foldr f r.
-Proof.
-by apply: boolp.funext; elim => // a b /= <-; rewrite compE H2.
-Qed.
+Proof. by apply: boolp.funext; elim => // a b /= <-; rewrite compE H2. Qed.
 Lemma foldr_fusion_ext x : (h \o foldr g w) x = foldr f r x.
 Proof. by rewrite -foldr_fusion. Qed.
 End fusion_law.

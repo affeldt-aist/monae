@@ -732,13 +732,6 @@ Proof. by rewrite bindA; bind_ext => a; rewrite /kleisli !compE join_fmap. Qed.
 Lemma ret_kleisli A B (k : A -> M B) : Ret >=> k = k.
 Proof. by rewrite /kleisli -compA (natural ret) FIdE compA joinretM. Qed.
 
-(**)
-Polymorphic Lemma up_natural : forall {F G : functor} (s : F ~> G), naturality F G s.
-Proof.
-move=> ? ? ?.
-apply: natural.
-Qed.
-
 Local Open Scope mprog.
 Lemma fcomp_kleisli A B C D (f : A -> B) (g : C -> M A) (h : D -> M C) :
   f (o) (g <=< h) = (f (o) g) <=< h.
