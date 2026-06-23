@@ -182,7 +182,6 @@ rewrite [in LHS]alt_fmapDr ![in LHS]altA [in LHS](altC (Ret [:: a, b, h & t])).
 rewrite -!altA; congr (_ [~] _); first by rewrite fmapE bindretf.
 rewrite alt_fmapDr -!altA; congr (_ [~] _); first by rewrite fmapE bindretf.
 rewrite [in LHS]altC bind_fmap /= [in LHS]/(_ \o _) /=.
-(* TODO: replace /(_ \o _) by compE; compE would have to be restated in pointfree style *)
 under eq_bind do rewrite insertE.
 rewrite alt_bindDr.
 under [in X in (_ [~] X) [~] _]eq_bind do rewrite fmapE.
