@@ -497,8 +497,7 @@ HB.factory Record isMonad_ret_bind (F : UU0 -> UU0) := {
 
 HB.builders Context M of isMonad_ret_bind M.
 
-Definition actm (a b : UU0) (f : a -> b) m := bind m (@ret _ \o f).
-Arguments actm : simpl never.
+Let actm (a b : UU0) (f : a -> b) m := bind m (@ret _ \o f).
 
 Let actm_id : FunctorLaws.id actm.
 Proof.
@@ -710,8 +709,7 @@ Local Open Scope mprog.
 Lemma fcomp_kleisli A B C D (f : A -> B) (g : C -> M A) (h : D -> M C) :
   f (o) (g <=< h) = (f (o) g) <=< h.
 Proof.
-rewrite /kleisli 2!fcomp_def 2!(compA (fmap f)).
-rewrite (natural join) [in RHS]functor_o.
+rewrite /kleisli 2!fcomp_def 2!(compA (fmap f)) natural [in RHS]functor_o.
 by rewrite -compA.
 Qed.
 
