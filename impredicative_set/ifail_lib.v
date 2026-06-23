@@ -136,11 +136,12 @@ rewrite 2![in RHS]insertE.
 rewrite [in LHS]alt_fmapDr ![in LHS]altA [in LHS](altC (Ret [:: a, b, h & t])).
 rewrite -!altA; congr (_ [~] _); first by rewrite fmapE bindretf.
 rewrite alt_fmapDr -!altA; congr (_ [~] _); first by rewrite fmapE bindretf.
-rewrite [in LHS]altC bind_fmap /= [in LHS]/comp /=.
+rewrite [in LHS]altC bind_fmap /= [in LHS]/(_ \o _) /=.
+(* TODO: replace /(_ \o _) by compE; compE would have to be restated in pointfree style *)
 under eq_bind do rewrite insertE.
 rewrite alt_bindDr.
 under [in X in (_ [~] X) [~] _]eq_bind do rewrite fmapE.
-rewrite -bindA [in LHS]ih // [in RHS]altC bind_fmap /= [in RHS]/comp /=.
+rewrite -bindA [in LHS]ih // [in RHS]altC bind_fmap /= [in RHS]/(_ \o _) /=.
 under [in RHS]eq_bind do rewrite insertE.
 rewrite alt_bindDr [in RHS]altC -!altA; congr (_ [~] _).
   rewrite !fmapE !bindA.
