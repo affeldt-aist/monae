@@ -1251,7 +1251,7 @@ Proof.
 move=> A B m0 f s.
 rewrite state_bindE.
 rewrite /uncurry /=.
-rewrite /comp /= /reify /=.
+rewrite /(_ \o _) /= /reify /=.
 by case (m0 s).
 Qed.
 HB.instance Definition _ := isMonadReify.Build state_trace (StateMonad.acto state_trace)

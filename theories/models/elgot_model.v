@@ -387,7 +387,7 @@ case: (StopP (ElgotX.while f x)) =>
 - rewrite steps_Now in Hs.
   move: x x' Hx Hs.
   elim: n => [/=|n IH] x x' Hx;
-             rewrite ElgotXwhileE whileE /ElgotX.elgotXA functions.compE fmapE.
+             rewrite ElgotXwhileE whileE /ElgotX.elgotXA compE fmapE.
   + case Hb: (f x) => [uxx|d].
     * case: uxx Hb => [u//|[y/=|y/=]] Hb;
                       rewrite bindretf/=bindretf.
