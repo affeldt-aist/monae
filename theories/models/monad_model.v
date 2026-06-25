@@ -1586,7 +1586,7 @@ Proof.
   - exact: lt_wf.
 Defined.
 
-Definition equiv (f1 f2 : forestType) := find_rec f1 = find_rec f2.
+Definition equiv (f1 f2 : forestType) := find_rec f1 = find_rec f2. 
 
 Definition is_equiv A (g1 g2 : forestType-> (I->S) -> A * forestType * (I->S)) := forall f1 f2 v,
       equiv f1 f2 ->  
@@ -1601,19 +1601,20 @@ Definition acto : UU0 -> UU0 := fun A =>
 
 Local Notation M := acto. 
 
-Lemma ret_correct : forall A (a:A), is_eqMonad (fun f => fun g => (a, f, g)).
+Lemma ret_correct : forall A (a:A), is_eqMonad (fun f g => (a, f, g)).
 Proof.
   by move=> A a f1 f2 v Hequiv; do 2 split. 
 Qed.
 
 Let ret : idfun ~~> M := fun A a => exist _ (fun f => fun g => (a, f, g)) (ret_correct a). 
 
-Local Definition bind (A B : UU0) (m : M A) (t : A -> M B) : M B.
-  exists (fun f g =>
+
+Lemma bind_correct : forall (A B : UU0) (m : M A) (t : A -> M B), 
+is_eqMonad (fun f g =>
     let: (a, f', g') := (proj1_sig m) f g in
-    (proj1_sig (t a)) f' g' ).
-  abstract (
-  move=> f1 f2 v Heq;
+    (proj1_sig (t a)) f' g').
+Proof.
+  move=> A B m t f1 f2 v Heq;
   case: m => m hm /=;
   move: {hm} (hm _ _ v Heq);
   case: (m f1 v) => [[a1 f1'] g1];
@@ -1622,8 +1623,11 @@ Local Definition bind (A B : UU0) (m : M A) (t : A -> M B) : M B.
   unfold is_eqMonad in htm;
   case Heq' => Heq'' eqg;
   rewrite eqg;
-  exact : (htm _ _ g2 Heq'')).
+  exact : (htm _ _ g2 Heq'').
 Defined.
+
+Local Definition bind (A B : UU0) (m : M A) (t : A -> M B) : M B :=
+  exist _ _  (bind_correct m t).
 
 Local Notation "a '>>=' b" := (bind a b).
 Local Notation "a '>>' b" := (bind a (fun _ => b)).
@@ -1659,35 +1663,16 @@ Proof.
   reflexivity.
 Qed.
 
-HB.instance Definition _ :=
+HB.instance Definition _ := 
   isMonad_ret_bind.Build acto left_neutral right_neutral associative.
 
 Definition find_correct : forall i, is_eqMonad (fun f => fun v => (find_rec f i, f, v)).
 Proof.
-by move=> i f1 f2 v Hequiv; rewrite Hequiv. Qed.
+  by move=> i f1 f2 v Hequiv; rewrite Hequiv. 
+Qed.
 
 Definition find (i : I) : M I :=
   exist _ (fun f => fun v => (find_rec f i, f, v)) (find_correct i).
-
-Definition union_func (f:forestType) (i:I) (i':I) : I->I :=
-let rep_i := find_rec f i in
-let rep_i' := find_rec f i' in
-if rep_i == rep_i' then proj1_sig f
-else if rep_i < rep_i' then
-  (fun j => if j== rep_i' then rep_i else proj1_sig f j)
-else
-  (fun j => if j== rep_i then rep_i' else proj1_sig f j).
-
-Lemma is_forest_after_union :
-  forall (f : forestType) i i',
-   find_rec f i < find_rec f i' ->
-  is_forest (fun j => if j == find_rec f i' then find_rec f i else sval f j).
-Proof.
-  move=> f i i' Hinf j.
-  case H: (j == find_rec f i').
-  by move /eqP in H; rewrite H; apply ltnW.
-  apply (proj2_sig f).
-Qed.
 
 Lemma find_step : forall f i, find_rec f i= find_rec f (proj1_sig f i).
 Proof.
@@ -1706,49 +1691,52 @@ Proof.
   exact IHn.
 Qed.
 
-Lemma union_correct : forall f i i', is_forest (union_func f i i').
-Proof.
-  move=> f i i' j.
-  rewrite /union_func .
-  case: ifPn => Heq.
-  by apply (proj2_sig f).
-  move /eqP in Heq; rewrite contra.Internals.eqType_neqP in Heq.
-  case Hlne:  ((find_rec f i) < (find_rec f i')); apply is_forest_after_union.
-  by apply Hlne.
-  have H := PeanoNat.Nat.lt_total (find_rec f i) (find_rec f i').
-  destruct H.
-  move/leP in H. by rewrite H in Hlne.
-  destruct H. by rewrite H eq_refl in Heq.
-  by move/ltP in H.
-Defined.
-
-Definition union_exist f i i':= exist _ _ (union_correct f i i'). 
-
-(*
-Lemma iter_comp : forall (f:forestType) i n,
-  iter  (1+n) (sval f) i = iter  n (sval f) (sval f i).
-Proof.
-  move=> f i n.
-  induction n.
-  by [].
-  by rewrite /=; rewrite <-IHn => /=. 
-Qed.
-
-Lemma find_iter f x : 
-  exists n, find_rec f x = iter  n (sval f) x.
-Proof.
-  functional induction (find_rec f x).
-  by exists 0.
-  by case: IHn => n IH; exists n.+1; rewrite iter_comp.
-Qed.
-*)
-
 Lemma find_root : forall i f , find_rec f (find_rec f i) = find_rec f i.
 Proof.
   move=> i f.
   rewrite {1} find_rec_equation.
   by rewrite find_return_root eq_refl.
 Qed.
+
+Definition union_func (f:forestType) (i:I) (i':I) : I->I :=
+  let rep_i := find_rec f i in
+  let rep_i' := find_rec f i' in
+  if rep_i == rep_i' then proj1_sig f
+  else if rep_i < rep_i' then
+    (fun j => if j== rep_i' then rep_i else proj1_sig f j)
+  else
+    (fun j => if j== rep_i then rep_i' else proj1_sig f j).
+
+Lemma is_forest_after_union :
+  forall (f : forestType) i i',
+  find_rec f i < find_rec f i' ->
+  is_forest (fun j => if j == find_rec f i' then find_rec f i else sval f j).
+Proof.
+  move=> f i i' Hinf j.
+  case H: (j == find_rec f i').
+  by move /eqP in H; rewrite H; apply ltnW.
+  apply (proj2_sig f).
+Qed.
+
+Lemma lt_dij : forall m n, m < n = false -> m == n = false -> n < m.
+Proof.
+  move=> m n.
+  by case: ltngtP.
+Qed.
+
+Lemma union_correct : forall f i i', is_forest (union_func f i i').
+Proof.
+  move=> f i i' j.
+  rewrite /union_func .
+  case: ifPn => Heq.
+  by apply (proj2_sig f).
+  case Hlne:  ((find_rec f i) < (find_rec f i')); apply is_forest_after_union.
+  by apply Hlne.
+  apply: (lt_dij Hlne).
+  by do 2 apply /eqP.
+Defined.
+
+Definition union_exist f i i':= exist _ _ (union_correct f i i'). 
 
 Lemma find_changed_union :
   forall i i' j f , find_rec f j = find_rec f i -> 
@@ -1818,17 +1806,11 @@ Proof.
       - by rewrite find_step in Hfind.
 Defined.
 
-Lemma exist_eq: forall f Hf, f = (exist is_forest (sval f) Hf).
+Lemma exist_surjective: forall f Hf, f = (exist is_forest (sval f) Hf).
 Proof.
   move=> f.
   case f => [f' Hf']. move=> Hf. 
   by apply boolp.eq_exist.
-Qed.
-
-Lemma lt_dij : forall m n, m < n = false -> m == n = false -> n < m.
-Proof.
-  move=> m n.
-  by case: ltngtP.
 Qed.
 
 Lemma union_func_Symm : 
@@ -1868,7 +1850,7 @@ Proof.
   case Heq: (find_rec f1 i == find_rec f1 i').
   - move: (union_correct f1 i i') (union_correct f2 i i').
   rewrite /union_func; rewrite  <- Hequiv, Heq.
-  by move=> Hf1 Hf2; do 2 rewrite <- exist_eq; rewrite Hequiv.
+  by move=> Hf1 Hf2; do 2 rewrite <- exist_surjective; rewrite Hequiv.
   -case Hlti:  (find_rec f1 i < find_rec f1 i').
   case Hji: (find_rec f1 j == find_rec f1 i'); move/eqP in Hji.
   *  rewrite (find_changed_union  Hji Hlti).
@@ -1960,7 +1942,7 @@ HB.instance Definition _ := @hasWBisim.Build M Bis
 
 Lemma eq_is_bisim : forall A (P Q : M A) , P = Q -> P ≈ Q.
 Proof.
-  by move=> A P Q Heq; unfold "≈"; rewrite Heq;do 2 split; reflexivity.
+  by move=> A P Q Heq; unfold "≈"; rewrite Heq.
 Qed.
 
 
@@ -1988,7 +1970,7 @@ Proof.
   case Heq: (find_rec f i == find_rec f i').
   - move: (union_correct f i i').
   rewrite /union_func Heq /= => Hf.
-  by rewrite <- exist_eq, Heq.
+  by rewrite <- exist_surjective, Heq.
   case Hlti: (find_rec f i < find_rec f i').
   - move/eqP in Heq. rewrite contra.Internals.eqType_neqP in Heq.
   by rewrite (find_unchanged_union Heq Hlti)
@@ -2021,7 +2003,7 @@ Proof.
   case Heq: (find_rec f i == find_rec f i').
   -move: (union_correct f i i').
   rewrite /union_func Heq => Hf.
-  rewrite <- exist_eq.
+  rewrite <- exist_surjective.
   by move/eqP in Heq.
   case Hlti:  (find_rec f i < find_rec f i').
   - move/eqP in Heq. rewrite contra.Internals.eqType_neqP in Heq.
@@ -2053,7 +2035,7 @@ Proof.
   rewrite /union_exist.
   move: (union_correct f i i').
   rewrite /union_func Heq => Hf.
-  by rewrite <- exist_eq.
+  by rewrite <- exist_surjective.
 Qed.
 
 Let union_id : forall i, union i i ≈ ret tt.
@@ -2144,7 +2126,7 @@ find_rec (union_exist (union_exist f i i') u v) j =
 find_rec (union_exist (union_exist f i i') u v) (find_rec (union_exist f u v) j).
 Proof.
   move=> f i i' u v j.
-Admitted.
+Admitted. (*doesn't dseems that easy*)
 
 Lemma find_unchanged_changed_union_eq: 
 forall f i i' u v j,
@@ -2159,7 +2141,7 @@ Proof.
   rewrite find_union_rooted !( union_exist_Symm u v) (find_changed_union Hju Hltu) Heqvi.
   rewrite (union_exist_Symm v u) find_changed_unchanged_union; try by [].
   by apply find_root.
-  admit.
+  admit. (* check the hypothesis of the lemmas *)
   admit.
 Admitted.
 
@@ -2171,7 +2153,7 @@ Proof.
   - rewrite /union_exist.
   move: (union_correct f i' i).
   rewrite /union_func Heqi => Hf.
-  by rewrite <- exist_eq.
+  by rewrite <- exist_surjective.
   case Hlti : (find_rec f i' < find_rec f i).
   - case Hji: (find_rec f j == find_rec f i); move/eqP in Hji.
     +rewrite (find_changed_union Hji Hlti).
@@ -2224,8 +2206,7 @@ find_rec f i > find_rec f i' ->
 find_rec f j = find_rec f i ->
 find_rec (union_exist f i i') u > find_rec (union_exist f i i') v ->
 find_rec f i' = find_rec (union_exist f i i') u ->
-find_rec 
-(union_exist (union_exist f i i') u v) j = find_rec f v.
+find_rec (union_exist (union_exist f i i') u v) j = find_rec f v.
 Proof.
   move=> f i i' u v j Hlti Hji Hltu Hju.
   have: find_rec f v < find_rec f i by apply (lt_union Hlti Hltu Hju).
@@ -2245,7 +2226,7 @@ Proof.
   move: (union_correct f i i').
   rewrite /union_func Heq eq_refl.
   move=> Hf.
-  symmetry; apply exist_eq.
+  symmetry; apply exist_surjective.
 Qed.
 
 Lemma find_eq_union : forall f i i' u v,
@@ -2275,7 +2256,7 @@ Proof.
   case Hequ: (find_rec f u == find_rec f v).
   - move: (union_correct f u v).
   rewrite /union_func Hequ => Hf.
-  by rewrite <- exist_eq, Heqi, eq_refl.
+  by rewrite <- exist_surjective, Heqi, eq_refl.
   case Hltu: (find_rec f u < find_rec f v)=> /=.
   -  by rewrite (find_eq_union Heqi Hltu).
   - have Hltu' := lt_dij Hltu Hequ.
@@ -2283,20 +2264,37 @@ Proof.
   by rewrite (union_exist_Symm u v) (find_eq_union Heqi Hltu').
 Qed.
 
+Lemma find_eq_unionC: forall i i' u v f,
+find_rec f u = find_rec f i->
+find_rec f v = find_rec f i'->
+(union_exist f u v) = (union_exist f i i').
+Proof.
+  by move=> i i' u v f Heq Heq';
+  apply boolp.eq_exist;
+  rewrite /union_func Heq Heq'.
+Qed.
+
+
 Lemma union_eq3 : 
 forall f i i' u v,
-(find_rec (union_exist f i i') u  = find_rec (union_exist f i i') v)
--> find_rec f u = find_rec f v \/ (find_rec f u = find_rec f i /\ find_rec f v = find_rec f i').
+find_rec f i' < find_rec f i ->
+(find_rec (union_exist f i i') u  = find_rec (union_exist f i i') v) -> 
+find_rec f u = find_rec f v \/ (find_rec f u = find_rec f i /\ find_rec f v = find_rec f i').
 Proof.
-  move=> f i i' u v Heq.
+  move=> f i i' u v Hlti  Heq.
   move/eqP in Heq.
   case Hequv: (find_rec f u == find_rec f v); move/eqP in Hequv.
   - by rewrite Hequv; apply or_introl.
   - apply or_intror.
-    case Heqi: (find_rec f i == find_rec f i'); move/eqP in Heqi.
-    + admit.
-    case Hlti: (find_rec f i < find_rec f i').
-    + 
+    case H: (find_rec f u == find_rec f i); move/eqP in H.
+    +have Hv : find_rec f v != find_rec f i
+        by rewrite H in Hequv;move/nesym /eqP in Hequv.
+      rewrite union_exist_Symm (find_changed_union H Hlti) (find_unchanged_union Hv Hlti) in Heq.
+      by move/eqP in Heq. 
+    + move/eqP in H. 
+    rewrite union_exist_Symm (find_unchanged_union H Hlti) in Heq. (* do case u < v *)
+    case Hv: (find_rec f v == find_rec f i);move/eqP in Hv.
+    * rewrite (find_changed_union Hv Hlti) in Heq.
 Admitted.
 
 Lemma inf_after_union: forall i i' u v f,
@@ -2304,7 +2302,7 @@ find_rec f i < find_rec f i' ->
 find_rec (union_exist f i i') u < find_rec (union_exist f i i') v ->
 find_rec f u < find_rec f v.
 Proof.
-  move=> i i' u v f Hltunion.
+  move=> i i' u v f Hlti Hltunion. (* case analysis*)
 Admitted.
 
 Lemma union_lt_exchange : forall f i i' u v,
@@ -2313,19 +2311,21 @@ find_rec (union_exist f i' i) v < find_rec (union_exist f i' i) u ->
 find_rec f i' != find_rec f u \/ find_rec f i < find_rec f v ->
 find_rec (union_exist f u v) i < find_rec (union_exist f u v) i'.
 Proof.
-Admitted.
-(*
-  move=> f i i' u v Hlti Hdiff Hltu.
-  have Hltu' := inf_after_union Hltu.
-  apply: leq_ltn_trans.
-  by apply union_dec.
-  case Heq : (find_rec f i' == find_rec f u); move/eqP in Heq.
-  - rewrite (union_exist_Symm) (find_changed_union Heq Hltu').
-    symmetry in Heq.
-    rewrite (union_exist_Symm) (find_changed_union Heq Hlti) in Hltu.
-  admit.
-  -by move/eqP in Heq;rewrite (union_exist_Symm) (find_unchanged_union Heq Hltu').
-Admitted.*)
+  move=> f i i' u v Hlti Hltu H.
+  rewrite union_exist_Symm in Hltu.
+  have Hltuf := inf_after_union Hlti Hltu.
+  case: H => H'.
+  - rewrite union_exist_Symm (find_unchanged_union H' Hltuf).
+    apply: leq_ltn_trans.
+    + apply union_dec.
+    + by [].
+  - have Hlt := (ltn_trans H' Hltuf).
+  move /ltn_eqF /eqP /eqP in Hlt.
+  rewrite union_exist_Symm (find_unchanged_union Hlt Hltuf).
+  case Hequi': (find_rec f i' == find_rec f u);move/eqP in Hequi'.
+  - by rewrite (find_changed_union ).
+  - by move/eqP in Hequi'; rewrite find_unchanged_union.
+Qed.
 
 Lemma union_lt_exchange2 : forall f i i' u v,
 find_rec f i < find_rec f i' ->
@@ -2333,8 +2333,15 @@ find_rec (union_exist f i' i) v < find_rec (union_exist f i' i) u ->
 find_rec f i' = find_rec f u ->
 find_rec f i > find_rec f v -> 
 find_rec (union_exist f u v) i > find_rec (union_exist f u v) i'.
-Proof.
-Admitted.
+Proof. 
+  move=> f i i' u v Hlti Hltu Heqi'u Hlt.
+  rewrite union_exist_Symm in Hltu.
+  have Hltuf := inf_after_union Hlti Hltu.
+  rewrite union_exist_Symm (find_changed_union Heqi'u Hltuf).
+  have Hdiff : find_rec f i != find_rec f u.
+  by rewrite -Heqi'u; apply /negPf /ltn_eqF.
+  by rewrite find_unchanged_union.
+Qed.
 
 Lemma case_find_union : forall f i i' u ,
 find_rec f i < find_rec f i' ->
@@ -2361,29 +2368,29 @@ Proof.
   have Hltuf := inf_after_union Hlti Hltu.
   have Heqi := ltn_eqF Hlti.
   have Hequ := ltn_eqF Hltu.
-   + rewrite  (union_exist_Symm i i') (union_exist_Symm i i').
-      case Hij: (find_rec f j == find_rec f i'); move/eqP in Hij.
-      case Huj: (find_rec f i == find_rec (union_exist f i i') u); move/eqP in Huj.
-      * rewrite (union_exist_Symm i i') in Hltu, Huj;
-        rewrite (find_changed_changed_union Hlti Hij Hltu Huj).
-        have H: find_rec f i = find_rec f u \/ find_rec f i' = find_rec f u by apply (case_find_union Hlti Huj).
-        case H => Hui.
-        -- have Hju: find_rec f j <> find_rec f u by rewrite <- Hui, Hij; apply /nesym /eqP /negPf /ltn_eqF.
-          by rewrite (find_unchanged_changed_union_eq Hltuf Hju Hlti Hij Hui).
-        -- have Hju: find_rec f j = find_rec f u by rewrite <- Hui.
-          have Hdiff : find_rec f i <> find_rec f u by move=> Hcontradiction; rewrite <- Hcontradiction in Hui;rewrite Hui eq_refl in Heqi.
-          have Hltvi: find_rec f v < find_rec f i.
-            rewrite <-Huj in Hltu.
-            have Hdiffv: find_rec f v <> find_rec f i'.
-            by move=> Hcontr; move/ltn_eqF in Hltuf; rewrite <-Hui,Hcontr, eq_refl in Hltuf.
-            by move/eqP in Hdiffv; rewrite union_exist_Symm (find_unchanged_union  Hdiffv Hlti) in Hltu.
-          have Hji' : find_rec f v <> find_rec (union_exist f u v) i.
-            by move/eqP in Hdiff;
-            rewrite union_exist_Symm (find_unchanged_union Hdiff Hltuf)=> Hcontr;
-            apply ltn_eqF in Hltvi; rewrite Hcontr eq_refl in Hltvi. 
-          have Hlti':= (union_lt_exchange2 Hlti Hltu Hui Hltvi).
-          by rewrite (union_exist_Symm i' i) (find_changed_unchanged_union Hltuf Hju Hlti' Hji').
-      * rewrite union_exist_Symm in Huj, Hltu.
+  rewrite  (union_exist_Symm i i') (union_exist_Symm i i').
+  case Hij: (find_rec f j == find_rec f i'); move/eqP in Hij.
+  case Huj: (find_rec f i == find_rec (union_exist f i i') u); move/eqP in Huj.
+    - rewrite (union_exist_Symm i i') in Hltu, Huj;
+      rewrite (find_changed_changed_union Hlti Hij Hltu Huj).
+      have H: find_rec f i = find_rec f u \/ find_rec f i' = find_rec f u by apply (case_find_union Hlti Huj).
+      case H => Hui.
+      + have Hju: find_rec f j <> find_rec f u by rewrite <- Hui, Hij; apply /nesym /eqP /negPf /ltn_eqF.
+        by rewrite (find_unchanged_changed_union_eq Hltuf Hju Hlti Hij Hui).
+      + have Hju: find_rec f j = find_rec f u by rewrite <- Hui.
+        have Hdiff : find_rec f i <> find_rec f u by move=> Hcontradiction; rewrite <- Hcontradiction in Hui;rewrite Hui eq_refl in Heqi.
+        have Hltvi: find_rec f v < find_rec f i.
+          rewrite <-Huj in Hltu.
+          have Hdiffv: find_rec f v <> find_rec f i'.
+          by move=> Hcontr; move/ltn_eqF in Hltuf; rewrite <-Hui,Hcontr, eq_refl in Hltuf.
+          by move/eqP in Hdiffv; rewrite union_exist_Symm (find_unchanged_union  Hdiffv Hlti) in Hltu.
+        have Hji' : find_rec f v <> find_rec (union_exist f u v) i.
+          by move/eqP in Hdiff;
+          rewrite union_exist_Symm (find_unchanged_union Hdiff Hltuf)=> Hcontr;
+          apply ltn_eqF in Hltvi; rewrite Hcontr eq_refl in Hltvi. 
+        have Hlti':= (union_lt_exchange2 Hlti Hltu Hui Hltvi).
+        by rewrite (union_exist_Symm i' i) (find_changed_unchanged_union Hltuf Hju Hlti' Hji').
+      + rewrite union_exist_Symm in Huj, Hltu.
         rewrite (find_changed_unchanged_union Hlti Hij Hltu Huj).
         have Hju': find_rec f j <> find_rec f u
           by move=>Hcontr; rewrite Hcontr in Hij;rewrite union_exist_Symm (find_changed_union Hij Hlti) in Huj.
@@ -2399,60 +2406,75 @@ Proof.
         have Hlti' := union_lt_exchange Hlti Hltu Hjud.
         rewrite (find_unchanged_changed_union_neq Hltuf Hju' Hlti' Hji' Hiu).
         by move/eqP in Hiu; rewrite union_exist_Symm (find_unchanged_union Hdiffu Hltuf).
-      * case Hju: (find_rec f j == find_rec (union_exist f i' i) u);move/eqP in Hju.
+      +  rewrite union_exist_Symm in Hltu.
+        case Hju: (find_rec f j == find_rec (union_exist f i' i) u);move/eqP in Hju.
         case Hvi: (find_rec f v == find_rec f i'); move/eqP in Hvi.
-        -- have Hdiff : find_rec f u <> find_rec f i' by move=>Hcontr; apply ltn_eqF in Hltuf; rewrite Hcontr Hvi eq_refl in Hltuf.
+        * have Hdiff : find_rec f u <> find_rec f i' by move=>Hcontr; apply ltn_eqF in Hltuf; rewrite Hcontr Hvi eq_refl in Hltuf.
           have Hju': find_rec f j = find_rec f u by move/eqP in Hdiff; rewrite union_exist_Symm (find_unchanged_union Hdiff Hlti) in Hju.
           rewrite (find_unchanged_changed_union_eq Hlti Hij Hltuf Hju' Hvi).
           have Hvi': find_rec f v = find_rec (union_exist f u v) i' by rewrite Hju' in Hij;move /nesym /eqP in Hij;rewrite union_exist_Symm (find_unchanged_union Hij Hltuf).
           move/nesym /eqP in Hdiff.
           have Hdiff': find_rec f i' != find_rec f u \/ find_rec f i < find_rec f v by apply or_introl.
-          rewrite union_exist_Symm in Hltu.
           have Hlti' := union_lt_exchange Hlti Hltu Hdiff'.
-          by rewrite (find_changed_changed_union Hltuf Hju' Hlti' Hvi').
-        --
-        (* (* Todo here *)
-        rewrite union_exist_Symm in Hltu;rewrite (find_unchanged_changed_union_neq Hlti Hij Hltu Hju Hvi).
-        case Hju': (find_rec f j == find_rec f u); move/eqP in Hju'.
-          ++have Hvi': find_rec f v <> find_rec (union_exist f u v) i'.
-            by rewrite Hju' in Hij;
-            move/nesym /eqP in Hij;
+          by rewrite (find_changed_changed_union Hltuf Hju' Hlti' Hvi'). 
+        * have Hdiff: find_rec (union_exist f i' i) v <> find_rec f i'
+            by move/eqP in Hvi; rewrite union_exist_Symm (find_unchanged_union Hvi Hlti); apply /eqP.
+        have H : find_rec f j = find_rec f u \/ find_rec f u = find_rec f i' /\ find_rec f j = find_rec f i.
+          case Heq : (find_rec f u == find_rec f i');move/eqP in Heq.
+          - by apply or_intror; rewrite union_exist_Symm (find_changed_union Heq Hlti) in Hju; split.
+          - by apply or_introl;move/eqP in Heq; rewrite union_exist_Symm (find_unchanged_union Heq Hlti) in Hju.
+          case: H => H'.
+          -- move/eqP in Hvi. rewrite (find_unchanged_changed_union_neq Hlti Hij Hltu Hju Hdiff).
+          rewrite H' in Hij; move/nesym /eqP in Hij.
+          have Hdiff0: find_rec f i' != find_rec f u \/ find_rec f i < find_rec f v by apply or_introl. 
+          have Hlti' := union_lt_exchange Hlti Hltu Hdiff0. 
+          have Hvi' : find_rec f v <> find_rec (union_exist f u v) i'.
+            by rewrite union_exist_Symm (find_unchanged_union Hij Hltuf); apply /eqP.
+          by rewrite (find_changed_unchanged_union Hltuf H' Hlti' Hvi')
+          union_exist_Symm (find_unchanged_union Hvi Hlti).
+          -- case: H' => Hui' Hji.
+            move/eqP in Hvi.
+            have Hlt : find_rec f v < find_rec f i by
+            rewrite union_exist_Symm (find_changed_union Hui' Hlti) 
+            (find_unchanged_union Hvi Hlti) in Hltu.
+          symmetry in Hui';
+          have Hlti' := union_lt_exchange2 Hlti Hltu Hui' Hlt.
+          have Hdiff': find_rec (union_exist f i' i) v <> find_rec f i'
+            by rewrite union_exist_Symm (find_unchanged_union Hvi Hlti); apply /eqP.
+          rewrite (find_unchanged_changed_union_neq Hlti Hij Hltu Hju Hdiff').
+          rewrite Hui' in Hij.
+          have Hji' : find_rec f j = find_rec (union_exist f u v) i.
+            by rewrite Hji in Hij; move/eqP in Hij; 
             rewrite union_exist_Symm (find_unchanged_union Hij Hltuf).
-            have Hdiff': find_rec f i' != find_rec f u \/ find_rec f i < find_rec f v
-              by apply or_introl; move/nesym /eqP in Hij; rewrite Hju' in Hij.
-            have Hlti' := union_lt_exchange Hlti Hltu Hdiff'.
-            rewrite (find_changed_unchanged_union Hltuf Hju' Hlti' Hvi').
-            by move/eqP in Hvi; rewrite union_exist_Symm (find_unchanged_union Hvi Hlti).
-          ++  have Hlt : find_rec f v < find_rec f i by admit.
-              have Hequi' : find_rec f i' = find_rec f u.
-                by case H : (find_rec f i' == find_rec f u); move/eqP in H; try easy;
-                move/nesym /eqP in H;
-                rewrite union_exist_Symm (find_unchanged_union H Hlti) in Hju.
-              have Hlti' := union_lt_exchange2 Hlti Hltu Hequi' Hlt.
-
-              rewrite !(union_exist_Symm i' i).
-              rewrite (find_unchanged_changed_union_neq Hltuf Hju' Hlti' ).
-              by move/eqP in Hvi; 
-              rewrite (find_unchanged_union Hvi Hlti) union_exist_Symm  (find_changed_union Hequi' Hltuf).
-              admit.
-        --
-        case Hvi: (find_rec f v == find_rec f i'); move/eqP in Hvi.       
-        rewrite (find_unchanged_unchanged_union Hlti Hij Hltu Hju).
-          have Hju': find_rec f j <> find_rec f u.
-            by move=> Hcontr; 
-            rewrite Hcontr in Hij, Hju; move/eqP in Hij;
-            rewrite union_exist_Symm (find_unchanged_union Hij Hlti) in Hju.
-          
-          have Hij': find_rec f j <> find_rec (union_exist f u v) i'.
-          move=> Hcontr.
-          case Heq: (find_rec f u == find_rec f i'); move/eqP in Heq.
-          -rewrite union_exist_Symm (find_changed_union Heq Hlti) in Hju.
-            symmetry in Heq.
-            rewrite union_exist_Symm (find_changed_union Heq Hltuf) in Hcontr.
-
-          by rewrite (find_unchanged_unchanged_union Hltuf Hju' Hlti' Hij').
-          *)
-Admitted.
+          have Hi'u : find_rec (union_exist f u v) i' <> find_rec f u
+            by rewrite union_exist_Symm (find_changed_union Hui' Hltuf); move /ltn_eqF /eqP in Hltuf.
+          by rewrite !(union_exist_Symm i' i) (find_unchanged_changed_union_neq Hltuf Hij Hlti' Hji' Hi'u)
+          (find_unchanged_union Hvi Hlti) union_exist_Symm (find_changed_union Hui' Hltuf).
+        *rewrite (find_unchanged_unchanged_union Hlti Hij Hltu Hju).
+          case H: (find_rec f u == find_rec f i'); move/eqP in H.
+          -- rewrite union_exist_Symm (find_changed_union H Hlti) in Hju.
+            have Hvi : find_rec f v <> find_rec f i'
+              by move=>Hcontr;rewrite union_exist_Symm (find_changed_union Hcontr Hlti) (find_changed_union H Hlti) ltnn in Hltu.
+            move/eqP in Hvi;
+            have Hlt : find_rec f v < find_rec f i
+            by rewrite union_exist_Symm (find_changed_union H Hlti) (find_unchanged_union Hvi Hlti) in Hltu.
+            symmetry in H;
+            have Hlti' := union_lt_exchange2 Hlti Hltu  H Hlt.
+            rewrite H in Hij.
+            have Hui : find_rec f i <> find_rec f u
+              by move=> Hcontr; rewrite Hcontr H eq_refl in Heqi.
+            have Hji' : find_rec f j <> find_rec (union_exist f u v) i .
+            by move/eqP in Hui; rewrite union_exist_Symm (find_unchanged_union Hui Hltuf).
+            by rewrite (union_exist_Symm i' i)  (find_unchanged_unchanged_union Hltuf Hij Hlti' Hji').
+          -- have Hdiff : find_rec f i' != find_rec f u \/ find_rec f i < find_rec f v
+            by move/nesym /eqP in H; apply or_introl.
+          have Hlti' := union_lt_exchange Hlti Hltu Hdiff.
+          have Hji' : find_rec f j <> find_rec (union_exist f u v) i'
+            by move/nesym /eqP in H; rewrite union_exist_Symm (find_unchanged_union H Hltuf).
+          have Hju' :  find_rec f j <> find_rec f u
+            by move/eqP in H; rewrite union_exist_Symm (find_unchanged_union H Hlti) in Hju.
+          by rewrite (find_unchanged_unchanged_union Hltuf Hju' Hlti' Hji').
+Qed.
 
 Lemma unionC_aux2 : forall j i i' u v f,
 find_rec f i < find_rec f i' ->
@@ -2462,11 +2484,17 @@ Proof.
   move=> j i i' u v f Hlti.
   case Hequ: (find_rec (union_exist f i i') u == find_rec (union_exist f i i') v).
     + move/eqP in Hequ.
-    have H := union_eq3 Hequ.
+    have H := union_eq3 Hlti Hequ.
     case H.
     * by move=>Hequ'; rewrite (union_eq1 Hequ') (union_eq2 i i' Hequ').
     *  move=>Hequivi'; case: Hequivi' => Hequi Heqvi'.
-      admit.
+        have Heq : find_rec (union_exist f i i') u = find_rec (union_exist f i i') i.
+          have Hneq: find_rec f i != find_rec f i' by move /ltn_eqF /eqP /eqP in Hlti.
+          have Hneq': find_rec f u != find_rec f i' by rewrite -Hequi in Hneq.
+          by rewrite !find_unchanged_union.
+        have Heq' : find_rec (union_exist f i i') v = find_rec (union_exist f i i') i'
+          by rewrite !find_changed_union.
+        by rewrite (find_eq_unionC  Hequi Heqvi') (find_eq_unionC  Heq Heq').
     case Hltu: (find_rec (union_exist f i i') v < find_rec (union_exist f i i') u).
       rewrite union_exist_Symm in Hltu.
     + apply (UnionC_aux j Hlti Hltu). 
@@ -2475,7 +2503,7 @@ Proof.
     rewrite !(union_exist_Symm i i') in Hltu'.
     rewrite !(union_exist_Symm u v).
     apply (UnionC_aux j Hlti Hltu'). 
-Admitted.
+Qed.
 
 Let unionC : forall i i' u v, union i i' >> union u v ≈ union u v >> union i i'.
 Proof.
@@ -2501,7 +2529,6 @@ HB.instance Definition _ := isMonadUnion.Build
   findC 
   unionC 
   unionSymm .
-
 
 End modelunion.
 End ModelUnion.
