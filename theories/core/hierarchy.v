@@ -947,6 +947,25 @@ Arguments bindmeqv {s}.
 Arguments bindfeqv {s}.
 Hint Extern 0 (eqvM _ _) => apply eqvM_refl : core.
 
+Section setoid_equivMonad.
+Variable M : equivMonad.
+
+#[global] Add Parametric Relation A : (M A) (@eqvM M A)
+  reflexivity proved by (@eqvM_refl M A)
+  symmetry proved by (@eqvM_sym M A)
+  transitivity proved by (@eqvM_trans M A)
+  as eqvM_rel.
+
+#[global] Add Parametric Morphism A B : bind with signature
+  (@eqvM M A) ==> (pointwise_relation A (@eqvM M B)) ==> (@eqvM M B)
+  as bind_mor_elgot.
+Proof.
+move => x y Hxy f g Hfg; apply: eqvM_trans.
+- exact: (bindmeqv _ _ _ _ _ Hxy).
+- exact: (bindfeqv _ _ _ _ y Hfg).
+Qed.
+End setoid_equivMonad.
+
 HB.mixin Record isMonadElgot (M : UU0 -> UU0) of MonadEquiv M := {
   while : forall {A B : UU0}, (A -> M (B + A)%type) -> A -> M B;
   while_eqvM : forall (A B : UU0) (f g : A -> M (B + A)%type) (a : A),
@@ -1026,26 +1045,10 @@ Hint Extern 0 (wBisim _ _) => apply wBisim_refl : core.
 Section setoid_elgotMonad.
 Variable M : elgotMonad.
 
-#[global] Add Parametric Relation A : (M A) (@wBisim M A)
-  reflexivity proved by (@wBisim_refl M A)
-  symmetry proved by (@wBisim_sym M A)
-  transitivity proved by (@wBisim_trans M A)
-  as wBisim_rel.
-
-#[global] Add Parametric Morphism A B : bind with signature
-  (@wBisim M A) ==> (pointwise_relation A (@wBisim M B)) ==> (@wBisim M B)
-  as bind_mor_elgot.
-Proof.
-move => x y Hxy f g Hfg; apply: wBisim_trans.
-- exact: (bindmwB _ _ _ _ _ Hxy).
-- exact: (bindfwB _ _ _ _ y Hfg).
-Qed.
-
 #[global] Add Parametric Morphism A B : while with signature
   (pointwise_relation A (@wBisim M (B + A))) ==> @eq A ==> (@wBisim M B)
   as while_mor_elgot.
 Proof. by move=> f g + a; exact: whilewB. Qed.
-
 End setoid_elgotMonad.
 
 HB.mixin Record isMonadElgotExcept (M : UU0 -> UU0)
