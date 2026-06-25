@@ -1351,7 +1351,7 @@ Definition loc_id (ml_type : Type) (locT : eqType) {T : ml_type} (l : loc locT T
 
 (* #### Test Zone Union Find ##### *)
 
-(* change to i ≈ i' -> prop *)
+(* TODO change I type to be correct *)
 HB.mixin Record isMonadUnion (S : UU0) (I : finType) (M : UU0 -> UU0)
     of WBisim M := {
   find : I -> M I ;
@@ -1373,31 +1373,6 @@ HB.mixin Record isMonadUnion (S : UU0) (I : finType) (M : UU0 -> UU0)
 #[short(type=unionMonad)]
 HB.structure Definition MonadUnion (S : UU0) (I : finType) :=
   { M of isMonadUnion S I M & }. 
-
-(*
-Section setoid_unionMonad.
-Variable S : UU0.
-Variable I : finType. 
-Variable M : unionMonad S I.
-
-#[global] Add Parametric Relation A : (M A) (@wBisim M A)
-  reflexivity proved by (@wBisim_refl M A)
-  symmetry proved by (@wBisim_sym M A)
-  transitivity proved by (@wBisim_trans M A)
-  as union_wBisim_rel.
-
-#[global] Add Parametric Morphism A B : bind with signature
-  (@wBisim M A) ==> (pointwise_relation A (@wBisim M B)) ==> (@wBisim M B)
-  as bind_mor_union.
-Proof.
-move => x y Hxy f g Hfg; apply: wBisim_trans.
-- exact: (bindmwB _ _ _ _ _ Hxy).
-- exact: (bindfwB _ _ _ _ y Hfg).
-Qed.
-
-
-End setoid_unionMonad.*)
-
 
 (* #### END Test Zone Union Find ##### *)
 
