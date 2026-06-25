@@ -958,7 +958,7 @@ Variable M : equivMonad.
 
 #[global] Add Parametric Morphism A B : bind with signature
   (@eqvM M A) ==> (pointwise_relation A (@eqvM M B)) ==> (@eqvM M B)
-  as bind_mor_elgot.
+  as bind_mor_eqvM.
 Proof.
 move => x y Hxy f g Hfg; apply: eqvM_trans.
 - exact: (bindmeqv _ _ _ _ _ Hxy).
