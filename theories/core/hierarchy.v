@@ -1313,11 +1313,10 @@ Variant loc (ml_type : Type) (locT : eqType) : ml_type -> Type :=
 Definition loc_id (ml_type : Type) (locT : eqType) {T : ml_type} (l : loc locT T) : locT :=
   let: mkloc _ n := l in n.
 
-(* #### Test Zone Union Find ##### *)
+Module UnionFind.
+Local Definition I := nat.
 
-(* TODO change I type to be correct  eg decidable equality + order *)
-
-HB.mixin Record isMonadUnion (S : UU0) (I : eqType) (M : UU0 -> UU0)
+HB.mixin Record isMonadUnion (S : UU0) (M : UU0 -> UU0)
     of WBisim M := {
   find : I -> M I ;
   union : I -> I -> M unit ;
@@ -1336,11 +1335,11 @@ HB.mixin Record isMonadUnion (S : UU0) (I : eqType) (M : UU0 -> UU0)
   }.
 
 #[short(type=unionMonad)]
-HB.structure Definition MonadUnion (S : UU0) (I : eqType) :=
-  { M of isMonadUnion S I M & }. 
+HB.structure Definition MonadUnion (S : UU0) :=
+  { M of isMonadUnion S M & }.
 
-(* #### END Test Zone Union Find ##### *)
-
+End UnionFind.
+HB.export UnionFind.
 
 HB.mixin Structure isML_universe (ml_type : Type) := {
   coq_type : forall M : Type -> Type, ml_type -> Type ;
