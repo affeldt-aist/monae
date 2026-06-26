@@ -4,7 +4,7 @@ From Stdlib Require Import Recdef Wf_nat.
 From mathcomp Require Import all_ssreflect ssralg ssrint.
 From mathcomp Require boolp.
 Require Import preamble hierarchy monad_lib alt_lib fail_lib.
-From HB Require Import structures.
+From HB Require Import structures. 
 
 Set Implicit Arguments.
 Unset Strict Implicit.

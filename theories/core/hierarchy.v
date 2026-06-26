@@ -10,7 +10,6 @@ From infotheo Require Import realType_ext convex.
 Require Import preamble.
 From HB Require Import structures.
 
-
 (**md**************************************************************************)
 (* # A formalization of monadic effects over the category Set                 *)
 (*                                                                            *)
@@ -330,41 +329,6 @@ Definition associativity := forall A,
 
 End join_laws.
 End JoinLaws.
-
-HB.mixin Record isMonad (F : UU0 -> UU0) of Functor F := {
-  ret : idfun ~> F ;
-  join : F \o F ~> F ;
-  bind : forall (A B : UU0), F A -> (A -> F B) -> F B ;
-  bindE : forall (A B : UU0) (f : A -> F B) (m : F A),
-  bind A B m f = join B ((F # f) m) ;
-  joinretM : JoinLaws.left_unit ret join ;
-  joinMret : JoinLaws.right_unit ret join ;
-  joinA : JoinLaws.associativity join }.
-
-#[short(type=monad)]
-HB.structure Definition Monad := {F of isMonad F &}.
-
-(* we introduce Ret as a way to make the second arguments of ret implicit,
-   o.w. Rocq won't let us *)
-Notation Ret := (@ret _ _).
-Notation Join := (@join _ _).
-Arguments bind {s A B} : simpl never.
-Notation "m >>= f" := (bind m f) : monae_scope.
-
-Lemma eq_bind (M : monad) (A B : UU0) (m : M A) (f1 f2 : A -> M B) :
-  f1 =1 f2 -> m >>= f1 = m >>= f2.
-Proof. by move=> f12; congr bind; apply boolp.funext. Qed.
-
-Section monad_lemmas.
-Variable M : monad.
-
-Lemma fmapE (A B : UU0) (f : A -> B) (m : M A) :
- (M # f) m = m >>= (ret B \o f).
-Proof.
-by rewrite bindE [in RHS]functor_o -[in RHS]compE compA joinMret.
-Qed.
-
-End monad_lemmas.
 
 Module BindLaws.
 Section bindlaws.
@@ -1274,8 +1238,9 @@ Definition loc_id (ml_type : Type) (locT : eqType) {T : ml_type} (l : loc locT T
 
 (* #### Test Zone Union Find ##### *)
 
-(* TODO change I type to be correct *)
-HB.mixin Record isMonadUnion (S : UU0) (I : finType) (M : UU0 -> UU0)
+(* TODO change I type to be correct  eg decidable equality + order *)
+
+HB.mixin Record isMonadUnion (S : UU0) (I : eqType) (M : UU0 -> UU0)
     of WBisim M := {
   find : I -> M I ;
   union : I -> I -> M unit ;
@@ -1285,7 +1250,7 @@ HB.mixin Record isMonadUnion (S : UU0) (I : finType) (M : UU0 -> UU0)
   unionfind :forall i i', union i i'>> find i ≈ union i i' >> find i';
   findunion : forall i i', find i' >>= (fun v => union i v) ≈ union i i'; 
   union_id : forall i, union i i ≈ skip ;
-  union_eq : forall i i' u, find i ≈ find u -> union i i' ≈ union u i'
+  union_eq : forall i i' u, find i ≈ find u -> union i i' ≈ union u i';
   findC : forall i i'(A : UU0) (k : I -> I -> M A),
     find i >>= (fun u => find i' >>= (fun v => k u v)) ≈
     find i' >>= (fun v => find i >>= (fun u => k u v));
@@ -1294,7 +1259,7 @@ HB.mixin Record isMonadUnion (S : UU0) (I : finType) (M : UU0 -> UU0)
   }.
 
 #[short(type=unionMonad)]
-HB.structure Definition MonadUnion (S : UU0) (I : finType) :=
+HB.structure Definition MonadUnion (S : UU0) (I : eqType) :=
   { M of isMonadUnion S I M & }. 
 
 (* #### END Test Zone Union Find ##### *)
