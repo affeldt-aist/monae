@@ -427,40 +427,45 @@ case: (munion u t) => f1' f2'.
 by move: (equiv_union u t f1f2) => /(equiv_union x y) /= ->.
 Qed.
 
-Lemma mfindunionl x y : mfind x >>= munion ^~ y = munion x y.
-Proof. by apply/boolp.eq_exist/boolp.funext => f /=; rewrite union_find_l. Qed.
+Lemma macto_ext A (m1 m2 : M A) : sval m1 =1 sval m2 -> m1 = m2.
+Proof. case: m1 m2 => ?? [??] ?; exact/boolp.eq_exist/boolp.funext. Qed.
 
 Lemma mfindunionr x y : mfind y >>= munion x = munion x y.
-Proof. by apply/boolp.eq_exist/boolp.funext => f /=; rewrite union_find_r. Qed.
+Proof. by apply/macto_ext => f /=; rewrite union_find_r. Qed.
 
 Lemma munionC x y : munion x y = munion y x.
-Proof. by apply/boolp.eq_exist/boolp.funext => f /=; rewrite unionC. Qed.
+Proof. by apply/macto_ext => f /=; rewrite unionC. Qed.
 
 Lemma mfindC A x y (m : I -> I -> M A) :
   mfind x >>= (fun x' => mfind y >>= m x') =
   mfind y >>= (fun y' => mfind x >>= m ^~ y').
-Proof. exact/boolp.eq_exist/boolp.funext. Qed.
+Proof. exact/macto_ext. Qed.
 
 Lemma mfindfind A x (k : I -> I -> M A) :
   mfind x >>= (fun x' => mfind x >>= k x') =
   mfind x >>= (fun x' => mfind x >> k x' x').
-Proof. exact/boolp.eq_exist/boolp.funext. Qed.
+Proof. exact/macto_ext. Qed.
 
 Lemma mfindskip x : mfind x >> skip = skip.
-Proof. exact/boolp.eq_exist/boolp.funext. Qed.
+Proof. exact/macto_ext. Qed.
 
 Lemma mfindunionfind x y z :
   (mfind z >>= fun z' => munion x y >> mfind z') = munion x y >> mfind z.
-Proof. by apply/boolp.eq_exist/boolp.funext => f /=; rewrite find_union. Qed.
+Proof. by apply/macto_ext => f /=; rewrite find_union. Qed.
 
 Lemma munionfind x y : munion x y >> mfind x = munion x y >> mfind y.
 Proof.
-apply/boolp.eq_exist/boolp.funext => f.
-by rewrite /munion /= -find_union union_joined find_union.
+apply/macto_ext => f; congr pair.
+by rewrite -find_union union_joined find_union.
 Qed.
 
 Lemma munionxx x : munion x x = skip.
-Proof. by apply/boolp.eq_exist/boolp.funext => f; rewrite unionxx. Qed.
+Proof. by apply/macto_ext => f /=; rewrite unionxx. Qed.
+
+(* Derived rules *)
+
+Lemma mfindunionl x y : mfind x >>= munion ^~ y = munion x y.
+Proof. by under eq_bind do rewrite munionC; rewrite mfindunionr munionC. Qed.
 
 Lemma mfinddup x : mfind x >>= mfind = mfind x.
 Proof.
@@ -473,5 +478,4 @@ Proof.
 rewrite -{2}mfindunionl -bindA munionfind bindA.
 by rewrite mfindunionl munionxx bindmskip.
 Qed.
-
 End AsFunction.
