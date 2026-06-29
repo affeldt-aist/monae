@@ -1317,21 +1317,22 @@ Module UnionFind.
 Local Definition I := nat.
 
 HB.mixin Record isMonadUnion (S : UU0) (M : UU0 -> UU0)
-    of WBisim M := {
+    of MonadEquiv M := {
   find : I -> M I ;
   union : I -> I -> M unit ;
-  unionunion : forall i i', union i i' >> union i i' ≈ union i i' ;
   findfind : forall i (A : UU0) (k : I -> I -> M A), 
-    find i >>= (fun r => find i >>= (fun r' => k r r')) ≈ find i >>= (fun r => k r r);
-  unionfind :forall i i', union i i'>> find i ≈ union i i' >> find i';
-  findunion : forall i i', find i' >>= (fun v => union i v) ≈ union i i'; 
-  union_id : forall i, union i i ≈ skip ;
-  union_eq : forall i i' u, find i ≈ find u -> union i i' ≈ union u i';
+    eqvM (find i >>= (fun r => find i >>= (fun r' => k r r'))) (find i >>= (fun r => k r r));
+  unionfind :forall i i', eqvM (union i i'>> find i) (union i i' >> find i');
+  findunion : forall i i', eqvM (find i' >>= (fun v => union i v)) (union i i'); 
+  findunionfind : 
+    forall i i' u, eqvM (find u >>= (fun v => union i i' >> find v)) (union i i' >> find u); 
+  union_id : forall i, eqvM (union i i) skip ;
   findC : forall i i'(A : UU0) (k : I -> I -> M A),
-    find i >>= (fun u => find i' >>= (fun v => k u v)) ≈
-    find i' >>= (fun v => find i >>= (fun u => k u v));
-  unionC : forall i i' u v, union i i' >> union u v ≈ union u v >> union i i';
-  unionSymm : forall i i', union i i' ≈ union i' i;
+    eqvM 
+    (find i >>= (fun u => find i' >>= (fun v => k u v)))
+    (find i' >>= (fun v => find i >>= (fun u => k u v)));
+  unionSymm : forall i i', eqvM (union i i') (union i' i);
+  unionC : forall i i' u v, eqvM (union i i' >> union u v) (union u v >> union i i');
   }.
 
 #[short(type=unionMonad)]

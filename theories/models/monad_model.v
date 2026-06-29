@@ -1917,8 +1917,11 @@ Proof.
   by rewrite /Bis /bind => Hbis f' g' /=; case (sval d f' g') => [[a f'0] g'0].
 Qed.
 
-HB.instance Definition _ := @hasWBisim.Build M Bis
-  (@refl) (@sym) (@trans) (@bindl) (@bindr).
+HB.instance Definition _ := @hasPreorder.Build M Bis
+  (@refl) (@trans) (@bindl) (@bindr).
+
+HB.instance Definition _ := @hasEquivalence.Build M (@sym).
+
 
 Lemma eq_is_bisim : forall A (P Q : M A) , P = Q -> P ≈ Q.
 Proof.
@@ -1991,6 +1994,21 @@ Proof.
   by rewrite find_root.
 Qed.
 
+Lemma findunionfind_lt : forall f i i' u,
+find_rec f i < find_rec f i' -> 
+find_rec (union_exist f i i') (find_rec f u) = find_rec (union_exist f i i') u.
+Proof.
+  move=>f i i' u Hlti.
+  rewrite -(find_root u (union_exist f i i')).
+  case H: (find_rec f u == find_rec f i'); move/eqP in H.
+  - rewrite (find_changed_union H Hlti).
+    have Hi : find_rec f (find_rec f i) != find_rec f i'
+      by rewrite find_root;move/ltn_eqF /eqP /eqP in Hlti.
+    rewrite -find_root in H. 
+    by rewrite (find_changed_union H Hlti) (find_unchanged_union Hi Hlti) find_root.
+  - by move/eqP in H; rewrite (find_unchanged_union H Hlti).
+Qed.
+
 Lemma union_exist_id : forall f i i',
 (find_rec f i == find_rec f i') = true ->
 (union_exist f i i') = f.
@@ -2001,6 +2019,22 @@ Proof.
   rewrite /union_func Heq => Hf.
   by rewrite <- exist_surjective.
 Qed.
+
+Let findunionfind : 
+    forall i i' u, find u >>= (fun v => union i i' >> find v) ≈ union i i' >> find u.
+Proof.
+  move=>i i' u.
+  rewrite /bind /=.
+  apply eq_is_bisim, boolp.eq_exist, boolp.funext => f.
+  case Heq: (find_rec f i == find_rec f i').
+  by rewrite (union_exist_id Heq) find_root.
+  case Hlti: (find_rec f i < find_rec f i').
+  by rewrite findunionfind_lt .
+  by rewrite union_exist_Symm (findunionfind_lt u (lt_case Hlti Heq)).
+Qed.
+
+
+
 
 Let union_id : forall i, union i i ≈ ret tt.
 Proof.
@@ -2604,15 +2638,15 @@ Proof.
 Qed.
 
 HB.instance Definition _ := isMonadUnion.Build
-  S acto  unionunion 
+  S acto  
   findfind 
   unionfind 
   findunion 
+  findunionfind
   union_id 
-  union_eq
   findC 
-  unionC 
-  unionSymm .
+  unionSymm
+  unionC.
 
 End modelunion.
 End ModelUnion.
