@@ -176,6 +176,7 @@ HB.mixin Record isFunctor (F : UU0 -> UU0) := {
 HB.structure Definition Functor := {F of isFunctor F}.
 
 
+
 Notation "F # g" := (@actm F _ _ g) : monae_scope.
 Notation "'fmap' f" := (_ # f) : mprog.
 
@@ -1308,7 +1309,6 @@ HB.structure Definition MonadArray (S : UU0) (I : eqType) :=
 HB.structure Definition MonadPlusArray (S : UU0) (I : eqType) :=
   { M of MonadPlus M & isMonadArray S I M }.
 
-
 Module UnionFind.
 Local Definition I := nat.
 
@@ -1317,8 +1317,8 @@ HB.mixin Record isMonadUnion (S : UU0) (M : UU0 -> UU0)
   find : I -> M I ;
   union : I -> I -> M unit ;
   findfind : forall (A : UU0) i (k : I -> I -> M A),
-    eqvM  (find i >>= fun r => find i >>= k r)
-          (find i >>= fun r => k r r) ;
+    eqvM (find i >>= fun r => find i >>= k r)
+         (find i >>= fun r => k r r) ;
   unionfind :forall i j, eqvM (union i j >> find i) (union i j >> find j) ;
   findunion : forall i j, eqvM (find j >>= union i) (union i j) ;
   findunionfind : forall i j u,
@@ -1326,7 +1326,7 @@ HB.mixin Record isMonadUnion (S : UU0) (M : UU0 -> UU0)
   union_id : forall i, eqvM (union i i) skip ;
   findC : forall (A : UU0) i j (k : I -> I -> M A),
     eqvM (find i >>= fun u => find j >>= k u)
-          (find j >>= fun v => find i >>= k ^~ v) ;
+         (find j >>= fun v => find i >>= k ^~ v) ;
   unionSymm : forall i j, eqvM (union i j) (union j i) ;
   unionC : forall i j u v,
     eqvM (union i j >> union u v) (union u v >> union i j) ;
