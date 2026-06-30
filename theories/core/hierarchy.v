@@ -945,6 +945,7 @@ End equivMonad_interface.
 Arguments eqvM {s A}.
 Arguments bindmeqv {s}.
 Arguments bindfeqv {s}.
+Notation "a '≈' b" := (eqvM a b).
 Hint Extern 0 (eqvM _ _) => apply eqvM_refl : core.
 
 Section setoid_equivMonad.
@@ -994,22 +995,16 @@ HB.mixin Record isMonadElgot (M : UU0 -> UU0) of MonadEquiv M := {
 HB.structure Definition MonadElgot := {M of isMonadElgot M & }.
 Arguments while {s A B}.
 
+(* old names for equivalence laws *)
+Notation wBisim := eqvM.
+Notation bindmwB := bindmeqv.
+Notation bindfwB := bindfeqv.
+Notation wBisim_refl := eqvM_refl.
+Notation wBisim_sym := eqvM_sym.
+Notation wBisim_trans := eqvM_trans.
+
 Section elgotMonad_interface.
 Context {s : elgotMonad}.
-Definition wBisim := @eqvM s.
-Local Notation "a '≈' b" := (wBisim a b).
-Definition wBisim_refl :
-  forall A (a : s A), a ≈ a := @eqvM_refl s.
-Definition wBisim_sym :
-  forall A (a b : s A), a ≈ b -> b ≈ a := @eqvM_sym s.
-Definition wBisim_trans :
-  forall A (a b c : s A), a ≈ b -> b ≈ c -> a ≈ c := @eqvM_trans s.
-Definition bindmwB :
-  forall (A B : UU0) (f : A -> s B) (d1 d2 : s A),
-    d1 ≈ d2 -> (d1 >>= f) ≈ (d2 >>= f) := @bindmeqv s.
-Definition bindfwB :
-  forall (A B : UU0) (f g : A -> s B) (d : s A),
-    (forall a, f a ≈ g a) -> (d >>= f) ≈ (d >>= g) := @bindfeqv s.
 Definition whilewB :
   forall (A B : UU0) (f g : A -> s (B + A)%type) (a : A),
     (forall a, f a ≈ g a) -> while f a ≈ while g a := while_eqvM.
@@ -1035,12 +1030,7 @@ Definition uniformwB :
                                  ((s # inr) \o Ret \o h))) ->
     forall c, while f (h c) ≈ while g c := uniform_eqvM.
 End elgotMonad_interface.
-Arguments wBisim {s A}.
-Arguments bindmwB {s}.
-Arguments bindfwB {s}.
 Arguments uniformwB {s}.
-Notation "a '≈' b" := (wBisim a b).
-Hint Extern 0 (wBisim _ _) => apply wBisim_refl : core.
 
 Section setoid_elgotMonad.
 Variable M : elgotMonad.
