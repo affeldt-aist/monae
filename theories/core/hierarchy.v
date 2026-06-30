@@ -1308,11 +1308,6 @@ HB.structure Definition MonadArray (S : UU0) (I : eqType) :=
 HB.structure Definition MonadPlusArray (S : UU0) (I : eqType) :=
   { M of MonadPlus M & isMonadArray S I M }.
 
-Variant loc (ml_type : Type) (locT : eqType) : ml_type -> Type :=
-  mkloc T : locT -> loc locT T.
-Definition loc_id (ml_type : Type) (locT : eqType) {T : ml_type} (l : loc locT T) : locT :=
-  let: mkloc _ n := l in n.
-
 Module UnionFind.
 Local Definition I := nat.
 
@@ -1320,19 +1315,20 @@ HB.mixin Record isMonadUnion (S : UU0) (M : UU0 -> UU0)
     of MonadEquiv M := {
   find : I -> M I ;
   union : I -> I -> M unit ;
-  findfind : forall i (A : UU0) (k : I -> I -> M A), 
-    eqvM (find i >>= (fun r => find i >>= (fun r' => k r r'))) (find i >>= (fun r => k r r));
-  unionfind :forall i i', eqvM (union i i'>> find i) (union i i' >> find i');
-  findunion : forall i i', eqvM (find i' >>= (fun v => union i v)) (union i i'); 
-  findunionfind : 
-    forall i i' u, eqvM (find u >>= (fun v => union i i' >> find v)) (union i i' >> find u); 
+  findfind : forall (A : UU0) i (k : I -> I -> M A),
+    eqvM (find i >>= fun r => find i >>= k r)
+         (find i >>= fun r => k r r) ;
+  unionfind :forall i j, eqvM (union i j >> find i) (union i j >> find j) ;
+  findunion : forall i j, eqvM (find j >>= union i) (union i j) ;
+  findunionfind : forall i j u,
+    eqvM (find u >>= fun v => union i j >> find v) (union i j >> find u) ;
   union_id : forall i, eqvM (union i i) skip ;
-  findC : forall i i'(A : UU0) (k : I -> I -> M A),
-    eqvM 
-    (find i >>= (fun u => find i' >>= (fun v => k u v)))
-    (find i' >>= (fun v => find i >>= (fun u => k u v)));
-  unionSymm : forall i i', eqvM (union i i') (union i' i);
-  unionC : forall i i' u v, eqvM (union i i' >> union u v) (union u v >> union i i');
+  findC : forall (A : UU0) i j (k : I -> I -> M A),
+    eqvM (find i >>= fun u => find j >>= k u)
+         (find j >>= fun v => find i >>= k ^~ v) ;
+  unionSymm : forall i j, eqvM (union i j) (union j i) ;
+  unionC : forall i j u v,
+    eqvM (union i j >> union u v) (union u v >> union i j) ;
   }.
 
 #[short(type=unionMonad)]
@@ -1341,6 +1337,13 @@ HB.structure Definition MonadUnion (S : UU0) :=
 
 End UnionFind.
 HB.export UnionFind.
+
+(* Type store monad *)
+
+Variant loc (ml_type : Type) (locT : eqType) : ml_type -> Type :=
+  mkloc T : locT -> loc locT T.
+Definition loc_id (ml_type : Type) (locT : eqType) {T : ml_type} (l : loc locT T) : locT :=
+  let: mkloc _ n := l in n.
 
 HB.mixin Structure isML_universe (ml_type : Type) := {
   coq_type : forall M : Type -> Type, ml_type -> Type ;
