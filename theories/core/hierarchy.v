@@ -996,12 +996,12 @@ HB.structure Definition MonadElgot := {M of isMonadElgot M & }.
 Arguments while {s A B}.
 
 (* old names for equivalence laws *)
-Notation wBisim := eqvM.
-Notation bindmwB := bindmeqv.
-Notation bindfwB := bindfeqv.
-Notation wBisim_refl := eqvM_refl.
-Notation wBisim_sym := eqvM_sym.
-Notation wBisim_trans := eqvM_trans.
+Notation wBisim := eqvM (only parsing).
+Notation bindmwB := bindmeqv (only parsing).
+Notation bindfwB := bindfeqv (only parsing).
+Notation wBisim_refl := eqvM_refl (only parsing).
+Notation wBisim_sym := eqvM_sym (only parsing).
+Notation wBisim_trans := eqvM_trans (only parsing).
 
 Section elgotMonad_interface.
 Context {s : elgotMonad}.
