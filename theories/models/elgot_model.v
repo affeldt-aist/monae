@@ -52,6 +52,8 @@ Definition dist2 {S X Y} (xy : writer S Y + writer S X) : writer S (Y + X) :=
 
 Hint Extern 0 (wBisim _ _) => setoid_reflexivity : core.
 
+
+
 Module ElgotS.
 Section elgotS.
 Variables (S : UU0) (M : elgotMonad).
@@ -80,7 +82,8 @@ Section elgotS_wB.
 Context {A : UU0}.
 Implicit Type d : elgotS A.
 
-Lemma refl d : d ≈ d. Proof. by move=> s; exact: wBisim_refl. Qed.
+Lemma refl d : d ≈ d. Proof.
+by move=> s; exact: wBisim_refl. Qed.
 
 Lemma sym d1 d2 : d1 ≈ d2 -> d2 ≈ d1.
 Proof. by move=> ? ?; exact: wBisim_sym. Qed.
@@ -94,8 +97,9 @@ Section elgotS_lang.
 Context {A B : UU0}.
 Implicit Type d : elgotS A.
 
+
 Lemma bindl (f : A -> elgotS B) d1 d2 : d1 ≈ d2 -> (d1 >>= f) ≈ (d2 >>= f).
-Proof. by rewrite /wB => Hd s /=; rewrite !MS_bindE; exact: bindmwB. Qed.
+Proof.  rewrite /wB => Hd s /=. rewrite !MS_bindE. exact: bindmwB. Qed.
 
 Lemma bindr (f g : A -> elgotS B) d :
   (forall a, f a ≈ g a) -> (d >>= f) ≈ (d >>= g).
@@ -185,8 +189,10 @@ by apply: bindfwB => -[[?|?] ?];
   rewrite /=bindretf !compE/= fmapE !bindretf/= !compE/= fmapE bindretf.
 Qed.
 
-HB.instance Definition _ := @hasWBisim.Build elgotS wB
-  (@refl) (@sym) (@trans) (@bindl) (@bindr).
+HB.instance Definition _ := @hasPreorder.Build elgotS wB
+  (@refl) (@trans) (@bindl) (@bindr).
+
+HB.instance Definition _ := @hasEquivalence.Build elgotS (@sym).
 
 HB.instance Definition _ := @isMonadElgot.Build elgotS (@while)
   (@whilel) (@fixpoint) (@naturality) (@codiagonal) (@uniform).
@@ -320,8 +326,10 @@ Qed.
 
 HB.instance Definition _ := MonadExcept.on elgotX.
 
-HB.instance Definition _ := @hasWBisim.Build elgotX (@wB)
-  refl sym trans (@bindl) (@bindr).
+HB.instance Definition _ := @hasPreorder.Build elgotX (@wB)
+  refl trans (@bindl) (@bindr).
+
+HB.instance Definition _ := @hasEquivalence.Build elgotX sym.
 
 HB.instance Definition _ := @isMonadElgot.Build elgotX (@while)
   (@whilel) (@fixpoint) (@naturality) (@codiagonal) (@uniform).
