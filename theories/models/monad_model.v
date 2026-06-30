@@ -1952,10 +1952,10 @@ Proof.
           (find_changed_union erefl Hlti')eq_refl /= union_func_Symm.
 Qed.
 
-Let findfind : forall i (A : UU0) (k : I -> I -> M A), 
+Let findfind : forall (A : UU0) i (k : I -> I -> M A),
     find i >>= (fun r => find i >>= (fun r' => k r r')) ≈ find i >>= (fun r => k r r).
 Proof.
-  by move =>i A k;
+  by move => A i k;
   apply eq_is_bisim, boolp.eq_exist, boolp.funext => f/=;
   apply boolp.funext => g/=.
 Qed.
@@ -2055,11 +2055,11 @@ Proof.
   by move=> ->.
 Qed.
 
-Let findC : forall i i'(A : UU0) (k : I -> I -> M A),
+Let findC : forall (A : UU0) i i' (k : I -> I -> M A),
     find i >>= (fun u => find i' >>= (fun v => k u v)) ≈
     find i' >>= (fun v => find i >>= (fun u => k u v)).
 Proof.
-  by move=> i i' A k;
+  by move=> A i i' k;
   apply eq_is_bisim,boolp.eq_exist, boolp.funext => f; 
   apply boolp.funext => g /=.
 Qed.  
