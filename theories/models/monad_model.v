@@ -1922,34 +1922,9 @@ HB.instance Definition _ := @hasPreorder.Build M Bis
 
 HB.instance Definition _ := @hasEquivalence.Build M (@sym).
 
-
 Lemma eq_is_bisim : forall A (P Q : M A) , P = Q -> P ≈ Q.
 Proof.
   by move=> A P Q Heq; unfold "≈"; rewrite Heq.
-Qed.
-
-Let unionunion : forall i i', union i i' >> union i i' ≈ union i i'.
-Proof.
-  intros i i'.
-  apply eq_is_bisim, boolp.eq_exist, boolp.funext => f; 
-  apply boolp.funext => g/=.
-  do 2 (apply pair_equal_spec; split; try easy).
-  apply boolp.eq_exist.
-  rewrite {1}/union_func /union_exist.
-  case Heq: (find_rec f i == find_rec f i').
-  - move: (union_correct f i i').
-  rewrite /union_func Heq /= => Hf.
-  by rewrite <- exist_surjective, Heq.
-  case Hlti: (find_rec f i < find_rec f i').
-  - move/eqP in Heq. rewrite contra.Internals.eqType_neqP in Heq.
-  by rewrite (find_unchanged_union Heq Hlti)
-          (find_changed_union erefl Hlti)
-          eq_refl /=.
-  - have Hlti' := (lt_case Hlti Heq).  
-    move/eqP /nesym /eqP in Heq.
-    fold (union_exist f i i').
-    by rewrite (union_exist_Symm i i') (find_unchanged_union Heq Hlti')
-          (find_changed_union erefl Hlti')eq_refl /= union_func_Symm.
 Qed.
 
 Let findfind : forall (A : UU0) i (k : I -> I -> M A),
@@ -2036,24 +2011,13 @@ Qed.
 
 
 
-Let union_id : forall i, union i i ≈ ret tt.
+Let union_id : forall i, union i i ≈ skip.
 Proof.
   move=> i. 
   apply eq_is_bisim, boolp.eq_exist, boolp.funext => f; apply boolp.funext => g.
   have H:  find_rec f i == find_rec f i = true by rewrite eq_refl.
   by rewrite (union_exist_id H).
 Qed.    
-
-Let union_eq : forall i i' u, find i ≈ find u -> union i i' ≈ union u i'.
-Proof.
-  move=> i i' u Hfind_eq.
-  apply eq_is_bisim, boolp.eq_exist, boolp.funext => f; apply boolp.funext => g.
-  do 2 (rewrite pair_equal_spec;split; try reflexivity).
-  apply boolp.eq_exist.
-  rewrite /union_func.
-  have: find_rec f i = find_rec f u by case (Hfind_eq f g).
-  by move=> ->.
-Qed.
 
 Let findC : forall (A : UU0) i i' (k : I -> I -> M A),
     find i >>= (fun u => find i' >>= (fun v => k u v)) ≈
@@ -2650,6 +2614,35 @@ HB.instance Definition _ := isMonadUnion.Build
 
 End modelunion.
 End ModelUnion.
+(* Deduced rules *)
+Section extra_rules.
+Variable S : UU0.
+Variable M : unionMonad S.
+Local Notation I := hierarchy.UnionFind.I.
+
+Lemma findunionl i j : (find i >>= union ^~ j) ≈ @union S M i j.
+Proof. 
+  by setoid_rewrite unionSymm;  rewrite findunion.
+Qed.
+
+Lemma finddup i : (find i >>= find : M I) ≈ find i.
+Proof.
+  rewrite -{2}(bindskipf (find i)) -(union_id i) -findunionfind.
+  apply: bindfeqv => a.
+  by rewrite -{1}(bindskipf (find a)) -(union_id i).
+Qed.
+
+Lemma uniondup i j : union i j >> union i j ≈ (union i j : M unit).
+Proof.
+  setoid_rewrite <-findunionl at 2. setoid_rewrite <-bindA.
+  rewrite unionfind  bindA.
+  setoid_rewrite findunionl.
+  setoid_rewrite union_id.
+  by rewrite bindmskip. 
+Qed.
+
+End extra_rules.
+
 
 Module ModelPlusArray.
 Section modelplusarray.
