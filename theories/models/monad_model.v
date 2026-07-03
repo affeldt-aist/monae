@@ -159,17 +159,14 @@ Proof. by []. Qed.
 Let associative : BindLaws.associative bind. Proof. by []. Qed.
 Let acto := ( @idfun UU0 ).
 HB.instance Definition _ := isMonad_ret_bind.Build acto left_neutral right_neutral associative.
-Let acto := ( @idfun UU0 ).
-HB.instance Definition _ := isMonad_ret_bind.Build acto left_neutral right_neutral associative.
 End identitymonad.
-End IdentityMonad.
+End IdentityMonad. 
 HB.export IdentityMonad.
 
 Module ListMonad.
 Section listmonad.
 Definition acto := fun A : UU0 => seq A.
 Local Notation M := acto.
-Let ret : idfun ~~> M := fun (A : UU0) x =>  (@cons A) x [::].
 Let ret : idfun ~~> M := fun (A : UU0) x =>  (@cons A) x [::].
 Let bind := fun A B (m : M A) (f : A -> M B) => flatten (map f m).
 Let left_neutral : BindLaws.left_neutral bind ret.
@@ -2619,34 +2616,176 @@ HB.instance Definition _ := isMonadUnion.Build
 
 End modelunion.
 End ModelUnion.
-(* Deduced rules *)
-Section extra_rules.
+HB.export ModelUnion.
+
+
+Module ModelUnionFail.
+Section modelunionfail.
+
 Variable S : UU0.
-Variable M : unionMonad S.
-Local Notation I := hierarchy.UnionFind.I.
+Definition acto := MX unit (ModelUnion.acto S).
+Local Notation M := acto.
+Local Notation I := nat.
 
-Lemma findunionl i j : (find i >>= union ^~ j) ≈ @union S M i j.
+HB.instance Definition _ := MonadExcept.on M.
+
+Let find i := liftX unit (ModelUnion.find S i).
+Let union i j := liftX unit (ModelUnion.union S i j).
+
+Definition Bis A (P Q : M A) := ModelUnion.Bis P Q.
+
+
+Lemma refl A (d : M A) : d ≈ d. 
+Proof. exact: refl. Qed.
+
+Lemma sym A (d1 d2 : M A) : d1 ≈ d2 -> d2 ≈ d1.
+Proof. exact: sym. Qed.
+
+Lemma trans A (d1 d2 d3 : M A) : d1 ≈ d2 -> d2 ≈ d3 -> d1 ≈ d3.
+Proof. exact: trans. Qed.
+
+Lemma bindl A B (t : A -> M B) (d1 d2 : M A) : d1 ≈ d2 -> (d1 >>= t) ≈ (d2 >>= t).
+Proof. exact: bindl. Qed.
+
+Lemma bindr A B (f g : A -> M B) d :
+  (forall a, f a ≈ g a) -> (d >>= f) ≈ (d >>= g).
+Proof. by move=> rH; apply: bindfeqv; case. Qed.
+
+HB.instance Definition _ := @hasPreorder.Build M Bis
+  (@refl) (@trans) (@bindl) (@bindr).
+
+HB.instance Definition _ := @hasEquivalence.Build M (@sym).
+
+
+Lemma liftequiv A (P Q: ModelUnion.acto S A ) : 
+  P ≈ Q -> liftX unit P ≈ liftX unit Q.
+Proof. by move=> Hequiv; apply: bindmeqv. Qed.
+
+Let findfind (A : UU0) i (k : I -> I -> M A):
+    eqvM (find i >>= fun r => find i >>= k r)
+          (find i >>= fun r => k r r).
+Proof. exact: (@findfind S (ModelUnion.acto S)). Qed.
+  
+
+Let unionfind i j: eqvM (union i j >> find i) (union i j >> find j).
+Proof.  
+  rewrite /union /find -monadMbind -monadMbind /=.
+  by apply: liftequiv;  rewrite (@unionfind S (ModelUnion.acto S)).
+Qed.
+
+Let  findunion i j: eqvM (find j >>= union i) (union i j).
 Proof. 
-  by setoid_rewrite unionSymm;  rewrite findunion.
+  rewrite /union /find -monadMbind /=.
+  by apply liftequiv;  rewrite (@findunion S (ModelUnion.acto S)).
 Qed.
 
-Lemma finddup i : (find i >>= find : M I) ≈ find i.
+Lemma lift_fun : forall v i j,
+ liftX unit (ModelUnion.union S i j) >> liftX unit (ModelUnion.find S v)  =
+ liftX unit (ModelUnion.union S i j >>ModelUnion.find S v).
+Abort.
+
+Let  findunionfind  i j u: eqvM (find u >>= fun v => union i j >> find v) (union i j >> find u).
 Proof.
-  rewrite -{2}(bindskipf (find i)) -(union_id i) -findunionfind.
-  apply: bindfeqv => a.
-  by rewrite -{1}(bindskipf (find a)) -(union_id i).
+  rewrite /union /find -monadMbind /=.
+  under eq_bind do rewrite -(monadMbind) /=.
+  rewrite -(monadMbind) /=.
+  apply: liftequiv.
+  exact: (@findunionfind S (ModelUnion.acto S)).
 Qed.
 
-Lemma uniondup i j : union i j >> union i j ≈ (union i j : M unit).
+Let ret A (a:A) := liftX unit (Ret a : ModelUnion.acto S A).
+
+Let union_id i: eqvM (union i i) (skip : M unit).
 Proof.
-  setoid_rewrite <-findunionl at 2. setoid_rewrite <-bindA.
-  rewrite unionfind  bindA.
-  setoid_rewrite findunionl.
-  setoid_rewrite union_id.
-  by rewrite bindmskip. 
+  rewrite /union /skip.
+  rewrite liftequiv; last exact: (@union_id S (ModelUnion.acto S)).
+  by [].
 Qed.
 
-End extra_rules.
+Let findC (A : UU0) i j (k : I -> I -> M A):
+    eqvM  (find i >>= fun u => find j >>= k u)
+          (find j >>= fun v => find i >>= k ^~ v).
+Proof. exact: (@findC S (ModelUnion.acto S)). Qed.
+
+
+Let unionSymm i j: eqvM (union i j) (union j i).
+Proof. rewrite /union; apply liftequiv; exact: (@unionSymm S (ModelUnion.acto S)). Qed.
+
+Let unionC i j u v: eqvM (union i j >> union u v) (union u v >> union i j).
+Proof. rewrite /union -!monadMbind /=; apply liftequiv; exact: (@unionC S (ModelUnion.acto S)). Qed.
+
+HB.instance Definition _ := isMonadUnion.Build
+  S acto  
+  findfind 
+  unionfind 
+  findunion 
+  findunionfind
+  union_id 
+  findC 
+  unionSymm
+  unionC.
+
+
+Let neqfind a b :=  (find a >>= fun a' => find b >>= fun b':I =>  @guard M (a' != b')).
+
+Let neqfindE : forall a b, neqfind a b =
+    (find a >>= fun a' => find b >>= fun b':I =>  @guard M (a' != b')).
+Proof. by []. Qed.
+
+Notation lift_correct S i :=  (bind_correct (ModelUnion.find S i) (fun x : I => exist (is_eqMonad (A:=unit + I)) (fun f : forestType => [eta pair (inr x, f)]) (ret_correct (inr x)))).
+
+Lemma lift_find i: find i = exist (is_eqMonad (A:=unit + I))
+(fun f : forestType => [eta pair (inr (find_rec f i), f)]) (lift_correct S i).
+Proof.
+  rewrite /find /liftX /bind /= /bindX /retX.
+  rewrite /ModelUnion.bind /=.
+  by apply boolp.eq_exist, boolp.funext => f /=;apply boolp.funext => g /=.
+Qed.
+
+Lemma bindfind a A (k : I -> M A) : (find a >>= fun a' => k a) = (find a >>= fun a' => k a).
+Proof.
+  rewrite /bind /= /bindX /bind /= /ModelUnion.bind.
+  apply boolp.eq_exist, boolp.funext => f;apply boolp.funext => g /=.
+Abort.
+
+Lemma find_unchanged_union_eq f i j a:
+  (find_rec f a != find_rec f i) ->
+  (find_rec f a != find_rec f j)->
+  (find_rec (union_exist f i j) a) = find_rec f a.
+Proof.
+  move=> Hi Hj.
+  case Heq: (find_rec f i == find_rec f j).
+  -  by rewrite union_exist_id.
+  case Hlt : (find_rec f i < find_rec f j).
+  - by rewrite find_unchanged_union.
+  - have Hlt' := lt_case Hlt Heq.
+    by rewrite union_exist_Symm find_unchanged_union.
+Qed.
+
+Let unionfind_neq A  i j a (k : I-> M A ): 
+    eqvM (neqfind a i>>neqfind a j>> union i j>> find a >>= k)
+        (neqfind a i>> neqfind a j>> find a >>= fun a'=> union i j>> k a').
+Proof.
+  apply eq_is_bisim.
+  rewrite /neqfind.
+  rewrite lift_find.
+  rewrite /bind /= /bindX.
+  rewrite /neqfind /bind /= /bindX /ModelUnion.bind.
+  apply boolp.eq_exist, boolp.funext => f;apply boolp.funext => g /=.
+  case Hi : (find_rec f a != find_rec f i) => /=.
+  case Hj : (find_rec f a != find_rec f j) => /=.
+  by rewrite find_unchanged_union_eq.
+  by [].
+  by [].
+Qed.
+
+HB.instance Definition _ := isMonadUnionFail.Build
+  S acto  
+  neqfindE
+  unionfind_neq.
+
+End modelunionfail.
+End ModelUnionFail.
 
 
 Module ModelPlusArray.

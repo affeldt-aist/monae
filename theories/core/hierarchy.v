@@ -1045,6 +1045,10 @@ Variable M : elgotMonad.
 Proof. by move=> f g + a; exact: whilewB. Qed.
 End setoid_elgotMonad.
 
+HB.structure Definition MonadFailEquiv :=
+  { M of MonadEquiv M  & MonadFail M }.
+
+
 HB.mixin Record isMonadElgotExcept (M : UU0 -> UU0)
     of MonadElgot M & MonadExcept M := {
   catchmwB : forall (A : UU0) (d1 d2 h : M A),
@@ -1313,29 +1317,42 @@ Module UnionFind.
 Local Definition I := nat.
 
 HB.mixin Record isMonadUnion (S : UU0) (M : UU0 -> UU0)
-    of MonadEquiv M := {
+    of MonadEquiv M:= {
   find : I -> M I ;
   union : I -> I -> M unit ;
   findfind : forall (A : UU0) i (k : I -> I -> M A),
     eqvM (find i >>= fun r => find i >>= k r)
-         (find i >>= fun r => k r r) ;
+          (find i >>= fun r => k r r) ;
   unionfind :forall i j, eqvM (union i j >> find i) (union i j >> find j) ;
   findunion : forall i j, eqvM (find j >>= union i) (union i j) ;
   findunionfind : forall i j u,
     eqvM (find u >>= fun v => union i j >> find v) (union i j >> find u) ;
   union_id : forall i, eqvM (union i i) skip ;
   findC : forall (A : UU0) i j (k : I -> I -> M A),
-    eqvM (find i >>= fun u => find j >>= k u)
-         (find j >>= fun v => find i >>= k ^~ v) ;
+    eqvM  (find i >>= fun u => find j >>= k u)
+          (find j >>= fun v => find i >>= k ^~ v) ;
   unionSymm : forall i j, eqvM (union i j) (union j i) ;
   unionC : forall i j u v,
     eqvM (union i j >> union u v) (union u v >> union i j) ;
-  }.
+}.
 
 #[short(type=unionMonad)]
 HB.structure Definition MonadUnion (S : UU0) :=
   { M of isMonadUnion S M & }.
 
+HB.mixin Record isMonadUnionFail (S : UU0) (M : UU0 -> UU0)
+    of MonadUnion S M & MonadFail M := {
+  neqfind : I -> I -> M unit;
+  neqfindE : forall a b, neqfind a b =
+    (find a >>= fun a' => find b >>= fun b':I =>  @guard M (a' != b'));
+  unionfind_neq : forall A i j a (k : I -> M A), 
+    eqvM (neqfind a i>>neqfind a j>> union i j>> find a>>= k )
+        (neqfind a i>> neqfind a j>> find a >>= fun a'=> union i j>> k a'); 
+}.
+
+#[short(type=unionFailMonad)]
+HB.structure Definition MonadUnionFail (S : UU0) :=
+  { M of isMonadUnionFail S M &  }.
 End UnionFind.
 HB.export UnionFind.
 
