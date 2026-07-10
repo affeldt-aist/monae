@@ -1624,7 +1624,7 @@ Proof.
   exact : (htm _ _ g2 Heq'').
 Defined.
 
-Local Definition bind (A B : UU0) (m : M A) (t : A -> M B) : M B :=
+Let bind (A B : UU0) (m : M A) (t : A -> M B) : M B :=
   exist _ _  (bind_correct m t).
 
 Local Notation "a '>>=' b" := (bind a b).
@@ -1632,10 +1632,10 @@ Local Notation "a '>>' b" := (bind a (fun _ => b)).
 
 Let left_neutral : BindLaws.left_neutral bind ret.
 Proof.
-  by move => A B a t;
-  move H: (t a) => [f' Hf'] /=;
-  apply boolp.eq_exist;
-  rewrite /ret /=;
+  move => A B a t.
+  move H: (t a) => [f' Hf'] /=.
+  by apply boolp.eq_exist;
+  rewrite /=;
   apply: boolp.funext => f;
   apply: boolp.funext => g;
   rewrite H.
@@ -1652,13 +1652,11 @@ Qed.
 
 Let associative : BindLaws.associative bind.
 Proof.
-  move=> A B C a b c;
+  move=> A B C a b c.
   apply boolp.eq_exist;
-  apply boolp.funext => f; apply boolp.funext => g;
-  rewrite /bind /sval;
-  case a => fa Hfa /=;
-  case (fa f g) => [[a0 f'] g'];
-  reflexivity.
+  apply boolp.funext => f; apply boolp.funext => g.
+  case a => fa Hfa /=.
+  by case (fa f g) => [[a0 f'] g'].
 Qed.
 
 HB.instance Definition _ := 
@@ -1799,7 +1797,8 @@ Proof.
       by reflexivity.
     + move=> ->. apply IHn=>/=.
       case Heq: (i0 == find_rec f i).
-      - by move/eqP in Heq;rewrite find_rec_equation Heq find_return_root eq_refl eq_refl in Hfind.
+      - by move/eqP in Heq;
+        rewrite find_rec_equation Heq find_return_root eq_refl eq_refl in Hfind.
       - by rewrite find_step in Hfind.
 Defined.
 
@@ -1827,21 +1826,15 @@ Qed.
 Lemma union_exist_Symm : forall i i' f, 
   union_exist f i i' = union_exist f i' i.
 Proof.
- by move=>i i' f; apply boolp.eq_exist, union_func_Symm.
+  by move=>i i' f; apply boolp.eq_exist, union_func_Symm.
 Qed.
 
-Lemma Union_correct_equiv : forall i i', is_eqMonad (fun f => fun g => (tt, (union_exist f i i'), g)).
+Lemma Union_correct_equiv_aux i i' f1 f2 j:
+  find_rec f1 = find_rec f2 ->  
+  find_rec f1 i < find_rec f1 i' ->
+  find_rec (union_exist f1 i i') j = find_rec (union_exist f2 i i') j.
 Proof.
-  move =>i i' f1 f2 v Hequiv => /=.
-  do 2 (split; try easy).
-  rewrite /equiv /union_exist.
-  rewrite /equiv in Hequiv.
-  apply boolp.funext => j /=.
-  case Heq: (find_rec f1 i == find_rec f1 i').
-  - move: (union_correct f1 i i') (union_correct f2 i i').
-  rewrite /union_func; rewrite  <- Hequiv, Heq.
-  by move=> Hf1 Hf2; do 2 rewrite <- exist_surjective; rewrite Hequiv.
-  -case Hlti:  (find_rec f1 i < find_rec f1 i').
+  move=> Hequiv Hlti.
   case Hji: (find_rec f1 j == find_rec f1 i'); move/eqP in Hji.
   *  rewrite (find_changed_union  Hji Hlti).
     rewrite Hequiv in Hji, Hlti.
@@ -1850,17 +1843,24 @@ Proof.
     rewrite (find_unchanged_union  Hji Hlti).
     rewrite Hequiv in Hji, Hlti.
     by rewrite (find_unchanged_union Hji Hlti) Hequiv.
+Qed.
+
+Lemma Union_correct_equiv : forall i i', is_eqMonad (fun f => fun g => (tt, (union_exist f i i'), g)).
+Proof.
+  move =>i i' f1 f2 v Hequiv => /=.
+  do 2 (split; try easy).
+  rewrite /equiv in Hequiv.
+  apply boolp.funext => j /=.
+  case Heq: (find_rec f1 i == find_rec f1 i').
+  -   rewrite /equiv /union_exist.
+  move: (union_correct f1 i i') (union_correct f2 i i').
+  rewrite /union_func; rewrite  <- Hequiv, Heq.
+  by move=> Hf1 Hf2; do 2 rewrite <- exist_surjective; rewrite Hequiv.
+  - case Hlti:  (find_rec f1 i < find_rec f1 i').
+    by apply Union_correct_equiv_aux.
   - apply (lt_case Hlti) in Heq.
-    fold (union_exist f1 i i') (union_exist f2 i i') .
-    do 2 rewrite (union_exist_Symm i i').
-    case Hji: (find_rec f1 j == find_rec f1 i); move/eqP in Hji.
-    *  rewrite (find_changed_union Hji Heq ).
-      rewrite Hequiv in Hji, Heq.
-      by rewrite (find_changed_union Hji Heq) Hequiv.
-    * move/eqP in Hji.
-      rewrite (find_unchanged_union Hji Heq).
-      rewrite Hequiv in Hji, Heq.
-      by rewrite (find_unchanged_union Hji Heq) Hequiv.
+    rewrite !(union_exist_Symm i i').
+    by apply Union_correct_equiv_aux. 
 Defined.
 
 Definition union (i:I) (i' : I) : M unit :=
@@ -1916,7 +1916,7 @@ Qed.
 Lemma bindr A B (f g : A -> M B) d :
   (forall a, f a ≈ g a) -> (d >>= f) ≈ (d >>= g).
 Proof.
-  by rewrite /Bis /bind => Hbis f' g' /=; case (sval d f' g') => [[a f'0] g'0].
+  by rewrite /Bis => Hbis f' g' /=; case (sval d f' g') => [[a f0] g0].
 Qed.
 
 HB.instance Definition _ := @hasPreorder.Build M Bis
@@ -1929,18 +1929,16 @@ Proof.
   by move=> A P Q Heq; unfold "≈"; rewrite Heq.
 Qed.
 
-Let findfind : forall (A : UU0) i (k : I -> I -> M A),
+Let findfind (A : UU0) i (k : I -> I -> M A):
     find i >>= (fun r => find i >>= (fun r' => k r r')) ≈ find i >>= (fun r => k r r).
 Proof.
-  by move => A i k;
+  by
   apply eq_is_bisim, boolp.eq_exist, boolp.funext => f/=;
   apply boolp.funext => g/=.
 Qed.
 
-Let unionfind :forall i i', union i i'>> find i ≈ union i i' >> find i'.
+Let unionfind i i': union i i'>> find i ≈ union i i' >> find i'.
 Proof.
-  move=> i i'.
-  rewrite/find. 
   apply eq_is_bisim, boolp.eq_exist, boolp.funext => f; apply boolp.funext => g/=.
   do 2 (apply pair_equal_spec; split; try easy).
   rewrite /union_exist.
@@ -1950,7 +1948,7 @@ Proof.
   rewrite <- exist_surjective.
   by move/eqP in Heq.
   case Hlti:  (find_rec f i < find_rec f i').
-  - move/eqP in Heq. rewrite contra.Internals.eqType_neqP in Heq.
+  - move/eqP /eqP in Heq.
     by rewrite (find_unchanged_union  Heq Hlti)
           (find_changed_union  erefl Hlti).
   - have Hlti' := (lt_case Hlti Heq).  
@@ -1961,14 +1959,31 @@ Proof.
           (find_changed_union erefl Hlti').
 Qed.
 
-Let findunion : forall i i', find i' >>= (fun v => union i v) ≈ union i i'.
+Let findunion i i': find i' >>= (fun v => union i v) ≈ union i i'.
 Proof.
-  move=> i i'.
   apply eq_is_bisim, boolp.eq_exist ,boolp.funext => f; apply boolp.funext => g/=.
-  rewrite/union /union_exist /union_func.
   do 2 (apply pair_equal_spec; split; try easy).
   apply boolp.eq_exist.
-  by rewrite find_root.
+  by rewrite /union_func find_root.
+Qed.
+
+Lemma union_exist_id f i i':
+(find_rec f i == find_rec f i') = true ->
+(union_exist f i i') = f.
+Proof.
+  move=> Heq.
+  rewrite /union_exist.
+  move: (union_correct f i i').
+  rewrite /union_func Heq => Hf.
+  by rewrite <- exist_surjective.
+Qed.
+
+Let unionSymm i i': union i i' ≈ union i' i.
+Proof.
+  apply eq_is_bisim, boolp.eq_exist, boolp.funext => f; 
+  apply boolp.funext => g /=.
+  do 2 (rewrite pair_equal_spec;split; try reflexivity).
+  apply union_exist_Symm.
 Qed.
 
 Lemma findunionfind_lt : forall f i i' u,
@@ -1986,39 +2001,23 @@ Proof.
   - by move/eqP in H; rewrite (find_unchanged_union H Hlti).
 Qed.
 
-Lemma union_exist_id : forall f i i',
-(find_rec f i == find_rec f i') = true ->
-(union_exist f i i') = f.
+Let findunionfind i i' u:
+  find u >>= (fun v => union i i' >> find v) ≈ union i i' >> find u.
 Proof.
-  move=> f i i' Heq.
-  rewrite /union_exist.
-  move: (union_correct f i i').
-  rewrite /union_func Heq => Hf.
-  by rewrite <- exist_surjective.
-Qed.
-
-Let findunionfind : 
-    forall i i' u, find u >>= (fun v => union i i' >> find v) ≈ union i i' >> find u.
-Proof.
-  move=>i i' u.
-  rewrite /bind /=.
-  apply eq_is_bisim, boolp.eq_exist, boolp.funext => f.
-  case Heq: (find_rec f i == find_rec f i').
+  rewrite /union. 
+  apply eq_is_bisim, boolp.eq_exist, boolp.funext => f;apply boolp.funext => g.
+  case Heq: (find_rec f i == find_rec f i')=>/=.
   by rewrite (union_exist_id Heq) find_root.
   case Hlti: (find_rec f i < find_rec f i').
   by rewrite findunionfind_lt .
   by rewrite union_exist_Symm (findunionfind_lt u (lt_case Hlti Heq)).
 Qed.
 
-
-
-
 Let union_id : forall i, union i i ≈ skip.
 Proof.
   move=> i. 
   apply eq_is_bisim, boolp.eq_exist, boolp.funext => f; apply boolp.funext => g.
-  have H:  find_rec f i == find_rec f i = true by rewrite eq_refl.
-  by rewrite (union_exist_id H).
+  by rewrite (union_exist_id (eqxx (find_rec f i))).
 Qed.    
 
 Let findC : forall (A : UU0) i i' (k : I -> I -> M A),
@@ -2029,15 +2028,6 @@ Proof.
   apply eq_is_bisim,boolp.eq_exist, boolp.funext => f; 
   apply boolp.funext => g /=.
 Qed.  
-
-Let unionSymm : forall i i', union i i' ≈ union i' i.
-Proof.
-  move=> i i'.
-  apply eq_is_bisim, boolp.eq_exist, boolp.funext => f; 
-  apply boolp.funext => g /=.
-  do 2 (rewrite pair_equal_spec;split; try reflexivity).
-  apply union_exist_Symm.
-Qed.
 
 Lemma find_unchanged_unchanged_union: 
 forall f i i' u v j,
@@ -2589,9 +2579,8 @@ Proof.
     by apply UnionC_aux . 
 Qed.
 
-Let unionC : forall i i' u v, union i i' >> union u v ≈ union u v >> union i i'.
+Let unionC i i' u v: union i i' >> union u v ≈ union u v >> union i i'.
 Proof.
-  move=> i i' u v f g.
   do 2 (split; try easy).
   rewrite /equiv /=; apply boolp.funext => j/=.
   case Heqi: (find_rec f i == find_rec f i').
@@ -2603,6 +2592,16 @@ Proof.
     apply (unionC_aux2 j u v Hlti').
 Qed.
 
+Let find_lookup A i (m : M A): (find i>> m) ≈ m.
+Proof.
+  apply eq_is_bisim. rewrite /bind.
+  case m=> m' Hm.
+  apply boolp.eq_exist, boolp.funext=>f.
+  apply boolp.funext=>g.
+  by rewrite /find /find_rec /=.
+Qed.
+
+
 HB.instance Definition _ := isMonadUnion.Build
   S acto  
   findfind 
@@ -2612,7 +2611,8 @@ HB.instance Definition _ := isMonadUnion.Build
   union_id 
   findC 
   unionSymm
-  unionC.
+  unionC
+  find_lookup.
 
 End modelunion.
 End ModelUnion.
@@ -2714,6 +2714,9 @@ Proof. rewrite /union; apply liftequiv; exact: (@unionSymm S (ModelUnion.acto S)
 Let unionC i j u v: eqvM (union i j >> union u v) (union u v >> union i j).
 Proof. rewrite /union -!monadMbind /=; apply liftequiv; exact: (@unionC S (ModelUnion.acto S)). Qed.
 
+Let find_lookup A i (m : M A): (find i>> m) ≈ m.
+Proof. exact: (@find_lookup S (ModelUnion.acto S)). Qed.
+  
 HB.instance Definition _ := isMonadUnion.Build
   S acto  
   findfind 
@@ -2723,7 +2726,8 @@ HB.instance Definition _ := isMonadUnion.Build
   union_id 
   findC 
   unionSymm
-  unionC.
+  unionC
+  find_lookup.
 
 
 Let neqfind a b :=  (find a >>= fun a' => find b >>= fun b':I =>  @guard M (a' != b')).

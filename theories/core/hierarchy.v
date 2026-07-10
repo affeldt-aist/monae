@@ -1334,6 +1334,8 @@ HB.mixin Record isMonadUnion (S : UU0) (M : UU0 -> UU0)
   unionSymm : forall i j, eqvM (union i j) (union j i) ;
   unionC : forall i j u v,
     eqvM (union i j >> union u v) (union u v >> union i j) ;
+  find_lookup : forall A i (m : M A), 
+    eqvM (find i>> m) m;
 }.
 
 #[short(type=unionMonad)]
