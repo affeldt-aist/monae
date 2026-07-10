@@ -176,12 +176,44 @@ Proof.
   under eq_bind do rewrite bindA. over. over. over.
   symmetry.
   case Hb : ((a' == b') || (a' == i') && (b' == j') || (a' == j') && (b' == i')).
-  - admit.
-  - apply Bool.orb_false_elim in Hb.
+  -  apply: bindfeqv=>{}b0.
+    case H_b0: (b' == b0).
+    2: by rewrite guardF  !bindfailf.
+    rewrite guardT !bindskipf.
+    apply: bindfeqv=>{}a0.
+    case H_a0: (a' == a0).
+    2: by rewrite guardF !bindfailf.
+    rewrite guardT !bindskipf.
+    move /orP in Hb;case: Hb => Hb.
+    move /orP in Hb; case: Hb => Hb.
+    + move/eqP in Hb; rewrite Hb.
+      apply: bindfeqv=>{}_.
+      rewrite findfind.
+      under eq_bind do rewrite eqxx.
+      by rewrite guardT find_lookup.
+    + move /andP in Hb. 
+      case Hb => [/eqP Hi' /eqP Hj'].
+      rewrite Hi' Hj'.
+      symmetry.
+      rewrite -bindA -unionfind bindA.
+      apply: bindfeqv=>{}_.
+      rewrite findfind.
+      under eq_bind do rewrite eqxx.
+      by rewrite guardT find_lookup.
+    + move /andP in Hb. 
+      case Hb => [/eqP Hj' /eqP Hi'].
+      rewrite Hi' Hj'.
+      symmetry.
+      rewrite -bindA unionfind bindA.
+      apply: bindfeqv=>{}_.
+      rewrite findfind.
+      under eq_bind do rewrite eqxx.
+      by rewrite guardT find_lookup.
+  -  move /orP /orP /norP in Hb.
     case Hb => [Hb0 Hb1].
-    apply Bool.orb_false_elim in Hb0.
+    move /orP /orP /norP in Hb0.
     case: Hb0 => Hb0 Hb2.
-    symmetry.
+    (*almost only need link between find b' and b' == b0 = true*)
 Abort.
 
 
