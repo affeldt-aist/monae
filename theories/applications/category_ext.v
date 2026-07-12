@@ -101,7 +101,7 @@ Lemma comp_separated (X Y Z : obj) (f : ele X -> ele Y) (g : ele Y -> ele Z) :
 Proof.
 move: f g.
 move: X Y Z => [X1 X2] [Y1 Y2] [Z1 Z2] f g [/= Hf1 Hf2] [/= Hg1 Hg2].
-split => x; rewrite compE.
+split => x; rewrite up_compE.
 - by case/cid: (Hf1 x)=> y /= ->; case/cid: (Hg1 y)=> z /= ->; exists z.
 - by case/cid: (Hf2 x)=> y /= ->; case/cid: (Hg2 y)=> z /= ->; exists z.
 Qed.

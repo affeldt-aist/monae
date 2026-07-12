@@ -101,9 +101,9 @@ Proof.
 move=> X Y f; apply funext => eX.
 set rhs := RHS.
 have : Me_R _ _ (@eq Z) X Y (fun x y => f x = y) (m X eX) rhs.
-  apply: param => a _ <-; rewrite Actm_exponenialFE compE.
+  apply: param => a _ <-; rewrite Actm_exponenialFE up_compE.
   by case: (eX a) => [e|x]; constructor.
-by rewrite compE; case=> [a _ <-|x _ <-].
+by rewrite up_compE; case=> [a _ <-|x _ <-].
 Qed.
 
 End exception_naturality.
@@ -156,9 +156,9 @@ Proof.
 move=> X Y f /=; apply funext => eX.
 set rhs := RHS.
 have : Ml_R X Y (fun x y => f x = y) (m X eX) rhs.
-  apply: param => a _ <-; rewrite Actm_exponenialFE compE.
+  apply: param => a _ <-; rewrite Actm_exponenialFE up_compE.
   by elim: (eX a) => [|? ? ?]; constructor.
-by rewrite compE; elim => // x _ <- l _ _ <-.
+by rewrite up_compE; elim => // x _ <- l _ _ <-.
 Qed.
 
 End list_naturality.

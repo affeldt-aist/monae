@@ -48,19 +48,19 @@ Notation "f1 \o f2" := (up_comp f1 f2) : function_scope.
 
 Section comp_lemmas.
 
-Polymorphic Lemma compE A B C (g : B -> C) (f : A -> B) a : (g \o f) a = g (f a).
+Polymorphic Lemma up_compE A B C (g : B -> C) (f : A -> B) a : (g \o f) a = g (f a).
 Proof. by []. Qed.
 
-(* This compA is equivalent of ssrfun.compA for up_comp.
-   There are more lemmas for ssrfun.comp, such as
-   bij_comp, inj_comp, etc.  They should be added once in need *)
-Polymorphic Lemma compA {A B C D} (f : C -> D) (g : B -> C) (h : A -> B) :
+(* This up_compA is equivalent of ssrfun.compA for up_comp.
+   There are more lemmas for ssrfun.comp, such as bij_comp, inj_comp, etc.
+   Their counterparts should be added once in need. *)
+Polymorphic Lemma up_compA {A B C D} (f : C -> D) (g : B -> C) (h : A -> B) :
   f \o (g \o h) = (f \o g) \o h.
 Proof. by []. Qed.
 
-Polymorphic Lemma compfid A B (f : A -> B) : f \o id = f. Proof. by []. Qed.
+Polymorphic Lemma up_compfid A B (f : A -> B) : f \o id = f. Proof. by []. Qed.
 
-Polymorphic Lemma compidf A B (f : A -> B) : id \o f = f. Proof. by []. Qed.
+Polymorphic Lemma up_compidf A B (f : A -> B) : id \o f = f. Proof. by []. Qed.
 
 End comp_lemmas.
 
@@ -127,7 +127,7 @@ Variables (U : Type) (h : U -> R) (w : U) (g : T -> U -> U).
 Hypothesis H1 : h w = r.
 Hypothesis H2 : forall x y, h (g x y) = f x (h y).
 Lemma foldr_fusion : h \o foldr g w = foldr f r.
-Proof. by apply funext; elim => // a b /= <-; rewrite compE H2. Qed.
+Proof. by apply funext; elim => // a b /= <-; rewrite up_compE H2. Qed.
 Lemma foldr_fusion_ext x : (h \o foldr g w) x = foldr f r x.
 Proof. by rewrite -foldr_fusion. Qed.
 End fusion_law.
