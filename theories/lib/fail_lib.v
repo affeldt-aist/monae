@@ -383,7 +383,7 @@ Lemma decr_size_select : bassert_size select.
 Proof.
 case => [|h t]; first by rewrite !selectE fmap_fail /bassert bindfailf.
 rewrite /bassert selectE bind_fmap fmapE; bind_ext => -[x y] /=.
-rewrite !compE.
+rewrite !up_compE.
 by case: assertPn => //=; rewrite size_tuple /= ltnS leqnn.
 Qed.
 
@@ -753,7 +753,7 @@ have liftM2_qperm_isNondet (a b : (size t).-bseq A) :
   - by rewrite (leq_ltn_trans (size_bseq b)).
 exists (ndBind syn (fun a => sval (liftM2_qperm_isNondet a.1 a.2))).
 rewrite /= syn_tsplits; bind_ext => -[a b] /=.
-by rewrite bindretf compE; case: (liftM2_qperm_isNondet _ _).
+by rewrite bindretf up_compE; case: (liftM2_qperm_isNondet _ _).
 Qed.
 
 End plus_commute.

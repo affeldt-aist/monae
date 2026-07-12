@@ -68,7 +68,7 @@ Definition liftK : M ~~> MK M :=
 Let retliftK : MonadMLaws.ret liftK.
 Proof.
 move=> A; rewrite /liftK/= /retK/=; apply funext => a.
-by apply funext_dep => B /=; apply: funext => b; rewrite compE bindretf.
+by apply funext_dep => B /=; apply: funext => b; rewrite up_compE bindretf.
 Qed.
 
 Let bindliftK : MonadMLaws.bind liftK.
@@ -141,7 +141,7 @@ Definition from := [the _ ~> _ of from_component].
 Lemma from_component_liftK A :
   @from_component A \o Lift [the monadT of codensityT] M A = id.
 Proof.
-by apply funext => m /=; rewrite /from_component/= /liftK compE/= bindmret.
+by apply funext => m /=; rewrite /from_component/= /liftK up_compE/= bindmret.
 Qed.
 
 End from.
@@ -157,14 +157,14 @@ Proof.
 apply funext => m /=.
 rewrite /from_component /psik /= /psi' /kappa' /fun_app_nt /=.
 rewrite /bindK /=.
-rewrite !compE.
-rewrite -[in RHS]compE.
-rewrite -[in RHS]compE.
-rewrite -compA.
+rewrite !up_compE.
+rewrite -[in RHS]up_compE.
+rewrite -[in RHS]up_compE.
+rewrite -up_compA.
 rewrite -functor_o.
 rewrite from_component_liftK.
 rewrite functor_id.
-by rewrite compfid.
+by rewrite up_compfid.
 Qed.
 
 End psi_kappa.
@@ -186,7 +186,7 @@ rewrite /lifting_monadT /slifting => X.
 apply/esym.
 transitivity ((op1 \v op2) X \o op3 X \o E # Lift t M X).
   by rewrite (vassoc op1) vcompE/= !vcompE.
-rewrite -compA.
+rewrite -up_compA.
 transitivity ((op1 \v op2) X \o
     ((E # Lift t (codensityT M) X) \o
     (E # Lift [the monadT of codensityT] M X))).
@@ -194,15 +194,15 @@ transitivity ((op1 \v op2) X \o
   by rewrite -functor_o -natural_hmapE functor_app_naturalE -(@functor_o E).
 transitivity (op1 X \o
   (op2 X \o E # Lift t (codensityT M) X) \o E # Lift [the monadT of codensityT] M X).
-  by rewrite vcompE -compA.
+  by rewrite vcompE -up_compA.
 rewrite -uniform_algebraic_lifting.
 transitivity (Lift t M X \o from naturality_MK X \o (psik op) X \o
   E # Lift [the monadT of codensityT] M X).
   congr (_ \o _).
-  by rewrite compA natural_hmapE.
-rewrite -2!compA.
+  by rewrite up_compA natural_hmapE.
+rewrite -2!up_compA.
 congr (_ \o _).
-by rewrite compA -psikE.
+by rewrite up_compA -psikE.
 Qed.
 End uniform_sigma_lifting.
 
@@ -238,13 +238,13 @@ rewrite {1}/psi' /=.
 rewrite /bindS /=.
 rewrite vcompE/=.
 rewrite /liftS /=.
-rewrite compE bindA.
+rewrite up_compE bindA.
 set ret_id := (X in _ >>= X).
 have -> : ret_id = fun (x : MS S (codensityT M) X) (C : UU0) => (fun t => x s C t).
   by apply funext.
 rewrite /psi' /= /bindK /kappa' /=.
 congr (op A).
-rewrite -2![in LHS](compE _ _ emx) -2![in RHS](compE _ _ emx).
+rewrite -2![in LHS](up_compE _ _ emx) -2![in RHS](up_compE _ _ emx).
 by rewrite -!functor_o.
 Qed.
 
@@ -264,18 +264,18 @@ rewrite (psikE op (Z + X)%type).
 rewrite /slifting.
 rewrite 2!vcompE.
 set h := hmap _.
-rewrite !compE/=.
+rewrite !up_compE/=.
 f_equal.
 rewrite /psi' /=.
-rewrite /bindX compE bindE /=.
+rewrite /bindX up_compE bindE /=.
 apply funext_dep => A; apply funext => k.
 rewrite vcompE/=.
 rewrite /liftX /=.
-rewrite compE bindE /= /bindK /=.
+rewrite up_compE bindE /= /bindK /=.
 rewrite /psi' /= /bindK /=.
 rewrite /kappa' /=.
 congr (op _ _).
-rewrite -(compE (E # _)).
+rewrite -(up_compE (E # _)).
 by rewrite -functor_o.
 Qed.
 
@@ -306,15 +306,15 @@ apply funext_dep => A; apply funext => f.
 rewrite {1}/psi' /=.
 rewrite /bindEnv /=.
 rewrite vcompE/=.
-rewrite compE bindE /= /bindK.
+rewrite up_compE bindE /= /bindK.
 rewrite fmapE /bindK.
 rewrite /liftEnv /=.
-rewrite /phi' !compE/=.
-rewrite -(compE _ _ emx) -functor_o.
-rewrite -[in RHS](compE _ _ emx) -functor_o.
+rewrite /phi' !up_compE/=.
+rewrite -(up_compE _ _ emx) -functor_o.
+rewrite -[in RHS](up_compE _ _ emx) -functor_o.
 rewrite /psi' /= /bindK /= /kappa' /=.
 congr (op A).
-rewrite -(compE _ _ emx) -[in RHS](compE _ _ emx).
+rewrite -(up_compE _ _ emx) -[in RHS](up_compE _ _ emx).
 by rewrite -2!functor_o.
 Qed.
 
@@ -336,27 +336,27 @@ rewrite 2!vcompE.
 set h := hmap _.
 rewrite (psikE op).
 rewrite 2!functor_app_naturalE.
-rewrite !compE/=.
+rewrite !up_compE/=.
 f_equal.
-rewrite /psi' /= /bindK /bindO /= compE bindE /= /bindK /=.
+rewrite /psi' /= /bindK /bindO /= up_compE bindE /= /bindK /=.
 apply funext_dep => A; apply funext => f.
 rewrite fmapE /bindK.
 rewrite vcompE/=.
 rewrite /liftO /=.
-rewrite /kappa' !compE/=.
-rewrite -[in RHS](compE _ _ emx) -functor_o.
+rewrite /kappa' !up_compE/=.
+rewrite -[in RHS](up_compE _ _ emx) -functor_o.
 rewrite bindE /= /bindK /=.
 rewrite fmapE.
 rewrite /bindK.
 rewrite /psi' /= /bindK /=.
 congr (op A).
-rewrite -[in LHS](compE _ _ emx).
+rewrite -[in LHS](up_compE _ _ emx).
 rewrite -functor_o.
-rewrite -[LHS]compE.
+rewrite -[LHS]up_compE.
 rewrite -functor_o.
 congr ((E # _) _).
 apply funext => rmx /=.
-rewrite /retK !compE/= bindE fmapE /= /bindK.
+rewrite /retK !up_compE/= bindE fmapE /= /bindK.
 congr (Lift [the monadT of codensityT] M _ _ _ _).
 by apply funext => -[].
 Qed.
@@ -384,16 +384,16 @@ rewrite psiE /=.
 rewrite /bindS.
 rewrite vcompE/=.
 rewrite /liftS/=.
-rewrite !compE/=.
+rewrite !up_compE/=.
 rewrite 2!algebraic.
 congr (aop _ _).
-rewrite -[RHS](compE _ (E # _)).
+rewrite -[RHS](up_compE _ (E # _)).
 rewrite -functor_o.
-rewrite -[RHS](compE _ (E # _)).
+rewrite -[RHS](up_compE _ (E # _)).
 rewrite -functor_o.
 congr ((E # _) m).
 apply funext => x /=.
-by rewrite !compE/= 2!bindretf.
+by rewrite !up_compE/= 2!bindretf.
 Qed.
 
 Lemma slifting_alifting_exceptFMT (Z : UU0) (t := [the fmt of exceptT Z]) :
@@ -407,15 +407,15 @@ rewrite /=.
 rewrite psiE /= /bindX.
 rewrite vcompE/=.
 rewrite /liftX.
-rewrite !compE 2!algebraic.
+rewrite !up_compE 2!algebraic.
 congr (aop _ _).
-rewrite -[RHS](compE _ (E # _)).
+rewrite -[RHS](up_compE _ (E # _)).
 rewrite -functor_o.
-rewrite -[RHS](compE _ (E # _)).
+rewrite -[RHS](up_compE _ (E # _)).
 rewrite -functor_o.
 rewrite (_ : _ \o Ret = id) ?functor_id //.
 apply funext => n /=.
-by rewrite !compE/= 2!bindretf.
+by rewrite !up_compE/= 2!bindretf.
 Qed.
 
 Lemma slifting_alifting_envFMT (Env : UU0) (t := [the fmt of envT Env]) :
@@ -429,13 +429,13 @@ rewrite /=.
 rewrite psiE /= /bindEnv.
 rewrite vcompE/=.
 rewrite /liftEnv.
-rewrite compE algebraic.
+rewrite up_compE algebraic.
 congr (aop _ _).
-rewrite -[RHS](compE _ (E # _)).
+rewrite -[RHS](up_compE _ (E # _)).
 rewrite -functor_o.
 congr ((E # _) m).
 apply funext => x /=.
-by rewrite compE/= bindretf.
+by rewrite up_compE/= bindretf.
 Qed.
 
 Lemma slifting_alifting_outputFMT (R : UU0) (t := [the fmt of outputT R]) :
@@ -449,15 +449,15 @@ rewrite /=.
 rewrite psiE /= /bindO.
 rewrite vcompE/=.
 rewrite /liftO.
-rewrite !compE 2!algebraic.
+rewrite !up_compE 2!algebraic.
 congr (aop _ _).
-rewrite -[RHS](compE _ (E # _)).
+rewrite -[RHS](up_compE _ (E # _)).
 rewrite -functor_o.
-rewrite -[RHS](compE _ (E # _)).
+rewrite -[RHS](up_compE _ (E # _)).
 rewrite -functor_o.
 rewrite (_ : _ \o Ret = id) ?functor_id //.
 apply funext => n /=.
-rewrite !compE/= 2!bindretf.
+rewrite !up_compE/= 2!bindretf.
 Open (X in _ >>= X).
   by case : x => ? ?; rewrite cat0s.
 by rewrite bindmret.

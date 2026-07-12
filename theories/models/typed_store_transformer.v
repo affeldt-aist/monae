@@ -310,7 +310,7 @@ have [u r1u|T1' v1 Hr1 T1v1|Hr1] := ntherrorP e r1.
       have [Hr|Hr] := eqVneq (loc_id r1) (loc_id r2).
         move: r2v; rewrite -Hr Hr1 => -[?] _; subst T2.
         by rewrite !MX_mapE !fmapE bindretf /= /bindX !bindretf /= /cget nth_error_set_nth coerce_Some bindretf /=.
-      by rewrite MX_mapE fmapE bindretf compE/= /bindX bindretf/= /cget (nth_error_set_nth_other _ _ Hr Hr1) r2v !coerce_Some bindretf /=.
+      by rewrite MX_mapE fmapE bindretf up_compE/= /bindX bindretf/= /cget (nth_error_set_nth_other _ _ Hr Hr1) r2v !coerce_Some bindretf /=.
     * rewrite coerce_None//= bindfailf (Some_cputE _ r2v) [in RHS]bindE/=.
       have [r12|r12] := eqVneq (loc_id r1) (loc_id r2).
         move: r2v; rewrite -r12 Hr1 => -[?] _; subst T1'.
@@ -542,7 +542,7 @@ Qed.
 
 Local Definition crunmskip (A : UU0) (m : M A) : crun (m >> skip) = crun m :> bool.
 Proof.
-rewrite /crun /= !bindE /= /bindS !MS_mapE /= !compE !fmapE /= !bindA.
+rewrite /crun /= !bindE /= /bindS !MS_mapE /= !up_compE !fmapE /= !bindA.
 by case Hm: (m _) => [|[]].
 Qed.
 

@@ -209,7 +209,7 @@ Lemma uniform_unfold {M : probMonad R} (P : rel X) def d :
 Proof.
 rewrite [LHS](_ : _ = fmap (fun p => P d p) (uniform def (enum X))); last first.
   by rewrite fmapE; bind_ext; case.
-by rewrite -(compE (fmap _)) -(uniform_naturality _ _ true) enumE.
+by rewrite -(up_compE (fmap _)) -(uniform_naturality _ _ true) enumE.
 Qed.
 
 Lemma uniform_unfold_pair {M : probMonad R} def (P : rel X) :
@@ -220,7 +220,7 @@ Lemma uniform_unfold_pair {M : probMonad R} def (P : rel X) :
 Proof.
 rewrite [LHS](_ : _ = fmap (uncurry P) (uniform (def, def) (cp (enum X) (enum X)))); last first.
   rewrite fmapE; bind_ext; by case.
-by rewrite -(compE (fmap _)) -(uniform_naturality _ _ true) enumE.
+by rewrite -(up_compE (fmap _)) -(uniform_naturality _ _ true) enumE.
 Qed.
 
 (* matching choices: the elements h and p independently chosen at random

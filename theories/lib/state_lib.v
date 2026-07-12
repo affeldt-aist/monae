@@ -241,7 +241,7 @@ rewrite [in LHS]/=.
 rewrite Hx size_f /bassert !bindA.
 bind_ext => -[x1 x2].
 case: assertPn; rewrite ltnS => b1b2; last by rewrite !bindfailf.
-rewrite !bindretf /g compE/=.
+rewrite !bindretf /g up_compE/=.
 case: Bool.bool_dec => // x2t.
 by case: (IH x2) => // x0 <-; rewrite fmapE.
 Qed.
@@ -446,15 +446,15 @@ Lemma promote_assert_sufficient_condition (M : failMonad) (A : UU0) :
 Proof.
 move=> right_z p q promotable_pq.
 rewrite /promote_assert; apply: funext => -[x1 x2].
-rewrite 3![in RHS]compE [in RHS]fmapE.
-rewrite 2![in LHS]compE {1}/bassert [in LHS]bind_fmap !bindA.
+rewrite 3![in RHS]up_compE [in RHS]fmapE.
+rewrite 2![in LHS]up_compE {1}/bassert [in LHS]bind_fmap !bindA.
 bind_ext => s.
 rewrite bindA; under eq_bind do rewrite bindretf.
 case: assertPn => ps; last first.
   rewrite bindfailf.
   With (idtac) Open (X in _ >>= X).
     rewrite /assert; unlock => /=.
-    rewrite compE (negbTE (segment_closed_suffix ps x)) guardF bindfailf.
+    rewrite up_compE (negbTE (segment_closed_suffix ps x)) guardF bindfailf.
     reflexivity.
   by rewrite right_z.
 rewrite bindretf bindA /=.
@@ -462,9 +462,9 @@ under [RHS]eq_bind do rewrite bindretf.
 rewrite bindA.
 bind_ext => t.
 case: (assertPn _ _ t) => pt; last first.
-  rewrite bindfailf compE assertE (negbTE (segment_closed_prefix pt s)) guardF.
+  rewrite bindfailf up_compE assertE (negbTE (segment_closed_prefix pt s)) guardF.
   by rewrite bindfailf.
-by rewrite bindretf compE/= 2!assertE promotable_pq //= bindA bindretf.
+by rewrite bindretf up_compE/= 2!assertE promotable_pq //= bindA bindretf.
 Qed.
 
 Section examples_promotable_segment_closed.
@@ -555,7 +555,7 @@ apply: funext => n.
 transitivity (@symbols _ M 1) => //.
 rewrite symbolsE sequence_cons sequence_nil.
 under eq_bind do rewrite bindretf.
-by rewrite compE [in RHS]fmapE.
+by rewrite up_compE [in RHS]fmapE.
 Qed.
 
 Local Open Scope mprog.
@@ -565,17 +565,17 @@ Lemma symbols_prop2 :
 Proof.
 apply: funext => -[n1 n2].
 elim: n1 => [|n1 IH].
-  rewrite [in LHS]compE uaddnE add0n.
-  rewrite compE [in X in _ = _ X]/= squaringE symbols0.
-  rewrite compE [in RHS]fmapE bindA bindretf.
+  rewrite [in LHS]up_compE uaddnE add0n.
+  rewrite up_compE [in X in _ = _ X]/= squaringE symbols0.
+  rewrite up_compE [in RHS]fmapE bindA bindretf.
   rewrite -fmapE fmap_bind.
   Open (X in _ >>= X).
     rewrite fcompE fmapE bindretf /=; reflexivity.
   by rewrite bindmret.
-rewrite compE uaddnE addSn symbolsS -uaddnE -(compE symbols) {}IH.
-rewrite [in RHS]compE [in X in _ = _ X]/= squaringE symbolsS.
-rewrite [in RHS]compE -/(fmap _ _) fmap_bind bindA; bind_ext => a.
-rewrite 2![in LHS]compE [in LHS]fmap_bind [in LHS]bindA [in RHS]bindA.
+rewrite up_compE uaddnE addSn symbolsS -uaddnE -(up_compE symbols) {}IH.
+rewrite [in RHS]up_compE [in X in _ = _ X]/= squaringE symbolsS.
+rewrite [in RHS]up_compE -/(fmap _ _) fmap_bind bindA; bind_ext => a.
+rewrite 2![in LHS]up_compE [in LHS]fmap_bind [in LHS]bindA [in RHS]bindA.
 bind_ext => s.
 rewrite [in RHS]bindretf [in RHS]fcompE [in RHS]fmap_bind.
 rewrite [in LHS]fcompE [in LHS]bind_fmap [in LHS]bindA.
@@ -601,7 +601,7 @@ rewrite putget.
 rewrite bindA.
 rewrite bindretf.
 rewrite putput.
-by rewrite compE/= addSnnS.
+by rewrite up_compE/= addSnnS.
 Qed.
 
 End tick_fusion.

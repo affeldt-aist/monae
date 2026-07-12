@@ -48,14 +48,14 @@ Hypothesis Hprod4 : prod4.
 
 Lemma JOIN_naturality : naturality _ _ (@JOIN).
 Proof.
-move=> A B g; apply/esym; rewrite {1}/JOIN -[in LHS]compA.
+move=> A B g; apply/esym; rewrite {1}/JOIN -[in LHS]up_compA.
 transitivity (
   Join \o (M # prod \o M # ([the functor of N \o (M \o N)] # g))).
   by [].
 rewrite -functor_o Hprod1.
-rewrite functor_o [LHS]compA /JOIN FCompE -(FCompE M M).
+rewrite functor_o [LHS]up_compA /JOIN FCompE -(FCompE M M).
 rewrite -(natural join).
-by rewrite -compA.
+by rewrite -up_compA.
 Qed.
 
 HB.instance Definition _ := isNatural.Build
@@ -69,17 +69,17 @@ Proof.
 move=> A; rewrite /JOIN'.
 rewrite /=.
 rewrite /CRet.
-rewrite (compA JOIN).
-rewrite -(compA Join (M # prod) Ret) (natural ret).
-by rewrite [LHS]compA (compA Join) joinretM compidf Hprod2.
+rewrite (up_compA JOIN).
+rewrite -(up_compA Join (M # prod) Ret) (natural ret).
+by rewrite [LHS]up_compA (up_compA Join) joinretM up_compidf Hprod2.
 Qed.
 
 Lemma JOIN_fmap_ret : JoinLaws.right_unit (@CRet M N) (@JOIN').
 Proof.
 move=> A.
 rewrite /JOIN' /=.
-rewrite -(compA Join).
-rewrite -[LHS]compA.
+rewrite -(up_compA Join).
+rewrite -[LHS]up_compA.
 rewrite FCompE.
 rewrite -(@functor_o M).
 by rewrite Hprod3 joinMret.
@@ -87,17 +87,17 @@ Qed.
 
 Lemma JOIN_fmap_JOIN : JoinLaws.associativity (@JOIN').
 Proof.
-move=> A; rewrite {1 2}/JOIN' -[LHS]compA /=.
+move=> A; rewrite {1 2}/JOIN' -[LHS]up_compA /=.
 rewrite -(@functor_o M).
 rewrite Hprod4.
 rewrite {1}/JOIN.
-rewrite -(compA Join (M # prod) prod).
+rewrite -(up_compA Join (M # prod) prod).
 rewrite functor_o.
-rewrite [LHS]compA.
+rewrite [LHS]up_compA.
 rewrite joinA.
-rewrite -(compA Join).
+rewrite -(up_compA Join).
 rewrite functor_o.
-rewrite (compA Join (M # (M # prod)) (M # prod)).
+rewrite (up_compA Join (M # (M # prod)) (M # prod)).
 by rewrite -(natural _).
 Qed.
 
@@ -124,8 +124,8 @@ Hypothesis Hdorp4 : dorp4.
 
 Lemma join_naturality : naturality _ _ (@JOIN).
 Proof.
-move=> A B g; apply/esym; rewrite {1}/JOIN -compA Hdorp1.
-rewrite [LHS]compA.
+move=> A B g; apply/esym; rewrite {1}/JOIN -up_compA Hdorp1.
+rewrite [LHS]up_compA.
 rewrite (FCompE M N (N # g)).
 rewrite -(@functor_o M).
 rewrite -natural.
@@ -140,7 +140,7 @@ Definition JOIN' : [the functor of (M \o N) \o (M \o N)] ~> [the functor of M \o
 
 Lemma JOIN_ret : JoinLaws.left_unit (@CRet M N) (@JOIN').
 Proof.
-move=> A; rewrite /JOIN -[LHS]compA Hdorp2.
+move=> A; rewrite /JOIN -[LHS]up_compA Hdorp2.
 rewrite -(@functor_o M).
 by rewrite joinretM functor_id.
 Qed.
@@ -148,10 +148,10 @@ Qed.
 Lemma JOIN_fmap_ret : JoinLaws.right_unit (@CRet M N) (@JOIN').
 Proof.
 move=> A; rewrite /JOIN /CRet.
-rewrite -(compA (M # Join) dorp).
+rewrite -(up_compA (M # Join) dorp).
 rewrite (@functor_o [the functor of M \o N]).
-rewrite (compA dorp) Hdorp3.
-rewrite compidf -functor_o.
+rewrite (up_compA dorp) Hdorp3.
+rewrite up_compidf -functor_o.
 by rewrite joinMret functor_id.
 Qed.
 
@@ -160,19 +160,19 @@ Proof.
 move=> A; rewrite {1 2}/JOIN'.
 rewrite FCompE.
 rewrite (@functor_o N).
-rewrite -[LHS]compA.
+rewrite -[LHS]up_compA.
 rewrite functor_o.
-rewrite (compA dorp).
+rewrite (up_compA dorp).
 rewrite Hdorp1.
-rewrite -(compA _ dorp).
-rewrite (compA (M # Join)) -functor_o.
+rewrite -(up_compA _ dorp).
+rewrite (up_compA (M # Join)) -functor_o.
 rewrite joinA.
 rewrite functor_o.
-rewrite -[LHS]compA.
-rewrite (compA (M # Join) dorp).
+rewrite -[LHS]up_compA.
+rewrite (up_compA (M # Join) dorp).
 rewrite -/JOIN.
 rewrite -Hdorp4.
-by rewrite [LHS]compA.
+by rewrite [LHS]up_compA.
 Qed.
 
 End dorp.
@@ -191,7 +191,7 @@ Lemma JOINE A : @JOIN A = Join \o M # (M # Join \o swap).
 Proof.
 rewrite /JOIN.
 rewrite natural.
-rewrite -(compA Join) FCompE.
+rewrite -(up_compA Join) FCompE.
 by rewrite -(@functor_o M).
 Qed.
 
@@ -218,60 +218,60 @@ Hypothesis Hswap4 : swap4.
 Lemma prod1 : Prod.prod1 (@prod).
 Proof.
 move=> A B f; rewrite {1}/prod.
-rewrite -[LHS]compA Hswap1 (compA (M # Join)) -functor_o.
-by rewrite -natural functor_o -compA.
+rewrite -[LHS]up_compA Hswap1 (up_compA (M # Join)) -functor_o.
+by rewrite -natural functor_o -up_compA.
 Qed.
 
 Lemma prod2 : Prod.prod2 (@prod).
 Proof.
-by move=> A; rewrite /prod -[LHS]compA Hswap2 -(@functor_o M) joinretM functor_id.
+by move=> A; rewrite /prod -[LHS]up_compA Hswap2 -(@functor_o M) joinretM functor_id.
 Qed.
 
 Lemma prod3 : Prod.prod3 (@prod).
 Proof.
 move=> A; rewrite /prod /CRet.
-rewrite (@functor_o N) (compA (M # Join \o swap)) -(compA (_ # Join)) Hswap3.
-by rewrite (natural ret) -[LHS]compA joinMret compfid.
+rewrite (@functor_o N) (up_compA (M # Join \o swap)) -(up_compA (_ # Join)) Hswap3.
+by rewrite (natural ret) -[LHS]up_compA joinMret up_compfid.
 Qed.
 
 Lemma prod4 : Prod.prod4 (@prod).
 Proof.
 move=> A; rewrite {1}/Prod.JOIN -JOIN_prod JOIN_dorp {1}/prod (@functor_o N).
-rewrite (compA (M # Join \o swap)) -(compA (_ # Join)) Hswap1.
-rewrite (compA (M # Join)) -functor_o joinA functor_o.
-rewrite -[LHS]compA -(compA (_ # Join)) (compA (M # Join) swap) -/prod Hswap4.
-by rewrite [LHS]compA /Prod.JOIN -JOIN_prod JOIN_dorp.
+rewrite (up_compA (M # Join \o swap)) -(up_compA (_ # Join)) Hswap1.
+rewrite (up_compA (M # Join)) -functor_o joinA functor_o.
+rewrite -[LHS]up_compA -(up_compA (_ # Join)) (up_compA (M # Join) swap) -/prod Hswap4.
+by rewrite [LHS]up_compA /Prod.JOIN -JOIN_prod JOIN_dorp.
 Qed.
 
 Lemma dorp1 : Dorp.dorp1 (@dorp).
 Proof.
-move=> A B g; rewrite {1}/dorp -[LHS]compA.
+move=> A B g; rewrite {1}/dorp -[LHS]up_compA.
 rewrite -(@functor_o M).
-by rewrite Hswap1 functor_o (compA Join) -natural -[LHS]compA.
+by rewrite Hswap1 functor_o (up_compA Join) -natural -[LHS]up_compA.
 Qed.
 
 Lemma dorp2 : Dorp.dorp2 (@dorp).
 Proof.
-move=> A; rewrite /dorp /CRet (compA (Join \o M # swap)) -(compA Join).
-by rewrite (natural ret) (compA Join) joinretM compidf Hswap2.
+move=> A; rewrite /dorp /CRet (up_compA (Join \o M # swap)) -(up_compA Join).
+by rewrite (natural ret) (up_compA Join) joinretM up_compidf Hswap2.
 Qed.
 
 Lemma dorp3 : Dorp.dorp3 (@dorp).
 Proof.
-move=> A; rewrite /dorp -[LHS]compA.
+move=> A; rewrite /dorp -[LHS]up_compA.
 by rewrite -(@functor_o M) Hswap3 joinMret.
 Qed.
 
 Lemma dorp4 : Dorp.dorp4 (@dorp).
 Proof.
 move=> A; rewrite {1}/dorp {1}/Dorp.JOIN -JOIN_dorp JOIN_prod.
-rewrite (compA (Join \o M # swap)) -(compA Join).
+rewrite (up_compA (Join \o M # swap)) -(up_compA Join).
 rewrite (natural join).
-rewrite (compA Join Join) -joinA.
-rewrite -2![LHS]compA FCompE.
+rewrite (up_compA Join Join) -joinA.
+rewrite -2![LHS]up_compA FCompE.
 rewrite -(@functor_o M) -(@functor_o M).
-rewrite (compA Join (M # swap) prod) -/dorp -Hswap4 functor_o.
-by rewrite [LHS]compA -JOINE JOIN_dorp.
+rewrite (up_compA Join (M # swap) prod) -/dorp -Hswap4 functor_o.
+by rewrite [LHS]up_compA -JOINE JOIN_dorp.
 Qed.
 
 Lemma JOIN_naturality : @naturality _ _ (JOIN).

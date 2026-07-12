@@ -146,21 +146,21 @@ Proof. by []. Qed.
 
 Lemma hom_compE (a b c : C) (g : {hom b -> c}) (f : {hom a -> b}) x :
   g (f x) = (g \o f) x.
-Proof. exact: compE. Qed.
+Proof. exact: up_compE. Qed.
 
 Import comps_notation.
 
 (* Restricting the components of a composition to homs and using the lemma
    homcompA, we can avoid the infinite sequence of redundunt compositions
-   "_ \o id" or "id \o _" that pops out when we "rewrite !compA".*)
+   "_ \o id" or "id \o _" that pops out when we "rewrite !up_compA".*)
 Lemma hom_compA (a b c d : C) (h : {hom c -> d}) (g : {hom b -> c}) (f : {hom a -> b}) :
   (h \o g) \o f = [\o h, g, f] :> (el a -> el d).
-Proof. exact: compA. Qed.
+Proof. exact: up_compA. Qed.
 
 Example hom_compA' (a b c d : C) (h : {hom c -> d}) (g : {hom b -> c}) (f : {hom a -> b}) :
   (h \o g) \o f = [\o h, g, f].
 Proof.
-rewrite 10!compA.
+rewrite 10!up_compA.
 Undo 1.
 by rewrite !hom_compA.
 (* rewrite !homcompA blocks id's from coming in, thanks to {hom _ ->_} conditions on arguments. *)
@@ -397,7 +397,7 @@ Definition f : F ~~> G := fun (c : C) => tc [hom idfun].
 Lemma natural : naturality F G f.
 Proof.
 move=> a b h.
-rewrite /f !transport_codomF 2!homcompE 2!compfid.
+rewrite /f !transport_codomF 2!homcompE 2!up_compfid.
 have /hom_ext -> : [hom (hom_of_eq (Iobj b) \o F # h)] = [hom tc (F # h)]
   by rewrite transport_codomF.
 by rewrite Imor transport_domF homfunK /= esymK.
@@ -425,7 +425,7 @@ Variables (C D : category) (F G H : {functor C -> D}).
 Variables (g : G ~> H) (f : F ~> G).
 Definition vcomp := fun a => [hom g a \o f a].
 Definition natural_vcomp : naturality _ _ vcomp.
-Proof. by move=> A B h; rewrite compA (natural g) -compA (natural f). Qed.
+Proof. by move=> A B h; rewrite up_compA (natural g) -up_compA (natural f). Qed.
 
 HB.instance Definition _ := isNatural.Build C D F H
   vcomp natural_vcomp.
@@ -457,7 +457,7 @@ Definition hcomp : F' \O F ~~> G' \O G :=
 Lemma natural_hcomp : naturality (F' \O F) (G' \O G) hcomp.
 Proof.
 move=> c0 c1 h.
-rewrite [in LHS]compA (natural t) -[in LHS]compA -[in RHS]compA; congr (_ \o _).
+rewrite [in LHS]up_compA (natural t) -[in LHS]up_compA -[in RHS]up_compA; congr (_ \o _).
 rewrite [in RHS]FCompE -2!functor_o; congr (F' # _); apply hom_ext => /=.
 by rewrite natural.
 Qed.
@@ -486,9 +486,9 @@ Variables (F G : {functor C -> D}) (F' G' : {functor D -> E}) (F'' G'' : {functo
 Variables (s : F ~> G) (t : F' ~> G') (u : F'' ~> G'').
 
 Lemma HCompId c : (t \h NId F) c = t (F c).
-Proof. by rewrite hom_ext HCompE NIdE functor_id compfid. Qed.
+Proof. by rewrite hom_ext HCompE NIdE functor_id up_compfid. Qed.
 Lemma HIdComp c : (NId G' \h s) c = G' # s c.
-Proof. by rewrite hom_ext HCompE NIdE compidf. Qed.
+Proof. by rewrite hom_ext HCompE NIdE up_compidf. Qed.
 (* TODO: introduce the application of a functor to a natural transformation? *)
 
 Let HCompA_def : (u \h t) \h s =
@@ -497,7 +497,7 @@ Let HCompA_def : (u \h t) \h s =
   \v [NEq (F'' \O F') \O F , F'' \O (F' \O F)].
 Proof.
 apply nattrans_ext => c /=.
-rewrite compidf compfid [in LHS]HCompE [in RHS]HCompE.
+rewrite up_compidf up_compfid [in LHS]HCompE [in RHS]HCompE.
 rewrite [in LHS]HCompE hom_compA -functor_o; congr [\o _, _].
 by congr (F'' # _); apply hom_ext; rewrite HCompE.
 Qed.
@@ -524,7 +524,7 @@ Lemma NIdFId c : NId (@FId C) c = [hom idfun].
 Proof. by []. Qed.
 
 Lemma NIdFComp : NId (F' \O F) = NId F' \h NId F.
-Proof. by apply nattrans_ext => c /=; rewrite HCompE /= compidf functor_id. Qed.
+Proof. by apply nattrans_ext => c /=; rewrite HCompE /= up_compidf functor_id. Qed.
 
 (* horizontal and vertical compositions interchange *)
 Variables (H : {functor C -> D}) (H' : {functor D -> E}).
@@ -533,7 +533,7 @@ Lemma HCompACA : (t' \h s') \v (t \h s) = (t' \v t) \h (s' \v s).
 Proof.
 apply nattrans_ext => c /=.
 rewrite 3!HCompE VCompE VCompE_nat functor_o.
-rewrite -[in LHS]compA -[in RHS]compA; congr (_ \o _).
+rewrite -[in LHS]up_compA -[in RHS]up_compA; congr (_ \o _).
 by rewrite natural_head -functor_o.
 Qed.
 End hcomp_lemmas.
@@ -592,7 +592,7 @@ Proof. exact: can_inj (@hom_invK c d). Qed.
 Lemma eta_hom_iso (c : C) : eta A c = hom_iso [hom idfun].
 Proof. by apply hom_ext; rewrite /hom_iso /= functor_id. Qed.
 Lemma eps_hom_inv (d : D) : eps A d = hom_inv [hom idfun].
-Proof. by apply hom_ext; rewrite /hom_inv /= functor_id compfid. Qed.
+Proof. by apply hom_ext; rewrite /hom_inv /= functor_id up_compfid. Qed.
 
 Lemma ext (B : F -| G) : eta A = eta B -> eps A = eps B -> A = B.
 Proof.
@@ -662,7 +662,7 @@ evar (Y : TY).
 have-> : F1 # X = F1 # Y
   by congr (F1 # _); rewrite hom_ext /X /= -(natural eps0); exact: erefl.
 rewrite (functor_o_head F1) FIdf.
-rewrite -!hom_compA triL1 compidf.
+rewrite -!hom_compA triL1 up_compidf.
 rewrite -[in RHS](functor_id F1) -(functor_o F1); congr (F1 # _).
 by rewrite hom_ext /= triL0.
 Qed.
@@ -678,7 +678,7 @@ evar (TY : Type).
 evar (Y : TY).
 have-> : G0 # X = G0 # Y
   by congr (G0 # _); rewrite hom_ext /X /= (natural eta1); exact: erefl.
-rewrite (functor_o G0) hom_compA FIdf triR0 compfid.
+rewrite (functor_o G0) hom_compA FIdf triR0 up_compfid.
 rewrite -[in RHS](functor_id G0) -(functor_o G0); congr (G0 # _).
 by rewrite hom_ext /= triR1.
 Qed.
@@ -803,12 +803,12 @@ Variable (C : category) (M : monad C).
 (* *_head lemmas are for [fun of f] \o ([fun of g] \o ([fun of h] \o ..))*)
 Import comps_notation.
 Lemma joinretM_head a (c : C) (f : {hom c -> M a}) : [\o join _, ret _, f] = f.
-Proof. by rewrite compA joinretM. Qed.
+Proof. by rewrite up_compA joinretM. Qed.
 Lemma joinMret_head a (c : C) (f : {hom c -> M a}) : [\o join _, M # ret _, f] = f.
-Proof. by rewrite compA joinMret. Qed.
+Proof. by rewrite up_compA joinMret. Qed.
 Lemma joinA_head a (c : C) (f : {hom c -> M (M (M a))}) :
   [\o join _, M # join _, f] = [\o join _, join _, f].
-Proof. by rewrite compA joinA. Qed.
+Proof. by rewrite up_compA joinA. Qed.
 End monad_interface.
 
 HB.factory Record Monad_of_ret_join (C : category) (M : C -> C)
@@ -852,7 +852,7 @@ Qed.
 Let fmap_o : FunctorLaws.comp fmap.
 Proof.
 move=> a b c g h; apply/hom_ext/funext=>m; rewrite /fmap/=.
-rewrite compE bindA/=.
+rewrite up_compE bindA/=.
 congr (fun f => bind f m); rewrite hom_ext/=.
 by rewrite -[in RHS]hom_compA bindretf_fun.
 Qed.
@@ -871,7 +871,7 @@ Let join'_naturality : naturality (F \O F) F join'.
 Proof.
 move => A B h.
 rewrite /join /= funeqE => m /=.
-rewrite compE fmap_bind compE bindA /=.
+rewrite up_compE fmap_bind up_compE bindA /=.
 congr (fun f => bind f m).
 rewrite hom_ext/=.
 rewrite -[in RHS]hom_compA.
@@ -911,7 +911,7 @@ Proof.
 move => A; rewrite funeqE => mmma.
 rewrite /join/=/join'/=.
 rewrite [X in X _ = _]bind_fmap_fun.
-rewrite [in RHS]compE bindA.
+rewrite [in RHS]up_compE bindA.
 congr (fun f => bind f mmma).
 by rewrite hom_ext.
 Qed.

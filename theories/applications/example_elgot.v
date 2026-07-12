@@ -108,9 +108,9 @@ Proof.
 rewrite /collatz naturalitywB/=.
 apply: whilewB => q.
 have [->|q1] := eqVneq q 1.
-  by rewrite bindretf/= compE fmapE bindretf.
+  by rewrite bindretf/= up_compE fmapE bindretf.
 rewrite /collatz_body (negbTE q1).
-by case: ifPn; rewrite bindretf/= compE fmapE bindretf.
+by case: ifPn; rewrite bindretf/= up_compE fmapE bindretf.
 Qed.
 
 End collatz.
@@ -137,8 +137,8 @@ Proof.
 rewrite /minus1 /minus2 -codiagonalwB.
 apply: whilewB => -[n m].
 case: n => [|n /=].
-  by case: m => //= [|n]; rewrite compE fmapE bindretf.
-by rewrite compE fmapE bindretf.
+  by case: m => //= [|n]; rewrite up_compE fmapE bindretf.
+by rewrite up_compE fmapE bindretf.
 Qed.
 
 End minus.
@@ -386,9 +386,9 @@ apply: pcorrect.
 move=> l' /= Inv.
 rewrite /bubblesort_body.
 case: ifP => /eqP H.
-  by rewrite bindretf/= bindretf/= compE assertE/= Inv guardT bindretf.
+  by rewrite bindretf/= bindretf/= up_compE assertE/= Inv guardT bindretf.
 move: Inv.
-rewrite !bindretf/= !/sizelE (sortl_length l') /assert /guard compE.
+rewrite !bindretf/= !/sizelE (sortl_length l') /assert /guard up_compE.
 case: ifP => //=.
 by rewrite !bindskipf.
 Qed.
@@ -461,7 +461,7 @@ Lemma collatz_state1wB n : collatz_state1 n ≈ collatz_state2 n.
 Proof.
 rewrite /collatz_state1 /collatz_state2 -codiagonalwB.
 apply: whilewB => -[[n' m] l].
-rewrite /collatz_state1_body /collatz_state2_body compE.
+rewrite /collatz_state1_body /collatz_state2_body up_compE.
 have [Hl|?] := eqVneq (l %% 4) 1 => /=.
   have [?|] := eqVneq n' 1 => /=.
     rewrite fmapE bindA/=.

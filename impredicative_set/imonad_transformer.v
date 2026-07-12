@@ -76,7 +76,7 @@ HB.builders Context (M N : monad) (e : M ~~> N) of isMonadM_ret_bind M N e.
 Lemma naturality_monadM : naturality M N e.
 Proof.
 move=> A B h; apply funext => m /=.
-by rewrite !compE !fmapE monadMbind (compA (e B)) monadMret.
+by rewrite !up_compE !fmapE monadMbind (up_compA (e B)) monadMret.
 Qed.
 
 HB.instance Definition _ := isNatural.Build M N e naturality_monadM.
@@ -123,7 +123,7 @@ Lemma MS_mapE (A B : UU0) (f : A -> B) (m : MS A) :
   ([the functor of MS] # f) m = (M # (fun x => (f x.1, x.2))) \o m.
 Proof.
 apply funext=> s.
-rewrite {1}/actm /= /bindS compE/= fmapE.
+rewrite {1}/actm /= /bindS up_compE/= fmapE.
 congr bind.
 by apply: funext; case.
 Qed.
@@ -134,7 +134,7 @@ Definition liftS (A : UU0) (m : M A) : MS A :=
 Let retliftS : MonadMLaws.ret liftS.
 Proof.
 move=> A; rewrite /liftS; apply: funext => a /=; apply: funext => s /=.
-by rewrite compE bindretf.
+by rewrite up_compE bindretf.
 Qed.
 
 Let bindliftS : MonadMLaws.bind liftS.
@@ -198,7 +198,7 @@ apply: funext => s.
 rewrite /Get/=.
 rewrite !bindE !MS_mapE /= /bindS /= /retS/=.
 rewrite !bind_fmap !bindretf/=.
-rewrite !compE !bindE !MS_mapE /= /bindS /= /retS/=.
+rewrite !up_compE !bindE !MS_mapE /= /bindS /= /retS/=.
 by rewrite bind_fmap bindretf.
 Qed.
 
@@ -250,7 +250,7 @@ Definition liftX X (m : M X) : MX X := m >>= (@ret [the monad of MX] _).
 
 Let retliftX : MonadMLaws.ret liftX.
 Proof.
-by move=> A; apply: funext => a; rewrite /liftX compE/= bindretf.
+by move=> A; apply: funext => a; rewrite /liftX up_compE/= bindretf.
 Qed.
 
 Let bindliftX : MonadMLaws.bind liftX.
@@ -261,7 +261,7 @@ rewrite /= /join_of_bind /bindX /= !bindA.
 rewrite 2!joinE !bindA.
 bind_ext => a.
 rewrite 3!bindretf.
-rewrite /liftX compE/=.
+rewrite /liftX up_compE/=.
 bind_ext => b.
 by rewrite bindretf.
 Qed.
@@ -362,7 +362,7 @@ HB.instance Definition _ :=
 
 Lemma MEnv_mapE (A B : UU0) (f : A -> B) (m : MEnv A) :
   (MEnv # f) m = (M # f) \o m.
-Proof. by apply: funext => r; rewrite compE/= fmapE. Qed.
+Proof. by apply: funext => r; rewrite up_compE/= fmapE. Qed.
 
 Definition liftEnv A (m : M A) : MEnv A := fun r => m.
 
@@ -432,7 +432,7 @@ Definition liftO A (m : M A) : MO A := m >>= (fun x => Ret (x, [::])).
 Let retliftO : MonadMLaws.ret liftO.
 Proof.
 move=> a; rewrite /liftO /= /retO; apply: funext => o /=.
-by rewrite compE bindretf.
+by rewrite up_compE bindretf.
 Qed.
 
 Let bindliftO : MonadMLaws.bind liftO.
@@ -486,7 +486,7 @@ Definition liftC A (x : M A) : MC A := fun k => x >>= k.
 Let retliftC : MonadMLaws.ret liftC.
 Proof.
 move => A; rewrite /liftC; apply: funext => a /=.
-by apply: funext => s; rewrite compE bindretf.
+by apply: funext => s; rewrite up_compE bindretf.
 Qed.
 
 Let bindliftC : MonadMLaws.bind liftC.
@@ -685,8 +685,8 @@ Definition psi' (n : E ~~> M) : E \o M ~~> M := fun X => Join \o n (M X).
 Lemma natural_psi' (n : E ~> M) : naturality [the functor of E \o M] M (psi' n).
 Proof.
 move=> A B h; rewrite /psi'.
-rewrite -/(Join \o n (M A)) [LHS]compA natural.
-by rewrite -compA (natural n).
+rewrite -/(Join \o n (M A)) [LHS]up_compA natural.
+by rewrite -up_compA (natural n).
 Qed.
 
 HB.instance Definition _ (n : E ~> M) := isNatural.Build
@@ -696,23 +696,23 @@ Lemma algebraic_psi' (n : E ~> M) : algebraicity (psi' n).
 Proof.
 move=> A B g t.
 rewrite bindE.
-rewrite -(compE (M # g)).
+rewrite -(up_compE (M # g)).
 rewrite {1}/psi'.
-rewrite [in LHS](compA (M # g) Join).
+rewrite [in LHS](up_compA (M # g) Join).
 rewrite /=.
-rewrite -[in X in _ = Join X]compE.
+rewrite -[in X in _ = Join X]up_compE.
 rewrite -[in RHS](natural n).
 transitivity (Join ((M # (Join \o (M # g))) (n (M A) t))); last first.
-  rewrite -(compE _ (n (M A)) t).
+  rewrite -(up_compE _ (n (M A)) t).
   congr (Join ((M # _ \o _ ) t)).
   apply: funext => ma.
   by rewrite bindE.
-rewrite -[in X in Join X = _]compE.
-rewrite compE natural.
+rewrite -[in X in Join X = _]up_compE.
+rewrite up_compE natural.
 rewrite functor_o.
 rewrite -[in RHS]FCompE.
-rewrite -[RHS]compE.
-rewrite [in RHS]compA.
+rewrite -[RHS]up_compE.
+rewrite [in RHS]up_compA.
 by rewrite joinA.
 Qed.
 
@@ -733,10 +733,10 @@ Definition phi' (op : E.-operation M) : E ~~> M := fun X => op X \o (E # Ret).
 Lemma natural_phi' (op : E.-operation M) : naturality E M (phi' op).
 Proof.
 move=> A B h; rewrite /phi'.
-rewrite compA.
+rewrite up_compA.
 rewrite (natural op).
-rewrite -compA.
-rewrite -[in RHS]compA.
+rewrite -up_compA.
+rewrite -[in RHS]up_compA.
 congr (_ \o _).
 rewrite /=.
 rewrite -2!(@functor_o E).
@@ -760,9 +760,9 @@ Lemma psiK (op : E ~> M) : phi (psi op) = op.
 Proof.
 apply/nattrans_ext => A.
 rewrite phiE /= psiE; apply: funext => m /=.
-rewrite !compE.
-rewrite -(compE (op _)) -(natural op) -(compE Join).
-by rewrite compA joinMret.
+rewrite !up_compE.
+rewrite -(up_compE (op _)) -(natural op) -(up_compE Join).
+by rewrite up_compA joinMret.
 Qed.
 
 Lemma phiK (op : E.-aoperation M) : psi (phi op) = op.
@@ -770,16 +770,16 @@ Proof.
 apply/aoperation_ext => A.
 rewrite /=.
 rewrite psiE phiE; apply funext => m /=.
-rewrite !compE.
-rewrite -(compE (op _)) joinE.
+rewrite !up_compE.
+rewrite -(up_compE (op _)) joinE.
 rewrite (algebraic op).
-rewrite -(compE (E # _)) -functor_o.
-rewrite -(compE (op _)).
+rewrite -(up_compE (E # _)) -functor_o.
+rewrite -(up_compE (op _)).
 set x := _^~ id.
 rewrite (_ : x = Join); last first.
   apply: funext => mma.
   by rewrite /x bindE functor_id (*TODO: lemma*).
-by rewrite joinretM functor_id compfid.
+by rewrite joinretM functor_id up_compfid.
 Qed.
 
 End bijection.
@@ -804,21 +804,21 @@ rewrite [in RHS]/=.
 rewrite psiE.
 rewrite vcompE.
 rewrite phiE.
-rewrite !compE.
+rewrite !up_compE.
 rewrite (_ : (E # Ret) ((E # e X) Y) =
              (E # (M # e X)) ((E # Ret) Y)); last first.
-  rewrite -[in LHS]compE -functor_o.
-  rewrite -[in RHS]compE -functor_o.
+  rewrite -[in LHS]up_compE -functor_o.
+  rewrite -[in RHS]up_compE -functor_o.
   by rewrite (natural ret) FIdE.
 set x := (Z in Join (e (N X) Z)).
 rewrite (_ : x =
              (M # e X) (op (M X) ((E # Ret) Y))); last first.
-  rewrite -(compE (M # e X)).
+  rewrite -(up_compE (M # e X)).
   by rewrite (natural op).
 transitivity (e X (Join (op (M X) ((E # Ret) Y)))); last first.
   rewrite joinE.
   rewrite monadMbind.
-  rewrite bindE -(compE _ (M # e X)).
+  rewrite bindE -(up_compE _ (M # e X)).
   by rewrite -natural.
 by rewrite -[in LHS](phiK op).
 Qed.
@@ -889,7 +889,7 @@ Let monadMret_hmapX (F G : monad) (e : monadM F G) :
   MonadMLaws.ret (hmapX' e).
 Proof.
 move=> A; apply: funext => /= a.
-by rewrite /hmapX' /retX !compE/= -(compE (e _)) monadMret.
+by rewrite /hmapX' /retX !up_compE/= -(up_compE (e _)) monadMret.
 Qed.
 
 Let monadMbind_hmapX (F G : monad) (e : monadM F G) :
@@ -900,7 +900,7 @@ rewrite !bindE /= !MX_mapE /bindX /= !bind_fmap.
 rewrite !monadMbind /=.
 congr (bind (e (X + A)%type m) _).
 apply funext => -[x/=|//].
-by rewrite !compE/= -(compE (e _)) monadMret.
+by rewrite !up_compE/= -(up_compE (e _)) monadMret.
 Qed.
 
 Let hmapX_lift :
@@ -914,12 +914,12 @@ rewrite /liftX /=.
 rewrite /retX /=.
 apply: funext => ma /=.
 rewrite (_ : (fun x : A => Ret (inr x)) = Ret \o inr) //.
-rewrite compE -bind_fmap.
+rewrite up_compE -bind_fmap.
 rewrite bindmret.
 rewrite (_ : (fun x : A => Ret (inr x)) = Ret \o inr) //.
-rewrite compE -bind_fmap.
+rewrite up_compE -bind_fmap.
 rewrite bindmret.
-rewrite -(compE (N # inr)).
+rewrite -(up_compE (N # inr)).
 by rewrite (natural t).
 Qed.
 
@@ -942,9 +942,9 @@ rewrite /hmapS /=.
 have H : forall G, [the monad of stateT S G] # h = [the functor of MS S G] # h by [].
 rewrite !H {H}.
 apply: funext => m /=.
-rewrite !compE !MS_mapE.
+rewrite !up_compE !MS_mapE.
 apply: funext => s /=.
-by rewrite [in LHS]compE -(compE  _ (tau (A * S)%type)) natural.
+by rewrite [in LHS]up_compE -(up_compE  _ (tau (A * S)%type)) natural.
 Qed.
 
 HB.instance Definition _ (F G : monad) (tau : F ~> G) := isNatural.Build
@@ -967,7 +967,7 @@ Let monadMret_hmapS (F G : monad) (e : monadM F G) :
 Proof.
 move=> A; apply funext => /= a.
 rewrite /hmapS /= /retS /=; apply: funext => s.
-by rewrite compE [in LHS]curryE monadMret.
+by rewrite up_compE [in LHS]curryE monadMret.
 Qed.
 
 Let monadMbind_hmapS (F G : monad) (e : monadM F G) :
@@ -989,32 +989,32 @@ rewrite /hmapS /=.
 rewrite /liftS /=.
 apply: funext => ma /=.
 apply: funext => s /=.
-rewrite !compE ![in LHS]bindE ![in LHS]fmapE ![in LHS]bindE.
+rewrite !up_compE ![in LHS]bindE ![in LHS]fmapE ![in LHS]bindE.
 rewrite 2!(_ : (fun x : A => Ret (x, s)) = Ret \o (fun x => (x, s))) //.
 rewrite functor_o.
-rewrite -(compE Join (_ \o _)).
-rewrite (compA Join (M # _)).
+rewrite -(up_compE Join (_ \o _)).
+rewrite (up_compA Join (M # _)).
 rewrite joinMret.
-rewrite compidf.
+rewrite up_compidf.
 rewrite functor_o.
-rewrite compA.
+rewrite up_compA.
 rewrite joinMret.
-rewrite compidf.
-rewrite -(compE _ (t A)).
-rewrite -(compE (t _)).
+rewrite up_compidf.
+rewrite -(up_compE _ (t A)).
+rewrite -(up_compE (t _)).
 rewrite -natural.
 rewrite /=.
-rewrite !compE ![in RHS]bindE ![in RHS]fmapE ![in RHS]bindE.
+rewrite !up_compE ![in RHS]bindE ![in RHS]fmapE ![in RHS]bindE.
 rewrite functor_o.
-rewrite -(compE Join (_ \o _)).
-rewrite (compA Join (N # _)).
+rewrite -(up_compE Join (_ \o _)).
+rewrite (up_compA Join (N # _)).
 rewrite joinMret.
-rewrite compidf.
+rewrite up_compidf.
 rewrite functor_o.
-rewrite compA.
+rewrite up_compA.
 rewrite joinMret.
-rewrite compidf.
-by rewrite -(compE _ (t A)).
+rewrite up_compidf.
+by rewrite -(up_compE _ (t A)).
 Qed.
 
 HB.instance Definition _ := isFMT.Build (stateT S)
@@ -1037,9 +1037,9 @@ rewrite /=.
 have H : forall G, [the monad of envT E G] # h = [the functor of MEnv E G] # h by [].
 rewrite !H {H}.
 apply: funext => m /=.
-rewrite !compE !MEnv_mapE.
+rewrite !up_compE !MEnv_mapE.
 apply: funext => s /=.
-rewrite !compE -(compE  _ (tau A)).
+rewrite !up_compE -(up_compE  _ (tau A)).
 by rewrite natural.
 Qed.
 
@@ -1061,7 +1061,7 @@ Let monadMret_hmapEnv (F G : monad) (e : monadM F G) :
 Proof.
 move=> A; apply: funext => /= a.
 rewrite /hmapEnv /= /retEnv /=; apply: funext => s.
-by rewrite -[LHS](compE _ Ret) monadMret.
+by rewrite -[LHS](up_compE _ Ret) monadMret.
 Qed.
 
 Let monadMbind_hmapEnv (F G : monad) (e : monadM F G) :
@@ -1101,8 +1101,8 @@ rewrite /hmapO.
 rewrite /=.
 have H : forall G, [the monad of outputT R G] # h = [the functor of MO R G] # h by [].
 rewrite !H {H}.
-apply funext => m /=; rewrite !compE !MO_mapE.
-rewrite -[in LHS](compE  _ (tau _)).
+apply funext => m /=; rewrite !up_compE !MO_mapE.
+rewrite -[in LHS](up_compE  _ (tau _)).
 by rewrite natural.
 Qed.
 
@@ -1123,7 +1123,7 @@ Let monadMret_hmapO (F G : monad) (e : monadM F G) :
   MonadMLaws.ret (hmapO e).
 Proof.
 move=> A; apply: funext => /= a; rewrite /hmapO /= /retO /=.
-by rewrite -[LHS](compE _ Ret) monadMret.
+by rewrite -[LHS](up_compE _ Ret) monadMret.
 Qed.
 
 Let monadMbind_hmapO (F G : monad) (e : monadM F G) :
@@ -1135,9 +1135,9 @@ rewrite 2!bindE /= !MO_mapE /bindO /= 2!bind_fmap.
 rewrite !monadMbind.
 bind_ext => -[x w].
 rewrite /retO /=.
-rewrite !compE monadMbind.
+rewrite !up_compE monadMbind.
 bind_ext => /= -[h t] /=.
-rewrite -[LHS](compE _ Ret (h, _)).
+rewrite -[LHS](up_compE _ Ret (h, _)).
 by rewrite monadMret.
 Qed.
 
@@ -1149,8 +1149,8 @@ Proof.
 move=> h M N t; apply/nattrans_ext => A /=; rewrite !vcompE/=.
 rewrite /hmapO /= /liftO /=.
 apply: funext => ma /=.
-rewrite !compE -!fmapE.
-rewrite -(compE _ (t A)).
+rewrite !up_compE -!fmapE.
+rewrite -(up_compE _ (t A)).
 by rewrite natural.
 Qed.
 
