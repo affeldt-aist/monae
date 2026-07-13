@@ -38,6 +38,11 @@ End shorthands_for_classical_axioms.
 
 Arguments ssrfun.comp {A B C} : simpl never.
 
+Declare Scope ssrfun_scope.
+Delimit Scope ssrfun_scope with ssrfun.
+
+Notation "f1 \o f2" := (ssrfun.comp f1 f2) : ssrfun_scope.
+
 (* We use a universe-polymorphic version of comp
   (in place of ssrfun.comp)
    so that we can avoid universe inconsistencies. *)
