@@ -558,7 +558,7 @@ Proof.
 move=> H; rewrite /qperm'; case: s f g H => // h t f g H.
 bind_ext => -[a b] /=.
 rewrite (_ : f = g) //; apply funext_dep => s.
-by apply boolp.funext => ?; exact: H.
+by apply funext => ?; exact: H.
 Qed.
 End qperm_function.
 End qperm_function.
@@ -638,7 +638,7 @@ rewrite (_ : callcc _ = Ret 100) ?bindretf //.
 transitivity (callcc (fun _ : nat -> M nat => Ret 100)); last by rewrite callcc1.
 transitivity (callcc (fun f : nat -> M nat => Ret 10 >>= (fun a => f 100))); first by rewrite callcc2.
 rewrite callcc3 //; congr callcc.
-by apply boolp.funext => g; rewrite bindretf.
+by apply funext => g; rewrite bindretf.
 Qed.
 
 End continuation_example.

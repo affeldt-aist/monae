@@ -124,23 +124,23 @@ Definition insert i s (a : I -> S) j := if i == j then s else a j.
 Lemma insert_insert i s' s a :
   insert i s' (insert i s a) = insert i s' a.
 Proof.
-by apply boolp.funext => j; rewrite /insert; case: ifPn => // /negbTE ->.
+by apply funext => j; rewrite /insert; case: ifPn => // /negbTE ->.
 Qed.
 Lemma insert_same i a s : insert i s a i = s.
 Proof. by rewrite /insert eqxx. Qed.
 Lemma insert_same2 i a : insert i (a i) a = a.
 Proof.
-by apply boolp.funext => j; rewrite /insert; case: ifPn => // /eqP ->.
+by apply funext => j; rewrite /insert; case: ifPn => // /eqP ->.
 Qed.
 Lemma insertC j i v u a : i != j ->
   insert j v (insert i u a) = insert i u (insert j v a).
 Proof.
-move=> h; apply boolp.funext => k; rewrite /insert; case: ifPn => // /eqP <-{k}.
+move=> h; apply funext => k; rewrite /insert; case: ifPn => // /eqP <-{k}.
 by rewrite (negbTE h).
 Qed.
 Lemma insertC2 j i v a : insert j v (insert i v a) = insert i v (insert j v a).
 Proof.
-apply boolp.funext => k; rewrite /insert; case: ifPn => // /eqP <-{k}.
+apply funext => k; rewrite /insert; case: ifPn => // /eqP <-{k}.
 by rewrite if_same.
 Qed.
 
@@ -248,10 +248,10 @@ Let actm (X Y : UU0) : (X -> Y) -> acto X -> acto Y :=
   fun f : X -> Y => fun xs : X * S => match xs with (x, s) => (f x, s) end.
 
 Let writer_id : FunctorLaws.id actm.
-Proof. by move => B; apply: boolp.funext => -[]. Qed.
+Proof. by move => B; apply: funext => -[]. Qed.
 
 Let writer_o : FunctorLaws.comp actm.
-Proof. by move=> X Y Z g h; apply: boolp.funext => -[]. Qed.
+Proof. by move=> X Y Z g h; apply: funext => -[]. Qed.
 
 HB.instance Definition _:= isFunctor.Build acto writer_id writer_o.
 
@@ -321,15 +321,15 @@ Local Notation M := acto.
 Let ret : idfun ~~> M := fun A a => fun s => (a, s).
 Let bind := fun (A B : UU0) (m : M A) (f : A -> M B) => uncurry f \o m.
 Let left_neutral : BindLaws.left_neutral bind ret.
-Proof. by move=> A B a f; apply boolp.funext. Qed.
+Proof. by move=> A B a f; apply funext. Qed.
 Let right_neutral : BindLaws.right_neutral bind ret.
 Proof.
-by move=> A f; apply boolp.funext => s; rewrite /bind compE/=; case: (f s).
+by move=> A f; apply funext => s; rewrite /bind compE/=; case: (f s).
 Qed.
 Let associative : BindLaws.associative bind.
 Proof.
 move=> A B C a b c; rewrite /bind compA; congr (_ \o _).
-by apply boolp.funext => -[].
+by apply funext => -[].
 Qed.
 HB.instance Definition _ :=
   isMonad_ret_bind.Build M left_neutral right_neutral associative.
@@ -351,7 +351,7 @@ Local Notation M := acto.
 Let ret : idfun ~~> M := fun A a => fun k => k a.
 Let bind := fun (A B : UU0) (m : M A) (f : A -> M B) => fun k => m (fun a => f a k).
 Let left_neutral : BindLaws.left_neutral bind ret.
-Proof. by move=> A B a f; apply boolp.funext => Br. Qed.
+Proof. by move=> A B a f; apply funext => Br. Qed.
 Let right_neutral : BindLaws.right_neutral bind ret.
 Proof. by []. Qed.
 Let associative : BindLaws.associative bind.
@@ -371,9 +371,9 @@ Section empty.
 Definition acto (X : UU0) : UU0 := unit.
 Let actm (X Y : UU0) (f : X -> Y) (t : acto X) : acto Y := tt.
 Let func_id : FunctorLaws.id actm.
-Proof. by move=> A; apply boolp.funext => -[]. Qed.
+Proof. by move=> A; apply funext => -[]. Qed.
 Let func_comp : FunctorLaws.comp actm.
-Proof. by move=> A B C f g; apply boolp.funext => -[]. Qed.
+Proof. by move=> A B C f g; apply funext => -[]. Qed.
 HB.instance Definition _ := isFunctor.Build acto func_id func_comp.
 End empty.
 End Empty.
@@ -385,7 +385,7 @@ Local Notation M := [the monad of ListMonad.acto].
 Definition empty : Empty.acto \o M ~~> M := fun A _ => @nil A.
 
 Let naturality_empty : naturality (Empty.acto \o M) M empty.
-Proof. by move=> A B h; exact: boolp.funext. Qed.
+Proof. by move=> A B h; exact: funext. Qed.
 
 HB.instance Definition _ :=
   isNatural.Build (Empty.acto \o M) M empty naturality_empty.
@@ -400,7 +400,7 @@ Definition append : squaring \o M ~~> M :=
 
 Let naturality_append : naturality (squaring \o M) M append.
 Proof.
-move=> A B h; apply boolp.funext => -[s1 s2] /=.
+move=> A B h; apply funext => -[s1 s2] /=.
 rewrite [LHS]fmapE [LHS]list_bindE.
 rewrite [in LHS]map_cat.
 by rewrite [in LHS]flatten_cat.
@@ -426,9 +426,9 @@ Definition acto (X : UU0) := (seq L * X)%type.
 Let actm (X Y : UU0) (f : X -> Y) (t : acto X) : acto Y :=
   let: (w, x) := t in (w, f x).
 Let func_id : FunctorLaws.id actm.
-Proof. by move=> A; apply boolp.funext; case. Qed.
+Proof. by move=> A; apply funext; case. Qed.
 Let func_comp : FunctorLaws.comp actm.
-Proof. by move=> A B C f g; apply boolp.funext; case. Qed.
+Proof. by move=> A B C f g; apply funext; case. Qed.
 HB.instance Definition _ := isFunctor.Build acto func_id func_comp.
 End output.
 End Output.
@@ -456,7 +456,7 @@ Let naturality_output :
   naturality (Output.acto L \o M) M output.
 Proof.
 move=> A B h.
-apply boolp.funext => -[w [x w']].
+apply funext => -[w [x w']].
 by rewrite /output !compE/= catA.
 Qed.
 
@@ -479,7 +479,7 @@ Definition flush : (Flush.acto \o M) ~~> M :=
 
 (* performing a computation in a modified environment *)
 Let naturality_flush : naturality (Flush.acto \o M) M flush.
-Proof. by move=> A B h; apply: boolp.funext => -[]. Qed.
+Proof. by move=> A B h; apply: funext => -[]. Qed.
 
 HB.instance Definition _ := isNatural.Build
   (Flush.acto \o M) M flush naturality_flush.
@@ -510,7 +510,7 @@ Local Notation M := (OutputMonad.acto L).
 Definition output : seq L -> M unit := fun w => output_op _ _ (w, Ret tt).
 Lemma outputE : output = fun w => (tt, w).
 Proof.
-apply boolp.funext => w.
+apply funext => w.
 by rewrite /output /= /monad_model.output /= cats0.
 Qed.
 (* TODO: complete with an interface for the output monad and instantiate *)
@@ -536,9 +536,9 @@ Definition acto (X : UU0) := ((E -> E) * X)%type.
 Let actm (X Y : UU0) (f : X -> Y) (t : acto X) : acto Y :=
   let: (e, x) := t in (e, f x).
 Let func_id : FunctorLaws.id actm.
-Proof. by move=> A; apply boolp.funext => -[]. Qed.
+Proof. by move=> A; apply funext => -[]. Qed.
 Let func_comp : FunctorLaws.comp actm.
-Proof. by move=> A B C g h; apply boolp.funext => -[]. Qed.
+Proof. by move=> A B C g h; apply funext => -[]. Qed.
 HB.instance Definition _ := isFunctor.Build acto func_id func_comp.
 End local.
 End Local.
@@ -568,7 +568,7 @@ Definition local : (Local.acto E \o M)(*(E -> E) * M A*) ~~> M :=
 (* performing a computation in a modified environment *)
 
 Let naturality_local : naturality (Local.acto E \o M) M local.
-Proof. by move=> A B h; apply boolp.funext => -[]. Qed.
+Proof. by move=> A B h; apply funext => -[]. Qed.
 
 HB.instance Definition _ := isNatural.Build
   (Local.acto E \o M) M local naturality_local.
@@ -586,7 +586,7 @@ rewrite /local /=.
 rewrite /actm /=.
 case: t => /= ee m.
 rewrite reader_bindE.
-apply boolp.funext=> x /=.
+apply funext=> x /=.
 Abort.
 
 End environmentops.
@@ -622,9 +622,9 @@ Definition acto (X : UU0) := (X * (Z -> X))%type.
 Let actm (X Y : UU0) (f : X -> Y) (t : acto X) : acto Y :=
   let: (x, h) := t in (f x, fun z => f (h z)).
 Let func_id : FunctorLaws.id actm.
-Proof. by move=> A; apply boolp.funext => -[]. Qed.
+Proof. by move=> A; apply funext => -[]. Qed.
 Let func_comp : FunctorLaws.comp actm.
-Proof. by move=> A B C g h; apply boolp.funext => -[]. Qed.
+Proof. by move=> A B C g h; apply funext => -[]. Qed.
 HB.instance Definition _ := isFunctor.Build acto func_id func_comp.
 End handle.
 End Handle.
@@ -662,7 +662,7 @@ Definition handle : Handle.acto Z \o M ~~> M :=
 
 Let naturality_handle : naturality (Handle.acto Z \o M) M handle.
 
-Proof. by move=> A B h; apply boolp.funext => -[[]]. Qed.
+Proof. by move=> A B h; apply funext => -[[]]. Qed.
 
 HB.instance Definition _ := isNatural.Build
   (Handle.acto Z \o M) M handle naturality_handle.
@@ -698,9 +698,9 @@ Variable S : UU0.
 Definition acto (X : UU0) := S -> X.
 Let actm (X Y : UU0) (f : X -> Y) (t : acto X) : acto Y := f \o t.
 Let func_id : FunctorLaws.id actm.
-Proof. by move=> A; apply boolp.funext. Qed.
+Proof. by move=> A; apply funext. Qed.
 Let func_comp : FunctorLaws.comp actm.
-Proof. by move=> A B C g h; apply boolp.funext. Qed.
+Proof. by move=> A B C g h; apply funext. Qed.
 HB.instance Definition _ := isFunctor.Build acto func_id func_comp.
 End get.
 End StateOpsGet.
@@ -712,9 +712,9 @@ Variable S : UU0.
 Definition acto (X : UU0) := (S * X)%type.
 Let actm (X Y : UU0) (f : X -> Y) (sx : acto X) : acto Y := (sx.1, f sx.2).
 Let func_id : FunctorLaws.id actm.
-Proof. by move=> A; apply boolp.funext => -[]. Qed.
+Proof. by move=> A; apply funext => -[]. Qed.
 Let func_comp : FunctorLaws.comp actm.
-Proof. by move=> A B C g h; apply boolp.funext. Qed.
+Proof. by move=> A B C g h; apply funext. Qed.
 HB.instance Definition _ := isFunctor.Build acto func_id func_comp.
 End put.
 End StateOpsPut.
@@ -728,7 +728,7 @@ Let get : StateOpsGet.acto S \o M ~~> M := fun A k s => k s s.
 
 Let naturality_get : naturality (StateOpsGet.acto S \o M) M get.
 Proof.
-move=> A B h; apply boolp.funext => /= m; apply boolp.funext => s.
+move=> A B h; apply funext => /= m; apply funext => s.
 by rewrite FCompE.
 Qed.
 
@@ -753,7 +753,7 @@ Let put : StateOpsPut.acto S \o M ~~> M :=
 
 Let naturality_put : naturality (StateOpsPut.acto S \o M) M put.
 Proof.
-by move=> A B h; apply boolp.funext => /= -[s m /=]; apply boolp.funext.
+by move=> A B h; apply funext => /= -[s m /=]; apply funext.
 Qed.
 
 HB.instance Definition _ :=
@@ -866,7 +866,7 @@ HB.instance Definition _ := @isMonadFail.Build ListMonad.acto list_fail list_bin
 Definition set_fail : forall A, set A := @set0.
 Let set_bindfailf : BindLaws.left_zero (@bind _) set_fail.
 Proof.
-move=> A B f /=; apply boolp.funext => b; rewrite boolp.propeqE.
+move=> A B f /=; apply funext => b; rewrite boolp.propeqE.
 by split=> // -[a []].
 Qed.
 HB.instance Definition _ := isMonadFail.Build set set_bindfailf.
@@ -880,7 +880,7 @@ Let M : failMonad := option_monad.
 Definition handle : forall A, M A -> M A -> M A :=
   fun A m1 m2 => @handle_op unit _ (m1, (fun _ => m2)).
 Lemma handleE : handle = (fun A m m' => if m is inr x then m else m').
-Proof. by apply funext_dep => A; apply boolp.funext => -[]. Qed.
+Proof. by apply funext_dep => A; apply funext => -[]. Qed.
 Let catchmfail : forall A, right_id fail (@handle A).
 Proof. by move=> A; case => //; case. Qed.
 Let catchfailm : forall A, left_id fail (@handle A).
@@ -936,7 +936,7 @@ End list.
 (* NB: was at the top of the file *)
 Lemma setUDl : @BindLaws.left_distributive _ (fun I A => @bigcup A I) (@setU).
 Proof.
-move=> A B /= p q r; apply boolp.funext => b; rewrite boolp.propeqE; split.
+move=> A B /= p q r; apply funext => b; rewrite boolp.propeqE; split.
 move=> -[a [?|?] ?]; by [left; exists a | right; exists a].
 by rewrite /setU => -[[a ? ?]|[a ? ?]]; exists a => //; [left|right].
 Qed.
@@ -1035,7 +1035,7 @@ Proof. by []. Qed.
 Let st_putget : forall s, st_put s >> st_get = st_put s >> Ret s.
 Proof. by []. Qed.
 Let st_getput : st_get >>= st_put = skip.
-Proof. by move=> *; apply boolp.funext => -[]. Qed.
+Proof. by move=> *; apply funext => -[]. Qed.
 Let st_getget : forall (A : UU0) (k : S -> S -> M A),
       st_get >>= (fun s => st_get >>= k s) = st_get >>= fun s => k s s.
 Proof. by []. Qed.
@@ -1128,7 +1128,7 @@ Compute (sum_break [:: Some 2; Some 6; None; Some 4]).
 
 (* example from Sect. 3.1 of [Wadler, 94] *)
 Goal Ret 1 +m (callcc (fun f => Ret 10 +m (f 100))) = Ret (1 + 100) :> M _.
-Proof. by rewrite /addM bindretf; apply boolp.funext. Abort.
+Proof. by rewrite /addM bindretf; apply funext. Abort.
 
 (* https://xavierleroy.org/mpri/2-4/transformations.pdf *)
 
@@ -1189,13 +1189,13 @@ Section shiftreset_examples.
 Let M : shiftresetMonad nat := [the shiftresetMonad nat of ContMonad.acto nat].
 Goal Ret 1 +m (reset (Ret 10 +m (shift (fun f : _ -> M nat => f (100) >>= f) : M _)) : M _) =
      Ret (1 + (10 + (10 + 100))).
-Proof. by rewrite /addM bindretf; apply boolp.funext. Abort.
+Proof. by rewrite /addM bindretf; apply funext. Abort.
 Goal Ret 1 +m (reset (Ret 10 +m (shift (fun f : _ -> M nat => Ret 100 : M _) : M _)) : M _) =
      Ret (1 + 100).
-Proof. by rewrite /addM bindretf; apply boolp.funext. Abort.
+Proof. by rewrite /addM bindretf; apply funext. Abort.
 Goal Ret 1 +m (reset (Ret 10 +m (shift (fun f : _ -> M nat => f 100 +m f 1000) : M _)) : M _) =
      Ret (1 + ((10 + 100) + (10 + 1000))).
-Proof. by rewrite /addM bindretf; apply boolp.funext. Abort.
+Proof. by rewrite /addM bindretf; apply funext. Abort.
 
 Let N : shiftresetMonad (seq nat) := [the shiftresetMonad (seq nat) of ContMonad.acto (seq nat)].
 Fixpoint perverse (l : seq nat) : N (seq nat) :=
@@ -1214,10 +1214,10 @@ Definition stranger :=
 Goal stranger = Ret 5. by []. Abort.
 
 Goal reset (Ret 2 +m shift (fun k : _ -> M _ => k 3 +m Ret 1 : M _) : M _) = Ret 6 :> M _.
-Proof. by rewrite /addM bindretf; apply boolp.funext. Abort.
+Proof. by rewrite /addM bindretf; apply funext. Abort.
 Goal reset (Ret 2 *m shift (fun k : _ -> M _ => k 4 +m Ret 1 : M _)
                   *m shift (fun k : _ -> M _ => k 3 +m Ret 1 : M _) : M _ ) = Ret 26 :> M _.
-Proof. by rewrite /mulM bindretf; apply boolp.funext. Abort.
+Proof. by rewrite /mulM bindretf; apply funext. Abort.
 
 End shiftreset_examples.
 
@@ -1342,7 +1342,7 @@ Lemma bindE (A B : Type) m (f : A -> [the monad of acto] B) :
                  @` (m s))
     i.
 Proof.
-apply boolp.funext => s.
+apply funext => s.
 rewrite bindE /= /join_of_bind /= /bind /=.
 set lhs := [fset _ _ | _ in _].
 set rhs := [fset _ _ | _ in _].
@@ -1375,7 +1375,7 @@ Let put := (fun s => (fun _ => [fset (tt : choice_of_Type unit,
                                 s : choice_of_Type S)])) : S -> (acto S unit).
 Let putput : forall s s', put s >> put s' = put s'.
 Proof.
-move=> s s'; apply boolp.funext => s''.
+move=> s s'; apply funext => s''.
 rewrite bindE; apply/fsetP => /= x; apply/bigfcupP'/fset1P.
 - by case => /= x0 /imfsetP[/= x1] /fset1P _ -> /fset1P.
 - move=> -> /=.
@@ -1526,17 +1526,17 @@ Definition aget i : M S := fun a => (a i, a).
 Definition aput i s : M unit := fun a => (tt, insert i s a).
 Let aputput i s s' : aput i s >> aput i s' = aput i s'.
 Proof.
-rewrite state_bindE; apply boolp.funext => a/=.
+rewrite state_bindE; apply funext => a/=.
 by rewrite /aput compE/= insert_insert.
 Qed.
 Let aputget i s A (k : S -> M A) : aput i s >> aget i >>= k = aput i s >> k s.
 Proof.
-rewrite state_bindE; apply boolp.funext => a/=.
+rewrite state_bindE; apply funext => a/=.
 by rewrite /aput compE/= insert_same.
 Qed.
 Let agetput i : aget i >>= aput i = skip.
 Proof.
-rewrite state_bindE; apply boolp.funext => a/=.
+rewrite state_bindE; apply funext => a/=.
 by rewrite /aput compE/= insert_same2.
 Qed.
 Let agetget i A (k : S -> S -> M A) :
@@ -1549,13 +1549,13 @@ Proof. by []. Qed.
 Let aputC i j u v : (i != j) \/ (u = v) ->
   aput i u >> aput j v = aput j v >> aput i u.
 Proof.
-by move=> [ij|->{u}]; rewrite !state_bindE /aput; apply/boolp.funext => a/=;
+by move=> [ij|->{u}]; rewrite !state_bindE /aput; apply/funext => a/=;
   [rewrite compE/= insertC|rewrite compE/= insertC2].
 Qed.
 Let aputgetC i j u A (k : S -> M A) : i != j ->
   aput i u >> aget j >>= k = aget j >>= (fun v => aput i u >> k v).
 Proof.
-move=> ij; rewrite /aput !state_bindE; apply boolp.funext => a/=.
+move=> ij; rewrite /aput !state_bindE; apply funext => a/=.
 by rewrite !compE/= state_bindE/= {1}/insert (negbTE ij).
 Qed.
 HB.instance Definition _ := Monad.on M.
@@ -1576,18 +1576,18 @@ Let ret : idfun ~~> M := fun A a => fun s => [set (a, s)].
 Let bind := fun A B (m : M A) (f : A -> M B) => fun s => m s >>= uncurry f.
 Let left_neutral : BindLaws.left_neutral bind ret.
 Proof.
-by move=> X Y x f; apply: boolp.funext => a1; rewrite /bind/= bindretf.
+by move=> X Y x f; apply: funext => a1; rewrite /bind/= bindretf.
 Qed.
 Let right_neutral : BindLaws.right_neutral bind ret.
 Proof.
-move=> X/= m; rewrite /bind; apply: boolp.funext => a1.
+move=> X/= m; rewrite /bind; apply: funext => a1.
 rewrite /ret /uncurry/=; apply/seteqP; split.
   by move=> [x a2]/= [[x' a3]] ma1x'a3/= ->.
 by move=> [x a2] ma1xa2/=; eexists; [exact: ma1xa2|].
 Qed.
 Let associative : BindLaws.associative bind.
 Proof.
-move=> X Y Z /= m f g; rewrite /bind; apply: boolp.funext => a.
+move=> X Y Z /= m f g; rewrite /bind; apply: funext => a.
 by rewrite bindA; bind_ext => -[].
 Qed.
 HB.instance Definition _ :=
@@ -1598,32 +1598,32 @@ Definition aget i : M S := fun s => Ret (ModelArray.aget i s).
 Definition aput i a : M unit := fun s => Ret (ModelArray.aput i a s).
 Let aputput i s s' : aput i s >> aput i s' = aput i s'.
 Proof.
-apply boolp.funext => a/=; rewrite bindE /bind set_bindE.
+apply funext => a/=; rewrite bindE /bind set_bindE.
 by rewrite bigcup_set1/= /aput /ModelArray.aput insert_insert.
 Qed.
 Let aputget i s (A : UU0) (k : S -> M A) :
   aput i s >> aget i >>= k = aput i s >> k s.
 Proof.
-apply boolp.funext => a/=; rewrite !bindE /bind set_bindE.
+apply funext => a/=; rewrite !bindE /bind set_bindE.
 rewrite set_bindE/= bigcup_bigcup !bigcup_set1/= /aput /ModelArray.aput.
 by rewrite bindretf/= insert_same.
 Qed.
 Let agetput i : aget i >>= aput i = skip.
 Proof.
-apply boolp.funext => a/=; rewrite bindE /bind set_bindE bigcup_set1/=.
+apply funext => a/=; rewrite bindE /bind set_bindE bigcup_set1/=.
 by rewrite /aput /ModelArray.aput insert_same2.
 Qed.
 Let agetget i (A : UU0) (k : S -> S -> M A) :
   aget i >>= (fun s => aget i >>= k s) = aget i >>= fun s => k s s.
 Proof.
-apply boolp.funext => a/=; rewrite !bindE /bind !set_bindE/= bigcup_set1/=.
+apply funext => a/=; rewrite !bindE /bind !set_bindE/= bigcup_set1/=.
 by rewrite /aget /ModelArray.aget/= !bindE/= /bind/= !set_bindE/= !bigcup_set1.
 Qed.
 Let agetC i j (A : UU0) (k : S -> S -> M A) :
   aget i >>= (fun u => aget j >>= (fun v => k u v)) =
   aget j >>= (fun v => aget i >>= (fun u => k u v)).
 Proof.
-apply boolp.funext => a/=.
+apply funext => a/=.
 rewrite !bindE /bind/= !set_bindE !bigcup_set1/= /aget /ModelArray.aget/=.
 by rewrite !bindE /bind/= !set_bindE/= !bigcup_set1.
 Qed.
@@ -1631,10 +1631,10 @@ Let aputC i j u v : (i != j) \/ (u = v) ->
   aput i u >> aput j v = aput j v >> aput i u.
 Proof.
 move=> [ij|->{u}].
-  apply boolp.funext => a/=.
+  apply funext => a/=.
   rewrite !bindE /bind/= !set_bindE/= !bigcup_set1/=.
   by rewrite /aput /ModelArray.aput/= insertC.
-apply boolp.funext => a/=.
+apply funext => a/=.
 rewrite !bindE /bind/= !set_bindE/= !bigcup_set1/=.
 by rewrite /aput /ModelArray.aput/= insertC2.
 Qed.
@@ -1642,7 +1642,7 @@ Let aputgetC i j u (A : UU0) (k : S -> M A) : i != j ->
   aput i u >> aget j >>= k = aget j >>= (fun v => aput i u >> k v).
 Proof.
 move=> ij.
-apply boolp.funext => a/=.
+apply funext => a/=.
 rewrite !bindE /bind/= !set_bindE !bigcup_set1/= /aput /ModelArray.aput/=.
 by rewrite bindE /bind/= set_bindE bigcup_set1/= {1}/insert (negbTE ij).
 Qed.
@@ -1650,51 +1650,51 @@ HB.instance Definition _ := isMonadArray.Build
   S I acto aputput aputget agetput agetget agetC aputC aputgetC.
 Let bindfailf : BindLaws.left_zero bind (fun A _ => @set_fail _).
 Proof.
-by move=> A B/= g; apply boolp.funext => a/=; rewrite /bind bindfailf.
+by move=> A B/= g; apply funext => a/=; rewrite /bind bindfailf.
 Qed.
 HB.instance Definition _ := isMonadFail.Build acto bindfailf.
 Definition aalt := fun (T : UU0) (a b : M T) => fun x => a x [~] b x.
 Let altA (T : UU0) : ssrfun.associative (@aalt T).
-Proof. by move=> x y z; apply: boolp.funext => a; rewrite /aalt altA. Qed.
+Proof. by move=> x y z; apply: funext => a; rewrite /aalt altA. Qed.
 Let alt_bindDl : BindLaws.left_distributive bind (@aalt).
 Proof.
-move=> A B/= m1 m2 k; apply boolp.funext => a; rewrite /bind /aalt/=.
+move=> A B/= m1 m2 k; apply funext => a; rewrite /bind /aalt/=.
 by rewrite alt_bindDl.
 Qed.
 HB.instance Definition _ := isMonadAlt.Build M altA alt_bindDl.
 Let altfailm : @BindLaws.left_id _ (@fail [the failMonad of acto])
                                    (@alt [the altMonad of acto]).
 Proof.
-move=> A m; apply boolp.funext => a/=; apply boolp.funext => -[x a1]/=.
+move=> A m; apply funext => a/=; apply funext => -[x a1]/=.
 by rewrite /alt/= /aalt altfailm.
 Qed.
 Let altmfail : @BindLaws.right_id _ (@fail [the failMonad of acto])
                                     (@alt [the altMonad of acto]).
 Proof.
-move=> A m; apply boolp.funext => a/=; apply boolp.funext => -[x a1]/=.
+move=> A m; apply funext => a/=; apply funext => -[x a1]/=.
 by rewrite /alt/= /aalt altmfail.
 Qed.
 HB.instance Definition _ := isMonadNondet.Build M altfailm altmfail.
 Let altmm (A : UU0) : idempotent_op (@alt [the altMonad of M] A).
 Proof.
-move=> m; apply boolp.funext => a/=; apply boolp.funext => -[x a1]/=.
+move=> m; apply funext => a/=; apply funext => -[x a1]/=.
 by rewrite /alt/= /aalt altmm.
 Qed.
 Let altC (A : UU0) : commutative (@alt [the altMonad of M] A).
 Proof.
-move=> m1 m2; apply boolp.funext => a/=; apply boolp.funext => -[x a1]/=.
+move=> m1 m2; apply funext => a/=; apply funext => -[x a1]/=.
 by rewrite /alt/= /aalt altC.
 Qed.
 HB.instance Definition _ := @isMonadAltCI.Build M altmm altC.
 Let bindmfail : BindLaws.right_zero bind (@fail [the failMonad of M]).
 Proof.
-move=> A B /= m; apply boolp.funext => a; apply boolp.funext => -[x a1]/=.
+move=> A B /= m; apply funext => a; apply funext => -[x a1]/=.
 by rewrite /bind/= set_bindE/= bigcup0// => -[].
 Qed.
 HB.instance Definition _ := isMonadFailR0.Build M bindmfail.
 Let alt_bindDr : BindLaws.right_distributive bind (@alt [the altMonad of M]).
 Proof.
-move=> T1 T2 /= A k1 k2; apply boolp.funext => a; apply boolp.funext => -[x a1].
+move=> T1 T2 /= A k1 k2; apply funext => a; apply funext => -[x a1].
 rewrite /bind/= !set_bindE; apply/boolp.propext; split.
   move=> -[[x1 a2] H1]/= H2.
   by rewrite /alt/= /aalt -alt_bindDr set_bindE; exists (x1, a2).
@@ -1888,7 +1888,7 @@ Proof.
 rewrite /= /stateTmonadM /=.
 have FG : MS_functor S ModelMonad.identity = ModelMonad.State.functor S.
   apply: functor_ext => /=; apply funext_dep => A; apply funext_dep => B.
-  apply boolp.funext => f; apply boolp.funext => m; apply boolp.funext => s.
+  apply funext => f; apply funext => m; apply funext => s.
   by rewrite /MS_map /Actm /= /ModelMonad.State.map; destruct (m s).
 apply (@monad_of_ret_bind_ext _ _ _ _ _ _ FG) => /=.
   apply/natural_ext => A a /=; exact: eq_rect_state_ret _ (esym FG).
@@ -1901,7 +1901,7 @@ Proof.
 rewrite /= /exceptTmonadM /ModelMonad.Except.t.
 have FG : MX_functor Z ModelMonad.identity = ModelMonad.Except.functor Z.
   apply: functor_ext => /=; apply funext_dep => A; apply funext_dep => B.
-  apply boolp.funext => f; apply boolp.funext => m.
+  apply funext => f; apply funext => m.
   by rewrite /MX_map /Actm /= /ModelMonad.Except.map; destruct m.
 apply (@monad_of_ret_bind_ext _ _ _ _ _ _ FG) => /=.
   apply/natural_ext => A a /=; exact: (eq_rect_error_ret _ (esym FG)).
@@ -1914,7 +1914,7 @@ Proof.
 rewrite /= /contTmonadM /ModelMonad.Cont.t.
 have FG : MC_functor r ModelMonad.identity = ModelMonad.Cont.functor r.
   apply: functor_ext => /=; apply funext_dep => A; apply funext_dep => B.
-  by apply boolp.funext => f; apply boolp.funext => m.
+  by apply funext => f; apply funext => m.
 apply (@monad_of_ret_bind_ext _ _ _ _ _ _ FG) => /=.
   apply/natural_ext => A a /=; exact: (@eq_rect_cont_ret A r _ (esym FG)).
 set x := @bindC _ _; exact: (@eq_rect_bind_cont r x (esym FG)).
@@ -2043,22 +2043,22 @@ Let Catch (A : UU0) := mapStateT2 (@catch N (A * S)%type).
 
 Let Catchmfail : forall A, right_id (liftS (@fail N A)) (@Catch A).
 Proof.
-move=> A x; rewrite /Catch /mapStateT2; apply boolp.funext => s.
+move=> A x; rewrite /Catch /mapStateT2; apply funext => s.
 by rewrite catchmfail.
 Qed.
 Let Catchfailm : forall A, left_id (liftS (@fail N A)) (@Catch A).
 Proof.
-move=> A x; rewrite /Catch /mapStateT2; apply boolp.funext => s.
+move=> A x; rewrite /Catch /mapStateT2; apply funext => s.
 by rewrite catchfailm.
 Qed.
 Let CatchA : forall A, ssrfun.associative (@Catch A).
 Proof.
-move=> A; rewrite /Catch /mapStateT2 => a b c; apply boolp.funext => s.
+move=> A; rewrite /Catch /mapStateT2 => a b c; apply funext => s.
 by rewrite catchA.
 Qed.
 Let Catchret : forall A x, @left_zero (M A) (M A) (Ret x) (@Catch A).
 Proof.
-move=> A x y; rewrite /Catch /mapStateT2; apply boolp.funext => s.
+move=> A x y; rewrite /Catch /mapStateT2; apply funext => s.
 by rewrite catchret.
 Qed.
 
