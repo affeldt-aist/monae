@@ -301,18 +301,18 @@ Lemma fmap_oE (M : functor) (A B C : UU0) (f : A -> B) (g : C -> A) (m : M C) :
   (M # (f \o g)) m = (M # f) ((M # g) m).
 Proof. by rewrite functor_o. Qed.
 
-Definition NId (C : functor) := fun A => @idfun (C A).
-
 Section id_natural_transformation.
 Variables C : functor.
 
-Let natural_id : naturality C C (@NId C). Proof. by []. Qed.
+Let nid : C ~~> C := fun A => @idfun (C A).
 
-HB.instance Definition _ := isNatural.Build C C (@NId C) natural_id.
+Let natural_nid : naturality C C nid. Proof. by []. Qed.
+
+Let class := isNatural.Build C C nid natural_nid.
+
+Definition NId := HB.pack_for (C ~> C) nid class.
 
 End id_natural_transformation.
-
-Arguments NId C [A].
 
 Definition vcomp (C D E : functor) (g : D ~> E) (f : C ~> D) :=
   fun A : UU0 => g A \o f A.
