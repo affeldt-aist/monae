@@ -146,7 +146,6 @@ Qed.
 
 End assoc.
 
-Module IdentityMonad.
 Section identitymonad.
 Let bind := fun A B (a : A) (f : A -> B) => f a.
 Let left_neutral : BindLaws.left_neutral bind (NId FId).
@@ -155,11 +154,10 @@ Let right_neutral : BindLaws.right_neutral bind (NId FId).
 Proof. by []. Qed.
 Let associative : BindLaws.associative bind. Proof. by []. Qed.
 Let acto := (@idfun UU0).
-HB.instance Definition _ := isMonad_ret_bind.Build
+Let class := isMonad_ret_bind.Build
   acto left_neutral right_neutral associative.
+Definition MId := HB.pack_for monad idfun class.
 End identitymonad.
-End IdentityMonad.
-HB.export IdentityMonad.
 
 Module ListMonad.
 Section listmonad.
@@ -1135,7 +1133,7 @@ Proof. by rewrite /addM bindretf; apply boolp.funext. Abort.
 Fixpoint list_iter (M : monad) A (f : A -> M unit) (s : seq A) : M unit :=
   if s is h :: t then f h >> list_iter f t else Ret tt.
 
-Compute (@list_iter [the monad of idfun] nat (fun a => Ret tt) [:: O; 1; 2]).
+Compute (@list_iter MId nat (fun a => Ret tt) [:: O; 1; 2]).
 
 Definition list_find (M : contMonad) (A : UU0) (p : pred A) (s : seq A) : M _ :=
   callcc (fun k => list_iter (fun x => if p x then (*Throw*) k (Some x) else Ret tt) s >> Ret None).
@@ -1883,7 +1881,7 @@ End eq_rect_bind.
 (*Section instantiations_with_the_identity_monad.
 
 Lemma stateT_id_ModelState S :
-  stateT S [the monad of idfun] = [the monad of StateMonad.acto S].
+  stateT S MId = [the monad of StateMonad.acto S].
 Proof.
 rewrite /= /stateTmonadM /=.
 have FG : MS_functor S ModelMonad.identity = ModelMonad.State.functor S.
@@ -1924,7 +1922,7 @@ End instantiations_with_the_identity_monad.*)
 
 Section monad_transformer_calcul.
 
-Let contTi T := MC T [the monad of idfun].
+Let contTi T := MC T MId.
 
 Definition break_if_none (m : monad) (break : _) (acc : nat) (x : option nat) : m nat :=
   if x is Some x then Ret (x + acc) else break acc.
