@@ -40,7 +40,7 @@ From HB Require Import structures.
 (*                >>= == notation for the standard bind operator              *)
 (*             m >> f := m >>= (fun _ => f)                                   *)
 (*              monad == type of monads                                       *)
-(*                Ret == natural transformation idfun ~> M for a monad M      *)
+(*                Ret == natural transformation FId ~> M for a monad M      *)
 (*               Join == natural transformation M \o M ~> M for a monad M     *)
 (* ```                                                                        *)
 (*                                                                            *)
@@ -197,10 +197,11 @@ Section functorid.
 Let id_actm (A B : UU0) (f : A -> B) : idfun A -> idfun B := f.
 Let id_id : FunctorLaws.id id_actm. Proof. by []. Qed.
 Let id_comp : FunctorLaws.comp id_actm. Proof. by []. Qed.
-HB.instance Definition _ := isFunctor.Build idfun id_id id_comp.
+Let id_class := isFunctor.Build idfun id_id id_comp.
+Definition FId := HB.pack_for functor idfun id_class.
 End functorid.
 
-Lemma FIdE (A B : UU0) (f : A -> B) : idfun # f = f. Proof. by []. Qed.
+Lemma FIdE (A B : UU0) (f : A -> B) : FId # f = f. Proof. by []. Qed.
 
 Section functor_composition.
 Variables F G : functor.
@@ -313,7 +314,7 @@ Qed.*)
 Module JoinLaws.
 Section join_laws.
 Context {F : functor}.
-Variables (ret : idfun ~~> F) (join : F \o F ~~> F).
+Variables (ret : FId ~~> F) (join : F \o F ~~> F).
 Arguments ret {_}.
 Arguments join {A}.
 
@@ -366,7 +367,7 @@ End bindlaws.
 End BindLaws.
 
 HB.mixin Record Functor_isMonad (F : UU0 -> UU0) of Functor F := {
-  ret : idfun ~> F ;
+  ret : FId ~> F ;
   join : F \o F ~> F ;
   bind : forall (A B : UU0), F A -> (A -> F B) -> F B ;
   bindE : forall (A B : UU0) (f : A -> F B) (m : F A),
@@ -394,7 +395,7 @@ Arguments bindmret {s} [A].
 Arguments bindA {s} [A B C].
 
 HB.factory Record isMonad (F : UU0 -> UU0) of Functor F := {
-  ret : idfun ~> F ;
+  ret : FId ~> F ;
   join : F \o F ~> F ;
   bind : forall (A B : UU0), F A -> (A -> F B) -> F B ;
   bindE : forall (A B : UU0) (f : A -> F B) (m : F A),
@@ -468,7 +469,7 @@ Definition bind_of_join (F : functor) (j : F \o F ~~> F)
   j B ((F # f) m).
 
 HB.factory Record isMonad_ret_join (F : UU0 -> UU0) of isFunctor F := {
-  ret : idfun ~> F ;
+  ret : FId ~> F ;
   join : F \o F ~> F ;
   joinretM : JoinLaws.left_unit ret join ;
   joinMret : JoinLaws.right_unit ret join ;
@@ -520,7 +521,7 @@ HB.instance Definition _ := isFunctor.Build M actm_id actm_comp.
 Let F := [the functor of M].
 Local Notation FF := [the functor of F \o F].
 
-Let ret_naturality : naturality idfun F ret.
+Let ret_naturality : naturality FId F ret.
 Proof.
 move=> a b h.
 rewrite FIdE /hierarchy.actm /= /actm; apply: boolp.funext => m /=.
@@ -528,7 +529,7 @@ by rewrite compE bindretf.
 Qed.
 
 HB.instance Definition _ :=
-  isNatural.Build idfun F (ret : idfun ~~> F) ret_naturality.
+  isNatural.Build FId F (ret : FId ~~> F) ret_naturality.
 
 Let join' : FF ~~> F := fun _ m => bind m idfun.
 

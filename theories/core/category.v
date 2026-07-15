@@ -294,11 +294,11 @@ Arguments functor_o_head [C D a b c g h d] F.
 
 Section functorid.
 Variables C : category.
-Definition id_f (A B : C) (f : {hom A -> B}) := f.
-Lemma id_id : FunctorLaws.id id_f. Proof. by []. Qed.
-Lemma id_comp : FunctorLaws.comp id_f. Proof. by []. Qed.
-HB.instance Definition _ := isFunctor.Build _ _ idfun id_id id_comp.
-Definition FId : {functor C -> C} := [the {functor _ -> _} of idfun].
+Local Notation id_f := (fun A B : C => @idfun {hom A -> B}).
+Let id_id : FunctorLaws.id id_f. Proof. by []. Qed.
+Let id_comp : FunctorLaws.comp id_f. Proof. by []. Qed.
+Let id_class := isFunctor.Build _ _ idfun id_id id_comp.
+Definition FId := HB.pack_for {functor C -> C} idfun id_class.
 Lemma FIdf (A B : C) (f : {hom A -> B}) : FId # f = f.
 Proof. by []. Qed.
 End functorid.
@@ -1004,7 +1004,7 @@ Let F := [the functor of acto].
 Lemma actmE (a b : CT) (h : {hom a -> b}) : (F # h)%monae = (M # h)%category.
 Proof. by congr (category.actm M); apply hom_ext. Qed.
 
-Definition ret_ : forall A, idfun A -> F A :=
+Definition ret_ : forall A, FId A -> F A :=
   fun A (a : A) => @category.ret _ M A a.
 
 Definition join_ : forall A, [the functor of F \o F] A -> F A :=
