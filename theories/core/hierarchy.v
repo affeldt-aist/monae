@@ -214,7 +214,7 @@ Proof. by rewrite /FunctorLaws.id => A; rewrite /comp_actm 2!functor_id. Qed.
 Let comp_comp : FunctorLaws.comp comp_actm.
 Proof.
 rewrite /FunctorLaws.comp => A B C g' h; rewrite /comp_actm.
-by apply boolp.funext => m; rewrite [in RHS]compE 2!functor_o.
+by apply funext => m; rewrite [in RHS]compE 2!functor_o.
 Qed.
 
 HB.instance Definition _ := isFunctor.Build (F \o G) comp_id comp_comp.
@@ -446,7 +446,7 @@ HB.end.
 
 Lemma eq_bind (M : monad) (A B : UU0) (m : M A) (f1 f2 : A -> M B) :
   f1 =1 f2 -> m >>= f1 = m >>= f2.
-Proof. by move=> f12; congr bind; apply boolp.funext. Qed.
+Proof. by move=> f12; congr bind; apply funext. Qed.
 
 Section monad_lemmas.
 Variable M : monad.
@@ -502,17 +502,17 @@ Let actm (a b : UU0) (f : a -> b) m := bind m (@ret _ \o f).
 Let actm_id : FunctorLaws.id actm.
 Proof.
 move=> a.
-rewrite /actm; apply: boolp.funext => m /=.
+rewrite /actm; apply: funext => m /=.
 by rewrite bindmret.
 Qed.
 
 Let actm_comp : FunctorLaws.comp actm.
 Proof.
 move=> a b c g h.
-rewrite /actm; apply: boolp.funext => m /=.
+rewrite /actm; apply: funext => m /=.
 rewrite compE bindA.
 congr bind.
-apply: boolp.funext => u /=.
+apply: funext => u /=.
 by rewrite bindretf.
 Qed.
 
@@ -523,7 +523,7 @@ Local Notation FF := [the functor of F \o F].
 Let ret_naturality : naturality idfun F ret.
 Proof.
 move=> a b h.
-rewrite FIdE /hierarchy.actm /= /actm; apply: boolp.funext => m /=.
+rewrite FIdE /hierarchy.actm /= /actm; apply: funext => m /=.
 by rewrite compE bindretf.
 Qed.
 
@@ -539,11 +539,11 @@ Proof. by rewrite /actm bindA. Qed.
 Let join'_naturality : naturality FF F join'.
 Proof.
 move=> a b h.
-rewrite /join' /=; apply: boolp.funext => mm /=.
+rewrite /join' /=; apply: funext => mm /=.
 rewrite /hierarchy.actm /= /isFunctor.actm /=.
 rewrite !compE actm_bind bindA.
 congr bind.
-apply: boolp.funext => m /=.
+apply: funext => m /=.
 by rewrite bindretf /=.
 Qed.
 
@@ -554,7 +554,7 @@ Let bind_map (A B C : UU0) (f : A -> B) (m : M A) (g : B -> M C) :
   bind ((F # f) m) g = bind m (g \o f).
 Proof.
 rewrite bindA; congr bind.
-by apply: boolp.funext => ?; rewrite bindretf.
+by apply: funext => ?; rewrite bindretf.
 Qed.
 
 Let bindE (a b : UU0) (f : a -> M b) (m : M a) :
@@ -566,28 +566,28 @@ Qed.
 
 Let joinretM : JoinLaws.left_unit ret join.
 Proof.
-move=> a; apply: boolp.funext => m.
+move=> a; apply: funext => m.
 by rewrite /join /= /join' /= compE bindretf.
 Qed.
 
 Let joinMret : JoinLaws.right_unit ret join.
 Proof.
-move=> a; apply: boolp.funext => m.
+move=> a; apply: funext => m.
 rewrite /join /= /join'.
 rewrite /hierarchy.actm /= /actm /=.
 rewrite compE bindA /=.
-rewrite [X in bind m X](_ : _ = fun x => ret x) ?bindmret //=; apply: boolp.funext => ?.
+rewrite [X in bind m X](_ : _ = fun x => ret x) ?bindmret //=; apply: funext => ?.
 by rewrite bindretf.
 Qed.
 
 Let joinA : JoinLaws.associativity join.
 Proof.
-move => a; apply: boolp.funext => m.
+move => a; apply: funext => m.
 rewrite /join /= /join'.
 rewrite /hierarchy.actm /= /actm.
 rewrite compE [in RHS]compE !bindA.
 congr bind.
-apply: boolp.funext => u /=.
+apply: funext => u /=.
 by rewrite bindretf.
 Qed.
 
@@ -616,7 +616,7 @@ Definition skip M := @ret M _ tt.
 Arguments skip {M} : simpl never.
 
 Ltac bind_ext :=
-  let congr_ext m := ltac:(congr (bind m); apply boolp.funext) in
+  let congr_ext m := ltac:(congr (bind m); apply funext) in
   match goal with
     | |- @bind _ _ _ ?m ?f1 = @bind _ _ _ ?m ?f2 =>
       congr_ext m
@@ -643,7 +643,7 @@ Tactic Notation "With" tactic(tac) "Open" ssrpatternarg(pat) :=
   evar (g : typ);
   rewrite (_ : f = g);
   [rewrite {}/f {}/g|
-   apply boolp.funext => x; rewrite {}/g {}/f; tac]; last first.
+   apply funext => x; rewrite {}/g {}/f; tac]; last first.
 
 Tactic Notation "Open" ssrpatternarg(pat) :=
   With (idtac) Open pat.
@@ -784,7 +784,7 @@ Definition bassert {A : UU0} (p : pred A) (m : M A) : M A := m >>= assert p.
 Lemma commutativity_of_assertions A q :
   Join \o (M # (bassert q)) = bassert q \o Join :> (_ -> M A).
 Proof.
-by apply boolp.funext => x; rewrite !compE join_fmap /bassert joinE bindA.
+by apply funext => x; rewrite !compE join_fmap /bassert joinE bindA.
 Qed.
 
 (* guards commute with anything *)

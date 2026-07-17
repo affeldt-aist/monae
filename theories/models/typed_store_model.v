@@ -124,7 +124,7 @@ Proof. by move=> H; rewrite /cget H. Qed.
 Let cnewget T (s : coq_type T) A (k : loc T -> coq_type T -> M A) :
   cnew s >>= (fun r => cget r >>= k r) = cnew s >>= (fun r => k r s).
 Proof.
-apply/boolp.funext => e.
+apply/funext => e.
 by rewrite bind_cnew (Some_cget s)// nth_error_rcons_size.
 Qed.
 
@@ -145,7 +145,7 @@ Proof. by move=> H; move: e H => [e] H; rewrite /cput H. Qed.
 Let cnewput T (s t : coq_type T) A (k : loc T -> M A) :
   cnew s >>= (fun r => cput r t >> k r) = cnew t >>= k.
 Proof.
-apply/boolp.funext => e.
+apply/funext => e.
 rewrite bind_cnew 2!MS_bindE.
 by rewrite /cput/= nth_error_rcons_size coerce_Some set_nth_rcons.
 Qed.
@@ -165,7 +165,7 @@ Let cnewC T1 T2 (s : coq_type T1) (t : coq_type T2)
   cnew t >>= (fun r => cnew s >>= k^~ r).
 Proof.
 move=> pmk.
-apply/boolp.funext => -[st].
+apply/funext => -[st].
 rewrite !bind_cnew /fresh_loc /extend_env /= size_rcons.
 Abort.
 *)
@@ -190,7 +190,7 @@ Qed.
 
 Let cgetput T (r : loc T) (s : coq_type T) : cget r >> cput r s = cput r s.
 Proof.
-apply/boolp.funext => e.
+apply/funext => e.
 have [s' H|T' s' H Ts'|H] := ntherrorP e r.
 - by rewrite (Some_cget s').
 - by rewrite MS_bindE (nocoerce_cget H)// (nocoerce_cput _ H).
@@ -225,7 +225,7 @@ Arguments Some_cputget {T} s'.
 
 Let cgetputskip T (r : loc T) : cget r >>= cput r = cget r >> skip.
 Proof.
-apply/boolp.funext => e /=.
+apply/funext => e /=.
 have [s' H|T' s' H Ts'|H] := ntherrorP e r.
 - by rewrite (Some_cget s')// (Some_cget s')// (Some_cput H).
 - by rewrite !MS_bindE (nocoerce_cget H).
@@ -235,7 +235,7 @@ Qed.
 Let cgetget T (r : loc T) (A : UU0) (k : coq_type T -> coq_type T -> M A) :
   cget r >>= (fun s => cget r >>= k s) = cget r >>= fun s => k s s.
 Proof.
-apply/boolp.funext => e /=.
+apply/funext => e /=.
 have [s' H|T' s' H Ts'|H] := ntherrorP e r.
 - by do 3 rewrite (Some_cget s')//.
 - by rewrite !MS_bindE (nocoerce_cget H).
@@ -245,7 +245,7 @@ Qed.
 Let cputget T (r : loc T) (s: coq_type T) (A: UU0) (k: coq_type T -> M A) :
   cput r s >> (cget r >>= k) = cput r s >> k s.
 Proof.
-apply/boolp.funext => e /=.
+apply/funext => e /=.
 have [s' H|T' s' H Ts'|H] := ntherrorP e r.
 - by rewrite (Some_cputget s').
 - by rewrite !MS_bindE (nocoerce_cput _ H).
@@ -269,7 +269,7 @@ Qed.
 Let cputput T (r : loc T) (s s' : coq_type T) :
   cput r s >> cput r s' = cput r s'.
 Proof.
-apply/boolp.funext => e.
+apply/funext => e.
 have [s'' H|T'' s'' H Ts''|H] := ntherrorP e r.
 - by rewrite (Some_cputput _ _ H).
 - by rewrite !MS_bindE (nocoerce_cput _ H)// (nocoerce_cput _ H).
@@ -281,7 +281,7 @@ Let cgetC T1 T2 (r1 : loc T1) (r2 : loc T2) (A : UU0)
   cget r1 >>= (fun u => cget r2 >>= (fun v => k u v)) =
   cget r2 >>= (fun v => cget r1 >>= (fun u => k u v)).
 Proof.
-apply/boolp.funext => e /=.
+apply/funext => e /=.
 have [u Hr1|u T1' Hr1 T1u|Hr1] := ntherrorP e r1.
 - rewrite (Some_cget u)//.
   have [v Hr2|v T2' Hr2 T2v|Hr2] := ntherrorP e r2.
@@ -315,7 +315,7 @@ Let cgetnewD T T' (r : loc T) (s : coq_type T') A
   cget r >>= (fun u => cnew s >>= fun r' => cget r >>= k r' u) =
   cget r >>= (fun u => cnew s >>= fun r' => k r' u u).
 Proof.
-apply/boolp.funext => e.
+apply/funext => e.
 have [u Hr|u T1 Hr T1u|Hr] := ntherrorP e r.
 - by rewrite (Some_cget u)// (Some_cget u)// (cnewgetD_helper _ _ Hr)//.
 - by rewrite !MS_bindE (nocoerce_cget Hr).
@@ -328,7 +328,7 @@ Let cgetnewE T1 T2 (r1 : loc T1) (s : coq_type T2) (A : UU0)
   cget r1 >> (cnew s >>= k1) = cget r1 >> (cnew s >>= k2).
 Proof.
 move=> Hk.
-apply/boolp.funext => e.
+apply/funext => e.
 have [u r1u|T' s' Hr1 T1s'|Hr] := ntherrorP e r1.
 - rewrite (Some_cget u)// (Some_cget u)// !bind_cnew Hk// neq_ltn.
   by case: e r1u => /= e /nth_error_size ->.
@@ -340,7 +340,7 @@ Qed.
 Let cgetputC T1 T2 (r1 : loc T1) (r2 : loc T2) (s : coq_type T2) :
   cget r1 >> cput r2 s = cput r2 s >> cget r1 >> skip.
 Proof.
-apply/boolp.funext => e /=.
+apply/funext => e /=.
 have [u r1u|T1' v1 Hr1 T1v1|Hr1] := ntherrorP e r1.
 - rewrite (Some_cget u)// [in RHS]bindA MS_bindE.
   have [v r2v|T' v r2v T2v|Hr2] := ntherrorP e r2.
@@ -407,7 +407,7 @@ Let cputC T1 T2 (r1 : loc T1) (r2 : loc T2) (s1 : coq_type T1)
   loc_id r1 != loc_id r2 \/ JMeq s1 s2 ->
   cput r1 s1 >> cput r2 s2 = cput r2 s2 >> cput r1 s1.
 Proof.
-move=> H; apply/boolp.funext => e /=.
+move=> H; apply/funext => e /=.
 have [u Hr1|T1' s'd Hr1 T1s'|Hr1] := ntherrorP e r1; last first.
   rewrite MS_bindE None_cput// bindfailf.
   have [v Hr2|T2' s' Hr2 T2s'|Hr2] := ntherrorP e r2; last first.
@@ -456,7 +456,7 @@ Let cputgetC T1 T2 (r1 : loc T1) (r2 : loc T2) (s1 : coq_type T1)
   loc_id r1 != loc_id r2 ->
   cput r1 s1 >> (cget r2 >>= k) = cget r2 >>= (fun v => cput r1 s1 >> k v).
 Proof.
-move=> Hr; apply/boolp.funext => e /=.
+move=> Hr; apply/funext => e /=.
 have [u Hr1|T1' s1' Hr1 T1s'|Hr1] := ntherrorP e r1.
 - have [v Hr2|T' s' Hr2 T2s'|Hr2] := ntherrorP e r2.
   + rewrite (Some_cget _ _ _ _ Hr2).
@@ -487,7 +487,7 @@ Let cputnewC T T' (r : loc T) (s : coq_type T) (s' : coq_type T') A
   cget r >> (cnew s' >>= fun r' => cput r s >> k r') =
   cput r s >> (cnew s' >>= k).
 Proof.
-apply/boolp.funext => e /=.
+apply/funext => e /=.
 have [u Hr|T1 s1' Hr T1s'|Hr] := ntherrorP e r.
 - rewrite (Some_cget _ _ _ _ Hr).
   rewrite [RHS]MS_bindE [in RHS]/cput Hr coerce_Some bindretf/=.

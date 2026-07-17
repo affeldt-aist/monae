@@ -85,7 +85,7 @@ Lemma mfoldl_rev (T R : UU0) (f : R -> T -> R) (z : R)
     (s : seq T -> M (seq T)) :
   foldl f z (o) (rev (o) s) = foldr (fun x => f^~ x) z (o) s.
 Proof.
-apply boolp.funext => x; rewrite !fcompE 3!fmapE !bindA.
+apply funext => x; rewrite !fcompE 3!fmapE !bindA.
 by bind_ext => ?; rewrite bindretf compE foldl_rev.
 Qed.
 Local Close Scope mprog.
@@ -174,10 +174,10 @@ Definition squaring_actm (A B : UU0) (f : A -> B) : squaring A -> squaring B :=
 Section squaring_instance.
 
 Let squaring_id : FunctorLaws.id squaring_actm.
-Proof. by move=> A /=; apply boolp.funext => -[x1 x2]. Qed.
+Proof. by move=> A /=; apply funext => -[x1 x2]. Qed.
 
 Let squaring_comp : FunctorLaws.comp squaring_actm.
-Proof. by move=> A B C g h /=; apply boolp.funext => -[x1 x2]. Qed.
+Proof. by move=> A B C g h /=; apply funext => -[x1 x2]. Qed.
 
 HB.instance Definition _ :=
   isFunctor.Build squaring squaring_id squaring_comp.
@@ -198,10 +198,10 @@ Definition curry_actm (A B : UU0) (f : A -> B) : curryF X A -> curryF X B :=
   fun x : X * A => (x.1, f x.2).
 
 Let curry_id : FunctorLaws.id curry_actm.
-Proof. by rewrite /FunctorLaws.id => A; apply boolp.funext => -[]. Qed.
+Proof. by rewrite /FunctorLaws.id => A; apply funext => -[]. Qed.
 
 Let curry_comp : FunctorLaws.comp curry_actm.
-Proof. by rewrite /FunctorLaws.comp => A B C g h; apply boolp.funext => -[]. Qed.
+Proof. by rewrite /FunctorLaws.comp => A B C g h; apply funext => -[]. Qed.
 
 HB.instance Definition _ :=
   @isFunctor.Build (curryF X) curry_actm curry_id curry_comp.
@@ -217,13 +217,13 @@ Definition uncurry_actm (X A B : UU0) (f : A -> B) : uncurryF X A -> uncurryF X 
 
 Let uncurry_id X : FunctorLaws.id (@uncurry_actm X).
 Proof.
-rewrite /FunctorLaws.id => A; rewrite /uncurry_actm; apply boolp.funext => ?.
+rewrite /FunctorLaws.id => A; rewrite /uncurry_actm; apply funext => ?.
 by rewrite compidf.
 Qed.
 
 Let uncurry_comp X : FunctorLaws.comp (@uncurry_actm X).
 Proof.
-rewrite /FunctorLaws.comp => A B C g h; rewrite /uncurry_actm; apply boolp.funext => ?.
+rewrite /FunctorLaws.comp => A B C g h; rewrite /uncurry_actm; apply funext => ?.
 by rewrite compE compA.
 Qed.
 
@@ -457,9 +457,9 @@ HB.instance Definition _ := isNatural.Build
 Lemma adjoint_currry : curryF X -| uncurryF X.
 Proof.
 apply: (@AdjointFunctor.mk _ _ curry_eta curry_eps).
-by move=> A; rewrite /TriangularLaws.left; apply boolp.funext => -[].
+by move=> A; rewrite /TriangularLaws.left; apply funext => -[].
 move=> A; rewrite /TriangularLaws.right /uncurryF /curry_eps /curry_eta /uncurryF.
-by rewrite /= /uncurry_actm /= /comp /=; apply boolp.funext => f; apply boolp.funext.
+by rewrite /= /uncurry_actm /= /comp /=; apply funext => f; apply funext.
 Qed.
 
 End adjoint_example.
@@ -698,7 +698,7 @@ Proof. by []. Qed.
 Lemma naturality_mpair (M : monad) (A B : UU0) (f : A -> B) (g : A -> M A):
   (M # f^`2) \o (mpair \o g^`2) = mpair \o ((M # f) \o g)^`2.
 Proof.
-apply boolp.funext => -[a0 a1].
+apply funext => -[a0 a1].
 rewrite compE fmap_bind.
 rewrite compE mpairE compE bind_fmap; bind_ext => a2.
 rewrite fcompE fmap_bind 2!compE bind_fmap; bind_ext => a3.

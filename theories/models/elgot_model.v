@@ -64,12 +64,12 @@ Proof. by []. Qed.
 
 Lemma elgotS_map {X Y} (f : X -> Y) : elgotS # f = (reader S \o M \o writer S) # f.
 Proof.
-apply: boolp.funext => x.
+apply: funext => x.
 rewrite -compA FCompE FCompE//= reader_map.
-apply: boolp.funext => s //=.
+apply: funext => s //=.
 rewrite compE !fmapE//=.
 congr bind.
-by apply: boolp.funext => -[].
+by apply: funext => -[].
 Qed.
 
 (* was wBisimDS in [1] (now it is ElgotS.wB) *)
