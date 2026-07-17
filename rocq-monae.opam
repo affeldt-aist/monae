@@ -19,7 +19,7 @@ build: [make "-j%{jobs}%"]
 install: [make "install_full"]
 depends: [
   "coq" 
-  "rocq-core" { (>= "9.0" & < "9.2~") }
+  "rocq-core" { (>= "9.0" & < "9.3~") }
   "rocq-mathcomp-ssreflect" { >= "2.5.0" }
   "rocq-mathcomp-fingroup" { >= "2.5.0" }
   "rocq-mathcomp-algebra" { >= "2.5.0" }
