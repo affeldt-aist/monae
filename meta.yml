@@ -1,7 +1,7 @@
 fullname: Monadic effects and equational reasoning in Rocq
 shortname: monae
 organization: affeldt-aist
-opam_name: coq-monae
+opam_name: rocq-monae
 community: false
 action: true
 coqdoc: false
@@ -36,11 +36,9 @@ license:
 
 supported_coq_versions:
   text: Rocq 9.0
-  opam: '{ >= "9.0" & < "9.2~" }'
+  opam: '{ >= "9.0" & < "9.3~" }'
 
 tested_rocq_opam_versions:
-- version: '2.4.0-rocq-prover-9.0'
-  repo: 'mathcomp/mathcomp'
 - version: '2.5.0-rocq-prover-9.0'
   repo: 'mathcomp/mathcomp'
 - version: '2.5.0-rocq-prover-9.1'
@@ -48,28 +46,28 @@ tested_rocq_opam_versions:
 
 dependencies:
 - opam:
-    name: coq-mathcomp-ssreflect
-    version: '{ >= "2.4.0" }'
+    name: rocq-mathcomp-ssreflect
+    version: '{ >= "2.5.0" }'
   description: |-
     [MathComp ssreflect](https://math-comp.github.io)
 - opam:
-    name: coq-mathcomp-fingroup
-    version: '{ >= "2.4.0" }'
+    name: rocq-mathcomp-fingroup
+    version: '{ >= "2.5.0" }'
   description: |-
     [MathComp fingroup](https://math-comp.github.io)
 - opam:
-    name: coq-mathcomp-algebra
-    version: '{ >= "2.4.0" }'
+    name: rocq-mathcomp-algebra
+    version: '{ >= "2.5.0" }'
   description: |-
     [MathComp algebra](https://math-comp.github.io)
 - opam:
-    name: coq-mathcomp-solvable
-    version: '{ >= "2.4.0" }'
+    name: rocq-mathcomp-solvable
+    version: '{ >= "2.5.0" }'
   description: |-
     [MathComp solvable](https://math-comp.github.io)
 - opam:
-    name: coq-mathcomp-field
-    version: '{ >= "2.4.0" }'
+    name: rocq-mathcomp-field
+    version: '{ >= "2.5.0" }'
   description: |-
     [MathComp field](https://math-comp.github.io)
 - opam:
@@ -83,17 +81,17 @@ dependencies:
   description: |-
     [Infotheo](https://github.com/affeldt-aist/infotheo)
 - opam:
-    name: coq-elpi
+    name: rocq-elpi
     version: '{ >= "3.2.0" }'
   description: |-
     [Rocq-Elpi](https://github.com/LPCIC/coq-elpi)
 - opam:
-    name: coq-hierarchy-builder
+    name: rocq-hierarchy-builder
     version: '{ >= "1.9.1" }'
   description: |-
     [Hierarchy Builder](https://github.com/math-comp/hierarchy-builder)
 - opam:
-    name: coq-equations
+    name: rocq-equations
     version: '{ >= "1.3" & < "1.4~" }'
   description: |-
     [Coq-Equations](https://github.com/mattam82/Coq-Equations)
@@ -137,12 +135,12 @@ publications:
 #  [make "-C" "impredicative_set"]
 #]
 #
-#install: [ [make "install_full"] ]
+install: [ [make "install_full"] ]
 
 build: |-
   ## Building and installation instructions
 
-  The easiest way to install the latest released version of Monadic effects and equational reasoning in Coq
+  The easiest way to install the latest released version of Monadic effects and equational reasoning in Rocq
   is via [OPAM](https://opam.ocaml.org/doc/Install.html):
 
   ```shell
@@ -195,7 +193,7 @@ documentation: |-
     + [hierarchy.v](./theories/core/hierarchy.v): hierarchy of monadic effects
     + [category.v](./theories/core/category.v): formalization of concrete categories (generalization of the bottom layers of `hierarchy.v`)
     + [monad_transformer.v](./theories/core/monad_transformer.v): monad transformers
-      * completed by `ifmt_lifting.v` and `iparametricty_codensity.v` in the directory `impredicative_set`
+      * completed by `ifmt_lifting.v` and `iparametricity_codensity.v` in the directory `impredicative_set`
         - the directory `impredicative_set` contains a lighter version of Monae where monads live in `Set` and that compiles with the `impredicative-set` option of Rocq
   - libraries for each monad theory:
     + [monad_lib.v](./theories/lib/monad_lib.v): basic lemmas about monads
