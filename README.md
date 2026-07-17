@@ -30,8 +30,8 @@ in several examples of monadic equational reasoning.
   - Celestine Sauvage
   - Kazunari Tanaka
 - License: [LGPL-2.1-or-later](LICENSE)
-- Compatible Rocq/Coq versions: Rocq 9.0
 - Additional dependencies:
+  - Rocq prover
   - [MathComp ssreflect](https://math-comp.github.io)
   - [MathComp fingroup](https://math-comp.github.io)
   - [MathComp algebra](https://math-comp.github.io)

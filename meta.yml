@@ -35,8 +35,8 @@ license:
   identifier: LGPL-2.1-or-later
   file: LICENSE
 
-supported_coq_versions:
-  text: Rocq 9.0
+supported_rocq_versions:
+  text: Rocq 9.0--
   opam: '{ >= "9.0" & < "9.3~" }'
 
 tested_rocq_opam_versions:
@@ -47,6 +47,11 @@ tested_rocq_opam_versions:
 - version: '9.2'
 
 dependencies:
+- opam:
+    name: rocq-core
+    version: '{ (>= "9.0" & < "9.2~") }'
+  description: |-
+    Rocq prover
 - opam:
     name: rocq-mathcomp-ssreflect
     version: '{ >= "2.5.0" }'

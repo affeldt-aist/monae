@@ -18,7 +18,8 @@ in several examples of monadic equational reasoning."""
 build: [make "-j%{jobs}%"]
 install: [make "install_full"]
 depends: [
-  "coq" { >= "9.0" & < "9.3~" }
+  "coq" 
+  "rocq-core" { (>= "9.0" & < "9.2~") }
   "rocq-mathcomp-ssreflect" { >= "2.5.0" }
   "rocq-mathcomp-fingroup" { >= "2.5.0" }
   "rocq-mathcomp-algebra" { >= "2.5.0" }
