@@ -301,7 +301,7 @@ Let eps0' : F0 \O U0 ~~> FId := fun a =>
 
 Let eps0'_natural : naturality _ _ eps0'.
 Proof.
-move=> C D f; rewrite FCompE /= /id_f; apply funext => d /=.
+move=> C D f; rewrite FCompE /=; apply funext => d /=.
 by rewrite compE Convn_of_fsdistmap.
 Qed.
 
@@ -714,7 +714,7 @@ Lemma gcm_retE (T : Type) (x : choice_of_Type T) :
 Proof.
 rewrite /= /ret_ /Monad_of_category_monad.ret /=.
 rewrite !HCompId !HIdComp /=.
-rewrite /id_f /= /etaC.
+rewrite /= /etaC.
 unlock => /=.
 by rewrite eta0E eta1E.
 Qed.

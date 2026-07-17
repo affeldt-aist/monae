@@ -20,13 +20,13 @@ Local Open Scope monae_scope.
 
 Section comp.
 Variables (M N : monad).
-Definition ret_comp : idfun ~~> M \o N := (@ret M) \h (@ret N).
-Lemma naturality_ret : naturality idfun [the functor of M \o N] ret_comp.
-Proof. by move=> A B h; rewrite -(natural ((@ret M) \h (@ret N))). Qed.
+Definition ret_comp : FId ~~> M \o N := (@ret M) \h (@ret N).
+Lemma naturality_ret : naturality (FId \o FId) (M \o N) ret_comp.
+Proof. by move=> A B h; rewrite natural. Qed.
 HB.instance Definition _ := isNatural.Build
-  idfun [the functor of (M \o N)] ret_comp naturality_ret.
+  FId [the functor of (M \o N)] ret_comp naturality_ret.
 End comp.
-Definition CRet (M N : monad) := [the idfun ~> [the functor of M \o N] of ret_comp M N].
+Definition CRet (M N : monad) := [the FId ~> [the functor of M \o N] of ret_comp M N].
 
 Module Prod.
 Section prod.
@@ -313,13 +313,13 @@ End Swap.
 
 Section nattrans_cast_lemmas.
 Variables (F G : functor).
-Lemma IV : [the functor of idfun \o G] ~> F -> G ~> F.
+Lemma IV : [the functor of FId \o G] ~> F -> G ~> F.
 Proof.
 move=> [s [] [GFs]].
 apply: (@Nattrans.Pack [the functor of G] F _ (Nattrans.Class (isNatural.Axioms_ _ _ _))).
 exact: GFs.
 Qed.
-Lemma VI : [the functor of G \o idfun] ~> F -> G ~> F.
+Lemma VI : [the functor of G \o FId] ~> F -> G ~> F.
 Proof.
 move=> [s [] [GFs]].
 apply: (@Nattrans.Pack [the functor of G] F _ (Nattrans.Class (isNatural.Axioms_ _ _ _))).

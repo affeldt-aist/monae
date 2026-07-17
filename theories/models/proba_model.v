@@ -70,7 +70,7 @@ Variable R : realType.
 
 Definition acto : UU0 -> UU0 := fun A => R.-dist (choice_of_Type A).
 
-Definition ret : idfun ~~> acto :=
+Definition ret : FId ~~> acto :=
   fun A a => fsdist1 (a : choice_of_Type A).
 
 Definition bind : forall A B, acto A -> (A -> acto B) -> acto B :=

@@ -7,7 +7,7 @@ Require Import preamble.
 From HB Require Import structures.
 Require Import hierarchy monad_lib fail_lib state_lib monad_transformer.
 Require Import typed_store_universe delay_model elgot_model.
-Require monad_model.
+Require Import monad_model.
 
 (**md**************************************************************************)
 (* # Model of the typed store monad built using transformers                  *)
@@ -482,7 +482,6 @@ End ModelTypedStore.
 
 Module ModelTypedStoreRun.
 Export ModelTypedStore.
-Import (canonicals)monad_model.
 
 Section ModelTypedStoreRun.
 Variables (MLU : ML_universe) (N : monad).
@@ -491,7 +490,7 @@ Local Notation coq_type := (@coq_type MLU N).
 
 Local Notation ml_type := (MLU : Type).
 
-Definition acto := ModelTypedStore.acto ml_type N idfun.
+Definition acto := ModelTypedStore.acto ml_type N MId.
 Local Notation M := acto.
 
 Local Notation loc := (@loc ml_type locT_nat).
