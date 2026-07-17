@@ -4,7 +4,6 @@ organization: affeldt-aist
 opam_name: rocq-monae
 community: false
 action: true
-nix: true
 coqdoc: false
 
 synopsis: >-

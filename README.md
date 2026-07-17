@@ -5,13 +5,9 @@ Follow the instructions on https://github.com/coq-community/templates to regener
 # Monadic effects and equational reasoning in Rocq
 
 [![Docker CI][docker-action-shield]][docker-action-link]
-[![Nix CI][nix-action-shield]][nix-action-link]
 
 [docker-action-shield]: https://github.com/affeldt-aist/monae/actions/workflows/docker-action.yml/badge.svg?branch=master
 [docker-action-link]: https://github.com/affeldt-aist/monae/actions/workflows/docker-action.yml
-
-[nix-action-shield]: https://github.com/affeldt-aist/monae/actions/workflows/nix-action.yml/badge.svg?branch=master
-[nix-action-link]: https://github.com/affeldt-aist/monae/actions/workflows/nix-action.yml
 
 
 
