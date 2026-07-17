@@ -57,18 +57,18 @@ rewrite insert_rcons.
 rewrite alt_fmapDr fmapE bindretf.
 rewrite -fmap_oE.
 have H : forall w, foldl op b \o rcons^~ w = op^~ w \o foldl op b.
-  by move=> w; rewrite boolp.funeqE => ws /=; rewrite compE -cats1 foldl_cat.
+  by move=> w; rewrite boolp.funeqE => ws /=; rewrite up_compE -cats1 foldl_cat.
 rewrite (H y).
 rewrite fmap_oE.
 rewrite fcompE in IH.
 rewrite IH.
 rewrite -[in X in _ [~] X]bindretf.
 rewrite bindretf.
-rewrite -{1}compA.
+rewrite -{1}up_compA.
 rewrite fmapE bindretf.
 rewrite (H a).
 rewrite [in X in _ [~] X]/=.
-rewrite !compE opP.
+rewrite !up_compE opP.
 rewrite /= -!cats1 -catA /=.
 rewrite foldl_cat /=.
 by rewrite altmm.
@@ -95,7 +95,7 @@ rewrite -IH.
 rewrite [in RHS]fcompE.
 rewrite fmapE.
 bind_ext => ys.
-rewrite !compE/= -cats1 foldl_cat /=.
+rewrite !up_compE/= -cats1 foldl_cat /=.
 congr (Ret _ : M _).
 elim: ys b opP' => // y ys ih /= b opP'.
 rewrite ih //=.
@@ -113,7 +113,7 @@ Lemma aggregateE :
   aggregate b mul add = Ret \o foldl add b \o map (foldl mul b) :> (_ -> M _).
 Proof.
 rewrite -lemma31; last by move=> x ??; rewrite -addA (addC x) addA.
-by rewrite /aggregate 2!fcomp_def -compA.
+by rewrite /aggregate 2!fcomp_def -up_compA.
 Qed.
 
 Lemma deter_aggregate : deterministic (aggregate b mul add : _ -> M _).
@@ -176,7 +176,7 @@ have step2 : (foldl mul b \o flatten) xss =
   apply esym, idempotent_converse in step1.
   case: step1 => step11 step12.
   apply injective_return in step11.
-  by rewrite compE -step11.
+  by rewrite up_compE -step11.
 by rewrite -lemma45a.
 Qed.
 

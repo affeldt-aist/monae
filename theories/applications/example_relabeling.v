@@ -35,7 +35,7 @@ Hypothesis H2 : h \o uncurry Bin = g \o (fun x => (h x.1, h x.2)).
 Lemma foldt_universal : h = foldt f g.
 Proof.
 rewrite boolp.funeqE; elim => [a|]; first by rewrite -H1.
-by move=> t1 IH1 t2 IH2 /=; rewrite -IH1 -IH2 -(uncurryE Bin) -compE H2.
+by move=> t1 IH1 t2 IH2 /=; rewrite -IH1 -IH2 -(uncurryE Bin) -up_compE H2.
 Qed.
 End foldt_universal.
 
@@ -82,7 +82,7 @@ elim: t u m => [a u /= m|t1 H1 t2 H2 u m].
   rewrite /dlabels /= bindretf.
   by under [in RHS]eq_bind do rewrite bindretf.
 rewrite (_ : dlabels _ = drBin (dlabels t1, dlabels t2)) //.
-rewrite [in RHS]/drBin [in RHS]/bassert 2!compE ![in RHS]bindA.
+rewrite [in RHS]/drBin [in RHS]/bassert 2!up_compE ![in RHS]bindA.
 transitivity (do x0 <- relabel u;
   (do x <- dlabels t1;
    do x <- (do x1 <- (do y <- dlabels t2; Ret (x, y));
@@ -120,10 +120,10 @@ Lemma join_and_pairs :
   (mpair \o Join^`2) \o             ((fmap dlabels) \o relabel)^`2.
 Proof.
 rewrite boolp.funeqE => -[x1 x2].
-rewrite 3!compE.
+rewrite 3!up_compE.
 rewrite joinE.
 rewrite fmapE.
-rewrite 2![in RHS]compE.
+rewrite 2![in RHS]up_compE.
 rewrite [in RHS]/mpair.
 rewrite [in LHS]/mpair.
 move H : (fmap dlabels) => h.
@@ -131,7 +131,7 @@ rewrite /=.
 rewrite 2![in RHS]joinE.
 rewrite 3!bindA.
 rewrite -H.
-rewrite !compE !fmapE.
+rewrite !up_compE !fmapE.
 rewrite 3!bindA.
 bind_ext => {}x1.
 rewrite 2!bindretf 2!bindA.
@@ -148,30 +148,30 @@ Lemma dlabels_relabel_is_fold : relabel >=> dlabels = foldt drTip drBin.
 Proof.
 apply foldt_universal.
   (* relabel >=> dlabels \o Tip = drTip *)
-  rewrite kleisli_def -3!compA.
+  rewrite kleisli_def -3!up_compA.
   rewrite (_ : relabel \o Tip = (M # Tip) \o const fresh) //.
-  rewrite (compA (fmap dlabels)) -functor_o.
+  rewrite (up_compA (fmap dlabels)) -functor_o.
   rewrite (_ : dlabels \o Tip = ret _ \o wrap) //.
   rewrite functor_o.
-  by rewrite compA (compA Join) joinMret compidf.
+  by rewrite up_compA (up_compA Join) joinMret up_compidf.
 (* relabel >=> dlabels \o Bin = drBin \o _ *)
-rewrite [in LHS]kleisli_def -(compA _ relabel).
+rewrite [in LHS]kleisli_def -(up_compA _ relabel).
 rewrite (_ : _ \o _ Bin =
     (fmap (uncurry Bin)) \o mpair \o relabel^`2); last first.
   by rewrite boolp.funeqE; case.
-rewrite -(compA (fmap (uncurry Bin))) -compA (compA (fmap dlabels)) -functor_o.
+rewrite -(up_compA (fmap (uncurry Bin))) -up_compA (up_compA (fmap dlabels)) -functor_o.
 rewrite (_ : _ \o _ Bin =
     (fmap ucat) \o bassert q \o mpair \o dlabels^`2); last first.
   by rewrite boolp.funeqE; case.
 transitivity ((fmap ucat) \o Join \o (fmap (bassert q \o mpair)) \o mpair \o
     (fmap dlabels \o relabel)^`2).
-  rewrite [in RHS]natural -3![in RHS]compA; congr (_ \o _).
-  rewrite -[in RHS]naturality_mpair 2![RHS]compA; congr (_ \o _).
-  by rewrite -[X in _ = X \o _]functor_o -[RHS]functor_o -compA.
-rewrite -(compA (fmap ucat)) [X in Join \o X]functor_o (compA Join).
+  rewrite [in RHS]natural -3![in RHS]up_compA; congr (_ \o _).
+  rewrite -[in RHS]naturality_mpair 2![RHS]up_compA; congr (_ \o _).
+  by rewrite -[X in _ = X \o _]functor_o -[RHS]functor_o -up_compA.
+rewrite -(up_compA (fmap ucat)) [X in Join \o X]functor_o (up_compA Join).
 rewrite commutativity_of_assertions. (* first non-trivial step *)
-rewrite -(compA _ Join) (compA _ (bassert q)).
-rewrite -(compA _ _ mpair) -(compA _ (_ \o mpair)).
+rewrite -(up_compA _ Join) (up_compA _ (bassert q)).
+rewrite -(up_compA _ _ mpair) -(up_compA _ (_ \o mpair)).
 by rewrite join_and_pairs. (* second non-trivial step *)
 Qed.
 
@@ -180,18 +180,18 @@ Lemma symbols_size_is_fold :
   symbols \o (@size_Tree Symbol) = foldt drTip drBin.
 Proof.
 apply foldt_universal.
-  by rewrite -compA (_ : @size_Tree Symbol \o _ = const 1) // symbols_prop1.
+  by rewrite -up_compA (_ : @size_Tree Symbol \o _ = const 1) // symbols_prop1.
 pose p := @distinct _ M.
 transitivity (bassert p \o symbols \o @size_Tree Symbol \o uncurry Bin
   : (_ -> M _)).
   by rewrite bassert_symbols.
 transitivity ((bassert p) \o symbols \o uaddn \o (@size_Tree Symbol)^`2
   : (_ -> M _)).
-  by rewrite -[in LHS]compA -[in RHS]compA size_Tree_Bin.
+  by rewrite -[in LHS]up_compA -[in RHS]up_compA size_Tree_Bin.
 transitivity (bassert p \o (fmap ucat) \o mpair \o (symbols \o (@size_Tree Symbol))^`2
   : (_ -> M _)).
-  rewrite -2!compA (compA symbols) symbols_prop2.
-  by rewrite -(compA (_ \o mpair)) (compA (bassert p)).
+  rewrite -2!up_compA (up_compA symbols) symbols_prop2.
+  by rewrite -(up_compA (_ \o mpair)) (up_compA (bassert p)).
 transitivity ((fmap ucat) \o bassert q \o mpair \o (bassert p \o symbols \o (@size_Tree Symbol))^`2
   : (_ -> M _)).
   (* assert p distributes over concatenation *)

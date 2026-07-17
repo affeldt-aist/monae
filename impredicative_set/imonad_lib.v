@@ -85,7 +85,7 @@ Lemma mfoldl_rev (T R : UU0) (f : R -> T -> R) (z : R)
   foldl f z (o) (rev (o) s) = foldr (fun x => f^~ x) z (o) s.
 Proof.
 apply funext => x; rewrite !fcompE 3!fmapE !bindA.
-by bind_ext => ?; rewrite bindretf compE foldl_rev.
+by bind_ext => ?; rewrite bindretf up_compE foldl_rev.
 Qed.
 Local Close Scope mprog.
 
@@ -217,13 +217,13 @@ Definition uncurry_actm (X A B : UU0) (f : A -> B) : uncurryF X A -> uncurryF X 
 Let uncurry_id X : FunctorLaws.id (@uncurry_actm X).
 Proof.
 rewrite /FunctorLaws.id => A; rewrite /uncurry_actm; apply funext => ?.
-by rewrite compidf.
+by rewrite up_compidf.
 Qed.
 
 Lemma uncurry_comp X : FunctorLaws.comp (@uncurry_actm X).
 Proof.
 rewrite /FunctorLaws.comp => A B C g h; rewrite /uncurry_actm; apply funext => ?.
-by rewrite compE compA.
+by rewrite up_compE up_compA.
 Qed.
 
 HB.instance Definition _ X :=
@@ -323,7 +323,7 @@ Local Notation "g \v f" := (vcomp g f).
 
 Let natural_vcomp : naturality _ _ (g \v f).
 Proof.
-by move=> A B h; rewrite /vcomp; unlock; rewrite compA natural -compA natural.
+by move=> A B h; rewrite /vcomp; unlock; rewrite up_compA natural -up_compA natural.
 Qed.
 
 HB.instance Definition _ := isNatural.Build C E (g \v f) natural_vcomp.
@@ -350,7 +350,7 @@ Variables (F G F' G' : functor) (s : F ~> G) (t : F' ~> G').
 Let natural_hcomp : naturality (F' \o F) (G' \o G) (hcomp s t).
 Proof.
 move=> A B h.
-rewrite [LHS]compA (natural t) -[LHS]compA -[in RHS]compA.
+rewrite [LHS]up_compA (natural t) -[LHS]up_compA -[in RHS]up_compA.
 by congr (_ \o _); rewrite FCompE -2!functor_o (natural s).
 Qed.
 
@@ -504,13 +504,13 @@ Lemma bindetaf : BindLaws.left_neutral (bind eps) eta.
 Proof.
 rewrite /BindLaws.left_neutral => A B a h.
 rewrite /bind /mu.
-rewrite -(compE ([the functor of g \o f] # h)) (natural eta) -(compE (g # _)) compA.
+rewrite -(up_compE ([the functor of g \o f] # h)) (natural eta) -(up_compE (g # _)) up_compA.
 by rewrite AdjointFunctor.tri_right.
 Qed.
 Lemma bindmeta : BindLaws.right_neutral (bind eps) eta.
 Proof.
 rewrite /BindLaws.right_neutral => A m.
-rewrite /bind /mu -(compE (g # _)).
+rewrite /bind /mu -(up_compE (g # _)).
 by rewrite -functor_o AdjointFunctor.tri_left functor_id.
 Qed.
 Lemma law3 : BindLaws.associative (bind eps).
@@ -520,17 +520,17 @@ rewrite /bind.
 set N := M f g.  set j := mu eps.
 rewrite [X in _ = j C X](_ : _ = (N # (j C)) ((N # (N # bc)) ((N # ab) x))); last first.
   rewrite functor_o.
-  rewrite compE.
+  rewrite up_compE.
   congr ((N # j C) _).
   rewrite functor_o.
-  by rewrite (compE _ _ x).
+  by rewrite (up_compE _ _ x).
 move: muMA (muM_natural bc).
 rewrite -/N -/j.
 move=> muMA.
 (*rewrite FCompE.*)
 have -> : (N # bc) (j B ((N # ab) x)) = (N # bc \o j B) ((N # ab) x) by [].
 move=> ->.
-rewrite compE.
+rewrite up_compE.
 rewrite [LHS](_ : _ = (j C \o j (N C)) ((N # (N # bc)) ((N # ab) x))) //.
 by rewrite muMA.
 Qed.
@@ -553,10 +553,10 @@ Definition uni : idfun ~~> (U0 \o U) \o (F \o F0) :=
 Let uni_naturality : naturality idfun ((U0 \o U) \o (F \o F0)) uni.
 Proof.
 move=> A B h; rewrite FIdE.
-rewrite -[RHS]compA.
+rewrite -[RHS]up_compA.
 rewrite -(natural (AdjointFunctor.eta H0)).
-rewrite [LHS]compA.
-rewrite [RHS]compA.
+rewrite [LHS]up_compA.
+rewrite [RHS]up_compA.
 congr (_ \o _).
 rewrite (FCompE U0 F0) -[in RHS](@functor_o U0) -[in LHS](@functor_o U0).
 congr (_ # _).
@@ -571,10 +571,10 @@ Definition couni : (F \o F0) \o (U0 \o U) ~~> idfun :=
 Let couni_naturality : naturality ((F \o F0) \o (U0 \o U)) _ couni.
 Proof.
 move=> A B h.
-rewrite [LHS]compA.
+rewrite [LHS]up_compA.
 rewrite {}(natural (AdjointFunctor.eps H)).
-rewrite -[LHS]compA.
-rewrite -[RHS]compA; congr (_ \o _).
+rewrite -[LHS]up_compA.
+rewrite -[RHS]up_compA; congr (_ \o _).
 rewrite [in LHS]FCompE -[in LHS](@functor_o F) [in LHS](natural (AdjointFunctor.eps H0)).
 by rewrite -[in RHS](@functor_o F).
 Qed.
@@ -585,20 +585,20 @@ Lemma composite_adjoint : F \o F0 -| U0 \o U.
 Proof.
 apply: (@AdjointFunctor.mk _ _ uni couni).
   rewrite /TriangularLaws.left => A.
-  rewrite FCompE -[LHS]compA.
+  rewrite FCompE -[LHS]up_compA.
   rewrite -(@functor_o F).
   rewrite (_ : @eps0 _ \o F0 # _ = @eta (F0 A)).
     exact: (AdjointFunctor.tri_left H).
-  rewrite functor_o [LHS]compA -FCompE.
-  rewrite -(natural (AdjointFunctor.eps H0)) /= FIdE -[LHS]compA.
-  by rewrite (AdjointFunctor.tri_left H0) compfid.
+  rewrite functor_o [LHS]up_compA -FCompE.
+  rewrite -(natural (AdjointFunctor.eps H0)) /= FIdE -[LHS]up_compA.
+  by rewrite (AdjointFunctor.tri_left H0) up_compfid.
 rewrite /TriangularLaws.right => A.
 rewrite /couni /uni /=.
-rewrite [LHS]compA -[RHS](AdjointFunctor.tri_right H0 (U A)); congr (_ \o _).
+rewrite [LHS]up_compA -[RHS](AdjointFunctor.tri_right H0 (U A)); congr (_ \o _).
 rewrite FCompE -(@functor_o U0); congr (_ # _).
-rewrite functor_o -compA.
+rewrite functor_o -up_compA.
 rewrite (natural (AdjointFunctor.eta H)) FIdE.
-by rewrite [LHS]compA (AdjointFunctor.tri_right H) compidf.
+by rewrite [LHS]up_compA (AdjointFunctor.tri_right H) up_compidf.
 Qed.
 
 End composite_adjoint.
@@ -671,7 +671,7 @@ Lemma strength_unit A : snd = M # snd \o strength (A:=unit) (B:=A).
 Proof.
 apply functional_extensionality => x.
 case: x => i ma.
-rewrite compE strengthE.
+rewrite up_compE strengthE.
 rewrite -fmapE fmap_bind fcomp_def.
 rewrite bindE.
 have ->: Join ((M # (M # snd \o (fun y : A => Ret (i, y)))) ma) =
@@ -680,7 +680,7 @@ have ->: Join ((M # (M # snd \o (fun y : A => Ret (i, y)))) ma) =
 rewrite functor_o.
 have ->: ((M # snd \o Join) \o (M # Ret \o M # pair i)) ma =
 (M # snd \o (Join \o M # Ret) \o M # pair i) ma by done.
-rewrite joinMret compfid.
+rewrite joinMret up_compfid.
 rewrite -functor_o.
 have ->: snd \o pair i = id by done.
 by rewrite functor_id.
@@ -700,10 +700,10 @@ Lemma naturality_mpair (M : monad) (A B : UU0) (f : A -> B) (g : A -> M A):
   (M # f^`2) \o (mpair \o g^`2) = mpair \o ((M # f) \o g)^`2.
 Proof.
 apply funext => -[a0 a1].
-rewrite compE fmap_bind.
-rewrite compE mpairE compE bind_fmap; bind_ext => a2.
-rewrite fcompE fmap_bind 2!compE bind_fmap; bind_ext => a3.
-by rewrite fcompE -(compE (M # f^`2)) (natural ret) FIdE.
+rewrite up_compE fmap_bind.
+rewrite up_compE mpairE up_compE bind_fmap; bind_ext => a2.
+rewrite fcompE fmap_bind 2!up_compE bind_fmap; bind_ext => a3.
+by rewrite fcompE -(up_compE (M # f^`2)) (natural ret) FIdE.
 Qed.
 
 Definition commute {M : monad} A B (m : M A) (n : M B) C (f : A -> B -> M C) : Prop :=
@@ -765,9 +765,9 @@ change
     .
 rewrite joinA'.
 (*
-rewrite fmap_bind. compE [in RHS]/= bind_fmap; bind_ext => a2.
-rewrite fcompE fmap_bind compE bind_fmap; bind_ext => a3.
-by rewrite fcompE -(compE (fmap M # f^`2)) fmap_ret.
+rewrite fmap_bind. up_compE [in RHS]/= bind_fmap; bind_ext => a2.
+rewrite fcompE fmap_bind up_compE bind_fmap; bind_ext => a3.
+by rewrite fcompE -(up_compE (fmap M # f^`2)) fmap_ret.
 Qed.
 *)
 Abort.
