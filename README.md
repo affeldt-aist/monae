@@ -25,10 +25,9 @@ in several examples of monadic equational reasoning.
   - Ayumu Saito
   - Celestine Sauvage
   - Kazunari Tanaka
-  - Ryuji Kawakami
 - License: [LGPL-2.1-or-later](LICENSE)
-- Compatible Rocq versions: Rocq 9.0
 - Additional dependencies:
+  - Rocq prover
   - [MathComp ssreflect](https://math-comp.github.io)
   - [MathComp fingroup](https://math-comp.github.io)
   - [MathComp algebra](https://math-comp.github.io)
@@ -39,15 +38,15 @@ in several examples of monadic equational reasoning.
   - [Rocq-Elpi](https://github.com/LPCIC/coq-elpi)
   - [Hierarchy Builder](https://github.com/math-comp/hierarchy-builder)
   - [Coq-Equations](https://github.com/mattam82/Coq-Equations)
-- Rocq namespace: `monae`
+- Rocq/Coq namespace: `monae`
 - Related publication(s):
-  - [A hierarchy of monadic effects for program verification using equational reasoning](https://staff.aist.go.jp/reynald.affeldt/documents/monae.pdf) doi:[10.1007/978-3-030-33636-3_9](https://doi.org/10.1007/978-3-030-33636-3_9) (2019)
-  - [Extending Equational Monadic Reasoning with Monad Transformers](https://drops.dagstuhl.de/opus/volltexte/2021/13881/) doi:[10.4230/LIPIcs.TYPES.2020.2](https://doi.org/10.4230/LIPIcs.TYPES.2020.2) (2020)
-  - [A Trustful Monad for Axiomatic Reasoning with Probability and Nondeterminism](https://arxiv.org/abs/2003.09993) doi:[10.1017/S0956796821000137](https://doi.org/10.1017/S0956796821000137) (2021)
-  - [Towards a practical library for monadic equational reasoning in Coq](https://staff.aist.go.jp/reynald.affeldt/documents/monae-mpc2022.pdf) doi:[10.1007/978-3-031-16912-0_6](https://doi.org/10.1007/978-3-031-16912-0_6) (2022)
-  - [Environment-friendly monadic equational reasoning for OCaml](https://coq-workshop.gitlab.io/2023/abstracts/coq2023_monadic-reasoning.pdf) (2023)
-  - [A practical formalization of monadic equational reasoning in dependent-type theory](https://www.cambridge.org/core/services/aop-cambridge-core/content/view/B59B87DE000F48B9807F24AEDB11452E/S0956796824000157a.pdf/a-practical-formalization-of-monadic-equational-reasoning-in-dependent-type-theory.pdf) doi:[10.1017/S0956796824000157](https://doi.org/10.1017/S0956796824000157) (2025)
-  - [Monadic Equational Reasoning for while loop in Rocq](https://msp.cis.strath.ac.uk/types2025/abstracts/TYPES2025_paper28.pdf) (2025)
+  - [A hierarchy of monadic effects for program verification using equational reasoning](https://staff.aist.go.jp/reynald.affeldt/documents/monae.pdf) doi:[10.1007/978-3-030-33636-3_9](https://doi.org/10.1007/978-3-030-33636-3_9)
+  - [Extending Equational Monadic Reasoning with Monad Transformers](https://drops.dagstuhl.de/opus/volltexte/2021/13881/) doi:[10.4230/LIPIcs.TYPES.2020.2](https://doi.org/10.4230/LIPIcs.TYPES.2020.2)
+  - [A Trustful Monad for Axiomatic Reasoning with Probability and Nondeterminism](https://arxiv.org/abs/2003.09993) doi:[10.1017/S0956796821000137](https://doi.org/10.1017/S0956796821000137)
+  - [Towards a practical library for monadic equational reasoning in Coq](https://staff.aist.go.jp/reynald.affeldt/documents/monae-mpc2022.pdf) doi:[10.1007/978-3-031-16912-0_6](https://doi.org/10.1007/978-3-031-16912-0_6)
+  - [Environment-friendly monadic equational reasoning for OCaml](https://coq-workshop.gitlab.io/2023/abstracts/coq2023_monadic-reasoning.pdf) 
+  - [A practical formalization of monadic equational reasoning in dependent-type theory](https://www.cambridge.org/core/services/aop-cambridge-core/content/view/B59B87DE000F48B9807F24AEDB11452E/S0956796824000157a.pdf/a-practical-formalization-of-monadic-equational-reasoning-in-dependent-type-theory.pdf) doi:[10.1017/S0956796824000157](https://doi.org/10.1017/S0956796824000157)
+  - [Monadic Equational Reasoning for while loop in Rocq](https://msp.cis.strath.ac.uk/types2025/abstracts/TYPES2025_paper28.pdf) 
 
 ## Building and installation instructions
 
