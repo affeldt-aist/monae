@@ -4,6 +4,7 @@ organization: affeldt-aist
 opam_name: rocq-monae
 community: false
 action: true
+nix: true
 coqdoc: false
 
 synopsis: >-
@@ -43,6 +44,7 @@ tested_rocq_opam_versions:
   repo: 'mathcomp/mathcomp'
 - version: '2.5.0-rocq-prover-9.1'
   repo: 'mathcomp/mathcomp'
+- version: '9.2'
 
 dependencies:
 - opam:

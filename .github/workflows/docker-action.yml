@@ -20,7 +20,7 @@ jobs:
         image:
           - 'mathcomp/mathcomp:2.5.0-rocq-prover-9.0'
           - 'mathcomp/mathcomp:2.5.0-rocq-prover-9.1'
-          - 'mathcomp/mathcomp:2.5.0-rocq-prover-9.2'
+          - 'rocq/rocq-prover:9.2'
       fail-fast: false
     steps:
       - uses: actions/checkout@v4
