@@ -17,7 +17,6 @@ theories/lib/array_lib.v
 theories/lib/trace_lib.v
 theories/lib/proba_lib.v
 theories/lib/typed_store_lib.v
-theories/models/applicative_model.v
 theories/models/monad_model.v
 theories/models/proba_model.v
 theories/models/gcm_model.v
@@ -35,6 +34,7 @@ theories/applications/example_quicksort.v
 theories/applications/example_iquicksort.v
 theories/applications/example_monty.v
 theories/applications/example_elgot.v
+theories/applications/example_applicative.v
 theories/applications/typed_store_universe.v
 theories/applications/example_typed_store.v
 theories/applications/smallstep.v

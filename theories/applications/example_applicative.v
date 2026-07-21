@@ -1,4 +1,3 @@
-Require Import JMeq.
 From mathcomp Require Import all_ssreflect.
 From mathcomp Require Import finmap.
 From mathcomp Require boolp.
@@ -17,13 +16,13 @@ Section function.
 Variable I : UU0.
 Implicit Types A B C : UU0.
 
-Definition FuncList A := I -> A.
-Definition pure A (a : A) : FuncList A := fun i => a.
+Definition Func A := I -> A.
+Definition pure A (a : A) : Func A := fun i => a.
 Definition zipMap {A B C}
-  (f : FuncList (A -> B -> C)) (a : FuncList A) (b : FuncList B) :
-  FuncList C := fun i => f i (a i) (b i).
-Definition apply A B (f : FuncList (A -> B)) (a : FuncList A) :
-  FuncList B := fun i => f i (a i).
+  (f : Func (A -> B -> C)) (a : Func A) (b : Func B) :
+  Func C := fun i => f i (a i) (b i).
+Definition apply A B (f : Func (A -> B)) (a : Func A) :
+  Func B := fun i => f i (a i).
 Let afidentity : ApplicativeLaws.identity pure apply.
 Proof. by []. Qed.
 Let afcomposition : ApplicativeLaws.composition pure apply.
@@ -33,8 +32,48 @@ Proof. by []. Qed.
 Let afinterchange : ApplicativeLaws.interchange pure apply.
 Proof. by []. Qed.
 HB.instance Definition _ :=
-  isApplicativeFunctor.Build FuncList
+  isApplicativeFunctor.Build Func
     afidentity afcomposition afhomomorphism afinterchange.
+
+Section func_diag.
+
+Definition F := Func.
+
+Let join' : F \o F ~~> F := 
+  fun A t i => t i i.
+    
+Let join_naturality : naturality (F \o F) F join'.
+Proof.
+by move=> a b h; apply: boolp.funext => t; apply: boolp.funext => i.
+Qed.
+
+Let ret_naturality : naturality idfun F pure.
+Proof.
+by move=> a b h; apply: boolp.funext => t; apply: boolp.funext => i.
+Qed.
+
+HB.instance Definition _ := isNatural.Build _ _ _ join_naturality.
+HB.instance Definition _ := isNatural.Build _ _ _ ret_naturality.
+
+Let join : F \o F ~> F := join'.
+
+Let joinretM : JoinLaws.left_unit ret join.
+Proof.
+by move=> A; apply: boolp.funext => t; apply: boolp.funext => i.
+Qed.
+
+Let joinMret : JoinLaws.right_unit ret join.
+Proof.
+by move=> A; apply: boolp.funext => t; apply: boolp.funext => i.
+Qed.
+
+Let joinA : JoinLaws.associativity join.
+Proof.
+by move=> A; apply: boolp.funext => t; apply: boolp.funext => i.
+Qed.
+HB.instance Definition _ :=
+  isMonad_ret_join.Build Func joinretM joinMret joinA.
+End func_diag.
 End function.
 End Function.
 
@@ -217,6 +256,8 @@ End join_diag.
 End theory.
 End Tuple.
 
+
+(* ----------------------------------------------------------------- *)
 Module Const.
 
 Section def.
@@ -278,24 +319,180 @@ Qed.
 HB.instance Definition _ := isNatural.Build _ _ _ join_naturality.
 HB.instance Definition _ := isNatural.Build _ _ _ ret_naturality.
 
-Let join : F \o F ~> F := join'.
+Section non_monad.
 
-Let joinretM : JoinLaws.left_unit ret join.
-Proof.
-move=> A; apply: boolp.funext => /= t /=.
-rewrite /pure.
-Abort.
-(* Seems impossible, for any definition of join: how can one recover t ? *)
+(* For any join, with law,*)
+Variable join : F \o F ~> F.
+Variable lu : JoinLaws.left_unit ret join.
 
-Let joinMret : JoinLaws.right_unit ret join.
+Let lu_expand : forall A (x : F A), join A (Ret x) = x.
 Proof.
-move=> A; apply: boolp.funext => /= t /=.
-by rewrite /join /actm /= /join' /pure /apply Monoid.mul1m.
+move => A x.
+(* TODO: better way? *)
+have H : forall (A B : UU0) (f : B -> A) (g : A -> B) (x : A), (f \o g) x = id x -> f (g x) = x.
+- by [].
+apply H.
+by rewrite lu //.
 Qed.
 
-Let joinA : JoinLaws.associativity join.
-Proof. by []. Qed.
-End join.
+Lemma necessarity (e' : T): e = e'.
+Proof.
+have H := lu_expand e'.
+have H' := lu_expand e.
+suff G: join T (Ret e') = e.
+by rewrite -(H T).
+by rewrite -H' /= /pure.
+Qed.
 
+End non_monad.
+End join.
 End theory.
+
+Theorem constNonmonadic (T : UU0) (e : T) (op : Monoid.law e): 
+  ApplicativeFunctor_isMonad (Const op) -> forall (e' : T), e = e'.
+move => H.
+by exact (necessarity (ApplicativeFunctor_isMonad.join H) (ApplicativeFunctor_isMonad.joinretM H)).
+Qed.
 End Const.
+
+Module Validation.
+
+Section validation.
+Inductive Validation (E : UU0) (op : SemiGroup.law E) (T : UU0) : UU0 :=
+  | Fail of E 
+  | Succ of T.
+
+Variable (E : UU0) (op : SemiGroup.law E).
+Definition pure A (a : A) : Validation op A := Succ _ a. 
+Definition apply A B (f : Validation op (A -> B)) (a : Validation op A) : 
+  Validation op B := 
+  match f, a with 
+  | Fail fe, Fail ae => Fail _ _ (op fe ae)
+  | Fail fe, Succ a' => Fail _ _ fe
+  | Succ f', Fail ae => Fail _ _ ae 
+  | Succ f', Succ a' => Succ _ (f' a')
+  end.
+
+Let afidentity : ApplicativeLaws.identity pure apply.
+Proof.
+move=> A.
+apply: boolp.funext => x.
+rewrite /apply /pure.
+by case: x; move => i //.
+Qed.
+
+Let afcomposition : ApplicativeLaws.composition pure apply.
+Proof.
+move=> A B C u v.
+apply: boolp.funext => x.
+rewrite /apply /pure.
+case: u; move => ?; case: v; move => ?; case: x; move => ? // /=.
+by rewrite SemiGroup.mulmA.
+Qed.
+
+Let afhomomorphism : ApplicativeLaws.homomorphism pure apply.
+Proof.
+move=> A B f x.
+by rewrite /apply /pure //.
+Qed.
+
+Let afinterchange : ApplicativeLaws.interchange pure apply.
+Proof.
+move=> A B f x.
+by rewrite /apply /pure.
+Qed.
+
+HB.instance Definition _ :=
+  isApplicativeFunctor.Build
+    (Validation op) afidentity afcomposition afhomomorphism afinterchange.
+
+Section non_monad.
+Let F := Validation op.
+Let FF := F \o F.
+Variable join : FF ~> F. 
+Variable ru : JoinLaws.right_unit pure join.
+Variable applyE : forall A B (f : F (A -> B)) (x : F A), 
+  apply f x = join B ((_ # fun f' => join _ ((_ # fun x' => pure (f' x')) x)) f).
+
+Let ru_expand : forall A (x : F A), join A ((F # @pure _) x) = x.
+Proof.
+move => A x.
+have H : forall (A B : UU0) (f : B -> A) (g : A -> B) (x : A), (f \o g) x = id x -> f (g x) = x.
+- by [].
+apply H.
+by rewrite ru.
+Qed.
+
+Let isFail {A : UU0} (v : F A): UU0 := { e & v = Fail op _ e}.
+
+Let all_fail_is_fmapped A e : (Fail op (F A) e) = (F # @pure _) (Fail op A e).
+Proof.
+by [].
+Qed.
+
+(* join (Fail e) == join (F # pure (Fail e)) =[right unit]= Fail e *)
+Let join_fail : forall (A : UU0) (e : E), isFail (join A (Fail op _ e)).
+move => A e.
+exists e.
+by rewrite all_fail_is_fmapped ru_expand.
+Defined.
+
+Let j1 (A : UU0) (e : E) : E := 
+  projT1 (join_fail A e).
+
+Let j2 (A : UU0) (e : E) : join A (Fail op _ e) = Fail op _ (j1 A e) := 
+  projT2 (join_fail A e).
+
+Let j1E A e : j1 A e = e.
+Proof.
+unfold j1.
+by [].
+Qed.
+
+Let fmap_fail A B (f : A -> B) (e : E) : (F # f) (Fail op _ e) = Fail op _ e.
+Proof.
+by [].
+Qed.
+
+(* 
+apply (Fail a : F (unit -> unit)) (Fail b : F unit) == Fail (op a b)
+=[applyE]=    jo ([\f'. jo ([\x'. pure (f' x')] x)] f) [f := Fa, x := Fb]
+==            jo ([\f'. jo ([\x'. pure (f' x')] Fb)] Fa)
+=[fmap_fail]= jo ([\f'. jo Fb] Fa)
+=[fmap_fail]= jo {unit} Fa
+=[j2]=        Fail $ f a
+*)
+Let apply_fail x y : apply (Fail op (unit -> unit) x) (Fail op unit y) = Fail op _ (op x y).
+Proof.
+by [].
+Qed.
+
+
+Lemma necessarity x y : op x y = x.
+Proof.
+have H : Fail op unit x = Fail op unit (op x y).
+- by rewrite -[in RHS]apply_fail applyE fmap_fail j2.
+by case: H.
+Qed.
+
+End non_monad.
+
+Let F := Validation op.
+
+Theorem validationNonmonad : ApplicativeFunctor_isMonad F -> forall x y, op x y = x.
+Proof.
+move => H.
+eapply necessarity.
+- exact: (ApplicativeFunctor_isMonad.joinMret H).
+move => A B f x.
+have h := ApplicativeFunctor_isMonad.applyE H.
+rewrite /hierarchy.apply /= in h.
+rewrite h (ApplicativeFunctor_isMonad.bindE H).
+congr (fun x => ApplicativeFunctor_isMonad.join H B ((F # x) f)).
+apply: boolp.funext => a.
+by rewrite (ApplicativeFunctor_isMonad.bindE H).
+Qed.
+
+End validation.
+
+End Validation.
