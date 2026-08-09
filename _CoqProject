@@ -32,6 +32,7 @@ theories/applications/example_nqueens.v
 theories/applications/example_relabeling.v
 theories/applications/example_quicksort.v
 theories/applications/example_iquicksort.v
+theories/applications/example_memoize.v
 theories/applications/example_monty.v
 theories/applications/example_elgot.v
 theories/applications/typed_store_universe.v
