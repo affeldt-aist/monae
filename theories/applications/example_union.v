@@ -164,7 +164,8 @@ Proof.
   symmetry.
   normalize_bindA.
   setoid_rewrite (guardfindC _ i).
-  rewrite (bindfeqv (fun=>findC _ _ i _)) findC.
+  setoid_rewrite (findC _ _ i).
+  rewrite findC.
   apply: bindfeqv => i0.
   do 2 (rewrite guardfindC; apply: bindfeqv => ?).
   by rewrite guardC.
@@ -183,7 +184,6 @@ Proof.
   setoid_rewrite (add_neqfind a i _ Hai).
   do 2 setoid_rewrite (findchkC j j').
   setoid_rewrite (findchkC a a' i i').
-  rewrite /findchk.
   do 2 setoid_rewrite findchk_neqfindC.
   setoid_rewrite (add_neqfind a j _ Haj).
   (*use neqfind to exchange find and union*)
@@ -326,7 +326,7 @@ Proof.
   setoid_rewrite guardfindC.
   rewrite !(findC _ _ b).
   rewrite [in eqvLHS]remember_find [in eqvRHS]remember_find.
-  apply: bindfeqv=>{}b'.
+  apply: bindfeqv => b'.
   rewrite -!/(findchk a a' _).
   case Hb: ((a' == b') || (a' == i') && (b' == j') || (a' == j') && (b' == i')).
   - do 4 (apply: bindfeqv => ?; apply: bind_eqv_guard => _).
@@ -354,19 +354,19 @@ Proof.
     + rewrite !(findchkC b b' a a' _).
       rewrite union_axiom_neqcase //; last by rewrite eq_sym.
       setoid_rewrite (findC _ b' a' _).
-      do 11 apply/bindfeqv=>?.
+      do 11 apply/bindfeqv => ?.
       by rewrite eq_sym.
     + have Ha2 : (b' != i') by move /eqP in Hai;rewrite -Hai eq_sym.
       rewrite !(findchkC b b' a a' _).
       rewrite union_axiom_neqcase //; last by rewrite eq_sym.
       setoid_rewrite (findC _ b' a' _).
-      do 11 apply/bindfeqv=>?.
+      do 11 apply/bindfeqv => ?.
       by rewrite eq_sym.    
     + have Hb3 : (b' != j') by move /eqP in Haj;rewrite -Haj eq_sym.
       rewrite !(findchkC b b' a a' _).
       rewrite union_axiom_neqcase //; last by rewrite eq_sym.
       setoid_rewrite (findC _ b' a' _).
-      do 11 apply/bindfeqv=>?.
+      do 11 apply/bindfeqv => ?.
       by rewrite eq_sym.
     + by rewrite union_axiom_neqcase.
 Qed.
