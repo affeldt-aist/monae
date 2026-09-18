@@ -974,6 +974,11 @@ move => x y Hxy f g Hfg; apply: eqvM_trans.
 Qed.
 End setoid_equivMonad.
 
+HB.structure Definition MonadFailEquiv :=
+  { M of MonadEquiv M  & MonadFail M }.
+
+(* Interface for the Elgot monad *)
+
 HB.mixin Record isMonadElgot (M : UU0 -> UU0) of MonadEquiv M := {
   while : forall {A B : UU0}, (A -> M (B + A)%type) -> A -> M B;
   while_eqvM : forall (A B : UU0) (f g : A -> M (B + A)%type) (a : A),
@@ -1038,19 +1043,6 @@ Definition uniformwB :
     forall c, while f (h c) ≈ while g c := uniform_eqvM.
 End elgotMonad_interface.
 Arguments uniformwB {s}.
-
-Section setoid_elgotMonad.
-Variable M : elgotMonad.
-
-#[global] Add Parametric Morphism A B : while with signature
-  (pointwise_relation A (@wBisim M (B + A))) ==> @eq A ==> (@wBisim M B)
-  as while_mor_elgot.
-Proof. by move=> f g + a; exact: whilewB. Qed.
-End setoid_elgotMonad.
-
-HB.structure Definition MonadFailEquiv :=
-  { M of MonadEquiv M  & MonadFail M }.
-
 
 HB.mixin Record isMonadElgotExcept (M : UU0 -> UU0)
     of MonadElgot M & MonadExcept M := {
@@ -1192,15 +1184,6 @@ HB.structure Definition MonadNondetState (S : UU0) :=
 #[short(type=elgotStateMonad)]
 HB.structure Definition MonadElgotState (S : UU0) :=
   { M of MonadElgot M & MonadState S M }.
-
-Section setoid_elgotStateMonad.
-Variables (S : Type) (M : elgotStateMonad S).
-
-#[global] Add Parametric Morphism A B : bind with signature
-  (@wBisim M A) ==> (pointwise_relation A (@wBisim M B)) ==> (@wBisim M B)
-  as bind_mor_elgotState.
-Proof. exact: bind_mor_eqvM. Qed.
-End setoid_elgotStateMonad.
 
 HB.mixin Record isMonadStateRun (S : UU0) (N : monad)
    (M : UU0 -> UU0) of MonadState S M := {
