@@ -1,7 +1,10 @@
 (* monae: Monadic equational reasoning in Rocq                                *)
 (* Copyright (C) 2025 monae authors, license: LGPL-2.1-or-later               *)
 Require Import JMeq.
-From mathcomp Require Import all_ssreflect.
+From Stdlib Require Import Recdef Wf_nat.
+From mathcomp Require Import all_ssreflect ssralg ssrint.
+From Stdlib Require Import Recdef Wf_nat.
+From mathcomp Require Import all_ssreflect ssralg ssrint.
 From mathcomp Require Import finmap.
 From mathcomp Require boolp.
 From mathcomp Require Import classical_sets.
@@ -154,18 +157,17 @@ Proof. by []. Qed.
 Let right_neutral : BindLaws.right_neutral bind (NId idfun).
 Proof. by []. Qed.
 Let associative : BindLaws.associative bind. Proof. by []. Qed.
-Let acto := (@idfun UU0).
-HB.instance Definition _ := isMonad_ret_bind.Build
-  acto left_neutral right_neutral associative.
+Let acto := ( @idfun UU0 ).
+HB.instance Definition _ := isMonad_ret_bind.Build acto left_neutral right_neutral associative.
 End identitymonad.
-End IdentityMonad.
+End IdentityMonad. 
 HB.export IdentityMonad.
 
 Module ListMonad.
 Section listmonad.
 Definition acto := fun A : UU0 => seq A.
 Local Notation M := acto.
-Let ret : idfun ~~> M := fun (A : UU0) x => (@cons A) x [::].
+Let ret : idfun ~~> M := fun (A : UU0) x =>  (@cons A) x [::].
 Let bind := fun A B (m : M A) (f : A -> M B) => flatten (map f m).
 Let left_neutral : BindLaws.left_neutral bind ret.
 Proof. by move=> A B m f; rewrite /bind /ret /= cats0. Qed.
@@ -1515,7 +1517,6 @@ HB.instance Definition _ := isMonadPrePlus.Build (acto S) alt_bindDr.
 End preplusmonad.
 
 End ModelBacktrackableState.
-
 Module ModelArray.
 Section modelarray.
 Variables (S : UU0) (I : eqType).
