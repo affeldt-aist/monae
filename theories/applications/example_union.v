@@ -10,11 +10,6 @@ Unset Printing Implicit Defensive.
 
 Local Open Scope monae_scope.
 
-Arguments bindfeqv {s A B f g d}.
-
-Notation eqvLHS := (_ : eqvM ^~ _).
-Notation eqvRHS := (_ : [eta eqvM _]).
-
 Section extra_rules.
 Variable M : unionFailMonad.
 Local Notation I := hierarchy.UnionFind.I.
@@ -52,7 +47,7 @@ Variable M : unionFailMonad.
 Local Notation I := hierarchy.UnionFind.I.
 
 (* TODO M more generic + move into lib*)
-Lemma bind_ext_guard_equiv [A : UU0] [b : bool] [m1 m2 : M A]:
+Lemma bind_eqv_guard [A : UU0] [b : bool] [m1 m2 : M A]:
   (b -> m1 ≈ m2) -> guard b >> m1 ≈ guard b >> m2.
 Proof.
   case: b => H.
@@ -98,7 +93,7 @@ case: b.
   by rewrite find_lookup.
 Qed.
 
-Lemma pushfind B a a' b (k : I -> I-> M B) :
+Lemma findchkfindC B a a' b (k : I -> I-> M B) :
   (findchk a a' (fun x => find b >>= k ^~ x)) ≈
   (find b >>= fun v => findchk a a' (k v)).
 Proof.
@@ -109,11 +104,11 @@ Lemma guardC A b1 b2 (m : M A) :
   guard b1 >> (guard b2 >> m) ≈ guard b2 >> (guard b1 >> m).
 Proof. by rewrite -!bindA -guard_and andbC guard_and. Qed.
 
-Lemma finddupguard A a a' (k : I -> M A) :
+Lemma findchkfind A a a' (k : I -> M A) :
   findchk a a' (fun=> find a' >>= k) ≈ findchk a a' k.
 Proof.
 transitivity (findchk a a' (fun x => find x >>= k)).
-  by apply: bindfeqv => x; apply: bind_ext_guard_equiv => /eqP ->.
+  by apply: bindfeqv => x; apply: bind_eqv_guard => /eqP ->.
 rewrite [eqvLHS](bindfeqv (fun x => guardfindC _ _ _)).
 rewrite -(findfind _ _ (fun x y => _ >>= fun z => guard (a' == x) >> _)).
 by rewrite (bindfeqv (fun x => finddup _ _)) findfind.
@@ -132,13 +127,13 @@ move=> Hdiff.
 symmetry.
 rewrite /findchk neqfindE.
 normalize_bindA.
-setoid_rewrite (pushfind i).
-rewrite [eqvLHS]finddupguard.
+setoid_rewrite (findchkfindC i).
+rewrite [eqvLHS]findchkfind.
 apply: bindfeqv => r.
-apply: bind_ext_guard_equiv => /eqP <-.
-rewrite finddupguard.
+apply: bind_eqv_guard => /eqP <-.
+rewrite findchkfind.
 apply: bindfeqv => i1.
-apply: bind_ext_guard_equiv => /eqP <-.
+apply: bind_eqv_guard => /eqP <-.
 by rewrite Hdiff guardT bindskipf.
 Qed.
 
@@ -203,18 +198,18 @@ Proof.
   do 2 apply: bindfeqv => _.
   (* reunite find a and find a' *)
   setoid_rewrite (findchkC a).
-  setoid_rewrite finddupguard.
+  setoid_rewrite findchkfind.
   (*case analysis*)
   case Hb: ( (b' == i') || (b' == j')).
   - case/orP: Hb => [/eqP Hbi | /eqP Hbj].
     + rewrite Hbi.
       apply: bindfeqv => b0.
-      apply: bind_ext_guard_equiv => _ {b0}.
+      apply: bind_eqv_guard => _ {b0}.
       (*test to see*)
       do 2 setoid_rewrite (findchkC i).
       setoid_rewrite (findchkC j).
       apply: bindfeqv => a0.
-      apply: bind_ext_guard_equiv => /eqP <- {a0}.
+      apply: bind_eqv_guard => /eqP <- {a0}.
       setoid_rewrite <-(findunion_eq i' j').
       normalize_bindA.
       setoid_rewrite (findC _ i' j').
@@ -222,45 +217,45 @@ Proof.
       normalize_bindA.
       setoid_rewrite (findC _ i' j').
       setoid_rewrite (findchkC j).
-      setoid_rewrite (finddupguard j j').
-      setoid_rewrite (pushfind j).
-      rewrite !finddupguard.
+      setoid_rewrite (findchkfind j j').
+      setoid_rewrite (findchkfindC j).
+      rewrite !findchkfind.
       apply: bindfeqv => i1.
-      apply: bind_ext_guard_equiv => /eqP <- {i1}.
+      apply: bind_eqv_guard => /eqP <- {i1}.
       apply: bindfeqv => j1.
-      apply: bind_ext_guard_equiv => /eqP <- {j1}.
+      apply: bind_eqv_guard => /eqP <- {j1}.
       apply: bindfeqv => _.
       setoid_rewrite guardfindC.
       rewrite findfind.
       apply: bindfeqv => i2.
-      apply: bind_ext_guard_equiv => /orP[] /eqP <-.
+      apply: bind_eqv_guard => /orP[] /eqP <-.
       - by rewrite (negbTE Hai).
       - by rewrite (negbTE Haj).
     + rewrite Hbj.
       apply: bindfeqv => b0.
-      apply: bind_ext_guard_equiv => _ {b0}.
+      apply: bind_eqv_guard => _ {b0}.
       do 2 setoid_rewrite (findchkC i).
       setoid_rewrite (findchkC j).
       apply: bindfeqv => a0.
-      apply: bind_ext_guard_equiv => /eqP <- {a0}.
+      apply: bind_eqv_guard => /eqP <- {a0}.
       setoid_rewrite union_sym.
       setoid_rewrite <-(findunion_eq j' i').
       normalize_bindA.
       symmetry.
       normalize_bindA.
       setoid_rewrite (findchkC j).
-      setoid_rewrite (finddupguard j j').
-      setoid_rewrite (pushfind j).
-      rewrite !finddupguard.
+      setoid_rewrite (findchkfind j j').
+      setoid_rewrite (findchkfindC j).
+      rewrite !findchkfind.
       apply: bindfeqv => i1.
-      apply: bind_ext_guard_equiv => /eqP <- {i1}.
+      apply: bind_eqv_guard => /eqP <- {i1}.
       apply: bindfeqv => j1.
-      apply: bind_ext_guard_equiv => /eqP <- {j1}.
+      apply: bind_eqv_guard => /eqP <- {j1}.
       apply: bindfeqv => _.
       setoid_rewrite guardfindC.
       rewrite findfind.
       apply: bindfeqv => j2.
-      apply: bind_ext_guard_equiv=> /orP[] /eqP <-.
+      apply: bind_eqv_guard=> /orP[] /eqP <-.
       - by rewrite (negbTE Haj).
       - by rewrite (negbTE Hai).
   - case/norP: Hb => Hbi Hbj.
@@ -269,7 +264,7 @@ Proof.
     do 2 setoid_rewrite (findchkC i).
     do 2 setoid_rewrite (findchkC b).
     apply: bindfeqv => a0.
-    apply: bind_ext_guard_equiv => /eqP <-.
+    apply: bind_eqv_guard => /eqP <-.
     setoid_rewrite (add_neqfind  _ _ _ Hbi).
     do 3 setoid_rewrite findchk_neqfindC.
     setoid_rewrite (findchkC b).
@@ -282,13 +277,13 @@ Proof.
     do 6 setoid_rewrite findchk_neqfindC.
     do 2 apply: bindfeqv => _.
     setoid_rewrite (findchkC b).
-    setoid_rewrite finddupguard.
+    setoid_rewrite findchkfind.
     apply: bindfeqv => i0.
-    apply: bind_ext_guard_equiv => _ {i0}.
+    apply: bind_eqv_guard => _ {i0}.
     apply: bindfeqv => j0.
-    apply: bind_ext_guard_equiv => _ {j0}.
+    apply: bind_eqv_guard => _ {j0}.
     apply: bindfeqv => b0.
-    apply: bind_ext_guard_equiv => /eqP <-.
+    apply: bind_eqv_guard => /eqP <-.
     by rewrite (negbTE Hab).
 Qed.
 
@@ -309,12 +304,12 @@ Proof.
   rewrite !bindA.
   setoid_rewrite (findC _ b j).
   setoid_rewrite (findC _ a j).
-  do 2 (rewrite pushfind (remember_find j);symmetry).
+  do 2 (rewrite findchkfindC (remember_find j);symmetry).
   apply: bindfeqv=>{}j'.
   rewrite -bindA.
   setoid_rewrite <-findunionfind.
   rewrite bindA.
-  do 2 setoid_rewrite (pushfind _ _ a).
+  do 2 setoid_rewrite (findchkfindC _ _ a).
   under eq_bind do rewrite bindA.
   transitivity
     (@find M a >>= fun a1 => findchk j j'
@@ -324,7 +319,7 @@ Proof.
   under eq_bind do rewrite -bindA.
   setoid_rewrite <-findunionfind.
   normalize_bindA.
-  do 2 setoid_rewrite (pushfind _ _ b).
+  do 2 setoid_rewrite (findchkfindC _ _ b).
   rewrite [in eqvLHS]remember_find [in eqvRHS]remember_find.
   apply: bindfeqv => a'.
   rewrite /(findchk a).
@@ -334,7 +329,7 @@ Proof.
   apply: bindfeqv=>{}b'.
   rewrite -!/(findchk a a' _).
   case Hb: ((a' == b') || (a' == i') && (b' == j') || (a' == j') && (b' == i')).
-  - do 4 (apply: bindfeqv=>?; apply bind_ext_guard_equiv=>_).
+  - do 4 (apply: bindfeqv => ?; apply: bind_eqv_guard => _).
     case /orP: Hb => [/orP[] |].
     + move/eqP ->.
       apply: bindfeqv => _.

@@ -947,9 +947,12 @@ Definition bindfeqv :
     (forall a, eqvM (f a) (g a)) -> eqvM (d >>= f) (d >>= g) := @bindfle s.
 End equivMonad_interface.
 Arguments eqvM {s A}.
-Arguments bindmeqv {s}.
-Arguments bindfeqv {s}.
+Arguments bindmeqv {s A B f d1 d2}.
+Arguments bindfeqv {s A B f g d}.
 Notation "a '≈' b" := (eqvM a b).
+Notation eqvLHS := (_ : eqvM ^~ _).
+Notation eqvRHS := (_ : [eta eqvM _]).
+
 Hint Extern 0 (eqvM _ _) => apply eqvM_refl : core.
 
 Section setoid_equivMonad.
@@ -966,8 +969,8 @@ Variable M : equivMonad.
   as bind_mor_eqvM.
 Proof.
 move => x y Hxy f g Hfg; apply: eqvM_trans.
-- exact: (bindmeqv _ _ _ _ _ Hxy).
-- exact: (bindfeqv _ _ _ _ y Hfg).
+- exact: (bindmeqv Hxy).
+- exact: (bindfeqv Hfg).
 Qed.
 End setoid_equivMonad.
 
@@ -1196,12 +1199,7 @@ Variables (S : Type) (M : elgotStateMonad S).
 #[global] Add Parametric Morphism A B : bind with signature
   (@wBisim M A) ==> (pointwise_relation A (@wBisim M B)) ==> (@wBisim M B)
   as bind_mor_elgotState.
-Proof.
-move => x y Hxy f g Hfg; apply: wBisim_trans.
-- exact: (bindmwB _ _ _ _ _ Hxy).
-- exact: (bindfwB _ _ _ _ y Hfg).
-Qed.
-
+Proof. exact: bind_mor_eqvM. Qed.
 End setoid_elgotStateMonad.
 
 HB.mixin Record isMonadStateRun (S : UU0) (N : monad)
@@ -1450,16 +1448,12 @@ Variables (T : ML_universe) (N : monad) (M : elgotTypedStoreMonad T N nat).
 #[global] Add Parametric Morphism A B : bind with signature
   (@wBisim M A) ==> (pointwise_relation A (@wBisim M B)) ==> (@wBisim M B)
   as bindmor_elgottypedStore.
-Proof.
-move => x y Hxy f g Hfg; apply: wBisim_trans.
-- exact: (bindmwB _ _ _ _ _ Hxy).
-- exact: (bindfwB _ _ _ _ y Hfg).
-Qed.
+Proof. exact: bind_mor_eqvM. Qed.
 
 End setoid_elgotTypedStoreMonad.
 
-HB.mixin Record isMonadTypedStoreRun (MLU : ML_universe) (N : monad) (locT : eqType)
-    (M : UU0 -> UU0) of MonadTypedStore MLU N locT M := {
+HB.mixin Record isMonadTypedStoreRun (MLU : ML_universe) (N : monad)
+    (locT : eqType) (M : UU0 -> UU0) of MonadTypedStore MLU N locT M := {
   crun : forall {A : UU0}, M A -> option A ; (* execute in empty store *)
   crunret : forall (A B : UU0) (m : M A) (s : B),
       crun m -> crun (m >> Ret s) = Some s ;
