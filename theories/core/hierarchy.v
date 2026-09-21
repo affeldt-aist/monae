@@ -1,11 +1,11 @@
 (* monae: Monadic equational reasoning in Rocq                                *)
-(* Copyright (C) 2025 monae authors, license: LGPL-2.1-or-later               *)
+(* Copyright (C) 2026 monae authors, license: LGPL-2.1-or-later               *)
 Ltac typeof X := type of X.
 
-Require Import ssrmatching JMeq Morphisms.
-From mathcomp Require Import all_ssreflect ssralg ssrnum interval_inference.
+From Stdlib Require Import ssrmatching JMeq Morphisms.
+From mathcomp Require Import boot ssralg ssrnum interval_inference.
 From mathcomp Require boolp.
-From mathcomp Require Import unstable mathcomp_extra reals.
+From mathcomp Require Import unstable reals.
 From infotheo Require Import realType_ext convex.
 Require Import preamble.
 From HB Require Import structures.
@@ -155,7 +155,7 @@ Notation UU0 := Type.
   M (A * (size s).-1.-tuple A)%type *)
 Module FunctorLaws.
 Section def.
-Variable (F : UU0 -> UU0) (f : forall A B : UU0, (A -> B) -> F A -> F B).
+Context (F : UU0 -> UU0) (f : forall A B : UU0, (A -> B) -> F A -> F B).
 Definition id := forall A : UU0, f id = id :> (F A -> F A).
 Definition comp := forall (A B C : UU0) (g : B -> C) (h : A -> B),
   f (g \o h) = f g \o f h.
@@ -203,7 +203,7 @@ End functorid.
 Lemma FIdE (A B : UU0) (f : A -> B) : idfun # f = f. Proof. by []. Qed.
 
 Section functor_composition.
-Variables F G : functor.
+Context (F G : functor).
 
 Let comp_actm (A B : UU0) (h : A -> B) : (F \o G) A -> (F \o G) B :=
   F # (G # h).
@@ -228,7 +228,7 @@ Proof. by []. Qed.
 (* monadic counterpart of function composition:
    composes a pure function after a monadic function *)
 Section fcomp.
-Variable M : functor.
+Context (M : functor).
 
 Definition fcomp (A B C : UU0) (f : A -> B) (g : C -> M A) :=
   locked ((M # f) \o g).
@@ -264,7 +264,7 @@ Arguments natural {F G} s.
 Notation "f ~> g" := (nattrans f g) : monae_scope.
 
 Section natrans_lemmas.
-Variables (F G : functor) (phi : F ~> G).
+Context (F G : functor) (phi : F ~> G).
 Lemma nattrans_ext (f g : F ~> G) : f = g <-> forall a, (f a = g a :> (_ -> _)).
 Proof.
 split => [ -> // |]; move: f g => [f Hf] [g Hg] /= fg.
@@ -312,8 +312,7 @@ Qed.*)
 
 Module JoinLaws.
 Section join_laws.
-Context {F : functor}.
-Variables (ret : idfun ~~> F) (join : F \o F ~~> F).
+Context {F : functor} (ret : idfun ~~> F) (join : F \o F ~~> F).
 Arguments ret {_}.
 Arguments join {A}.
 
@@ -329,8 +328,7 @@ End JoinLaws.
 
 Module BindLaws.
 Section bindlaws.
-Variable F : UU0 -> UU0.
-Variable b : forall (A B : UU0), F A -> (A -> F B) -> F B.
+Context (F : UU0 -> UU0) (b : forall (A B : UU0), F A -> (A -> F B) -> F B).
 Local Notation "m >>= f" := (b m f).
 
 Definition associative := forall A B C (m : F A) (f : A -> F B) (g : B -> F C),
@@ -449,7 +447,7 @@ Lemma eq_bind (M : monad) (A B : UU0) (m : M A) (f1 f2 : A -> M B) :
 Proof. by move=> f12; congr bind; apply funext. Qed.
 
 Section monad_lemmas.
-Variable M : monad.
+Context (M : monad).
 
 Lemma fmapE (A B : UU0) (f : A -> B) (m : M A) :
  (M # f) m = m >>= (ret B \o f).
@@ -649,7 +647,7 @@ Tactic Notation "Open" ssrpatternarg(pat) :=
   With (idtac) Open pat.
 
 Section fmap_and_join.
-Variable M : monad.
+Context (M : monad).
 Local Open Scope mprog.
 
 Lemma bind_fmap (A B C : UU0) (f : A -> B) (m : M A) (g : B -> M C) :
@@ -682,7 +680,7 @@ Proof. by rewrite bindE. Qed.
 End fmap_and_join.
 
 Section kleisli.
-Variable M : monad.
+Context (M : monad).
 Implicit Types A B C D : UU0.
 
 Definition kleisli A B C (m : B -> M C) (n : A -> M B) : A -> M C :=
@@ -742,7 +740,7 @@ Arguments bindfailf [_].
 Arguments fail {_} {_}.
 
 Section guard_assert.
-Variable M : failMonad.
+Context (M : failMonad).
 
 Definition guard (b : bool) : M unit := if b then skip else fail.
 
@@ -828,7 +826,7 @@ Arguments altC {_} {_}.
 Arguments altmm {_} {_}.
 
 Section altci_lemmas.
-Variable (M : altCIMonad).
+Context (M : altCIMonad).
 
 Lemma altCA A : @left_commutative (M A) (M A) (fun x y => x [~] y).
 Proof. by move=> x y z; rewrite altA altC altA altC (altC x). Qed.
@@ -852,7 +850,7 @@ HB.structure Definition MonadNondet := {M of isMonadNondet M & }.
 HB.structure Definition MonadCINondet := {M of MonadAltCI M & MonadNondet M}.
 
 Section nondet_big.
-Variables (M : nondetMonad) (A : UU0).
+Context (M : nondetMonad) (A : UU0).
 HB.instance Definition _ :=
   Monoid.isLaw.Build _ _ _ (@altA M A) (@altfailm _ _) (@altmfail _ _).
 
@@ -940,7 +938,7 @@ HB.structure Definition MonadElgot := {M of isMonadElgot M & }.
 Arguments while {s A B}.
 
 Section setoid_elgotMonad.
-Variable M : elgotMonad.
+Context (M : elgotMonad).
 
 #[global] Add Parametric Relation A : (M A) (@wBisim M A)
   reflexivity proved by (@wBisim_refl M A)
@@ -977,7 +975,7 @@ HB.structure Definition MonadElgotExcept :=
   { M of isMonadElgotExcept M & MonadElgot M & MonadExcept M }.
 
 Section setoid_elgotExceptMonad.
-Variable M : elgotExceptMonad.
+Context (M : elgotExceptMonad).
 
 #[global] Add Parametric Morphism A : catch with signature
   (@wBisim M A) ==> (@wBisim M A) ==> (@wBisim M A)
@@ -1106,7 +1104,7 @@ HB.structure Definition MonadElgotState (S : UU0) :=
   { M of MonadElgot M & MonadState S M }.
 
 Section setoid_elgotStateMonad.
-Variables (S : Type) (M : elgotStateMonad S).
+Context (S : Type) (M : elgotStateMonad S).
 
 #[global] Add Parametric Morphism A B : bind with signature
   (@wBisim M A) ==> (pointwise_relation A (@wBisim M B)) ==> (@wBisim M B)
@@ -1310,7 +1308,7 @@ Arguments cget {ml_type N locT s} [T].
 Arguments cput {ml_type N locT s} [T].
 
 Section setoid_elgotTypedStoreMonad.
-Variables (T : ML_universe) (N : monad) (M : elgotTypedStoreMonad T N nat).
+Context (T : ML_universe) (N : monad) (M : elgotTypedStoreMonad T N nat).
 
 #[global] Add Parametric Morphism A B : bind with signature
   (@wBisim M A) ==> (pointwise_relation A (@wBisim M B)) ==> (@wBisim M B)
@@ -1495,9 +1493,8 @@ HB.structure Definition MonadAltProb {R : realType} :=
   { M of isMonadAltProb R M & }.
 
 Section altprob_lemmas.
-Context {R : realType}.
+Context {R : realType} (M : altProbMonad R).
 Local Open Scope proba_monad_scope.
-Variable (M : altProbMonad R).
 Lemma choiceDl A p :
   left_distributive (fun x y : (M : convexMonad R) A => x <| p |> y) (fun x y => x [~] y).
 Proof. by move=> x y z; rewrite !(choiceC p); exact: choiceDr. Qed.

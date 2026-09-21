@@ -1,7 +1,7 @@
 (* monae: Monadic equational reasoning in Rocq                                *)
-(* Copyright (C) 2025 monae authors, license: LGPL-2.1-or-later               *)
-Require Import JMeq.
-From mathcomp Require Import all_ssreflect.
+(* Copyright (C) 2026 monae authors, license: LGPL-2.1-or-later               *)
+From Stdlib Require Import JMeq.
+From mathcomp Require Import boot.
 From mathcomp Require Import finmap.
 From mathcomp Require boolp.
 From mathcomp Require Import classical_sets.
@@ -214,7 +214,9 @@ Proof. by []. Qed.
 Module ExceptMonad.
 Section exceptmonad.
 Variable E : UU0.
+
 Definition acto := fun A : UU0 => (E + A)%type.
+
 Local Notation M := acto.
 Let ret : idfun ~~> M := @inr E.
 Let bind := fun A B (m : M A) (f : A -> M B) =>
@@ -456,7 +458,7 @@ Let naturality_output :
   naturality (Output.acto L \o M) M output.
 Proof.
 move=> A B h.
-apply funext => -[w [x w']].
+apply: funext => -[w [x w']].
 by rewrite /output !compE/= catA.
 Qed.
 
@@ -568,7 +570,7 @@ Definition local : (Local.acto E \o M)(*(E -> E) * M A*) ~~> M :=
 (* performing a computation in a modified environment *)
 
 Let naturality_local : naturality (Local.acto E \o M) M local.
-Proof. by move=> A B h; apply funext => -[]. Qed.
+Proof. by move=> A B h; apply: funext => -[]. Qed.
 
 HB.instance Definition _ := isNatural.Build
   (Local.acto E \o M) M local naturality_local.
@@ -661,8 +663,7 @@ Definition handle : Handle.acto Z \o M ~~> M :=
   fun A => uncurry (@handle' A).
 
 Let naturality_handle : naturality (Handle.acto Z \o M) M handle.
-
-Proof. by move=> A B h; apply funext => -[[]]. Qed.
+Proof. by move=> A B h; apply: funext => -[[]]. Qed.
 
 HB.instance Definition _ := isNatural.Build
   (Handle.acto Z \o M) M handle naturality_handle.
@@ -712,9 +713,9 @@ Variable S : UU0.
 Definition acto (X : UU0) := (S * X)%type.
 Let actm (X Y : UU0) (f : X -> Y) (sx : acto X) : acto Y := (sx.1, f sx.2).
 Let func_id : FunctorLaws.id actm.
-Proof. by move=> A; apply funext => -[]. Qed.
+Proof. by move=> A; apply: funext => -[]. Qed.
 Let func_comp : FunctorLaws.comp actm.
-Proof. by move=> A B C g h; apply funext. Qed.
+Proof. by move=> A B C g h; apply: funext. Qed.
 HB.instance Definition _ := isFunctor.Build acto func_id func_comp.
 End put.
 End StateOpsPut.
@@ -728,7 +729,7 @@ Let get : StateOpsGet.acto S \o M ~~> M := fun A k s => k s s.
 
 Let naturality_get : naturality (StateOpsGet.acto S \o M) M get.
 Proof.
-move=> A B h; apply funext => /= m; apply funext => s.
+move=> A B h; apply: funext => /= m; apply: funext => s.
 by rewrite FCompE.
 Qed.
 
@@ -753,7 +754,7 @@ Let put : StateOpsPut.acto S \o M ~~> M :=
 
 Let naturality_put : naturality (StateOpsPut.acto S \o M) M put.
 Proof.
-by move=> A B h; apply funext => /= -[s m /=]; apply funext.
+by move=> A B h; apply: funext => /= -[s m /=]; apply: funext.
 Qed.
 
 HB.instance Definition _ :=

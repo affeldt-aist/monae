@@ -1,6 +1,6 @@
 (* monae: Monadic equational reasoning in Rocq                                *)
-(* Copyright (C) 2025 monae authors, license: LGPL-2.1-or-later               *)
-From mathcomp Require Import all_ssreflect ssralg ssrnum finmap.
+(* Copyright (C) 2026 monae authors, license: LGPL-2.1-or-later               *)
+From mathcomp Require Import boot ssralg ssrnum finmap.
 From mathcomp Require Import boolp classical_sets reals.
 From infotheo Require Import classical_sets_ext realType_ext fdist proba.
 From infotheo Require Import fsdist convex.
@@ -41,7 +41,8 @@ Local Open Scope proba_monad_scope.
 
 #[short(type=altConvexDrMonad)]
 HB.structure Definition MonadAltConvexDr {R : realType} :=
-  { M of isMonadAltCI M & isMonadConvexDr R M }.
+  { M of isMonadAltCI M & isMonadConvexDr R M & isFunctor M &
+    Functor_isMonad M & isMonadAlt M & isMonadConvex0 R M }.
 
 Section choiceDalt.
 Variables (R : realType).

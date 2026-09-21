@@ -1,6 +1,6 @@
 (* monae: Monadic equational reasoning in Rocq                                *)
-(* Copyright (C) 2025 monae authors, license: LGPL-2.1-or-later               *)
-From mathcomp Require Import all_ssreflect.
+(* Copyright (C) 2026 monae authors, license: LGPL-2.1-or-later               *)
+From mathcomp Require Import boot.
 From HB Require Import structures.
 Require Import ipreamble ihierarchy imonad_lib imonad_transformer.
 
@@ -226,7 +226,8 @@ Proof.
 apply funext => emx.
 rewrite /op'.
 apply funext => s.
-rewrite /slifting.
+(* rewrite /slifting. TODO: loop *)
+rewrite /=.
 rewrite 2!vcompE.
 set h := hmap _.
 rewrite [in RHS](psikE op).
@@ -458,8 +459,9 @@ rewrite -functor_o.
 rewrite (_ : _ \o Ret = id) ?functor_id //.
 apply funext => n /=.
 rewrite !compE/= 2!bindretf.
-Open (X in _ >>= X).
-  by case : x => ? ?; rewrite cat0s.
+under boolp.eq_fun.
+  case=> ? ?; rewrite cat0s.
+  over.
 by rewrite bindmret.
 Qed.
 
@@ -471,7 +473,7 @@ Require Import imonad_model.
 Section slifting_local.
 Variable Env : UU0.
 Let E := [the functor of Local.acto Env].
-Let M := [the monad of EnvironmentMonad.acto Env].
+Let M := [the monad of ReaderMonad.acto Env].
 Let local : E.-operation M := local_op Env.
 Hypothesis naturality_MK : forall (A : UU0) (m : MK M A), naturality_MK m.
 

@@ -1,6 +1,6 @@
 (* monae: Monadic equational reasoning in Rocq                                *)
-(* Copyright (C) 2025 monae authors, license: LGPL-2.1-or-later               *)
-From mathcomp Require Import all_ssreflect.
+(* Copyright (C) 2026 monae authors, license: LGPL-2.1-or-later               *)
+From mathcomp Require Import boot.
 Require Import ipreamble ihierarchy imonad_lib ifail_lib istate_lib.
 Require Import imonad_transformer.
 

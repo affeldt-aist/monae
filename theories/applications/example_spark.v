@@ -1,6 +1,6 @@
 (* monae: Monadic equational reasoning in Rocq                                *)
-(* Copyright (C) 2025 monae authors, license: LGPL-2.1-or-later               *)
-From mathcomp Require Import all_ssreflect.
+(* Copyright (C) 2026 monae authors, license: LGPL-2.1-or-later               *)
+From mathcomp Require Import boot.
 From mathcomp Require boolp.
 Require Import preamble hierarchy monad_lib alt_lib fail_lib.
 
@@ -112,7 +112,7 @@ Hypotheses (addA : associative add) (addC : commutative add).
 Lemma aggregateE :
   aggregate b mul add = Ret \o foldl add b \o map (foldl mul b) :> (_ -> M _).
 Proof.
-rewrite -lemma31; last by move=> x ??; rewrite -addA (addC x) addA.
+rewrite -lemma31; first by move=> x ??; rewrite -addA (addC x) addA.
 by rewrite /aggregate 2!fcomp_def -compA.
 Qed.
 
@@ -280,7 +280,7 @@ move=> H.
 split; first by [].
 split; first by [].
 move=> xs ys.
-rewrite (_ : xs ++ ys = flatten [:: xs; ys]); last by rewrite /= cats0.
+rewrite (_ : xs ++ ys = flatten [:: xs; ys]); first by rewrite /= cats0.
 transitivity (foldl add b (map (foldl mul b) [:: xs; ys])).
   case: (@iperm_is_alt_ret M _ [:: xs; ys]) => m Hm.
   by rewrite (lemma45a idempotent_converse injective_return H).

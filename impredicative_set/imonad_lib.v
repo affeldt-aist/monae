@@ -1,8 +1,8 @@
 (* monae: Monadic equational reasoning in Rocq                                *)
-(* Copyright (C) 2025 monae authors, license: LGPL-2.1-or-later               *)
+(* Copyright (C) 2026 monae authors, license: LGPL-2.1-or-later               *)
 Ltac typeof X := type of X.
 Require Import ssrmatching.
-From mathcomp Require Import all_ssreflect.
+From mathcomp Require Import boot.
 Require Import ipreamble.
 From HB Require Import structures.
 Require Import ihierarchy.
@@ -50,7 +50,7 @@ Require Import ihierarchy.
 (*                                                                            *)
 (******************************************************************************)
 
-Reserved Notation "f ^`2" (format "f ^`2", at level 3).
+Reserved Notation "f ^`2" (format "f ^`2", at level 1).
 Reserved Notation "F ## g" (at level 11).
 Reserved Notation "E .-operation M" (at level 2, format "E  .-operation  M").
 Reserved Notation "E .-aoperation M" (at level 2, format "E  .-aoperation  M").
@@ -199,7 +199,7 @@ Definition curry_actm (A B : UU0) (f : A -> B) : curryF X A -> curryF X B :=
 Let curry_id : FunctorLaws.id curry_actm.
 Proof. by rewrite /FunctorLaws.id => A; apply funext => -[]. Qed.
 
-Lemma curry_comp : FunctorLaws.comp curry_actm.
+Let curry_comp : FunctorLaws.comp curry_actm.
 Proof. by rewrite /FunctorLaws.comp => A B C g h; apply funext => -[]. Qed.
 
 HB.instance Definition _ :=
@@ -220,7 +220,7 @@ rewrite /FunctorLaws.id => A; rewrite /uncurry_actm; apply funext => ?.
 by rewrite compidf.
 Qed.
 
-Lemma uncurry_comp X : FunctorLaws.comp (@uncurry_actm X).
+Let uncurry_comp X : FunctorLaws.comp (@uncurry_actm X).
 Proof.
 rewrite /FunctorLaws.comp => A B C g h; rewrite /uncurry_actm; apply funext => ?.
 by rewrite compE compA.
@@ -313,6 +313,7 @@ End id_natural_transformation.
 
 Arguments NId C [A].
 
+(* NB: it is important to lock to prevent looping in ifmt_lifting.v *)
 Definition vcomp (C D E : functor) (g : D ~> E) (f : C ~> D) : C ~~> E :=
   locked (fun A : UU0 => g A \o f A).
 
@@ -342,7 +343,7 @@ Proof. by apply/nattrans_ext => a /=; rewrite !vcompE. Qed.
 
 Definition hcomp (F G F' G' : functor) (s : F ~> G) (t : F' ~> G')
     : F' \o F ~~> G' \o G :=
-  fun (A : UU0) => @t (G A) \o F' # (@s A).
+  fun A : UU0 => @t (G A) \o F' # (@s A).
 
 Section horizontal_composition.
 Variables (F G F' G' : functor) (s : F ~> G) (t : F' ~> G').
@@ -389,23 +390,22 @@ Lemma functor_app_naturalE (S F G : functor) (nt : F ~> G) X :
 Proof. by []. Qed.
 
 Lemma functor_app_natural_hcomp (S F G : functor) (nt : F ~> G) :
-  S ## nt = NId S \h nt.
+  S ## nt = [the _ ~> _ of NId S] \h nt.
 Proof. by apply nattrans_ext => a; rewrite functor_app_naturalE. Qed.
 
-Definition fork' : idfun ~~> squaring := fun (A : UU0) (a : A) => (a, a).
+Definition fork : idfun ~~> squaring := fun (A : UU0) (a : A) => (a, a).
 
 Section natural_transformation_example.
 
-Let fork_natural : naturality _ _ fork'. Proof. by []. Qed.
+Let fork_natural : naturality _ _ fork. Proof. by []. Qed.
 
-HB.instance Definition _ := isNatural.Build idfun squaring fork' fork_natural.
-
-Definition fork : idfun ~> squaring := [the _ ~> _ of fork'].
+HB.instance Definition _ := isNatural.Build idfun squaring fork fork_natural.
 
 End natural_transformation_example.
 
 Definition eta_type (f g : functor) := idfun ~> g \o f.
 Definition eps_type (f g : functor) := f \o g ~> idfun.
+
 Module TriangularLaws.
 Section triangularlaws.
 Variables (F G : functor) (eps : eps_type F G) (eta : eta_type F G).
@@ -448,8 +448,7 @@ HB.instance Definition _ := isNatural.Build
 Definition curry_eta : idfun ~~> uncurryF X \o curryF X :=
   fun (A : UU0) (a : A) => pair^~ a.
 
-Let curry_eta_naturality :
-  naturality _ [the functor of uncurryF X \o curryF X] curry_eta.
+Let curry_eta_naturality : naturality _ (uncurryF X \o curryF X) curry_eta.
 Proof. by []. Qed.
 
 HB.instance Definition _ := isNatural.Build
@@ -485,7 +484,7 @@ Proof.
 move => A B h.
 rewrite (_ : [the functor of M \o M] # h = g # ([the functor of f \o g] # (f # h))) //.
 rewrite (_ : _ \o g # ([the functor of f \o g] # (f # h)) =
-  g # (@eps (f B) \o ([the functor of f \o g] # (f # h)))); last by rewrite -functor_o.
+  g # (@eps (f B) \o ([the functor of f \o g] # (f # h)))); first by rewrite -functor_o.
 rewrite -natural FIdE.
 rewrite [in LHS]FCompE.
 rewrite /mu.
@@ -518,7 +517,7 @@ Proof.
 rewrite /BindLaws.associative => A B C x ab bc.
 rewrite /bind.
 set N := M f g.  set j := mu eps.
-rewrite [X in _ = j C X](_ : _ = (N # (j C)) ((N # (N # bc)) ((N # ab) x))); last first.
+rewrite [X in _ = j C X](_ : _ = (N # (j C)) ((N # (N # bc)) ((N # ab) x))).
   rewrite functor_o.
   rewrite compE.
   congr ((N # j C) _).
@@ -587,7 +586,7 @@ apply: (@AdjointFunctor.mk _ _ uni couni).
   rewrite /TriangularLaws.left => A.
   rewrite FCompE -[LHS]compA.
   rewrite -(@functor_o F).
-  rewrite (_ : @eps0 _ \o F0 # _ = @eta (F0 A)).
+  rewrite (_ : @eps0 _ \o F0 # _ = @eta (F0 A)); last first.
     exact: (AdjointFunctor.tri_left H).
   rewrite functor_o [LHS]compA -FCompE.
   rewrite -(natural (AdjointFunctor.eps H0)) /= FIdE -[LHS]compA.
@@ -824,19 +823,39 @@ Lemma iter_bind {M : monad} (T : UU0) n (f : T -> M T) (m1 : M unit) m2 :
   m1 >> iter n (fun (m : M T) => m >>= f) m2.
 Proof. by elim: n m2 => // n IH m2; rewrite iterS IH !bindA. Qed.
 
-Section forloop.
+(* NB: use to give a model to forloopStateMonad, which was an experience *)
+Section forloopM.
 Variable M : monad.
 
-Definition forloop (n_1 n_2 : nat) (b : nat -> M unit) : M unit :=
+Fixpoint forloopM (it min : nat) (body : nat -> M unit) : M unit :=
+  if it <= min then Ret tt
+  else if it is it'.+1 then
+      body it' >>= (fun=> forloopM it' min body)
+      else Ret tt.
+
+Lemma forloopM0 m body : forloopM m m body = Ret tt.
+Proof. by case: m => //= n; rewrite ltnS leqnn. Qed.
+
+Lemma forloopM1 m n body : forloopM (m.+1 + n) m body =
+  body (m + n) >> forloopM (m + n) m body :> M unit.
+Proof. by rewrite /forloopM /=; case: ifPn => //; rewrite ltnNge leq_addr. Qed.
+
+End forloopM.
+Arguments forloopM {M}.
+
+Section forloop_iteri.
+Variable M : monad.
+
+Definition forloop_iteri (n_1 n_2 : nat) (b : nat -> M unit) : M unit :=
   if n_2 < n_1 then Ret tt else
   iteri (n_2.+1 - n_1)
        (fun i (m : M unit) => m >> b (n_1 + i))
        skip.
 
-Lemma forloopS m n (f : nat -> M unit) :
-  m <= n -> forloop m n f = f m >> forloop m.+1 n f.
+Lemma forloop_iteriS m n (f : nat -> M unit) :
+  m <= n -> forloop_iteri m n f = f m >> forloop_iteri m.+1 n f.
 Proof.
-rewrite /forloop => mn.
+rewrite /forloop_iteri => mn.
 rewrite ltnNge mn /= subSS subSn // iteriSr bindskipf.
 rewrite -[f _]bindmskip iteri_bind addn0 ltnS -subn_eq0.
 case: (n-m) => //= k.
@@ -844,9 +863,8 @@ rewrite addSnnS; apply eq_bind => _; congr bind.
 apply eq_iteri => i x; by rewrite addSnnS.
 Qed.
 
-Lemma forloop0 m n (f : nat -> M unit) :
-  m > n -> forloop m n f = skip.
-Proof. by rewrite /forloop => ->. Qed.
+Lemma forloop_iteri0 m n (f : nat -> M unit) :
+  m > n -> forloop_iteri m n f = skip.
+Proof. by rewrite /forloop_iteri => ->. Qed.
 
-End forloop.
-Arguments forloop {M}.
+End forloop_iteri.

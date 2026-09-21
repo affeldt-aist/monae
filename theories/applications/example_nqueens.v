@@ -1,6 +1,6 @@
 (* monae: Monadic equational reasoning in Rocq                                *)
-(* Copyright (C) 2025 monae authors, license: LGPL-2.1-or-later               *)
-From mathcomp Require Import all_ssreflect ssralg ssrint.
+(* Copyright (C) 2026 monae authors, license: LGPL-2.1-or-later               *)
+From mathcomp Require Import boot ssralg ssrint.
 From mathcomp Require boolp.
 Require Import preamble hierarchy monad_lib alt_lib fail_lib state_lib.
 
@@ -184,11 +184,11 @@ rewrite safe2E.
 set f := (do ok <- (do _ <- _; _); _ >> guard ok in RHS).
 rewrite (_ : f =
   do uds <- get; put (safe1 uds (place n y)).2 >> Ret (safe1 uds (place n y)).1 >>
-      put x >> guard (safe1 uds (place n y)).1); last first.
+      put x >> guard (safe1 uds (place n y)).1).
   rewrite {}/f bindA; bind_ext => u.
   case: (safe1 _ _) => a b.
   rewrite 2!bindA bindretf bindA.
-  by under eq_bind do rewrite bindretf.
+  by rewrite bindretf.
 rewrite assertE -bindA; congr (_ >> _).
 rewrite -bindA.
 rewrite putgetput.
@@ -218,11 +218,11 @@ Proof.
 rewrite /queens_explor /queens_state_nondeter.
 bind_ext => x.
 bind_ext => y.
-rewrite 2!bindA.
+rewrite bindA [in RHS]bindA.
 bind_ext => z.
 rewrite 2!bindA.
 bind_ext => u.
-rewrite guardsC; last exact: bindmfail.
+rewrite guardsC; first exact: bindmfail.
 rewrite 2!bindA.
 by under eq_bind do rewrite assertE bindA bindretf.
 Qed.
@@ -284,7 +284,7 @@ transitivity (do b' <- k ;
                            let (b, uds') := test cr uds in
                            put uds' >> guard b)).
   bind_ext => b'.
-  rewrite guardsC; last exact: bindmfail.
+  rewrite guardsC; first exact: bindmfail.
   rewrite bindA.
   bind_ext => x.
   case: test => h t.
@@ -351,7 +351,7 @@ Proof.
 move=> s; elim: s i a b => // h t IH i a b.
 rewrite /safeAcc_scanl /=.
 move: (IH i.+1 ((Posz i + h) :: a) ((Posz i - h) :: b))%Z.
-rewrite (_ : Posz i.+1 = (Posz i) + 1)%Z; last by rewrite -addn1.
+rewrite (_ : Posz i.+1 = (Posz i) + 1)%Z; first by rewrite -addn1.
 rewrite /safeAcc_scanl !compE => /= <-.
 rewrite /safeAcc /= !andbA /zipWith /=.
 set A := uniq _; set B := uniq _; set sa := map _ _; set sb := map _ _.
@@ -436,7 +436,7 @@ Lemma base_case y : p y -> (unfoldM p select >=> foldr op (Ret [::])) y = Ret [:
 Proof.
 move=> py.
 transitivity (Ret [::] >>= foldr op (Ret [::])).
-  rewrite /kleisli bindretf !compE/= join_fmap unfoldME; last exact: decr_size_select.
+  rewrite /kleisli bindretf !compE/= join_fmap unfoldME; first exact: decr_size_select.
   by rewrite py bindretf.
 by rewrite bindretf.
 Qed.
@@ -446,11 +446,11 @@ Lemma theorem51 :
   @hyloM _ _ _ _ op [::] p select seed_select (@well_founded_size _).
 Proof.
 apply: (well_founded_induction (@well_founded_size _)) => y IH.
-rewrite hyloME; last exact: decr_size_select.
+rewrite hyloME; first exact: decr_size_select.
 case/boolP : (p y) => py.
   by rewrite base_case.
 rewrite /kleisli !compE/= join_fmap.
-rewrite unfoldME; last exact: decr_size_select.
+rewrite unfoldME; first exact: decr_size_select.
 rewrite (negbTE py) bindA.
 rewrite(@decr_size_select _ _) /bassert !bindA; bind_ext => -[b a] /=.
 case: assertPn => ay; last by rewrite !bindfailf.
@@ -461,9 +461,9 @@ rewrite {ay}.
 move: a b.
 apply: (well_founded_induction (@well_founded_size _)) => a IH' b.
 destruct a as [|u v] => //.
-  rewrite unfoldME /=; last exact: decr_size_select.
+  rewrite unfoldME /=; first exact: decr_size_select.
   by rewrite !bindretf.
-rewrite unfoldME; last exact: decr_size_select.
+rewrite unfoldME; first exact: decr_size_select.
 rewrite !bindA.
 transitivity (do x <- Ret (u, v) [~] (do y_ys <- select v; Ret (y_ys.1, u :: y_ys.2));
   op b (do x0 <- fmap (cons x.1) (unfoldM p select x.2); foldr op (Ret [::]) x0)); last first.
@@ -485,20 +485,20 @@ transitivity (do x <- Ret (u, v) [~] (do y_ys <- select v; Ret (y_ys.1, u :: y_y
     put (queens_next st b) >>
     (cons b (o) (fun x0 => do x1 <- fmap (cons x0.1) (unfoldM p select x0.2); foldr op (Ret [::]) x1)) x)).
     bind_ext => st.
-    rewrite -bindA guardsC; last exact: bindmfail.
+    rewrite -bindA guardsC; first exact: bindmfail.
     rewrite !bindA.
     bind_ext => x.
     rewrite assertE !bindA.
     bind_ext; case.
     by rewrite bindretf.
-  rewrite -nondetState_commute//; last first.
+  rewrite -nondetState_commute//.
     (* TODO: automate? *)
     case: (@select_isNondet _ M _ v) => x <-.
     by exists (ndAlt (ndRet (u, v)) (ndBind x (fun y => ndRet (y.1, u :: y.2)))).
   by rewrite fcomp_def.
 bind_ext => x.
 rewrite {1}/op /opdot_queens /opdot.
-rewrite nondetState_commute; last first.
+rewrite nondetState_commute.
   (* TODO: automate? *)
   rewrite fmapE.
   case: (unfoldM_isNondet (@select_isNondet _ M int) (@decr_size_select M _) x.2).
@@ -506,7 +506,7 @@ rewrite nondetState_commute; last first.
   by exists (ndBind m (fun y => ndRet (x.1 :: y))).
 rewrite {2}/op /opdot_queens /opdot.
 bind_ext => st.
-rewrite nondetState_commute //; last first.
+rewrite nondetState_commute//.
   (* TODO: automate? *)
   rewrite fmapE.
   case: (unfoldM_isNondet (@select_isNondet _ M int) (@decr_size_select _ _) x.2).
@@ -540,7 +540,7 @@ Lemma queensBodyE' xs : queensBody M xs = if xs is [::] then Ret [::] else
 Proof.
 case: xs => [|h t].
   rewrite queensBodyE // hyloME //; exact: decr_size_select.
-rewrite {1}queensBodyE hyloME; last exact: decr_size_select.
+rewrite {1}queensBodyE hyloME; first exact: decr_size_select.
 rewrite {-1}[h :: t]lock decr_size_select /bassert 2!bindA.
 rewrite (_ : nilp _ = false) //.
 bind_ext => -[x ys].

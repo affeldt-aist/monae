@@ -1,6 +1,6 @@
 (* monae: Monadic equational reasoning in Rocq                                *)
-(* Copyright (C) 2025 monae authors, license: LGPL-2.1-or-later               *)
-From mathcomp Require Import all_ssreflect.
+(* Copyright (C) 2026 monae authors, license: LGPL-2.1-or-later               *)
+From mathcomp Require Import boot.
 Require Import ipreamble.
 From HB Require Import structures.
 Require Import ihierarchy imonad_lib.
@@ -47,6 +47,7 @@ rewrite -cats1 -catA -{1}(cat_take_drop (index h b) b); congr (_ ++ _) => /=.
 by rewrite -{2}(nth_index h hb) -drop_nth // index_mem.
 Qed.
 
+(* TODO: move *)
 Lemma well_founded_size A : well_founded (fun x y : seq A => size x < size y).
 Proof. by apply: (@Wf_nat.well_founded_lt_compat _ size) => ? ? /ltP. Qed.
 
@@ -124,7 +125,7 @@ Lemma arbitrary_cat (T : UU0) (a : T) s t :
 Proof.
 elim: s t => [//|s1 s2 IH].
 elim/last_ind => // t1 t2 _ m n m0 n0 //.
-rewrite cat_cons [in LHS]arbitrary_cons; last first.
+rewrite cat_cons [in LHS]arbitrary_cons.
   by rewrite size_cat size_rcons addnS.
 destruct s2 as [|s2 s3] => //.
 rewrite IH // altA; congr (_ [~] _).
@@ -138,7 +139,7 @@ Proof.
 elim: x y => // x; case=> [_ y _ size_y|x' xs IH y _ size_y]; apply/esym.
   exact/mpair_arbitrary_base_case.
 set xxs := x' :: xs.
-rewrite /cp -cat1s allpairs_cat -/(cp _ _) cp1 /= arbitrary_cat; last 2 first.
+rewrite /cp -cat1s allpairs_cat -/(cp _ _) cp1 /= arbitrary_cat.
   by rewrite size_map.
   by rewrite size_cat size_map addn_gt0 size_y.
 pose n := size y.
@@ -217,11 +218,12 @@ Proof.
 elim: xs ys => [ys |x xs ih ys].
   by rewrite cat0s /= bindretf bindmret.
 rewrite {1}[in RHS]/subs fmapE -/(subs _) alt_bindDl bindA.
-Open (X in subs xs >>= X).
+under [X in subs xs >>= X]boolp.eq_fun.
+  move=> s.
   rewrite bindretf.
   under eq_bind do rewrite cat_cons.
   over.
-rewrite [X in _ = X [~] _](_ : _ = fmap (cons x) (do x0 <- subs xs; do x1 <- subs ys; Ret (x0 ++ x1)))%Do; last first.
+rewrite [X in _ = X [~] _](_ : _ = fmap (cons x) (do x0 <- subs xs; do x1 <- subs ys; Ret (x0 ++ x1)))%Do.
   rewrite fmapE bindA.
   bind_ext => x0.
   rewrite bindA.
@@ -280,12 +282,12 @@ rewrite fcompE insertE alt_fmapDr.
 rewrite -(compE (fmap _)) (natural ret) FIdE.
 rewrite [in X in X [~] _]compE/= (negbTE pa).
 case: ifPn => ph.
-- rewrite -fmap_oE (_ : filter p \o cons h = cons h \o filter p); last first.
+- rewrite -fmap_oE (_ : filter p \o cons h = cons h \o filter p).
     by apply funext => x /=; rewrite !compE/= ph.
   rewrite fmap_oE.
   move: (IH); rewrite fcompE => ->.
   by rewrite fmapE bindretf compE Mmm.
-- rewrite -fmap_oE (_ : filter p \o cons h = filter p); last first.
+- rewrite -fmap_oE (_ : filter p \o cons h = filter p).
     by apply funext => x /=; rewrite compE/= (negbTE ph).
   by move: (IH); rewrite fcompE => ->; rewrite Mmm.
 Qed.
@@ -305,7 +307,7 @@ rewrite fcompE compE [in RHS]/=; case: ifPn => ph.
   by rewrite /= ph.
 - rewrite [in LHS]insertE alt_fmapDr.
   rewrite -[in X in _ [~] X = _]fmap_oE.
-  rewrite (_ : (filter p \o cons h) = filter p); last first.
+  rewrite (_ : (filter p \o cons h) = filter p).
     by apply funext => x /=; rewrite compE/= (negbTE ph).
   move: (IH); rewrite fcompE => ->.
   rewrite fmapE bindretf !compE/= pa (negbTE ph) [in RHS]insertE.

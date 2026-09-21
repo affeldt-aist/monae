@@ -1,6 +1,6 @@
 (* monae: Monadic equational reasoning in Rocq                                *)
-(* Copyright (C) 2025 monae authors, license: LGPL-2.1-or-later               *)
-From mathcomp Require Import all_ssreflect.
+(* Copyright (C) 2026 monae authors, license: LGPL-2.1-or-later               *)
+From mathcomp Require Import boot order.
 From mathcomp Require boolp.
 Require Import preamble.
 From HB Require Import structures.
@@ -79,7 +79,7 @@ Lemma unfoldME y : unfoldM p f y =
   if p y then Ret [::]
   else f y >>= (fun xz => fmap (cons xz.1) (unfoldM p f xz.2)).
 Proof.
-rewrite /unfoldM Init.Wf.Fix_eq; last first.
+rewrite /unfoldM Init.Wf.Fix_eq.
   move => b g g' H; rewrite /unfoldM'; case: ifPn => // pb.
   bind_ext => -[a' b'] /=.
   by destruct Bool.bool_dec => //; rewrite H.
@@ -114,7 +114,7 @@ Lemma hyloME y : hyloM y = if p y then
                            else
                              f y >>= (fun xz => op xz.1 (hyloM xz.2)).
 Proof.
-rewrite /hyloM Init.Wf.Fix_eq; last first.
+rewrite /hyloM Init.Wf.Fix_eq.
   move => b g g' K; rewrite /hyloM'; case: ifPn => // pb.
   bind_ext => -[a' b'] /=.
   destruct Bool.bool_dec => //.
@@ -311,7 +311,7 @@ elim/last_ind => [|s x _].
   by rewrite insertE /= !bindretf insertE /= bindretf insertE.
 rewrite iperm_insertC insert_rcons alt_bindDl bind_fmap /= /comp /=.
 under [in RHS]eq_bind do rewrite iperm_rcons_bind.
-rewrite bindretf (@perm_eq_iperm _ _ (h :: rcons s x)); last first.
+rewrite bindretf (@perm_eq_iperm _ _ (h :: rcons s x)).
   by rewrite -cats1 -cat1s catA perm_catC.
 rewrite /= iperm_insertC -alt_bindDr; bind_ext => s'.
 by rewrite altmm iperm_rcons_bind.
@@ -411,7 +411,7 @@ Definition perms : seq A -> M (seq A) :=
 Lemma tpermsE s : (perms s = if s isn't h :: t then Ret [::] else
   do x <- tselect (h :: t); do y <- perms x.2; Ret (x.1 :: y))%Do.
 Proof.
-rewrite {1}/perms Init.Wf.Fix_eq //; [by case: s|move=> s' f g H].
+rewrite {1}/perms Init.Wf.Fix_eq //; [move=> s' f g H|by case: s].
 by rewrite /perms'; destruct s' => //; bind_ext=> x; rewrite H.
 Qed.
 
@@ -434,7 +434,7 @@ Definition uperm : seq A -> M (seq A) :=
 Lemma upermE s : (uperm s = if s isn't h :: t then Ret [::]
   else do a <- select (h :: t) ; do b <- uperm a.2; Ret (a.1 :: b))%Do.
 Proof.
-rewrite /uperm unfoldME; last exact: decr_size_select.
+rewrite /uperm unfoldME; first exact: decr_size_select.
 case: s => // h t; rewrite (_ : nilp _ = false) //.
 by bind_ext => -[x1 x2] ; rewrite fmapE.
 Qed.
@@ -575,10 +575,10 @@ move: s ns => [ns |h t].
   by rewrite qperm_nil bindretf perm_refl guardT bindskipf.
 rewrite /= ltnS => ns; rewrite qperm_cons bindA splits_guard_subseq !bindA.
 bind_ext => -[a b]; rewrite /= !bindA; apply: bind_ext_guard => /and3P[_ _ abt].
-rewrite !bindretf /liftM2 /= !bindA ih; last first.
+rewrite !bindretf /liftM2 /= !bindA ih.
   by rewrite (leq_trans _ ns) // ltnS -(perm_size abt) size_cat leq_addr.
 rewrite !bindA; bind_ext => a'; rewrite !bindA; apply: bind_ext_guard => aa'.
-rewrite !bindretf !bindA ih; last first.
+rewrite !bindretf !bindA ih.
   by rewrite (leq_trans _ ns) // ltnS -(perm_size abt) size_cat leq_addl.
 rewrite !bindA; bind_ext => b'; rewrite !bindA; apply: bind_ext_guard => bb'.
 rewrite !bindretf -[in X in _ = X >> _]cat_rcons -cats1 -catA perm_catCA.
@@ -596,11 +596,11 @@ move=> s; have [n ns] := ubnP (size s); elim: n s ns => // n ih s ns.
 move: s ns => [ns|p s]; first by rewrite !qperm_nil !bindretf.
 rewrite /= ltnS => ns; rewrite qpermE !bindA !dsplitsE !fmapE !bindA.
 bind_ext => -[a b] /=; apply: bind_ext_dassert => -[{}a {}b /= abs _].
-rewrite !bindretf (bind_liftM2_size _ _ 1%N); last first.
+rewrite !bindretf (bind_liftM2_size _ _ 1%N).
   by move=> x y; rewrite size_cat /= addn1 -addnS.
-rewrite {1}/liftM2 ih; last first.
+rewrite {1}/liftM2 ih.
   by rewrite /dsplitsT1 /= (leq_trans _ ns)// ltnS -(eqP abs) leq_addr.
-rewrite /liftM2 !bindA; bind_ext => xa; rewrite bindretf ih; last first.
+rewrite /liftM2 !bindA; bind_ext => xa; rewrite bindretf ih.
   by rewrite /dsplitsT2 /= (leq_trans _ ns)// ltnS -(eqP abs) leq_addl.
 by rewrite !bindA; bind_ext => xb; rewrite !bindretf /= (eqP abs) addn1.
 Qed.
@@ -656,7 +656,7 @@ transitivity ((Ret (10 + (10 + 100))) >>= (fun y => Ret (1 + y)) : M _); last fi
   by rewrite bindretf.
 congr (bind _ _).
 rewrite shiftreset3.
-rewrite (_ : do x <- Ret 10; _ = do y <- shift (@^~ 100) : M _; Ret (10 + (10 + y)))%Do; last first.
+rewrite (_ : do x <- Ret 10; _ = do y <- shift (@^~ 100) : M _; Ret (10 + (10 + y)))%Do.
   by rewrite bindretf.
 by rewrite shiftreset4.
 Qed.
@@ -800,10 +800,10 @@ rewrite qperm_cons !bindA /= guard_and bindA (@plus_commute _ _ (guard (all p t)
 rewrite guard_splits splits_bseqE fmapE 2!bindA plus_commute//.
 bind_ext => -[a b]; rewrite 2!bindretf !bindA /=.
 rewrite (@plus_commute _ _ (guard (all p b)))//.
-rewrite ih; last by rewrite (leq_trans _ tn) //= ltnS size_bseq.
+rewrite ih; first by rewrite (leq_trans _ tn) //= ltnS size_bseq.
 rewrite (@plus_commute _ _(guard (p h)))//.
 bind_ext => a'; rewrite !bindA (@plus_commute _ _ (guard (p h)))//.
-rewrite ih; last by rewrite (leq_trans _ tn) //= ltnS size_bseq.
+rewrite ih; first by rewrite (leq_trans _ tn) //= ltnS size_bseq.
 rewrite (@plus_commute _ _ (guard (p h)))// plus_commute//.
 bind_ext => b'; rewrite !bindretf all_cat /= andbA andbAC !guard_and !bindA.
 by under eq_bind do rewrite plus_commute//.
@@ -847,7 +847,7 @@ rewrite [in X in X -> _]/= ltnS => ns.
 rewrite qperm_cons iperm_cons_splits splits_guard_subseq !bindA.
 bind_ext => -[a b] /=; rewrite !bindA.
 apply: bind_ext_guard => /and3P[ta tb _].
-rewrite !bindretf ih; last first.
+rewrite !bindretf ih.
   by rewrite (leq_trans _ ns)// ltnS; apply: size_subseq.
 by rewrite ih // (leq_trans _ ns)// ltnS; apply: size_subseq.
 Qed.
@@ -913,6 +913,13 @@ Lemma refin_bind_guard {M : plusMonad} A (b : bool) (m1 m2 : M A) :
 Proof.
 case: b => [h|_]; first by apply: refin_bindl => -[]; exact: h.
 by rewrite guardF !bindfailf; exact: refin_refl.
+Qed.
+
+Lemma refin_ret_insert (M : altCIMonad) (A : UU0) h (t : seq A) :
+  Ret (h :: t) `<=` (insert h t : M _).
+Proof.
+elim: t h => [h|t1 t2 ih h]; first by rewrite insertE; exact: refin_refl.
+by rewrite insertE; exact: refinR.
 Qed.
 
 Lemma refin_ret_iperm (M : plusMonad) (A : UU0) (s : seq A) :

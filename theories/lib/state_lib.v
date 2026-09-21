@@ -1,6 +1,6 @@
 (* monae: Monadic equational reasoning in Rocq                                *)
-(* Copyright (C) 2025 monae authors, license: LGPL-2.1-or-later               *)
-From mathcomp Require Import all_ssreflect.
+(* Copyright (C) 2026 monae authors, license: LGPL-2.1-or-later               *)
+From mathcomp Require Import boot.
 From mathcomp Require boolp.
 Require Import preamble.
 From HB Require Import structures.
@@ -307,14 +307,14 @@ Lemma assert_all_scanl s (xs : seq A) :
   protect (scanlM op s xs >>=
     (fun ys => guard (all ok ys) >> Ret xs)) :> M _.
 Proof.
-rewrite assertE guardsC; last exact: bindmfail.
+rewrite assertE guardsC; first exact: bindmfail.
 transitivity (protect (scanlM op s xs) >>=
     (fun ys => guard (all ok ys) >> Ret xs) : M _).
   by rewrite -!bindA -scanlM_of_scanl bindA !bindretf assertE.
 rewrite bindA [in RHS]/protect.
 bind_ext => st.
 rewrite 2!bindA; bind_ext => xs'.
-rewrite [in RHS]bindA [in RHS]guardsC; last exact: bindmfail.
+rewrite [in RHS]bindA [in RHS]guardsC; first exact: bindmfail.
 rewrite bindA bindretf.
 rewrite /overwrite bindA bindretf bindA; bind_ext; case.
 by rewrite bindretf assertE.
@@ -343,7 +343,7 @@ transitivity (put (op st x) >>
   bind_ext => st'.
   bind_ext => s.
   by rewrite -guard_and andbC guard_and.
-rewrite guardsC; last exact: bindmfail.
+rewrite guardsC; first exact: bindmfail.
 rewrite !bindA.
 bind_ext; case.
 bind_ext => st'.
@@ -452,10 +452,11 @@ bind_ext => s.
 rewrite bindA; under eq_bind do rewrite bindretf.
 case: assertPn => ps; last first.
   rewrite bindfailf.
-  With (idtac) Open (X in _ >>= X).
+  under [X in _ >>= X]boolp.eq_fun.
+    move=> t.
     rewrite /assert; unlock => /=.
-    rewrite compE (negbTE (segment_closed_suffix ps x)) guardF bindfailf.
-    reflexivity.
+    rewrite compE (negbTE (segment_closed_suffix ps t)) guardF bindfailf.
+    over.
   by rewrite right_z.
 rewrite bindretf bindA /=.
 under [RHS]eq_bind do rewrite bindretf.
@@ -568,9 +569,14 @@ elim: n1 => [|n1 IH].
   rewrite [in LHS]compE uaddnE add0n.
   rewrite compE [in X in _ = _ X]/= squaringE symbols0.
   rewrite compE [in RHS]fmapE bindA bindretf.
-  rewrite -fmapE fmap_bind.
-  Open (X in _ >>= X).
-    rewrite fcompE fmapE bindretf /=; reflexivity.
+  rewrite -fmapE fmap_bind/=.
+  under [X in _ >>= X]boolp.eq_fun.
+    move=> s.
+    unlock.
+    rewrite /comp/=.
+    rewrite fmapE.
+    rewrite bindretf.
+    over.
   by rewrite bindmret.
 rewrite compE uaddnE addSn symbolsS -uaddnE -(compE symbols) {}IH.
 rewrite [in RHS]compE [in X in _ = _ X]/= squaringE symbolsS.

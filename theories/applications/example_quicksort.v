@@ -1,11 +1,11 @@
 (* monae: Monadic equational reasoning in Rocq                                *)
-(* Copyright (C) 2025 monae authors, license: LGPL-2.1-or-later               *)
-From mathcomp Require Import all_ssreflect.
+(* Copyright (C) 2026 monae authors, license: LGPL-2.1-or-later               *)
+From mathcomp Require Import boot order.
 From mathcomp Require boolp.
 Require Import preamble.
 Require Import hierarchy monad_lib alt_lib fail_lib state_lib.
 From infotheo Require Import ssr_ext.
-Require Import Recdef.
+From Stdlib Require Import Recdef.
 From Equations Require Import Equations.
 
 (**md**************************************************************************)

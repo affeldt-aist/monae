@@ -1,7 +1,7 @@
 (* monae: Monadic equational reasoning in Rocq                                *)
-(* Copyright (C) 2025 monae authors, license: LGPL-2.1-or-later               *)
-Require Import JMeq.
-From mathcomp Require Import all_ssreflect finmap.
+(* Copyright (C) 2026 monae authors, license: LGPL-2.1-or-later               *)
+From Stdlib Require Import JMeq.
+From mathcomp Require Import boot finmap.
 From mathcomp Require boolp.
 #[local] Remove Hints boolp.Prop_irrelevance : core.
 Require Import preamble.
@@ -425,15 +425,16 @@ have [u Hr1|T1' s'd Hr1 T1s'|Hr1] := ntherrorP e r1; last first.
     rewrite MS_bindE.
     rewrite {2}/cput -Hr Hr1.
     case/boolP: (T1 == T2) => [/eqP HT|HT]; last first.
-      rewrite coerce_None//; last by rewrite eq_sym.
+      rewrite coerce_None//; first by rewrite eq_sym.
       by rewrite /cput/= Hr nth_error_set_nth// coerce_None// eq_sym.
     subst T2.
     rewrite coerce_Some bindE/=.
-    have ? := JMeq_eq H; subst s2.
+    have s1s2 := JMeq_eq H.
+    rewrite -s1s2.
     by rewrite /cput -Hr.
   + move=> _.
     have [v r2v|T2' s Hr2 T2s|Hr2] := ntherrorP e r2; last first.
-    * rewrite MS_bindE None_cput/=; last first.
+    * rewrite MS_bindE None_cput/=.
         by rewrite (nth_error_set_nth_none _ _ Hr2 Hr1).
       by rewrite None_cput.
     * rewrite MS_bindE.

@@ -1,6 +1,6 @@
 (* monae: Monadic equational reasoning in Rocq                                *)
-(* Copyright (C) 2025 monae authors, license: LGPL-2.1-or-later               *)
-From mathcomp Require Import all_ssreflect.
+(* Copyright (C) 2026 monae authors, license: LGPL-2.1-or-later               *)
+From mathcomp Require Import boot.
 From mathcomp Require boolp.
 Require Import preamble hierarchy monad_lib fail_lib state_lib.
 
@@ -34,8 +34,11 @@ Hypothesis H1 : h \o Tip = f.
 Hypothesis H2 : h \o uncurry Bin = g \o (fun x => (h x.1, h x.2)).
 Lemma foldt_universal : h = foldt f g.
 Proof.
-rewrite boolp.funeqE; elim => [a|]; first by rewrite -H1.
-by move=> t1 IH1 t2 IH2 /=; rewrite -IH1 -IH2 -(uncurryE Bin) -compE H2.
+rewrite boolp.funeqE; elim => [|]; first by rewrite -H1.
+move=> t1 IH1 t2 IH2/=; rewrite -IH1 -IH2.
+rewrite -(uncurryE Bin).
+move: H2; rewrite boolp.funeqE => /(_ (t1, t2)).
+by rewrite compE => ->.
 Qed.
 End foldt_universal.
 
@@ -107,10 +110,12 @@ rewrite bindA.
 transitivity (guard (q (s, s')) >>
   (do x1 <- (Ret \o ucat) (s, s'); relabel u >>= (m^~ x1)))%Do.
   bind_ext; case; by rewrite 2!bindretf.
-rewrite guardsC; last exact: failfresh_bindmfail.
-rewrite !bindA !bindretf !bindA.
+rewrite [in LHS]guardsC; first exact: failfresh_bindmfail.
+rewrite !bindA.
+rewrite 2!bindretf.
+rewrite bindA.
 bind_ext => u'.
-rewrite bindA guardsC; last exact: failfresh_bindmfail.
+rewrite bindA guardsC; first exact: failfresh_bindmfail.
 by rewrite bindA bindretf.
 Qed.
 
@@ -148,7 +153,8 @@ Lemma dlabels_relabel_is_fold : relabel >=> dlabels = foldt drTip drBin.
 Proof.
 apply foldt_universal.
   (* relabel >=> dlabels \o Tip = drTip *)
-  rewrite kleisli_def -3!compA.
+  rewrite kleisli_def.
+  rewrite -2!(compA (Join \o _)).
   rewrite (_ : relabel \o Tip = (M # Tip) \o const fresh) //.
   rewrite (compA (fmap dlabels)) -functor_o.
   rewrite (_ : dlabels \o Tip = ret _ \o wrap) //.
@@ -157,11 +163,11 @@ apply foldt_universal.
 (* relabel >=> dlabels \o Bin = drBin \o _ *)
 rewrite [in LHS]kleisli_def -(compA _ relabel).
 rewrite (_ : _ \o _ Bin =
-    (fmap (uncurry Bin)) \o mpair \o relabel^`2); last first.
+    (fmap (uncurry Bin)) \o mpair \o relabel^`2).
   by rewrite boolp.funeqE; case.
 rewrite -(compA (fmap (uncurry Bin))) -compA (compA (fmap dlabels)) -functor_o.
 rewrite (_ : _ \o _ Bin =
-    (fmap ucat) \o bassert q \o mpair \o dlabels^`2); last first.
+    (fmap ucat) \o bassert q \o mpair \o dlabels^`2).
   by rewrite boolp.funeqE; case.
 transitivity ((fmap ucat) \o Join \o (fmap (bassert q \o mpair)) \o mpair \o
     (fmap dlabels \o relabel)^`2).
