@@ -77,7 +77,7 @@ dependencies:
   description: |-
     [Coq-Equations](https://github.com/mattam82/Coq-Equations)
 - opam:
-    name: rocq-zify
+    name: rocq-mathcomp-zify
     version: '{ >= "1.7~"}'
   description:
     Zify
