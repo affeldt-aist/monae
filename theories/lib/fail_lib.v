@@ -181,11 +181,11 @@ rewrite 2![in RHS]insertE.
 rewrite [in LHS]alt_fmapDr ![in LHS]altA [in LHS](altC (Ret [:: a, b, h & t])).
 rewrite -!altA; congr (_ [~] _); first by rewrite fmapE bindretf.
 rewrite alt_fmapDr -!altA; congr (_ [~] _); first by rewrite fmapE bindretf.
-rewrite [in LHS]altC bind_fmap /= [in LHS]/comp /=.
+rewrite [in LHS]altC bind_fmap /= [in LHS]/(_ \o _) /=.
 under eq_bind do rewrite insertE.
 rewrite alt_bindDr.
 under [in X in (_ [~] X) [~] _]eq_bind do rewrite fmapE.
-rewrite -bindA [in LHS]ih // [in RHS]altC bind_fmap /= [in RHS]/comp /=.
+rewrite -bindA [in LHS]ih // [in RHS]altC bind_fmap /= [in RHS]/(_ \o _) /=.
 under [in RHS]eq_bind do rewrite insertE.
 rewrite alt_bindDr [in RHS]altC -!altA; congr (_ [~] _).
   rewrite !fmapE !bindA.
@@ -383,7 +383,7 @@ Lemma decr_size_select : bassert_size select.
 Proof.
 case => [|h t]; first by rewrite !selectE fmap_fail /bassert bindfailf.
 rewrite /bassert selectE bind_fmap fmapE; bind_ext => -[x y] /=.
-rewrite !compE.
+rewrite !up_compE.
 by case: assertPn => //=; rewrite size_tuple /= ltnS leqnn.
 Qed.
 
@@ -705,7 +705,7 @@ Lemma liftM2_isNondet A B C (f : A -> B -> C) (ma : M A) (mb : M B) :
 Proof.
 move=> [s1 s1_ma] [s2 s2_mb].
 exists (ndBind s1 (fun a => ndBind s2 (fun b => ndRet (f a b)))).
-by rewrite /= s1_ma /comp /= s2_mb.
+by rewrite /= s1_ma /(_ \o _) /= s2_mb.
 Qed.
 
 Lemma guard_isNondet (b : bool) : plus_isNondet (guard b : M _).
@@ -753,7 +753,7 @@ have liftM2_qperm_isNondet (a b : (size t).-bseq A) :
   - by rewrite (leq_ltn_trans (size_bseq b)).
 exists (ndBind syn (fun a => sval (liftM2_qperm_isNondet a.1 a.2))).
 rewrite /= syn_tsplits; bind_ext => -[a b] /=.
-by rewrite bindretf compE; case: (liftM2_qperm_isNondet _ _).
+by rewrite bindretf up_compE; case: (liftM2_qperm_isNondet _ _).
 Qed.
 
 End plus_commute.

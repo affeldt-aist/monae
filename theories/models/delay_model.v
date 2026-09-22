@@ -689,7 +689,7 @@ CoFixpoint naturalitywB' {A B C} (f : A -> M (B + A)) (g : B -> M C) (d : M (B +
 Proof.
 case: d => [[b|a]|d].
 - apply wBisims_wBisim.
-  rewrite !bindretf/= compE fmapE bindA.
+  rewrite !bindretf/= up_compE fmapE bindA.
   have [[c Ht]|/Diverge_spinP HD] := StopP (g b).
     set h := fun x => (Ret \o inl) x >>= _.
     rewrite (Stop_bindmf h Ht).
@@ -699,7 +699,7 @@ case: d => [[b|a]|d].
   rewrite HD.
   setoid_symmetry.
   exact/Diverge_wBisims_spinP/Diverge_bindspinf.
-- rewrite! bindretf /= compE fmapE bindA bindretf /= bindretf /= bind_Later.
+- rewrite! bindretf /= up_compE fmapE bindA bindretf /= bindretf /= bind_Later.
   apply wBLater.
   rewrite whileE whileE.
   exact: naturalitywB'.
@@ -736,10 +736,10 @@ Proof.
 case: d => [ [[b|a]|a]|d'].
 - by rewrite bindretf bindretf bindretf //= bindretf.
 - rewrite bindretf bindretf bindretf //= bindretf whileE whileE whileE //=.
-  rewrite compE fmapE.
+  rewrite up_compE fmapE.
   exact/wBLater/codiagonalwB'.
 - rewrite bindretf bindretf bindretf //= bind_Later whileE whileE //=.
-  rewrite compE fmapE.
+  rewrite up_compE fmapE.
   exact/wBLater/codiagonalwB'.
 - by rewrite !bind_Later; exact/wBLater/codiagonalwB'.
 Qed.
@@ -749,7 +749,7 @@ Lemma codiagonalwB {A B} (f : A -> M ((B + A) + A)) a :
   ≈
   while (while f) a.
 Proof.
-by rewrite whileE whileE whileE //= compE fmapE; exact: codiagonalwB'.
+by rewrite whileE whileE whileE //= up_compE fmapE; exact: codiagonalwB'.
 Qed.
 
 Lemma whilewB {A B} (f g : A -> M (B + A)) (a : A) :
@@ -819,7 +819,7 @@ case: (StopP (while g c)).
     exists n2.
     rewrite /gch -(addn0 n2).
     apply: (steps_bindD Hg).
-    by case: a Hg Ha => a' Hg Ha /=; rewrite !compE fmapE bindretf.
+    by case: a Hg Ha => a' Hg Ha /=; rewrite !up_compE fmapE bindretf.
   move/(Stop_wBisim Tgch).
   clear gch Tgch.
   case/Stop_steps => n1 Tfhc.
@@ -854,12 +854,12 @@ move: (H c).
 move/(Stop_wBisim Tfhc).
 case/Stop_steps => n1 Tgc.
 have [[b'|a'] [n3] [] /= Hgc] := steps_bind Tgc.
-  rewrite compE fmapE bindretf /= steps_Now => -[] Hb'.
+  rewrite up_compE fmapE bindretf /= steps_Now => -[] Hb'.
   exists b'.
   apply/Stop_steps.
   exists (n3 + 0).
   exact: (steps_bindD Hgc).
-rewrite !compE fmapE bindretf /= steps_Now => -[] Hha'.
+rewrite !up_compE fmapE bindretf /= steps_Now => -[] Hha'.
 rewrite -Hha' in Ha.
 have Hnn2 : n - n2 > 0 by case: (n - n2) Ha.
 rewrite -(prednK Hnn2) /= in Ha.
