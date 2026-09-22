@@ -35,7 +35,7 @@ CoInductive Delay (A : UU0) : Type :=
 
 Local Notation M := Delay.
 
-Let ret : idfun ~~> M := @Now.
+Let ret : FId ~~> M := @Now.
 
 Let bind := fun A B (m : M A) (f : A -> M B) =>
   (cofix bind_ u := match u with
