@@ -1,6 +1,6 @@
 (* monae: Monadic equational reasoning in Rocq                                *)
-(* Copyright (C) 2025 monae authors, license: LGPL-2.1-or-later               *)
-From mathcomp Require Import all_ssreflect.
+(* Copyright (C) 2026 monae authors, license: LGPL-2.1-or-later               *)
+From mathcomp Require Import boot.
 Require Import ipreamble.
 From HB Require Import structures.
 Require Import ihierarchy imonad_lib ifail_lib istate_lib.
@@ -362,7 +362,11 @@ HB.instance Definition _ :=
 
 Lemma MEnv_mapE (A B : UU0) (f : A -> B) (m : MEnv A) :
   (MEnv # f) m = (M # f) \o m.
-Proof. by apply: funext => r; rewrite compE/= fmapE. Qed.
+Proof.
+apply: funext => r.
+rewrite compE.
+by rewrite [in RHS]fmapE.
+Qed.
 
 Definition liftEnv A (m : M A) : MEnv A := fun r => m.
 
@@ -536,112 +540,73 @@ HB.instance Definition _ := @isMonadContinuation.Build
 
 End contMonad_of_contT.
 
-Section continuation_monad_transformer_examples.
+Section continuation_monad_transformer_example.
 
-Fixpoint for_loop (M : monad) (it min : nat) (body : nat -> contT unit M unit) : M unit :=
+(* NB: on the model of forloopM, for the model of forloopStateMonad *)
+Fixpoint forloop_contT
+    (M : monad) (it min : nat) (body : nat -> contT unit M unit) : M unit :=
   if it <= min then Ret tt
   else if it is it'.+1 then
-      (body it') (fun _ => for_loop it' min body)
+      (body it') (fun=> forloop_contT it' min body)
       else Ret tt.
 
-Section for_loop_lemmas.
+Section forloop_contT_lemmas.
 Variable M : monad.
-Implicit Types body : nat  -> contT unit M unit.
+Implicit Types body : nat -> contT unit M unit.
 
-Lemma loop0 i body : for_loop i i body = Ret tt.
-Proof.
-by case i => //= n; rewrite ltnS leqnn.
-Qed.
+Lemma forloop_contT0 i body : forloop_contT i i body = Ret tt.
+Proof. by case i => //= n; rewrite ltnS leqnn. Qed.
 
-Lemma loop1 i j body : for_loop (i.+1 + j) i body =
-  (body (i + j)) (fun _ => for_loop (i + j) i body).
-Proof.
-rewrite /=.
-by case : ifPn ; rewrite ltnNge leq_addr.
-Qed.
+Lemma forloop_contT1 i j body : forloop_contT (i.+1 + j) i body =
+  (body (i + j)) (fun _ => forloop_contT (i + j) i body).
+Proof. by rewrite /=; case : ifPn ; rewrite ltnNge leq_addr. Qed.
 
-Lemma loop2 i j body :
-  body (i + j) = abortT tt -> for_loop (i + j).+1 i body = Ret tt.
-Proof.
-move=> Hbody /=.
-case : ifPn => Hcond.
-- reflexivity.
-- by rewrite Hbody /= /abortT.
-Qed.
+End forloop_contT_lemmas.
 
-End for_loop_lemmas.
-(* TODO : instantiate with RunStateMonad *)
-
-Definition foreach (M : monad) (items : list nat) (body : nat -> contT unit M unit) : M unit :=
-  foldr
-    (fun x next => (body x) (fun _ => next))
-    (Ret tt)
-    items.
-
-(* Lemma loop3 : forall i j body, *)
-(*      foreach (i + j).+1 i body = Ret tt -> body (i + j) = @abort_tt m unit. *)
-(* Proof. *)
-(* move => i j body /=. *)
-(* case : ifPn => //; rewrite ltnNge; rewrite leq_addr. *)
-(* by []. *)
-(* move => _ /= Hfor. *)
-(* have Hcont2 : forall cont, body (i + j) = @abort_tt m unit -> body (i + j) cont = Ret tt. *)
-(*   (* split. *) *)
-(*   rewrite /= /abort_tt /abort. *)
-(*   by rewrite funeqE. *)
-(* have Hcont1 : (forall cont, body (i + j) cont = Ret tt) -> body (i + j) = @abort_tt m unit.   *)
-(*   move => Hcont. *)
-(*   rewrite /= /abort_tt /abort. *)
-(*   rewrite funeqE => k. *)
-(*   exact: Hcont. *)
-(* apply Hcont1. *)
-(* move => cont. *)
-(* rewrite Hcont2 //. *)
-
-(* set bl := (fun _ : unit => foreach (i + j) i body). *)
-(* (* Check (fun _ : unit => foreach (i + j) i body). *) *)
-(* generalize (Hcont1 bl). *)
-
-(* move => bl. *)
-(* Qed *)
-
-Section sum.
+Section forloop_contT_example.
 Variables M : stateMonad nat.
 
-Let sum n : M unit := for_loop n O
-  (fun i : nat => liftC (get >>= (fun z => put (z + i)))).
+Definition sum_contT n : M unit := forloop_contT n O
+  (fun i => liftC (get >>= (fun z => put (z + i)))).
 
-Lemma sum_test n :
-  sum n = get >>= (fun m => put (m + sumn (iota 0 n))).
+Lemma sum_contTE n :
+  sum_contT n = get >>= (fun m => put (m + sumn (iota 0 n))).
 Proof.
 elim: n => [|n ih].
-  rewrite /sum.
-  rewrite loop0.
+  rewrite /sum_contT.
+  rewrite forloop_contT0.
   rewrite (_ : sumn (iota 0 0) = 0) //.
   rewrite -[LHS]bindskipf.
-  rewrite -getputskip.
+  rewrite -getput.
   rewrite bindA.
   bind_ext => a.
   rewrite addn0.
   rewrite -[RHS]bindmret.
   bind_ext.
   by case.
-rewrite /sum -add1n loop1 /liftC bindA; bind_ext => m.
-rewrite -/(sum n) {}ih -bindA.
+rewrite /sum_contT -add1n forloop_contT1 /liftC bindA; bind_ext => m.
+rewrite -/(sum_contT n) {}ih -bindA.
 rewrite putget bindA bindretf putput.
 congr put.
 by rewrite add0n (addnC 1) iotaD /= sumn_cat /= add0n addn0 /= addnAC addnA.
 Qed.
 
-Example sum_from_0_to_10 : M unit :=
-  foreach (iota 100 0) (fun i => if i > 90 then
+Definition foreach_contT (M : monad) (items : list nat)
+    (body : nat -> contT unit M unit) : M unit :=
+  foldr
+    (fun x next => (body x) (fun _ => next))
+    (Ret tt)
+    items.
+
+Example sum_foreach_contT : M unit :=
+  foreach_contT (iota 0 10) (fun i => if i > 90 then
                             abortT tt
                           else
                             liftC (get >>= (fun z => put (z + i)))).
 
-End sum.
+End forloop_contT_example.
 
-End continuation_monad_transformer_examples.
+End continuation_monad_transformer_example.
 
 (* laws about lifted fail *)
 
@@ -776,7 +741,7 @@ rewrite (algebraic op).
 rewrite -(compE (E # _)) -functor_o.
 rewrite -(compE (op _)).
 set x := _^~ id.
-rewrite (_ : x = Join); last first.
+rewrite (_ : x = Join).
   apply: funext => mma.
   by rewrite /x bindE functor_id (*TODO: lemma*).
 by rewrite joinretM functor_id compfid.
@@ -806,13 +771,13 @@ rewrite vcompE.
 rewrite phiE.
 rewrite !compE.
 rewrite (_ : (E # Ret) ((E # e X) Y) =
-             (E # (M # e X)) ((E # Ret) Y)); last first.
+             (E # (M # e X)) ((E # Ret) Y)).
   rewrite -[in LHS]compE -functor_o.
   rewrite -[in RHS]compE -functor_o.
   by rewrite (natural ret) FIdE.
 set x := (Z in Join (e (N X) Z)).
 rewrite (_ : x =
-             (M # e X) (op (M X) ((E # Ret) Y))); last first.
+             (M # e X) (op (M X) ((E # Ret) Y))).
   rewrite -(compE (M # e X)).
   by rewrite (natural op).
 transitivity (e X (Join (op (M X) ((E # Ret) Y)))); last first.
@@ -997,6 +962,7 @@ rewrite (compA Join (M # _)).
 rewrite joinMret.
 rewrite compidf.
 rewrite functor_o.
+rewrite -?(compE Join).
 rewrite compA.
 rewrite joinMret.
 rewrite compidf.
@@ -1011,6 +977,7 @@ rewrite (compA Join (N # _)).
 rewrite joinMret.
 rewrite compidf.
 rewrite functor_o.
+rewrite -?(compE Join).
 rewrite compA.
 rewrite joinMret.
 rewrite compidf.

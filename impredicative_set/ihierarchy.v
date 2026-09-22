@@ -1,9 +1,9 @@
 (* monae: Monadic equational reasoning in Rocq                                *)
-(* Copyright (C) 2025 monae authors, license: LGPL-2.1-or-later               *)
+(* Copyright (C) 2026 monae authors, license: LGPL-2.1-or-later               *)
 Ltac typeof X := type of X.
 
-Require Import ssrmatching JMeq.
-From mathcomp Require Import all_ssreflect.
+From Stdlib Require Import ssrmatching JMeq.
+From mathcomp Require Import boot.
 Require Import ipreamble.
 From HB Require Import structures.
 
@@ -126,7 +126,7 @@ Notation "f ~~> g" := (forall A : UU0, f A -> g A)
   M (A * (size s).-1.-tuple A)%type *)
 Module FunctorLaws.
 Section def.
-Variable (F : UU0 -> UU0) (f : forall A B : UU0, (A -> B) -> F A -> F B).
+Context (F : UU0 -> UU0) (f : forall A B : UU0, (A -> B) -> F A -> F B).
 Definition id := forall A : UU0, f id = id :> (F A -> F A).
 Definition comp := forall (A B C : UU0) (g : B -> C) (h : A -> B),
   f (g \o h) = f g \o f h.
@@ -174,7 +174,7 @@ End functorid.
 Lemma FIdE (A B : UU0) (f : A -> B) : idfun # f = f. Proof. by []. Qed.
 
 Section functor_composition.
-Variables F G : functor.
+Context (F G : functor).
 
 Let comp_actm (A B : UU0) (h : A -> B) : (F \o G) A -> (F \o G) B :=
   F # (G # h).
@@ -199,7 +199,7 @@ Proof. by []. Qed.
 (* monadic counterpart of function composition:
    composes a pure function after a monadic function *)
 Section fcomp.
-Variable M : functor.
+Context (M : functor).
 
 Definition fcomp (A B C : UU0) (f : A -> B) (g : C -> M A) :=
   locked ((M # f) \o g).
@@ -235,7 +235,7 @@ Arguments natural {F G} s.
 Notation "f ~> g" := (nattrans f g) : monae_scope.
 
 Section natrans_lemmas.
-Variables (F G : functor) (phi : F ~> G).
+Context (F G : functor) (phi : F ~> G).
 Lemma nattrans_ext (f g : F ~> G) : f = g <-> forall a, (f a = g a :> (_ -> _)).
 Proof.
 split => [ -> // |]; move: f g => [f Hf] [g Hg] /= fg.
@@ -283,8 +283,7 @@ Qed.*)
 
 Module JoinLaws.
 Section join_laws.
-Context {F : functor}.
-Variables (ret : idfun ~~> F) (join : F \o F ~~> F).
+Context {F : functor} (ret : idfun ~~> F) (join : F \o F ~~> F).
 Arguments ret {_}.
 Arguments join {A}.
 
@@ -300,8 +299,7 @@ End JoinLaws.
 
 Module BindLaws.
 Section bindlaws.
-Variable F : UU0 -> UU0.
-Variable b : forall (A B : UU0), F A -> (A -> F B) -> F B.
+Context (F : UU0 -> UU0) (b : forall (A B : UU0), F A -> (A -> F B) -> F B).
 Local Notation "m >>= f" := (b m f).
 
 Definition associative := forall A B C (m : F A) (f : A -> F B) (g : B -> F C),
@@ -420,7 +418,7 @@ Lemma eq_bind (M : monad) (A B : UU0) (m : M A) (f1 f2 : A -> M B) :
 Proof. by move=> f12; congr bind; apply funext. Qed.
 
 Section monad_lemmas.
-Variable M : monad.
+Context (M : monad).
 
 Lemma fmapE (A B : UU0) (f : A -> B) (m : M A) :
  (M # f) m = m >>= (ret B \o f).
@@ -620,7 +618,7 @@ Tactic Notation "Open" ssrpatternarg(pat) :=
   With (idtac) Open pat.
 
 Section fmap_and_join.
-Variable M : monad.
+Context (M : monad).
 Local Open Scope mprog.
 
 Lemma bind_fmap (A B C : UU0) (f : A -> B) (m : M A) (g : B -> M C) :
@@ -653,7 +651,7 @@ Proof. by rewrite bindE. Qed.
 End fmap_and_join.
 
 Section kleisli.
-Variable M : monad.
+Context (M : monad).
 Implicit Types A B C D : UU0.
 
 Definition kleisli A B C (m : B -> M C) (n : A -> M B) : A -> M C :=
@@ -713,7 +711,7 @@ Arguments bindfailf [_].
 Arguments fail {_} {_}.
 
 Section guard_assert.
-Variable M : failMonad.
+Context (M : failMonad).
 
 Definition guard (b : bool) : M unit := if b then skip else fail.
 
@@ -799,7 +797,7 @@ Arguments altC {_} {_}.
 Arguments altmm {_} {_}.
 
 Section altci_lemmas.
-Variable (M : altCIMonad).
+Context (M : altCIMonad).
 
 Lemma altCA A : @left_commutative (M A) (M A) (fun x y => x [~] y).
 Proof. by move=> x y z; rewrite altA altC altA altC (altC x). Qed.
@@ -823,7 +821,7 @@ HB.structure Definition MonadNondet := {M of isMonadNondet M & }.
 HB.structure Definition MonadCINondet := {M of MonadAltCI M & MonadNondet M}.
 
 Section nondet_big.
-Variables (M : nondetMonad) (A : UU0).
+Context (M : nondetMonad) (A : UU0).
 HB.instance Definition _ :=
   Monoid.isLaw.Build _ _ _ (@altA M A) (@altfailm _ _) (@altmfail _ _).
 
@@ -940,7 +938,7 @@ HB.mixin Record isMonadState (S : UU0) (M : UU0 -> UU0) of Monad M := {
   put : S -> M unit ;
   putput : forall s s', put s >> put s' = put s' ;
   putget : forall s, put s >> get = put s >> Ret s ;
-  getputskip : get >>= put = skip ;
+  getput : get >>= put = skip ;
   getget : forall (A : UU0) (k : S -> S -> M A),
     get >>= (fun s => get >>= k s) = get >>= fun s => k s s }.
 
@@ -1032,18 +1030,17 @@ HB.structure Definition MonadFailFailR0Reify (S : UU0) :=
 HB.structure Definition MonadFailStateReify (S : UU0) :=
   {M of MonadStateReify S M & MonadFailFailR0Reify S M}.
 
-(* NB: this is experimental, may disappear, see rather foreach in
-   monad_transformer because it is more general *)
-HB.mixin Record isMonadStateLoop (S : UU0) (M : UU0 -> UU0)
+(* NB: this was an experience, may disappear now that we have the Elgot monad *)
+HB.mixin Record isMonadStateForLoop (S : UU0) (M : UU0 -> UU0)
     of MonadState S M := {
-  foreach : nat -> nat -> (nat -> M unit) -> M unit ;
-  loop0 : forall m body, foreach m m body = Ret tt ;
-  loop1 : forall m n body,
-    foreach (m.+1 + n) m body = (body (m + n)) >> foreach (m + n) m body }.
+  forloop : nat -> nat -> (nat -> M unit) -> M unit ;
+  forloop0 : forall m body, forloop m m body = Ret tt ;
+  forloop1 : forall m n body,
+    forloop (m.+1 + n) m body = body (m + n) >> forloop (m + n) m body }.
 
-#[short(type=loopStateMonad)]
-HB.structure Definition MonadStateLoop (S : UU0) :=
-  {M of isMonadStateLoop S M & }.
+#[short(type=forloopStateMonad)]
+HB.structure Definition MonadStateForLoop (S : UU0) :=
+  {M of isMonadStateForLoop S M & }.
 
 HB.mixin Record isMonadArray (S : UU0) (I : eqType) (M : UU0 -> UU0)
     of Monad M := {
@@ -1052,7 +1049,7 @@ HB.mixin Record isMonadArray (S : UU0) (I : eqType) (M : UU0 -> UU0)
   aputput : forall i s s', aput i s >> aput i s' = aput i s' ;
   aputget : forall i s (A : UU0) (k : S -> M A), aput i s >> aget i >>= k =
       aput i s >> k s ;
-  agetputskip : forall i, aget i >>= aput i = skip ;
+  agetput : forall i, aget i >>= aput i = skip ;
   agetget : forall i (A : UU0) (k : S -> S -> M A),
     aget i >>= (fun s => aget i >>= k s) = aget i >>= fun s => k s s ;
   agetC : forall i j (A : UU0) (k : S -> S -> M A),
@@ -1094,7 +1091,7 @@ HB.mixin Record isMonadStateTrace (S T : UU0) (M : UU0 -> UU0) of Monad M := {
   st_mark : T -> M unit ;
   st_putput : forall s s', st_put s >> st_put s' = st_put s' ;
   st_putget : forall s, st_put s >> st_get = st_put s >> Ret s ;
-  st_getputskip : st_get >>= st_put = skip ;
+  st_getput : st_get >>= st_put = skip ;
   st_getget : forall (A : UU0) (k : S -> S -> M A),
     st_get >>= (fun s => st_get >>= k s) = st_get >>= fun s => k s s ;
   st_putmark : forall s e, st_put s >> st_mark e = st_mark e >> st_put s ;

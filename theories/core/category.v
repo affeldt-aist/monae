@@ -1,6 +1,6 @@
 (* monae: Monadic equational reasoning in Rocq                                *)
-(* Copyright (C) 2025 monae authors, license: LGPL-2.1-or-later               *)
-From mathcomp Require Import all_ssreflect.
+(* Copyright (C) 2026 monae authors, license: LGPL-2.1-or-later               *)
+From mathcomp Require Import boot.
 From mathcomp Require Import boolp.
 Require Import preamble.
 From HB Require Import structures.
@@ -397,7 +397,9 @@ Definition f : F ~~> G := fun (c : C) => tc [hom idfun].
 Lemma natural : naturality F G f.
 Proof.
 move=> a b h.
-rewrite /f !transport_codomF 2!homcompE 2!compfid.
+rewrite /f !transport_codomF.
+rewrite 2!homcompE/=.
+rewrite 2!compfid.
 have /hom_ext -> : [hom (hom_of_eq (Iobj b) \o F # h)] = [hom tc (F # h)]
   by rewrite transport_codomF.
 by rewrite Imor transport_domF homfunK /= esymK.
@@ -662,7 +664,7 @@ evar (Y : TY).
 have-> : F1 # X = F1 # Y
   by congr (F1 # _); rewrite hom_ext /X /= -(natural eps0); exact: erefl.
 rewrite (functor_o_head F1) FIdf.
-rewrite -!hom_compA triL1 compidf.
+rewrite -!hom_compA/= triL1 compidf.
 rewrite -[in RHS](functor_id F1) -(functor_o F1); congr (F1 # _).
 by rewrite hom_ext /= triL0.
 Qed.

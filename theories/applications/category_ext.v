@@ -1,6 +1,6 @@
 (* monae: Monadic equational reasoning in Rocq                                *)
-(* Copyright (C) 2025 monae authors, license: LGPL-2.1-or-later               *)
-From mathcomp Require Import all_ssreflect.
+(* Copyright (C) 2026 monae authors, license: LGPL-2.1-or-later               *)
+From mathcomp Require Import boot.
 From mathcomp Require Import boolp.
 Require Import preamble category.
 From HB Require Import structures.
@@ -249,10 +249,10 @@ set s := ProductCategory.separated _.
 have [/= s1 s2] : s by split => /= x; [exists (f x) | exists (g x)].
 exists (conj s1 s2); split.
 - set h := ProductCategory.sepfst _.
-  rewrite (_ : h = f); first exact: isHom_inhom.
+  rewrite (_ : h = f); last exact: isHom_inhom.
   by rewrite boolp.funeqE => ?; rewrite /h /=; case: cid => ? [].
 - set h := ProductCategory.sepsnd _.
-  rewrite (_ : h = g); first exact: isHom_inhom.
+  rewrite (_ : h = g); last exact: isHom_inhom.
   by rewrite boolp.funeqE => ?; rewrite /h /=; case: cid => ? [].
 Qed.
 Definition pairhom : {hom (a1, b1) -> (a2, b2)} := Hom.Pack (Hom.Class (isHom.Axioms_ _ _ _ pairhom'_in_hom)).

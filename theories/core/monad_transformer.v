@@ -1,6 +1,6 @@
 (* monae: Monadic equational reasoning in Rocq                                *)
-(* Copyright (C) 2025 monae authors, license: LGPL-2.1-or-later               *)
-From mathcomp Require Import all_ssreflect.
+(* Copyright (C) 2026 monae authors, license: LGPL-2.1-or-later               *)
+From mathcomp Require Import boot.
 From mathcomp Require boolp.
 Require Import preamble.
 From HB Require Import structures.
@@ -363,7 +363,11 @@ HB.instance Definition _ :=
 
 Lemma MEnv_mapE (A B : UU0) (f : A -> B) (m : MEnv A) :
   (MEnv # f) m = (M # f) \o m.
-Proof. by apply: funext => r; rewrite compE/= fmapE. Qed.
+Proof.
+apply: funext => r.
+rewrite compE.
+by rewrite [in RHS]fmapE.
+Qed.
 
 Definition liftEnv A (m : M A) : MEnv A := fun r => m.
 
@@ -738,7 +742,7 @@ rewrite (algebraic op).
 rewrite -(compE (E # _)) -functor_o.
 rewrite -(compE (op _)).
 set x := _^~ id.
-rewrite (_ : x = Join); last first.
+rewrite (_ : x = Join).
   apply: funext => mma.
   by rewrite /x bindE functor_id (*TODO: lemma*).
 by rewrite joinretM functor_id compfid.
@@ -768,13 +772,13 @@ rewrite vcompE.
 rewrite phiE.
 rewrite !compE.
 rewrite (_ : (E # Ret) ((E # e X) Y) =
-             (E # (M # e X)) ((E # Ret) Y)); last first.
+             (E # (M # e X)) ((E # Ret) Y)).
   rewrite -[in LHS]compE -functor_o.
   rewrite -[in RHS]compE -functor_o.
   by rewrite (natural ret) FIdE.
 set x := (Z in Join (e (N X) Z)).
 rewrite (_ : x =
-             (M # e X) (op (M X) ((E # Ret) Y))); last first.
+             (M # e X) (op (M X) ((E # Ret) Y))).
   rewrite -(compE (M # e X)).
   by rewrite (natural op).
 transitivity (e X (Join (op (M X) ((E # Ret) Y)))); last first.
@@ -959,6 +963,7 @@ rewrite (compA Join (M # _)).
 rewrite joinMret.
 rewrite compidf.
 rewrite functor_o.
+rewrite -?(compE Join).
 rewrite compA.
 rewrite joinMret.
 rewrite compidf.
@@ -973,6 +978,7 @@ rewrite (compA Join (N # _)).
 rewrite joinMret.
 rewrite compidf.
 rewrite functor_o.
+rewrite -?(compE Join).
 rewrite compA.
 rewrite joinMret.
 rewrite compidf.

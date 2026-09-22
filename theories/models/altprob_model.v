@@ -1,6 +1,6 @@
 (* monae: Monadic equational reasoning in Rocq                                *)
-(* Copyright (C) 2025 monae authors, license: LGPL-2.1-or-later               *)
-From mathcomp Require Import all_ssreflect ssralg ssrnum finmap.
+(* Copyright (C) 2026 monae authors, license: LGPL-2.1-or-later               *)
+From mathcomp Require Import boot ssralg ssrnum finmap.
 From mathcomp Require Import interval_inference.
 From mathcomp Require Import boolp classical_sets reals.
 From infotheo Require Import classical_sets_ext realType_ext fdist proba.
@@ -209,7 +209,7 @@ apply contra_not.
 rewrite !gcm_retE /hierarchy.choice => /(congr1 (@NECSet.sort _ _)).
 rewrite /= !necset_convType.convE !conv_cset1 /=.
 move/(@set1_inj _ (conv _ _ _))/(congr1 (@FSDist.f _ _))/fsfunP/(_ true).
-rewrite !fsdist_convE !fsdist1xx !fsdist10//; last exact/eqP. (*TODO: we should not need that*)
+rewrite !fsdist_convE !fsdist1xx !fsdist10//; first exact/eqP. (*TODO: we should not need that*)
 by rewrite !avgRE !mulr1 ?mulr0 ?addr0 => /val_inj.
 Qed.
 

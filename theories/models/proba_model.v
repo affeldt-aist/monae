@@ -1,8 +1,8 @@
 (* monae: Monadic equational reasoning in Rocq                                *)
-(* Copyright (C) 2025 monae authors, license: LGPL-2.1-or-later               *)
-From mathcomp Require Import all_ssreflect ssralg ssrnum interval_inference.
+(* Copyright (C) 2026 monae authors, license: LGPL-2.1-or-later               *)
+From mathcomp Require Import boot ssralg ssrnum interval_inference.
 From mathcomp Require boolp.
-From mathcomp Require Import unstable mathcomp_extra reals.
+From mathcomp Require Import unstable reals.
 From infotheo Require Import realType_ext ssr_ext fsdist.
 From infotheo Require Import convex.
 From HB Require Import structures.

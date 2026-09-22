@@ -1,6 +1,6 @@
 (* monae: Monadic equational reasoning in Rocq                                *)
-(* Copyright (C) 2025 monae authors, license: LGPL-2.1-or-later               *)
-From mathcomp Require Import all_ssreflect.
+(* Copyright (C) 2026 monae authors, license: LGPL-2.1-or-later               *)
+From mathcomp Require Import boot.
 From HB Require Import structures.
 Require Import ipreamble ihierarchy imonad_lib.
 
@@ -252,8 +252,12 @@ Qed.
 
 Lemma dorp2 : Dorp.dorp2 (@dorp).
 Proof.
-move=> A; rewrite /dorp /CRet (compA (Join \o M # swap)) -(compA Join).
-by rewrite (natural ret) (compA Join) joinretM compidf Hswap2.
+move=> A; rewrite /dorp /CRet.
+rewrite /=.
+rewrite (compA (Join \o M # swap)).
+rewrite -(compA Join (M # swap)).
+rewrite (natural ret).
+by rewrite (compA Join) joinretM compidf Hswap2.
 Qed.
 
 Lemma dorp3 : Dorp.dorp3 (@dorp).
@@ -265,7 +269,8 @@ Qed.
 Lemma dorp4 : Dorp.dorp4 (@dorp).
 Proof.
 move=> A; rewrite {1}/dorp {1}/Dorp.JOIN -JOIN_dorp JOIN_prod.
-rewrite (compA (Join \o M # swap)) -(compA Join).
+rewrite (compA (Join \o M # swap)).
+rewrite -(compA Join (M # swap)).
 rewrite (natural join).
 rewrite (compA Join Join) -joinA.
 rewrite -2![LHS]compA FCompE.

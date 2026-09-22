@@ -1,8 +1,8 @@
 (* monae: Monadic equational reasoning in Rocq                                *)
-(* Copyright (C) 2025 monae authors, license: LGPL-2.1-or-later               *)
-Require Import Eqdep JMeq List ssreflect.
+(* Copyright (C) 2026 monae authors, license: LGPL-2.1-or-later               *)
+From Stdlib Require Import Eqdep JMeq List ssreflect.
 Import ListNotations.
-From mathcomp Require Import ssreflect ssrfun ssrbool eqtype ssrnat seq.
+From mathcomp Require Import boot.
 Require Import hierarchy monad_lib state_lib trace_lib monad_model.
 
 (**md**************************************************************************)
@@ -578,7 +578,7 @@ case=> k <-.
 elim: k => // [A a s l1 l2|A p k IH s l1 l2].
   by rewrite !reifyret.
 rewrite /= !reifybind.
-rewrite denote_prefix_independent /=; [ | now exists p ].
+rewrite denote_prefix_independent /=; [now exists p|].
 case: reify=> // -[a [s' l]].
 by rewrite IH.
 Qed.
@@ -692,11 +692,11 @@ induction Hstep_star as
 - move: Heq1 Heq2 => [<- <-] [<- <-].
   apply step_Some_correct with (l := []) in Hstep.
   rewrite <- cats0 at 1.
-  rewrite denote_continuation_prefix_independent; [ | now exists k ].
+  rewrite denote_continuation_prefix_independent; [now exists k|].
   rewrite -> Hstep, (IH _ s'' _ k'');
    [ | reflexivity | reflexivity ].
   cbn.
-  rewrite denote_continuation_prefix_independent; [ reflexivity | ].
+  rewrite denote_continuation_prefix_independent; [|reflexivity].
   now eexists.
 Qed.
 

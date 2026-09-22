@@ -1,13 +1,15 @@
 (* monae: Monadic equational reasoning in Rocq                                *)
-(* Copyright (C) 2025 monae authors, license: LGPL-2.1-or-later               *)
-From mathcomp Require Import all_ssreflect.
+(* Copyright (C) 2026 monae authors, license: LGPL-2.1-or-later               *)
+From mathcomp Require Import boot.
 From mathcomp Require boolp.
 Require Import preamble hierarchy.
 
-(******************************************************************************)
-(*                      Lemmas using the typed store monad                    *)
+(**md**************************************************************************)
+(* # Lemmas using the typed store monad                                       *)
 (*                                                                            *)
+(* ```                                                                        *)
 (*     cchk T (r : loc T) := cget r >> skip.                                  *)
+(* ```                                                                        *)
 (*                                                                            *)
 (******************************************************************************)
 

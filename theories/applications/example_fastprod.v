@@ -1,6 +1,6 @@
 (* monae: Monadic equational reasoning in Rocq                                *)
-(* Copyright (C) 2025 monae authors, license: LGPL-2.1-or-later               *)
-From mathcomp Require Import all_ssreflect ssralg ssrint.
+(* Copyright (C) 2026 monae authors, license: LGPL-2.1-or-later               *)
+From mathcomp Require Import boot ssralg ssrint.
 From mathcomp Require boolp.
 Require Import preamble hierarchy monad_lib alt_lib fail_lib.
 
@@ -58,15 +58,15 @@ Lemma fastprod'E s : fastprod' s = Ret (product s).
 Proof.
 rewrite /fastprod' /work.
 rewrite -(foldr_universal (g:=failprod)) //=.
-  rewrite /failprod.
-  rewrite fun_if if_arg.
-  rewrite catchfailm catchret.
-  case: ifPn => // s0.
-  by rewrite product0.
-rewrite /failprod /next => n s'.
-rewrite inE eq_sym.
-case: (n == 0) => //=.
-by rewrite [RHS]fun_if fmap_fail fmap_ret.
+  rewrite /failprod /next => n s'.
+  rewrite inE eq_sym.
+  case: (n == 0) => //=.
+  by rewrite [RHS]fun_if fmap_fail fmap_ret.
+rewrite /failprod.
+rewrite fun_if if_arg.
+rewrite catchfailm catchret.
+case: ifPn => // s0.
+by rewrite product0.
 Qed.
 
 End fastprod.

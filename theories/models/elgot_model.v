@@ -1,6 +1,6 @@
 (* monae: Monadic equational reasoning in Rocq                                *)
-(* Copyright (C) 2025 monae authors, license: LGPL-2.1-or-later               *)
-From mathcomp Require Import all_ssreflect.
+(* Copyright (C) 2026 monae authors, license: LGPL-2.1-or-later               *)
+From mathcomp Require Import boot.
 From mathcomp Require boolp.
 From HB Require Import structures.
 Require Import preamble hierarchy monad_lib fail_lib state_lib trace_lib.
@@ -383,7 +383,13 @@ move => Hx HInv.
 case: (StopP (ElgotX.while f x)) =>
   [[[u' /Stop_wBisimsRet/wBisims_wBisim Hs
     |x' /Stop_wBisimsRet [n Hs]]]|/Diverge_wBisim_spinP Hs].
-- by rewrite /bassert ElgotX.bindXE Hs !bindretf bindXE !bindretf.
+- rewrite /bassert.
+  rewrite ElgotX.bindXE.
+  rewrite Hs.
+  rewrite [X in X ≈e _]bindA.
+  rewrite [X in X ≈e _]bindretf.
+  rewrite [X in _ ≈e X]bindretf.
+  by do ? rewrite [X in X ≈e _]bindretf.
 - rewrite steps_Now in Hs.
   move: x x' Hx Hs.
   elim: n => [/=|n IH] x x' Hx;
@@ -391,7 +397,10 @@ case: (StopP (ElgotX.while f x)) =>
   + case Hb: (f x) => [uxx|d].
     * case: uxx Hb => [u//|[y/=|y/=]] Hb;
                       rewrite bindretf/=bindretf.
-      - by rewrite/bassert bindXE bindretf.
+      - rewrite /bassert.
+        rewrite bindXE/=.
+        rewrite bindA.
+        by rewrite bindretf.
       - rewrite/bassert bindXE bindretf => _.
         move: (HInv x Hx).
         by rewrite Hb !bindretf.
@@ -414,8 +423,8 @@ case: (StopP (ElgotX.while f x)) =>
       rewrite /bassert !bind_Later.
       rewrite wBisim_Later -bindXE.
       rewrite -{2}IH' /bassert.
-        by [].
-      by move/assertE: HH.
+        by move/assertE: HH.
+      by [].
     rewrite/bassert !bindXE !bindA !bind_Later /= => Hd' Hs.
     apply wBLater.
     rewrite -!bindA -bindXE -/(bassert p _).

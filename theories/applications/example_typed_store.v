@@ -1,7 +1,7 @@
 (* monae: Monadic equational reasoning in Rocq                                *)
-(* Copyright (C) 2025 monae authors, license: LGPL-2.1-or-later               *)
-Require Import ZArith.
-From mathcomp Require Import all_ssreflect.
+(* Copyright (C) 2026 monae authors, license: LGPL-2.1-or-later               *)
+From Stdlib Require Import ZArith.
+From mathcomp Require Import boot.
 From mathcomp Require boolp.
 Require Import monad_model.
 From HB Require Import structures.
@@ -31,7 +31,7 @@ Module CoqTypeNat.
 Import MLTypes CoqTypeNat.
 
 Section cyclic.
-Variables (N : monad) (M : typedStoreMonad N).
+Context (N : monad) (M : typedStoreMonad N).
 
 Local Notation coq_type := hierarchy.coq_type.
 Local Open Scope do_notation.
@@ -256,7 +256,7 @@ Fixpoint loc_ids_rlist (l : list nat) (rl : rlist nat ml_int)
 End cyclic.
 
 Section cyclic_run.
-Variables (N : monad) (M : typedStoreRunMonad N).
+Context (N : monad) (M : typedStoreRunMonad N).
 
 Local Notation coq_type := hierarchy.coq_type.
 Local Open Scope do_notation.
@@ -273,7 +273,7 @@ Proof.
 rewrite bindA.
 under eq_bind do rewrite !bindA.
 under eq_bind do under eq_bind do
- rewrite !bindA bindretf !bindA bindretf cputget.
+ rewrite bindretf bindA bindretf cputget.
 rewrite -bindA_uncurry -bindA crunret // crunchkput // bindA.
 under eq_bind do rewrite !bindA.
 under eq_bind do under eq_bind do rewrite bindretf /=.
@@ -329,9 +329,10 @@ Proof.
 Abort.
 End cyclic_run.
 
+Require Import typed_store_transformer.
+
 Module eval_cyclic.
 Section eval.
-Require Import typed_store_transformer.
 Import ModelTypedStoreRun.
 
 Definition M := acto ml_type idfun.
@@ -359,20 +360,20 @@ Definition incr (l : loc ml_int) : M nat :=
   do x <- cget l; do _ <- cput l (succn x); Ret (succn x).
 
 Definition l : W (loc ml_int) := Restart it0 (cnew ml_int 3).
-Eval vm_compute in l.
+Eval compute in l.
 
 Definition it1 := Restart l (do l <- FromW l; incr l).
-Eval vm_compute in it1.
+Eval compute in it1.
 
 Definition it2 := Restart it1 (do l <- FromW l; incr l).
-Eval vm_compute in it2.
+Eval compute in it2.
 
 Local Notation cycle := (cycle idfun M).
 Local Notation rhd := (rhd idfun M).
 Local Notation rtl := (rtl idfun M).
 
 Definition it3 := Restart it2 (cycle ml_bool true false).
-Eval vm_compute in crun (FromW it3).
+Eval compute in crun (FromW it3).
 
 Definition it4 := Restart it3 (do l <- FromW it3; Ret (rhd ml_bool false l)).
 
@@ -386,7 +387,7 @@ End eval.
 End eval_cyclic.
 
 Section factorial.
-Variable (N : monad) (M : typedStoreRunMonad N).
+Context (N : monad) (M : typedStoreRunMonad N).
 
 Fixpoint fact_ref (r : loc ml_int) (n : nat) : M unit :=
   if n is m.+1 then cget r >>= fun p => cput r (n * p) >> fact_ref r m
@@ -394,7 +395,7 @@ Fixpoint fact_ref (r : loc ml_int) (n : nat) : M unit :=
 End factorial.
 
 Section factorial_run.
-Variable (N : monad) (M : typedStoreRunMonad N).
+Context (N : monad) (M : typedStoreRunMonad N).
 
 Local Notation fact_ref := (fact_ref N M).
 
@@ -417,7 +418,7 @@ Qed.
 End factorial_run.
 
 Section fact_for.
-Variable (N : monad) (M : typedStoreMonad N).
+Context (N : monad) (M : typedStoreMonad N).
 Local Notation coq_type := (hierarchy.coq_type N).
 Local Open Scope do_notation.
 
@@ -434,7 +435,7 @@ Definition fact_for (n : coq_type ml_int) : M (coq_type ml_int) :=
 End fact_for.
 
 Section fact_for_run.
-Variable (N : monad) (M : typedStoreRunMonad N).
+Context (N : monad) (M : typedStoreRunMonad N).
 Local Notation coq_type := (hierarchy.coq_type N).
 Local Open Scope do_notation.
 
@@ -456,17 +457,17 @@ elim: m => [|m IH] mn.
   under eq_bind do rewrite forloop_iteri0 ?leqnn // bindretf -cgetret.
   by rewrite cnewget.
 rewrite subnSK //.
-under eq_bind do (rewrite forloop_iteriS; last by apply leq_subr).
+under eq_bind do (rewrite forloop_iteriS; first by apply leq_subr).
 under eq_bind do rewrite !bindA.
 rewrite cnewget.
 under eq_bind do rewrite bindretf.
-rewrite cnewput -IH; last by apply ltnW.
+rewrite cnewput -IH; first by apply ltnW.
 by rewrite subnS mulnC -(@prednK (n-m)) // lt0n subn_eq0 -ltnNge.
 Qed.
 End fact_for_run.
 
 Section fibonacci.
-Variables (N : monad) (M : typedStoreMonad N).
+Context (N : monad) (M : typedStoreMonad N).
 
 Fixpoint fibo_rec n :=
   if n is m.+1 then
@@ -482,7 +483,7 @@ Fixpoint fibo_ref n (a b : loc ml_int) : M unit :=
 End fibonacci.
 
 Section fibonacci_run.
-Variables (N : monad) (M : typedStoreRunMonad N).
+Context (N : monad) (M : typedStoreRunMonad N).
 
 Local Notation fibo_ref := (fibo_ref N M).
 
@@ -507,7 +508,7 @@ elim: i x y => [|i IH] x y Hi.
   under eq_bind do rewrite -cgetret cchknewget.
   by rewrite cnewget -bindA crunret // crunnew // crunnew0.
 rewrite subSS => -[] Hx Hy.
-rewrite -(IH y (x + y) (ltnW Hi)); last first.
+rewrite -(IH y (x + y) (ltnW Hi)).
   rewrite {}Hx {}Hy; congr pair.
   rewrite subSn 1?ltnW//.
   case: n {IH} => // n in Hi *.
@@ -530,8 +531,8 @@ End fibonacci_run.
 
 End CoqTypeNat.
 
-Require Import PrimInt63.
-Require Sint63.
+From Stdlib Require Import PrimInt63.
+From Stdlib Require Sint63.
 
 Section Int63.
 Definition uint2N (n : int) : nat :=
@@ -551,7 +552,7 @@ Lemma lesb_ltsbS_eq m n : lesb m n -> ltsb n (Uint63.succ m) -> m = n.
 Proof.
 move/Sint63.lebP => mn /Sint63.ltbP nSm.
 move: (nSm).
-rewrite Sint63.succ_of_Z -Sint63.is_int; last first.
+rewrite Sint63.succ_of_Z -Sint63.is_int.
   split.
     apply Z.le_le_succ_r.
     by case: (Sint63.to_Z_bounded m).
@@ -638,10 +639,10 @@ rewrite Sint63.sub_of_Z => /(f_equal Uint63.to_Z).
 rewrite Uint63.of_Z_spec.
 move/Sint63.ltbP in mn.
 rewrite Zmod_small.
-  rewrite Z.sub_move_r /= => nm.
-  rewrite nm in mn.
-  by move/Z.lt_irrefl in mn.
-by apply /lesb_sub_bounded /Sint63.lebP /Z.lt_le_incl.
+  by apply /lesb_sub_bounded /Sint63.lebP /Z.lt_le_incl.
+rewrite Z.sub_move_r /= => nm.
+rewrite nm in mn.
+by move/Z.lt_irrefl in mn.
 Qed.
 
 Lemma sub_succ_pred m n : sub n (Uint63.succ m) = Uint63.pred (sub n m).
@@ -685,8 +686,7 @@ Module CoqTypeInt63.
 Import MLTypes CoqTypeInt63.
 
 Section fact_for_int63.
-Variable N : monad.
-Variable M : typedStoreMonad ml_type N locT_nat.
+Context (N : monad) (M : typedStoreMonad ml_type N locT_nat).
 Local Notation coq_type := (hierarchy.coq_type N).
 Local Open Scope do_notation.
 
@@ -735,7 +735,7 @@ Definition fact_for63 (n : coq_type ml_int) : M (coq_type ml_int) :=
   cget v.
 
 Section fact_for63_lemmas.
-Variable n : nat.
+Context (n : nat).
 (* Note: assuming n < max_int rather than n <= max_int is not strictly
    needed, but it simplifies reasoning about loops in concrete code *)
 Hypothesis Hn : (Z.of_nat n < Sint63.to_Z Sint63.max_int)%Z.
@@ -747,7 +747,7 @@ Proof. by apply N2int_bounded, Z.lt_le_incl. Qed.
 Lemma ltsb_succ : ltsb (N2int n) (Uint63.succ (N2int n)).
 Proof.
 apply/Sint63.ltbP.
-rewrite Sint63.succ_spec Sint63.cmod_small.
+rewrite Sint63.succ_spec Sint63.cmod_small; last first.
   by apply/Zle_lt_succ/Z.le_refl.
 split.
   rewrite -[X in (X <= _)%Z]Z.add_0_r.
@@ -762,12 +762,12 @@ move=> Smn.
 apply/Sint63.ltbP.
 have Hm : n - m.+1 < n.
   rewrite ltn_subLR.
-    by rewrite addSn ltnS leq_addl.
-  by apply ltnW.
+    by apply ltnW.
+  by rewrite addSn ltnS leq_addl.
 rewrite /N2int -!Sint63.is_int //.
-- by apply/inj_lt/ltP.
 - move/ltP/inj_lt in Hm.
   by split; apply N2int_bounded, Z.lt_le_incl, (Z.lt_trans _ _ _ Hm).
+- by apply/inj_lt/ltP.
 Qed.
 
 End fact_for63_lemmas.
@@ -775,8 +775,7 @@ End fact_for63_lemmas.
 End fact_for_int63.
 
 Section fact_for63_ok.
-Variable N : monad.
-Variable M : typedStoreRunMonad ml_type N locT_nat.
+Context (N : monad) (M : typedStoreRunMonad ml_type N locT_nat).
 Local Notation coq_type := (hierarchy.coq_type N).
 Local Open Scope do_notation.
 
@@ -818,8 +817,8 @@ by rewrite lt0n subn_eq0 -ltnNge.
 Qed.
 End fact_for63_ok.
 
-Section eval.
 Require Import typed_store_model.
+Section eval.
 
 Definition M := acto ml_type.
 

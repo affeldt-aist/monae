@@ -1,6 +1,6 @@
 (* monae: Monadic equational reasoning in Rocq                                *)
-(* Copyright (C) 2025 monae authors, license: LGPL-2.1-or-later               *)
-From mathcomp Require Import all_ssreflect.
+(* Copyright (C) 2026 monae authors, license: LGPL-2.1-or-later               *)
+From mathcomp Require Import boot.
 From mathcomp Require boolp.
 From HB Require Import structures.
 Require Import preamble hierarchy monad_lib Morphisms.
@@ -224,7 +224,7 @@ by move/asboolP; right.
 Qed.
 
 Lemma not_DivergeP A (d : M A) : ~ Diverge d <-> exists a, Stop d a.
-Proof. by split => [| ? ? //]; rewrite notE. Qed.
+Proof. by split => [| ? ? //]; rewrite not_notE. Qed.
 
 Lemma Diverge_spinP A (d : M A) : Diverge d <-> d = @spin A.
 Proof.
@@ -321,7 +321,7 @@ Add Parametric Relation A : (M A) (@wBisim A)
   symmetry proved by (@wBisim_sym A)
   transitivity proved by (@wBisim_trans A)
   as wBisim_rel.
-Hint Extern 0 (wBisim _ _) => setoid_reflexivity.
+Hint Extern 0 (wBisim _ _) => setoid_reflexivity : core.
 
 CoFixpoint wBisim_Later A (d : M A) : Later d ≈ d.
 Proof.
@@ -361,7 +361,7 @@ Add Parametric Relation A : (M A) (@wBisims A)
   symmetry proved by (@wBisims_sym A)
   transitivity proved by (@wBisims_trans A)
   as wBisims_rel.
-Hint Extern 0 (wBisims _ _) => setoid_reflexivity.
+Hint Extern 0 (wBisims _ _) => setoid_reflexivity : core.
 
 Lemma wBisims_Later A (d : M A) : Later d ≈s d.
 Proof.

@@ -1,7 +1,7 @@
 (* monae: Monadic equational reasoning in Rocq                                *)
-(* Copyright (C) 2025 monae authors, license: LGPL-2.1-or-later               *)
-Require Import Lia.
-From mathcomp Require Import all_ssreflect.
+(* Copyright (C) 2026 monae authors, license: LGPL-2.1-or-later               *)
+From mathcomp Require Import boot order.
+From mathcomp Require Import zify.
 From mathcomp Require boolp.
 Require Import preamble hierarchy.
 
@@ -164,7 +164,7 @@ elim: n {-2}n (leqnn n) => n.
 move=> IH [_|m' Hmn] m k; first by rewrite fixpointwB/= bindretf/= muln1.
 have [/= Hm'|/= Hm'] := boolP (odd m'); last first.
   by rewrite fixpointwB/= Hm' bindretf/= IH//= expnSr mulnAC -mulnA.
-rewrite fixpointwB/= Hm' bindretf/= IH.
+rewrite fixpointwB/= Hm' bindretf/= IH; last first.
   by rewrite uphalfE mulnn -expnM mul2n (@even_halfK m'.+1)//= negbK.
 rewrite leq_uphalf_double.
 move: Hmn; rewrite ltnS => /leq_trans; apply.
@@ -238,7 +238,8 @@ rewrite /mc91 /mc91_body fixpointwB //=.
 rewrite ltn_subRL addnC/=.
 rewrite bindretf/= -/mc91_body -/(mc91 _ _).
 have [k'11|k'11] := leqP k' 11.
-  by rewrite mc91wB101 ?mc91wB91//; lia.
+  rewrite mc91wB101 ?mc91wB91//.
+  lia.
 by rewrite (IH (k' - 11))//; lia.
 Qed.
 
@@ -307,13 +308,13 @@ rewrite /prodover10 /prodover10_body fixpointwB /=.
 elim: l' Hs => //= [h l''] _ []Hs.
 have [/bigmax_leqP_seq Hm10|Hm10] := leqP (\max_(i <- h :: l'') i) 10.
   rewrite catchfailm bindretf /=.
-  rewrite ifF; last first.
+  rewrite ifF.
     apply/negP/negP; rewrite -leqNgt.
     by rewrite Hm10//= mem_head.
   rewrite all_under10.
-    by rewrite muln1.
-  move=> i Hini.
-  by rewrite Hm10//= in_cons Hini orbT.
+    move=> i Hini.
+    by rewrite Hm10//= in_cons Hini orbT.
+  by rewrite muln1.
 rewrite catchret bindretf /=.
 rewrite -/prodover10_body -/prodover10.
 have [Ht|Hf] := eqVneq h (\max_(i <- h :: l'') i).
@@ -321,18 +322,18 @@ have [Ht|Hf] := eqVneq h (\max_(i <- h :: l'') i).
 move: Hm10.
 set k := \max_(i <- h :: l'') i => k10.
 have Hmaxin : k \in (h :: l'') by rewrite preamble.maxinseq.
-rewrite IH/=.
+rewrite IH/=; last first.
   rewrite /= (mulnC k n) -mulnA fun_if.
   rewrite (mulnA k h _) (mulnC k h) -mulnA (prodover10_pure_rem _ _ k10) //.
   by move: Hmaxin; rewrite in_cons eq_sym (negPf Hf).
 subst k.
 rewrite size_rem.
-  case: l'' Hs Hf k10 Hmaxin => [? contr|h' l'''  Hs ? ?].
-    contradict contr.
-    by rewrite big_cons big_nil maxn0 eq_refl.
-  by rewrite prednK.
-move: Hmaxin.
-by rewrite in_cons eq_sym (negPf Hf).
+  move: Hmaxin.
+  by rewrite in_cons eq_sym (negPf Hf).
+case: l'' Hs Hf k10 Hmaxin => [? contr|h' l'''  Hs ? ?].
+  contradict contr.
+  by rewrite big_cons big_nil maxn0 eq_refl.
+by rewrite prednK.
 Qed.
 
 End select.
@@ -466,9 +467,11 @@ have [Hl|?] := eqVneq (l %% 4) 1 => /=.
   have [?|] := eqVneq n' 1 => /=.
     rewrite fmapE bindA/=.
     by under eq_bind do rewrite bindA bindretf.
-  have [|] := eqVneq (n' %% 2) 0 => /=;
-  rewrite fmapE/= bindA bindfwB//= => a;
-  by rewrite bindA bindretf.
+  have [/= n20 n'1|] := eqVneq (n' %% 2) 0.
+    rewrite fmapE/= bindA bindfwB//=.
+    by under eq_bind do rewrite bindA bindretf.
+  rewrite fmapE/= bindA bindfwB//=.
+  by under eq_bind do rewrite bindA bindretf.
 have [Hn'|_] := eqVneq n' 1 => /=.
   rewrite Hn' fmapE bindA.
   by under eq_bind do rewrite bindA bindA bindretf.

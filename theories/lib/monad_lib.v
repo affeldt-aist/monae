@@ -1,8 +1,8 @@
 (* monae: Monadic equational reasoning in Rocq                                *)
-(* Copyright (C) 2025 monae authors, license: LGPL-2.1-or-later               *)
+(* Copyright (C) 2026 monae authors, license: LGPL-2.1-or-later               *)
 Ltac typeof X := type of X.
 Require Import ssrmatching.
-From mathcomp Require Import all_ssreflect.
+From mathcomp Require Import boot.
 From mathcomp Require boolp.
 Require Import preamble.
 From HB Require Import structures.
@@ -51,7 +51,7 @@ Require Import hierarchy.
 (*                                                                            *)
 (******************************************************************************)
 
-Reserved Notation "f ^`2" (format "f ^`2", at level 3).
+Reserved Notation "f ^`2" (format "f ^`2", at level 1).
 Reserved Notation "F ## g" (at level 11).
 Reserved Notation "E .-operation M" (at level 2, format "E  .-operation  M").
 Reserved Notation "E .-aoperation M" (at level 2, format "E  .-aoperation  M").
@@ -314,8 +314,8 @@ End id_natural_transformation.
 
 Arguments NId C [A].
 
-Definition vcomp (C D E : functor) (g : D ~> E) (f : C ~> D) :=
-  fun A : UU0 => g A \o f A.
+Definition vcomp (C D E : functor) (g : D ~> E) (f : C ~> D) : C ~~> E :=
+  locked (fun A : UU0 => g A \o f A).
 
 Section vertical_composition.
 Variables (C D E : functor) (g : D ~> E) (f : C ~> D).
@@ -333,7 +333,7 @@ End vertical_composition.
 
 Notation "f \v g" := [the _ ~> _ of vcomp f g].
 
-Lemma vcompE (F G H : functor) (n1 : F ~> H) (n2 : G ~> F) X :
+Lemma vcompE (F G H : functor) (n1 : F ~> H) (n2 : G ~> F) (X : UU0) :
   (n1 \v n2) X = n1 X \o n2 X.
 Proof. by rewrite /= /vcomp /=; unlock. Qed.
 
@@ -348,7 +348,7 @@ Definition hcomp (F G F' G' : functor) (s : F ~> G) (t : F' ~> G')
 Section horizontal_composition.
 Variables (F G F' G' : functor) (s : F ~> G) (t : F' ~> G').
 
-Lemma natural_hcomp : naturality (F' \o F) (G' \o G) (hcomp s t).
+Let natural_hcomp : naturality (F' \o F) (G' \o G) (hcomp s t).
 Proof.
 move=> A B h.
 rewrite [LHS]compA (natural t) -[LHS]compA -[in RHS]compA.
@@ -370,7 +370,7 @@ Definition fun_app_nt (S F G : functor) (nt : F ~> G) : S \o F ~~> S \o G :=
 Section functor_natural_transformation.
 Variables (S F G : functor) (nt : F ~> G).
 
-Lemma natural_fun_app_nt : naturality (S \o F) (S \o G) (fun_app_nt nt).
+Let natural_fun_app_nt : naturality (S \o F) (S \o G) (fun_app_nt nt).
 Proof.
 by move=> *; rewrite /fun_app_nt 2!FCompE -2!(@functor_o S) natural.
 Qed.
@@ -484,7 +484,7 @@ Proof.
 move => A B h.
 rewrite (_ : [the functor of M \o M] # h = g # ([the functor of f \o g] # (f # h))) //.
 rewrite (_ : _ \o g # ([the functor of f \o g] # (f # h)) =
-  g # (@eps (f B) \o ([the functor of f \o g] # (f # h)))); last by rewrite -functor_o.
+  g # (@eps (f B) \o ([the functor of f \o g] # (f # h)))); first by rewrite -functor_o.
 rewrite -natural FIdE.
 rewrite [in LHS]FCompE.
 rewrite /mu.
@@ -517,7 +517,7 @@ Proof.
 rewrite /BindLaws.associative => A B C x ab bc.
 rewrite /bind.
 set N := M f g.  set j := mu eps.
-rewrite [X in _ = j C X](_ : _ = (N # (j C)) ((N # (N # bc)) ((N # ab) x))); last first.
+rewrite [X in _ = j C X](_ : _ = (N # (j C)) ((N # (N # bc)) ((N # ab) x))).
   rewrite functor_o.
   rewrite compE.
   congr ((N # j C) _).
@@ -586,7 +586,7 @@ apply: (@AdjointFunctor.mk _ _ uni couni).
   rewrite /TriangularLaws.left => A.
   rewrite FCompE -[LHS]compA.
   rewrite -(@functor_o F).
-  rewrite (_ : @eps0 _ \o F0 # _ = @eta (F0 A)).
+  rewrite (_ : @eps0 _ \o F0 # _ = @eta (F0 A)); last first.
     exact: (AdjointFunctor.tri_left H).
   rewrite functor_o [LHS]compA -FCompE.
   rewrite -(natural (AdjointFunctor.eps H0)) /= FIdE -[LHS]compA.

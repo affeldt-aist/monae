@@ -34,66 +34,41 @@ license:
   identifier: LGPL-2.1-or-later
   file: LICENSE
 
-supported_rocq_versions:
-  text: Rocq 9.0--
-  opam: '{ >= "9.0" & < "9.3~" }'
+supported_coq_versions:
+  text: Rocq 9.1, 9.2
+  opam: '{ >= "9.1" & < "9.4~" }'
 
 tested_rocq_opam_versions:
-- version: '2.5.0-rocq-prover-9.0'
+- version: '2.6.0-rocq-prover-9.1'
   repo: 'mathcomp/mathcomp'
-- version: '2.5.0-rocq-prover-9.1'
+- version: '2.6.0-rocq-prover-9.2'
   repo: 'mathcomp/mathcomp'
 #- version: '9.2'
 
 dependencies:
 - opam:
     name: rocq-core
-    version: '{ (>= "9.0" & < "9.3~") }'
+    version: '{ (>= "9.1" & < "9.3~") }'
   description: |-
     Rocq prover
 - opam:
-    name: rocq-mathcomp-ssreflect
-    version: '{ >= "2.5.0" }'
-  description: |-
-    [MathComp ssreflect](https://math-comp.github.io)
-- opam:
-    name: rocq-mathcomp-fingroup
-    version: '{ >= "2.5.0" }'
-  description: |-
-    [MathComp fingroup](https://math-comp.github.io)
-- opam:
-    name: rocq-mathcomp-algebra
-    version: '{ >= "2.5.0" }'
-  description: |-
-    [MathComp algebra](https://math-comp.github.io)
-- opam:
-    name: rocq-mathcomp-solvable
-    version: '{ >= "2.5.0" }'
-  description: |-
-    [MathComp solvable](https://math-comp.github.io)
-- opam:
-    name: rocq-mathcomp-field
-    version: '{ >= "2.5.0" }'
-  description: |-
-    [MathComp field](https://math-comp.github.io)
-- opam:
-    name: coq-mathcomp-analysis
-    version: '{ >= "1.12.0" }'
+    name: rocq-mathcomp-analysis
+    version: '{ >= "1.18.0" }'
   description: |-
     [MathComp analysis](https://github.com/math-comp/analysis)
 - opam:
-    name: coq-infotheo
-    version: '{ >= "0.9.7" }'
+    name: rocq-infotheo
+    version: '{ >= "0.9.8" }'
   description: |-
     [Infotheo](https://github.com/affeldt-aist/infotheo)
 - opam:
     name: rocq-elpi
-    version: '{ >= "3.2.0" }'
+    version: '{ >= "3.5.0" }'
   description: |-
     [Rocq-Elpi](https://github.com/LPCIC/coq-elpi)
 - opam:
     name: rocq-hierarchy-builder
-    version: '{ >= "1.9.1" }'
+    version: '{ >= "1.10" }'
   description: |-
     [Hierarchy Builder](https://github.com/math-comp/hierarchy-builder)
 - opam:
@@ -101,6 +76,11 @@ dependencies:
     version: '{ >= "1.3" & < "1.4~" }'
   description: |-
     [Coq-Equations](https://github.com/mattam82/Coq-Equations)
+- opam:
+    name: rocq-mathcomp-zify
+    version: '{ >= "1.7~"}'
+  description:
+    Zify
 
 namespace: monae
 
@@ -133,7 +113,9 @@ publications:
   pub_doi: 10.1017/S0956796824000157
 - pub_url: https://msp.cis.strath.ac.uk/types2025/abstracts/TYPES2025_paper28.pdf
   pub_title: Monadic Equational Reasoning for while loop in Rocq
-
+- pub_url: https://www.jstage.jst.go.jp/article/jssst/43/2/43_2_42/_pdf/-char/en
+  pub_title: Monadic equational reasoning for while loops
+  pub_doi: 10.11309/jssst.43.2_42
 
 
 #make_target: [
@@ -151,7 +133,7 @@ build: |-
 
   ```shell
   opam repo add rocq-released https://rocq-prover.org/opam/released
-  opam install coq-monae
+  opam install rocq-monae
   ```
 
   It installs two directories in `coq/user-contrib`: `monae` and

@@ -1,11 +1,11 @@
 (* monae: Monadic equational reasoning in Rocq                                *)
-(* Copyright (C) 2025 monae authors, license: LGPL-2.1-or-later               *)
-From mathcomp Require Import all_ssreflect.
+(* Copyright (C) 2026 monae authors, license: LGPL-2.1-or-later               *)
+From mathcomp Require Import boot.
 Require Import ipreamble.
 From HB Require Import structures.
 Require Import ihierarchy imonad_lib ifail_lib istate_lib itrace_lib.
 Require Import imonad_transformer.
-Require PropExtensionality.
+From Stdlib Require PropExtensionality.
 
 (**md**************************************************************************)
 (* # Models for various monads                                                *)
@@ -20,7 +20,7 @@ Require PropExtensionality.
 (* ListMonad          == list monad seq                                       *)
 (* option_monad       == alias for ExceptMonad.acto unit                      *)
 (* OutputMonad        == output monad X * seq L                               *)
-(* EnvironmentMonad   == environment monad E -> A                             *)
+(* ReaderMonad        == reader/environment monad E -> A                      *)
 (* StateMonad         == state monad S -> A * S                               *)
 (* ContMonad          == continuation monad (A -> r) -> r                     *)
 (* ```                                                                        *)
@@ -135,7 +135,7 @@ Proof. by move=> A m; rewrite /bind flatten_seq1. Qed.
 Let associative : BindLaws.associative bind.
 Proof.
 move=> A B C; elim => // h t; rewrite /bind => ih f g.
-by rewrite map_cat flatten_cat ih.
+by rewrite /= map_cat flatten_cat /= ih.
 Qed.
 HB.instance Definition _ :=
   isMonad_ret_bind.Build M left_neutral right_neutral associative.
@@ -264,8 +264,8 @@ Lemma output_bindE (L A B : UU0) (M := OutputMonad.acto L)
   m >>= f = let: (x, w) := m in let: (x', w') := f x in (x', w ++ w').
 Proof. by []. Qed.
 
-Module EnvironmentMonad.
-Section environment.
+Module ReaderMonad.
+Section reader.
 Variable E : UU0.
 Definition acto := fun A : UU0 => E -> A.
 Local Notation M := acto.
@@ -281,11 +281,11 @@ Let associative : BindLaws.associative bind.
 Proof. by []. Qed.
 HB.instance Definition _ :=
   isMonad_ret_bind.Build M left_neutral right_neutral associative.
-End environment.
-End EnvironmentMonad.
-HB.export EnvironmentMonad.
+End reader.
+End ReaderMonad.
+HB.export ReaderMonad.
 
-Lemma environment_bindE (E A B : UU0) (M := EnvironmentMonad.acto E)
+Lemma reader_bindE (E A B : UU0) (M := ReaderMonad.acto E)
     (m : M A) (f : A -> M B) :
   m >>= f = fun e => f (m e) e.
 Proof. by []. Qed.
@@ -418,10 +418,10 @@ Definition empty_op : Empty.acto.-operation M := [the _ ~> _ of empty].
 Lemma algebraic_empty : algebraicity empty_op.
 Proof. by []. Qed.
 
-Definition append : Append.acto \o M ~~> M :=
+Definition append : squaring \o M ~~> M :=
   fun A x => let: (s1, s2) := x in (s1 ++ s2).
 
-Let naturality_append : naturality (Append.acto \o M) M append.
+Let naturality_append : naturality (squaring \o M) M append.
 Proof.
 move=> A B h; apply funext => -[s1 s2] /=.
 rewrite [LHS]fmapE [LHS]list_bindE.
@@ -430,9 +430,9 @@ by rewrite [in LHS]flatten_cat.
 Qed.
 
 HB.instance Definition _ :=
-  isNatural.Build (Append.acto \o M) M append naturality_append.
+  isNatural.Build (squaring \o M) M append naturality_append.
 
-Definition append_op : Append.acto.-operation M := [the _ ~> _ of append].
+Definition append_op : squaring.-operation M := [the _ ~> _ of append].
 
 Lemma algebraic_append : algebraicity append_op.
 Proof.
@@ -569,7 +569,7 @@ HB.export Local.
 
 Section environmentops.
 Variable E : UU0.
-Local Notation M := (EnvironmentMonad.acto E).
+Local Notation M := (ReaderMonad.acto E).
 
 Definition ask : (Ask.acto E \o M)(*E -> M A?*) ~~> M :=
   fun A f s => f s s. (* reading the environment *)
@@ -603,12 +603,12 @@ Definition local_op : (Local.acto E).-operation M :=
 Lemma algebraic_local : algebraicity local_op.
 Proof.
 move=> A B f t.
-rewrite environment_bindE.
+rewrite reader_bindE.
 rewrite /local_op /=.
 rewrite /local /=.
 rewrite /actm /=.
 case: t => /= ee m.
-rewrite environment_bindE.
+rewrite reader_bindE.
 apply funext=> x /=.
 Abort.
 
@@ -618,7 +618,7 @@ End environmentops.
 Module Environment.
 Section environment.
 Variable E : UU0.
-Local Notation M := (EnvironmentMonad.acto E).
+Local Notation M := (ReaderMonad.acto E).
 (* usual get operation *)
 Definition ask : M E := ask_op _ _ Ret.
 Lemma askE : ask = fun e => e. Proof. by []. Qed.
@@ -684,7 +684,6 @@ Definition handle : Handle.acto Z \o M ~~> M :=
   fun A => uncurry (@handle' A).
 
 Let naturality_handle : naturality (Handle.acto Z \o M) M handle.
-
 Proof. by move=> A B h; apply: funext => -[[]]. Qed.
 
 HB.instance Definition _ := isNatural.Build
@@ -1168,25 +1167,21 @@ Proof. by rewrite /mulM bindretf; apply funext. Abort.
 
 End shiftreset_examples.
 
-(* wip *)
-Module ModelStateLoop.
-Section modelstateloop.
+Module ModelStateForLoop.
+Section modelstateforloop.
 Variable S : UU0.
 Local Notation M := (StateMonad.acto S).
-Fixpoint mforeach (it min : nat) (body : nat -> M unit) : M unit :=
-  if it <= min then Ret tt
-  else if it is it'.+1 then
-      (body it') >>= (fun _ => mforeach it' min body)
-      else Ret tt.
-Let loop0 m body : mforeach m m body = Ret tt.
-Proof. by case: m => //= n; rewrite ltnS leqnn. Qed.
-Let loop1 m n body : mforeach (m.+1 + n) m body =
-     (body (m + n)) >> mforeach (m + n) m body :> M unit.
-Proof. by rewrite /mforeach /=; case: ifPn => //; rewrite ltnNge leq_addr. Qed.
-HB.instance Definition _ := isMonadStateLoop.Build S M loop0 loop1.
-End modelstateloop.
-End ModelStateLoop.
-HB.export ModelStateLoop.
+Definition forloop (it min : nat) (body : nat -> M unit) : M unit :=
+  forloopM it min body.
+Let forloop0 m body : forloop m m body = Ret tt.
+Proof. exact: forloopM0. Qed.
+Let forloop1 m n body : forloop (m.+1 + n) m body =
+  body (m + n) >> forloop (m + n) m body :> M unit.
+Proof. exact: forloopM1. Qed.
+HB.instance Definition _ := isMonadStateForLoop.Build S M forloop0 forloop1.
+End modelstateforloop.
+End ModelStateForLoop.
+HB.export ModelStateForLoop.
 
 Module ModelReify.
 Section modelreify.

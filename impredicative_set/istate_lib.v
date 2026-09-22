@@ -1,6 +1,6 @@
 (* monae: Monadic equational reasoning in Rocq                                *)
-(* Copyright (C) 2025 monae authors, license: LGPL-2.1-or-later               *)
-From mathcomp Require Import all_ssreflect.
+(* Copyright (C) 2026 monae authors, license: LGPL-2.1-or-later               *)
+From mathcomp Require Import boot.
 Require Import ipreamble.
 From HB Require Import structures.
 Require Import ihierarchy imonad_lib ifail_lib.
@@ -41,7 +41,7 @@ rewrite /protect.
 under eq_bind do rewrite bindA bindretf.
 rewrite /overwrite.
 under eq_bind do rewrite -bindA putput.
-by rewrite -bindA getputskip bindskipf.
+by rewrite -bindA getput bindskipf.
 Qed.
 
 Example test_nonce0 (M : stateMonad nat) : M nat :=
@@ -49,10 +49,10 @@ Example test_nonce0 (M : stateMonad nat) : M nat :=
 (*Reset test_nonce0.
 Fail Check test_nonce0.*)
 
-Section stateloop_examples.
-Variable (M : loopStateMonad nat).
-Let example min max : M unit := foreach max min (fun i : nat => get >> Ret tt).
-Let sum n : M unit := foreach n O
+Section forloopstate_example.
+Variable (M : forloopStateMonad nat).
+Let example min max : M unit := forloop max min (fun i : nat => get >> Ret tt).
+Let sum n : M unit := ihierarchy.forloop n O
   (fun i : nat => get >>= (fun z => put (z + i))).
 
 Lemma sum_test n :
@@ -60,27 +60,27 @@ Lemma sum_test n :
 Proof.
 elim: n => [|n ih].
   rewrite /sum.
-  rewrite loop0.
+  rewrite forloop0.
   rewrite (_ : sumn (iota 0 0) = 0) //.
   rewrite -[LHS]bindskipf.
-  rewrite -getputskip.
+  rewrite -getput.
   rewrite bindA.
   bind_ext => a.
   rewrite addn0.
   rewrite -[RHS]bindmret.
   bind_ext.
   by case.
-rewrite {1}/sum -add1n loop1 bindA; bind_ext => m.
+rewrite {1}/sum -add1n forloop1 bindA; bind_ext => m.
 rewrite -/(sum n) {}ih -bindA putget bindA bindretf putput.
 congr put.
 by rewrite add0n (addnC 1) iotaD /= sumn_cat /= add0n addn0 /= addnAC addnA.
 Qed.
 
-End stateloop_examples.
+End forloopstate_example.
 
 Lemma getput_prepend (S : UU0) (M : nondetStateMonad S) A (m : M A) :
   m = get >>= (fun x => put x >> m).
-Proof. by rewrite -{2}(bindskipf m) -bindA getputskip 2!bindskipf. Qed.
+Proof. by rewrite -{2}(bindskipf m) -bindA getput 2!bindskipf. Qed.
 
 
 Section loop.
@@ -144,14 +144,14 @@ Lemma assert_all_scanl s (xs : seq A) :
   protect (scanlM op s xs >>=
     (fun ys => guard (all ok ys) >> Ret xs)) :> M _.
 Proof.
-rewrite assertE guardsC; last exact: bindmfail.
+rewrite assertE guardsC; first exact: bindmfail.
 transitivity (protect (scanlM op s xs) >>=
     (fun ys => guard (all ok ys) >> Ret xs) : M _).
   by rewrite -!bindA -scanlM_of_scanl bindA !bindretf assertE.
 rewrite bindA [in RHS]/protect.
 bind_ext => st.
 rewrite 2!bindA; bind_ext => xs'.
-rewrite [in RHS]bindA [in RHS]guardsC; last exact: bindmfail.
+rewrite [in RHS]bindA [in RHS]guardsC; first exact: bindmfail.
 rewrite bindA bindretf.
 rewrite /overwrite bindA bindretf bindA; bind_ext; case.
 by rewrite bindretf assertE.
@@ -180,7 +180,7 @@ transitivity (put (op st x) >>
   bind_ext => st'.
   bind_ext => s.
   by rewrite -guard_and andbC guard_and.
-rewrite guardsC; last exact: bindmfail.
+rewrite guardsC; first exact: bindmfail.
 rewrite !bindA.
 bind_ext; case.
 bind_ext => st'.
@@ -276,10 +276,11 @@ bind_ext => s.
 rewrite bindA; under eq_bind do rewrite bindretf.
 case: assertPn => ps; last first.
   rewrite bindfailf.
-  With (idtac) Open (X in _ >>= X).
+  under [X in _ >>= X]boolp.eq_fun.
+    move=> t.
     rewrite /assert; unlock => /=.
-    rewrite compE (negbTE (segment_closed_suffix ps x)) guardF bindfailf.
-    reflexivity.
+    rewrite compE (negbTE (segment_closed_suffix ps t)) guardF bindfailf.
+    over.
   by rewrite right_z.
 rewrite bindretf bindA /=.
 under [RHS]eq_bind do rewrite bindretf.
@@ -381,9 +382,14 @@ elim: n1 => [|n1 IH].
   rewrite [in LHS]compE uaddnE add0n.
   rewrite compE [in X in _ = _ X]/= squaringE symbols0.
   rewrite compE [in RHS]fmapE bindA bindretf.
-  rewrite -fmapE fmap_bind.
-  Open (X in _ >>= X).
-    rewrite fcompE fmapE bindretf /=; reflexivity.
+  rewrite -fmapE fmap_bind/=.
+  under [X in _ >>= X]boolp.eq_fun.
+    move=> s.
+    unlock.
+    rewrite /comp/=.
+    rewrite fmapE.
+    rewrite bindretf.
+    over.
   by rewrite bindmret.
 rewrite compE uaddnE addSn symbolsS -uaddnE -(compE symbols) {}IH.
 rewrite [in RHS]compE [in X in _ = _ X]/= squaringE symbolsS.
@@ -405,7 +411,7 @@ Definition tick : M unit := get >>= (put \o succn).
 
 Lemma tick_fusion n : rep n tick = get >>= (put \o addn n).
 Proof.
-elim: n => [|n ih]; first by rewrite /= -getputskip.
+elim: n => [|n ih]; first by rewrite /= -getput.
 rewrite /= /tick ih.
 rewrite bindA.
 bind_ext => m.

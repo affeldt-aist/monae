@@ -1,6 +1,6 @@
 (* monae: Monadic equational reasoning in Rocq                                *)
-(* Copyright (C) 2025 monae authors, license: LGPL-2.1-or-later               *)
-From mathcomp Require Import all_ssreflect.
+(* Copyright (C) 2026 monae authors, license: LGPL-2.1-or-later               *)
+From mathcomp Require Import boot order.
 Require Import ipreamble.
 From HB Require Import structures.
 Require Import ihierarchy ialt_lib imonad_lib.
@@ -30,6 +30,8 @@ Unset Strict Implicit.
 Unset Printing Implicit Defensive.
 
 Local Open Scope monae_scope.
+
+Import Order.TotalTheory Order.POrderTheory.
 
 Lemma bind_ext_guard {M : failMonad} (A : UU0) (b : bool) (m1 m2 : M A) :
   (b -> m1 = m2) -> guard b >> m1 = guard b >> m2.
@@ -61,7 +63,7 @@ Lemma unfoldME y : unfoldM p f y =
   if p y then Ret [::]
   else f y >>= (fun xz => fmap (cons xz.1) (unfoldM p f xz.2)).
 Proof.
-rewrite /unfoldM Init.Wf.Fix_eq; last first.
+rewrite /unfoldM Init.Wf.Fix_eq.
   move => b g g' H; rewrite /unfoldM'; case: ifPn => // pb.
   bind_ext => -[a' b'] /=.
   by destruct Bool.bool_dec => //; rewrite H.
@@ -96,7 +98,7 @@ Lemma hyloME y : hyloM y = if p y then
                            else
                              f y >>= (fun xz => op xz.1 (hyloM xz.2)).
 Proof.
-rewrite /hyloM Init.Wf.Fix_eq; last first.
+rewrite /hyloM Init.Wf.Fix_eq.
   move => b g g' K; rewrite /hyloM'; case: ifPn => // pb.
   bind_ext => -[a' b'] /=.
   destruct Bool.bool_dec => //.
@@ -220,7 +222,7 @@ Implicit Types s : seq A.
 Fixpoint select s : M (A * seq A)%type :=
   if s isn't h :: t then fail else
   (Ret (h, t) [~] select t >>= (fun x => Ret (x.1, h :: x.2))).
-(* NB: see .. for the theory of select *)
+
 
 End select.
 Arguments select {M} {A}.
@@ -230,7 +232,6 @@ Variables (A : UU0) (M : nondetMonad).
 
 Definition uperm : seq A -> M (seq A) :=
   unfoldM (@well_founded_size _) (@nilp _) select.
-(* NB: see .. for the theory of mu_perm *)
 
 End uperm.
 Arguments uperm {A} {M}.
@@ -275,7 +276,7 @@ transitivity ((Ret (10 + (10 + 100))) >>= (fun y => Ret (1 + y)) : M _); last fi
   by rewrite bindretf.
 congr (bind _ _).
 rewrite shiftreset3.
-rewrite (_ : do x <- Ret 10; _ = do y <- shift (@^~ 100) : M _; Ret (10 + (10 + y)))%Do; last first.
+rewrite (_ : do x <- Ret 10; _ = do y <- shift (@^~ 100) : M _; Ret (10 + (10 + y)))%Do.
   by rewrite bindretf.
 by rewrite shiftreset4.
 Qed.
@@ -316,7 +317,7 @@ Qed.
 Lemma refin_guard_le (M : plusMonad) d (T : orderType d) (x y : T) :
   (guard (~~ (y <= x)%O) : M _) `<=` guard (x <= y)%O.
 Proof.
-rewrite -Order.TotalTheory.ltNge Order.POrderTheory.le_eqVlt.
+rewrite -ltNge le_eqVlt.
 case: guardPn => H.
 rewrite orbT guardT; exact: refin_refl.
 by rewrite orbF /refin altfailm.

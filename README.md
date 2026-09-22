@@ -26,18 +26,15 @@ in several examples of monadic equational reasoning.
   - Celestine Sauvage
   - Kazunari Tanaka
 - License: [LGPL-2.1-or-later](LICENSE)
+- Compatible Rocq/Coq versions: Rocq 9.1, 9.2
 - Additional dependencies:
   - Rocq prover
-  - [MathComp ssreflect](https://math-comp.github.io)
-  - [MathComp fingroup](https://math-comp.github.io)
-  - [MathComp algebra](https://math-comp.github.io)
-  - [MathComp solvable](https://math-comp.github.io)
-  - [MathComp field](https://math-comp.github.io)
   - [MathComp analysis](https://github.com/math-comp/analysis)
   - [Infotheo](https://github.com/affeldt-aist/infotheo)
   - [Rocq-Elpi](https://github.com/LPCIC/coq-elpi)
   - [Hierarchy Builder](https://github.com/math-comp/hierarchy-builder)
   - [Coq-Equations](https://github.com/mattam82/Coq-Equations)
+  - Zify
 - Rocq/Coq namespace: `monae`
 - Related publication(s):
   - [A hierarchy of monadic effects for program verification using equational reasoning](https://staff.aist.go.jp/reynald.affeldt/documents/monae.pdf) doi:[10.1007/978-3-030-33636-3_9](https://doi.org/10.1007/978-3-030-33636-3_9)
@@ -47,6 +44,7 @@ in several examples of monadic equational reasoning.
   - [Environment-friendly monadic equational reasoning for OCaml](https://coq-workshop.gitlab.io/2023/abstracts/coq2023_monadic-reasoning.pdf) 
   - [A practical formalization of monadic equational reasoning in dependent-type theory](https://www.cambridge.org/core/services/aop-cambridge-core/content/view/B59B87DE000F48B9807F24AEDB11452E/S0956796824000157a.pdf/a-practical-formalization-of-monadic-equational-reasoning-in-dependent-type-theory.pdf) doi:[10.1017/S0956796824000157](https://doi.org/10.1017/S0956796824000157)
   - [Monadic Equational Reasoning for while loop in Rocq](https://msp.cis.strath.ac.uk/types2025/abstracts/TYPES2025_paper28.pdf) 
+  - [Monadic equational reasoning for while loops](https://www.jstage.jst.go.jp/article/jssst/43/2/43_2_42/_pdf/-char/en) doi:[10.11309/jssst.43.2_42](https://doi.org/10.11309/jssst.43.2_42)
 
 ## Building and installation instructions
 
@@ -55,7 +53,7 @@ is via [OPAM](https://opam.ocaml.org/doc/Install.html):
 
 ```shell
 opam repo add rocq-released https://rocq-prover.org/opam/released
-opam install coq-monae
+opam install rocq-monae
 ```
 
 It installs two directories in `coq/user-contrib`: `monae` and

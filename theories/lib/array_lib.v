@@ -1,6 +1,6 @@
 (* monae: Monadic equational reasoning in Rocq                                *)
-(* Copyright (C) 2025 monae authors, license: LGPL-2.1-or-later               *)
-From mathcomp Require Import all_ssreflect.
+(* Copyright (C) 2026 monae authors, license: LGPL-2.1-or-later               *)
+From mathcomp Require Import boot order.
 From mathcomp Require boolp.
 Require Import preamble.
 From HB Require Import structures.
@@ -156,7 +156,7 @@ Lemma aput_writeListC i j (x : S) (xs : seq S) : i < j ->
   aput i x >> writeList j xs = writeList j xs >> aput i x.
 Proof.
 elim: xs i j => [|h tl ih] i j ij /=; first by rewrite bindmskip bindretf.
-rewrite -bindA aputC; last by left; rewrite lt_eqF.
+rewrite -bindA aputC; first by left; rewrite lt_eqF.
 by rewrite !bindA; bind_ext => -[]; rewrite ih// ltnW.
 Qed.
 
@@ -164,7 +164,7 @@ Lemma writeListC i j (ys zs : seq S) : i + size ys <= j ->
   writeList i ys >> writeList j zs = writeList j zs >> writeList i ys.
 Proof.
 elim: ys zs i j => [|h t ih] zs i j hyp /=; first by rewrite bindretf bindmskip.
-rewrite writeList_cons aput_writeListC// bindA aput_writeListC; last first.
+rewrite writeList_cons aput_writeListC// bindA aput_writeListC.
   by rewrite (leq_trans _ hyp)//= -addSnnS ltn_addr.
 rewrite -!bindA ih// addSn.
 by rewrite /= addnS in hyp.
@@ -215,7 +215,7 @@ Proof.
 elim/last_ind: s x i => [|h t ih] /= x i.
   by rewrite writeList1 write_read.
 rewrite writeList_cons writeList_rcons 2![in RHS]bindA.
-rewrite write_readC; last by rewrite gtn_eqF// ltn_addr.
+rewrite write_readC; first by rewrite gtn_eqF// ltn_addr.
 rewrite -2![RHS]bindA -ih [RHS]bindA.
 rewrite !bindA; bind_ext => _.
 by under [in RHS]eq_bind do rewrite bindretf.
@@ -230,11 +230,14 @@ rewrite writeList_cons aput_writeListC// bindA.
 rewrite writeList_cons aput_writeListC// writeList_rcons !bindA.
 bind_ext => -[].
 under [RHS] eq_bind do rewrite -bindA.
-rewrite aputget -bindA size_rcons addSnnS.
-under [RHS] eq_bind do rewrite -!bindA.
-rewrite aputgetC; last by rewrite -addSnnS ltn_eqF// ltn_addr.
-rewrite -!bindA aputget aputput aputC; last by right.
-by rewrite bindA aputput.
+rewrite aputget.
+rewrite size_rcons addSnnS.
+rewrite -(bindA (aput i x)) aputgetC.
+  by rewrite -addSnnS ltn_eqF// ltn_addr.
+rewrite -bindA aputget -(bindA (aput i x)) aputput.
+rewrite aputC.
+  by left; rewrite -addSnnS ltn_eqF// ltn_addr.
+by rewrite -bindA aputput.
 Qed.
 
 Lemma aput_writeList_rcons i x h (t : seq S) :
@@ -246,11 +249,13 @@ Proof.
 rewrite /aswap -!bindA writeList_rcons -bindA.
 rewrite aput_writeListC// aput_writeListC// !bindA; bind_ext => -[].
 under [RHS] eq_bind do rewrite -bindA.
-rewrite aputgetC; last by rewrite gtn_eqF// -addSnnS ltn_addr.
+rewrite aputgetC; first by rewrite gtn_eqF// -addSnnS ltn_addr.
 rewrite -bindA aputget.
 under [RHS] eq_bind do rewrite -!bindA.
-rewrite aputget aputC; last by right.
-by rewrite -!bindA aputput bindA aputput -addSnnS.
+rewrite aputget.
+rewrite (aputC _ i _ x).
+  by left; rewrite -addSnnS gtn_eqF// ltn_addr.
+by rewrite bindA aputput -bindA aputput addSnnS.
 Qed.
 
 Lemma writeList_ret_aget i x (s : seq S) (f : S -> M (nat * nat)%type):

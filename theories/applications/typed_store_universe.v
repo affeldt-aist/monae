@@ -1,7 +1,7 @@
 (* monae: Monadic equational reasoning in Rocq                                *)
-(* Copyright (C) 2025 monae authors, license: LGPL-2.1-or-later               *)
-Require Import ZArith.
-From mathcomp Require Import all_ssreflect.
+(* Copyright (C) 2026 monae authors, license: LGPL-2.1-or-later               *)
+From Stdlib Require Import ZArith.
+From mathcomp Require Import boot.
 From mathcomp Require boolp.
 Require Import monad_model.
 From HB Require Import structures.
@@ -88,7 +88,7 @@ Definition typedStoreRunMonad (N : monad) :=
 End CoqTypeNat.
 
 Require Import PrimInt63.
-Require Sint63.
+From Stdlib Require Sint63.
 
 Module CoqTypeInt63.
 Import MLTypes.

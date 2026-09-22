@@ -1,6 +1,6 @@
 (* monae: Monadic equational reasoning in Rocq                                *)
-(* Copyright (C) 2025 monae authors, license: LGPL-2.1-or-later               *)
-From mathcomp Require Import all_ssreflect.
+(* Copyright (C) 2026 monae authors, license: LGPL-2.1-or-later               *)
+From mathcomp Require Import boot order.
 From mathcomp Require boolp.
 Require Import preamble hierarchy monad_lib alt_lib fail_lib state_lib.
 Require Import array_lib example_quicksort.
@@ -242,7 +242,7 @@ rewrite /=; case: ifPn => xp.
     writeList i (rcons ys x ++ a)) >>
     k (size (rcons ys x)) (size a) (size xs))).
   bind_ext => zs' /=.
-  rewrite -writeListC; last first.
+  rewrite -writeListC.
     by rewrite size_cat size_rcons addSn.
   rewrite catA writeList_cat cat_rcons.
   by rewrite size_cat/= -addnS.
@@ -254,7 +254,7 @@ rewrite [RHS](qperm_preserves_size2 (rcons zs x) (fun a b =>
   (writeList (i + (size ys + b)) xs >>
   writeList i (ys ++ a)) >> k (size ys) (size a) (size xs))).
 bind_ext => zs' /=.
-rewrite (_ : (_ + (_ + _)) = (i + size (ys ++ zs'))); last by rewrite size_cat.
+rewrite (_ : (_ + (_ + _)) = (i + size (ys ++ zs'))); first by rewrite size_cat.
 by rewrite -writeListC// catA writeList_cat.
 Qed.
 
@@ -529,7 +529,7 @@ apply: (@refin_trans _ _ p1).
   + rewrite [X in _ `<=` X](_ : _ = qperm_partl p [::] [::] xs >>= (fun '(ys, zs) =>
        aput i p >> writeList i.+1 (ys ++ zs) >>
        (aswap i (i + size ys)) >>
-       (iqsort (i, size ys)) >> iqsort (i + (size ys).+1, size zs))); last first.
+       (iqsort (i, size ys)) >> iqsort (i + (size ys).+1, size zs))).
       bind_ext => -[ys zs].
       rewrite -bindA -writeListC//.
       by rewrite /= bindA writeList_cat !bindA -addSnnS.
@@ -538,7 +538,7 @@ apply: (@refin_trans _ _ p1).
        qperm_partl p [::] [::] xs >>= (fun '(ys, zs) =>
        (writeList i.+1 (ys ++ zs) >>
         aswap i (i + size ys) >>
-        iqsort (i, size ys) >> iqsort (i + (size ys).+1, size zs)))); last first.
+        iqsort (i, size ys) >> iqsort (i + (size ys).+1, size zs)))).
       rewrite [RHS]bindA.
       rewrite -(plus_commute (qperm_partl p [::] [::] xs))//.
       by bind_ext=> -[a b]; rewrite !bindA.
@@ -547,7 +547,7 @@ apply: (@refin_trans _ _ p1).
     rewrite [X in _ `<=` X](_ : _ = aput i p >> qperm_partl p [::] [::] xs >>=
         (fun '(ys, zs) => write2L i.+1 (ys, zs)) >>= (fun '(ny, nz) =>
           aswap i (i + ny) >> iqsort (i, ny) >>
-          iqsort (i + ny.+1, nz))); last first.
+          iqsort (i + ny.+1, nz))).
       by rewrite [in RHS]bindA; bind_ext => -[a b]; rewrite write2LE !bindA.
     (* step 6: refin_ipartl_qperm_partl *)
     rewrite [in X in _ `<=` X](bindA (aput i p)).
@@ -556,11 +556,15 @@ apply: (@refin_trans _ _ p1).
     (* step 7 *)
     rewrite -[in X in _ `<=` X]bindA.
     rewrite (_ : aput i p >> _ = (writeList i (p :: xs) >> Ret p) >>=
-        (fun p => ipartl p i.+1 0 0 (size xs))); last first.
+        (fun p => ipartl p i.+1 0 0 (size xs))).
       by rewrite /= bindA -[in LHS](bindA (aput i p)) [in RHS]bindA !bindretf.
     (* step 8 *)
     rewrite writeListRet 2![in X in _ `<=` X]bindA.
-    by apply: refin_bindl => -[]; rewrite /= iqsort_cons bindA; exact: refin_refl.
+    apply: refin_bindl => -[].
+    rewrite /=.
+    rewrite iqsort_cons/=.
+    rewrite ?bindA.
+    exact: refin_refl.
   + apply: refin_bindl => -[ys sz].
     rewrite 4!bindA.
     apply: refin_bindl => -[].
@@ -578,13 +582,15 @@ apply: (@refin_trans _ _ p1).
   rewrite -qperm_slowsort 2!kleisliE !bindA.
   rewrite [X in _ `<=` X](_ : _ =
     (do zs' <- qperm zs; do ys' <- qperm ys; do ys'' <- slowsort ys';
-     do zs'' <- slowsort zs'; writeList i (ys'' ++ p :: zs''))%Do); last first.
+     do zs'' <- slowsort zs'; writeList i (ys'' ++ p :: zs''))%Do).
     rewrite (plus_commute (qperm zs))//.
     bind_ext => ys'.
-    rewrite !bindA; under eq_bind do rewrite !bindA.
+    under boolp.eq_fun do rewrite !bindA.
     rewrite -(plus_commute (qperm zs))//.
-    bind_ext => zs'; bind_ext => ys''.
-    by rewrite bindA; under eq_bind do rewrite bindretf.
+    rewrite ?bindA; bind_ext => zs'.
+    rewrite ?bindA; bind_ext => ys''.
+    rewrite ?bindA.
+    by under eq_bind do rewrite bindretf.
   (* step 1c: refine partl to qperm_partl *)
   apply: refin_trans; first exact/refin_bindr/refin_qperm_partl.
   (* step 1d: execute the first qperm and record size information *)
@@ -632,7 +638,7 @@ apply: (@refin_trans _ _ p1).
   under [in X in _ `<=` X]eq_bind do rewrite -cat_rcons.
   under [in X in _ `<=` X]eq_bind do rewrite writeList_cat.
   rewrite (plus_commute (slowsort zs'))//.
-  rewrite -(writeList_cat i ys'' [:: p]) -(writeListC _ _ _ zs'); last first.
+  rewrite -(writeList_cat i ys'' [:: p]) -(writeListC _ _ _ zs').
     by rewrite /= cats1 size_rcons/=.
   (* step 1i: ih *)
   rewrite cats1 bindA; apply: refin_bindl => -[].

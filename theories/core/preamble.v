@@ -1,9 +1,9 @@
 (* monae: Monadic equational reasoning in Rocq                                *)
-(* Copyright (C) 2025 monae authors, license: LGPL-2.1-or-later               *)
-From Coq Require List.
-From mathcomp Require Import all_ssreflect.
+(* Copyright (C) 2026 monae authors, license: LGPL-2.1-or-later               *)
+From Stdlib Require List.
+From mathcomp Require Import boot.
 From mathcomp Require boolp.
-Require ProofIrrelevance.
+From Stdlib Require ProofIrrelevance.
 
 Definition proof_irr := boolp.Prop_irrelevance.
 

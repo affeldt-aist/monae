@@ -1,7 +1,7 @@
 (* monae: Monadic equational reasoning in Rocq                                *)
-(* Copyright (C) 2025 monae authors, license: LGPL-2.1-or-later               *)
+(* Copyright (C) 2026 monae authors, license: LGPL-2.1-or-later               *)
 Ltac typeof X := type of X.
-From mathcomp Require Import all_ssreflect ssralg ssrint.
+From mathcomp Require Import boot ssralg ssrint.
 Require Import hierarchy monad_lib.
 
 (**md**************************************************************************)
