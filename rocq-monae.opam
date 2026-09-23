@@ -15,11 +15,11 @@ description: """
 This Rocq library contains a hierarchy of monads with their laws used
 in several examples of monadic equational reasoning."""
 
-make_target: [
+build: [
   [make "-j%{jobs}%"]
   [make "-C" "impredicative_set"]
 ]
-install: [ [make "install_full"] ]
+install: [make "install"]
 depends: [
   "coq" { >= "9.1" & < "9.4~" }
   "rocq-core" { (>= "9.1" & < "9.3~") }
