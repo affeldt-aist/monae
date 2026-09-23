@@ -43,7 +43,6 @@ tested_rocq_opam_versions:
   repo: 'mathcomp/mathcomp'
 - version: '2.6.0-rocq-prover-9.2'
   repo: 'mathcomp/mathcomp'
-#- version: '9.2'
 
 dependencies:
 - opam:
@@ -117,12 +116,11 @@ publications:
   pub_title: Monadic equational reasoning for while loops
   pub_doi: 10.11309/jssst.43.2_42
 
-
 #make_target: [
 #  [make "-j%{jobs}%"]
 #  [make "-C" "impredicative_set"]
 #]
-#
+
 install: [ [make "install_full"] ]
 
 build: |-
