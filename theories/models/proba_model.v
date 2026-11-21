@@ -22,7 +22,7 @@ Notation choice_of_Type := monad_model.choice_of_Type.
 
 (* This factory is placed here (instead of hierarchy.v)
    because we need to use choice_of_Type *)
-HB.factory Record isMonadConvex {R : realType} (M : UU0 -> UU0) of Monad M := {
+HB.factory Record isMonadConvex {R : realType} (M : UU0 -> UU0) & Monad M := {
   choice : forall (p : {prob R}) (T : UU0), M T -> M T -> M T ;
   (* identity axioms *)
   choice1 : forall (T : UU0) (a b : M T), choice 1%:i01 _ a b = a ;
@@ -34,7 +34,7 @@ HB.factory Record isMonadConvex {R : realType} (M : UU0 -> UU0) of Monad M := {
   choiceA : forall (T : UU0) (p q : {prob R}) (a b c : M T),
     choice p _ a (choice q _ b c) = choice [s_of p, q] _ (choice [r_of p, q] _ a b) c }.
 
-HB.builders Context R M of isMonadConvex R M.
+HB.builders Context R M & isMonadConvex R M.
 
 Section class.
 Variable T : UU0.

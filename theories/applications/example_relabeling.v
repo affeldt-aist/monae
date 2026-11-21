@@ -154,7 +154,8 @@ Proof.
 apply foldt_universal.
   (* relabel >=> dlabels \o Tip = drTip *)
   rewrite kleisli_def.
-  rewrite -2!(up_compA (Join \o _)).
+  rewrite -(up_compA (Join \o _)).
+  rewrite -[LHS]up_compA.
   rewrite (_ : relabel \o Tip = (M # Tip) \o const fresh) //.
   rewrite (up_compA (fmap dlabels)) -functor_o.
   rewrite (_ : dlabels \o Tip = ret _ \o wrap) //.
