@@ -21,7 +21,6 @@ build: [
 ]
 install: [make "install"]
 depends: [
-  "coq" { >= "9.1" & < "9.4~" }
   "rocq-core" { (>= "9.1" & < "9.4~") }
   "rocq-mathcomp-analysis" { >= "1.19.0" }
   "rocq-infotheo" { >= "0.9.9" }
