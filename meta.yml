@@ -43,21 +43,23 @@ tested_rocq_opam_versions:
   repo: 'mathcomp/mathcomp'
 - version: '2.6.0-rocq-prover-9.2'
   repo: 'mathcomp/mathcomp'
+- version: '2.6.0-rocq-prover-9.3'
+  repo: 'mathcomp/mathcomp'
 
 dependencies:
 - opam:
     name: rocq-core
-    version: '{ (>= "9.1" & < "9.3~") }'
+    version: '{ (>= "9.1" & < "9.4~") }'
   description: |-
     Rocq prover
 - opam:
     name: rocq-mathcomp-analysis
-    version: '{ >= "1.18.0" }'
+    version: '{ >= "1.19.0" }'
   description: |-
     [MathComp analysis](https://github.com/math-comp/analysis)
 - opam:
     name: rocq-infotheo
-    version: '{ >= "0.9.8" }'
+    version: '{ >= "0.9.9" }'
   description: |-
     [Infotheo](https://github.com/affeldt-aist/infotheo)
 - opam:
