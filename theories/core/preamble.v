@@ -13,7 +13,8 @@ Unset Printing Implicit Defensive.
 (* # Shared notations and easy definitions/lemmas of general interest         *)
 (*                                                                            *)
 (* ```                                                                        *)
-(*               up_comp == universe-polymorphic equivalents of ssrfun.comp   *)
+(*     up_idfun, up_comp == universe-polymorphic equivalents of               *)
+(*                          ssrfun.idfun and ssrfun.comp                      *)
 (*                foldr1 == right-recursive application of a binary operation *)
 (*                          on a list                                         *)
 (*       curry3/uncurry3 == currying for triples                              *)
@@ -43,9 +44,12 @@ Delimit Scope ssrfun_scope with ssrfun.
 
 Notation "f1 \o f2" := (ssrfun.comp f1 f2) : ssrfun_scope.
 
-(* We use a universe-polymorphic version of comp
-  (in place of ssrfun.comp)
+(* We use a universe-polymorphic version of idfun and comp
+   (in place of ssrfun.idfun and ssrfun.comp)
    so that we can avoid universe inconsistencies. *)
+Polymorphic Definition up_idfun (T : Type) (x : T) := x.
+Arguments up_idfun {T} x /.
+
 Polymorphic Definition up_comp (A B C : Type) (f : B -> A) (g : C -> B) :=
   fun x => f (g x).
 Arguments up_comp {A B C} : simpl never.

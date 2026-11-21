@@ -287,7 +287,7 @@ move=> [/= _ x y|h t].
   by rewrite !bindA !bindretf /= bindA bindretf [in RHS]insertE bindretf.
 rewrite ltnS /= => tn x y.
 rewrite bindA iperm_rcons /= !bindA [in RHS]insertE alt_bindDl bindretf /=.
-rewrite bindA iperm_rcons /= bindA bind_fmap /comp /= -[in X in _ [~]X]bindA.
+rewrite bindA iperm_rcons /= bindA bind_fmap /(_ \o _) /= -[in X in _ [~]X]bindA.
 rewrite -ih// bindA iperm_rcons /= !bindA -alt_bindDr; bind_ext => s'.
 rewrite -alt_bindDr; bind_ext => t'.
 by rewrite insertC altmm.
@@ -309,7 +309,7 @@ elim: s => [|h t ih]; first by rewrite /= bindretf.
 rewrite /= -[in RHS]ih !bindA; bind_ext.
 elim/last_ind => [|s x _].
   by rewrite insertE /= !bindretf insertE /= bindretf insertE.
-rewrite iperm_insertC insert_rcons alt_bindDl bind_fmap /= /comp /=.
+rewrite iperm_insertC insert_rcons alt_bindDl bind_fmap /= /(_ \o _) /=.
 under [in RHS]eq_bind do rewrite iperm_rcons_bind.
 rewrite bindretf (@perm_eq_iperm _ _ (h :: rcons s x)).
   by rewrite -cats1 -cat1s catA perm_catC.

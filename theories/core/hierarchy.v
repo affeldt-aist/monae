@@ -194,11 +194,11 @@ congr (isFunctor.Axioms_ _); exact/proof_irr.
 Defined.
 
 Section functorid.
-Let id_actm (A B : UU0) (f : A -> B) : idfun A -> idfun B := f.
+Let id_actm (A B : UU0) (f : A -> B) : up_idfun A -> up_idfun B := f.
 Let id_id : FunctorLaws.id id_actm. Proof. by []. Qed.
 Let id_comp : FunctorLaws.comp id_actm. Proof. by []. Qed.
-Let id_class := isFunctor.Build idfun id_id id_comp.
-Definition FId := HB.pack_for functor idfun id_class.
+Let id_class := isFunctor.Build up_idfun id_id id_comp.
+Definition FId := HB.pack_for functor up_idfun id_class.
 End functorid.
 
 Lemma FIdE (A B : UU0) (f : A -> B) : FId # f = f. Proof. by []. Qed.
@@ -526,7 +526,7 @@ Qed.
 HB.instance Definition _ :=
   isNatural.Build FId F (ret : FId ~~> F) ret_naturality.
 
-Let join' : FF ~~> F := fun _ m => bind m idfun.
+Let join' : FF ~~> F := fun _ m => bind m up_idfun.
 
 Let actm_bind (a b c : UU0) (f : a -> b) m (g : c -> F a) :
   (actm f) (bind m g) = bind m (actm f \o g).
@@ -920,7 +920,7 @@ HB.mixin Record isMonadElgot (M : UU0 -> UU0) & WBisim M := {
                                           (M # inl \o g)
                                           (M # inr \o Ret)) a);
   codiagonalwB : forall (A B : UU0) (f : A -> M ((B + A) + A)%type) (a : A),
-    while ((M # (sum_rect (fun=> (B + A)%type) idfun inr)) \o f) a
+    while ((M # (sum_rect (fun=> (B + A)%type) up_idfun inr)) \o f) a
     ≈ while (while f) a ;
   uniformwB : forall (A B C : UU0) (f : A -> M (B + A)%type)
       (g : C -> M (B + C)%type) (h : C -> A),

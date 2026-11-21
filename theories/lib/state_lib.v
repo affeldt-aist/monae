@@ -567,16 +567,10 @@ Proof.
 apply: funext => -[n1 n2].
 elim: n1 => [|n1 IH].
   rewrite [in LHS]up_compE uaddnE add0n.
-  rewrite up_compE [in X in _ = _ X]/= squaringE symbols0.
-  rewrite up_compE [in RHS]fmapE bindA bindretf.
-  rewrite -fmapE fmap_bind/=.
-  under [X in _ >>= X]boolp.eq_fun.
-    move=> s.
-    unlock.
-    rewrite up_compE.
-    rewrite fmapE.
-    rewrite bindretf.
-    over.
+  rewrite -[RHS]/(fmap _ _) squaringE symbols0.
+  rewrite [in RHS]fmapE bindA bindretf.
+  rewrite -fmapE fmap_bind.
+  under [X in _ >>= X]funext do rewrite fcompE fmapE bindretf /=.
   by rewrite bindmret.
 rewrite up_compE uaddnE addSn symbolsS -uaddnE -(up_compE symbols) {}IH.
 rewrite [in RHS]up_compE [in X in _ = _ X]/= squaringE symbolsS.
