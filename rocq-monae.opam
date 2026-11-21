@@ -19,7 +19,7 @@ build: [
   [make "-j%{jobs}%"]
   [make "-C" "impredicative_set"]
 ]
-install: [make "install"]
+install: [make "install_full"]
 depends: [
   "rocq-core" { (>= "9.1" & < "9.4~") }
   "rocq-mathcomp-analysis" { >= "1.19.0" }
@@ -45,4 +45,5 @@ authors: [
   "Ayumu Saito"
   "Celestine Sauvage"
   "Kazunari Tanaka"
+  "Ryuji Kawakami"
 ]

@@ -25,6 +25,7 @@ in several examples of monadic equational reasoning.
   - Ayumu Saito
   - Celestine Sauvage
   - Kazunari Tanaka
+  - Ryuji Kawakami
 - License: [LGPL-2.1-or-later](LICENSE)
 - Compatible Rocq/Coq versions: Rocq 9.1, 9.2
 - Additional dependencies:

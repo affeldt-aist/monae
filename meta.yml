@@ -26,6 +26,8 @@ authors:
   initial: false
 - name: Kazunari Tanaka
   initial: false
+- name: Ryuji Kawakami
+  initial: false
 
 opam-file-maintainer: Reynald Affeldt <reynald.affeldt@aist.go.jp>
 
