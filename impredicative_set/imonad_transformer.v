@@ -71,7 +71,7 @@ HB.factory Record isMonadM_ret_bind (M N : monad) (e : M ~~> N) := {
   monadMret : MonadMLaws.ret e ;
   monadMbind : MonadMLaws.bind e }.
 
-HB.builders Context (M N : monad) (e : M ~~> N) of isMonadM_ret_bind M N e.
+HB.builders Context (M N : monad) (e : M ~~> N) & isMonadM_ret_bind M N e.
 
 Lemma naturality_monadM : naturality M N e.
 Proof.
@@ -799,7 +799,7 @@ HB.mixin Record isFunctorial (t : monad -> monad) := {
 HB.structure Definition Functorial := {t of isFunctorial t}.
 Arguments hmap _ {M N} _.
 
-HB.mixin Record isFMT (t : monad -> monad) of MonadT t & Functorial t := {
+HB.mixin Record isFMT (t : monad -> monad) & MonadT t & Functorial t := {
   fmt_ret : forall M N (e : monadM M N),
     MonadMLaws.ret (hmap [the functorial of t] e) ;
   fmt_bind : forall M N (e : monadM M N),

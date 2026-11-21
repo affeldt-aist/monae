@@ -241,7 +241,7 @@ HB.mixin Record isFunctor (C D : category) (F : C -> D) := {
 HB.structure Definition Functor C D := {F of isFunctor C D F}.
 (*Notation functor := Functor.type.*)
 
-Definition functor_phant (C D : category) of phant (C -> D) := Functor.type C D.
+Definition functor_phant (C D : category) & phant (C -> D) := Functor.type C D.
 Arguments actm [C D] F [a b] f: rename.
 Notation "F # f" := (actm F f) : category_scope.
 Notation "{ 'functor' fCD }" := (functor_phant (Phant fCD))
@@ -783,7 +783,7 @@ HB.mixin Record isMonad (C : category) (M : {functor C -> C}) := {
 HB.structure Definition Monad (C : category) := {M of isMonad C M}.
 *)
 
-HB.mixin Record isMonad (C : category) (M : C -> C) of @Functor C C M := {
+HB.mixin Record isMonad (C : category) (M : C -> C) & @Functor C C M := {
   ret : FId ~> [the {functor C -> C} of M] ;
   join : [the {functor C -> C} of M] \O [the {functor C -> C} of M] ~>
          [the {functor C -> C} of M] ;
@@ -814,14 +814,14 @@ Proof. by rewrite up_compA joinA. Qed.
 End monad_interface.
 
 HB.factory Record Monad_of_ret_join (C : category) (M : C -> C)
-           of @Functor C C M := {
+          & @Functor C C M := {
   ret : FId ~> [the {functor C -> C} of M] ;
   join : M \O M ~> [the {functor C -> C} of M] ;
   joinretM : JoinLaws.left_unit ret join ;
   joinMret : JoinLaws.right_unit ret join ;
   joinA : JoinLaws.associativity join
 }.
-HB.builders Context C M of Monad_of_ret_join C M.
+HB.builders Context C M & Monad_of_ret_join C M.
 Let F := [the {functor _ -> _} of M].
 Let bind (a b : C) (f : {hom a -> M b}) : {hom M a -> M b} := [hom join _ \o (F # f)].
 Let bindE (a b : C) (f : {hom a -> M b}) (m : el (M a)) :
@@ -838,7 +838,7 @@ HB.factory Record Monad_of_ret_bind (C : category) (acto : C -> C) := {
   bindmret : BindLaws.right_neutral bind ret' ;
   bindA : BindLaws.associative bind ;
 }.
-HB.builders Context C M of Monad_of_ret_bind C M.
+HB.builders Context C M & Monad_of_ret_bind C M.
 Let fmap a b (f : {hom a -> b}) := bind [hom ret' b \o f].
 Let bindretf_fun : (forall (a b : C) (f : {hom a -> M b}),
   bind f \o ret' a = f).
