@@ -78,14 +78,14 @@ by apply funext => g; rewrite bindA.
 Qed.
 
 HB.instance Definition _ := isMonadM_ret_bind.Build
-  M [the monad of MK M] liftK retliftK bindliftK.
+  M (MK M) liftK retliftK bindliftK.
 
 End codensity.
 
-Definition codensityT := fun M : monad => [the monad of MK M].
+Definition codensityT := fun M : monad => (MK M : monad).
 
 HB.instance Definition _ :=
-  isMonadT.Build codensityT (fun M => [the monadM _ _ of @liftK M]).
+  isMonadT.Build codensityT (fun M => @liftK M : monadM M (MK M)).
 
 Section kappa.
 Variables (M : monad) (E : functor) (op : E.-operation M).
@@ -104,7 +104,7 @@ Qed.
 HB.instance Definition _ := isNatural.Build
   _ (codensityT M) kappa' naturality_kappa'.
 
-Definition kappa := [the _ ~> _ of kappa'].
+Definition kappa : _ ~> _ := kappa'.
 
 Lemma kappaE X : kappa X =
   fun (s : E X) (B : UU0) (k : X -> M B) => op B ((E # k) s).
@@ -136,10 +136,10 @@ Qed.
 HB.instance Definition _ :=
   isNatural.Build _ M from_component natural_from_component.
 
-Definition from := [the _ ~> _ of from_component].
+Definition from : _ ~> _ := from_component.
 
 Lemma from_component_liftK A :
-  @from_component A \o Lift [the monadT of codensityT] M A = id.
+  @from_component A \o Lift codensityT M A = id.
 Proof.
 by apply funext => m /=; rewrite /from_component/= /liftK up_compE/= bindmret.
 Qed.
@@ -152,7 +152,7 @@ Variables (E : functor) (M : monad) (op : E.-operation M).
 Definition psik : E.-aoperation (codensityT M) := psi (kappa op).
 
 Lemma psikE (A : UU0) : op A = (@from_component M A) \o (@psik A) \o
-  ((E ## Lift [the monadT of codensityT] M) A).
+  ((E ## Lift codensityT M) A).
 Proof.
 apply funext => m /=.
 rewrite /from_component /psik /= /psi' /kappa' /fun_app_nt /=.
@@ -175,8 +175,7 @@ Hypothesis naturality_MK : forall (A : UU0) (m : MK M A), naturality_MK m.
 
 Let op1 : t (codensityT M) ~> t M := hmap t (from naturality_MK).
 Let op2 := alifting (psik op) (Lift t _).
-Let op3 : [the functor of E \o t M] ~> [the functor of E \o t (codensityT M)] :=
-  E ## hmap t (Lift [the monadT of codensityT] M).
+Let op3 : E \o t M ~> E \o t (codensityT M) := E ## hmap t (Lift codensityT M).
 
 Definition slifting : E.-operation (t M) := op1 \v op2 \v op3.
 
@@ -189,15 +188,15 @@ transitivity ((op1 \v op2) X \o op3 X \o E # Lift t M X).
 rewrite -up_compA.
 transitivity ((op1 \v op2) X \o
     ((E # Lift t (codensityT M) X) \o
-    (E # Lift [the monadT of codensityT] M X))).
+    (E # Lift codensityT M X))).
   congr (_ \o _); rewrite /op3.
   by rewrite -functor_o -natural_hmapE functor_app_naturalE -(@functor_o E).
 transitivity (op1 X \o
-  (op2 X \o E # Lift t (codensityT M) X) \o E # Lift [the monadT of codensityT] M X).
+  (op2 X \o E # Lift t (codensityT M) X) \o E # Lift codensityT M X).
   by rewrite vcompE -up_compA.
 rewrite -uniform_algebraic_lifting.
 transitivity (Lift t M X \o from naturality_MK X \o (psik op) X \o
-  E # Lift [the monadT of codensityT] M X).
+  E # Lift codensityT M X).
   congr (_ \o _).
   by rewrite up_compA natural_hmapE.
 rewrite -2!up_compA.
@@ -221,7 +220,7 @@ Let op' : E \o stateT S M ~~> stateT S M :=
   fun (X : UU0) t s => op (X * S)%type ((E # tau s) t).
 
 Lemma slifting_stateT (X : UU0) :
-  (slifting op [the fmt of stateT S] naturality_MK) X = @op' _.
+  (slifting op (stateT S : fmt) naturality_MK) X = @op' _.
 Proof.
 apply funext => emx.
 rewrite /op'.
@@ -257,7 +256,7 @@ Variable Z : UU0.
 Let op' : E \o exceptT Z M ~~> exceptT Z M := fun (Y : UU0) => @op _.
 
 Lemma slifting_exceptT (X : UU0) :
-  (slifting op [the fmt of exceptT Z] naturality_MK) X = @op' X.
+  (slifting op (exceptT Z : fmt) naturality_MK) X = @op' X.
 Proof.
 apply funext => emx.
 rewrite /op'.
@@ -291,7 +290,7 @@ Let op' : E \o envT Env M ~~> envT Env M :=
   fun (X : UU0) t => fun e => op X ((E # tau e) t).
 
 Lemma slifting_envT (X : UU0) :
-  (slifting op [the fmt of envT Env] naturality_MK) X = @op' _.
+  (slifting op (envT Env : fmt) naturality_MK) X = @op' _.
 Proof.
 apply funext => emx.
 rewrite /op'.
@@ -328,7 +327,7 @@ Let op' : E \o outputT R M ~~> outputT R M :=
   fun (X : UU0) => @op (X * seq R)%type.
 
 Lemma slifting_outputT (X : UU0) :
-  (slifting op [the fmt of outputT R] naturality_MK) X = @op' _.
+  (slifting op (outputT R : fmt) naturality_MK) X = @op' _.
 Proof.
 apply funext => emx.
 rewrite /op'.
@@ -358,7 +357,7 @@ rewrite -functor_o.
 congr ((E # _) _).
 apply funext => rmx /=.
 rewrite /retK !up_compE/= bindE fmapE /= /bindK.
-congr (Lift [the monadT of codensityT] M _ _ _ _).
+congr (Lift codensityT M _ _ _ _).
 by apply funext => -[].
 Qed.
 
@@ -373,7 +372,7 @@ Variables (E : functor) (M : monad) (aop : E.-aoperation M).
 Hypothesis naturality_MK : forall (A : UU0) (m : MK M A),
   naturality_MK m.
 
-Lemma slifting_alifting_stateFMT (S : UU0) (t := [the fmt of stateT S]) :
+Lemma slifting_alifting_stateFMT (S : UU0) (t := stateT S : fmt) :
   slifting aop t naturality_MK = alifting aop (Lift t M).
 Proof.
 apply nattrans_ext => X.
@@ -397,7 +396,7 @@ apply funext => x /=.
 by rewrite !up_compE/= 2!bindretf.
 Qed.
 
-Lemma slifting_alifting_exceptFMT (Z : UU0) (t := [the fmt of exceptT Z]) :
+Lemma slifting_alifting_exceptFMT (Z : UU0) (t := exceptT Z : fmt) :
   slifting aop t naturality_MK = alifting aop (Lift t M).
 Proof.
 apply nattrans_ext => X.
@@ -419,7 +418,7 @@ apply funext => n /=.
 by rewrite !up_compE/= 2!bindretf.
 Qed.
 
-Lemma slifting_alifting_envFMT (Env : UU0) (t := [the fmt of envT Env]) :
+Lemma slifting_alifting_envFMT (Env : UU0) (t := envT Env : fmt) :
   slifting aop t naturality_MK = alifting aop (Lift t M).
 Proof.
 apply nattrans_ext => X.
@@ -439,7 +438,7 @@ apply funext => x /=.
 by rewrite up_compE/= bindretf.
 Qed.
 
-Lemma slifting_alifting_outputFMT (R : UU0) (t := [the fmt of outputT R]) :
+Lemma slifting_alifting_outputFMT (R : UU0) (t := outputT R : fmt) :
   slifting aop t naturality_MK = alifting aop (Lift t M).
 Proof.
 apply nattrans_ext => X.
@@ -472,8 +471,8 @@ Require Import imonad_model.
 (* example 30 *)
 Section slifting_local.
 Variable Env : UU0.
-Let E := [the functor of Local.acto Env].
-Let M := [the monad of ReaderMonad.acto Env].
+Let E : functor := Local.acto Env.
+Let M : monad := ReaderMonad.acto Env.
 Let local : E.-operation M := local_op Env.
 Hypothesis naturality_MK : forall (A : UU0) (m : MK M A), naturality_MK m.
 
@@ -485,7 +484,7 @@ Definition localKT (f : Env -> Env) : T (codensityT M) ~~> T (codensityT M) :=
     (Lift T (codensityT M) (T (codensityT M) X) (fun Y k => local Y (f, k t))).
 
 Definition localT (f : Env -> Env) : T M ~~> T M :=
-  fun X t => let t' := hmap T (Lift [the monadT of codensityT] M) X t in
+  fun X t => let t' := hmap T (Lift codensityT M) X t in
   hmap T (from naturality_MK) X (localKT f t').
 
 End slifting_local_FMT.
@@ -500,7 +499,7 @@ Let local_stateT' : (E \o stateT S M) ~~> (stateT S M) :=
   fun X => uncurry (@local_stateT ^~ X).
 
 Lemma local_stateTE (X : UU0) :
-  (slifting local [the fmt of stateT S] naturality_MK) X = @local_stateT' X.
+  (slifting local (stateT S : fmt) naturality_MK) X = @local_stateT' X.
 Proof. by rewrite slifting_stateT; apply funext => -[]. Qed.
 End slifting_local_stateT.
 
@@ -513,7 +512,7 @@ Let local_exceptT' : (E \o exceptT Z M) ~~> (exceptT Z M) :=
   fun X => uncurry (@local_exceptT ^~ X).
 
 Lemma local_exceptTE (X : UU0) :
-  (slifting local [the fmt of exceptT Z] naturality_MK) X = @local_exceptT' X.
+  (slifting local (exceptT Z : fmt) naturality_MK) X = @local_exceptT' X.
 Proof. by rewrite slifting_exceptT; apply funext => -[]. Qed.
 
 End slifting_local_exceptT.
@@ -527,7 +526,7 @@ Let local_envT' : E \o envT Z M ~~> envT Z M :=
   fun X => uncurry (@local_envT ^~ X).
 
 Lemma local_envTE (X : UU0) :
-  (slifting local [the fmt of envT Z] naturality_MK) X = @local_envT' X.
+  (slifting local (envT Z : fmt) naturality_MK) X = @local_envT' X.
 Proof.
 rewrite slifting_envT.
 by apply funext => -[].
@@ -543,7 +542,7 @@ Let local_outputT' : E \o outputT R M ~~> outputT R M :=
   fun (X : UU0) => uncurry (@local_outputT ^~ X).
 
 Lemma local_outputTE (X : UU0) :
-  (slifting local [the fmt of outputT R] naturality_MK) X = @local_outputT' X.
+  (slifting local (outputT R : fmt) naturality_MK) X = @local_outputT' X.
 Proof. by rewrite slifting_outputT; apply funext => -[]. Qed.
 End slifting_local_outputT.
 
@@ -551,8 +550,8 @@ End slifting_local.
 
 (* example 31 *)
 Section slifting_handle. (* except monad with Z = unit *)
-Let E := [the functor of Handle.acto unit].
-Let M := [the monad of ExceptMonad.acto unit].
+Let E : functor := Handle.acto unit.
+Let M : monad := ExceptMonad.acto unit.
 Let handle : E.-operation M := @handle_op unit.
 Hypothesis naturality_MK : forall (A : UU0) (m : MK M A),
   naturality_MK m.
@@ -569,7 +568,7 @@ Let handle_stateT' : (E \o stateT S M) ~~> (stateT S M) :=
   fun (X : UU0) => uncurry (@handle_stateT X).
 
 Lemma handle_stateTE (X : UU0) :
-  (slifting handle [the fmt of stateT S] naturality_MK) X = @handle_stateT' X.
+  (slifting handle (stateT S : fmt) naturality_MK) X = @handle_stateT' X.
 Proof. by rewrite slifting_stateT; apply funext => -[m f]. Qed.
 End slifting_handle_stateT.
 
@@ -585,7 +584,7 @@ Let handle_exceptT' : E \o exceptT Z M ~~> exceptT Z M :=
   fun (X : UU0) => uncurry (@handle_exceptT X).
 
 Lemma handle_exceptTE (X : UU0) :
-  (slifting handle [the fmt of exceptT Z] naturality_MK) X = @handle_exceptT' X.
+  (slifting handle (exceptT Z : fmt) naturality_MK) X = @handle_exceptT' X.
 Proof. by rewrite slifting_exceptT; exact: funext. Qed.
 End slifting_handle_exceptT.
 
@@ -601,7 +600,7 @@ Let handle_envT' : E \o envT Z M ~~> envT Z M :=
   fun (X : UU0) => uncurry (@handle_envT X).
 
 Lemma handle_envTE (X : UU0) :
-  (slifting handle [the fmt of envT Z] naturality_MK) X = @handle_envT' X.
+  (slifting handle (envT Z : fmt) naturality_MK) X = @handle_envT' X.
 Proof.
 by rewrite slifting_envT; apply funext => -[m f]; exact: funext.
 Qed.
@@ -619,7 +618,7 @@ Let handle_outputT' : E \o outputT R M ~~> outputT R M :=
   fun (X : UU0) => uncurry (@handle_outputT X).
 
 Lemma handle_outputTE (X : UU0) :
-  (slifting handle [the fmt of outputT R] naturality_MK) X = @handle_outputT' X.
+  (slifting handle (outputT R : fmt) naturality_MK) X = @handle_outputT' X.
 Proof. by rewrite slifting_outputT; apply funext => -[]. Qed.
 End slifting_handle_outputT.
 
@@ -628,8 +627,8 @@ End slifting_handle.
 (* example 32 *)
 Section slifting_flush.
 Variable R : UU0.
-Let E := [the functor of Flush.acto].
-Let M := [the monad of OutputMonad.acto R].
+Let E : functor := Flush.acto.
+Let M : monad := OutputMonad.acto R.
 Let flush : E.-operation M := flush_op R.
 Hypothesis naturality_MK : forall (A : UU0) (m : MK M A),
   naturality_MK m.
@@ -640,7 +639,7 @@ Definition flush_stateT : stateT S M ~~> stateT S M :=
   fun (X : UU0) t s => let: (x, _) := t s in (x, [::]).
 
 Lemma flush_stateTE (X : UU0) :
-  (slifting flush [the fmt of stateT S] naturality_MK) X = @flush_stateT X.
+  (slifting flush (stateT S : fmt) naturality_MK) X = @flush_stateT X.
 Proof. by rewrite slifting_stateT. Qed.
 End slifting_flush_stateT.
 
@@ -654,7 +653,7 @@ Let flush_exceptT' : E \o exceptT Z M ~~> exceptT Z M :=
   fun (X : UU0) c => let : (x, _) := c in (x, [::]).
 
 Lemma flush_exceptTE (X : UU0) :
-  (slifting flush [the fmt of exceptT Z] naturality_MK) X = @flush_exceptT' X.
+  (slifting flush (exceptT Z : fmt) naturality_MK) X = @flush_exceptT' X.
 Proof. by rewrite slifting_exceptT. Qed.
 End slifting_flush_exceptT.
 
@@ -664,7 +663,7 @@ Definition flush_envT : envT Z M ~~>  envT Z M :=
   fun (X : UU0) t e => let: (x, _) := t e in (x, [::]).
 
 Lemma flush_envTE (X : UU0) :
-  (slifting flush [the fmt of envT Z] naturality_MK) X = @flush_envT X.
+  (slifting flush (envT Z : fmt) naturality_MK) X = @flush_envT X.
 Proof. by rewrite slifting_envT. Qed.
 End slifting_flush_envT.
 
@@ -677,7 +676,7 @@ Let flush_outputT' : E \o outputT R M ~~> outputT R M :=
   fun (X : UU0) e => let: (pw, w') := e in (pw, [::]).
 
 Lemma flush_outputTE (X : UU0) :
-  (slifting flush [the fmt of outputT R] naturality_MK) X = @flush_outputT' X.
+  (slifting flush (outputT R : fmt) naturality_MK) X = @flush_outputT' X.
 Proof. by rewrite slifting_outputT; exact: funext. Qed.
 End slifting_flush_outputT.
 

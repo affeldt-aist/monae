@@ -4,6 +4,10 @@
 -arg -w -arg -ambiguous-paths
 -arg -w -arg -notation-incompatible-format
 -arg -w -arg -elpi.add-const-for-axiom-or-sectionvar
+-arg -w -arg -rewrite-rw
+
+# This setting should be removed after dropping support for Rocq 9.2
+-arg -w -arg -notation-for-abbreviation
 
 theories/core/preamble.v
 theories/core/hierarchy.v

@@ -5,10 +5,6 @@ From mathcomp Require Import boot.
 From mathcomp Require boolp.
 From Stdlib Require ProofIrrelevance.
 
-Set Implicit Arguments.
-Unset Strict Implicit.
-Unset Printing Implicit Defensive.
-
 (**md**************************************************************************)
 (* # Shared notations and easy definitions/lemmas of general interest         *)
 (*                                                                            *)
@@ -23,6 +19,10 @@ Unset Printing Implicit Defensive.
 (* ```                                                                        *)
 (*                                                                            *)
 (******************************************************************************)
+
+Set Implicit Arguments.
+Unset Strict Implicit.
+Unset Printing Implicit Defensive.
 
 Section shorthands_for_classical_axioms.
 

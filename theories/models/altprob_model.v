@@ -124,7 +124,7 @@ Proof. by move=> a b; rewrite /= /alt /= lubC. Qed.
 HB.instance Definition _ :=
   @isMonadAltCI.Build (Monad_of_category_monad.acto (Mgcm R)) altxx altC.
 
-Definition gcmACI := [the altCIMonad of gcm R].
+Definition gcmACI : altCIMonad := gcm R.
 
 Lemma choice1 A (x y : gcm R A) : x <| 1%:i01 |> y = x.
 Proof. by rewrite conv1. Qed.
@@ -188,7 +188,7 @@ Proof. by move=> x y z; rewrite /choice lubDr. Qed.
 HB.instance Definition _ :=
   @isMonadAltProb.Build R (Monad_of_category_monad.acto (Mgcm R)) choicealtDr.
 
-Definition gcmAP := [the altProbMonad R of gcm R].
+Definition gcmAP : altProbMonad R := gcm R.
 
 End P_delta_altProbMonad.
 

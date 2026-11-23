@@ -171,14 +171,14 @@ exact: Hom.Pack.
 Defined.
 Definition homsnd := Eval hnf in _homsnd.
 End homfstsnd.
-Lemma homfst_idfun x : homfst (x:=x) [hom up_idfun] = [hom up_idfun].
+Lemma homfst_idfun x : homfst (x:=x) up_idfun = up_idfun.
 Proof.
 apply/hom_ext; rewrite boolp.funeqE => x1 /=.
 case: cid => i [i1 i2] /=.
 rewrite (_ : i = ProductCategory.idfun_separated _)//.
 by rewrite ProductCategory.sepfst_idfun.
 Qed.
-Lemma homsnd_idfun x : homsnd (x:=x) [hom up_idfun] = [hom up_idfun].
+Lemma homsnd_idfun x : homsnd (x:=x) up_idfun = up_idfun.
 Proof.
 apply/hom_ext; rewrite boolp.funeqE => x1 /=.
 case: cid => i [i1 i2] /=.
@@ -186,7 +186,7 @@ rewrite (_ : i = ProductCategory.idfun_separated _)//.
 by rewrite ProductCategory.sepsnd_idfun.
 Qed.
 Lemma homfst_comp (x y z : A * B) (f : {hom x -> y}) (g : {hom y -> z}) :
-  homfst [hom g \o f] = [hom homfst g \o homfst f].
+  homfst (g \o f) = homfst g \o homfst f.
 Proof.
 rewrite /homfst /=.
 case: cid => //= gh [gh1 gh2].
@@ -200,7 +200,7 @@ congr (ProductCategory.sepfst _ _).
 exact/proof_irr.
 Qed.
 Lemma homsnd_comp (x y z : A * B) (f : {hom x -> y}) (g : {hom y -> z}) :
-  homsnd [hom g \o f] = [hom homsnd g \o homsnd f].
+  homsnd (g \o f) = homsnd g \o homsnd f.
 Proof.
 rewrite /homsnd /=.
 case: cid => //= gh [gh1 gh2].
@@ -234,7 +234,7 @@ Variables A B : category.
 Variables a1 a2 : A.
 Variables b1 b2 : B.
 Variables (f : {hom a1 -> a2}) (g : {hom b1 -> b2}).
-(*Let C := [the category of (A * B)%type].*)
+(*Let C : category := (A * B)%type.*)
 Definition pairhom' (ab : el a1 + el b1) : el a2 + el b2 :=
   match ab with
   | inl a => inl (f a)
@@ -260,7 +260,7 @@ End prodCat_pairhom.
 
 Section pairhom_idfun.
 Variables (A B : category) (a : A) (b : B).
-Lemma pairhom_idfun : pairhom (a1:=a) (b1:=b) [hom up_idfun] [hom up_idfun] = [hom up_idfun].
+Lemma pairhom_idfun : pairhom (a1:=a) (b1:=b) up_idfun up_idfun = up_idfun.
 Proof. by apply/hom_ext/funext=> -[] x /=. Qed.
 End pairhom_idfun.
 
@@ -268,8 +268,8 @@ Section pairhom_comp.
 Variables (A B : category) (a1 a2 a3 : A) (b1 b2 b3 : B).
 Variables (fa : {hom a1 -> a2}) (ga : {hom a2 -> a3}).
 Variables (fb : {hom b1 -> b2}) (gb : {hom b2 -> b3}).
-Lemma pairhom_comp : pairhom [hom ga \o fa] [hom gb \o fb] =
-                     [hom pairhom ga gb \o pairhom fa fb].
+Lemma pairhom_comp : pairhom (ga \o fa) (gb \o fb) =
+                     pairhom ga gb \o pairhom fa fb.
 Proof. by apply /hom_ext/funext=> -[] x. Qed.
 End pairhom_comp.
 
@@ -312,18 +312,17 @@ Section def.
 Variables (A B C : category) (F : {functor A * B -> C}) (a : A).
 Definition acto : B -> C := fun b => F (a, b).
 Definition actm (b1 b2 : B) (f : {hom b1 -> b2}) : {hom acto b1 -> acto b2} :=
-  F # pairhom [hom up_idfun] f.
+  F # pairhom up_idfun f.
 Let actm_id : FunctorLaws.id actm.
 Proof.
 move=> D; rewrite /actm; set h := pairhom _ _.
-rewrite (_ : h = [hom up_idfun]) ?functor_id_hom //.
+rewrite (_ : h = up_idfun) ?functor_id_hom //.
 by apply/hom_ext => /=; rewrite boolp.funeqE; case.
 Qed.
 Let actm_comp : FunctorLaws.comp actm.
 Proof.
 move=> b b0 b1 g h; rewrite /actm; set i := pairhom _ _.
-rewrite (_ : i = [hom (pairhom [hom up_idfun] g) \o
-                      (pairhom [hom up_idfun] h)]) ?functor_o_hom //.
+rewrite (_ : i = (pairhom up_idfun g) \o (pairhom up_idfun h)) ?functor_o_hom //.
 by apply/hom_ext => /=; rewrite boolp.funeqE; case.
 Qed.
 HB.instance Definition _ := isFunctor.Build _ _ _ actm_id actm_comp.
@@ -335,18 +334,17 @@ Section def.
 Variables (A B C : category) (F : {functor A * B -> C}) (b : B).
 Definition acto : A -> C := fun a => F (a, b).
 Definition actm (a1 a2 : A) (f : {hom a1 -> a2}) : {hom acto a1 -> acto a2} :=
-  F # pairhom f [hom up_idfun].
+  F # pairhom f up_idfun.
 Let actm_id : FunctorLaws.id actm.
 Proof.
 move=> D; rewrite /actm; set h := pairhom _ _.
-rewrite (_ : h = [hom up_idfun]) ?functor_id_hom //.
+rewrite (_ : h = up_idfun) ?functor_id_hom //.
 by apply/hom_ext => /=; rewrite boolp.funeqE; case.
 Qed.
 Let actm_comp : FunctorLaws.comp actm.
 Proof.
 move=> a a0 a1 g h; rewrite /actm; set i := pairhom _ _.
-rewrite (_ : i = [hom (pairhom g [hom up_idfun]) \o
-                      (pairhom h [hom up_idfun])]) ?functor_o_hom //.
+rewrite (_ : i = (pairhom g up_idfun) \o (pairhom h up_idfun)) ?functor_o_hom //.
 by apply/hom_ext => /=; rewrite boolp.funeqE; case.
 Qed.
 HB.instance Definition _ := isFunctor.Build _ _ _ actm_id actm_comp.
@@ -384,22 +382,21 @@ End ProductFunctor.
 Module alpha_left.
 Section alpha_left.
 Variables A B C D : category.
-Variable F : {functor [the category of ((A * B) * C)%type] -> D}.
+Variable F : {functor ((A * B) * C)%type -> D}.
 Variables (a : A) (b : B).
 Definition acto : C -> D := papply_left.acto F (a, b).
 Definition actm (c1 c2 : C) (f : {hom c1 -> c2}) : {hom acto c1 -> acto c2} :=
-  F # pairhom [hom up_idfun] f.
+  F # pairhom up_idfun f.
 Let actm_id : FunctorLaws.id actm.
 Proof.
 move=> c0; rewrite /actm; set h := pairhom _ _.
-rewrite (_ : h = [hom up_idfun]) ?functor_id_hom //.
+rewrite (_ : h = up_idfun) ?functor_id_hom //.
 by apply/hom_ext => /=; rewrite boolp.funeqE; case.
 Qed.
 Let actm_comp : FunctorLaws.comp actm.
 Proof.
 move=> c c0 c1 g h; rewrite /actm; set i := pairhom _ _.
-rewrite (_ : i = [hom (pairhom [hom up_idfun] g) \o
-                      (pairhom [hom up_idfun] h)]) ?functor_o_hom //.
+rewrite (_ : i = (pairhom up_idfun g) \o (pairhom up_idfun h)) ?functor_o_hom //.
 by apply/hom_ext => /=; rewrite boolp.funeqE; case.
 Qed.
 HB.instance Definition _ := isFunctor.Build _ _ _ actm_id actm_comp.

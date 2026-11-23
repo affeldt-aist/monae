@@ -20,6 +20,19 @@ Set Implicit Arguments.
 Unset Strict Implicit.
 Unset Printing Implicit Defensive.
 
+Section shorthands_for_classical_axioms.
+
+Definition proof_irr := @ProofIrrelevance.proof_irrelevance.
+
+Definition eq_rect_eq :=
+  @ProofIrrelevance.ProofIrrelevanceTheory.Eq_rect_eq.eq_rect_eq.
+
+Definition funext := @FunctionalExtensionality.functional_extensionality.
+
+Definition funext_dep := @FunctionalExtensionality.functional_extensionality_dep.
+
+End shorthands_for_classical_axioms.
+
 (* We use a universe-polymorphic version of comp
   (in place of ssrfun.comp)
    so that we can avoid universe inconsistencies. *)
@@ -45,19 +58,6 @@ Polymorphic Lemma up_compfid A B (f : A -> B) : f \o id = f. Proof. by []. Qed.
 Polymorphic Lemma up_compidf A B (f : A -> B) : id \o f = f. Proof. by []. Qed.
 
 End comp_lemmas.
-
-Section shorthands_for_classical_axioms.
-
-Definition proof_irr := @ProofIrrelevance.proof_irrelevance.
-
-Definition eq_rect_eq :=
-  @ProofIrrelevance.ProofIrrelevanceTheory.Eq_rect_eq.eq_rect_eq.
-
-Definition funext := @FunctionalExtensionality.functional_extensionality.
-
-Definition funext_dep := @FunctionalExtensionality.functional_extensionality_dep.
-
-End shorthands_for_classical_axioms.
 
 (* notations common to hierarchy.v and category.v *)
 
