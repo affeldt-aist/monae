@@ -868,7 +868,8 @@ Definition nonce : (StateMonad.acto (nat * seq nat)%type) nat :=
   Ret n.
 
 Compute nonce (0, []).
-Compute (denote ([the stateTraceMonad nat nat of (StateMonad.acto (nat * seq nat)%type)]) nat p_nonce) (0, []).
+Check StateMonad.acto (nat * seq nat)%type : stateTraceMonad nat nat.
+Compute (denote (StateMonad.acto (nat * seq nat)%type) nat p_nonce) (0, []).
 Compute run_ss p_nonce 0.
 
 Remark denote_p_nonce : denote _ nat p_nonce = nonce.
@@ -884,7 +885,7 @@ Program Example p_nonce_twice : program bool :=
   p_do y <- nonce ;
   p_ret (x == y).
 
-Example nonce_twice : [the stateTraceMonad nat nat of (StateMonad.acto (nat * seq nat)%type)] _ :=
+Example nonce_twice : StateMonad.acto (nat * seq nat)%type _ :=
   do nonce <- Ret (
     do n : nat <- st_get;
     do _ : unit <- st_put (S n);
@@ -895,14 +896,14 @@ Example nonce_twice : [the stateTraceMonad nat nat of (StateMonad.acto (nat * se
   Ret (Nat.eqb x y).
 
 Compute nonce_twice (0, []).
-Compute (denote ([the stateTraceMonad nat nat of (StateMonad.acto (nat * seq nat)%type)]) bool p_nonce_twice) (0, []).
+Compute (denote (StateMonad.acto (nat * seq nat)%type) bool p_nonce_twice) (0, []).
 Compute run_ss p_nonce_twice 0.
 
 Remark denote_p_nonce_twice :
   denote _ bool p_nonce_twice = nonce_twice.
 Proof. by []. Qed.
 
-Fixpoint countdown (fuel : nat) : [the stateTraceMonad nat bool of (StateMonad.acto (nat * seq bool)%type)] unit :=
+Fixpoint countdown (fuel : nat) : StateMonad.acto (nat * seq bool)%type unit :=
   match fuel with
   | O => Ret tt
   | S fuel' =>
@@ -926,11 +927,11 @@ Fixpoint p_countdown (fuel : nat) : program unit :=
   end.
 
 Compute (countdown 100) (5, []).
-Compute (denote [the stateTraceMonad nat bool of (StateMonad.acto (nat * seq bool)%type)] unit (p_countdown 100)) (5, []).
+Compute (denote (StateMonad.acto (nat * seq bool)%type) unit (p_countdown 100)) (5, []).
 Compute run_ss (p_countdown 100) 5.
 
 Remark denote_countdown fuel :
-  denote ([the stateTraceMonad nat bool of (StateMonad.acto (nat * seq bool)%type)]) unit (p_countdown fuel) = countdown fuel.
+  denote (StateMonad.acto (nat * seq bool)%type) unit (p_countdown fuel) = countdown fuel.
 Proof.
 elim: fuel => // n.
 rewrite [countdown (S n)]/=.

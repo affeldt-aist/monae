@@ -23,6 +23,7 @@ From HB Require Import structures.
 (* Module FunctorLaws == map laws of a functor                                *)
 (*            functor == type of functors                                     *)
 (*              F # g == application of the functor F to the morphism g       *)
+(*                FId == identity functor (functor instance on up_idfun)      *)
 (*             F ~> G == natural transformation from functor F to functor G   *)
 (*            f ~~> g == forall A, f A -> g A, notation used for the          *)
 (*                       components of a natural transformation               *)
@@ -40,7 +41,7 @@ From HB Require Import structures.
 (*                >>= == notation for the standard bind operator              *)
 (*             m >> f := m >>= (fun _ => f)                                   *)
 (*              monad == type of monads                                       *)
-(*                Ret == natural transformation FId ~> M for a monad M      *)
+(*                Ret == natural transformation FId ~> M for a monad M        *)
 (*               Join == natural transformation M \o M ~> M for a monad M     *)
 (* ```                                                                        *)
 (*                                                                            *)
@@ -137,6 +138,9 @@ Declare Scope monae_scope.
 Delimit Scope monae_scope with monae.
 Declare Scope proba_monad_scope.
 
+Notation UU1 := Type.
+Notation UU0 := Type.
+
 Reserved Notation "f (o) g" (at level 11).
 Reserved Notation "m >> f" (at level 49).
 Reserved Notation "'fmap' f" (at level 4).
@@ -147,9 +151,6 @@ Notation "f ~~> g" := (forall A, f A -> g A)
   (at level 51, only parsing) : monae_scope.
 
 Local Open Scope monae_scope.
-
-Notation UU1 := Type.
-Notation UU0 := Type.
 
 (* NB: not putting M in Set -> Set because of expressions like:
   M (A * (size s).-1.-tuple A)%type *)
@@ -223,7 +224,7 @@ HB.instance Definition _ := isFunctor.Build (F \o G) comp_id comp_comp.
 End functor_composition.
 
 Lemma FCompE (F G : functor) (A B : UU0) (k : A -> B) :
-  [the functor of F \o G] # k = F # (G # k).
+  (F \o G) # k = F # (G # k).
 Proof. by []. Qed.
 
 (* monadic counterpart of function composition:
@@ -475,13 +476,11 @@ HB.factory Record isMonad_ret_join (F : UU0 -> UU0) & isFunctor F := {
 
 HB.builders Context M & isMonad_ret_join M.
 
-Let F := [the functor of M].
-
-Let bind (A B : UU0) (m : F A) (f : A -> F B) : F B :=
+Let bind (A B : UU0) (m : M A) (f : A -> M B) : M B :=
   bind_of_join join m f.
 
 Let bindE (A B : UU0) (f : A -> M B) (m : M A) :
-  bind m f = join B ((F # f) m).
+  bind m f = join B ((M # f) m).
 Proof. by []. Qed.
 
 HB.instance Definition _ := isMonad.Build M bindE joinretM joinMret joinA.
@@ -513,10 +512,8 @@ by apply: funext => u /=; rewrite bindretf.
 Qed.
 
 HB.instance Definition _ := isFunctor.Build M actm_id actm_comp.
-Let F := [the functor of M].
-Local Notation FF := [the functor of F \o F].
 
-Let ret_naturality : naturality FId F ret.
+Let ret_naturality : naturality FId M ret.
 Proof.
 move=> a b h.
 rewrite FIdE /hierarchy.actm /= /actm; apply: funext => m /=.
@@ -524,18 +521,18 @@ by rewrite up_compE bindretf.
 Qed.
 
 HB.instance Definition _ :=
-  isNatural.Build FId F (ret : FId ~~> F) ret_naturality.
+  isNatural.Build FId M (ret : FId ~~> M) ret_naturality.
 
-Let join' : FF ~~> F := fun _ m => bind m up_idfun.
+Let join : M \o M ~~> M := fun _ m => bind m up_idfun.
 
-Let actm_bind (a b c : UU0) (f : a -> b) m (g : c -> F a) :
+Let actm_bind (a b c : UU0) (f : a -> b) m (g : c -> M a) :
   (actm f) (bind m g) = bind m (actm f \o g).
 Proof. by rewrite /actm bindA. Qed.
 
-Let join'_naturality : naturality FF F join'.
+Let join_naturality : naturality (M \o M) M join.
 Proof.
 move=> a b h.
-rewrite /join' /=; apply: funext => mm /=.
+rewrite /join /=; apply: funext => mm /=.
 rewrite /hierarchy.actm /= /isFunctor.actm /=.
 rewrite !up_compE actm_bind bindA.
 congr bind.
@@ -543,34 +540,29 @@ apply: funext => m /=.
 by rewrite bindretf /=.
 Qed.
 
-HB.instance Definition _ := isNatural.Build _ _ _ join'_naturality.
-Let join := [the FF ~> F of join'].
+HB.instance Definition _ := isNatural.Build _ _ _ join_naturality.
 
 Let bind_map (A B C : UU0) (f : A -> B) (m : M A) (g : B -> M C) :
-  bind ((F # f) m) g = bind m (g \o f).
+  bind ((M # f) m) g = bind m (g \o f).
 Proof.
 rewrite bindA; congr bind.
 by apply: funext => ?; rewrite bindretf.
 Qed.
 
 Let bindE (a b : UU0) (f : a -> M b) (m : M a) :
-  bind m f = join b ((F # f) m).
-Proof.
-rewrite /join /= /hierarchy.actm /= /join' /=.
-by rewrite bind_map.
-Qed.
+  bind m f = join ((M # f) m).
+Proof. by rewrite /join bind_map. Qed.
 
 Let joinretM : JoinLaws.left_unit ret join.
 Proof.
 move=> a; apply: funext => m.
-by rewrite /join /= /join' /= up_compE bindretf.
+by rewrite /join up_compE bindretf.
 Qed.
 
 Let joinMret : JoinLaws.right_unit ret join.
 Proof.
 move=> a; apply: funext => m.
-rewrite /join /= /join'.
-rewrite /hierarchy.actm /= /actm /=.
+rewrite /join /hierarchy.actm /= /actm /=.
 rewrite up_compE bindA /=.
 rewrite [X in bind m X](_ : _ = fun x => ret x) ?bindmret //=; apply: funext => ?.
 by rewrite bindretf.
@@ -579,8 +571,7 @@ Qed.
 Let joinA : JoinLaws.associativity join.
 Proof.
 move => a; apply: funext => m.
-rewrite /join /= /join'.
-rewrite /hierarchy.actm /= /actm.
+rewrite /join /hierarchy.actm /= /actm.
 rewrite up_compE [in RHS]up_compE !bindA.
 congr bind.
 apply: funext => u /=.
@@ -861,7 +852,7 @@ Qed.
 End nondet_big.
 
 HB.mixin Record isMonadFailR0 (M : UU0 -> UU0) & MonadFail M :=
- { bindmfail : BindLaws.right_zero (@bind [the monad of M]) (@fail _) }.
+ { bindmfail : BindLaws.right_zero (@bind M) (@fail _) }.
 
 #[short(type=failR0Monad)]
 HB.structure Definition MonadFailR0 := {M of isMonadFailR0 M & }.
@@ -1136,9 +1127,9 @@ HB.mixin Record isMonadExceptStateRun
     (S : UU0) (N : exceptMonad) (M : UU0 -> UU0)
     & MonadStateRun S N M & MonadExcept M := Mixin {
   runStateTfail : forall (A : UU0) (s : S),
-    runStateT (@fail [the exceptMonad of M] A) s = @fail N _ ;
+    runStateT (@fail M A) s = @fail N _ ;
   runStateTcatch : forall (A : UU0) (s : S) (m1 m2 : M A),
-    runStateT (@catch [the exceptMonad of M] _ m1 m2) s =
+    runStateT (@catch M _ m1 m2) s =
     @catch N _ (runStateT m1 s) (runStateT m2 s) }.
 
 #[short(type=exceptStateRunMonad)]
@@ -1160,9 +1151,9 @@ Arguments reify {_} {_} {_}.
 
 HB.mixin Record isMonadStateReify (S : UU0) (M : UU0 -> UU0)
     & MonadReify S M & MonadState S M := {
-  reifyget : forall s, reify (@get _ [the stateMonad S of M]) s = Some (s, s) ;
+  reifyget : forall s, reify (@get _ M) s = Some (s, s) ;
   reifyput : forall s s',
-    reify (@put _ [the stateMonad S of M] s') s = Some (tt, s') }.
+    reify (@put _ M s') s = Some (tt, s') }.
 
 #[short(type=stateReifyMonad)]
 HB.structure Definition MonadStateReify (S : UU0) :=
@@ -1171,7 +1162,7 @@ HB.structure Definition MonadStateReify (S : UU0) :=
 HB.mixin Record isMonadFailReify (S : UU0) (M : UU0 -> UU0)
     & MonadReify S M & MonadFail M :=
   { reifyfail : forall S' (s : S),
-      reify (@fail [the failMonad of M] S') s = None }.
+      reify (@fail M S') s = None }.
 
 #[short(type=failReifyMonad)]
 HB.structure Definition MonadFailReify (S : UU0) :=
@@ -1356,7 +1347,7 @@ HB.structure Definition MonadTrace (T : UU0) := {M of isMonadTrace T M & }.
 HB.mixin Record isMonadTraceReify (T : UU0) (M : UU0 -> UU0)
     & MonadReify (seq T) M & MonadTrace T M := {
   reifytmark : forall t l,
-    reify (@mark _ [the traceMonad T of M] t) l = Some (tt, rcons l t) }.
+    reify (@mark _ M t) l = Some (tt, rcons l t) }.
 
 HB.mixin Record isMonadStateTrace (S T : UU0) (M : UU0 -> UU0) & Monad M := {
   st_get : M S ;
@@ -1378,13 +1369,13 @@ HB.structure Definition MonadStateTrace (S T : UU0) :=
 HB.mixin Record isMonadStateTraceReify (S T : UU0) (M : UU0 -> UU0)
     & MonadReify (S * seq T)%type M & MonadStateTrace S T M := {
   reifystget : forall s l,
-    reify (@st_get _ _ [the stateTraceMonad S T of M]) (s, l) =
+    reify (@st_get _ _ M) (s, l) =
     Some (s, (s, l)) ;
   reifystput : forall s l s',
-    reify (@st_put _ _ [the stateTraceMonad S T of M] s') (s, l) =
+    reify (@st_put _ _ M s') (s, l) =
     Some (tt, (s', l)) ;
   reifystmark : forall t s l,
-    reify (@st_mark _ _ [the stateTraceMonad S T of M] t) (s, l) =
+    reify (@st_mark _ _ M t) (s, l) =
     Some (tt, (s, rcons l t)) }.
 
 #[short(type=stateTraceReifyMonad)]
@@ -1529,10 +1520,10 @@ HB.mixin Record isMonadFailFresh (S : eqType) (M : UU0 -> UU0)
     & MonadFresh S M & MonadFail M := Mixin {
   (* generated symbols are indeed fresh (specification of fresh) *)
   distinct : segment_closed.t S ;
-  bassert_symbols : bassert distinct \o (@symbols _ [the freshMonad S of M]) =
-                    @symbols _ [the freshMonad S of M] ;
+  bassert_symbols : bassert distinct \o (@symbols _ M) =
+                    @symbols _ M ;
   (* failure is a right zero of composition (backtracking interpretation) *)
-  failfresh_bindmfail : BindLaws.right_zero (@bind [the monad of M]) (@fail _)
+  failfresh_bindmfail : BindLaws.right_zero (@bind M) (@fail _)
 }.
 
 #[short(type=failFreshMonad)]

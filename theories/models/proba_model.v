@@ -88,7 +88,7 @@ Proof. by move=> A B C m f g; exact: fsdistbindA. Qed.
 HB.instance Definition _ := isMonad_ret_bind.Build
   acto left_neutral right_neutral associative.
 
-Lemma BindE (A B : choiceType) m (f : A -> [the monad of acto] B) :
+Lemma BindE (A B : choiceType) m (f : A -> acto B) :
   (m >>= f) = (m >>= f)%fsdist.
 Proof. by []. Qed.
 

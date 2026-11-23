@@ -27,38 +27,37 @@ Require Import category.
 (*                                                                            *)
 (* FC -| UC:                                                                  *)
 (* ```                                                                        *)
-(*                  CC := [the category of choiceType]                        *)
-(*     free_choiceType := [the {functor CT -> CC} of choice_of_Type]          *)
+(*                  CC := choiceType : category                               *)
+(*     free_choiceType := choie_of_type : {functor CT -> CC}                  *)
 (*                        (notation FC)                                       *)
-(*   forget_choiceType := [the {functor CC -> CT} of up_idfun]                *)
+(*   forget_choiceType := up_idfun : {functor CC -> CT}                       *)
 (*                        (notation UC)                                       *)
-(*                epsC == counit FC \O UC ~> 1                                *)
-(*                etaC == unit 1 ~> UC \O FC                                  *)
+(*                epsC == counit FC \o UC ~> 1                                *)
+(*                etaC == unit 1 ~> UC \o FC                                  *)
 (* ```                                                                        *)
 (* F0 -| U0:                                                                  *)
 (* ```                                                                        *)
-(*                  CV := [the category of convType]                          *)
+(*                  CV := convType : category                                 *)
 (*                        (morphisms are affine functions)                    *)
-(*       free_convType := [the {functor CC -> CV} of                          *)
-(*                         (fun a : CC => [the convType of {dist a}])]        *)
+(*       free_convType := (fun a : CC => {dist a}) : {functor CC -> CV}       *)
 (*                        (notation F0)                                       *)
-(*     forget_convType := [the {functor CV -> CC} of up_idfun]                *)
-(*                eps0 == counit F0 \O U0 ~> 1                                *)
-(*                eta0 == unit 1 ~> U0 \O F0                                  *)
+(*     forget_convType := up_idfun : {functor CV -> CC}                       *)
+(*                eps0 == counit F0 \o U0 ~> 1                                *)
+(*                eta0 == unit 1 ~> U0 \o F0                                  *)
 (*        triL0, triR0 == triangular laws                                     *)
 (* ```                                                                        *)
 (* F1 -| U1:                                                                  *)
 (* ```                                                                        *)
-(*                  CS := [the category of semiCompSemiLattConvType]          *)
-(*                        the category of semi-up_complete semi-lattice convex   *)
-(*                        spaces, morphisms are biglubmorph and affine        *)
-(* free_semiCompSemiLattConvType := [the {functor CV -> CS} of                *)
-(*                        (fun a : CV => {necset a})]]                        *)
+(*                  CS := semiCompSemiLattConvType : category                 *)
+(*                        the category of semi-up_complete semi-lattice       *)
+(*                        convex spaces; morphisms are biglubmorph and affine *)
+(* free_semiCompSemiLattConvType := (fun a : CV => {necset a})                *)
+(*                                    : {functor CV -> CS}                    *)
 (*                        (notation F1)                                       *)
-(* forget_semiCompSemiLattConvType := [the {functor CS -> CV} of idfun]       *)
+(* forget_semiCompSemiLattConvType := idfun : {functor CS -> CV}              *)
 (*                        (notation U1)                                       *)
-(*                eps1 == counit F1 \O U1 ~> FId                              *)
-(*                eta1 == unit FId ~> U1 \O F1                                *)
+(*                eps1 == counit F1 \o U1 ~> FId                              *)
+(*                eta1 == unit FId ~> U1 \o F1                                *)
 (*        triL1, triR1 == triangular laws                                     *)
 (* ```                                                                        *)
 (*                                                                            *)
@@ -71,10 +70,10 @@ Require Import category.
 (*                        | UC                                                *)
 (*       P_delta_right == | U0                                                *)
 (*                        | U1                                                *)
-(*             P_delta == functor CT CT, P_delta_right \O P_delta_left.       *)
-(*                 eps == P_delta_left \O P_delta_right ~> FId                *)
+(*             P_delta == functor CT CT, P_delta_right \o P_delta_left.       *)
+(*                 eps == P_delta_left \o P_delta_right ~> FId                *)
 (*                 ret == FId ~> P_delta                                      *)
-(*                join == P_delta \O P_delta ~> P_delta                       *)
+(*                join == P_delta \o P_delta ~> P_delta                       *)
 (*                 gcm == geometrically convex monad in the context of        *)
 (*                        monad.v                                             *)
 (* ```                                                                        *)
@@ -87,6 +86,10 @@ Unset Printing Implicit Defensive.
 Local Open Scope proba_scope.
 Local Open Scope category_scope.
 
+Local Notation "[ 'hompack' f , prf ]" :=
+  (Hom.Pack (Hom.Class (isHom.Axioms_ _ _  f prf)))
+  (at level 0, format "[ 'hompack'  f ,  prf ]", only printing) : category_scope.
+
 Section choiceType_as_a_category.
 
 HB.instance Definition _ :=
@@ -94,11 +97,14 @@ HB.instance Definition _ :=
     (fun _ _ _ => True) (fun=> I) (fun _ _ _ _ _ _ _ => I).
 
 Definition hom_choiceType
-           (a b : [the category of choiceType]) (f : a -> b) : {hom a -> b} :=
+           (a b : choiceType) (f : a -> b) : {hom a -> b} :=
   Hom.Pack (Hom.Class (isHom.Axioms_ a b f I)).
 
 End choiceType_as_a_category.
-Notation CC := [the category of choiceType].
+Notation CC := (choiceType : category) (only parsing).
+Notation "'CC'" :=
+  (@reverse_coercion category _ _ choiceType : category)
+    (only printing).
 
 Require monad_model.
 Section free_choiceType_functor.
@@ -116,11 +122,11 @@ Proof. by move=> a b c g h; rewrite hom_ext. Qed.
 HB.instance Definition _ := isFunctor.Build CT CC _
   free_choiceType_mor_id free_choiceType_mor_comp.
 
-Definition free_choiceType := [the {functor CT -> CC} of m].
+Definition free_choiceType : {functor CT -> CC} := m.
 
 Lemma free_choiceType_mor_comp_fun (a b c : Type) (g : {hom b -> c})
       (h : {hom a -> b}):
-  free_choiceType_mor [hom g \o h] =
+  free_choiceType_mor (g \o h) =
   (free_choiceType_mor g) \o (free_choiceType_mor h) :> (_ -> _).
 Proof. by rewrite free_choiceType_mor_comp. Qed.
 
@@ -139,7 +145,7 @@ Lemma h_comp : FunctorLaws.comp h. Proof. by move=> *; apply hom_ext. Qed.
 
 HB.instance Definition _ := isFunctor.Build _ _ _ h_id h_comp.
 
-Definition forget_choiceType := [the {functor CC -> CT} of m].
+Definition forget_choiceType : {functor CC -> CT} := m.
 
 Lemma forget_choiceTypeE : (forall a : CC, forget_choiceType a = a) /\
   (forall (a b : CC) (f : {hom[CC] a -> b}), forget_choiceType # f = f :> (a -> b)).
@@ -151,27 +157,27 @@ Section epsC_etaC.
 Local Notation FC := free_choiceType.
 Local Notation UC := forget_choiceType.
 
-Let epsC' : FC \O UC ~~> FId := fun A : CC => Hom.Pack (Hom.Class
-  (isHom.Axioms_ ((FC \O UC) A) (FId A) up_idfun I)).
+Let epsC' : FC \o UC ~~> FId := fun A : CC => Hom.Pack (Hom.Class
+  (isHom.Axioms_ ((FC \o UC) A) (FId A) up_idfun I)).
 
 Lemma epsC'_natural : naturality _ _ epsC'. Proof. by []. Qed.
 
 HB.instance Definition _ := isNatural.Build _ _ _ _ _ epsC'_natural.
 
-Definition epsC := locked [the _ ~> _ of epsC'].
+Definition epsC := locked (epsC' : FC \o UC ~> FId).
 
 Lemma epsCE (T : choiceType) : epsC T = up_idfun :> (_ -> _).
 Proof. by rewrite /epsC; unlock. Qed.
 
-Let etaC' : FId ~~> UC \O FC :=
-      fun (_ : CT) => Hom.Pack (Hom.Class (isHom.Axioms_ (FId _) ((UC \O FC) _) up_idfun I)).
+Let etaC' : FId ~~> UC \o FC :=
+      fun (_ : CT) => Hom.Pack (Hom.Class (isHom.Axioms_ (FId _) ((UC \o FC) _) up_idfun I)).
 
 Lemma etaC'_natural : naturality _ _ etaC'.
 Proof. by []. Qed.
 
 HB.instance Definition _ := isNatural.Build _ _ _ _ _ etaC'_natural.
 
-Definition etaC := locked [the _ ~> _ of etaC'].
+Definition etaC := locked (etaC' : FId ~> UC \o FC).
 
 Lemma etaCE (T : Type) : etaC T = up_idfun :> (_ -> _).
 Proof. by rewrite /etaC; unlock. Qed.
@@ -201,7 +207,10 @@ HB.instance Definition _ := isCategory.Build (convType R) (fun A : convType R =>
   _ affine_idfun' affine_comp'.
 
 End convType_as_a_category.
-Notation CV R := ([the category of convType R]).
+Notation CV R := (convType R : category).
+Notation "'CV' R " :=
+  (@reverse_coercion category _ _ (convType R) : category)
+    (at level 1, only printing).
 
 Section conv_hom_is_affine.
 
@@ -216,7 +225,7 @@ End conv_hom_is_affine.
 Section free_convType_functor.
 Variable R : realType.
 
-Let acto (a : CC) : CV R := [the convType R of R.-dist a].
+Let acto (a : CC) : CV R := R.-dist a.
 
 Definition free_convType_mor (A B : CC) (f : {hom A -> B})
     : {hom acto A -> acto B} :=
@@ -232,12 +241,12 @@ Qed.
 
 (* free_convType_mor induces maps between supports *)
 Definition free_convType_mor_supp
-  (A B : CC) (f : A -> B(*{hom A  -> B}*)) (d : R.-dist A) (x : finsupp d)
+  (A B : CC) (f : A -> B (*{hom A -> B}*)) (d : R.-dist A) (x : finsupp d)
   : finsupp ((free_convType_mor (hom_choiceType f)) d) :=
   FSetSub (mem_finsupp_free_convType_mor f x).
 Global Arguments free_convType_mor_supp [A B] f d.
 
-Lemma fsval_free_convType_mor_supp (A B : choiceType) (f : {hom A  -> B}) d i :
+Lemma fsval_free_convType_mor_supp (A B : choiceType) (f : {hom A -> B}) d i :
   fsval (free_convType_mor_supp f d i) = f (fsval i).
 Proof. by case: i. Qed.
 
@@ -252,10 +261,10 @@ Proof. by move=> a b c g h; apply/hom_ext; exact: fsdistmap_comp. Qed.
 HB.instance Definition _ :=
   isFunctor.Build CC (CV R) acto free_convType_mor_id free_convType_mor_comp.
 
-Definition free_convType := [the {functor CC -> CV R} of acto].
+Definition free_convType : {functor CC -> CV R} := acto.
 
 Lemma free_convType_mor_comp_fun (A B C : CC) (g : {hom B -> C}) (h : {hom A -> B}) :
-  free_convType_mor [hom g \o h] =
+  free_convType_mor (g \o h) =
   (free_convType_mor g) \o (free_convType_mor h) :> (_ -> _).
 Proof. by rewrite free_convType_mor_comp. Qed.
 
@@ -275,7 +284,7 @@ Let h1_comp : FunctorLaws.comp h1. Proof. by move=> *; apply hom_ext. Qed.
 
 HB.instance Definition _ := isFunctor.Build _ _ _ h1_id h1_comp.
 
-Definition forget_convType := [the {functor CV R -> CC} of m1].
+Definition forget_convType : {functor CV R -> CC} := m1.
 
 Lemma forget_convTypeE : (forall a : CV R, forget_convType a = a) /\
   (forall (a b : CV R) (f : {hom[CV R] a -> b}), forget_convType # f = f :> (a -> b)).
@@ -295,8 +304,8 @@ Local Open Scope convex_scope.
 Local Notation F0 := (free_convType R).
 Local Notation U0 := (forget_convType R).
 
-Let eps0' : F0 \O U0 ~~> FId := fun a =>
-  Hom.Pack (Hom.Class (isHom.Axioms_ ((F0 \O U0) a) (FId a)
+Let eps0' : F0 \o U0 ~~> FId := fun a =>
+  Hom.Pack (Hom.Class (isHom.Axioms_ ((F0 \o U0) a) (FId a)
     (@Convn_of_fsdist _ a) (@Convn_of_fsdist_affine _ (FId a)))).
 
 Let eps0'_natural : naturality _ _ eps0'.
@@ -306,13 +315,13 @@ by rewrite up_compE Convn_of_fsdistmap.
 Qed.
 
 HB.instance Definition _ := isNatural.Build _ _ _ _ _ eps0'_natural.
-Definition eps0 := locked [the _ ~> _ of eps0'].
+Definition eps0 := locked (eps0' : _ ~> _).
 
 Lemma eps0E (C : convType R) : eps0 C = @Convn_of_fsdist _ C :> (_ -> _).
 Proof. by rewrite /eps0; unlock. Qed.
 
-Let eta0' : FId ~~> U0 \O F0 := fun T =>
-  Hom.Pack (Hom.Class (isHom.Axioms_ (FId T) ((U0 \O F0) T) (@fsdist1 _ _) I)).
+Let eta0' : FId ~~> U0 \o F0 := fun T =>
+  Hom.Pack (Hom.Class (isHom.Axioms_ (FId T) ((U0 \o F0) T) (@fsdist1 _ _) I)).
 
 Lemma eta0'_natural : naturality _ _ eta0'.
 Proof.
@@ -320,7 +329,7 @@ by move=> a b h; rewrite funeqE=> x; rewrite FIdf /eta0' up_compE/= fsdistmap1.
 Qed.
 
 HB.instance Definition _ := isNatural.Build _ _ _ _ _ eta0'_natural.
-Definition eta0 := locked [the _ ~> _ of eta0'].
+Definition eta0 := locked (eta0' : _ ~> _).
 
 Lemma eta0E (T : choiceType) : eta0 T = @fsdist1 _ _ :> (_ -> _).
 Proof. by rewrite /eta0; unlock. Qed.
@@ -385,7 +394,10 @@ HB.instance Definition _ := isCategory.Build (semiCompSemiLattConvType R)
   comp_is_biglub_affine.
 
 End semiCompSemiLattConvType_as_a_category.
-Notation CS R := [the category of semiCompSemiLattConvType R].
+Notation CS R := (semiCompSemiLattConvType R : category).
+Notation "'CS' R " :=
+  (@reverse_coercion category _ _ (semiCompSemiLattConvType R) : category)
+    (at level 1, only printing).
 
 Local Open Scope classical_set_scope.
 Local Open Scope latt_scope.
@@ -408,7 +420,7 @@ Proof. by case: scsl_hom_is_biglub_affine. Qed.
 
 (* NB(rei): this can actually maybe be removed *)
 HB.instance Definition SCSL_hom_affine :=
-  isAffine.Build _ _ _ (f : _ -> _) scsl_hom_is_affine.
+  isAffine.Build R K L f scsl_hom_is_affine. (* no new instance is generated! *)
 (* Canonical SCSL_hom_affine (K L : CS) (f : {hom K  -> L}) :=
   Affine (scsl_hom_is_affine f). *)
 
@@ -451,8 +463,8 @@ Lemma free_semiCompSemiLattConvType_mor'_affine :
   affine free_semiCompSemiLattConvType_mor'.
 Proof.
 move=> p a0 a1; apply necset_ext => /=; rewrite predeqE => b0; split.
-- case=> a [] a0' a0a0'; rewrite conv_pt_setE=> -[] a1' a1a1' <- <- /=.
-  by rewrite affine_conv /=; exact: conv_in_conv_set.
+- case=> a [] a0' a0a0'; rewrite conv_pt_setE => -[] a1' a1a1' <- <- /=.
+  by rewrite affine_conv/=; apply: conv_in_conv_set; eexists => //.
 - move=> /conv_in_conv_set' [] x [] y [] [] a0' a0a0' <- [] [] a1' a1a1' <- ->.
   rewrite affine_image_conv_set /=.
   by apply conv_in_conv_set; apply imageP.
@@ -514,7 +526,7 @@ HB.instance Definition _ := isFunctor.Build _ _ acto
   free_semiCompSemiLattConvType_mor_id free_semiCompSemiLattConvType_mor_comp.
 
 (* F1 *)
-Definition free_semiCompSemiLattConvType := [the {functor CV R -> CS R} of acto].
+Definition free_semiCompSemiLattConvType : {functor CV R -> CS R} := acto.
 
 End free_semiCompSemiLattConvType_functor.
 
@@ -532,7 +544,7 @@ Let h2_comp : FunctorLaws.comp h2. Proof. by move=> *; apply hom_ext. Qed.
 
 HB.instance Definition _ := isFunctor.Build _ _ m2 h2_id h2_comp.
 
-Definition forget_semiCompSemiLattConvType := [the {functor CS R -> CV R} of m2].
+Definition forget_semiCompSemiLattConvType : {functor CS R -> CV R} := m2.
 
 Local Notation U1 := forget_semiCompSemiLattConvType.
 
@@ -574,8 +586,8 @@ move=> p X Y; rewrite -biglub_conv_setD.
 by congr (|_| _%:ne); apply/neset_ext => /=.
 Qed.
 
-Let eps1' : F1 \O U1 ~~> FId := fun L => Hom.Pack (Hom.Class (isHom.Axioms_
-  ((F1 \O U1) L) (FId L) (@eps1'' L)
+Let eps1' : F1 \o U1 ~~> FId := fun L => Hom.Pack (Hom.Class (isHom.Axioms_
+  ((F1 \o U1) L) (FId L) (@eps1'' L)
   (conj (@eps1''_biglubmorph L) (@eps1''_affine L)))).
 
 Lemma eps1'_natural : naturality _ _ eps1'.
@@ -587,7 +599,7 @@ Qed.
 
 HB.instance Definition _ := isNatural.Build _ _ _ _ _ eps1'_natural.
 
-Definition eps1 := locked [the _ ~> _ of eps1'].
+Definition eps1 := locked (eps1' : _ ~> _).
 
 Lemma eps1E (L : semiCompSemiLattConvType R) :
   eps1 L = (fun X => |_| X) :> (_ -> _).
@@ -601,8 +613,8 @@ move=> p a b /=; apply/necset_ext; rewrite eqEsubset; split=> x /=.
 - by case/conv_in_conv_set'=> a0 [] b0 [] -> [] -> ->.
 Qed.
 
-Let eta1' : FId ~~> U1 \O F1 := fun C => Hom.Pack (Hom.Class
-  (isHom.Axioms_ (FId C) ((U1 \O F1) C) set1 (@necset1_affine C))).
+Let eta1' : FId ~~> U1 \o F1 := fun C => Hom.Pack (Hom.Class
+  (isHom.Axioms_ (FId C) ((U1 \o F1) C) set1 (@necset1_affine C))).
 
 Lemma eta1'_natural : naturality _ _ eta1'.
 Proof.
@@ -612,7 +624,7 @@ Qed.
 
 HB.instance Definition _ := isNatural.Build _ _ _ _ _ eta1'_natural.
 
-Definition eta1 := locked [the _ ~> _ of eta1'].
+Definition eta1 := locked (eta1' : _ ~> _).
 
 Lemma eta1E (C : convType R) : eta1 C = (set1 : C -> necset C) :> (_ -> _).
 Proof. by rewrite /eta1; unlock. Qed.
@@ -673,15 +685,15 @@ Variable R : realType.
 Import category.
 
 Definition P_delta_left :=
-  free_semiCompSemiLattConvType R \O free_convType R \O free_choiceType.
+  free_semiCompSemiLattConvType R \o free_convType R \o free_choiceType.
 
 Definition P_delta_right :=
-  forget_choiceType \O forget_convType R \O forget_semiCompSemiLattConvType R.
+  forget_choiceType \o forget_convType R \o forget_semiCompSemiLattConvType R.
 
 (* action on objects *)
 Definition P_delta_acto (T : Type) : Type := P_delta_left T.
 
-Definition P_delta : {functor CT -> CT} := P_delta_right \O P_delta_left.
+Definition P_delta : {functor CT -> CT} := P_delta_right \o P_delta_left.
 
 Lemma P_deltaE (A B : Type) (f : {hom A -> B}) :
   P_delta # f = P_delta_left # f :> (_ -> _).
@@ -707,8 +719,7 @@ Definition A1 := AdjointFunctors.mk (@triL1 R) (@triR1 R).
 Definition Aprob := adj_comp AC A0.
 Definition Agcm := adj_comp Aprob A1.
 Definition Mgcm := Monad_of_adjoint_functors Agcm.
-Definition gcm :=
-  [the hierarchy.Monad.Exports.monad of Monad_of_category_monad.acto Mgcm].
+Definition gcm : hierarchy.Monad.Exports.monad := Monad_of_category_monad.acto Mgcm.
 
 Section gcm_opsE.
 Import hierarchy.
@@ -741,7 +752,7 @@ apply/necset_ext.
 rewrite /= /join_ /= /Monad_of_category_monad.join /= !HCompId !HIdComp eps1E.
 rewrite functor_o NEqE functor_id up_compfid.
 rewrite 2!VCompE_nat HCompId HIdComp.
-set E := epsC _; have->: E = [hom up_idfun] by apply/hom_ext; rewrite epsCE.
+set E := epsC _; have->: E = up_idfun by apply/hom_ext; rewrite epsCE.
 rewrite functor_id_hom/=.
 rewrite !functor_o functor_id !up_compfid.
 set F1J := F1 # _.
@@ -766,8 +777,8 @@ Import category.
 (* probability monad built directly *)
 Definition M := proba_model.MonadProbModel.t.
 (* probability monad built using adjunctions *)
-Definition N := [the hierarchy.Monad.Exports.monad of
-  Monad_of_category_monad.acto (Monad_of_adjoint_functors (Aprob R))].
+Definition N : hierarchy.Monad.Exports.monad :=
+  Monad_of_category_monad.acto (Monad_of_adjoint_functors (Aprob R)).
 
 Lemma actmE T : N T = M R T. Proof. by []. Qed.
 
