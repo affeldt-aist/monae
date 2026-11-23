@@ -76,7 +76,7 @@ HB.builders Context (M N : monad) (e : M ~~> N) & isMonadM_ret_bind M N e.
 
 Lemma naturality_monadM : naturality M N e.
 Proof.
-move=> A B h; apply :funext => m /=.
+move=> A B h; apply: funext => m /=.
 by rewrite !up_compE !fmapE monadMbind (up_compA (e B)) monadMret.
 Qed.
 

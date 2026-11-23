@@ -17,10 +17,10 @@ Require Import monad_transformer.
 (* Sample models for monads in hierarchy.v (see also other *_model.v files).  *)
 (* As for naming, we tend to use the identifier acto for the actions on       *)
 (* objects and actm for the actions on morphisms.                             *)
-(*                                                                            \*)
-(* Instances of monads (Modules):                                             *)
+(*                                                                            *)
+(* Instances of monads (some are in Modules):                                 *)
 (* ```                                                                        *)
-(* IdentityMonad      == identity monad idfun                                 *)
+(* MId                == identity monad up_idfun                              *)
 (* ListMonad          == list monad seq                                       *)
 (* SetMonad           == set monads using classical_sets                      *)
 (* ExceptMonad        == exception monad E + A                                *)
@@ -153,10 +153,10 @@ Proof. by []. Qed.
 Let right_neutral : BindLaws.right_neutral bind (NId FId).
 Proof. by []. Qed.
 Let associative : BindLaws.associative bind. Proof. by []. Qed.
-Let acto := (@idfun UU0).
+Let acto := (@up_idfun UU0).
 Let class := isMonad_ret_bind.Build
   acto left_neutral right_neutral associative.
-Definition MId := HB.pack_for monad idfun class.
+Definition MId := HB.pack_for monad up_idfun class.
 End identitymonad.
 
 Module ListMonad.
