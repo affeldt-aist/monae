@@ -75,7 +75,7 @@ HB.builders Context (M N : monad) (e : M ~~> N) & isMonadM_ret_bind M N e.
 
 Lemma naturality_monadM : naturality M N e.
 Proof.
-move=> A B h; apply funext => m /=.
+move=> A B h; apply: funext => m /=.
 by rewrite !up_compE !fmapE monadMbind (up_compA (e B)) monadMret.
 Qed.
 
@@ -95,7 +95,7 @@ Variables (S : UU0) (M : monad).
 
 Definition MS := fun A : UU0 => S -> M (A * S)%type.
 
-Definition retS : idfun ~~> MS := fun A : UU0 => curry Ret.
+Definition retS : FId ~~> MS := fun A : UU0 => curry Ret.
 
 Definition bindS (A B : UU0) (m : MS A) f : MS B := fun s => m s >>= uncurry f.
 
@@ -120,12 +120,11 @@ HB.instance Definition _ :=
   isMonad_ret_bind.Build MS bindSretf bindSmret bindSA.
 
 Lemma MS_mapE (A B : UU0) (f : A -> B) (m : MS A) :
-  ([the functor of MS] # f) m = (M # (fun x => (f x.1, x.2))) \o m.
+  (MS # f) m = (M # (fun x => (f x.1, x.2))) \o m.
 Proof.
-apply funext=> s.
-rewrite {1}/actm /= /bindS up_compE/= fmapE.
-congr bind.
-by apply: funext; case.
+apply: funext=> s.
+rewrite {1}/actm /= /bindS up_compE/= fmapE; congr bind.
+by apply: funext => -[].
 Qed.
 
 Definition liftS (A : UU0) (m : M A) : MS A :=
@@ -155,7 +154,7 @@ Lemma MS_bindE [S : UU0] [M : monad] [A B : UU0] (m : MS S M A) (f : A -> MS S M
   (m >>= f) s = m s >>= uncurry f.
 Proof. by []. Qed.
 
-Definition stateT (S : UU0) : monad -> monad := MS S.
+Definition stateT : UU0 -> monad -> monad := MS.
 
 HB.instance Definition _ (S : UU0) := isMonadT.Build
   (stateT S) (@liftS S).
@@ -215,7 +214,7 @@ Variables (Z : UU0) (* the type of exceptions *) (M : monad).
 Definition MX := fun X : UU0 => M (Z + X)%type.
 
 (* unit and bind operator of the transformed monad *)
-Definition retX : idfun ~~> MX := fun X x => Ret (inr x).
+Definition retX : FId ~~> MX := fun X x => Ret (inr x).
 
 Definition bindX X Y (t : MX X) (f : X -> MX Y) : MX Y :=
   t >>= fun c => match c with inl z => Ret (inl z) | inr x => f x end.
@@ -238,7 +237,7 @@ HB.instance Definition _ :=
  isMonad_ret_bind.Build MX bindXretf bindXmret bindXA.
 
 Lemma MX_mapE (A B : UU0) (f : A -> B) :
-  [the functor of MX] # f = M # (fun x => match x with inl y => inl y | inr y => inr (f y) end).
+  MX # f = M # (fun x => match x with inl y => inl y | inr y => inr (f y) end).
 Proof.
 apply: funext => m.
 rewrite {1}/actm /= /bindX /= [in RHS]fmapE.
@@ -246,7 +245,7 @@ congr (_ _).
 by apply: funext; case.
 Qed.
 
-Definition liftX X (m : M X) : MX X := m >>= (@ret [the monad of MX] _).
+Definition liftX X (m : M X) : MX X := m >>= (@ret MX _).
 
 Let retliftX : MonadMLaws.ret liftX.
 Proof.
@@ -267,14 +266,14 @@ by rewrite bindretf.
 Qed.
 
 HB.instance Definition _ := isMonadM_ret_bind.Build
-  M [the monad of MX] liftX retliftX bindliftX.
+  M (MX : monad) liftX retliftX bindliftX.
 
 End exception_monad_transformer.
 
-Definition exceptT (Z : UU0) := fun M => [the monad of MX Z M].
+Definition exceptT (Z : UU0) (M : monad) : monad := MX Z M.
 
 HB.instance Definition _ (Z : UU0) := isMonadT.Build
-  (exceptT Z) (fun M => [the monadM M [the monad of MX Z M] of @liftX Z M]).
+  (exceptT Z) (fun M => @liftX Z M : monadM M (MX Z M)).
 
 Section failMonad_of_exceptT.
 Variable M : monad.
@@ -301,14 +300,14 @@ Let Catch (B : UU0) (x : N B) (y : N B) : N B :=
     (fun=> y) (fun b => Ret (inr b))).
 
 Let Catchmfail (A : UU0) :
-  right_id (@fail [the failMonad of MX unit M] A) (@Catch A).
+  right_id (@fail (MX unit M : failMonad) A) (@Catch A).
 Proof.
 move=> x; rewrite /Catch /= /fail /= -[in RHS](bindmret x); bind_ext.
 by case=> /= [[]|].
 Qed.
 
 Let Catchfailm (A : UU0) :
-  left_id (@fail [the failMonad of MX unit M] A) (@Catch A).
+  left_id (@fail (MX unit M) A) (@Catch A).
 Proof.
 move=> x; rewrite /N in x *.
 by rewrite /Catch /= /fail /= bindretf.
@@ -335,7 +334,7 @@ Variables (R : UU0) (M : monad).
 
 Definition MEnv := fun A : UU0 => R -> M A.
 
-Definition retEnv : idfun ~~> MEnv := fun (A : UU0) a r => Ret a.
+Definition retEnv : FId ~~> MEnv := fun (A : UU0) a r => Ret a.
 
 Definition bindEnv A B (m : MEnv A) f : MEnv B :=
   fun r => m r >>= (fun a => f a r).
@@ -375,14 +374,14 @@ Let retliftEnv : MonadMLaws.ret liftEnv. Proof. by []. Qed.
 Let bindliftEnv : MonadMLaws.bind liftEnv. Proof. by []. Qed.
 
 HB.instance Definition envTmonadM := isMonadM_ret_bind.Build
-  M [the monad of MEnv] liftEnv retliftEnv bindliftEnv.
+  M (MEnv : monad) liftEnv retliftEnv bindliftEnv.
 
 End environment_monad_transformer.
 
-Definition envT (E : UU0) := fun M => [the monad of MEnv E M].
+Definition envT (E : UU0) M : monad := MEnv E M.
 
 HB.instance Definition _ (E : UU0) := isMonadT.Build (envT E)
-  (fun M => [the monadM M [the monad of MEnv E M] of @liftEnv E M]).
+  (fun M => @liftEnv E M : monadM M (MEnv E M)).
 
 (* traces monad transformer? *)
 Section output_monad_transformer.
@@ -391,7 +390,7 @@ Variables (R : UU0) (M : monad).
 
 Definition MO (X : UU0) := M (X * seq R)%type.
 
-Definition retO : idfun ~~> MO := fun (A : UU0) a => Ret (a, [::]).
+Definition retO : FId ~~> MO := fun (A : UU0) a => Ret (a, [::]).
 
 Definition bindO A B (m : MO A) (f : A -> MO B) : MO B :=
   m >>= (fun o => let: (x, w) := o in f x >>=
@@ -423,7 +422,7 @@ HB.instance Definition _ :=
  isMonad_ret_bind.Build MO bindOretf bindOmret bindOA.
 
 Lemma MO_mapE (A B : UU0) (f : A -> B) (m : MO A) :
-  ([the functor of MO] # f) m = (M # (fun x => (f x.1, x.2))) m.
+  (MO # f) m = (M # (fun x => (f x.1, x.2))) m.
 Proof.
 rewrite [in LHS]/actm /= /bindO /= [in RHS]fmapE.
 congr (_ _).
@@ -450,14 +449,14 @@ by rewrite bindretf /= bindretf.
 Qed.
 
 HB.instance Definition outputTmonadM := isMonadM_ret_bind.Build
-  M [the monad of MO] liftO retliftO bindliftO.
+  M (MO : monad) liftO retliftO bindliftO.
 
 End output_monad_transformer.
 
-Definition outputT (R : UU0) := fun M => [the monad of MO R M].
+Definition outputT (R : UU0) M : monad := MO R M.
 
 HB.instance Definition _ (R : UU0) := isMonadT.Build (outputT R)
-  (fun M => [the monadM M [the monad of MO R M] of @liftO R M]).
+  (fun M => @liftO R M : monadM M (MO R M)).
 
 Section continuation_monad_tranformer.
 Local Obligation Tactic := idtac.
@@ -465,7 +464,7 @@ Variables (r : UU0) (M : monad).
 
 Definition MC : UU0 -> UU0 := fun A => (A -> M r) -> M r %type.
 
-Definition retC : idfun ~~> MC := fun (A : UU0) (a : A) k => k a.
+Definition retC : FId ~~> MC := fun (A : UU0) (a : A) k => k a.
 
 Definition bindC A B (m : MC A) f : MC B := fun k => m (f^~ k).
 
@@ -482,7 +481,7 @@ HB.instance Definition _ :=
   isMonad_ret_bind.Build MC bindCretf bindCmret bindCA.
 
 Lemma MC_mapE (A B : UU0) (f : A -> B) (m : MC A) :
-  ([the functor of MC] # f) m = fun k : B -> M r => m (k \o f).
+  (MC # f) m = fun k : B -> M r => m (k \o f).
 Proof. by []. Qed.
 
 Definition liftC A (x : M A) : MC A := fun k => x >>= k.
@@ -500,14 +499,14 @@ by rewrite 3!bindA.
 Qed.
 
 HB.instance Definition contTmonadM := isMonadM_ret_bind.Build
-  M [the monad of MC] liftC retliftC bindliftC.
+  M (MC : monad) liftC retliftC bindliftC.
 
 End continuation_monad_tranformer.
 
-Definition contT (r : UU0) := fun M => [the monad of MC r M].
+Definition contT (r : UU0) M : monad := MC r M.
 
 HB.instance Definition _ (r : UU0) := isMonadT.Build (contT r)
-  (fun M => [the monadM M [the monad of MC r M] of @liftC r M]).
+  (fun M => @liftC r M : monadM M (MC r M)).
 
 Definition abortT r X (M : monad) A : contT r M A := fun _ : A -> M r => Ret X.
 Arguments abortT {r} _ {M} {A}.
@@ -647,7 +646,7 @@ Variables (E : functor) (M : monad).
 
 Definition psi' (n : E ~~> M) : E \o M ~~> M := fun X => Join \o n (M X).
 
-Lemma natural_psi' (n : E ~> M) : naturality [the functor of E \o M] M (psi' n).
+Lemma natural_psi' (n : E ~> M) : naturality (E \o M) M (psi' n).
 Proof.
 move=> A B h; rewrite /psi'.
 rewrite -/(Join \o n (M A)) [LHS]up_compA natural.
@@ -655,7 +654,7 @@ by rewrite -up_compA (natural n).
 Qed.
 
 HB.instance Definition _ (n : E ~> M) := isNatural.Build
-  [the functor of E \o M] M (psi' n) (natural_psi' n).
+  (E \o M) M (psi' n) (natural_psi' n).
 
 Lemma algebraic_psi' (n : E ~> M) : algebraicity (psi' n).
 Proof.
@@ -683,7 +682,7 @@ Qed.
 
 HB.instance Definition _ (n : E ~> M) := isAOperation.Build
   E M (psi' n) (algebraic_psi' n).
-Definition psi (n : E ~> M) := [the E.-aoperation M of psi' n].
+Definition psi (n : E ~> M) : E.-aoperation M := psi' n.
 
 Lemma psiE (n : E ~> M) A : psi n A = Join \o n (M A).
 Proof. by []. Qed.
@@ -711,7 +710,7 @@ Qed.
 HB.instance Definition _ (op : E.-operation M) := isNatural.Build
   E M (phi' op) (natural_phi' op).
 
-Definition phi (op : E.-operation M) := [the _ ~> _ of phi' op].
+Definition phi (op : E.-operation M) : E ~> M := phi' op.
 
 Lemma phiE (op : E.-operation M) (X : UU0) : phi op X = op X \o (E # Ret).
 Proof. by []. Qed.
@@ -801,12 +800,11 @@ Arguments hmap _ {M N} _.
 
 HB.mixin Record isFMT (t : monad -> monad) & MonadT t & Functorial t := {
   fmt_ret : forall M N (e : monadM M N),
-    MonadMLaws.ret (hmap [the functorial of t] e) ;
+    MonadMLaws.ret (hmap t e) ;
   fmt_bind : forall M N (e : monadM M N),
-    MonadMLaws.bind (hmap [the functorial of t] e) ;
+    MonadMLaws.bind (hmap t e) ;
   natural_hmap : forall (M N : monad) (n : M ~> N),
-    hmap [the functorial of t] n \v Lift [the monadT of t] M =
-    Lift [the monadT of t] N \v n }.
+    hmap t n \v Lift t M = Lift t N \v n }.
 
 #[short(type=fmt)]
 HB.structure Definition FMT := {t of isFMT t & isFunctorial t & isMonadT t}.
@@ -824,7 +822,7 @@ End fmt_lemmas.
 
 Section exceptFMT.
 Variable X : UU0.
-Let T := [the monadT of exceptT X].
+Let T : monadT := exceptT X.
 Definition hmapX' (F G : monad) (tau : F ~> G) : T F ~~> T G :=
   fun (A : UU0) t => tau _ t.
 
@@ -838,12 +836,11 @@ Qed.
 HB.instance Definition hmapX (F G : monad) (tau : F ~> G) :=
   isNatural.Build (T F) (T G) (hmapX' tau) (naturality_hmapX' tau).
 
-Let hmapX_NId (M : monad) : [the _ ~> _ of hmapX' (NId M)] = NId (T M).
+Let hmapX_NId (M : monad) : hmapX' (NId M) = NId (T M) :> T M ~> T M.
 Proof. by apply/nattrans_ext => A. Qed.
 
 Let hmapX_v (M N P : monad) (t : M ~> N) (s : N ~> P) :
-  [the _ ~> _ of hmapX' (s \v t)] =
-  [the _ ~> _ of hmapX' s] \v [the _ ~> _ of hmapX' t].
+  hmapX' (s \v t) = hmapX' s \v hmapX' t :> T M ~> T P.
 Proof.
 by apply/nattrans_ext => /= A; rewrite vcompE /= /hmapX'/= vcompE.
 Qed.
@@ -864,12 +861,12 @@ move=> A B m f; rewrite /hmapX' /=.
 rewrite !bindE /= !MX_mapE /bindX /= !bind_fmap.
 rewrite !monadMbind /=.
 congr (bind (e (X + A)%type m) _).
-apply funext => -[x/=|//].
+apply: funext => -[x/=|//].
 by rewrite !up_compE/= -(up_compE (e _)) monadMret.
 Qed.
 
 Let hmapX_lift :
-  let h := fun F G FG => [the _ ~> _ of hmapX' FG] in
+  let h := fun F G FG => hmapX' FG in
   forall (M N : monad) (n : M ~> N),
   h M N n \v Lift T M = Lift T N \v n.
 Proof.
@@ -895,7 +892,7 @@ End exceptFMT.
 
 Section Fmt_stateT.
 Variable S : UU0.
-Let T := [the monadT of stateT S].
+Let T : monadT := stateT S.
 Definition hmapS (F G : monad) (tau : F ~> G) : T F ~~> T G :=
   fun (A : UU0) t s => tau _ (t s).
 
@@ -904,7 +901,7 @@ Let naturality_hmapS (F G : monad) (tau : F ~> G) :
 Proof.
 move=> A B h.
 rewrite /hmapS /=.
-have H : forall G, [the monad of stateT S G] # h = [the functor of MS S G] # h by [].
+have H : forall G, (stateT S G) # h = (MS S G) # h by [].
 rewrite !H {H}.
 apply: funext => m /=.
 rewrite !up_compE !MS_mapE.
@@ -915,15 +912,12 @@ Qed.
 HB.instance Definition _ (F G : monad) (tau : F ~> G) := isNatural.Build
   (T F) (T G) (hmapS tau) (naturality_hmapS tau).
 
-Let hmapS_NId (M : monad) : [the _ ~> _ of hmapS (NId M)] = NId (T M).
+Let hmapS_NId (M : monad) : hmapS (NId M) = NId (T M) :> T M ~> T M.
 Proof. exact/nattrans_ext. Qed.
 
 Let hmapS_v (M N P : monad) (t : M ~> N) (s : N ~> P) :
-  [the _ ~> _ of hmapS (s \v t)] =
-  [the _ ~> _ of hmapS s] \v [the _ ~> _ of hmapS t].
-Proof.
-by apply/nattrans_ext => A /=; rewrite vcompE/= /hmapS/= vcompE.
-Qed.
+  hmapS (s \v t) = hmapS s \v hmapS t :> T M ~> T P.
+Proof. by apply/nattrans_ext => A /=; rewrite vcompE/= /hmapS/= vcompE. Qed.
 
 HB.instance Definition _ := isFunctorial.Build (stateT S) hmapS_NId hmapS_v.
 
@@ -945,7 +939,7 @@ by rewrite monadMbind.
 Qed.
 
 Let hmapS_lift :
-  let h := fun F G FG => [the _ ~> _ of hmapS FG] in
+  let h := fun F G FG => hmapS FG in
   forall (M N : monad) (n : M ~> N),
   h M N n \v Lift T M = Lift T N \v n.
 Proof.
@@ -991,7 +985,7 @@ End Fmt_stateT.
 
 Section Fmt_envT.
 Variable E : UU0.
-Let T := [the monadT of envT E].
+Let T : monadT := envT E.
 Definition hmapEnv (F G : monad) (tau : F ~> G) : T F ~~> T G :=
   fun (A : UU0) t s => tau _ (t s).
 
@@ -1001,24 +995,23 @@ Proof.
 move=> A B h.
 rewrite /hmapEnv.
 rewrite /=.
-have H : forall G, [the monad of envT E G] # h = [the functor of MEnv E G] # h by [].
+have H : forall G, (envT E G) # h = (MEnv E G) # h by [].
 rewrite !H {H}.
 apply: funext => m /=.
 rewrite !up_compE !MEnv_mapE.
 apply: funext => s /=.
-rewrite !up_compE -(up_compE  _ (tau A)).
+rewrite up_compE -(up_compE  _ (tau A)).
 by rewrite natural.
 Qed.
 
 HB.instance Definition _ (F G : monad) (tau : F ~> G) :=
   isNatural.Build (T F) (T G) (hmapEnv tau) (naturality_hmapEnv tau).
 
-Let hmapEnv_NId (M : monad) : [the _ ~> _ of hmapEnv (NId M)] = NId (T M).
+Let hmapEnv_NId (M : monad) : hmapEnv (NId M) = NId (T M) :> T M ~> T M.
 Proof. exact/nattrans_ext. Qed.
 
 Let hmapEnv_v (M N P : monad) (t : M ~> N) (s : N ~> P) :
-  [the _ ~> _ of hmapEnv (s \v t)] =
-  [the _ ~> _ of hmapEnv s] \v [the _ ~> _ of hmapEnv t].
+  hmapEnv (s \v t) = hmapEnv s \v hmapEnv t :> T M ~> T P.
 Proof. by apply/nattrans_ext => A /=; rewrite vcompE/= /hmapEnv vcompE. Qed.
 
 HB.instance Definition _ := isFunctorial.Build (envT E) hmapEnv_NId hmapEnv_v.
@@ -1041,7 +1034,7 @@ by rewrite monadMbind.
 Qed.
 
 Let hmapEnv_lift :
-  let h := fun F G FG => [the _ ~> _ of hmapEnv FG] in
+  let h := fun F G FG => hmapEnv FG in
   forall (M N : monad) (n : M ~> N),
   h M N n \v Lift T M = Lift T N \v n.
 Proof.
@@ -1056,7 +1049,7 @@ End Fmt_envT.
 
 Section Fmt_outputT.
 Variable R : UU0.
-Let T := [the monadT of outputT R].
+Let T : monadT := outputT R.
 Definition hmapO (F G : monad) (tau : F ~> G) : T F ~~> T G :=
   fun (A : UU0) => tau _.
 
@@ -1066,7 +1059,7 @@ Proof.
 move=> A B h.
 rewrite /hmapO.
 rewrite /=.
-have H : forall G, [the monad of outputT R G] # h = [the functor of MO R G] # h by [].
+have H : forall G, (outputT R G) # h = (MO R G) # h by [].
 rewrite !H {H}.
 apply funext => m /=; rewrite !up_compE !MO_mapE.
 rewrite -[in LHS](up_compE  _ (tau _)).
@@ -1076,12 +1069,11 @@ Qed.
 HB.instance Definition _ (F G : monad) (tau : F ~> G) :=
   isNatural.Build (T F) (T G) (hmapO tau) (naturality_hmapO tau).
 
-Let hmapO_NId (M : monad) : [the _ ~> _ of hmapO (NId M)] = NId (T M).
+Let hmapO_NId (M : monad) : hmapO (NId M) = NId (T M) :> T M ~> T M.
 Proof. exact/nattrans_ext. Qed.
 
 Let hmapO_v (M N P : monad) (t : M ~> N) (s : N ~> P) :
-  [the _ ~> _ of hmapO (s \v t)] =
-  [the _ ~> _ of hmapO s] \v [the _ ~> _ of hmapO t].
+  hmapO (s \v t) = hmapO s \v hmapO t :> T M ~> T P.
 Proof. by apply/nattrans_ext => A /=; rewrite vcompE/= /hmapO/= vcompE. Qed.
 
 HB.instance Definition _ := isFunctorial.Build (outputT R) hmapO_NId hmapO_v.
@@ -1109,7 +1101,7 @@ by rewrite monadMret.
 Qed.
 
 Let hmapO_lift :
-  let h := fun F G FG => [the _ ~> _ of hmapO FG] in
+  let h := fun F G FG => hmapO FG in
   forall (M N : monad) (n : M ~> N),
   h M N n \v Lift T M = Lift T N \v n.
 Proof.

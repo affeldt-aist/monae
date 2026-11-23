@@ -31,7 +31,7 @@ Module Identity.
 Section identity_naturality.
 Elpi derive.param2 eq.
 
-Let M : monad := idfun.
+Let M : monad := MId.
 
 Definition Mi (X : UU0) : UU0 := ltac:(
   let t := constr:(M X) in
@@ -56,7 +56,7 @@ Qed.
 End identity_naturality.
 End Identity.
 
-Check uniform_sigma_lifting (M := idfun) _ _ Identity.naturality.
+Check uniform_sigma_lifting (M := MId) _ _ Identity.naturality.
 
 (******************************************************************************)
 

@@ -31,7 +31,7 @@ Unset Printing Implicit Defensive.
 
 Local Open Scope monae_scope.
 
-Import Order.TotalTheory Order.POrderTheory.
+Import Order.Theory.
 
 Lemma bind_ext_guard {M : failMonad} (A : UU0) (b : bool) (m1 m2 : M A) :
   (b -> m1 = m2) -> guard b >> m1 = guard b >> m2.
