@@ -32,7 +32,7 @@ Module Prod.
 Section prod.
 Variable M : monad.
 Variable N : applicative.
-(*Variables M N(* NB: actually, premonad is enough for N*) : monad.*)
+(* NB: actually, premonad is enough for N*)
 Variable prod : N \o (M \o N) ~~> M \o N.
 Arguments prod {_}.
 
@@ -40,8 +40,9 @@ Definition JOIN : (M \o N) \o (M \o N) ~~> M \o N := fun _ => Join \o M # prod.
 Arguments JOIN {_}.
 
 Definition prod1 := forall (A B : UU0) (f : A -> B), prod \o N # ((M \o N) # f) = (M \o N) # f \o prod.
-(*Definition prod2 := forall A, prod \o Ret = id :> ((M \o N) A -> (M \o N) A).*)
 Definition prod2 := forall A, prod \o (@ret N ((M \o N) A)) = id :> (_ -> (M \o N) A).
+(* before adding applicative functors, the following shorter definition worked
+Definition prod2 := forall A, prod \o Ret = id :> ((M \o N) A -> (M \o N) A).*)
 Definition prod3 := forall A, prod \o N # CRet M N _ = Ret :> (_ -> (M \o N) A).
 Definition prod4 := forall A, prod \o N # JOIN = JOIN \o prod :> (_ -> (M \o N) A).
 Hypothesis Hprod1 : prod1.
@@ -110,7 +111,7 @@ Module Dorp.
 Section dorp.
 Variable M : applicative.
 Variable N : monad.
-(*Variables M  (* actually, premonad is enough for M *) N : monad.*)
+(* actually, premonad is enough for M *)
 Variable dorp : M \o (N \o M) ~~> M \o N.
 Arguments dorp {_}.
 
@@ -208,7 +209,7 @@ Proof. by rewrite JOINE. Qed.
 
 Fact JOIN_dorp A : @JOIN A = M # Join \o dorp.
 Proof. by rewrite /dorp. Qed.
-Print Canonical Projections.
+
 Definition swap1 := forall (A B : UU0) (f : A -> B), swap \o N # (M # f) = M # (N # f) \o swap .
 Definition swap2 := forall A, @swap A \o (@ret N (M A)) = M # Ret :> (M A -> (M \o N) A).
 (*Definition swap2 := forall A, @swap A \o Ret = M # Ret :> (M A -> (M \o N) A).*)
