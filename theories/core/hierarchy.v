@@ -325,15 +325,15 @@ Variable pure : forall {A : UU0}, A -> F A.
 Variable apply : forall {A B : UU0}, F (A -> B) -> F A -> F B.
 
 Definition identity :=
-  forall A, apply (pure id) = id :> (F A -> F A).
+  forall (A : UU0), apply (pure id) = id :> (F A -> F A).
 Definition composition :=
-  forall A B C (u : F (B -> C)) (v : F (A -> B)),
+  forall (A B C : UU0) (u : F (B -> C)) (v : F (A -> B)),
     apply (apply (apply (pure up_comp) u) v) = (apply u) \o (apply v).
 Definition homomorphism :=
-  forall A B (f : A -> B) (y : A),
+  forall (A B : UU0) (f : A -> B) (y : A),
     apply (pure f) (pure y) = pure (f y).
 Definition interchange :=
-  forall A B (u : F (A -> B)) (y : A),
+  forall (A B : UU0) (u : F (A -> B)) (y : A),
     apply u (pure y) = apply (pure (revapply y)) u.
 
 End applicative_laws.
@@ -341,8 +341,8 @@ End ApplicativeLaws.
 
 HB.mixin Record Functor_isApplicative (F : UU0 -> UU0) & Functor F := {
   ret : FId ~> F ;
-  apply : forall [A B], F (A -> B) -> F A -> F B ;
-  afmapE : forall A B (f : A -> B), F # f = apply (ret _ f) ;
+  apply : forall [A B : UU0], F (A -> B) -> F A -> F B ;
+  afmapE : forall (A B : UU0) (f : A -> B), F # f = apply (ret _ f) ;
   afidentity : ApplicativeLaws.identity ret apply ;
   afcomposition : ApplicativeLaws.composition ret apply ;
   afhomomorphism : ApplicativeLaws.homomorphism ret apply ;
@@ -379,14 +379,14 @@ Qed.
 
 HB.instance Definition _ := isFunctor.Build F functor_id functor_o.
 
-Let afmapE A B (f : A -> B) : F # f = apply (pure f).
+Let afmapE (A B : UU0) (f : A -> B) : F # f = apply (pure f).
 Proof. by []. Qed.
 
 Lemma pure_naturality : naturality FId F pure.
 Proof.
 move=> A B h.
 rewrite afmapE FIdE.
-apply: boolp.funext => x /=.
+apply: funext => x /=.
 by rewrite up_compE homomorphism.
 Qed.
 
@@ -399,13 +399,13 @@ HB.end.
 Section applicative_properties.
 Variable F : applicative.
 
-Lemma afrevcompE A B C (u : F (B -> A)) (v : C -> B) :
+Lemma afrevcompE (A B C : UU0) (u : F (B -> A)) (v : C -> B) :
   apply (Ret (revcomp v)) u = apply (apply (Ret up_comp) u) (Ret v).
 Proof.
 by symmetry; rewrite afinterchange -!afmapE -[LHS]up_compE -functor_o afmapE.
 Qed.
 
-Lemma afrevcomposition A B C (u : F (B -> C)) (v : A -> B) :
+Lemma afrevcomposition (A B C : UU0) (u : F (B -> C)) (v : A -> B) :
   apply (apply (Ret (revcomp v)) u) = (apply u) \o (apply (Ret v)).
 Proof. by rewrite afrevcompE -afcomposition. Qed.
 
@@ -432,10 +432,10 @@ Proof. by rewrite afrevcompE -afcomposition. Qed.
     apply \o F # (fun (f : X2 -> Y) => f \o h) =
     (fun (g : F X2 -> F Y) => g \o F # h) \o apply.
  *)
-Lemma apply_naturality1 X1 X2 Y (h : X1 -> X2) :
+Lemma apply_naturality1 (X1 X2 Y : UU0) (h : X1 -> X2) :
   apply \o F # (revcomp h) = (revcomp (F # h)) \o apply
     :> (F (X2 -> Y) -> F X1 -> F Y).
-Proof. by apply/boolp.funext => k/=; rewrite up_compE !afmapE afrevcomposition. Qed.
+Proof. by apply/funext => k/=; rewrite up_compE !afmapE afrevcomposition. Qed.
 
 (* https://ncatlab.org/nlab/show/closed+functor
    apply: F(X -> Y) -> (F(X) -> F(Y)) is natural in Y; i.e.,
@@ -460,11 +460,11 @@ Proof. by apply/boolp.funext => k/=; rewrite up_compE !afmapE afrevcomposition. 
     apply \o F # (fun (f : X -> Y1) => h \o f) =
     (fun (g : F X -> F Y1) => F # h \o g) \o apply.
  *)
-Lemma apply_naturality2 X Y1 Y2 (h : Y1 -> Y2) :
+Lemma apply_naturality2 (X Y1 Y2 : UU0) (h : Y1 -> Y2) :
   apply \o F # (up_comp h) = (up_comp (F # h)) \o apply
     :> (F (X -> Y1) -> F X -> F Y2).
 Proof.
-by apply/boolp.funext => k/=; rewrite up_compE !afmapE -afhomomorphism afcomposition.
+by apply/funext => k/=; rewrite up_compE !afmapE -afhomomorphism afcomposition.
 Qed.
 
 Let afcomposition1 A B C u v := esym (@afcomposition F A B C u v).
@@ -483,7 +483,7 @@ Let comp_ret (A : UU0) : A -> (F \o G) A := Ret \o Ret.
 Let comp_apply (A B : UU0) (f : (F \o G) (A -> B)) : (F \o G) A -> (F \o G) B :=
   apply (apply (Ret apply) f).
 
-Let afmapE A B (f : A -> B) : (F \o G) # f = comp_apply (comp_ret f).
+Let afmapE (A B : UU0) (f : A -> B) : (F \o G) # f = comp_apply (comp_ret f).
 Proof.
 by rewrite /comp_apply /comp_ret; simpl_applicative; rewrite -!afmapE.
 Qed.
@@ -496,7 +496,7 @@ Proof.
 rewrite /comp_apply => A B C u v.
 simpl_applicative.
 congr (apply (apply (apply (Ret _) u) v)).
-apply/boolp.funeq2P => ?? /=.
+apply/funext => ?; apply/funext => ? /=.
 by simpl_applicative.
 Qed.
 
@@ -508,14 +508,14 @@ Proof.
 rewrite /comp_apply => A B f y.
 simpl_applicative.
 congr apply.
-by under [_ \o _]boolp.funext do simpl_applicative.
+by under [_ \o _]funext do simpl_applicative.
 Qed.
 
 Let ret_naturality : naturality FId (F \o G) comp_ret.
 Proof.
 move=> A B h.
 rewrite afmapE FIdE.
-apply: boolp.funext => x /=.
+apply: funext => x /=.
 rewrite (funext (up_compE _ (@comp_ret _))).
 by rewrite !/up_comp homomorphism.
 Qed.
@@ -687,13 +687,13 @@ Let apply (A B : UU0) (f : M (A -> B)) (m : M A) : M B :=
 Lemma applyE (A B : UU0) (m1 : M (A -> B)) (m2 : M A) :
   apply m1 m2 =
   m1 >>= (fun x1 => m2 >>= (fun x2 => Ret (x1 x2))).
-Proof. by congr bind; apply/boolp.funext => f/=; rewrite fmapE. Qed.
+Proof. by congr bind; apply/funext => f/=; rewrite fmapE. Qed.
 
 Ltac jdeq :=
   do! (move=> ? || apply: funext => ? || congr (bind _) ||
        rewrite /apply !(up_compE,fmapE,bindretf,bindA)).
 
-Let afmapE A B (f : A -> B) : M # f = apply (Ret f).
+Let afmapE (A B : UU0) (f : A -> B) : M # f = apply (Ret f).
 Proof. by jdeq. Qed.
 
 Let identity : ApplicativeLaws.identity ret apply.

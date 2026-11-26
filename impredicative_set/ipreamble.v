@@ -9,6 +9,8 @@ From Stdlib Require ProofIrrelevance FunctionalExtensionality.
 (*                                                                            *)
 (* ```                                                                        *)
 (*               up_comp == universe-polymorphic equivalents of ssrfun.comp   *)
+(*           revcomp f g == g \o f (universe polymorphic)                     *)
+(*          revapply x f == f x (universe polymorphic)                        *)
 (*                foldr1 == right-recursive application of a binary operation *)
 (*                          on a list                                         *)
 (*       curry3/uncurry3 == currying for triples                              *)
@@ -33,6 +35,13 @@ Definition funext_dep := @FunctionalExtensionality.functional_extensionality_dep
 
 End shorthands_for_classical_axioms.
 
+Arguments ssrfun.comp {A B C} : simpl never.
+
+Declare Scope ssrfun_scope.
+Delimit Scope ssrfun_scope with ssrfun.
+
+Notation "f1 \o f2" := (ssrfun.comp f1 f2) : ssrfun_scope.
+
 (* We use a universe-polymorphic version of comp
   (in place of ssrfun.comp)
    so that we can avoid universe inconsistencies. *)
@@ -40,6 +49,16 @@ Polymorphic Definition up_comp (A B C : Type) (f : B -> A) (g : C -> B) :=
   fun x => f (g x).
 Arguments up_comp {A B C} : simpl never.
 Notation "f1 \o f2" := (up_comp f1 f2) : function_scope.
+
+(* an equivalent of ssrfun.catcomp *)
+Polymorphic Definition revcomp (A B C : Type) (g : C -> B) := (@up_comp A B C)^~ g.
+Arguments revcomp {A B C} g f x / : rename.
+
+(*Polymorphic Definition revapply (T : Type) (U : T -> Type) (x : T) :=
+  @^~ x : forall f : forall x : T, U x, U x.*)
+Polymorphic Definition revapply (T : Type) (U : Type) (x : T) :=
+  @^~ x : (T -> U) -> U.
+Arguments revapply {T U} x f /.
 
 Section comp_lemmas.
 

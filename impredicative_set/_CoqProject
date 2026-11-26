@@ -24,5 +24,6 @@ ifmt_lifting.v
 iparametricity_codensity.v
 iexample_fastprod.v
 iexample_transformer.v
+iexample_applicative.v
 
 -R . monaeImpredicativeSet

@@ -1,15 +1,14 @@
+From HB Require Import structures.
 From mathcomp Require Import all_ssreflect.
 From mathcomp Require Import finmap.
 From mathcomp Require boolp.
-From mathcomp Require Import classical_sets.
-From infotheo Require convex classical_sets_ext.
-Require Import preamble.
-From HB Require Import structures.
-Require Import hierarchy.
+Require Import preamble hierarchy.
 
 Import Monoid.Theory.
 
 Set Implicit Arguments.
+Unset Strict Implicit.
+Unset Printing Implicit Defensive.
 
 Local Open Scope monae_scope.
 
@@ -46,12 +45,12 @@ Let join' : F \o F ~~> F :=
 
 Let join_naturality : naturality (F \o F) F join'.
 Proof.
-by move=> a b h; apply: boolp.funext => t; apply: boolp.funext => i.
+by move=> a b h; apply: funext => t; apply: funext => i.
 Qed.
 
 Let ret_naturality : naturality FId F pure.
 Proof.
-by move=> a b h; apply: boolp.funext => t; apply: boolp.funext => i.
+by move=> a b h; apply: funext => t; apply: funext => i.
 Qed.
 
 HB.instance Definition _ := isNatural.Build _ _ _ join_naturality.
@@ -61,17 +60,17 @@ Let join : F \o F ~> F := join'.
 
 Let joinretM : JoinLaws.left_unit ret join.
 Proof.
-by move=> A; apply: boolp.funext => t; apply: boolp.funext => i.
+by move=> A; apply: funext => t; apply: funext => i.
 Qed.
 
 Let joinMret : JoinLaws.right_unit ret join.
 Proof.
-by move=> A; apply: boolp.funext => t; apply: boolp.funext => i.
+by move=> A; apply: funext => t; apply: funext => i.
 Qed.
 
 Let joinA : JoinLaws.associativity join.
 Proof.
-by move=> A; apply: boolp.funext => t; apply: boolp.funext => i.
+by move=> A; apply: funext => t; apply: funext => i.
 Qed.
 HB.instance Definition _ :=
   isMonad_ret_join.Build Func joinretM joinMret joinA.
@@ -97,7 +96,7 @@ Variable n : nat.
 Lemma afidentity : ApplicativeLaws.identity (pure n) (@apply n).
 Proof.
 move=> A.
-apply: boolp.funext => xs.
+apply: funext => xs.
 apply: eq_from_tnth => i.
 by rewrite /apply /pure tnth_mktuple tnth_nseq.
 Qed.
@@ -111,7 +110,7 @@ Proof. by apply: eq_from_tnth => i; case: i => m h. Qed.
 Lemma afcomposition : ApplicativeLaws.composition (pure n) (@apply n).
 Proof.
 move=> A B C u v.
-apply: boolp.funext => xs.
+apply: funext => xs.
 apply: eq_from_tnth => i.
 by rewrite /apply /pure !tnth_mktuple tnth_nseq.
 Qed.
@@ -149,7 +148,7 @@ move=> a b h.
 subst F join.
 rewrite /actm /= /apply /pure /=.
 rewrite /actm /=.
-apply: boolp.funext.
+apply: funext.
 case: n => [|m] x /=.
 - by rewrite tuple0.
 - apply: eq_from_tnth => j.
@@ -161,14 +160,14 @@ Let ret_naturality : naturality FId F ret.
 Proof.
 move=> a b h.
 rewrite /actm /= /pure /apply.
-apply: boolp.funext => t /=.
+apply: funext => t /=.
 apply: eq_from_tnth => j.
 by rewrite tnth_mktuple !tnth_nseq.
 Qed.
 
 Let joinretM : JoinLaws.left_unit ret join.
 Proof.
-move=> A; apply: boolp.funext.
+move=> A; apply: funext.
 subst join => /=.
 rewrite /pure.
 case: n => [|m] t /=.
@@ -178,7 +177,7 @@ Qed.
 
 Let joinMret : JoinLaws.right_unit ret join.
 Proof.
-move=> A; apply: boolp.funext.
+move=> A; apply: funext.
 subst join => /=.
 rewrite /actm /= /apply /pure.
 case: n => [|m] t /=.
@@ -190,7 +189,7 @@ Abort.
 
 Lemma joinA : JoinLaws.associativity join.
 Proof.
-move=> A; apply: boolp.funext.
+move=> A; apply: funext.
 subst join => /=.
 rewrite /actm /= /apply /pure.
 case: n => [|m] t //=.
@@ -205,7 +204,7 @@ Let join' : F \o F ~~> F :=
 
 Let join_naturality : naturality (F \o F) F join'.
 Proof.
-move=> a b h; apply: boolp.funext => t /=.
+move=> a b h; apply: funext => t /=.
 subst F join'.
 apply: eq_from_tnth => j.
 rewrite /actm /= /apply.
@@ -216,7 +215,7 @@ Let ret_naturality : naturality FId F (pure n).
 Proof.
 move=> a b h.
 rewrite /actm /= /pure /apply.
-apply: boolp.funext => t /=.
+apply: funext => t /=.
 apply: eq_from_tnth => j.
 by rewrite tnth_mktuple !tnth_nseq.
 Qed.
@@ -228,7 +227,7 @@ Let join : F \o F ~> F := join'.
 
 Let joinretM : JoinLaws.left_unit ret join.
 Proof.
-move=> A; apply: boolp.funext => t.
+move=> A; apply: funext => t.
 subst join => /=.
 rewrite /pure.
 apply: eq_from_tnth => j.
@@ -237,7 +236,7 @@ Qed.
 
 Let joinMret : JoinLaws.right_unit ret join.
 Proof.
-move=> A; apply: boolp.funext => t.
+move=> A; apply: funext => t.
 subst join => /=.
 rewrite /pure.
 apply: eq_from_tnth => j.
@@ -246,7 +245,7 @@ Qed.
 
 Let joinA : JoinLaws.associativity join.
 Proof.
-move=> A; apply: boolp.funext.
+move=> A; apply: funext.
 subst join => /= t.
 rewrite /actm /= /apply /pure.
 apply: eq_from_tnth => j.
@@ -278,14 +277,14 @@ Definition apply A B (f : Const op (A -> B)) (a : Const op A) : Const op B := op
 Let afidentity : ApplicativeLaws.identity pure apply.
 Proof.
 move=> A.
-apply: boolp.funext => x.
+apply: funext => x.
 by rewrite /apply /pure mul1m.
 Qed.
 
 Let afcomposition : ApplicativeLaws.composition pure apply.
 Proof.
 move=> A B C u v.
-apply: boolp.funext => x.
+apply: funext => x.
 by rewrite /apply /pure !up_compE mul1m mulmA.
 Qed.
 
@@ -316,7 +315,7 @@ Proof. by []. Qed.
 Let ret_naturality : naturality FId F ret.
 Proof.
 move=> a b h.
-apply: boolp.funext => t /=.
+apply: funext => t /=.
 by rewrite /actm /= /pure /apply !up_compE mul1m.
 Qed.
 
@@ -355,7 +354,7 @@ End theory.
 Theorem constNonmonadic (T : UU0) (e : T) (op : Monoid.law e):
   ApplicativeFunctor_isMonad (Const op) -> forall (e' : T), e = e'.
 move => H.
-by exact (necessarity (ApplicativeFunctor_isMonad.join H) (ApplicativeFunctor_isMonad.joinretM H)).
+by exact (necessarity (ApplicativeFunctor_isMonad.joinretM H)).
 Qed.
 End Const.
 
@@ -367,8 +366,8 @@ Inductive Validation (E : UU0) (op : SemiGroup.law E) (T : UU0) : UU0 :=
   | Succ of T.
 
 Variable (E : UU0) (op : SemiGroup.law E).
-Definition pure A (a : A) : Validation op A := Succ _ a.
-Definition apply A B (f : Validation op (A -> B)) (a : Validation op A) :
+Definition pure (A : UU0) (a : A) : Validation op A := Succ _ a.
+Definition apply (A B : UU0) (f : Validation op (A -> B)) (a : Validation op A) :
   Validation op B :=
   match f, a with
   | Fail fe, Fail ae => Fail _ _ (op fe ae)
@@ -380,7 +379,7 @@ Definition apply A B (f : Validation op (A -> B)) (a : Validation op A) :
 Let afidentity : ApplicativeLaws.identity pure apply.
 Proof.
 move=> A.
-apply: boolp.funext => x.
+apply: funext => x.
 rewrite /apply /pure.
 by case: x; move => i //.
 Qed.
@@ -388,7 +387,7 @@ Qed.
 Let afcomposition : ApplicativeLaws.composition pure apply.
 Proof.
 move=> A B C u v.
-apply: boolp.funext => x.
+apply: funext => x.
 rewrite /apply /pure.
 case: u; move => ?; case: v; move => ?; case: x; move => ? // /=.
 rewrite up_compE/=.
@@ -416,7 +415,7 @@ Let F := Validation op.
 Let FF := F \o F.
 Variable join : FF ~> F.
 Variable ru : JoinLaws.right_unit pure join.
-Variable applyE : forall A B (f : F (A -> B)) (x : F A),
+Variable applyE : forall (A B : UU0) (f : F (A -> B)) (x : F A),
   apply f x = join B ((_ # fun f' => join _ ((_ # fun x' => pure (f' x')) x)) f).
 
 Let ru_expand : forall A (x : F A), join A ((F # @pure _) x) = x.
@@ -454,7 +453,7 @@ unfold j1.
 by [].
 Qed.
 
-Let fmap_fail A B (f : A -> B) (e : E) : (F # f) (Fail op _ e) = Fail op _ e.
+Let fmap_fail (A B : UU0) (f : A -> B) (e : E) : (F # f) (Fail op _ e) = Fail op _ e.
 Proof.
 by [].
 Qed.
@@ -494,7 +493,7 @@ have h := ApplicativeFunctor_isMonad.applyE H.
 rewrite /hierarchy.apply /= in h.
 rewrite h (ApplicativeFunctor_isMonad.bindE H).
 congr (fun x => ApplicativeFunctor_isMonad.join H B ((F # x) f)).
-apply: boolp.funext => a.
+apply: funext => a.
 by rewrite (ApplicativeFunctor_isMonad.bindE H).
 Qed.
 

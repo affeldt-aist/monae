@@ -26,12 +26,18 @@ From HB Require Import structures.
 (*                       components of a natural transformation               *)
 (*   naturality F G f == the components f form a natural transformation       *)
 (*                       F ~> G                                               *)
+(*    Module ApplicativeLaws == ret (aka pure) and apply laws of an           *)
+(*                              applicative functor                           *)
+(*    Functor_isApplicative ==  mixin for an applicative functor;             *)
+(*                              ret and apply operators/laws are added        *)
+(*      isApplicative == factory that does not require functoriality          *)
 (*    Module JoinLaws == join laws of a monad                                 *)
 (*    Module BindLaws == bind laws of a monad                                 *)
-(*    Functor_isMonad == mixin for a monad extending a functor; ret, join and *)
-(*                       bind operators, as well as relevant laws are added   *)
-(*            isMonad == compatibility factory that requires all operators    *)
-(*                       and only join laws (no bind laws)                    *)
+(*    ApplicativeFunctor_isMonad ==                                           *)
+(*                       mixin for a monad extending an applicative functor;  *)
+(*                       join and bind operators, and their laws are added    *)
+(*            isMonad == factory over functors that requires all operators    *)
+(*                       ret, join and bind, but only join laws               *)
 (*   isMonad_ret_join == factory on ret and join                              *)
 (*   isMonad_ret_bind == factory on ret and bind; no need for functoriality   *)
 (*                       (i.e., the extension system)                         *)
@@ -170,7 +176,6 @@ Let id_id : FunctorLaws.id id_actm. Proof. by []. Qed.
 Let id_comp : FunctorLaws.comp id_actm. Proof. by []. Qed.
 Let id_class := isFunctor.Build idfun id_id id_comp.
 Definition FId := HB.pack_for functor idfun id_class.
-(*HB.instance Definition _ := isFunctor.Build idfun id_id id_comp.*)
 End functorid.
 
 Lemma FIdE (A B : UU0) (f : A -> B) : FId # f = f. Proof. by []. Qed.
@@ -266,13 +271,13 @@ subst t'.
 congr Natural.Pack; exact/proof_irr.
 Qed.
 
-Lemma natural_ext2 (F F' : functor) (t : F \O F ~> F) (t' : F' \O F' ~> F') :
+Lemma natural_ext2 (F F' : functor) (t : F \o F ~> F) (t' : F' \o F' ~> F') :
   forall (K : F = F'),
-  forall L : (forall X (x : (F' \O F') X),
+  forall L : (forall X (x : (F' \o F') X),
     Natural.cpnt t' x = eq_rect _ (fun m : functor => m X)
-      (Natural.cpnt t (eq_rect _ (fun m : functor => (m \O m) X) x _ (esym K)))
+      (Natural.cpnt t (eq_rect _ (fun m : functor => (m \o m) X) x _ (esym K)))
       _ K),
-  t' = eq_rect _ (fun m => m \O m ~> m) t _ K.
+  t' = eq_rect _ (fun m => m \o m ~> m) t _ K.
 Proof.
 move: t t' => [t t1] [t' t'1] /= H L; subst F.
 rewrite -[in RHS]eq_rect_eq /=.
@@ -282,6 +287,217 @@ have ? : t = t'.
 subst t'.
 congr Natural.Pack; exact/proof_irr.
 Qed.*)
+
+Module ApplicativeLaws.
+Section applicative_laws.
+Context {F : UU0 -> UU0}.
+Variable pure : forall {A : UU0}, A -> F A.
+Variable apply : forall {A B : UU0}, F (A -> B) -> F A -> F B.
+
+Definition identity :=
+  forall (A : UU0), apply (pure id) = id :> (F A -> F A).
+Definition composition :=
+  forall (A B C : UU0) (u : F (B -> C)) (v : F (A -> B)),
+    apply (apply (apply (pure up_comp) u) v) = (apply u) \o (apply v).
+Definition homomorphism :=
+  forall (A B : UU0) (f : A -> B) (y : A),
+    apply (pure f) (pure y) = pure (f y).
+Definition interchange :=
+  forall (A B : UU0) (u : F (A -> B)) (y : A),
+    apply u (pure y) = apply (pure (revapply y)) u.
+
+End applicative_laws.
+End ApplicativeLaws.
+
+HB.mixin Record Functor_isApplicative (F : UU0 -> UU0) & Functor F := {
+  ret : FId ~> F ;
+  apply : forall [A B : UU0], F (A -> B) -> F A -> F B ;
+  afmapE : forall (A B : UU0) (f : A -> B), F # f = apply (ret _ f) ;
+  afidentity : ApplicativeLaws.identity ret apply ;
+  afcomposition : ApplicativeLaws.composition ret apply ;
+  afhomomorphism : ApplicativeLaws.homomorphism ret apply ;
+  afinterchange : ApplicativeLaws.interchange ret apply ;
+}.
+
+#[short(type=applicative)]
+HB.structure Definition ApplicativeFunctor := {F of Functor_isApplicative F &}.
+
+Arguments ret {s}.
+Arguments apply {s A B}.
+
+(* we introduce Ret as a way to make the second arguments of ret implicit,
+   o.w. Rocq won't let us *)
+Notation Ret := (@ret _ _).
+
+HB.factory Record isApplicative (F : UU0 -> UU0) := {
+  pure : forall A : UU0, A -> F A ;
+  apply : forall A B : UU0, F (A -> B) -> F A -> F B ;
+  identity : ApplicativeLaws.identity pure apply ;
+  composition : ApplicativeLaws.composition pure apply ;
+  homomorphism : ApplicativeLaws.homomorphism pure apply ;
+  interchange : ApplicativeLaws.interchange pure apply ;
+}.
+
+HB.builders Context F & isApplicative F.
+Let actm (A B : UU0) (f : A -> B) := apply (pure f).
+Let functor_id : FunctorLaws.id actm := identity.
+Let functor_o : FunctorLaws.comp actm.
+Proof.
+move=> A B C f g.
+by rewrite /actm -composition !homomorphism.
+Qed.
+
+HB.instance Definition _ := isFunctor.Build F functor_id functor_o.
+
+Let afmapE (A B : UU0) (f : A -> B) : F # f = apply (pure f).
+Proof. by []. Qed.
+
+Lemma pure_naturality : naturality FId F pure.
+Proof.
+move=> A B h.
+rewrite afmapE FIdE.
+apply: funext => x /=.
+by rewrite up_compE homomorphism.
+Qed.
+
+HB.instance Definition _ :=
+  isNatural.Build FId F (pure : FId ~~> F) pure_naturality.
+HB.instance Definition _ :=
+  Functor_isApplicative.Build F afmapE identity composition homomorphism interchange.
+HB.end.
+
+Section applicative_properties.
+Variable F : applicative.
+
+Lemma afrevcompE (A B C : UU0) (u : F (B -> A)) (v : C -> B) :
+  apply (Ret (revcomp v)) u = apply (apply (Ret up_comp) u) (Ret v).
+Proof.
+by symmetry; rewrite afinterchange -!afmapE -[LHS]up_compE -functor_o afmapE.
+Qed.
+
+Lemma afrevcomposition (A B C : UU0) (u : F (B -> C)) (v : A -> B) :
+  apply (apply (Ret (revcomp v)) u) = (apply u) \o (apply (Ret v)).
+Proof. by rewrite afrevcompE -afcomposition. Qed.
+
+(* https://ncatlab.org/nlab/show/closed+functor
+   apply: F(X -> Y) -> (F(X) -> F(Y)) is natural in X; i.e.,
+
+                    apply
+        F(X2 -> Y) -------> (F(X2) -> F(Y))
+             |                     |
+   F(h -> Y) |                     | (F(h) -> F(Y))
+             ↓                     ↓
+        F(X1 -> Y) -------> (F(X1) -> F(Y))
+                    apply
+
+  where h : X1 -> X2,
+        (h -> Y) : (X2 -> Y) -> (X1 -> Y),
+        (h -> Y) := fun (f : X2 -> Y) => f \o h,
+        F(h -> Y) := F # (fun f => f \o h),
+        F(h) = F # h : F(X1) -> F(X2), and
+        (F(h) -> F(Y)) : fun (g : F(X2) -> F(Y)) => g \o (F # h).
+
+  The Rocq statement (in a verbose style) is:
+  Lemma apply_naturality1 X1 X2 Y (h : X1 -> X2) :
+    apply \o F # (fun (f : X2 -> Y) => f \o h) =
+    (fun (g : F X2 -> F Y) => g \o F # h) \o apply.
+ *)
+Lemma apply_naturality1 (X1 X2 Y : UU0) (h : X1 -> X2) :
+  apply \o F # (revcomp h) = (revcomp (F # h)) \o apply
+    :> (F (X2 -> Y) -> F X1 -> F Y).
+Proof. by apply/funext => k/=; rewrite up_compE !afmapE afrevcomposition. Qed.
+
+(* https://ncatlab.org/nlab/show/closed+functor
+   apply: F(X -> Y) -> (F(X) -> F(Y)) is natural in Y; i.e.,
+
+                    apply
+        F(X -> Y1) -------> (F(X) -> F(Y1))
+             |                     |
+   F(X -> h) |                     | (F(X) -> F(h))
+             ↓                     ↓
+        F(X -> Y2) -------> (F(X) -> F(Y2))
+                    apply
+
+  where h : Y1 -> Y2,
+        (X -> h) : (X -> Y1) -> (X -> Y2),
+        (X -> h) := fun (f : X -> Y1) => h \o f,
+        F(X -> h) := F # (fun f => h \o f),
+        F(h) = F # h : F(Y1) -> F(Y2), and
+        (F(X) -> F(h)) : fun (g : F(X) -> F(Y1)) => (F # h) \o g.
+
+  The Rocq statement (in a verbose style) is:
+  Lemma apply_naturality2 X Y1 Y2 (h : Y1 -> Y2) :
+    apply \o F # (fun (f : X -> Y1) => h \o f) =
+    (fun (g : F X -> F Y1) => F # h \o g) \o apply.
+ *)
+Lemma apply_naturality2 (X Y1 Y2 : UU0) (h : Y1 -> Y2) :
+  apply \o F # (up_comp h) = (up_comp (F # h)) \o apply
+    :> (F (X -> Y1) -> F X -> F Y2).
+Proof.
+by apply/funext => k/=; rewrite up_compE !afmapE -afhomomorphism afcomposition.
+Qed.
+
+Let afcomposition1 A B C u v := esym (@afcomposition F A B C u v).
+Let afcomposition2 A B C u v w : apply u (apply v w) = _ :=
+  f_equal (fun f => f w) (@afcomposition1 A B C u v).
+Definition applicativeE := (afcomposition1,afcomposition2,@afinterchange F).
+End applicative_properties.
+
+Ltac simpl_applicative := do! rewrite /= ?up_compE ?afhomomorphism 1?applicativeE.
+
+Section applicative_composition.
+Variables F G : applicative.
+
+Let comp_ret (A : UU0) : A -> (F \o G) A := Ret \o Ret.
+
+Let comp_apply (A B : UU0) (f : (F \o G) (A -> B)) : (F \o G) A -> (F \o G) B :=
+  apply (apply (Ret apply) f).
+
+Let afmapE (A B : UU0) (f : A -> B) : (F \o G) # f = comp_apply (comp_ret f).
+Proof.
+by rewrite /comp_apply /comp_ret; simpl_applicative; rewrite -!afmapE.
+Qed.
+
+Let identity : ApplicativeLaws.identity comp_ret comp_apply.
+Proof. by move=> A; rewrite /comp_apply /= afhomomorphism !afidentity. Qed.
+
+Let composition : ApplicativeLaws.composition comp_ret comp_apply.
+Proof.
+rewrite /comp_apply => A B C u v.
+simpl_applicative.
+congr (apply (apply (apply (Ret _) u) v)).
+apply/funext => ?; apply/funext => ? /=.
+by simpl_applicative.
+Qed.
+
+Let homomorphism : ApplicativeLaws.homomorphism comp_ret comp_apply.
+Proof. by move=> *; rewrite /comp_apply /= !afhomomorphism. Qed.
+
+Let interchange : ApplicativeLaws.interchange comp_ret comp_apply.
+Proof.
+rewrite /comp_apply => A B f y.
+simpl_applicative.
+congr apply.
+by under [_ \o _]funext do simpl_applicative.
+Qed.
+
+Let ret_naturality : naturality FId (F \o G) comp_ret.
+Proof.
+move=> A B h.
+rewrite afmapE FIdE.
+apply: funext => x /=.
+rewrite (funext (up_compE _ (@comp_ret _))).
+by rewrite !/up_comp homomorphism.
+Qed.
+
+Let comp_ret_mixin :=
+  isNatural.Build FId (F \o G) (comp_ret : FId ~~> F \o G) ret_naturality.
+Let comp_ret_nattrans := HB.pack_for (FId ~> F \o G) (@comp_ret) comp_ret_mixin.
+
+HB.instance Definition _ :=
+  @Functor_isApplicative.Build (F \o G) comp_ret_nattrans comp_apply
+    afmapE identity composition homomorphism interchange.
+End applicative_composition.
 
 Module JoinLaws.
 Section join_laws.
@@ -336,10 +552,12 @@ Definition right_id (r : forall A, F A) (op : forall B, F B -> F B -> F B) :=
 End bindlaws.
 End BindLaws.
 
-HB.mixin Record Functor_isMonad (F : UU0 -> UU0) & Functor F := {
-  ret : FId ~> F ;
+HB.mixin Record ApplicativeFunctor_isMonad (F : UU0 -> UU0) & ApplicativeFunctor F := {
   join : F \o F ~> F ;
   bind : forall (A B : UU0), F A -> (A -> F B) -> F B ;
+  applyE (A B : UU0) (m1 : F (A -> B)) (m2 : F A) :
+    apply m1 m2 =
+    bind (A -> B) B m1 (fun x1 => bind A B m2 (fun x2 => Ret (x1 x2))) ;
   bindE : forall (A B : UU0) (f : A -> F B) (m : F A),
     bind A B m f = join B ((F # f) m) ;
   joinretM : JoinLaws.left_unit ret join ;
@@ -351,11 +569,8 @@ HB.mixin Record Functor_isMonad (F : UU0 -> UU0) & Functor F := {
 }.
 
 #[short(type=monad)]
-HB.structure Definition Monad := {F of Functor_isMonad F &}.
+HB.structure Definition Monad := {F of ApplicativeFunctor_isMonad F &}.
 
-(* we introduce Ret as a way to make the second arguments of ret implicit,
-   o.w. Rocq won't let us *)
-Notation Ret := (@ret _ _).
 Notation Join := (@join _ _).
 Arguments bind {s A B} : simpl never.
 Notation "m >>= f" := (bind m f) : monae_scope.
@@ -363,6 +578,33 @@ Notation "m >>= f" := (bind m f) : monae_scope.
 Arguments bindretf {s} [A B].
 Arguments bindmret {s} [A].
 Arguments bindA {s} [A B C].
+
+Lemma eq_bind (M : monad) (A B : UU0) (m : M A) (f1 f2 : A -> M B) :
+  f1 =1 f2 -> m >>= f1 = m >>= f2.
+Proof. by move=> f12; congr bind; apply funext. Qed.
+
+Section monad_lemmas.
+Context (M : monad).
+
+Lemma fmapE (A B : UU0) (f : A -> B) (m : M A) :
+ (M # f) m = m >>= (ret B \o f).
+Proof.
+by rewrite bindE [in RHS]functor_o -[in RHS]up_compE up_compA joinMret.
+Qed.
+
+Lemma apply_bind_apply (A B : UU0) (m1 : M (A -> B)) (m2 : M A) :
+  apply m1 m2 = m1 >>= (fun x1 : A -> B => apply (Ret x1) m2).
+Proof. by rewrite applyE; under [RHS]eq_bind do rewrite -afmapE fmapE. Qed.
+
+End monad_lemmas.
+
+Definition join_of_bind (F : functor)
+    (b : forall (A B : UU0), F A -> (A -> F B) -> F B) : F \o F ~~> F :=
+  fun A : UU0 => (b _ A)^~ id.
+
+Definition bind_of_join (F : functor) (j : F \o F ~~> F)
+    (A B : UU0) (m : F A) (f : A -> F B) : F B :=
+  j B ((F # f) m).
 
 HB.factory Record isMonad (F : UU0 -> UU0) & Functor F := {
   ret : FId ~> F ;
@@ -409,34 +651,41 @@ transitivity ((join _ \o M # (join _ \o (M # g \o f))) m) => //.
 by rewrite -2!up_compA functor_o FCompE -[in LHS](@functor_o M).
 Qed.
 
+Let apply (A B : UU0) (f : M (A -> B)) (m : M A) : M B :=
+  f >>= (fun f => (M # f) m).
+
+Lemma applyE (A B : UU0) (m1 : M (A -> B)) (m2 : M A) :
+  apply m1 m2 =
+  m1 >>= (fun x1 => m2 >>= (fun x2 => Ret (x1 x2))).
+Proof. by congr bind; apply/funext => f/=; rewrite fmapE. Qed.
+
+Ltac jdeq :=
+  do! (move=> ? || apply: funext => ? || congr (bind _) ||
+       rewrite /apply !(up_compE,fmapE,bindretf,bindA)).
+
+Let afmapE (A B : UU0) (f : A -> B) : M # f = apply (Ret f).
+Proof. by jdeq. Qed.
+
+Let identity : ApplicativeLaws.identity ret apply.
+Proof. by jdeq; rewrite up_compfid bindmret. Qed.
+
+Let composition : ApplicativeLaws.composition ret apply.
+Proof. by jdeq. Qed.
+
+Let homomorphism : ApplicativeLaws.homomorphism ret apply.
+Proof. by jdeq. Qed.
+
+Let interchange : ApplicativeLaws.interchange ret apply.
+Proof. by jdeq. Qed.
+
 HB.instance Definition _ :=
-  Functor_isMonad.Build M
-    bindE joinretM joinMret joinA bindretf bindmret bindA.
+  Functor_isApplicative.Build M afmapE identity composition homomorphism interchange.
+
+HB.instance Definition _ :=
+  ApplicativeFunctor_isMonad.Build M
+    applyE bindE joinretM joinMret joinA bindretf bindmret bindA.
 
 HB.end.
-
-Lemma eq_bind (M : monad) (A B : UU0) (m : M A) (f1 f2 : A -> M B) :
-  f1 =1 f2 -> m >>= f1 = m >>= f2.
-Proof. by move=> f12; congr bind; apply funext. Qed.
-
-Section monad_lemmas.
-Context (M : monad).
-
-Lemma fmapE (A B : UU0) (f : A -> B) (m : M A) :
- (M # f) m = m >>= (ret B \o f).
-Proof.
-by rewrite bindE [in RHS]functor_o -[in RHS]up_compE up_compA joinMret.
-Qed.
-
-End monad_lemmas.
-
-Definition join_of_bind (F : functor)
-    (b : forall (A B : UU0), F A -> (A -> F B) -> F B) : F \o F ~~> F :=
-  fun A : UU0 => (b _ A)^~ id.
-
-Definition bind_of_join (F : functor) (j : F \o F ~~> F)
-    (A B : UU0) (m : F A) (f : A -> F B) : F B :=
-  j B ((F # f) m).
 
 HB.factory Record isMonad_ret_join (F : UU0 -> UU0) & isFunctor F := {
   ret : FId ~> F ;
@@ -661,7 +910,7 @@ Lemma bind_kleisli A B C m (f : A -> M B) (g : B -> M C) :
 Proof. by rewrite bindA; bind_ext => a; rewrite /kleisli !up_compE join_fmap. Qed.
 
 Lemma ret_kleisli A B (k : A -> M B) : Ret >=> k = k.
-Proof. by rewrite /kleisli -up_compA (natural ret) FIdE up_compA joinretM. Qed.
+Proof. by rewrite /kleisli -up_compA (natural (@ret M)) FIdE up_compA joinretM. Qed.
 
 Local Open Scope mprog.
 Lemma fcomp_kleisli A B C D (f : A -> B) (g : C -> M A) (h : D -> M C) :
@@ -937,13 +1186,12 @@ HB.structure Definition MonadState (S : UU0) := { M of isMonadState S M & }.
 (*NB: explicit join newly added*)
 #[short(type=failStateMonad)]
 HB.structure Definition MonadFailState (S : UU0) :=
-  { M of isMonadFail M & isMonadState S M & isMonad M & isFunctor M }.
+  { M of MonadFail M & MonadState S M }.
 
 (*NB: explicit join newly added*)
 #[short(type=failR0StateMonad)]
 HB.structure Definition MonadFailR0State (S : UU0) :=
-  { M of isMonadFailR0 M & isMonadState S M & isMonadFail M & isMonad M &
-         isFunctor M }.
+  { M of MonadFailR0 M & MonadState S M }.
 
 #[short(type=nondetStateMonad)]
 HB.structure Definition MonadNondetState (S : UU0) :=
@@ -1089,7 +1337,7 @@ HB.mixin Record isMonadStateTrace (S T : UU0) (M : UU0 -> UU0) & Monad M := {
 
 #[short(type=stateTraceMonad)]
 HB.structure Definition MonadStateTrace (S T : UU0) :=
-  { M of isMonadStateTrace S T M & isMonad M & isFunctor M }.
+  { M of isMonadStateTrace S T M & }.
 
 HB.mixin Record isMonadStateTraceReify (S T : UU0) (M : UU0 -> UU0)
     & MonadReify (S * seq T)%type M & MonadStateTrace S T M := {
@@ -1105,8 +1353,7 @@ HB.mixin Record isMonadStateTraceReify (S T : UU0) (M : UU0 -> UU0)
 
 #[short(type=stateTraceReifyMonad)]
 HB.structure Definition MonadStateTraceReify (S T : UU0) :=
-  { M of isMonadStateTraceReify S T M & isFunctor M & isMonad M &
-         isMonadReify S M & isMonadStateTrace S T M }.
+  { M of isMonadStateTraceReify S T M & }.
 
 HB.mixin Record isMonadFresh (S : UU0) (M : UU0 -> UU0) & Monad M :=
   { fresh : M S }.
@@ -1137,5 +1384,4 @@ HB.mixin Record isMonadFailFresh (S : UU0) (M : UU0 -> UU0)
 
 #[short(type=failFreshMonad)]
 HB.structure Definition MonadFailFresh (S : UU0) :=
-  { M of isMonadFailFresh S M & isFunctor M & isMonad M & isMonadFresh S M &
-         isMonadFail M }.
+  { M of isMonadFailFresh S M }.

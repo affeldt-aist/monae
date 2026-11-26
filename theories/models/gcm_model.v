@@ -419,8 +419,8 @@ Fact scsl_hom_is_affine : affine f.
 Proof. by case: scsl_hom_is_biglub_affine. Qed.
 
 (* NB(rei): this can actually maybe be removed *)
-HB.instance Definition SCSL_hom_affine :=
-  isAffine.Build R K L f scsl_hom_is_affine. (* no new instance is generated! *)
+(* HB.instance Definition SCSL_hom_affine :=
+  isAffine.Build R K L f scsl_hom_is_affine. (* no new instance is generated! *)*)
 (* Canonical SCSL_hom_affine (K L : CS) (f : {hom K  -> L}) :=
   Affine (scsl_hom_is_affine f). *)
 
