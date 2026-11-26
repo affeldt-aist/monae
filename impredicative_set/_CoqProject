@@ -4,7 +4,11 @@
 -arg -w -arg -ambiguous-paths
 -arg -w -arg -notation-incompatible-format
 -arg -w -arg -elpi.add-const-for-axiom-or-sectionvar
+-arg -w -arg -rewrite-rw
 -arg -impredicative-set
+
+# This setting should be removed after dropping support for Rocq 9.2
+-arg -w -arg -notation-for-abbreviation
 
 ipreamble.v
 ihierarchy.v
@@ -20,5 +24,6 @@ ifmt_lifting.v
 iparametricity_codensity.v
 iexample_fastprod.v
 iexample_transformer.v
+iexample_applicative.v
 
 -R . monaeImpredicativeSet

@@ -19,26 +19,30 @@ Unset Printing Implicit Defensive.
 Local Open Scope monae_scope.
 
 Section comp.
-Variables (M N : monad).
-Definition ret_comp : idfun ~~> M \o N := (@ret M) \h (@ret N).
-Lemma naturality_ret : naturality idfun [the functor of M \o N] ret_comp.
-Proof. by move=> A B h; rewrite -(natural ((@ret M) \h (@ret N))). Qed.
-HB.instance Definition _ := isNatural.Build
-  idfun [the functor of (M \o N)] ret_comp naturality_ret.
+Variables (M N : applicative).
+Definition CRet : FId ~~> M \o N := (@ret M) \h (@ret N).
+Lemma naturality_CRet : naturality (FId \o FId) (M \o N) CRet.
+Proof. by move=> A B h; rewrite natural. Qed.
+HB.instance Definition _ :=
+  isNatural.Build FId (M \o N) CRet naturality_CRet.
 End comp.
-Definition CRet (M N : monad) := [the idfun ~> [the functor of M \o N] of ret_comp M N].
+Arguments CRet : clear implicits.
 
 Module Prod.
 Section prod.
-Variables M N(* NB: actually, premonad is enough for N*) : monad.
+Variable M : monad.
+Variable N : applicative.
+(* NB: actually, premonad is enough for N*)
 Variable prod : N \o (M \o N) ~~> M \o N.
 Arguments prod {_}.
 
 Definition JOIN : (M \o N) \o (M \o N) ~~> M \o N := fun _ => Join \o M # prod.
 Arguments JOIN {_}.
 
-Definition prod1 := forall (A B : UU0) (f : A -> B), prod \o N # ([the functor of M \o N] # f) = [the functor of M \o N] # f \o prod.
-Definition prod2 := forall A, prod \o Ret = id :> (_ -> (M \o N) A).
+Definition prod1 := forall (A B : UU0) (f : A -> B), prod \o N # ((M \o N) # f) = (M \o N) # f \o prod.
+Definition prod2 := forall A, prod \o (@ret N ((M \o N) A)) = id :> (_ -> (M \o N) A).
+(* before adding applicative functors, the following shorter definition worked
+Definition prod2 := forall A, prod \o Ret = id :> ((M \o N) A -> (M \o N) A).*)
 Definition prod3 := forall A, prod \o N # CRet M N _ = Ret :> (_ -> (M \o N) A).
 Definition prod4 := forall A, prod \o N # JOIN = JOIN \o prod :> (_ -> (M \o N) A).
 Hypothesis Hprod1 : prod1.
@@ -50,7 +54,7 @@ Lemma JOIN_naturality : naturality _ _ (@JOIN).
 Proof.
 move=> A B g; apply/esym; rewrite {1}/JOIN -[in LHS]up_compA.
 transitivity (
-  Join \o (M # prod \o M # ([the functor of N \o (M \o N)] # g))).
+  Join \o (M # prod \o M # ((N \o (M \o N)) # g))).
   by [].
 rewrite -functor_o Hprod1.
 rewrite functor_o [LHS]up_compA /JOIN FCompE -(FCompE M M).
@@ -59,10 +63,9 @@ by rewrite -up_compA.
 Qed.
 
 HB.instance Definition _ := isNatural.Build
-  [the functor of (M \o N) \o (M \o N)] [the functor of M \o N] (@JOIN) JOIN_naturality.
+  ((M \o N) \o (M \o N)) (M \o N) (@JOIN) JOIN_naturality.
 
-Definition JOIN' : [the functor of (M \o N) \o (M \o N)] ~> [the functor of M \o N] :=
-  [the _ ~> _ of @JOIN].
+Definition JOIN' : (M \o N) \o (M \o N) ~> M \o N := @JOIN.
 
 Lemma JOIN_ret : JoinLaws.left_unit (CRet M N) (@JOIN').
 Proof.
@@ -70,7 +73,7 @@ move=> A; rewrite /JOIN'.
 rewrite /=.
 rewrite /CRet.
 rewrite (up_compA JOIN).
-rewrite -(up_compA Join (M # prod) Ret) (natural ret).
+rewrite -(up_compA Join (M # prod) Ret) (natural ret _ _ prod).
 by rewrite [LHS]up_compA (up_compA Join) joinretM up_compidf Hprod2.
 Qed.
 
@@ -106,17 +109,19 @@ End Prod.
 
 Module Dorp.
 Section dorp.
-Variables M  (* actually, premonad is enough for M *) N : monad.
+Variable M : applicative.
+Variable N : monad.
+(* actually, premonad is enough for M *)
 Variable dorp : M \o (N \o M) ~~> M \o N.
 Arguments dorp {_}.
 
 Definition JOIN : (M \o N) \o (M \o N) ~~> M \o N := fun _ => M # Join \o dorp.
 Arguments JOIN {_}.
 
-Definition dorp1 := forall (A B : UU0) (f : A -> B), dorp \o [the functor of M \o N] # (M # f) = [the functor of M \o N] # f \o dorp.
+Definition dorp1 := forall (A B : UU0) (f : A -> B), dorp \o (M \o N) # (M # f) = (M \o N) # f \o dorp.
 Definition dorp2 := forall A, (@dorp A) \o CRet M N _ = M # Ret.
-Definition dorp3 := forall A, (@dorp A) \o [the functor of M \o N] # Ret = id.
-Definition dorp4 := forall A, (@dorp A) \o JOIN = JOIN \o [the functor of M \o N] # dorp.
+Definition dorp3 := forall A, (@dorp A) \o (M \o N) # Ret = id.
+Definition dorp4 := forall A, (@dorp A) \o JOIN = JOIN \o (M \o N) # dorp.
 Hypothesis Hdorp1 : dorp1.
 Hypothesis Hdorp2 : dorp2.
 Hypothesis Hdorp3 : dorp3.
@@ -128,15 +133,14 @@ move=> A B g; apply/esym; rewrite {1}/JOIN -up_compA Hdorp1.
 rewrite [LHS]up_compA.
 rewrite (FCompE M N (N # g)).
 rewrite -(@functor_o M).
-rewrite -natural.
+rewrite -(natural join).
 by rewrite functor_o.
 Qed.
 
 HB.instance Definition _ := isNatural.Build
-  [the functor of ((M \o N) \o (M \o N))] [the functor of (M \o N)] (@JOIN) join_naturality.
+  ((M \o N) \o (M \o N)) (M \o N) (@JOIN) join_naturality.
 
-Definition JOIN' : [the functor of (M \o N) \o (M \o N)] ~> [the functor of M \o N] :=
-  [the _ ~> _ of (@JOIN)].
+Definition JOIN' : (M \o N) \o (M \o N) ~> M \o N := @JOIN.
 
 Lemma JOIN_ret : JoinLaws.left_unit (@CRet M N) (@JOIN').
 Proof.
@@ -149,7 +153,7 @@ Lemma JOIN_fmap_ret : JoinLaws.right_unit (@CRet M N) (@JOIN').
 Proof.
 move=> A; rewrite /JOIN /CRet.
 rewrite -(up_compA (M # Join) dorp).
-rewrite (@functor_o [the functor of M \o N]).
+rewrite (@functor_o (M \o N)).
 rewrite (up_compA dorp) Hdorp3.
 rewrite up_compidf -functor_o.
 by rewrite joinMret functor_id.
@@ -207,7 +211,8 @@ Fact JOIN_dorp A : @JOIN A = M # Join \o dorp.
 Proof. by rewrite /dorp. Qed.
 
 Definition swap1 := forall (A B : UU0) (f : A -> B), swap \o N # (M # f) = M # (N # f) \o swap .
-Definition swap2 := forall A, @swap A \o Ret = M # Ret :> (M A -> (M \o N) A).
+Definition swap2 := forall A, @swap A \o (@ret N (M A)) = M # Ret :> (M A -> (M \o N) A).
+(*Definition swap2 := forall A, @swap A \o Ret = M # Ret :> (M A -> (M \o N) A).*)
 Definition swap3 := forall A, @swap A \o N # Ret = Ret :> (N A -> (M \o N) A).
 Definition swap4 := forall A, (@prod A) \o N # (@dorp _) = (@dorp _) \o (@prod _).
 Hypothesis Hswap1 : swap1.
@@ -256,7 +261,7 @@ move=> A; rewrite /dorp /CRet.
 rewrite /=.
 rewrite (up_compA (Join \o M # swap)).
 rewrite -(up_compA Join (M # swap)).
-rewrite (natural ret).
+rewrite (natural ret _ _ swap).
 by rewrite (up_compA Join) joinretM up_compidf Hswap2.
 Qed.
 
@@ -283,10 +288,9 @@ Lemma JOIN_naturality : @naturality _ _ (JOIN).
 Proof. by move=> ?? g; rewrite JOINE -/prod (Prod.JOIN_naturality prod1 g) JOINE. Qed.
 
 HB.instance Definition _ := isNatural.Build
-  [the functor of ((M \o N) \o (M \o N))] [the functor of (M \o N)] (@JOIN) JOIN_naturality.
+  ((M \o N) \o (M \o N)) (M \o N) (@JOIN) JOIN_naturality.
 
-Definition JOIN' : [the functor of (M \o N) \o (M \o N)] ~> [the functor of M \o N] :=
-  [the _ ~> _ of (@JOIN)].
+Definition JOIN' : (M \o N) \o (M \o N) ~> M \o N := @JOIN.
 
 Lemma JOIN_ret : JoinLaws.left_unit (@CRet M N) (@JOIN').
 Proof.
@@ -318,44 +322,44 @@ End Swap.
 
 Section nattrans_cast_lemmas.
 Variables (F G : functor).
-Lemma IV : [the functor of idfun \o G] ~> F -> G ~> F.
+Lemma IV : FId \o G ~> F -> G ~> F.
 Proof.
 move=> [s [] [GFs]].
-apply: (@Nattrans.Pack [the functor of G] F _ (Nattrans.Class (isNatural.Axioms_ _ _ _))).
+apply: (@Nattrans.Pack G F _ (Nattrans.Class (isNatural.Axioms_ _ _ _))).
 exact: GFs.
 Qed.
-Lemma VI : [the functor of G \o idfun] ~> F -> G ~> F.
+Lemma VI : G \o FId ~> F -> G ~> F.
 Proof.
 move=> [s [] [GFs]].
-apply: (@Nattrans.Pack [the functor of G] F _ (Nattrans.Class (isNatural.Axioms_ _ _ _))).
+apply: (@Nattrans.Pack G F _ (Nattrans.Class (isNatural.Axioms_ _ _ _))).
 exact: GFs.
 Qed.
 Variable K J : functor.
-Lemma AV : [the functor of G \o K \o J] ~> F -> [the functor of G \o (K \o J)] ~> F.
+Lemma AV : G \o K \o J ~> F -> G \o (K \o J) ~> F.
 Proof.
 move=> [s [] [GFs]].
-apply: (@Nattrans.Pack [the functor of (G \o (K \o J))] F _
+apply: (@Nattrans.Pack (G \o (K \o J)) F _
          (Nattrans.Class (isNatural.Axioms_ _ _ _))).
 exact: GFs.
 Qed.
-Lemma AV' : [the functor of G \o (K \o J)] ~> F -> [the functor of G \o K \o J] ~> F.
+Lemma AV' : G \o (K \o J) ~> F -> G \o K \o J ~> F.
 Proof.
 move=> [s [] [GFs]].
-apply: (@Nattrans.Pack [the functor of (G \o K \o J)] F _
+apply: (@Nattrans.Pack (G \o K \o J) F _
          (Nattrans.Class (isNatural.Axioms_ _ _ _))).
 exact: GFs.
 Qed.
-Lemma VA : F ~> [the functor of G \o K \o J] -> F ~> [the functor of G \o (K \o J)].
+Lemma VA : F ~> G \o K \o J -> F ~> G \o (K \o J).
 Proof.
 move=> [s [] [GFs]].
-apply: (@Nattrans.Pack F [the functor of (G \o (K \o J))] _
+apply: (@Nattrans.Pack F (G \o (K \o J)) _
          (Nattrans.Class (isNatural.Axioms_ _ _ _))).
 exact: GFs.
 Qed.
-Lemma VA' : F ~> [the functor of G \o (K \o J)] -> F ~> [the functor of G \o K \o J].
+Lemma VA' : F ~> G \o (K \o J) -> F ~> G \o K \o J.
 Proof.
 move=> [s [] [GFs]].
-apply: (@Nattrans.Pack F [the functor of (G \o K) \o J] _
+apply: (@Nattrans.Pack F ((G \o K) \o J) _
          (Nattrans.Class (isNatural.Axioms_ _ _ _))).
 exact: GFs.
 Qed.
@@ -365,7 +369,7 @@ Module DistributiveLaw.
 Section distributivelaw.
 Variables S T : monad.
 Record t := mk {
-  f : [the functor of S \o T] ~> [the functor of T \o S] ;
+  f : S \o T ~> T \o S ;
   unit1 :
     IV (f \v (@ret S \h NId T)) = VI (NId T \h @ret S) ;
   unit2 :
@@ -383,7 +387,7 @@ Coercion DistributiveLaw.f : DistributiveLaw.t >-> nattrans.
 
 (* TODO *)
 Definition beck (S T : monad) (f : DistributiveLaw.t S T) : monad.
-have @join : [the functor of (T \o S) \o (T \o S)] ~> [the functor of T \o S].
+have @join : (T \o S) \o (T \o S) ~> T \o S.
   apply: (vcomp ((@join T) \h (@join S)) _).
   apply: VA.
   apply: AV.

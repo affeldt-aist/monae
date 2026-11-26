@@ -361,7 +361,7 @@ Local Open Scope mprog.
 Lemma iperm_o_map (A B : UU0) (f : A -> B) :
   iperm \o map f = map f (o) iperm :> (_ -> M _).
 Proof.
-apply funext; elim => [/=|x xs IH].
+apply: funext; elim => [/=|x xs IH].
   by rewrite fcompE [iperm _]/= -[in RHS]up_compE (natural ret).
 by rewrite fcompE [in iperm _]/= fmap_bind -insert_map -bind_fmap -fcompE -IH.
 Qed.
@@ -373,7 +373,7 @@ Variables (A : UU0) (p : pred A).
 (* netys2017 *)
 Lemma iperm_filter : iperm \o filter p = filter p (o) iperm :> (_ -> M _).
 Proof.
-apply funext; elim => [|h t /[!up_compE] /= IH].
+apply: funext; elim => [|h t /[!up_compE] /= IH].
   by rewrite fcompE fmapE bindretf.
 case: ifPn => ph.
   rewrite [in LHS]/= IH [in LHS]fcomp_def up_compE [in LHS]bind_fmap.

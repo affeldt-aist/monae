@@ -49,6 +49,8 @@ Unset Printing Implicit Defensive.
 
 Local Open Scope monae_scope.
 
+Import Order.Theory.
+
 Lemma bind_ext_guard {M : failMonad} (A : UU0) (b : bool) (m1 m2 : M A) :
   (b -> m1 = m2) -> guard b >> m1 = guard b >> m2.
 Proof. by case: b => [->//|_]; rewrite guardF !bindfailf. Qed.
@@ -869,7 +871,6 @@ Proof. by rewrite -iperm_qperm iperm_idempotent. Qed.
 
 End qperm_lemmas.
 
-Import Order.TTheory.
 Local Open Scope order_scope.
 
 Lemma refin_bindl (M : prePlusMonad) A B (m : M A) (f g : A -> M B) :

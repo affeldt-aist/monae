@@ -150,8 +150,8 @@ Section with_stateT_of_failMonad.
 Variable N : failMonad.
 Let M : monad := stateT nat N.
 Let incr : M unit := get >>= (put \o succn).
-Let prog T : M unit := incr >> Lift [the monadT of stateT nat] N T fail >> incr.
-Goal forall T, prog T = Lift [the monadT of stateT nat] N unit fail.
+Let prog T : M unit := incr >> Lift (stateT nat) N T fail >> incr.
+Goal forall T, prog T = Lift (stateT nat) N unit fail.
 Proof.
 move=> T; rewrite /prog.
 rewrite bindA.
@@ -161,9 +161,9 @@ End with_stateT_of_failMonad.
 
 Section with_exceptT_of_stateMonad.
 Definition LGet S (M : stateMonad S) :=
-  Lift [the monadT of exceptT unit] M S (@get S M).
+  Lift (exceptT unit) M S (@get S M).
 Definition LPut S (M : stateMonad S) :=
-  Lift [the monadT of exceptT unit] M unit \o (@put S M).
+  Lift (exceptT unit) M unit \o (@put S M).
 
 Variable N : stateMonad nat.
 Let M : monad := exceptT unit N.
@@ -182,10 +182,10 @@ Require Import monad_model.
 
 Section incr_fail_incr_model.
 
-Lemma bindLmfail (M := [the monad of option_monad]) S T U (m : stateT S M U)
+Lemma bindLmfail (M := option_monad) S T U (m : stateT S M U)
     (FAIL := @throw unit T tt) :
-  m >> Lift [the monadT of stateT S] M T FAIL =
-  Lift [the monadT of stateT S] M T FAIL.
+  m >> Lift (stateT S) M T FAIL =
+  Lift (stateT S) M T FAIL.
 Proof.
 rewrite /= /liftS; apply: funext => s.
 rewrite except_bindE.
@@ -194,14 +194,14 @@ by case (m s) => // -[].
 Qed.
 
 Section fail_model_sufficient.
-Let N : failMonad := [the failMonad of option_monad].
-Let M : monad := [the stateMonad nat of MS nat N].
+Let N : failMonad := option_monad.
+Let M : monad := MS nat N : stateMonad nat.
 Let FAIL T := @throw unit T tt.
 
 Let incr : M unit := get >>= (put \o succn).
 Let prog T : M unit :=
-  incr >> Lift [the monadT of stateT nat] N T (@FAIL T) >> incr.
-Goal forall T, prog T = Lift [the monadT of stateT nat] N unit (@FAIL unit).
+  incr >> Lift (stateT nat) N T (@FAIL T) >> incr.
+Goal forall T, prog T = Lift (stateT nat) N unit (@FAIL unit).
 Proof.
 move=> T; rewrite /prog.
 rewrite bindLmfail.

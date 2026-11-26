@@ -331,7 +331,7 @@ HB.instance Definition _ := isNatural.Build C E (g \v f) natural_vcomp.
 
 End vertical_composition.
 
-Notation "f \v g" := [the _ ~> _ of vcomp f g].
+Notation "f \v g" := (vcomp f g : _ ~> _).
 
 Lemma vcompE (F G H : functor) (n1 : F ~> H) (n2 : G ~> F) (X : UU0) :
   (n1 \v n2) X = n1 X \o n2 X.
@@ -390,7 +390,7 @@ Lemma functor_app_naturalE (S F G : functor) (nt : F ~> G) X :
 Proof. by []. Qed.
 
 Lemma functor_app_natural_hcomp (S F G : functor) (nt : F ~> G) :
-  S ## nt = [the _ ~> _ of NId S] \h nt.
+  S ## nt = NId S \h nt.
 Proof. by apply nattrans_ext => a; rewrite functor_app_naturalE. Qed.
 
 Definition fork : FId ~~> squaring := fun (A : UU0) (a : A) => (a, a).
@@ -467,7 +467,7 @@ End adjoint_example.
 Module monad_of_adjoint.
 Section def.
 Variables (F G : functor) (eps : eps_type F G) (eta : eta_type F G).
-Definition M := [the functor of G \o F].
+Definition M := G \o F.
 Definition mu : M \o M ~~> M := fun A => G # eps (F A).
 Definition bind A B (m : M A) (f : A -> M B) : M B := mu ((M # f) m).
 End def.
@@ -482,9 +482,9 @@ Notation mu := (mu eps).
 Lemma muM_natural : naturality _ _ mu.
 Proof.
 move => A B h.
-rewrite (_ : [the functor of M \o M] # h = g # ([the functor of f \o g] # (f # h))) //.
-rewrite (_ : _ \o g # ([the functor of f \o g] # (f # h)) =
-  g # (@eps (f B) \o ([the functor of f \o g] # (f # h)))); first by rewrite -functor_o.
+rewrite (_ : (M \o M) # h = g # ((f \o g) # (f # h))) //.
+rewrite (_ : _ \o g # ((f \o g) # (f # h)) =
+  g # (@eps (f B) \o ((f \o g) # (f # h)))); first by rewrite -functor_o.
 rewrite -natural FIdE.
 rewrite [in LHS]FCompE.
 rewrite /mu.
@@ -503,7 +503,7 @@ Lemma bindetaf : BindLaws.left_neutral (bind eps) eta.
 Proof.
 rewrite /BindLaws.left_neutral => A B a h.
 rewrite /bind /mu.
-rewrite -(up_compE ([the functor of g \o f] # h)) (natural eta) -(up_compE (g # _)) up_compA.
+rewrite -(up_compE ((g \o f) # h)) (natural eta) -(up_compE (g # _)) up_compA.
 by rewrite AdjointFunctor.tri_right.
 Qed.
 Lemma bindmeta : BindLaws.right_neutral (bind eps) eta.
